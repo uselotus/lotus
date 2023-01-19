@@ -53,6 +53,7 @@ reportlab = "*"
 jinja2 = "*"
 sqlparse = "*"
 ruff = "*"
+"ruamel.yaml" = "*"
 
 [dev-packages]
 platformdirs = "*"

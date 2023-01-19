@@ -781,6 +781,2484 @@ paths:
               schema:
                 $ref: '#/components/schemas/ConfirmIdemsReceivedFailure'
           description: ''
+  /app/actions/:
+    get:
+      operationId: app_actions_list
+      description: API endpoint that allows events to be viewed.
+      parameters:
+      - name: c
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedActionList'
+          description: ''
+  /app/api_tokens/:
+    get:
+      operationId: app_api_tokens_list
+      description: API endpoint that allows API Tokens to be viewed or edited.
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/APIToken'
+          description: ''
+    post:
+      operationId: app_api_tokens_create
+      description: API endpoint that allows API Tokens to be viewed or edited.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/APITokenRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/APITokenRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/APITokenRequest'
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APITokenCreateResponse'
+          description: ''
+  /app/api_tokens/{prefix}/:
+    delete:
+      operationId: app_api_tokens_destroy
+      description: API endpoint that allows API Tokens to be viewed or edited.
+      parameters:
+      - in: path
+        name: prefix
+        schema:
+          type: string
+        required: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /app/api_tokens/{prefix}/roll/:
+    post:
+      operationId: app_api_tokens_roll_create
+      description: API endpoint that allows API Tokens to be viewed or edited.
+      parameters:
+      - in: path
+        name: prefix
+        schema:
+          type: string
+        required: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APITokenRollResponse'
+          description: ''
+  /app/backtests/:
+    get:
+      operationId: app_backtests_list
+      description: A simple ViewSet for viewing and editing Backtests.
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BacktestSummary'
+          description: ''
+    post:
+      operationId: app_backtests_create
+      description: A simple ViewSet for viewing and editing Backtests.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BacktestCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BacktestCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BacktestCreateRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BacktestCreate'
+          description: ''
+  /app/backtests/{backtest_id}/:
+    get:
+      operationId: app_backtests_retrieve
+      description: A simple ViewSet for viewing and editing Backtests.
+      parameters:
+      - in: path
+        name: backtest_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BacktestDetail'
+          description: ''
+  /app/balance_adjustments/:
+    get:
+      operationId: app_balance_adjustments_list
+      description: A simple ViewSet meant only for creating CustomerBalanceAdjustments.
+      parameters:
+      - in: query
+        name: currency_code
+        schema:
+          type: string
+          minLength: 1
+        description: Filter to adjustments in a specific currency
+      - in: query
+        name: customer_id
+        schema:
+          type: string
+          minLength: 1
+        description: The id provided when creating the customer, we suggest matching
+          with your internal customer id in your backend
+        required: true
+      - in: query
+        name: effective_after
+        schema:
+          type: string
+          format: date-time
+        description: Filter to adjustments that are effective after this date
+      - in: query
+        name: effective_before
+        schema:
+          type: string
+          format: date-time
+        description: Filter to adjustments that are effective before this date
+      - in: query
+        name: expires_after
+        schema:
+          type: string
+          format: date-time
+        description: Filter to adjustments that expire after this date
+      - in: query
+        name: expires_before
+        schema:
+          type: string
+          format: date-time
+        description: Filter to adjustments that expire before this date
+      - in: query
+        name: issued_after
+        schema:
+          type: string
+          format: date-time
+        description: Filter to adjustments that were issued after this date
+      - in: query
+        name: issued_before
+        schema:
+          type: string
+          format: date-time
+        description: Filter to adjustments that were issued before this date
+      - in: query
+        name: status
+        schema:
+          type: array
+          items:
+            enum:
+            - active
+            - inactive
+            type: string
+          default:
+          - inactive
+          - active
+        description: Filter to a specific set of adjustment statuses. Defaults to
+          both active and inactive.
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CustomerBalanceAdjustment'
+          description: ''
+    post:
+      operationId: app_balance_adjustments_create
+      description: A simple ViewSet meant only for creating CustomerBalanceAdjustments.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerBalanceAdjustmentCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomerBalanceAdjustmentCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomerBalanceAdjustmentCreateRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerBalanceAdjustment'
+          description: ''
+  /app/balance_adjustments/{adjustment_id}/update/:
+    post:
+      operationId: app_balance_adjustments_update_create
+      description: A simple ViewSet meant only for creating CustomerBalanceAdjustments.
+      parameters:
+      - in: path
+        name: adjustment_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerBalanceAdjustmentUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomerBalanceAdjustmentUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomerBalanceAdjustmentUpdateRequest'
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerBalanceAdjustment'
+          description: ''
+  /app/balance_adjustments/{adjustment_id}/void/:
+    post:
+      operationId: app_balance_adjustments_void_create
+      description: A simple ViewSet meant only for creating CustomerBalanceAdjustments.
+      parameters:
+      - in: path
+        name: adjustment_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerBalanceAdjustment'
+          description: ''
+  /app/cost_analysis/:
+    get:
+      operationId: app_cost_analysis_retrieve
+      description: Returns the revenue for an organization in a given time period.
+      parameters:
+      - in: query
+        name: customer_id
+        schema:
+          type: string
+          minLength: 1
+        required: true
+      - in: query
+        name: end_date
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: start_date
+        schema:
+          type: string
+          format: date
+        required: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostAnalysis'
+          description: ''
+  /app/customer_summary/:
+    get:
+      operationId: app_customer_summary_list
+      description: Get the current settings for the organization.
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CustomerSummary'
+          description: ''
+  /app/customer_totals/:
+    get:
+      operationId: app_customer_totals_list
+      description: Return current usage for a customer during a given billing period.
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CustomerWithRevenue'
+          description: ''
+  /app/customers/:
+    get:
+      operationId: app_customers_list
+      description: A simple ViewSet for viewing and editing Customers.
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Customer'
+          description: ''
+    post:
+      operationId: app_customers_create
+      description: A simple ViewSet for viewing and editing Customers.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomerCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomerCreateRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+          description: ''
+  /app/customers/{customer_id}/:
+    get:
+      operationId: app_customers_retrieve
+      description: A simple ViewSet for viewing and editing Customers.
+      parameters:
+      - in: path
+        name: customer_id
+        schema:
+          type: string
+          description: The id provided when creating the customer, we suggest matching
+            with your internal customer id in your backend
+        required: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+          description: ''
+    patch:
+      operationId: app_customers_partial_update
+      description: A simple ViewSet for viewing and editing Customers.
+      parameters:
+      - in: path
+        name: customer_id
+        schema:
+          type: string
+          description: The id provided when creating the customer, we suggest matching
+            with your internal customer id in your backend
+        required: true
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerUpdateRequest'
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerUpdate'
+          description: ''
+  /app/demo_login/:
+    post:
+      operationId: app_demo_login_create
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+        required: true
+      security:
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginSuccess'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginFailure'
+          description: ''
+  /app/demo_register/:
+    post:
+      operationId: app_demo_register_create
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemoRegistrationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DemoRegistrationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DemoRegistrationRequest'
+        required: true
+      security:
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoRegistrationSuccess'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoRegistrationFailure'
+          description: ''
+  /app/draft_invoice/:
+    get:
+      operationId: app_draft_invoice_retrieve
+      description: Pagination-enabled endpoint for retrieving an organization's event
+        stream.
+      parameters:
+      - in: query
+        name: customer_id
+        schema:
+          type: string
+          minLength: 1
+        description: The id provided when creating the customer, we suggest matching
+          with your internal customer id in your backend
+        required: true
+      - in: query
+        name: include_next_period
+        schema:
+          type: boolean
+          default: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DraftInvoiceResponse'
+          description: ''
+  /app/events/:
+    get:
+      operationId: app_events_list
+      description: API endpoint that allows events to be viewed.
+      parameters:
+      - name: c
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEventList'
+          description: ''
+  /app/external_plan_links/:
+    post:
+      operationId: app_external_plan_links_create
+      description: A simple ViewSet for viewing and editing ExternalPlanLink.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalPlanLinkRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ExternalPlanLinkRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExternalPlanLinkRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalPlanLink'
+          description: ''
+  /app/external_plan_links/{external_plan_id}/:
+    delete:
+      operationId: app_external_plan_links_destroy
+      description: A simple ViewSet for viewing and editing ExternalPlanLink.
+      parameters:
+      - in: path
+        name: external_plan_id
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: source
+        schema:
+          enum:
+          - stripe
+          type: string
+          minLength: 1
+        required: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /app/features/:
+    get:
+      operationId: app_features_list
+      description: A simple ViewSet for viewing and editing Features.
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Feature'
+          description: ''
+    post:
+      operationId: app_features_create
+      description: A simple ViewSet for viewing and editing Features.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeatureRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FeatureRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FeatureRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feature'
+          description: ''
+  /app/import_customers/:
+    post:
+      operationId: app_import_customers_create
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportCustomersRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ImportCustomersRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImportCustomersRequestRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportCustomerSuccess'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportCustomerFailure'
+          description: ''
+  /app/import_payment_objects/:
+    post:
+      operationId: app_import_payment_objects_create
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportPaymentObjectsRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ImportPaymentObjectsRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImportPaymentObjectsRequestRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPaymentObjectSuccess'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPaymentObjectFailure'
+          description: ''
+  /app/invoices/:
+    get:
+      operationId: app_invoices_list
+      description: A simple ViewSet for viewing and editing Invoices.
+      parameters:
+      - in: query
+        name: customer_id
+        schema:
+          type: string
+          minLength: 1
+        description: A filter for invoices for a specific customer
+      - in: query
+        name: payment_status
+        schema:
+          type: array
+          items:
+            enum:
+            - unpaid
+            - paid
+            type: string
+          default:
+          - paid
+        description: A filter for invoices with a specific payment status
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Invoice'
+          description: ''
+  /app/invoices/{invoice_number}/:
+    get:
+      operationId: app_invoices_retrieve
+      description: A simple ViewSet for viewing and editing Invoices.
+      parameters:
+      - in: path
+        name: invoice_number
+        schema:
+          type: string
+        required: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+          description: ''
+    patch:
+      operationId: app_invoices_partial_update
+      description: A simple ViewSet for viewing and editing Invoices.
+      parameters:
+      - in: path
+        name: invoice_number
+        schema:
+          type: string
+        required: true
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedInvoiceUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedInvoiceUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedInvoiceUpdateRequest'
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceUpdate'
+          description: ''
+  /app/login/:
+    post:
+      operationId: app_login_create
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+        required: true
+      security:
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginSuccess'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginFailure'
+          description: ''
+  /app/logout/:
+    post:
+      operationId: app_logout_create
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutSuccess'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutFailure'
+          description: ''
+  /app/metrics/:
+    get:
+      operationId: app_metrics_list
+      description: A simple ViewSet for viewing and editing Billable Metrics.
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Metric'
+          description: ''
+    post:
+      operationId: app_metrics_create
+      description: A simple ViewSet for viewing and editing Billable Metrics.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MetricCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MetricCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MetricCreateRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Metric'
+          description: ''
+  /app/metrics/{metric_id}/:
+    get:
+      operationId: app_metrics_retrieve
+      description: A simple ViewSet for viewing and editing Billable Metrics.
+      parameters:
+      - in: path
+        name: metric_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Metric'
+          description: ''
+    patch:
+      operationId: app_metrics_partial_update
+      description: A simple ViewSet for viewing and editing Billable Metrics.
+      parameters:
+      - in: path
+        name: metric_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMetricUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMetricUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMetricUpdateRequest'
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricUpdate'
+          description: ''
+  /app/organization/invite/:
+    post:
+      operationId: app_organization_invite_create
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InviteRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InviteRequestRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteResponse'
+          description: ''
+  /app/organization_settings/:
+    get:
+      operationId: app_organization_settings_list
+      description: A simple ViewSet for viewing and editing OrganizationSettings.
+      parameters:
+      - in: query
+        name: setting_group
+        schema:
+          enum:
+          - stripe
+          - billing
+          type: string
+          minLength: 1
+        description: Filters organization_settings to a single setting_group. Defaults
+          to returning all settings.
+      - in: query
+        name: setting_name
+        schema:
+          type: array
+          items:
+            enum:
+            - generate_customer_after_creating_in_lotus
+            - subscription_filter_keys
+            - payment_grace_period
+            type: string
+        description: Filters organization_settings by setting_name. Defaults to returning
+          all settings.
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrganizationSetting'
+          description: ''
+  /app/organization_settings/{setting_id}/:
+    get:
+      operationId: app_organization_settings_retrieve
+      description: A simple ViewSet for viewing and editing OrganizationSettings.
+      parameters:
+      - in: path
+        name: setting_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationSetting'
+          description: ''
+    patch:
+      operationId: app_organization_settings_partial_update
+      description: A simple ViewSet for viewing and editing OrganizationSettings.
+      parameters:
+      - in: path
+        name: setting_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOrganizationSettingUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedOrganizationSettingUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedOrganizationSettingUpdateRequest'
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationSettingUpdate'
+          description: ''
+  /app/organizations/:
+    get:
+      operationId: app_organizations_list
+      description: A simple ViewSet for viewing and editing OrganizationSettings.
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Organization'
+          description: ''
+    post:
+      operationId: app_organizations_create
+      description: A simple ViewSet for viewing and editing OrganizationSettings.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrganizationCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrganizationCreateRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+          description: ''
+  /app/organizations/{organization_id}/:
+    patch:
+      operationId: app_organizations_partial_update
+      description: A simple ViewSet for viewing and editing OrganizationSettings.
+      parameters:
+      - in: path
+        name: organization_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOrganizationUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedOrganizationUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedOrganizationUpdateRequest'
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+          description: ''
+  /app/payment_providers/:
+    get:
+      operationId: app_payment_providers_list
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SinglePaymentProvider'
+          description: ''
+    post:
+      operationId: app_payment_providers_create
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentProviderPostRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PaymentProviderPostRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PaymentProviderPostRequestRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentProviderPostResponse'
+          description: ''
+  /app/period_metric_revenue/:
+    get:
+      operationId: app_period_metric_revenue_retrieve
+      description: Returns the revenue for an organization in a given time period.
+      parameters:
+      - in: query
+        name: period_1_end_date
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: period_1_start_date
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: period_2_end_date
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: period_2_start_date
+        schema:
+          type: string
+          format: date
+        required: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PeriodMetricRevenueResponse'
+          description: ''
+  /app/period_metric_usage/:
+    get:
+      operationId: app_period_metric_usage_retrieve
+      description: Return current usage for a customer during a given billing period.
+      parameters:
+      - in: query
+        name: end_date
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: start_date
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: top_n_customers
+        schema:
+          type: integer
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PeriodMetricUsageResponse'
+          description: ''
+  /app/period_subscriptions/:
+    get:
+      operationId: app_period_subscriptions_retrieve
+      parameters:
+      - in: query
+        name: period_1_end_date
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: period_1_start_date
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: period_2_end_date
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: period_2_start_date
+        schema:
+          type: string
+          format: date
+        required: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PeriodSubscriptionsResponse'
+          description: ''
+  /app/plan_versions/:
+    post:
+      operationId: app_plan_versions_create
+      description: A simple ViewSet for viewing and editing PlanVersions.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanVersionCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PlanVersionCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PlanVersionCreateRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanVersionDetail'
+          description: ''
+  /app/plan_versions/{version_id}/:
+    patch:
+      operationId: app_plan_versions_partial_update
+      description: A simple ViewSet for viewing and editing PlanVersions.
+      parameters:
+      - in: path
+        name: version_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPlanVersionUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPlanVersionUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPlanVersionUpdateRequest'
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanVersionUpdate'
+          description: ''
+  /app/plans/:
+    get:
+      operationId: app_plans_list
+      description: ViewSet for viewing and editing Plans.
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlanDetail'
+          description: ''
+    post:
+      operationId: app_plans_create
+      description: ViewSet for viewing and editing Plans.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PlanCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PlanCreateRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanDetail'
+          description: ''
+  /app/plans/{plan_id}/:
+    get:
+      operationId: app_plans_retrieve
+      description: ViewSet for viewing and editing Plans.
+      parameters:
+      - in: path
+        name: plan_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanDetail'
+          description: ''
+    patch:
+      operationId: app_plans_partial_update
+      description: ViewSet for viewing and editing Plans.
+      parameters:
+      - in: path
+        name: plan_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPlanUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPlanUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPlanUpdateRequest'
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanUpdate'
+          description: ''
+  /app/plans_by_customer/:
+    get:
+      operationId: app_plans_by_customer_retrieve
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlansByNumCustomers'
+          description: ''
+  /app/pricing_units/:
+    get:
+      operationId: app_pricing_units_list
+      description: A simple ViewSet for viewing and editing PricingUnits.
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PricingUnit'
+          description: ''
+    post:
+      operationId: app_pricing_units_create
+      description: A simple ViewSet for viewing and editing PricingUnits.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PricingUnitRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PricingUnitRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PricingUnitRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingUnit'
+          description: ''
+  /app/products/:
+    get:
+      operationId: app_products_list
+      description: A simple ViewSet for viewing and editing Products.
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+          description: ''
+    post:
+      operationId: app_products_create
+      description: A simple ViewSet for viewing and editing Products.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+  /app/products/{product_id}/:
+    get:
+      operationId: app_products_retrieve
+      description: A simple ViewSet for viewing and editing Products.
+      parameters:
+      - in: path
+        name: product_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+  /app/register/:
+    post:
+      operationId: app_register_create
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RegistrationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RegistrationRequest'
+        required: true
+      security:
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationSuccess'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationFailure'
+          description: ''
+  /app/session/:
+    get:
+      operationId: app_session_retrieve
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionSuccess'
+          description: ''
+  /app/subscriptions/:
+    get:
+      operationId: app_subscriptions_list
+      description: A simple ViewSet for viewing and editing Subscriptions.
+      parameters:
+      - in: query
+        name: customer_id
+        schema:
+          type: string
+          minLength: 1
+        description: Filter to a specific customer.
+        required: true
+      - in: query
+        name: plan_id
+        schema:
+          type: string
+          format: uuid
+        description: Filter to a specific plan.
+      - in: query
+        name: range_end
+        schema:
+          type: string
+          format: date-time
+        description: If specified, will only return subscriptions with a start date
+          before this date.
+      - in: query
+        name: range_start
+        schema:
+          type: string
+          format: date-time
+        description: If specified, will only return subscriptions with an end date
+          after this date.
+      - in: query
+        name: status
+        schema:
+          type: array
+          items:
+            enum:
+            - active
+            - ended
+            - not_started
+            type: string
+          default:
+          - active
+        description: Filter to a specific set of subscription statuses. Defaults to
+          active.
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubscriptionRecord'
+          description: ''
+    post:
+      operationId: app_subscriptions_create
+      description: A simple ViewSet for viewing and editing Subscriptions.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRecordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRecordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRecordRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionRecord'
+          description: ''
+  /app/subscriptions/add/:
+    post:
+      operationId: app_subscriptions_add_create
+      description: A simple ViewSet for viewing and editing Subscriptions.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRecordCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRecordCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRecordCreateRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionRecord'
+          description: ''
+  /app/subscriptions/cancel/:
+    post:
+      operationId: app_subscriptions_cancel_create
+      description: A simple ViewSet for viewing and editing Subscriptions.
+      parameters:
+      - in: query
+        name: customer_id
+        schema:
+          type: string
+          minLength: 1
+        description: Filter to a specific customer.
+        required: true
+      - in: query
+        name: plan_id
+        schema:
+          type: string
+          format: uuid
+        description: Filter to a specific plan. If not specified, all plans will be
+          included in the cancellation request.
+      - in: query
+        name: subscription_filters
+        schema:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilterRequest'
+        description: Filter to a specific set of subscription filters. If your billing
+          model only allows for one subscription per customer, you very likely do
+          not need this field. Must be formatted as a JSON-encoded + stringified list
+          of dictionaries, where each dictionary has a key of 'property_name' and
+          a key of 'value'.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRecordCancelRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRecordCancelRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRecordCancelRequest'
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubscriptionRecord'
+          description: ''
+  /app/subscriptions/update/:
+    post:
+      operationId: app_subscriptions_update_create
+      description: A simple ViewSet for viewing and editing Subscriptions.
+      parameters:
+      - in: query
+        name: customer_id
+        schema:
+          type: string
+          minLength: 1
+        description: Filter to a specific customer.
+        required: true
+      - in: query
+        name: plan_id
+        schema:
+          type: string
+          format: uuid
+        description: Filter to a specific plan.
+        required: true
+      - in: query
+        name: subscription_filters
+        schema:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilterRequest'
+        description: Filter to a specific set of subscription filters. If your billing
+          model only allows for one subscription per customer, you very likely do
+          not need this field. Must be formatted as a JSON-encoded + stringified list
+          of dictionaries, where each dictionary has a key of 'property_name' and
+          a key of 'value'.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRecordUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRecordUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRecordUpdateRequest'
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubscriptionRecord'
+          description: ''
+  /app/switch_organization/:
+    post:
+      operationId: app_switch_organization_create
+      description: Get the current settings for the organization.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeUserOrganizationRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ChangeUserOrganizationRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ChangeUserOrganizationRequestRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /app/transfer_subscriptions/:
+    post:
+      operationId: app_transfer_subscriptions_create
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferSubscriptionsRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TransferSubscriptionsRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TransferSubscriptionsRequestRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferSubscriptionsSuccess'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferSubscriptionsFailure'
+          description: ''
+  /app/usage_alerts/:
+    get:
+      operationId: app_usage_alerts_list
+      description: ViewSet for viewing and editing UsageAlerts.
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UsageAlert'
+          description: ''
+    post:
+      operationId: app_usage_alerts_create
+      description: ViewSet for viewing and editing UsageAlerts.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsageAlertCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UsageAlertCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UsageAlertCreateRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageAlertCreate'
+          description: ''
+  /app/usage_alerts/{usage_alert_id}/:
+    get:
+      operationId: app_usage_alerts_retrieve
+      description: ViewSet for viewing and editing UsageAlerts.
+      parameters:
+      - in: path
+        name: usage_alert_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageAlert'
+          description: ''
+    delete:
+      operationId: app_usage_alerts_destroy
+      description: ViewSet for viewing and editing UsageAlerts.
+      parameters:
+      - in: path
+        name: usage_alert_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /app/user/password/reset/:
+    post:
+      operationId: app_user_password_reset_create
+      description: Verifies the token and resets the password.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequestRequest'
+        required: true
+      security:
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetPasswordSuccess'
+          description: ''
+  /app/user/password/reset/init/:
+    post:
+      operationId: app_user_password_reset_init_create
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EmailRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EmailRequest'
+        required: true
+      security:
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InitResetPasswordSuccess'
+          description: ''
+  /app/users/:
+    get:
+      operationId: app_users_list
+      description: A simple ViewSet for viewing and editing Users.
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+          description: ''
+    post:
+      operationId: app_users_create
+      description: A simple ViewSet for viewing and editing Users.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /app/webhooks/:
+    get:
+      operationId: app_webhooks_list
+      description: API endpoint that allows alerts to be viewed or edited.
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WebhookEndpoint'
+          description: ''
+    post:
+      operationId: app_webhooks_create
+      description: API endpoint that allows alerts to be viewed or edited.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookEndpointRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WebhookEndpointRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WebhookEndpointRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookEndpoint'
+          description: ''
+      callbacks:
+        invoice.created:
+          '{$request.body#/webhook_url}':
+            post:
+              description: Invoice created webhook
+              responses:
+                '200':
+                  content:
+                    application/json:
+                      schema:
+                        $ref: '#/components/schemas/InvoiceCreatedRequest'
+                  description: ''
+        invoice.paid:
+          '{$request.body#/webhook_url}':
+            post:
+              description: Invoice paid webhook
+              responses:
+                '200':
+                  content:
+                    application/json:
+                      schema:
+                        $ref: '#/components/schemas/InvoicePaidRequest'
+                  description: ''
+        usage_alert.triggered:
+          '{$request.body#/webhook_url}':
+            post:
+              description: Usage alert triggered webhook
+              responses:
+                '200':
+                  content:
+                    application/json:
+                      schema:
+                        $ref: '#/components/schemas/UsageAlertTriggeredRequest'
+                  description: ''
+  /app/webhooks/{webhook_endpoint_id}/:
+    get:
+      operationId: app_webhooks_retrieve
+      description: API endpoint that allows alerts to be viewed or edited.
+      parameters:
+      - in: path
+        name: webhook_endpoint_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookEndpoint'
+          description: ''
+    patch:
+      operationId: app_webhooks_partial_update
+      description: API endpoint that allows alerts to be viewed or edited.
+      parameters:
+      - in: path
+        name: webhook_endpoint_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedWebhookEndpointRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedWebhookEndpointRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedWebhookEndpointRequest'
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookEndpoint'
+          description: ''
+    delete:
+      operationId: app_webhooks_destroy
+      description: API endpoint that allows alerts to be viewed or edited.
+      parameters:
+      - in: path
+        name: webhook_endpoint_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /stripe/webhook/:
+    post:
+      operationId: stripe_webhook_create
+      tags:
+      - stripe
+      security:
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          description: No response body
 components:
   schemas:
     APIToken:
@@ -1324,7 +3802,7 @@ components:
         payment_provider:
           enum:
           - stripe
-          - 
+          - null
           type: string
           nullable: true
         has_payment_method:
@@ -1907,11 +4385,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ComponentUsage'
-          description: "The usage of each component of the plan the customer is on.\
-            \ Only components that match the request will be included: If metric_id\
-            \ is provided, this will be a list of length 1. If event_name is provided,\
-            \ this will be a list of length 1 or more depending on how many components\
-            \ of the customer's plan use this event."
+          description: 'The usage of each component of the plan the customer is on.
+            Only components that match the request will be included: If metric_id
+            is provided, this will be a list of length 1. If event_name is provided,
+            this will be a list of length 1 or more depending on how many components
+            of the customer''s plan use this event.'
       required:
       - plan_id
       - subscription_filters
@@ -2104,7 +4582,7 @@ components:
           - quarterly
           - end_of_period
           - ''
-          - 
+          - null
           type: string
           writeOnly: true
           nullable: true
@@ -2189,7 +4667,7 @@ components:
         external_payment_obj_type:
           enum:
           - stripe
-          - 
+          - null
           type: string
           nullable: true
         line_items:
@@ -2270,7 +4748,7 @@ components:
           enum:
           - in_arrears
           - in_advance
-          - 
+          - null
           type: string
           nullable: true
         metadata:
@@ -2324,7 +4802,7 @@ components:
           enum:
           - in_arrears
           - in_advance
-          - 
+          - null
           type: string
           nullable: true
         metadata:
@@ -2362,7 +4840,7 @@ components:
         external_payment_obj_type:
           enum:
           - stripe
-          - 
+          - null
           type: string
           nullable: true
         line_items:
@@ -2483,7 +4961,7 @@ components:
         external_payment_obj_type:
           enum:
           - stripe
-          - 
+          - null
           type: string
           nullable: true
         currency:
@@ -2525,7 +5003,7 @@ components:
           enum:
           - in_arrears
           - in_advance
-          - 
+          - null
           type: string
           nullable: true
         subtotal:
@@ -2725,7 +5203,7 @@ components:
           - quarters
           - years
           - total
-          - 
+          - null
           type: string
           readOnly: true
           nullable: true
@@ -2735,7 +5213,7 @@ components:
           enum:
           - delta
           - total
-          - 
+          - null
           type: string
           readOnly: true
           nullable: true
@@ -2782,7 +5260,7 @@ components:
           - quarters
           - years
           - total
-          - 
+          - null
           type: string
           readOnly: true
           nullable: true
@@ -2828,7 +5306,7 @@ components:
           - unique
           - latest
           - average
-          - 
+          - null
           type: string
           writeOnly: true
           nullable: true
@@ -2843,7 +5321,7 @@ components:
           - unique
           - latest
           - average
-          - 
+          - null
           type: string
           writeOnly: true
           nullable: true
@@ -2857,7 +5335,7 @@ components:
           - quarters
           - years
           - total
-          - 
+          - null
           type: string
           writeOnly: true
           nullable: true
@@ -2867,7 +5345,7 @@ components:
           enum:
           - delta
           - total
-          - 
+          - null
           type: string
           writeOnly: true
           nullable: true
@@ -2896,7 +5374,7 @@ components:
           - quarters
           - years
           - total
-          - 
+          - null
           type: string
           writeOnly: true
           nullable: true
@@ -3733,7 +6211,7 @@ components:
           - monthly
           - quarterly
           - end_of_period
-          - 
+          - null
           type: string
           readOnly: true
           nullable: true
@@ -3806,7 +6284,7 @@ components:
           - quarterly
           - end_of_period
           - ''
-          - 
+          - null
           type: string
           writeOnly: true
           nullable: true
@@ -3883,7 +6361,7 @@ components:
           - monthly
           - quarterly
           - end_of_period
-          - 
+          - null
           type: string
           readOnly: true
           nullable: true
@@ -4464,7 +6942,7 @@ components:
           type: string
         property_name:
           type: string
-          description: "The string name of the property to filter on. Example: 'product_id'"
+          description: 'The string name of the property to filter on. Example: ''product_id'''
       required:
       - property_name
       - value
@@ -4477,7 +6955,7 @@ components:
         property_name:
           type: string
           minLength: 1
-          description: "The string name of the property to filter on. Example: 'product_id'"
+          description: 'The string name of the property to filter on. Example: ''product_id'''
       required:
       - property_name
       - value
