@@ -1,6 +1,6 @@
 import { MetricType } from "./metric-type";
 import { FeatureType } from "./feature-type";
-import { PricingUnit } from "./pricing-unit-type";
+import { CurrencyType } from "./pricing-unit-type";
 import { LightweightCustomerType } from "./customer-type";
 import { AlertType } from "./alert-type";
 
@@ -68,7 +68,7 @@ export interface PlanVersionType
   features: FeatureType[];
   plan_name?: string;
   usage_billing_frequency?: "monthly" | "quarterly" | "yearly";
-  currency: PricingUnit;
+  currency: CurrencyType;
   alerts: AlertType[];
 }
 
@@ -130,7 +130,7 @@ export interface Component {
   tiers: Tier[];
   proration_granularity: string;
   id?: number;
-  pricing_unit: PricingUnit;
+  pricing_unit: CurrencyType;
 }
 
 export interface Tier {

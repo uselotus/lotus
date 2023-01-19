@@ -35,7 +35,7 @@ import ComponentDisplay from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import TargetCustomerForm from "../components/Plans/TargetCustomerForm";
 import VersionActiveForm from "../components/Plans/VersionActiveForm";
-import { PricingUnit } from "../types/pricing-unit-type";
+import { CurrencyType } from "../types/pricing-unit-type";
 
 interface CustomizedState {
   plan: PlanType;

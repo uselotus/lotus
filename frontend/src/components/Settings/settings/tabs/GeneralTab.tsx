@@ -18,7 +18,7 @@ import {
   Tag,
 } from "antd";
 import { Organization, PricingUnits } from "../../../../api/api";
-import { PricingUnit } from "../../../../types/pricing-unit-type";
+import { CurrencyType } from "../../../../types/pricing-unit-type";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../../../LoadingSpinner";
 import useGlobalStore from "../../../../stores/useGlobalstore";
@@ -63,7 +63,7 @@ const GeneralTab: FC = () => {
   const {
     data: pricingUnits,
     isLoading: pricingUnitsLoading,
-  }: UseQueryResult<PricingUnit[]> = useQuery<PricingUnit[]>(
+  }: UseQueryResult<CurrencyType[]> = useQuery<CurrencyType[]>(
     ["pricing_unit_list"],
     () =>
       PricingUnits.list().then((res) => {

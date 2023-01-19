@@ -1,10 +1,10 @@
 import { LightweightCustomerType } from "./customer-type";
-import { PricingUnit } from "./pricing-unit-type";
+import { CurrencyType } from "./pricing-unit-type";
 
 export interface InvoiceType {
   invoice_number: string;
   cost_due: number;
-  currency: PricingUnit;
+  currency: CurrencyType;
   issue_date: string;
   payment_status: "draft" | "paid" | "unpaid" | "voided";
   external_payment_obj_type: string;
