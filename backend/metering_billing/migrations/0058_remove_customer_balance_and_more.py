@@ -4,8 +4,9 @@ import uuid
 
 import django.db.models.deletion
 import djmoney.models.fields
-import metering_billing.utils.utils
 from django.db import migrations, models
+
+import metering_billing.utils.utils
 
 
 class Migration(migrations.Migration):

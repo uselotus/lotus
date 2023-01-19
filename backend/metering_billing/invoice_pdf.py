@@ -4,10 +4,11 @@ from datetime import datetime
 import boto3
 from django.conf import settings
 from django.forms.models import model_to_dict
-from metering_billing.serializers.serializer_utils import PlanUUIDField
-from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+
+from metering_billing.serializers.serializer_utils import PlanUUIDField
+from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
 
 FONT_XL = 26
 FONT_L = 24
@@ -120,12 +121,12 @@ def write_line_item(
     doc.setFont("Times-Roman", FONT_S)
     doc.setFillColor("black")
     if quantity:
-        new_quantity = "{:g}".format(float(quantity))
+        new_quantity = f"{float(quantity):g}"
         doc.drawString(350, datespan_offset, str(new_quantity))
     else:
         doc.drawString(350, datespan_offset, str(quantity))
     if subtotal:
-        new_subtotal = "{:g}".format(float(subtotal))
+        new_subtotal = f"{float(subtotal):g}"
         doc.drawString(475, datespan_offset, f"{currency_symbol}{str(new_subtotal)}")
     else:
         doc.drawString(475, datespan_offset, f"{currency_symbol}{str(subtotal)}")

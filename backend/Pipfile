@@ -56,14 +56,14 @@ ruff = "*"
 
 [dev-packages]
 platformdirs = "*"
-isort = "*"
 pytest-django = "*"
 locust = "*"
 django-silk = "*"
 pytest-cov = "*"
 black = "*"
-pylint = "*"
 sqlalchemy = "*"
+ruff = "*"
+pylint = "*"
 
 [requires]
 python_version = "3.9"

@@ -2,9 +2,10 @@
 import base64
 import copy
 import json
+import logging
 import operator
 from functools import reduce
-from typing import Dict, Union
+from typing import Optional
 
 import posthog
 from api.serializers.model_serializers import (
@@ -36,7 +37,6 @@ from api.serializers.nonmodel_serializers import (
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
-from django.core.cache import cache
 from django.db.models import Count, F, OuterRef, Prefetch, Q, Subquery, Value
 from django.db.models.functions import Coalesce
 from django.db.utils import IntegrityError
@@ -61,7 +61,6 @@ from metering_billing.models import (
     Event,
     Invoice,
     Metric,
-    NumericFilter,
     Plan,
     PlanComponent,
     PriceTier,
@@ -80,7 +79,19 @@ from metering_billing.utils import (
     date_as_max_dt,
     now_utc,
 )
-from metering_billing.utils.enums import *
+from metering_billing.utils.enums import (
+    CATEGORICAL_FILTER_OPERATORS,
+    CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
+    FLAT_FEE_BEHAVIOR,
+    INVOICING_BEHAVIOR,
+    METRIC_STATUS,
+    ORGANIZATION_SETTING_NAMES,
+    PLAN_STATUS,
+    SUBSCRIPTION_STATUS,
+    USAGE_BEHAVIOR,
+    USAGE_BILLING_BEHAVIOR,
+    USAGE_BILLING_FREQUENCY,
+)
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import (
     action,
@@ -96,7 +107,6 @@ from rest_framework.views import APIView
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
-import logging
 
 logger = logging.getLogger("django.server")
 
@@ -119,7 +129,7 @@ class PermissionPolicyMixin:
                 self.permission_classes = self.permission_classes_per_method.get(
                     handler.__name__
                 )
-        except:
+        except Exception:
             pass
 
         super().check_permissions(request)
@@ -166,7 +176,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             raise ServerError("Unknown error: " + str(cause))
 
     def get_serializer_context(self):
-        context = super(CustomerViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         context.update({"organization": self.request.organization})
         return context
 
@@ -175,7 +185,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         if status.is_success(response.status_code):
             try:
                 username = self.request.user.username
-            except:
+            except Exception:
                 username = None
             organization = self.request.organization or self.request.user.organization
             posthog.capture(
@@ -288,7 +298,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         if status.is_success(response.status_code):
             try:
                 username = self.request.user.username
-            except:
+            except Exception:
                 username = None
             organization = self.request.organization
             posthog.capture(
@@ -305,7 +315,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return response
 
     def get_serializer_context(self):
-        context = super(PlanViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         if self.request.user.is_authenticated:
             user = self.request.user
@@ -333,7 +343,7 @@ class SubscriptionViewSet(
     queryset = SubscriptionRecord.objects.all()
 
     def get_serializer_context(self):
-        context = super(SubscriptionViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
         return context
@@ -691,7 +701,7 @@ class SubscriptionViewSet(
         if status.is_success(response.status_code):
             try:
                 username = self.request.user.username
-            except:
+            except Exception:
                 username = None
             organization = self.request.organization
             posthog.capture(
@@ -768,7 +778,7 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         )
 
     def get_serializer_context(self):
-        context = super(InvoiceViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
         return context
@@ -778,7 +788,7 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         if status.is_success(response.status_code):
             try:
                 username = self.request.user.username
-            except:
+            except Exception:
                 username = None
             organization = self.request.organization
             posthog.capture(
@@ -895,7 +905,7 @@ class CustomerBalanceAdjustmentViewSet(
         return qs
 
     def get_serializer_context(self):
-        context = super(CustomerBalanceAdjustmentViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
         return context
@@ -958,7 +968,7 @@ class CustomerBalanceAdjustmentViewSet(
         if status.is_success(response.status_code):
             try:
                 username = self.request.user.username
-            except:
+            except Exception:
                 username = None
             organization = self.request.organization
             posthog.capture(
@@ -1006,7 +1016,7 @@ class GetCustomerEventAccessView(APIView):
         serializer.is_valid(raise_exception=True)
         # try:
         #     username = self.request.user.username
-        # except:
+        # except Exception as e:
         #     username = None
         # posthog.capture(
         #     POSTHOG_PERSON
@@ -1109,7 +1119,7 @@ class GetCustomerFeatureAccessView(APIView):
         serializer.is_valid(raise_exception=True)
         # try:
         #     username = self.request.user.username
-        # except:
+        # except Exception as e:
         #     username = None
         # posthog.capture(
         #     POSTHOG_PERSON
@@ -1331,7 +1341,7 @@ logger = logging.getLogger("django.server")
 kafka_producer = Producer()
 
 
-def load_event(request: HttpRequest) -> Union[None, Dict]:
+def load_event(request: HttpRequest) -> Optional[dict]:
     """
     Loads an event from the request body.
     """

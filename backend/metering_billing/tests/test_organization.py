@@ -1,8 +1,14 @@
 import pytest
 from django.urls import reverse
-from metering_billing.utils.enums import *
 from rest_framework import status
 from rest_framework.test import APIClient
+
+from metering_billing.utils.enums import (
+    FLAT_FEE_BILLING_TYPE,
+    PLAN_DURATION,
+    PLAN_VERSION_STATUS,
+    TAG_GROUP,
+)
 
 
 @pytest.fixture

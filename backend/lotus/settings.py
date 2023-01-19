@@ -40,7 +40,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 try:
     path = Path(__file__).resolve().parent.parent.parent / "env/.env.test"
     load_dotenv(dotenv_path=path)
-except:
+except Exception:
     pass
 
 VITE_API_URL = config("VITE_API_URL", default="http://localhost:8000")
@@ -287,7 +287,7 @@ if KAFKA_HOST:
         KAFKA_HOST = KAFKA_HOST
     else:
         KAFKA_HOST = [
-            "{}:{}".format(parsedUrl.hostname, parsedUrl.port)
+            f"{parsedUrl.hostname}:{parsedUrl.port}"
             for parsedUrl in [urlparse(url) for url in KAFKA_HOST.split(",")]
         ]
     producer_config = {
@@ -690,5 +690,5 @@ if SVIX_CONNECTOR is not None:
                     name="usage_alert.triggered",
                 )
             )
-    except:
+    except Exception:
         SVIX_CONNECTOR = None

@@ -3,10 +3,33 @@ from decimal import Decimal
 import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Q, Sum
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
-from metering_billing.models import *
+from metering_billing.models import (
+    APIToken,
+    Customer,
+    ExternalPlanLink,
+    Feature,
+    Invoice,
+    Metric,
+    Organization,
+    OrganizationSetting,
+    Plan,
+    PlanComponent,
+    PlanVersion,
+    PriceAdjustment,
+    PriceTier,
+    PricingUnit,
+    Product,
+    SubscriptionRecord,
+    Tag,
+    TeamInviteToken,
+    UsageAlert,
+    User,
+    WebhookEndpoint,
+    WebhookTrigger,
+)
 from metering_billing.serializers.serializer_utils import (
     OrganizationSettingUUIDField,
     OrganizationUUIDField,
@@ -17,7 +40,22 @@ from metering_billing.serializers.serializer_utils import (
     WebhookSecretUUIDField,
 )
 from metering_billing.utils import now_utc
-from metering_billing.utils.enums import *
+from metering_billing.utils.enums import (
+    BATCH_ROUNDING_TYPE,
+    MAKE_PLAN_VERSION_ACTIVE_TYPE,
+    METRIC_GRANULARITY,
+    METRIC_STATUS,
+    ORGANIZATION_SETTING_GROUPS,
+    ORGANIZATION_SETTING_NAMES,
+    ORGANIZATION_STATUS,
+    PLAN_DURATION,
+    PLAN_STATUS,
+    PLAN_VERSION_STATUS,
+    PRICE_TIER_TYPE,
+    REPLACE_IMMEDIATELY_TYPE,
+    TAG_GROUP,
+    WEBHOOK_TRIGGER_EVENTS,
+)
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
@@ -1373,11 +1411,6 @@ class SubscriptionRecordSerializer(api_serializers.SubscriptionRecordSerializer)
         fields = api_serializers.SubscriptionRecordSerializer.Meta.fields
 
 
-class SubscriptionRecordSerializer(api_serializers.SubscriptionRecordSerializer):
-    class Meta(api_serializers.SubscriptionRecordSerializer.Meta):
-        fields = api_serializers.SubscriptionRecordSerializer.Meta.fields
-
-
 class LightweightSubscriptionRecordSerializer(
     api_serializers.LightweightSubscriptionRecordSerializer
 ):
@@ -1741,4 +1774,5 @@ class UsageAlertCreateSerializer(serializers.ModelSerializer):
             plan_version=plan_version,
             **validated_data,
         )
+        return usage_alert
         return usage_alert
