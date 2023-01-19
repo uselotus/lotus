@@ -1,20 +1,17 @@
 from django.conf import settings
-from svix.api import MessageIn
-
 from metering_billing.utils import (
     make_all_dates_times_strings,
     make_all_decimals_floats,
     now_utc,
 )
 from metering_billing.utils.enums import WEBHOOK_TRIGGER_EVENTS
+from svix.api import MessageIn
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
 
 def invoice_created_webhook(invoice, organization):
     from api.serializers.model_serializers import InvoiceSerializer
-    from api.serializers.webhook_serializers import InvoiceCreatedSerializer
-
     from metering_billing.models import WebhookEndpoint
 
     if SVIX_CONNECTOR is not None:
@@ -34,7 +31,6 @@ def invoice_created_webhook(invoice, organization):
                 "event_type": WEBHOOK_TRIGGER_EVENTS.INVOICE_CREATED,
                 "payload": invoice_data,
             }
-            response = InvoiceCreatedSerializer(response).data
             svix.message.create(
                 organization.organization_id.hex,
                 MessageIn(
@@ -55,8 +51,6 @@ def invoice_created_webhook(invoice, organization):
 
 def invoice_paid_webhook(invoice, organization):
     from api.serializers.model_serializers import InvoiceSerializer
-    from api.serializers.webhook_serializers import InvoicePaidSerializer
-
     from metering_billing.models import WebhookEndpoint
 
     if SVIX_CONNECTOR is not None:
@@ -76,7 +70,6 @@ def invoice_paid_webhook(invoice, organization):
                 "event_type": WEBHOOK_TRIGGER_EVENTS.INVOICE_PAID,
                 "payload": invoice_data,
             }
-            response = InvoicePaidSerializer(response).data
             svix.message.create(
                 organization.organization_id.hex,
                 MessageIn(
@@ -100,11 +93,7 @@ def usage_alert_webhook(usage_alert, alert_result, subscription_record, organiza
         LightweightSubscriptionRecordSerializer,
         UsageAlertSerializer,
     )
-    from api.serializers.webhook_serializers import (
-        UsageAlertPayload,
-        UsageAlertTriggeredSerializer,
-    )
-
+    from api.serializers.webhook_serializers import UsageAlertPayload
     from metering_billing.models import WebhookEndpoint
 
     if SVIX_CONNECTOR is not None:
@@ -129,7 +118,6 @@ def usage_alert_webhook(usage_alert, alert_result, subscription_record, organiza
                 "event_type": WEBHOOK_TRIGGER_EVENTS.USAGE_ALERT_TRIGGERED,
                 "payload": UsageAlertPayload(alert_data).data,
             }
-            response = UsageAlertTriggeredSerializer(response).data
             event_id = (
                 str(organization.organization_id.hex)[:50]
                 + "_"

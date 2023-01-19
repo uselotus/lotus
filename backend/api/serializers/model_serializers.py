@@ -31,6 +31,7 @@ from metering_billing.models import (
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.serializer_utils import (
     BalanceAdjustmentUUIDField,
+    InvoiceUUIDField,
     MetricUUIDField,
     PlanUUIDField,
     PlanVersionUUIDField,
@@ -295,13 +296,17 @@ class InvoiceLineItemSerializer(
             "subscription_filters": {"required": True},
         }
 
-    plan = LightweightPlanVersionSerializer(
-        source="associated_subscription_record.billing_plan",
-    )
+    plan = serializers.SerializerMethodField()
     subscription_filters = SubscriptionCategoricalFilterSerializer(
         source="associated_subscription_record.filters",
         many=True,
     )
+
+    def get_plan(self, obj) -> Optional[LightweightPlanVersionSerializer]:
+        ass_sub_record = obj.associated_subscription_record
+        if ass_sub_record:
+            return LightweightPlanVersionSerializer(ass_sub_record.billing_plan).data
+        return None
 
 
 class LightweightInvoiceLineItemSerializer(InvoiceLineItemSerializer):
@@ -309,9 +314,13 @@ class LightweightInvoiceLineItemSerializer(InvoiceLineItemSerializer):
         fields = tuple(set(InvoiceLineItemSerializer.Meta.fields) - {"metadata"})
         extra_kwargs = {**InvoiceLineItemSerializer.Meta.extra_kwargs}
 
-    plan = serializers.CharField(
-        source="associated_subscription_record.billing_plan.plan.plan_name",
-    )
+    plan = serializers.SerializerMethodField()
+
+    def get_plan(self, obj) -> Optional[serializers.CharField]:
+        ass_sub_record = obj.associated_subscription_record
+        if ass_sub_record:
+            return ass_sub_record.billing_plan.plan.plan_name
+        return None
 
 
 class SellerSerializer(
@@ -339,6 +348,7 @@ class InvoiceSerializer(
     class Meta:
         model = Invoice
         fields = (
+            "invoice_id",
             "invoice_number",
             "cost_due",
             "currency",
@@ -355,6 +365,7 @@ class InvoiceSerializer(
             "invoice_pdf",
         )
         extra_kwargs = {
+            "invoice_id": {"required": True, "read_only": True},
             "invoice_number": {"required": True, "read_only": True},
             "cost_due": {"required": True, "read_only": True},
             "issue_date": {"required": True, "read_only": True},
@@ -378,6 +389,7 @@ class InvoiceSerializer(
             "invoice_pdf": {"required": True, "allow_null": True, "read_only": True},
         }
 
+    invoice_id = InvoiceUUIDField()
     external_payment_obj_type = serializers.ChoiceField(
         choices=PAYMENT_PROVIDERS.choices,
         allow_null=True,
@@ -459,6 +471,20 @@ class CustomerSerializer(
             "address",
             "tax_rate",
         )
+        extra_kwargs = {
+            "customer_id": {"required": True, "read_only": True},
+            "email": {"required": True, "read_only": True},
+            "customer_name": {"required": True, "read_only": True},
+            "invoices": {"required": True, "read_only": True},
+            "total_amount_due": {"required": True, "read_only": True},
+            "subscriptions": {"required": True, "read_only": True},
+            "integrations": {"required": True, "read_only": True},
+            "default_currency": {"required": True, "read_only": True},
+            "payment_provider": {"required": True, "read_only": True},
+            "has_payment_method": {"required": True, "read_only": True},
+            "address": {"required": True, "read_only": True},
+            "tax_rate": {"required": True, "read_only": True},
+        }
 
     customer_id = serializers.CharField()
     email = serializers.EmailField()
@@ -477,9 +503,9 @@ class CustomerSerializer(
         allow_blank=False,
     )
     has_payment_method = serializers.SerializerMethodField()
-    address = serializers.SerializerMethodField(required=False, allow_null=True)
+    address = serializers.SerializerMethodField()
 
-    def get_address(self, obj) -> AddressSerializer(allow_null=True, required=False):
+    def get_address(self, obj) -> AddressSerializer(allow_null=True, required=True):
         d = obj.properties.get("address", {})
         try:
             data = AddressSerializer(d).data
@@ -1540,4 +1566,5 @@ class UsageAlertSerializer(serializers.ModelSerializer):
 
     usage_alert_id = UsageAlertUUIDField(read_only=True)
     metric = MetricSerializer()
+    plan_version = LightweightPlanVersionSerializer()
     plan_version = LightweightPlanVersionSerializer()
