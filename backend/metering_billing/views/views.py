@@ -347,9 +347,8 @@ class PeriodMetricUsageView(APIView):
                 for date, usage in customer_dict.items():
                     if date not in metric_dict:
                         metric_dict[date] = {}
-                    metric_dict[date][customer.customer_name] = convert_to_decimal(
-                        usage
-                    )
+                    cust = customer if customer == "Other" else customer.customer_name
+                    metric_dict[date][cust] = convert_to_decimal(usage)
             final_results[metric.billable_metric_name] = {
                 "data": sorted(
                     [{"date": k, "customer_usages": v} for k, v in metric_dict.items()],
