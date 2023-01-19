@@ -288,25 +288,25 @@ WITH rate_per_bucket AS (
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
-        , time_bucket
+        , time_bucket_gapfill('1 day', time_bucket)
 )
 , per_customer AS (
     SELECT
         customer_id
-        , time_bucket_gapfill('1 day', bucket) AS time_bucket
+        , time_bucket_gapfill('1 day', time_bucket) AS time_bucket
         , SUM(usage_qty) AS usage_qty_per_day
     FROM
         per_groupby
     WHERE
-        bucket <= NOW()
+        time_bucket <= NOW()
         {% if customer_id is not none %}
         AND customer_id = {{ customer_id }}
         {% endif %}
-        AND bucket >='{{ start_date }}'::timestamptz
-        AND bucket <=  '{{ end_date }}'::timestamptz
+        AND time_bucket >= '{{ start_date }}'::timestamptz
+        AND time_bucket <=  '{{ end_date }}'::timestamptz
     GROUP BY
         customer_id
-        , time_bucket
+        , time_bucket_gapfill('1 day', time_bucket)
     ORDER BY
         usage_qty_per_day DESC
 )
