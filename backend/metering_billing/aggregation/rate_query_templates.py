@@ -293,10 +293,10 @@ WITH rate_per_bucket AS (
 , per_customer AS (
     SELECT
         customer_id
-        , time_bucket_gapfill('1 day', bucket) AS time_bucket
+        , time_bucket_gapfill('1 day', time_bucket) AS time_bucket
         , SUM(usage_qty) AS usage_qty_per_day
     FROM
-        {{ cagg_name }}
+        per_groupby
     WHERE
         bucket <= NOW()
         {% if customer_id is not none %}
