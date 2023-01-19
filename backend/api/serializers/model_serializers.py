@@ -31,6 +31,7 @@ from metering_billing.models import (
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.serializer_utils import (
     BalanceAdjustmentUUIDField,
+    InvoiceUUIDField,
     MetricUUIDField,
     PlanUUIDField,
     PlanVersionUUIDField,
@@ -291,27 +292,34 @@ class InvoiceLineItemSerializer(
             "subtotal": {"required": True},
             "billing_type": {"required": True, "allow_blank": False},
             "metadata": {"required": True},
-            "plan": {"required": True},
-            "subscription_filters": {"required": True},
+            "plan": {"required": True, "allow_null": True},
+            "subscription_filters": {"required": True, "allow_null": True},
         }
 
-    plan = LightweightPlanVersionSerializer(
-        source="associated_subscription_record.billing_plan",
-    )
-    subscription_filters = SubscriptionCategoricalFilterSerializer(
-        source="associated_subscription_record.filters",
-        many=True,
-    )
+    plan = serializers.SerializerMethodField(allow_null=True)
+    subscription_filters = serializers.SerializerMethodField(allow_null=True)
+
+    def get_subscription_filters(
+        self, obj
+    ) -> SubscriptionCategoricalFilterSerializer(many=True, allow_null=True):
+        ass_sub_record = obj.associated_subscription_record
+        if ass_sub_record:
+            return SubscriptionCategoricalFilterSerializer(
+                ass_sub_record.filters.all(), many=True
+            ).data
+        return None
+
+    def get_plan(self, obj) -> LightweightPlanVersionSerializer(allow_null=True):
+        ass_sub_record = obj.associated_subscription_record
+        if ass_sub_record:
+            return LightweightPlanVersionSerializer(ass_sub_record.billing_plan).data
+        return None
 
 
 class LightweightInvoiceLineItemSerializer(InvoiceLineItemSerializer):
     class Meta(InvoiceLineItemSerializer.Meta):
         fields = tuple(set(InvoiceLineItemSerializer.Meta.fields) - {"metadata"})
         extra_kwargs = {**InvoiceLineItemSerializer.Meta.extra_kwargs}
-
-    plan = serializers.CharField(
-        source="associated_subscription_record.billing_plan.plan.plan_name",
-    )
 
 
 class SellerSerializer(
@@ -339,6 +347,7 @@ class InvoiceSerializer(
     class Meta:
         model = Invoice
         fields = (
+            "invoice_id",
             "invoice_number",
             "cost_due",
             "currency",
@@ -355,6 +364,7 @@ class InvoiceSerializer(
             "invoice_pdf",
         )
         extra_kwargs = {
+            "invoice_id": {"required": True, "read_only": True},
             "invoice_number": {"required": True, "read_only": True},
             "cost_due": {"required": True, "read_only": True},
             "issue_date": {"required": True, "read_only": True},
@@ -378,6 +388,7 @@ class InvoiceSerializer(
             "invoice_pdf": {"required": True, "allow_null": True, "read_only": True},
         }
 
+    invoice_id = InvoiceUUIDField()
     external_payment_obj_type = serializers.ChoiceField(
         choices=PAYMENT_PROVIDERS.choices,
         allow_null=True,
@@ -459,6 +470,20 @@ class CustomerSerializer(
             "address",
             "tax_rate",
         )
+        extra_kwargs = {
+            "customer_id": {"required": True, "read_only": True},
+            "email": {"required": True, "read_only": True},
+            "customer_name": {"required": True, "read_only": True},
+            "invoices": {"required": True, "read_only": True},
+            "total_amount_due": {"required": True, "read_only": True},
+            "subscriptions": {"required": True, "read_only": True},
+            "integrations": {"required": True, "read_only": True},
+            "default_currency": {"required": True, "read_only": True},
+            "payment_provider": {"required": True, "read_only": True},
+            "has_payment_method": {"required": True, "read_only": True},
+            "address": {"required": True, "read_only": True},
+            "tax_rate": {"required": True, "read_only": True},
+        }
 
     customer_id = serializers.CharField()
     email = serializers.EmailField()
@@ -477,9 +502,9 @@ class CustomerSerializer(
         allow_blank=False,
     )
     has_payment_method = serializers.SerializerMethodField()
-    address = serializers.SerializerMethodField(required=False, allow_null=True)
+    address = serializers.SerializerMethodField()
 
-    def get_address(self, obj) -> AddressSerializer(allow_null=True, required=False):
+    def get_address(self, obj) -> AddressSerializer(allow_null=True, required=True):
         d = obj.properties.get("address", {})
         try:
             data = AddressSerializer(d).data
@@ -1342,7 +1367,6 @@ class InvoiceListFilterSerializer(serializers.Serializer):
         slug_field="customer_id",
         queryset=Customer.objects.all(),
         required=False,
-        source="customer",
         help_text="A filter for invoices for a specific customer",
     )
     payment_status = serializers.MultipleChoiceField(
@@ -1587,7 +1611,5 @@ class UsageAlertSerializer(serializers.ModelSerializer):
         )
 
     usage_alert_id = UsageAlertUUIDField(read_only=True)
-    metric = MetricSerializer()
-    plan_version = LightweightPlanVersionSerializer()
     metric = MetricSerializer()
     plan_version = LightweightPlanVersionSerializer()

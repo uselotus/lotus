@@ -70,6 +70,7 @@ from metering_billing.models import (
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.serializer_utils import (
     BalanceAdjustmentUUIDField,
+    InvoiceUUIDField,
     MetricUUIDField,
     PlanUUIDField,
 )
@@ -168,7 +169,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         try:
-            serializer.save(organization=self.request.organization)
+            return serializer.save(organization=self.request.organization)
         except IntegrityError as e:
             cause = e.__cause__
             if "unique_email" in str(cause):
@@ -736,11 +737,17 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     serializer_class = InvoiceSerializer
     http_method_names = ["get", "patch", "head"]
-    lookup_field = "invoice_number"
+    lookup_field = "invoice_id"
     queryset = Invoice.objects.all()
     permission_classes_per_method = {
         "partial_update": [IsAuthenticated & ValidOrganization],
     }
+
+    def get_object(self):
+        string_uuid = self.kwargs[self.lookup_field]
+        uuid = InvoiceUUIDField().to_internal_value(string_uuid)
+        self.kwargs[self.lookup_field] = uuid
+        return super().get_object()
 
     def get_queryset(self):
         args = [
@@ -748,13 +755,15 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             Q(organization=self.request.organization),
         ]
         if self.action == "list":
-            serializer = InvoiceListFilterSerializer(data=self.request.query_params)
+            serializer = InvoiceListFilterSerializer(
+                data=self.request.query_params, context=self.get_serializer_context()
+            )
             serializer.is_valid(raise_exception=True)
             args.append(
                 Q(payment_status__in=serializer.validated_data["payment_status"])
             )
             if serializer.validated_data.get("customer"):
-                args.append(Q(customer=serializer.validated_data["customer_"]))
+                args.append(Q(customer=serializer.validated_data["customer"]))
 
         return Invoice.objects.filter(*args)
 
@@ -1484,5 +1493,4 @@ def track_event(request):
             status=status.HTTP_201_CREATED,
         )
     else:
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
