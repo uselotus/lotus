@@ -158,11 +158,13 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             return CustomerCreateSerializer
         return CustomerSerializer
 
-    @extend_schema(
-        responses={200: CustomerSerializer()},
-    )
+    @extend_schema(responses=CustomerSerializer)
     def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = self.perform_create(serializer)
+        customer_data = CustomerSerializer(instance).data
+        return Response(customer_data, status=status.HTTP_201_CREATED)
 
     def perform_create(self, serializer):
         try:
