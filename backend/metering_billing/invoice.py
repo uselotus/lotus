@@ -1,8 +1,5 @@
-from __future__ import absolute_import
-
 from decimal import Decimal
 
-# import lotus_python
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
@@ -377,7 +374,6 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
     Generate an invoice for a subscription.
     """
     from metering_billing.models import Invoice, InvoiceLineItem, OrganizationSetting
-    from metering_billing.serializers.model_serializers import InvoiceSerializer
     from metering_billing.tasks import generate_invoice_pdf_async
 
     issue_date = balance_adjustment.created

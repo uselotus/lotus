@@ -45,9 +45,9 @@ class Consumer(metaclass=Singleton):
                     write_batch_events_to_db(
                         msg.value["events"], msg.value["organization_id"]
                     )
-                except:
+                except Exception:
                     continue
-        except:
+        except Exception:
             logger.info(f"Could not consume from topic: {self.topic}")
             raise
 

@@ -1,18 +1,30 @@
 import abc
 import datetime
 import logging
+from collections import namedtuple
+from decimal import Decimal
 from typing import Literal, Optional, TypedDict, Union
 
 import sqlparse
 from dateutil.relativedelta import relativedelta
 from django.apps import apps
 from django.db import connection
-from django.db.models import *
-from django.db.models.functions import Trunc
 from jinja2 import Template
-from metering_billing.exceptions.exceptions import *
-from metering_billing.utils import *
-from metering_billing.utils.enums import *
+from metering_billing.exceptions import MetricValidationFailed
+from metering_billing.utils import (
+    convert_to_date,
+    dates_bwn_two_dts,
+    get_granularity_ratio,
+    namedtuplefetchall,
+    now_utc,
+)
+from metering_billing.utils.enums import (
+    METRIC_AGGREGATION,
+    METRIC_GRANULARITY,
+    METRIC_TYPE,
+    ORGANIZATION_SETTING_NAMES,
+    PLAN_DURATION,
+)
 
 from .counter_query_templates import COUNTER_TOTAL_PER_DAY
 from .gauge_query_templates import GAUGE_DELTA_TOTAL_PER_DAY, GAUGE_TOTAL_TOTAL_PER_DAY
@@ -664,14 +676,6 @@ class CustomHandler(MetricHandler):
             cursor.execute(query)
             results = namedtuplefetchall(cursor)
         return results
-
-    @staticmethod
-    def get_subscription_record_current_usage(
-        metric: Metric, subscription_record: SubscriptionRecord
-    ) -> Decimal:
-        return CounterHandler.get_subscription_record_total_billable_usage(
-            metric, subscription_record
-        )
 
     @staticmethod
     def get_subscription_record_total_billable_usage(

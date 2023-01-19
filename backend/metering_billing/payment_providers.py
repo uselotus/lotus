@@ -312,7 +312,7 @@ class StripeConnector(PaymentProvider):
                     "name": customer.customer_name,
                 }
                 customer.save()
-            except:
+            except Exception:
                 pass
         elif setting_value is False:
             pass
@@ -368,7 +368,7 @@ class StripeConnector(PaymentProvider):
             filters = sr.filters.all()
             for f in filters:
                 metadata[f.property_name] = f.comparison_value[0]
-                name += " - ({} : {})".format(f.property_name, f.comparison_value[0])
+                name += f" - ({f.property_name} : {f.comparison_value[0]})"
             inv_dict = {
                 "description": name,
                 "amount": int(amount * 100),

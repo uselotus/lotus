@@ -10,7 +10,7 @@ logger = logging.getLogger("django.server")
 DEFAULT_FROM_EMAIL = settings.DEFAULT_FROM_EMAIL
 
 
-class UserService(object):
+class UserService:
     def __init__(self, User):
         self.User = User
 

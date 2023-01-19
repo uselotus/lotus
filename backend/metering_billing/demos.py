@@ -8,7 +8,36 @@ import uuid
 import numpy as np
 from dateutil.relativedelta import relativedelta
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
-from metering_billing.models import *
+from metering_billing.models import (
+    APIToken,
+    Backtest,
+    BacktestSubstitution,
+    CategoricalFilter,
+    Customer,
+    CustomerBalanceAdjustment,
+    CustomPricingUnitConversion,
+    Event,
+    ExternalPlanLink,
+    Feature,
+    Invoice,
+    InvoiceLineItem,
+    Metric,
+    NumericFilter,
+    Organization,
+    Plan,
+    PlanComponent,
+    PlanVersion,
+    PriceAdjustment,
+    PriceTier,
+    PricingUnit,
+    Product,
+    Subscription,
+    SubscriptionRecord,
+    TeamInviteToken,
+    User,
+    WebhookEndpoint,
+    WebhookTrigger,
+)
 from metering_billing.tasks import run_backtest, run_generate_invoice
 from metering_billing.utils import (
     calculate_end_date,
@@ -23,6 +52,7 @@ from metering_billing.utils.enums import (
     METRIC_AGGREGATION,
     METRIC_GRANULARITY,
     METRIC_TYPE,
+    ORGANIZATION_SETTING_NAMES,
     PLAN_DURATION,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
@@ -53,7 +83,7 @@ def setup_demo3(
             logger.info("[DEMO3]: creating from scratch")
         try:
             user = User.objects.get(username=username, email=email)
-        except:
+        except Exception:
             user = User.objects.create_user(
                 username=username, email=email, password=password
             )
@@ -603,7 +633,7 @@ def setup_demo4(
             logger.info("[DEMO4]: creating from scratch")
         try:
             user = User.objects.get(username=username, email=email)
-        except:
+        except Exception:
             user = User.objects.create_user(
                 username=username, email=email, password=password
             )
@@ -1171,7 +1201,7 @@ def setup_paas_demo(
         logger.info("[PAAS DEMO]: creating from scratch")
     try:
         user = User.objects.get(username=username, email=email)
-    except:
+    except Exception:
         user = User.objects.create_user(
             username=username, email=email, password=password
         )

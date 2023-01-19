@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import logging
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
@@ -213,9 +211,7 @@ def run_backtest(backtest_id):
         all_results = {
             "substitution_results": [],
         }
-        logger.info(
-            "Running backtest for {} substitutions".format(len(backtest_substitutions))
-        )
+        logger.info(f"Running backtest for {len(backtest_substitutions)} substitutions")
         for subst in backtest_substitutions:
             outer_results = {
                 "substitution_name": f"{str(subst.original_plan)} --> {str(subst.new_plan)}",
@@ -466,7 +462,7 @@ def run_backtest(backtest_id):
         serializer = AllSubstitutionResultsSerializer(data=all_results)
         try:
             serializer.is_valid(raise_exception=True)
-        except:
+        except Exception:
             logger.error("errors", serializer.errors, "all results", all_results)
             raise Exception
         results = make_all_dates_times_strings(serializer.validated_data)

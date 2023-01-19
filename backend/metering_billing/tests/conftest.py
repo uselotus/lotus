@@ -2,9 +2,17 @@ import uuid
 
 import posthog
 import pytest
-from metering_billing.utils import now_utc
-from metering_billing.utils.enums import *
 from model_bakery import baker
+
+from metering_billing.utils import now_utc
+from metering_billing.utils.enums import (
+    FLAT_FEE_BILLING_TYPE,
+    PLAN_DURATION,
+    PLAN_STATUS,
+    PLAN_VERSION_STATUS,
+    PRODUCT_STATUS,
+    USAGE_BILLING_FREQUENCY,
+)
 
 
 @pytest.fixture(autouse=True)

@@ -4,27 +4,60 @@ from decimal import Decimal
 from django.conf import settings
 from django.db.models import Count, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
-from metering_billing.exceptions.exceptions import NotFoundException
+from metering_billing.exceptions import (
+    ExternalConnectionFailure,
+    ExternalConnectionInvalid,
+    NotFoundException,
+)
 from metering_billing.invoice import generate_invoice
-from metering_billing.models import Customer, Metric, SubscriptionRecord
+from metering_billing.models import (
+    Customer,
+    Invoice,
+    Metric,
+    Organization,
+    PlanVersion,
+    SubscriptionRecord,
+)
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
-from metering_billing.serializers.auth_serializers import *
-from metering_billing.serializers.backtest_serializers import *
-from metering_billing.serializers.model_serializers import *
-from metering_billing.serializers.request_serializers import *
-from metering_billing.serializers.response_serializers import *
+from metering_billing.serializers.model_serializers import (
+    CustomerSummarySerializer,
+    CustomerWithRevenueSerializer,
+    DraftInvoiceSerializer,
+    MetricSerializer,
+)
+from metering_billing.serializers.request_serializers import (
+    CostAnalysisRequestSerializer,
+    DraftInvoiceRequestSerializer,
+    PeriodComparisonRequestSerializer,
+    PeriodMetricUsageRequestSerializer,
+)
+from metering_billing.serializers.response_serializers import (
+    CostAnalysisSerializer,
+    PeriodMetricRevenueResponseSerializer,
+    PeriodMetricUsageResponseSerializer,
+    PeriodSubscriptionsResponseSerializer,
+)
+from metering_billing.serializers.serializer_utils import OrganizationUUIDField
 from metering_billing.utils import (
     convert_to_date,
+    convert_to_datetime,
     convert_to_decimal,
     date_as_max_dt,
     date_as_min_dt,
     make_all_dates_times_strings,
     make_all_decimals_floats,
+    now_utc,
     periods_bwn_twodates,
 )
-from metering_billing.utils.enums import PAYMENT_PROVIDERS, USAGE_CALC_GRANULARITY
+from metering_billing.utils.enums import (
+    METRIC_STATUS,
+    METRIC_TYPE,
+    PAYMENT_PROVIDERS,
+    USAGE_CALC_GRANULARITY,
+)
 from rest_framework import serializers, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -48,7 +81,7 @@ class PeriodMetricRevenueView(APIView):
         organization = request.organization
         serializer = PeriodComparisonRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        p1_start, p1_end, p2_start, p2_end = [
+        p1_start, p1_end, p2_start, p2_end = (
             serializer.validated_data.get(key, None)
             for key in [
                 "period_1_start_date",
@@ -56,7 +89,7 @@ class PeriodMetricRevenueView(APIView):
                 "period_2_start_date",
                 "period_2_end_date",
             ]
-        ]
+        )
         p1_start, p2_start = date_as_min_dt(p1_start), date_as_min_dt(p2_start)
         p1_end, p2_end = date_as_max_dt(p1_end), date_as_max_dt(p2_end)
         return_dict = {}
@@ -132,10 +165,10 @@ class CostAnalysisView(APIView):
         organization = request.organization
         serializer = CostAnalysisRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        start_date, end_date, customer_id = [
+        start_date, end_date, customer_id = (
             serializer.validated_data.get(key, None)
             for key in ["start_date", "end_date", "customer_id"]
-        ]
+        )
         try:
             customer = Customer.objects.get(
                 organization=organization, customer_id=customer_id
@@ -238,7 +271,7 @@ class PeriodSubscriptionsView(APIView):
         organization = request.organization
         serializer = PeriodComparisonRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        p1_start, p1_end, p2_start, p2_end = [
+        p1_start, p1_end, p2_start, p2_end = (
             serializer.validated_data.get(key, None)
             for key in [
                 "period_1_start_date",
@@ -246,7 +279,7 @@ class PeriodSubscriptionsView(APIView):
                 "period_2_start_date",
                 "period_2_end_date",
             ]
-        ]
+        )
         p1_start, p2_start = date_as_min_dt(p1_start), date_as_min_dt(p2_start)
         p1_end, p2_end = date_as_max_dt(p1_end), date_as_max_dt(p2_end)
 
@@ -295,10 +328,10 @@ class PeriodMetricUsageView(APIView):
         organization = request.organization
         serializer = PeriodMetricUsageRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        q_start, q_end, top_n = [
+        q_start, q_end, top_n = (
             serializer.validated_data.get(key, None)
             for key in ["start_date", "end_date", "top_n_customers"]
-        ]
+        )
         q_start = convert_to_datetime(q_start, date_behavior="min")
         q_end = convert_to_datetime(q_end, date_behavior="max")
         final_results = {}

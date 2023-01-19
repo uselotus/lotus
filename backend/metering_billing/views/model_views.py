@@ -1,6 +1,5 @@
-import api.views as api_views
-
 # import lotus_python
+import api.views as api_views
 import posthog
 from actstream.models import Action
 from api.serializers.webhook_serializers import (
@@ -10,21 +9,27 @@ from api.serializers.webhook_serializers import (
 )
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import Count, Prefetch, Q
 from django.db.utils import IntegrityError
 from drf_spectacular.utils import OpenApiCallback, extend_schema, inline_serializer
-from metering_billing.exceptions import DuplicateMetric, DuplicateWebhookEndpoint
+from metering_billing.exceptions import (
+    DuplicateMetric,
+    DuplicateWebhookEndpoint,
+    ServerError,
+)
 from metering_billing.models import (
+    APIToken,
     Backtest,
     Event,
     ExternalPlanLink,
     Feature,
     Metric,
+    Organization,
     OrganizationSetting,
     Plan,
     PlanVersion,
     PricingUnit,
     Product,
+    UsageAlert,
     User,
     WebhookEndpoint,
 )
@@ -35,14 +40,44 @@ from metering_billing.serializers.backtest_serializers import (
     BacktestSummarySerializer,
     BacktestUUIDField,
 )
-from metering_billing.serializers.model_serializers import *
+from metering_billing.serializers.model_serializers import (
+    ActionSerializer,
+    APITokenSerializer,
+    CustomerUpdateSerializer,
+    EventSerializer,
+    ExternalPlanLinkSerializer,
+    FeatureSerializer,
+    MetricCreateSerializer,
+    MetricSerializer,
+    MetricUpdateSerializer,
+    OrganizationCreateSerializer,
+    OrganizationSerializer,
+    OrganizationSettingSerializer,
+    OrganizationSettingUpdateSerializer,
+    OrganizationUpdateSerializer,
+    PlanCreateSerializer,
+    PlanDetailSerializer,
+    PlanUpdateSerializer,
+    PlanVersionCreateSerializer,
+    PlanVersionDetailSerializer,
+    PlanVersionUpdateSerializer,
+    PricingUnitSerializer,
+    ProductSerializer,
+    UsageAlertCreateSerializer,
+    UsageAlertSerializer,
+    UserSerializer,
+    WebhookEndpointSerializer,
+)
 from metering_billing.serializers.request_serializers import (
     OrganizationSettingFilterSerializer,
 )
 from metering_billing.serializers.serializer_utils import (
     MetricUUIDField,
     OrganizationSettingUUIDField,
+    OrganizationUUIDField,
+    PlanUUIDField,
     PlanVersionUUIDField,
+    UsageAlertUUIDField,
     WebhookEndpointUUIDField,
 )
 from metering_billing.tasks import run_backtest
@@ -50,7 +85,7 @@ from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     METRIC_STATUS,
     PAYMENT_PROVIDERS,
-    PLAN_VERSION_STATUS,
+    WEBHOOK_TRIGGER_EVENTS,
 )
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
@@ -107,7 +142,7 @@ class PermissionPolicyMixin:
                 self.permission_classes = self.permission_classes_per_method.get(
                     handler.__name__
                 )
-        except:
+        except Exception:
             pass
 
         super().check_permissions(request)
@@ -135,7 +170,7 @@ class APITokenViewSet(
         return APIToken.objects.filter(organization=organization)
 
     def get_serializer_context(self):
-        context = super(APITokenViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
         return context
@@ -269,7 +304,7 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return WebhookEndpoint.objects.filter(organization=organization)
 
     def get_serializer_context(self):
-        context = super(WebhookViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
         return context
@@ -290,7 +325,7 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                     instance.organization.organization_id.hex,
                     instance.webhook_endpoint_id.hex,
                 )
-            except:
+            except Exception:
                 pass
         instance.delete()
 
@@ -299,7 +334,7 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         if status.is_success(response.status_code):
             try:
                 username = self.request.user.username
-            except:
+            except Exception:
                 username = None
             organization = self.request.organization
             posthog.capture(
@@ -349,7 +384,7 @@ class EventViewSet(
         )
 
     def get_serializer_context(self):
-        context = super(EventViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
         return context
@@ -374,7 +409,7 @@ class UserViewSet(
         return User.objects.filter(organization=organization)
 
     def get_serializer_context(self):
-        context = super(UserViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
         return context
@@ -426,7 +461,7 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return MetricSerializer
 
     def get_serializer_context(self):
-        context = super(MetricViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
         return context
@@ -436,7 +471,7 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         if status.is_success(response.status_code):
             try:
                 username = self.request.user.username
-            except:
+            except Exception:
                 username = None
             organization = self.request.organization
             posthog.capture(
@@ -499,7 +534,7 @@ class FeatureViewSet(
         return Feature.objects.filter(organization=organization)
 
     def get_serializer_context(self):
-        context = super(FeatureViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
         return context
@@ -509,7 +544,7 @@ class FeatureViewSet(
         if status.is_success(response.status_code):
             try:
                 username = self.request.user.username
-            except:
+            except Exception:
                 username = None
             organization = self.request.organization
             posthog.capture(
@@ -568,7 +603,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return qs
 
     def get_serializer_context(self):
-        context = super(PlanVersionViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         if self.request.user.is_authenticated:
             user = self.request.user
@@ -582,7 +617,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         if status.is_success(response.status_code):
             try:
                 username = self.request.user.username
-            except:
+            except Exception:
                 username = None
             organization = self.request.organization
             posthog.capture(
@@ -661,7 +696,7 @@ class PlanViewSet(api_views.PlanViewSet):
         return super().get_object()
 
     def get_queryset(self):
-        qs = super(PlanViewSet, self).get_queryset()
+        qs = super().get_queryset()
         return qs
 
     def get_serializer_class(self):
@@ -765,7 +800,7 @@ class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         if status.is_success(response.status_code):
             try:
                 username = self.request.user.username
-            except:
+            except Exception:
                 username = None
             organization = self.request.organization
             posthog.capture(
@@ -782,7 +817,7 @@ class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return response
 
     def get_serializer_context(self):
-        context = super(BacktestViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
         return context
@@ -814,7 +849,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         if status.is_success(response.status_code):
             try:
                 username = self.request.user.username
-            except:
+            except Exception:
                 username = None
             organization = self.request.organization
             posthog.capture(
@@ -831,7 +866,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return response
 
     def get_serializer_context(self):
-        context = super(ProductViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
         return context
@@ -893,7 +928,7 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
         if status.is_success(response.status_code):
             try:
                 username = self.request.user.username
-            except:
+            except Exception:
                 username = None
             organization = self.request.organization
             posthog.capture(
@@ -913,7 +948,7 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
         serializer.save(organization=self.request.organization)
 
     def get_serializer_context(self):
-        context = super(ExternalPlanLinkViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
         return context
@@ -1013,7 +1048,7 @@ class PricingUnitViewSet(
         serializer.save(organization=self.request.organization)
 
     def get_serializer_context(self):
-        context = super(PricingUnitViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
         return context
@@ -1059,7 +1094,7 @@ class OrganizationViewSet(
         return OrganizationSerializer
 
     def get_serializer_context(self):
-        context = super(OrganizationViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         user = self.request.user
         context.update({"organization": organization, "user": user})
@@ -1128,7 +1163,7 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
         serializer.save(organization=self.request.organization)
 
     def get_serializer_context(self):
-        context = super(UsageAlertViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
         return context

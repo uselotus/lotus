@@ -36,7 +36,7 @@ class OrganizationInsertMiddleware:
                                 else (expiry_date - now_utc()).total_seconds()
                             )
                             cache.set(prefix, organization_pk, timeout)
-                        except:
+                        except Exception:
                             organization = None
                     else:
                         organization = Organization.objects.get(pk=organization_pk)
