@@ -128,11 +128,6 @@ urlpatterns = [
         name="customer_feature_access",
     ),
     path(
-        "api/batch_create_customers/",
-        api_views.CustomerBatchCreateView.as_view(),
-        name="batch_create_customers",
-    ),
-    path(
         "api/verify_idems_received/",
         api_views.ConfirmIdemsReceivedView.as_view(),
         name="verify_idems_received",
