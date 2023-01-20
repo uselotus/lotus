@@ -2,9 +2,10 @@
 import React, { FC, useState } from "react";
 import CustomerTable from "../components/Customers/CustomerTable";
 import {
-  CustomerPlus,
   CustomerTotal,
   CustomerType,
+  CustomerCreateType,
+  CustomerSummary,
 } from "../types/customer-type";
 import { Customer } from "../api/api";
 
@@ -26,8 +27,8 @@ const ViewCustomers: FC = () => {
   const queryClient = useQueryClient();
   const [visible, setVisible] = useState(false);
 
-  const { data, isLoading }: UseQueryResult<CustomerPlus[]> = useQuery<
-    CustomerPlus[]
+  const { data, isLoading }: UseQueryResult<CustomerSummary[]> = useQuery<
+    CustomerSummary[]
   >(["customer_list"], () =>
     Customer.getCustomers().then((res) => {
       return res;
@@ -42,7 +43,7 @@ const ViewCustomers: FC = () => {
   );
 
   const mutation = useMutation(
-    (post: CustomerType) => Customer.createCustomer(post),
+    (post: CustomerCreateType) => Customer.createCustomer(post),
     {
       onSuccess: () => {
         setVisible(false);
@@ -69,14 +70,19 @@ const ViewCustomers: FC = () => {
   };
 
   const onSave = (state: CreateCustomerState) => {
-    const customerInstance: CustomerType = {
+    const customerInstance: CustomerCreateType = {
       customer_id: state.customer_id,
       customer_name: state.name,
       email: state.email,
-      payment_provider: state.payment_provider,
-      payment_provider_id: state.payment_provider_id,
-      default_currency_code: state.default_currency_code,
     };
+    if (state.payment_provider) {
+      customerInstance.payment_provider = state.payment_provider;
+      customerInstance.payment_provider_id = state.payment_provider_id;
+    }
+    if (state.default_currency_code) {
+      customerInstance.default_currency_code = state.default_currency_code;
+    }
+
     mutation.mutate(customerInstance);
     onCancel();
   };

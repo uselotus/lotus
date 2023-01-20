@@ -3,7 +3,7 @@ import React, { FC, useState, useEffect } from "react";
 import type { ProColumns } from "@ant-design/pro-components";
 import { ProTable } from "@ant-design/pro-components";
 import {
-  CustomerPlus,
+  CustomerSummary,
   CustomerTableItem,
   CustomerTotal,
 } from "../../types/customer-type";
@@ -32,7 +32,7 @@ function getHighlightedText(text: string, highlight: string) {
 }
 
 interface Props {
-  customerArray: CustomerPlus[];
+  customerArray: CustomerSummary[];
   totals: CustomerTotal[] | undefined;
 }
 
@@ -59,10 +59,16 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
       const dataInstance: CustomerTableItem[] = [];
       if (totals !== undefined) {
         for (let i = 0; i < customerArray.length; i++) {
+          const customer_info = customerArray[i];
+          const total =
+            totals.find(
+              (total) => total.customer_id === customer_info.customer_id
+            )?.total_amount_due ?? 0.0;
           const entry: CustomerTableItem = {
-            ...customerArray[i],
-            ...totals[i],
+            ...customer_info,
+            total_amount_due: total,
           };
+
           dataInstance.push(entry);
         }
       } else {
@@ -190,7 +196,10 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
     });
   };
 
-  const getFilteredTableData = (data: CustomerTableItem[]) => {
+  const getFilteredTableData = (data: CustomerTableItem[] | undefined) => {
+    if (data === undefined) {
+      return data;
+    }
     if (!searchQuery) {
       return data;
     }

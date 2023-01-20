@@ -14,7 +14,6 @@ export interface CustomerType {
     state: string;
   };
   email: string;
-  name: string;
   customer_name: string;
   invoices: InvoiceType[];
   total_amount_due: number;
@@ -22,6 +21,7 @@ export interface CustomerType {
   integrations: object;
   default_currency: CurrencyType;
   has_payment_method: boolean;
+  payment_provider: string;
   tax_rate?: number;
 }
 
@@ -38,7 +38,14 @@ export interface LightweightCustomerType
 export interface CustomerCreateType
   extends Omit<
     CustomerType,
-    "invoices" | "subscriptions" | "default_currency" | "customer_name"
+    | "invoices"
+    | "subscriptions"
+    | "default_currency"
+    | "customer_name"
+    | "payment_provider"
+    | "total_amount_due"
+    | "integrations"
+    | "has_payment_method"
   > {
   customer_name?: string;
   payment_provider?: string;
@@ -47,11 +54,7 @@ export interface CustomerCreateType
   default_currency_code?: string;
 }
 
-export interface CustomerTableItem extends CustomerType {
-  total_amount_due: number;
-}
-
-export interface CustomerTableItem extends CustomerType {
+export interface CustomerTableItem extends CustomerSummary {
   total_amount_due: number;
 }
 
