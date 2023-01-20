@@ -5,7 +5,7 @@ import useGlobalStore from "../../stores/useGlobalstore";
 import { Button } from "antd";
 import SlideOverCard from "./SlideOverCard";
 import Select from "../base/Select/Select";
-import { PricingUnit } from "../../types/pricing-unit-type";
+import { CurrencyType } from "../../types/pricing-unit-type";
 import {
   useQuery,
   UseQueryResult,
@@ -30,8 +30,8 @@ const SlideOver: React.FC<SlideOverProps> = () => {
   const [orgType, setOrgType] = useState("development");
   const [currencyCode, setCurrencyCode] = useState("USD");
   const queryClient = useQueryClient();
-  const { data: pricingUnits }: UseQueryResult<PricingUnit[]> = useQuery<
-    PricingUnit[]
+  const { data: pricingUnits }: UseQueryResult<CurrencyType[]> = useQuery<
+    CurrencyType[]
   >(["pricing_unit_list"], () =>
     PricingUnits.list().then((res) => {
       return res;

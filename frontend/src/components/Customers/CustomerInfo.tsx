@@ -15,13 +15,13 @@ import { toast } from "react-toastify";
 
 import { CustomerType } from "../../types/customer-type";
 import { CustomerCostType } from "../../types/revenue-type";
-import { PricingUnit } from "../../types/pricing-unit-type";
+import { CurrencyType } from "../../types/pricing-unit-type";
 import { country_json } from "../../assets/country_codes";
 
 interface CustomerInfoViewProps {
   data: CustomerType;
   cost_data: CustomerCostType;
-  pricingUnits: PricingUnit[];
+  pricingUnits: CurrencyType[];
   onDateChange: (start_date: string, end_date: string) => void;
   refetch: VoidFunction;
 }

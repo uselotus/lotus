@@ -29,7 +29,7 @@ import LinkExternalIds from "../components/Plans/LinkExternalIds";
 import { PageLayout } from "../components/base/PageLayout";
 import { ComponentDisplay } from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
-import { PricingUnit } from "../types/pricing-unit-type";
+import { CurrencyType } from "../types/pricing-unit-type";
 
 interface ComponentDisplay {
   metric: string;

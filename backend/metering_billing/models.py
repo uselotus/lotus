@@ -713,7 +713,12 @@ class CustomerBalanceAdjustment(models.Model):
         super(CustomerBalanceAdjustment, self).save(*args, **kwargs)
 
     def get_remaining_balance(self):
-        dd_aggregate = self.drawdowns.aggregate(drawdowns=Sum("amount"))["drawdowns"]
+        try:
+            dd_aggregate = self.total_drawdowns
+        except AttributeError:
+            dd_aggregate = self.drawdowns.aggregate(drawdowns=Sum("amount"))[
+                "drawdowns"
+            ]
         drawdowns = dd_aggregate or 0
         return self.amount + drawdowns
 
@@ -1297,7 +1302,7 @@ class PlanComponent(models.Model):
         return str(self.billable_metric)
 
     def save(self, *args, **kwargs):
-        if not self.pricing_unit:
+        if self.pricing_unit is None and self.plan_version is not None:
             self.pricing_unit = self.plan_version.pricing_unit
         super().save(*args, **kwargs)
 

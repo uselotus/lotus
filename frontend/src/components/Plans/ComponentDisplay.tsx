@@ -4,7 +4,7 @@ import { Paper } from "../base/Paper";
 import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { CreateComponent, Tier } from "../../types/plan-type";
 import "./ComponentDisplay.css";
-import { PricingUnit } from "../../types/pricing-unit-type";
+import { CurrencyType } from "../../types/pricing-unit-type";
 
 const returnRoundingText = (rounding: string | undefined) => {
   if (!rounding) {
@@ -24,7 +24,7 @@ const returnRoundingText = (rounding: string | undefined) => {
   }
 };
 
-const renderCost = (record: Tier, pricing_unit: PricingUnit) => {
+const renderCost = (record: Tier, pricing_unit: CurrencyType) => {
   switch (record.type) {
     case "per_unit":
       return (
@@ -53,7 +53,7 @@ export const ComponentDisplay: FC<{
   componentsData: CreateComponent[];
   handleComponentEdit: (any) => void;
   deleteComponent: (id: string) => void;
-  pricing_unit: PricingUnit;
+  pricing_unit: CurrencyType;
 }> = ({
   componentsData,
   handleComponentEdit,

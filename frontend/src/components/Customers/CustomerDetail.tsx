@@ -28,7 +28,7 @@ import CustomerInfoView from "./CustomerInfo";
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
 import CopyText from "../base/CopytoClipboard";
-import { PricingUnit } from "../../types/pricing-unit-type";
+import { CurrencyType } from "../../types/pricing-unit-type";
 
 function CustomerDetail(props: {
   visible: boolean;
@@ -47,8 +47,8 @@ function CustomerDetail(props: {
   const [customerSubscriptions, setCustomerSubscriptions] = useState<
     DetailPlan[]
   >([]);
-  const { data: pricingUnits }: UseQueryResult<PricingUnit[]> = useQuery<
-    PricingUnit[]
+  const { data: pricingUnits }: UseQueryResult<CurrencyType[]> = useQuery<
+    CurrencyType[]
   >(["pricing_unit_list"], () =>
     PricingUnits.list().then((res) => {
       return res;

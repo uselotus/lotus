@@ -11,7 +11,7 @@ import {
   PlanVersionType,
   Tier,
 } from "../../../types/plan-type";
-import { PricingUnit } from "../../../types/pricing-unit-type";
+import { CurrencyType } from "../../../types/pricing-unit-type";
 import createShortenedText from "../helpers/createShortenedText";
 import DropdownComponent from "../../base/Dropdown/Dropdown";
 import PlansTags from "../PlanTags";
@@ -53,7 +53,7 @@ const findAlertForComponent = (
   });
 };
 
-const renderCost = (record: Tier, pricing_unit: PricingUnit) => {
+const renderCost = (record: Tier, pricing_unit: CurrencyType) => {
   switch (record.type) {
     case "per_unit":
       return (

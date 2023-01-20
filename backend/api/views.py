@@ -37,7 +37,7 @@ from api.serializers.nonmodel_serializers import (
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
-from django.db.models import Count, F, OuterRef, Prefetch, Q, Subquery, Value
+from django.db.models import Count, F, OuterRef, Prefetch, Q, Subquery, Sum, Value
 from django.db.models.functions import Coalesce
 from django.db.utils import IntegrityError
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
@@ -166,6 +166,98 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         instance = self.perform_create(serializer)
         customer_data = CustomerSerializer(instance).data
         return Response(customer_data, status=status.HTTP_201_CREATED)
+
+    # @extend_schema(
+    #     request=inline_serializer(
+    #         name="CustomerBatchCreateRequest",
+    #         fields={
+    #             "customers": CustomerCreateSerializer(many=True),
+    #             "behavior_on_existing": serializers.ChoiceField(
+    #                 choices=["merge", "ignore", "overwrite"],
+    #                 help_text="Determines what to do if a customer with the same email or customer_id already exists. Ignore skips, merge merges the existing customer with the new customer, and overwrite overwrites the existing customer with the new customer.",
+    #             ),
+    #         },
+    #     ),
+    #     responses={
+    #         201: inline_serializer(
+    #             name="CustomerBatchCreateSuccess",
+    #             fields={
+    #                 "success": serializers.ChoiceField(choices=["all", "some"]),
+    #                 "failed_customers": serializers.DictField(
+    #                     required=False,
+    #                     help_text="Returns the customers that failed to be created, if any, in the same format as the request.",
+    #                 ),
+    #             },
+    #         ),
+    #         400: inline_serializer(
+    #             name="CustomerBatchCreateFailure",
+    #             fields={
+    #                 "success": serializers.ChoiceField(choices=["none"]),
+    #                 "failed_customers": serializers.DictField(
+    #                     help_text="Returns the customers that failed to be created in the same format as the request."
+    #                 ),
+    #             },
+    #         ),
+    #     },
+    # )
+    # @action(detail=False, methods=["post"])
+    # def batch(self, request, format=None):
+    #     organization = request.organization
+    #     serializer = CustomerCreateSerializer(
+    #         data=request.data["customers"],
+    #         many=True,
+    #         context={"organization": organization},
+    #     )
+    #     serializer.is_valid(raise_exception=True)
+    #     failed_customers = {}
+    #     behavior = request.data.get("behavior_on_existing", "merge")
+    #     for customer in serializer.validated_data:
+    #         try:
+    #             match = Customer.objects.filter(
+    #                 Q(email=customer["email"]) | Q(customer_id=customer["customer_id"]),
+    #                 organization=organization,
+    #             )
+    #             if match.exists():
+    #                 match = match.first()
+    #                 if behavior == "ignore":
+    #                     pass
+    #                 else:
+    #                     if "customer_id" in customer:
+    #                         non_unique_id = Customer.objects.filter(
+    #                             ~Q(pk=match.pk), customer_id=customer["customer_id"]
+    #                         ).exists()
+    #                         if non_unique_id:
+    #                             failed_customers[
+    #                                 customer["customer_id"]
+    #                             ] = "customer_id already exists"
+    #                             continue
+    #                     CustomerUpdateSerializer().update(
+    #                         match, customer, behavior=behavior
+    #                     )
+    #             else:
+    #                 customer["organization"] = organization
+    #                 CustomerCreateSerializer().create(customer)
+    #         except Exception as e:
+    #             identifier = customer.get("customer_id", customer.get("email"))
+    #             failed_customers[identifier] = str(e)
+
+    #     if len(failed_customers) == 0 or len(failed_customers) < len(
+    #         serializer.validated_data
+    #     ):
+    #         return Response(
+    #             {
+    #                 "success": "all" if len(failed_customers) == 0 else "some",
+    #                 "failed_customers": failed_customers,
+    #             },
+    #             status=status.HTTP_201_CREATED,
+    #         )
+    #     return Response(
+    #         {
+    #             "success": "none",
+    #             "failed_customers": failed_customers,
+    #         },
+    #         status=status.HTTP_400_BAD_REQUEST,
+    #     )
 
     def perform_create(self, serializer):
         try:
@@ -447,6 +539,7 @@ class SubscriptionViewSet(
             if serializer.validated_data.get("subscription_filters"):
                 for filter in serializer.validated_data["subscription_filters"]:
                     m2m, _ = CategoricalFilter.objects.get_or_create(
+                        organization=organization,
                         property_name=filter["property_name"],
                         comparison_value=[filter["value"]],
                         operator=CATEGORICAL_FILTER_OPERATORS.ISIN,
@@ -556,7 +649,7 @@ class SubscriptionViewSet(
         )
 
         # now we can actually create the subscription record
-        response = self.get_serializer(subscription_record).data
+        response = SubscriptionRecordSerializer(subscription_record).data
         return Response(
             response,
             status=status.HTTP_201_CREATED,
@@ -755,7 +848,9 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             Q(organization=self.request.organization),
         ]
         if self.action == "list":
-            serializer = InvoiceListFilterSerializer(data=self.request.query_params)
+            serializer = InvoiceListFilterSerializer(
+                data=self.request.query_params, context=self.get_serializer_context()
+            )
             serializer.is_valid(raise_exception=True)
             args.append(
                 Q(payment_status__in=serializer.validated_data["payment_status"])
@@ -828,27 +923,28 @@ class CustomerBalanceAdjustmentViewSet(
     PermissionPolicyMixin,
     mixins.CreateModelMixin,
     mixins.ListModelMixin,
+    mixins.UpdateModelMixin,
     viewsets.GenericViewSet,
 ):
     """
     A simple ViewSet meant only for creating CustomerBalanceAdjustments.
     """
 
-    permission_classes = [IsAuthenticated & ValidOrganization]
-    http_method_names = [
-        "get",
-        "head",
-        "post",
-    ]
+    permission_classes = [ValidOrganization]
+    http_method_names = ["get", "head", "post", "patch"]
     serializer_class = CustomerBalanceAdjustmentSerializer
-    lookup_field = "adjustment_id"
+    lookup_field = "credit_id"
     queryset = CustomerBalanceAdjustment.objects.all()
 
     def get_object(self):
-        string_uuid = self.kwargs[self.lookup_field]
+        string_uuid = self.kwargs.pop(self.lookup_field, None)
         uuid = BalanceAdjustmentUUIDField().to_internal_value(string_uuid)
+        if self.lookup_field == "credit_id":
+            self.lookup_field = "adjustment_id"
         self.kwargs[self.lookup_field] = uuid
-        return super().get_object()
+        obj = super().get_object()
+        self.lookup_field = "credit_id"
+        return obj
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -867,6 +963,12 @@ class CustomerBalanceAdjustmentViewSet(
         qs = qs.filter(organization=organization)
         context = self.get_serializer_context()
         context["organization"] = organization
+        qs = qs.filter(amount__gt=0)
+        qs = qs.select_related("customer", "pricing_unit", "amount_paid_currency")
+        qs = qs.prefetch_related("drawdowns")
+        qs = qs.annotate(
+            total_drawdowns=Sum("drawdowns__amount"),
+        )
         if self.action == "list":
             args = []
             serializer = CustomerBalanceAdjustmentFilterSerializer(
@@ -892,9 +994,9 @@ class CustomerBalanceAdjustmentViewSet(
             if expires_before:
                 args.append(Q(expires_at__lte=expires_before))
             if issued_after:
-                args.append(Q(issued_at__gte=issued_after))
+                args.append(Q(created__gte=issued_after))
             if issued_before:
-                args.append(Q(issued_at__lte=issued_before))
+                args.append(Q(created__lte=issued_before))
             if effective_after:
                 args.append(Q(effective_at__gte=effective_after))
             if effective_before:
@@ -928,7 +1030,7 @@ class CustomerBalanceAdjustmentViewSet(
         return Response(metric_data, status=status.HTTP_201_CREATED)
 
     def perform_create(self, serializer):
-        serializer.save(organization=self.request.organization)
+        return serializer.save(organization=self.request.organization)
 
     @extend_schema(
         parameters=[CustomerBalanceAdjustmentFilterSerializer],
@@ -939,7 +1041,7 @@ class CustomerBalanceAdjustmentViewSet(
 
     @extend_schema(responses=CustomerBalanceAdjustmentSerializer)
     @action(detail=True, methods=["post"])
-    def void(self, request, adjustment_id=None):
+    def void(self, request, credit_id=None):
         adjustment = self.get_object()
         if adjustment.status != CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE:
             raise ValidationError("Cannot void an adjustment that is not active.")
@@ -955,7 +1057,7 @@ class CustomerBalanceAdjustmentViewSet(
 
     @extend_schema(responses=CustomerBalanceAdjustmentSerializer)
     @action(detail=True, methods=["post"], url_path="update")
-    def edit(self, request, adjustment_id=None):
+    def edit(self, request, credit_id=None):
         adjustment = self.get_object()
         serializer = self.get_serializer(adjustment, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -1184,95 +1286,6 @@ class GetCustomerFeatureAccessView(APIView):
         )
 
 
-class CustomerBatchCreateView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
-
-    @extend_schema(
-        request=inline_serializer(
-            name="CustomerBatchCreateRequest",
-            fields={
-                "customers": CustomerCreateSerializer(many=True),
-                "behavior_on_existing": serializers.ChoiceField(
-                    choices=["merge", "ignore", "overwrite"]
-                ),
-            },
-        ),
-        responses={
-            201: inline_serializer(
-                name="CustomerBatchCreateSuccess",
-                fields={
-                    "success": serializers.ChoiceField(choices=["all", "some"]),
-                    "failed_customers": serializers.DictField(required=False),
-                },
-            ),
-            400: inline_serializer(
-                name="CustomerBatchCreateFailure",
-                fields={
-                    "success": serializers.ChoiceField(choices=["none"]),
-                    "failed_customers": serializers.DictField(),
-                },
-            ),
-        },
-    )
-    def post(self, request, format=None):
-        organization = request.organization
-        serializer = CustomerCreateSerializer(
-            data=request.data["customers"],
-            many=True,
-            context={"organization": organization},
-        )
-        serializer.is_valid(raise_exception=True)
-        failed_customers = {}
-        behavior = request.data.get("behavior_on_existing", "merge")
-        for customer in serializer.validated_data:
-            try:
-                match = Customer.objects.filter(
-                    Q(email=customer["email"]) | Q(customer_id=customer["customer_id"]),
-                    organization=organization,
-                )
-                if match.exists():
-                    match = match.first()
-                    if behavior == "ignore":
-                        pass
-                    else:
-                        if "customer_id" in customer:
-                            non_unique_id = Customer.objects.filter(
-                                ~Q(pk=match.pk), customer_id=customer["customer_id"]
-                            ).exists()
-                            if non_unique_id:
-                                failed_customers[
-                                    customer["customer_id"]
-                                ] = "customer_id already exists"
-                                continue
-                        CustomerCreateSerializer().update(
-                            match, customer, behavior=behavior
-                        )
-                else:
-                    customer["organization"] = organization
-                    CustomerCreateSerializer().create(customer)
-            except Exception as e:
-                identifier = customer.get("customer_id", customer.get("email"))
-                failed_customers[identifier] = str(e)
-
-        if len(failed_customers) == 0 or len(failed_customers) < len(
-            serializer.validated_data
-        ):
-            return Response(
-                {
-                    "success": "all" if len(failed_customers) == 0 else "some",
-                    "failed_customers": failed_customers,
-                },
-                status=status.HTTP_201_CREATED,
-            )
-        return Response(
-            {
-                "success": "none",
-                "failed_customers": failed_customers,
-            },
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-
 class ConfirmIdemsReceivedView(APIView):
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
@@ -1482,6 +1495,4 @@ def track_event(request):
             status=status.HTTP_201_CREATED,
         )
     else:
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)

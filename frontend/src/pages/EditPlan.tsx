@@ -35,7 +35,7 @@ import ComponentDisplay from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import TargetCustomerForm from "../components/Plans/TargetCustomerForm";
 import VersionActiveForm from "../components/Plans/VersionActiveForm";
-import { PricingUnit } from "../types/pricing-unit-type";
+import { CurrencyType } from "../types/pricing-unit-type";
 
 interface CustomizedState {
   plan: PlanType;
@@ -313,7 +313,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           components: usagecomponentslist,
           features: planFeatures,
           usage_billing_frequency: values.usage_billing_frequency,
-          currency_code: values.plan_currency,
+          currency_code: values.plan_currency.code,
         };
         if (values.align_plan == "calendar_aligned") {
           if (values.plan_duration === "yearly") {
@@ -365,7 +365,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             usage_billing_frequency: values.usage_billing_frequency,
             make_active: activeVersion,
             make_active_type: activeVersionType,
-            currency_code: values.plan_currency,
+            currency_code: values.plan_currency.code,
           };
           if (values.align_plan == "calendar_aligned") {
             if (values.plan_duration === "yearly") {

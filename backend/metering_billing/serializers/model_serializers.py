@@ -803,6 +803,7 @@ class PriceTierCreateSerializer(serializers.ModelSerializer):
     batch_rounding_type = serializers.ChoiceField(
         choices=BATCH_ROUNDING_TYPE.choices,
         required=False,
+        allow_null=True,
     )
 
     def validate(self, data):
@@ -851,13 +852,17 @@ class PriceTierCreateSerializer(serializers.ModelSerializer):
 
 
 # PLAN COMPONENT
-class PlanComponentSerializer(api_serializers.PlanComponentSerializer):
-    class Meta(api_serializers.PlanComponentSerializer.Meta):
-        fields = tuple(
-            set(api_serializers.PlanComponentSerializer.Meta.fields)
-            - {"billable_metric", "pricing_unit"}
-        ) + ("metric_id",)
-        extra_kwargs = {**api_serializers.PlanComponentSerializer.Meta.extra_kwargs}
+class PlanComponentCreateSerializer(api_serializers.PlanComponentSerializer):
+    class Meta:
+        model = PlanComponent
+        fields = (
+            "metric_id",
+            "tiers",
+        )
+        extra_kwargs = {
+            "metric_id": {"required": True, "write_only": True},
+            "tiers": {"required": True, "write_only": True},
+        }
 
     metric_id = SlugRelatedFieldWithOrganization(
         slug_field="metric_id",
@@ -889,7 +894,8 @@ class PlanComponentSerializer(api_serializers.PlanComponentSerializer):
         tiers = validated_data.pop("tiers")
         pc = PlanComponent.objects.create(**validated_data)
         for tier in tiers:
-            tier = PriceTierCreateSerializer().create(tier)
+            tier = {**tier, "organization": self.context["organization"]}
+            tier = PriceTierCreateSerializer(context=self.context).create(tier)
             assert type(tier) is PriceTier
             tier.plan_component = pc
             tier.save()
@@ -1021,7 +1027,7 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
             "currency_code": {"write_only": True},
         }
 
-    components = PlanComponentSerializer(
+    components = PlanComponentCreateSerializer(
         many=True, allow_null=True, required=False, source="plan_components"
     )
     features = FeatureSerializer(many=True, allow_null=True, required=False)
@@ -1082,14 +1088,17 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
         pricing_unit = validated_data.pop("currency_code", None)
         components_data = validated_data.pop("plan_components", [])
         if len(components_data) > 0:
-            if pricing_unit is not None:
-                data = [
-                    {**component_data, "pricing_unit": pricing_unit}
-                    for component_data in components_data
-                ]
-            else:
-                data = components_data
-            components = PlanComponentSerializer(many=True).create(data)
+            components_data = [
+                {
+                    **component_data,
+                    "pricing_unit": pricing_unit,
+                    "organization": self.context["organization"],
+                }
+                for component_data in components_data
+            ]
+            components = PlanComponentCreateSerializer(
+                many=True, context=self.context
+            ).create(components_data)
             assert type(components[0]) is PlanComponent
         else:
             components = []

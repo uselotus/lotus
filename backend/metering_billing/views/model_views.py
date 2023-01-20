@@ -244,6 +244,10 @@ class APITokenViewSet(
         )
 
 
+class EmptySerializer(serializers.Serializer):
+    pass
+
+
 class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
     API endpoint that allows alerts to be viewed or edited.
@@ -251,7 +255,7 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     serializer_class = WebhookEndpointSerializer
     permission_classes = [IsAuthenticated & ValidOrganization]
-    http_method_names = ["get", "post", "head", "delete", "patch"]
+    http_method_names = ["get", "post", "head", "delete"]
     lookup_field = "webhook_endpoint_id"
     permission_classes_per_method = {
         "create": [IsAuthenticated & ValidOrganization],
@@ -261,6 +265,12 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         "partial_update": [IsAuthenticated & ValidOrganization],
     }
     queryset = WebhookEndpoint.objects.all()
+    serializer_class = WebhookEndpointSerializer
+
+    def get_serializer_class(self):
+        if self.action == "destroy":
+            return EmptySerializer
+        return WebhookEndpointSerializer
 
     @extend_schema(
         callbacks=[
@@ -738,12 +748,6 @@ class PlanViewSet(api_views.PlanViewSet):
         instance = serializer.save(
             organization=self.request.organization, created_by=user
         )
-        # if user:
-        #     action.send(
-        #         user,
-        #         verb="created",
-        #         action_object=instance,
-        #     )
         return instance
 
 
