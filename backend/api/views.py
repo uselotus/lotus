@@ -837,7 +837,7 @@ class CustomerBalanceAdjustmentViewSet(
     A simple ViewSet meant only for creating CustomerBalanceAdjustments.
     """
 
-    permission_classes = [IsAuthenticated & ValidOrganization]
+    permission_classes = [ValidOrganization]
     http_method_names = [
         "get",
         "head",
