@@ -76,9 +76,10 @@ jobs:
         run: |
           pipenv install --deploy --dev
 
-      - name: Migrate
+      - name: Migrate and Run
         run: |
           pipenv run python manage.py migrate --noinput
+          pipenv run python manage.py runserver
 
       - name: Run tests
         uses: anthonyvscode/newman-action@v1
