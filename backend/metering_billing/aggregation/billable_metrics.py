@@ -259,7 +259,7 @@ class CounterHandler(MetricHandler):
         for filter in subscription_record.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
-            ] = filter.comparison_value[0]
+            ] = filter.comparison_value
         return injection_dict
 
     @staticmethod
@@ -698,7 +698,7 @@ class CustomHandler(MetricHandler):
         for filter in subscription_record.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
-            ] = filter.comparison_value[0]
+            ] = filter.comparison_value
         results = CustomHandler._run_query(metric.custom_sql, injection_dict)
         if len(results) == 0:
             return Decimal(0)
@@ -1136,7 +1136,7 @@ class GaugeHandler(MetricHandler):
         for filter in subscription_record.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
-            ] = filter.comparison_value[0]
+            ] = filter.comparison_value
         if metric.event_type == "delta":
             query = Template(GAUGE_DELTA_GET_TOTAL_USAGE_WITH_PRORATION).render(
                 **injection_dict
@@ -1222,7 +1222,7 @@ class GaugeHandler(MetricHandler):
         for filter in subscription_record.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
-            ] = filter.comparison_value[0]
+            ] = filter.comparison_value
         if metric.event_type == "delta":
             query = Template(GAUGE_DELTA_GET_CURRENT_USAGE).render(**injection_dict)
         elif metric.event_type == "total":
@@ -1304,7 +1304,7 @@ class GaugeHandler(MetricHandler):
         for filter in subscription_record.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
-            ] = filter.comparison_value[0]
+            ] = filter.comparison_value
         if metric.event_type == "delta":
             query = Template(GAUGE_DELTA_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY).render(
                 **injection_dict
@@ -1545,7 +1545,7 @@ class RateHandler(MetricHandler):
         for filter in subscription_record.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
-            ] = filter.comparison_value[0]
+            ] = filter.comparison_value
         query = Template(RATE_CAGG_TOTAL).render(**injection_dict)
         with connection.cursor() as cursor:
             cursor.execute(query)
@@ -1614,7 +1614,7 @@ class RateHandler(MetricHandler):
         for filter in subscription_record.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
-            ] = filter.comparison_value[0]
+            ] = filter.comparison_value
         query = Template(RATE_GET_CURRENT_USAGE).render(**injection_dict)
         with connection.cursor() as cursor:
             cursor.execute(query)
