@@ -556,7 +556,7 @@ class SubscriptionViewSet(
         )
 
         # now we can actually create the subscription record
-        response = self.get_serializer(subscription_record).data
+        response = SubscriptionRecordSerializer(subscription_record).data
         return Response(
             response,
             status=status.HTTP_201_CREATED,
