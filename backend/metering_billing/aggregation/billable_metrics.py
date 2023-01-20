@@ -625,12 +625,15 @@ class CounterHandler(MetricHandler):
             **sql_injection_data
         )
         with connection.cursor() as cursor:
+            # DAY QUERY FIRST
             if refresh is True:
                 cursor.execute(day_drop_query)
-                cursor.execute(second_drop_query)
             cursor.execute(day_query)
             cursor.execute(day_refresh_query)
+            # SECOND QUERY SECOND
             if metric.usage_aggregation_type != METRIC_AGGREGATION.UNIQUE:
+                if refresh is True:
+                    cursor.execute(second_drop_query)
                 cursor.execute(second_query)
                 cursor.execute(second_refresh_query)
                 cursor.execute(second_compression_query)
