@@ -748,12 +748,6 @@ class PlanViewSet(api_views.PlanViewSet):
         instance = serializer.save(
             organization=self.request.organization, created_by=user
         )
-        # if user:
-        #     action.send(
-        #         user,
-        #         verb="created",
-        #         action_object=instance,
-        #     )
         return instance
 
 
