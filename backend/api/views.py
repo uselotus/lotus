@@ -152,14 +152,38 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     queryset = Customer.objects.all()
 
     def get_queryset(self):
+        now = now_utc()
         organization = self.request.organization
-        qs = Customer.objects.filter(organization=organization).prefetch_related(
-            "subscription_records",
-            "invoices",
-            "default_currency",
+        qs = Customer.objects.filter(organization=organization)
+        qs = qs.select_related("default_currency")
+        qs = qs.prefetch_related(
+            Prefetch(
+                "subscriptions",
+                queryset=SubscriptionRecord.objects.active(now)
+                .filter(
+                    organization=organization,
+                )
+                .select_related("customer", "billing_plan")
+                .prefetch_related("filters"),
+                to_attr="active_subscription_records",
+            ),
+            Prefetch(
+                "invoices",
+                queryset=Invoice.objects.filter(
+                    organization=organization,
+                    payment_status__in=[
+                        Invoice.PaymentStatus.UNPAID,
+                        Invoice.PaymentStatus.PAID,
+                    ],
+                )
+                .order_by("-issue_date")
+                .select_related("currency", "subscription", "organization")
+                .prefetch_related("line_items"),
+                to_attr="active_invoices",
+            ),
         )
         qs = qs.annotate(
-            unpaid_inv_amount=Sum(
+            total_amount_due=Sum(
                 "invoices__cost_due",
                 filter=Q(invoices__payment_status=Invoice.PaymentStatus.UNPAID),
                 output_field=DecimalField(),
@@ -829,7 +853,6 @@ class SubscriptionViewSet(
 
 
 class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
-
     serializer_class = InvoiceSerializer
     http_method_names = ["get", "patch", "head"]
     lookup_field = "invoice_id"
@@ -1492,5 +1515,9 @@ def track_event(request):
             status=status.HTTP_201_CREATED,
         )
     else:
+        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
+        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
+        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
+        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
