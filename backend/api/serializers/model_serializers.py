@@ -1456,7 +1456,7 @@ class CustomerBalanceAdjustmentSerializer(
     credit_id = BalanceAdjustmentUUIDField(source="adjustment_id")
     customer = LightweightCustomerSerializer()
     currency = PricingUnitSerializer(source="pricing_unit")
-    amount_paid_currency = PricingUnitSerializer()
+    amount_paid_currency = PricingUnitSerializer(allow_null=True)
     drawdowns = serializers.SerializerMethodField()
     amount = serializers.DecimalField(min_value=0, max_digits=20, decimal_places=10)
     amount_remaining = serializers.SerializerMethodField()

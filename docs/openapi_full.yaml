@@ -70,8 +70,8 @@ paths:
             - inactive
             type: string
           default:
-          - active
           - inactive
+          - active
         description: Filter to a specific set of adjustment statuses. Defaults to
           both active and inactive.
       tags:
@@ -112,6 +112,40 @@ paths:
         TokenAuth: []
       responses:
         '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerBalanceAdjustment'
+          description: ''
+  /api/credits/{credit_id}/:
+    patch:
+      operationId: api_credits_partial_update
+      description: A simple ViewSet meant only for creating CustomerBalanceAdjustments.
+      parameters:
+      - in: path
+        name: credit_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerBalanceAdjustmentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerBalanceAdjustmentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerBalanceAdjustmentRequest'
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
           content:
             application/json:
               schema:
@@ -1037,8 +1071,8 @@ paths:
             - inactive
             type: string
           default:
-          - active
           - inactive
+          - active
         description: Filter to a specific set of adjustment statuses. Defaults to
           both active and inactive.
       tags:
@@ -1079,6 +1113,40 @@ paths:
         TokenAuth: []
       responses:
         '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerBalanceAdjustment'
+          description: ''
+  /app/credits/{credit_id}/:
+    patch:
+      operationId: app_credits_partial_update
+      description: A simple ViewSet meant only for creating CustomerBalanceAdjustments.
+      parameters:
+      - in: path
+        name: credit_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerBalanceAdjustmentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerBalanceAdjustmentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerBalanceAdjustmentRequest'
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
           content:
             application/json:
               schema:
@@ -3425,32 +3493,32 @@ components:
         start_date:
           type: string
           format: date
+        kpis:
+          type: object
+          additionalProperties: {}
+        backtest_name:
+          type: string
+          maxLength: 100
+        time_created:
+          type: string
+          format: date-time
         backtest_substitutions:
           type: array
           items:
             $ref: '#/components/schemas/BacktestSubstitution'
-        kpis:
-          type: object
-          additionalProperties: {}
+        backtest_id:
+          type: string
         end_date:
           type: string
           format: date
-        backtest_results:
-          $ref: '#/components/schemas/AllSubstitutionResults'
-        backtest_id:
-          type: string
-        backtest_name:
-          type: string
-          maxLength: 100
         status:
           enum:
           - running
           - completed
           - failed
           type: string
-        time_created:
-          type: string
-          format: date-time
+        backtest_results:
+          $ref: '#/components/schemas/AllSubstitutionResults'
       required:
       - backtest_id
       - backtest_name
@@ -3838,7 +3906,9 @@ components:
           exclusiveMinimum: true
           readOnly: true
         amount_paid_currency:
-          $ref: '#/components/schemas/PricingUnit'
+          allOf:
+          - $ref: '#/components/schemas/PricingUnit'
+          nullable: true
         drawdowns:
           type: array
           items:
@@ -4108,15 +4178,6 @@ components:
     DraftInvoice:
       type: object
       properties:
-        line_items:
-          type: array
-          items:
-            $ref: '#/components/schemas/GroupedLineItem'
-          readOnly: true
-        start_date:
-          type: string
-          format: date
-          readOnly: true
         cost_due:
           type: number
           format: double
@@ -4125,12 +4186,6 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           readOnly: true
-        end_date:
-          type: string
-          format: date
-          readOnly: true
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
         issue_date:
           type: string
           format: date-time
@@ -4140,6 +4195,21 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        start_date:
+          type: string
+          format: date
+          readOnly: true
+        line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroupedLineItem'
+          readOnly: true
+        end_date:
+          type: string
+          format: date
+          readOnly: true
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
         invoice_id:
           type: string
       required:
@@ -4486,22 +4556,8 @@ components:
     InitialPlanVersionRequest:
       type: object
       properties:
-        currency_code:
-          type: string
-          minLength: 1
-        transition_to_plan_id:
-          type: string
-          format: uuid
-        usage_billing_frequency:
-          enum:
-          - monthly
-          - quarterly
-          - end_of_period
-          - ''
-          - null
-          type: string
-          writeOnly: true
-          nullable: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustmentRequest'
         flat_rate:
           type: number
           format: double
@@ -4515,19 +4571,16 @@ components:
           - in_advance
           type: string
           writeOnly: true
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponentRequest'
-          nullable: true
-        day_anchor:
-          type: integer
-          maximum: 31
-          minimum: 1
+        usage_billing_frequency:
+          enum:
+          - monthly
+          - quarterly
+          - end_of_period
+          - ''
+          - null
+          type: string
           writeOnly: true
           nullable: true
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustmentRequest'
         description:
           type: string
           writeOnly: true
@@ -4537,9 +4590,26 @@ components:
           items:
             $ref: '#/components/schemas/FeatureRequest'
           nullable: true
+        transition_to_plan_id:
+          type: string
+          format: uuid
+        currency_code:
+          type: string
+          minLength: 1
         month_anchor:
           type: integer
           maximum: 12
+          minimum: 1
+          writeOnly: true
+          nullable: true
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponentRequest'
+          nullable: true
+        day_anchor:
+          type: integer
+          maximum: 31
           minimum: 1
           writeOnly: true
           nullable: true
@@ -4854,10 +4924,6 @@ components:
     LightweightInvoice:
       type: object
       properties:
-        start_date:
-          type: string
-          format: date
-          readOnly: true
         cost_due:
           type: number
           format: double
@@ -4866,22 +4932,6 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           readOnly: true
-        end_date:
-          type: string
-          format: date
-          readOnly: true
-        external_payment_obj_id:
-          type: string
-          readOnly: true
-          nullable: true
-        external_payment_obj_type:
-          enum:
-          - stripe
-          - null
-          type: string
-          nullable: true
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
         issue_date:
           type: string
           format: date-time
@@ -4891,12 +4941,9 @@ components:
           format: date-time
           readOnly: true
           nullable: true
-        invoice_id:
+        start_date:
           type: string
-        seller:
-          $ref: '#/components/schemas/Seller'
-        invoice_number:
-          type: string
+          format: date
           readOnly: true
         payment_status:
           enum:
@@ -4904,6 +4951,29 @@ components:
           - unpaid
           type: string
           readOnly: true
+        external_payment_obj_type:
+          enum:
+          - stripe
+          - null
+          type: string
+          nullable: true
+        end_date:
+          type: string
+          format: date
+          readOnly: true
+        invoice_number:
+          type: string
+          readOnly: true
+        seller:
+          $ref: '#/components/schemas/Seller'
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
+        external_payment_obj_id:
+          type: string
+          readOnly: true
+          nullable: true
+        invoice_id:
+          type: string
       required:
       - cost_due
       - currency
@@ -4923,37 +4993,11 @@ components:
         start_date:
           type: string
           format: date-time
-        name:
-          type: string
-          maxLength: 100
-        subscription_filters:
-          type: array
-          items:
-            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
-          nullable: true
-          readOnly: true
-        end_date:
-          type: string
-          format: date-time
-        billing_type:
-          enum:
-          - in_arrears
-          - in_advance
-          - null
-          type: string
-          nullable: true
         plan:
           allOf:
           - $ref: '#/components/schemas/LightweightPlanVersion'
           nullable: true
           readOnly: true
-        subtotal:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
         quantity:
           type: number
           format: double
@@ -4961,6 +5005,32 @@ components:
           minimum: 0
           exclusiveMaximum: true
           nullable: true
+        end_date:
+          type: string
+          format: date-time
+        name:
+          type: string
+          maxLength: 100
+        subtotal:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        billing_type:
+          enum:
+          - in_arrears
+          - in_advance
+          - null
+          type: string
+          nullable: true
+        subscription_filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
+          nullable: true
+          readOnly: true
       required:
       - billing_type
       - end_date
@@ -5028,13 +5098,13 @@ components:
           format: date-time
           description: The time the subscription starts. This will be a string in
             yyyy-mm-dd HH:mm:ss format in UTC time.
-        billing_plan:
-          $ref: '#/components/schemas/LightweightPlanVersionRequest'
         end_date:
           type: string
           format: date-time
           description: The time the subscription starts. This will be a string in
             yyyy-mm-dd HH:mm:ss format in UTC time.
+        billing_plan:
+          $ref: '#/components/schemas/LightweightPlanVersionRequest'
         fully_billed:
           type: boolean
           description: Whether the subscription has been fully billed and finalized.
@@ -5620,6 +5690,24 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Event'
+    PatchedCustomerBalanceAdjustmentRequest:
+      type: object
+      properties:
+        credit_id:
+          type: string
+          minLength: 1
+        amount:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
+        currency:
+          $ref: '#/components/schemas/PricingUnitRequest'
+        amount_paid_currency:
+          allOf:
+          - $ref: '#/components/schemas/PricingUnitRequest'
+          nullable: true
     PatchedCustomerUpdateRequest:
       type: object
       properties:

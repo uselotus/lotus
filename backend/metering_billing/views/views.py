@@ -459,7 +459,9 @@ class CustomersWithRevenueView(APIView):
         Return current usage for a customer during a given billing period.
         """
         organization = request.organization
-        customers = Customer.objects.filter(organization=organization)
+        customers = Customer.objects.filter(organization=organization).prefetch_related(
+            "invoices"
+        )
         cust = []
         for customer in customers:
             total_amount_due = customer.get_outstanding_revenue()
