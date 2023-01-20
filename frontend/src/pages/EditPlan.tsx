@@ -684,7 +684,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             </Col>
             <Col span="24">
               <Card
-                className="w-full my-5"
+                className="w-full my-6"
                 title="Added Features"
                 style={{
                   borderRadius: "0.5rem",

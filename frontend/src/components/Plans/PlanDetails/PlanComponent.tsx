@@ -121,7 +121,7 @@ export const PlanSummary = ({
           <div className="!text-card-grey">{plan.active_subscriptions}</div>
         </div>
 
-        <div className="flex items-center justify-between text-card-text gap-2 mb-1">
+        <div className="flex items-center justify-between text-card-text gap-2 mb-2">
           <div className="font-normal whitespace-nowrap leading-4">
             Linked External IDs
           </div>

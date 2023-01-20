@@ -56,7 +56,7 @@ export default function ActivityStream() {
         <Typography.Title level={2}>Activity Stream</Typography.Title>
         <div className="align-center">
           <h3 className="text-xl font-main align-center">No Activities</h3>
-          <div className="separator mb-5 mt-5" />
+          <div className="separator mb-6 mt-6" />
         </div>
       </Fragment>
     );
@@ -129,7 +129,7 @@ export default function ActivityStream() {
           </div>
         )}
 
-        <div className="separator mb-5 mt-5" />
+        <div className="separator mb-6 mt-6" />
 
         <CustomPagination
           cursor={cursor}
