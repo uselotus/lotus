@@ -138,7 +138,8 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
 
       render: (_, record) => (
         <div className="self-center">
-          {record.total_amount_due !== undefined ? (
+          {record.total_amount_due !== undefined &&
+          record.total_amount_due !== null ? (
             <div>${record.total_amount_due.toFixed(2)}</div>
           ) : (
             <div>${0.0}</div>

@@ -276,6 +276,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                 <b>Amount Due On Next Invoice:</b>{" "}
                 {data?.default_currency?.symbol}
                 {invoiceData?.invoices !== undefined &&
+                  invoiceData?.invoices !== null &&
                   invoiceData?.invoices.length > 0 &&
                   invoiceData?.invoices[0].cost_due.toFixed(2)}
               </p>
