@@ -4,7 +4,7 @@ import React from "react";
 import { UseQueryResult } from "react-query";
 import { PricingUnits } from "../api/api";
 import { useQuery } from "react-query";
-import { PricingUnit } from "../types/pricing-unit-type";
+import { CurrencyType } from "../types/pricing-unit-type";
 
 interface PricingUnitDropDownProps {
   defaultValue?: string;
@@ -19,8 +19,8 @@ const PricingUnitDropDown: React.FC<PricingUnitDropDownProps> = ({
   setCurrentSymbol,
   shouldShowAllOption,
 }) => {
-  const { data, isLoading }: UseQueryResult<PricingUnit[]> = useQuery<
-    PricingUnit[]
+  const { data, isLoading }: UseQueryResult<CurrencyType[]> = useQuery<
+    CurrencyType[]
   >(["pricing_unit_list"], () =>
     PricingUnits.list().then((res) => {
       return res;

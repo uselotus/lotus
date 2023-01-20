@@ -89,9 +89,9 @@ router.register(
 router.register(r"organizations", OrganizationViewSet, basename="organization")
 router.register(r"pricing_units", PricingUnitViewSet, basename="pricing_unit")
 router.register(
-    r"balance_adjustments",
+    r"credits",
     CustomerBalanceAdjustmentViewSet,
-    basename="balance_adjustment",
+    basename="credit",
 )
 router.register(r"api_tokens", APITokenViewSet, basename="api_token")
 router.register(r"usage_alerts", UsageAlertViewSet, basename="usage_alert")
@@ -106,9 +106,9 @@ api_router.register(
 )
 api_router.register(r"invoices", api_views.InvoiceViewSet, basename="invoice")
 api_router.register(
-    r"balance_adjustments",
+    r"credits",
     api_views.CustomerBalanceAdjustmentViewSet,
-    basename="balance_adjustment",
+    basename="credit",
 )
 
 urlpatterns = [

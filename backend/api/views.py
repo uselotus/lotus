@@ -37,7 +37,7 @@ from api.serializers.nonmodel_serializers import (
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
-from django.db.models import Count, F, OuterRef, Prefetch, Q, Subquery, Value
+from django.db.models import Count, F, OuterRef, Prefetch, Q, Subquery, Sum, Value
 from django.db.models.functions import Coalesce
 from django.db.utils import IntegrityError
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
@@ -556,7 +556,7 @@ class SubscriptionViewSet(
         )
 
         # now we can actually create the subscription record
-        response = self.get_serializer(subscription_record).data
+        response = SubscriptionRecordSerializer(subscription_record).data
         return Response(
             response,
             status=status.HTTP_201_CREATED,
@@ -843,14 +843,18 @@ class CustomerBalanceAdjustmentViewSet(
         "post",
     ]
     serializer_class = CustomerBalanceAdjustmentSerializer
-    lookup_field = "adjustment_id"
+    lookup_field = "credit_id"
     queryset = CustomerBalanceAdjustment.objects.all()
 
     def get_object(self):
-        string_uuid = self.kwargs[self.lookup_field]
+        string_uuid = self.kwargs.pop(self.lookup_field, None)
         uuid = BalanceAdjustmentUUIDField().to_internal_value(string_uuid)
+        if self.lookup_field == "credit_id":
+            self.lookup_field = "adjustment_id"
         self.kwargs[self.lookup_field] = uuid
-        return super().get_object()
+        obj = super().get_object()
+        self.lookup_field = "credit_id"
+        return obj
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -869,6 +873,12 @@ class CustomerBalanceAdjustmentViewSet(
         qs = qs.filter(organization=organization)
         context = self.get_serializer_context()
         context["organization"] = organization
+        qs = qs.filter(amount__gt=0)
+        qs = qs.select_related("customer", "pricing_unit", "amount_paid_currency")
+        qs = qs.prefetch_related("drawdowns")
+        qs = qs.annotate(
+            total_drawdowns=Sum("drawdowns__amount"),
+        )
         if self.action == "list":
             args = []
             serializer = CustomerBalanceAdjustmentFilterSerializer(
@@ -941,7 +951,7 @@ class CustomerBalanceAdjustmentViewSet(
 
     @extend_schema(responses=CustomerBalanceAdjustmentSerializer)
     @action(detail=True, methods=["post"])
-    def void(self, request, adjustment_id=None):
+    def void(self, request, credit_id=None):
         adjustment = self.get_object()
         if adjustment.status != CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE:
             raise ValidationError("Cannot void an adjustment that is not active.")
@@ -1484,6 +1494,4 @@ def track_event(request):
             status=status.HTTP_201_CREATED,
         )
     else:
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)

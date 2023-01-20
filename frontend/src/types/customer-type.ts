@@ -1,7 +1,7 @@
 import { PlanDisplay, PlanVersionType } from "./plan-type";
 import { SubscriptionType } from "./subscription-type";
 import { InvoiceType } from "./invoice-type";
-import { PricingUnit } from "./pricing-unit-type";
+import { CurrencyType } from "./pricing-unit-type";
 
 export interface CustomerType {
   customer_id: string;
@@ -20,7 +20,7 @@ export interface CustomerType {
   total_amount_due: number;
   subscriptions: SubscriptionType[];
   integrations: object;
-  default_currency: PricingUnit;
+  default_currency: CurrencyType;
   has_payment_method: boolean;
   tax_rate?: number;
 }

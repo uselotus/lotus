@@ -1,28 +1,35 @@
 import { LightweightCustomerType } from "./customer-type";
-import { PricingUnit } from "./pricing-unit-type";
+import { CurrencyType } from "./pricing-unit-type";
 
-export interface CreateBalanceAdjustmentType {
+export interface CreateCreditType {
   customer_id: string;
   amount: number;
-  amount_currency: string;
-  description: string;
-  pricing_unit_code: string;
-  effective_at: string;
+  description?: string;
+  currency_code: string;
+  effective_at?: string;
   expires_at?: string;
   amount_paid?: number;
-  amount_paid_currency?: string;
+  amount_paid_currency_code?: string;
 }
 
-export interface BalanceAdjustmentType {
+export interface DrawdownType {
+  credit_id: string;
   amount: number;
-  amount_currency: string;
+  applied_at: string;
   description: string;
-  created: string;
+}
+
+export interface CreditType {
+  amount: number;
+  amount_paid_currency: CurrencyType;
+  amount_paid: number;
+  amount_remaining: number;
+  description: string;
   effective_at: string;
   expires_at: string;
-  adjustment_id: string;
-  parent_adjustment_id: string;
-  pricing_unit: PricingUnit;
+  credit_id: string;
+  currency: CurrencyType;
   customer: LightweightCustomerType;
   status: "active" | "inactive";
+  drawdowns: DrawdownType[];
 }

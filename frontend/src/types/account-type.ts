@@ -1,5 +1,5 @@
 import { PlanType } from "./plan-type";
-import { PricingUnit } from "./pricing-unit-type";
+import { CurrencyType } from "./pricing-unit-type";
 
 export interface CreateOrgAccountType {
   username: string;
@@ -38,8 +38,8 @@ export interface OrganizationType {
     state: string;
   };
   users: UserType[];
-  default_currency: PricingUnit;
-  available_currencies: PricingUnit[];
+  default_currency: CurrencyType;
+  available_currencies: CurrencyType[];
   organization_id: string;
   plan_tags: PlanType["tags"];
   tax_rate: null | number;
