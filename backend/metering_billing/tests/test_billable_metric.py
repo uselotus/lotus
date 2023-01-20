@@ -7,10 +7,6 @@ import pytest
 from dateutil.relativedelta import relativedelta
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
-
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     CategoricalFilter,
@@ -35,6 +31,9 @@ from metering_billing.utils.enums import (
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
 )
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -1140,6 +1139,7 @@ class TestCalculateMetricWithFilters:
             billable_metric
         )
         numeric_filter = NumericFilter.objects.create(
+            organization=setup_dict["org"],
             property_name="test_filter_property",
             operator=NUMERIC_FILTER_OPERATORS.GT,
             comparison_value=10,
@@ -1243,6 +1243,7 @@ class TestCalculateMetricWithFilters:
             billable_metric
         )
         numeric_filter = NumericFilter.objects.create(
+            organization=setup_dict["org"],
             property_name="test_filter_property",
             operator=NUMERIC_FILTER_OPERATORS.EQ,
             comparison_value=10,
@@ -1334,6 +1335,7 @@ class TestCalculateMetricWithFilters:
             proration=METRIC_GRANULARITY.DAY,
         )
         categorical_filter = CategoricalFilter.objects.create(
+            organization=setup_dict["org"],
             property_name="test_filter_property",
             operator=CATEGORICAL_FILTER_OPERATORS.ISIN,
             comparison_value=["a", "b", "c"],
@@ -1430,6 +1432,7 @@ class TestCalculateMetricWithFilters:
             billable_metric
         )
         numeric_filter = CategoricalFilter.objects.create(
+            organization=setup_dict["org"],
             property_name="test_filter_property",
             operator=CATEGORICAL_FILTER_OPERATORS.ISNOTIN,
             comparison_value=["a", "b", "c"],
