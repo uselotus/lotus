@@ -6,7 +6,7 @@ Webhooks are HTTP callbacks that are triggered when an event occurs. You can use
 
 Here is a list of current webhooks.
 
-# Webhook Types
+## Webhook Types
 
 ### invoice.created
 
@@ -20,17 +20,29 @@ This webhook is generated when a payment through a payment provider integration 
 
 This webhook is generated when a usage alert is triggered. This is useful for notifying your users when they are approaching their usage limit.
 
-# Creating Webhooks
+## Creating Webhooks
 
 You can create webhooks from the Developer Settings tab of the Settings page. After creating a webhook, you will be able to see the folloowing information, including the webhook secret, which is used for verifying the authenticity of the request.
 
 ![Creation](/images/webhooks/webhook_creation.png)
 
-# Consuming Webhooks
+## Consuming Webhooks
 
 Lotus uses a service called Svix to handle the complexity behind webhooks, most importantly the signature verification so you can have peace of mind that the webhooks you receive are authentic. Once you have your webhook secret in hand, [head over to this page](https://docs.svix.com/receiving/verifying-payloads/how) to learn how to verify and webhooks, with examples for all the most popular frameworks including Django, Next, Gin, Ruby, and more!.
 
-# Webhook Response Schema
+## Webhook Response Schema
+
+```ts
+{
+  "attempt": 5,
+  "created_at": "2023-01-20 08:33:35.310436+00:00",
+  "properties": {
+    "event_type": "invoice.created",
+    "payload": {}
+  }
+}
+
+```
 
 <ParamField body="event_type" type="string (WebhookTriggerEventEnum)" required>
   Enum: `"invoice.created"` `"invoice.paid"` `"usage_alert.triggered"`
