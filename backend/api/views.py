@@ -923,6 +923,7 @@ class CustomerBalanceAdjustmentViewSet(
     PermissionPolicyMixin,
     mixins.CreateModelMixin,
     mixins.ListModelMixin,
+    mixins.UpdateModelMixin,
     viewsets.GenericViewSet,
 ):
     """
@@ -930,11 +931,7 @@ class CustomerBalanceAdjustmentViewSet(
     """
 
     permission_classes = [ValidOrganization]
-    http_method_names = [
-        "get",
-        "head",
-        "post",
-    ]
+    http_method_names = ["get", "head", "post", "patch"]
     serializer_class = CustomerBalanceAdjustmentSerializer
     lookup_field = "credit_id"
     queryset = CustomerBalanceAdjustment.objects.all()
@@ -997,9 +994,9 @@ class CustomerBalanceAdjustmentViewSet(
             if expires_before:
                 args.append(Q(expires_at__lte=expires_before))
             if issued_after:
-                args.append(Q(issued_at__gte=issued_after))
+                args.append(Q(created__gte=issued_after))
             if issued_before:
-                args.append(Q(issued_at__lte=issued_before))
+                args.append(Q(created__lte=issued_before))
             if effective_after:
                 args.append(Q(effective_at__gte=effective_after))
             if effective_before:
@@ -1033,7 +1030,7 @@ class CustomerBalanceAdjustmentViewSet(
         return Response(metric_data, status=status.HTTP_201_CREATED)
 
     def perform_create(self, serializer):
-        serializer.save(organization=self.request.organization)
+        return serializer.save(organization=self.request.organization)
 
     @extend_schema(
         parameters=[CustomerBalanceAdjustmentFilterSerializer],
@@ -1060,7 +1057,7 @@ class CustomerBalanceAdjustmentViewSet(
 
     @extend_schema(responses=CustomerBalanceAdjustmentSerializer)
     @action(detail=True, methods=["post"], url_path="update")
-    def edit(self, request, adjustment_id=None):
+    def edit(self, request, credit_id=None):
         adjustment = self.get_object()
         serializer = self.get_serializer(adjustment, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
