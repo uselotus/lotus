@@ -37,7 +37,17 @@ from api.serializers.nonmodel_serializers import (
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
-from django.db.models import Count, F, OuterRef, Prefetch, Q, Subquery, Sum, Value
+from django.db.models import (
+    Count,
+    DecimalField,
+    F,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
 from django.db.models.functions import Coalesce
 from django.db.utils import IntegrityError
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
@@ -151,6 +161,13 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             "subscription_records",
             "invoices",
             "default_currency",
+        )
+        qs = qs.annotate(
+            unpaid_inv_amount=Sum(
+                "invoices__cost_due",
+                filter=Q(invoices__payment_status=Invoice.PaymentStatus.UNPAID),
+                output_field=DecimalField(),
+            )
         )
         return qs
 
@@ -923,7 +940,6 @@ class CustomerBalanceAdjustmentViewSet(
     PermissionPolicyMixin,
     mixins.CreateModelMixin,
     mixins.ListModelMixin,
-    mixins.UpdateModelMixin,
     viewsets.GenericViewSet,
 ):
     """
@@ -931,7 +947,7 @@ class CustomerBalanceAdjustmentViewSet(
     """
 
     permission_classes = [ValidOrganization]
-    http_method_names = ["get", "head", "post", "patch"]
+    http_method_names = ["get", "head", "post"]
     serializer_class = CustomerBalanceAdjustmentSerializer
     lookup_field = "credit_id"
     queryset = CustomerBalanceAdjustment.objects.all()
@@ -1061,7 +1077,7 @@ class CustomerBalanceAdjustmentViewSet(
         adjustment = self.get_object()
         serializer = self.get_serializer(adjustment, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
+        serializer.save()
         if getattr(adjustment, "_prefetched_objects_cache", None):
             # If 'prefetch_related' has been applied to a queryset, we need to
             # forcibly invalidate the prefetch cache on the instance.
@@ -1495,4 +1511,5 @@ def track_event(request):
             status=status.HTTP_201_CREATED,
         )
     else:
+        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)

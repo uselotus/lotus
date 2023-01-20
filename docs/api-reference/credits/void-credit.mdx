@@ -1,0 +1,19 @@
+---
+title: "Void credit"
+openapi: POST /api/credits/{credit_id}/void/
+---
+
+Immediately voids a credit. If the credit is alrady expired or has already been consumed, nothing will happen.
+
+<CodeGroup>
+
+```py Python
+lotus.void_credit(credit_id='credit_0569173ee6654369')
+```
+```ts Typescript
+await lotus.voidCredit({
+    credit_id: 'credit_0569173ee6654369',
+});
+```
+
+</CodeGroup>

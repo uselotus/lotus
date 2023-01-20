@@ -1,9 +1,10 @@
 import datetime
 import re
+from decimal import Decimal
 from typing import Literal, Optional, Union
 
 from django.conf import settings
-from django.db.models import Q, Sum
+from django.db.models import DecimalField, Q, Sum
 from metering_billing.invoice import generate_balance_adjustment_invoice
 from metering_billing.models import (
     CategoricalFilter,
@@ -561,9 +562,17 @@ class CustomerSerializer(
         timeline = LightweightInvoiceSerializer(timeline, many=True).data
         return timeline
 
-    def get_total_amount_due(self, obj) -> float:
-        total_amount_due = float(obj.get_outstanding_revenue())
-        return total_amount_due
+    def get_total_amount_due(self, obj) -> Decimal:
+        try:
+            return obj.total_amount_due
+        except AttributeError:
+            return (
+                obj.invoices.filter(payment_status=Invoice.PaymentStatus.UNPAID)
+                .aggregate(
+                    unpaid_inv_amount=Sum("cost_due", output_field=DecimalField())
+                )
+                .get("unpaid_inv_amount")
+            )
 
 
 class CustomerCreateSerializer(
@@ -1552,7 +1561,13 @@ class CustomerBalanceAdjustmentUpdateSerializer(serializers.ModelSerializer):
         return data
 
     def update(self, instance, validated_data):
+        if instance.status != CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE:
+            raise serializers.ValidationError("Only active credits can be updated")
         instance.description = validated_data.get("description", instance.description)
+        new_expires_at = validated_data.get("expires_at")
+        now = now_utc()
+        if new_expires_at and new_expires_at < now:
+            raise serializers.ValidationError("Expiration date must be in the future")
         instance.expires_at = validated_data.get("expires_at", instance.expires_at)
         instance.save()
         return instance
@@ -1616,5 +1631,7 @@ class UsageAlertSerializer(serializers.ModelSerializer):
         )
 
     usage_alert_id = UsageAlertUUIDField(read_only=True)
+    metric = MetricSerializer()
+    plan_version = LightweightPlanVersionSerializer()
     metric = MetricSerializer()
     plan_version = LightweightPlanVersionSerializer()

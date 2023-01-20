@@ -2,7 +2,7 @@ import logging
 from decimal import Decimal
 
 from django.conf import settings
-from django.db.models import Count, F, Prefetch, Q, Sum
+from django.db.models import Count, DecimalField, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.exceptions import (
     ExternalConnectionFailure,
@@ -459,19 +459,16 @@ class CustomersWithRevenueView(APIView):
         Return current usage for a customer during a given billing period.
         """
         organization = request.organization
-        customers = Customer.objects.filter(organization=organization).prefetch_related(
-            "invoices"
-        )
-        cust = []
-        for customer in customers:
-            total_amount_due = customer.get_outstanding_revenue()
-            serializer = CustomerWithRevenueSerializer(
-                customer,
-                context={
-                    "total_amount_due": total_amount_due,
-                },
+        customers = Customer.objects.filter(organization=organization)
+        customers = customers.prefetch_related("invoices")
+        customers = customers.annotate(
+            unpaid_inv_amount=Sum(
+                "invoices__cost_due",
+                filter=Q(invoices__payment_status=Invoice.PaymentStatus.UNPAID),
+                output_field=DecimalField(),
             )
-            cust.append(serializer.data)
+        )
+        cust = CustomerWithRevenueSerializer(customers, many=True).data
         cust = make_all_decimals_floats(cust)
         return Response(cust, status=status.HTTP_200_OK)
 
