@@ -2,8 +2,6 @@ import uuid
 
 import posthog
 import pytest
-from model_bakery import baker
-
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     FLAT_FEE_BILLING_TYPE,
@@ -13,6 +11,7 @@ from metering_billing.utils.enums import (
     PRODUCT_STATUS,
     USAGE_BILLING_FREQUENCY,
 )
+from model_bakery import baker
 
 
 @pytest.fixture(autouse=True)
@@ -22,7 +21,6 @@ def run_around_tests():
     # A test function will be run at this point
     yield
     # Code that will run after your test, for example:
-    posthog.disabled = False
 
 
 @pytest.fixture(autouse=True)

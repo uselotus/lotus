@@ -630,8 +630,9 @@ class CounterHandler(MetricHandler):
                 cursor.execute(day_drop_query)
             cursor.execute(day_query)
             cursor.execute(day_refresh_query)
-            # SECOND QUERY SECOND
-            if metric.usage_aggregation_type != METRIC_AGGREGATION.UNIQUE:
+        if metric.usage_aggregation_type != METRIC_AGGREGATION.UNIQUE:
+            with connection.cursor() as cursor:
+                # SECOND QUERY SECOND
                 if refresh is True:
                     cursor.execute(second_drop_query)
                 cursor.execute(second_query)
@@ -660,6 +661,7 @@ class CounterHandler(MetricHandler):
         second_drop_query = Template(CAGG_DROP).render(**sql_injection_data)
         with connection.cursor() as cursor:
             cursor.execute(day_drop_query)
+        with connection.cursor() as cursor:
             cursor.execute(second_drop_query)
 
 

@@ -4,7 +4,7 @@ from decimal import Decimal
 from typing import Literal, Optional, Union
 
 from django.conf import settings
-from django.db.models import DecimalField, Q, Sum
+from django.db.models import Sum
 from metering_billing.invoice import generate_balance_adjustment_invoice
 from metering_billing.models import (
     CategoricalFilter,
@@ -543,22 +543,27 @@ class CustomerSerializer(
         return d
 
     def get_subscriptions(self, obj) -> SubscriptionRecordSerializer(many=True):
-        sr_objs = obj.subscription_records.active().filter(
-            organization=self.context.get("organization"),
-            start_date__lte=now_utc(),
-            end_date__gte=now_utc(),
-        )
+        try:
+            sr_objs = obj.active_subscription_records
+        except AttributeError:
+            sr_objs = (
+                obj.subscription_records.active()
+                .filter(organization=obj.organization)
+                .order_by("start_date")
+            )
         return SubscriptionRecordSerializer(sr_objs, many=True).data
 
     def get_invoices(self, obj) -> LightweightInvoiceSerializer(many=True):
-        timeline = (
-            obj.invoices.filter(
-                ~Q(payment_status=Invoice.PaymentStatus.DRAFT),
-                organization=self.context.get("organization"),
-            )
-            .order_by("-issue_date")
-            .prefetch_related("currency", "line_items", "subscription")
-        )
+        try:
+            timeline = obj.active_invoices
+        except AttributeError:
+            timeline = obj.invoices.filter(
+                payment_status__in=[
+                    Invoice.PaymentStatus.PAID,
+                    Invoice.PaymentStatus.UNPAID,
+                ],
+                organization=obj.organization,
+            ).order_by("-issue_date")
         timeline = LightweightInvoiceSerializer(timeline, many=True).data
         return timeline
 
@@ -566,13 +571,7 @@ class CustomerSerializer(
         try:
             return obj.total_amount_due
         except AttributeError:
-            return (
-                obj.invoices.filter(payment_status=Invoice.PaymentStatus.UNPAID)
-                .aggregate(
-                    unpaid_inv_amount=Sum("cost_due", output_field=DecimalField())
-                )
-                .get("unpaid_inv_amount")
-            )
+            return Decimal(0)
 
 
 class CustomerCreateSerializer(
@@ -1234,7 +1233,7 @@ class SubscriptionSerializer(
 class SubscriptionInvoiceSerializer(SubscriptionRecordSerializer):
     class Meta(SubscriptionRecordSerializer.Meta):
         model = SubscriptionRecord
-        fields = fields = tuple(
+        fields = tuple(
             set(SubscriptionRecordSerializer.Meta.fields)
             - set(
                 ["customer_id", "plan_id", "billing_plan", "auto_renew", "invoice_pdf"]
@@ -1634,4 +1633,5 @@ class UsageAlertSerializer(serializers.ModelSerializer):
     metric = MetricSerializer()
     plan_version = LightweightPlanVersionSerializer()
     metric = MetricSerializer()
+    plan_version = LightweightPlanVersionSerializer()
     plan_version = LightweightPlanVersionSerializer()
