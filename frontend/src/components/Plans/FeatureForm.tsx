@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { FeatureType } from "../../types/feature-type";
+import { FeatureType, CreateFeatureType } from "../../types/feature-type";
 import { Button, Divider, Modal, Select, Input, message } from "antd";
 import { Features } from "../../api/api";
 import { UseQueryResult, useQuery } from "react-query";
+import { useMutation, useQueryClient } from "react-query";
 
 const { Option } = Select;
 
@@ -15,7 +16,7 @@ const FeatureForm = (props: {
   const [createdFeatureName, setCreatedFeatureName] = useState<string>("");
   const [createdFeatureDescription, setCreatedFeatureDescription] =
     useState<string>("");
-
+  const queryClient = useQueryClient();
   const {
     data: features,
     isLoading,
@@ -49,11 +50,15 @@ const FeatureForm = (props: {
       if (featureExists) {
         message.error("Feature already exists");
       } else {
-        const newFeature: FeatureType = {
+        const newFeature: CreateFeatureType = {
           feature_name: createdFeatureName,
           feature_description: createdFeatureDescription,
         };
-        setNewFeatures([...newFeatures, newFeature]);
+        
+        Features.createFeature(newFeature).then((res) => {
+          queryClient.invalidateQueries("feature_list");
+          setNewFeatures([...newFeatures, res]);
+        });
         setCreatedFeatureName("");
         setCreatedFeatureDescription("");
       }

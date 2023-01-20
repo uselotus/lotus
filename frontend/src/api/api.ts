@@ -54,7 +54,7 @@ import {
   OrganizationType,
   PaginatedActionsType,
 } from "../types/account-type";
-import { FeatureType } from "../types/feature-type";
+import { FeatureType, CreateFeatureType } from "../types/feature-type";
 import Cookies from "universal-cookie";
 import {
   CreateBacktestType,
@@ -408,7 +408,7 @@ export const PlansByCustomer = {
 
 export const Features = {
   getFeatures: (): Promise<FeatureType[]> => requests.get("app/features/"),
-  createFeature: (post: FeatureType): Promise<FeatureType> =>
+  createFeature: (post: CreateFeatureType): Promise<FeatureType> =>
     requests.post("app/features/", post),
 };
 
