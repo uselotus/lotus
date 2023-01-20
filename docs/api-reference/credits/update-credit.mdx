@@ -1,6 +1,6 @@
 ---
-title: "Void credit"
-openapi: POST /api/credits/{credit_id}/void/
+title: "Update credit"
+openapi: POST /api/credits/{credit_id}/update/
 ---
 
 This can be used to alter the description or expiration date of a credit. If the credit expiry is in the past, this will throw an error. If the targeted credit is no longer active, this will throw an error.
@@ -17,9 +17,9 @@ lotus.update_credit(
 
 ```ts Typescript
 await lotus.updateCredit({
-    credit_id: 'credit_0569173ee6654369',
+    creditId: 'credit_0569173ee6654369',
     description: 'New description',
-    expires_at: '2027-01-01T00:00:00Z'
+    expiresAt: '2027-01-01T00:00:00Z'
 });
 ```
 

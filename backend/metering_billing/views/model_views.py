@@ -406,10 +406,6 @@ class UserViewSet(
     mixins.CreateModelMixin,
     viewsets.GenericViewSet,
 ):
-    """
-    A simple ViewSet for viewing and editing Users.
-    """
-
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated & ValidOrganization]
     http_method_names = ["get", "post", "head"]
@@ -439,10 +435,6 @@ class CustomerViewSet(api_views.CustomerViewSet):
 
 
 class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
-    """
-    A simple ViewSet for viewing and editing Billable Metrics.
-    """
-
     http_method_names = ["get", "post", "head", "patch"]
     lookup_field = "metric_id"
     permission_classes_per_method = {
@@ -527,10 +519,6 @@ class FeatureViewSet(
     mixins.CreateModelMixin,
     viewsets.GenericViewSet,
 ):
-    """
-    A simple ViewSet for viewing and editing Features.
-    """
-
     serializer_class = FeatureSerializer
     http_method_names = ["get", "post", "head"]
     permission_classes_per_method = {
@@ -575,10 +563,6 @@ class FeatureViewSet(
 
 
 class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
-    """
-    A simple ViewSet for viewing and editing PlanVersions.
-    """
-
     serializer_class = PlanVersionDetailSerializer
     lookup_field = "version_id"
     http_method_names = [
@@ -760,10 +744,6 @@ class InvoiceViewSet(api_views.InvoiceViewSet):
 
 
 class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
-    """
-    A simple ViewSet for viewing and editing Backtests.
-    """
-
     lookup_field = "backtest_id"
     http_method_names = [
         "get",
@@ -828,10 +808,6 @@ class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
 
 class ProductViewSet(viewsets.ModelViewSet):
-    """
-    A simple ViewSet for viewing and editing Products.
-    """
-
     serializer_class = ProductSerializer
     lookup_field = "product_id"
     http_method_names = [
@@ -910,10 +886,6 @@ class ActionViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
 
 class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
-    """
-    A simple ViewSet for viewing and editing ExternalPlanLink.
-    """
-
     serializer_class = ExternalPlanLinkSerializer
     permission_classes = [IsAuthenticated & ValidOrganization]
     lookup_field = "external_plan_id"
@@ -972,10 +944,6 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
 
 
 class OrganizationSettingViewSet(viewsets.ModelViewSet):
-    """
-    A simple ViewSet for viewing and editing OrganizationSettings.
-    """
-
     permission_classes = [IsAuthenticated & ValidOrganization]
     http_method_names = ["get", "head", "patch"]
     lookup_field = "setting_id"
@@ -1036,10 +1004,6 @@ class OrganizationSettingViewSet(viewsets.ModelViewSet):
 class PricingUnitViewSet(
     mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet
 ):
-    """
-    A simple ViewSet for viewing and editing PricingUnits.
-    """
-
     serializer_class = PricingUnitSerializer
     permission_classes = [IsAuthenticated & ValidOrganization]
     http_method_names = ["get", "post", "head"]
@@ -1065,10 +1029,6 @@ class OrganizationViewSet(
     mixins.CreateModelMixin,
     viewsets.GenericViewSet,
 ):
-    """
-    A simple ViewSet for viewing and editing OrganizationSettings.
-    """
-
     permission_classes = [IsAuthenticated & ValidOrganization]
     http_method_names = ["get", "patch", "head", "post"]
     permission_classes_per_method = {

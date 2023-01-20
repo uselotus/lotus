@@ -147,10 +147,6 @@ class PermissionPolicyMixin:
 
 
 class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
-    """
-    A simple ViewSet for viewing and editing Customers.
-    """
-
     lookup_field = "customer_id"
     http_method_names = ["get", "post", "head"]
     queryset = Customer.objects.all()
@@ -315,10 +311,6 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
 
 class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
-    """
-    A simple ViewSet for viewing and editing Products.
-    """
-
     serializer_class = PlanSerializer
     lookup_field = "plan_id"
     http_method_names = ["get", "head"]
@@ -443,10 +435,6 @@ class SubscriptionViewSet(
     mixins.ListModelMixin,
     viewsets.GenericViewSet,
 ):
-    """
-    A simple ViewSet for viewing and editing Subscriptions.
-    """
-
     http_method_names = [
         "get",
         "head",
@@ -841,9 +829,6 @@ class SubscriptionViewSet(
 
 
 class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
-    """
-    A simple ViewSet for viewing and editing Invoices.
-    """
 
     serializer_class = InvoiceSerializer
     http_method_names = ["get", "patch", "head"]
@@ -942,10 +927,6 @@ class CustomerBalanceAdjustmentViewSet(
     mixins.ListModelMixin,
     viewsets.GenericViewSet,
 ):
-    """
-    A simple ViewSet meant only for creating CustomerBalanceAdjustments.
-    """
-
     permission_classes = [ValidOrganization]
     http_method_names = ["get", "head", "post"]
     serializer_class = CustomerBalanceAdjustmentSerializer
