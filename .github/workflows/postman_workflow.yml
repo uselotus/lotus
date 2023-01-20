@@ -1,0 +1,92 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Collections Tests
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    services:
+      postgres:
+        image: timescale/timescaledb:latest-pg14
+        env:
+          POSTGRES_USER: lotus
+          POSTGRES_PASSWORD: lotus
+          SSLMODE: PREFER
+        ports:
+          - 5432:5432
+        # needed because the postgres container does not provide a healthcheck
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    environment: Development
+
+    env:
+      REDIS_HOST: localhost
+      DJANGO_SETTINGS_MODULE: "lotus.settings"
+      PYTHONPATH: "."
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      DEBUG: False
+      KAFKA_URL: "localhost:9092"
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: start redpanda
+        uses: redpanda-data/github-action@v0.1.3
+        with:
+          version: "latest"
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.9"
+
+      - name: Install pipenv
+        run: |
+          python -m pip install --upgrade pipenv wheel && pipenv update
+
+      - id: cache-pipenv
+        uses: actions/cache@v1
+        with:
+          path: ~/.local/share/virtualenvs
+          key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
+
+      - name: Install dependencies
+        if: steps.cache-pipenv.outputs.cache-hit != 'true'
+        run: |
+          pipenv install --deploy --dev
+
+      - name: Migrate
+        run: |
+          pipenv run python manage.py migrate --noinput
+
+      - name: Run tests
+        uses: anthonyvscode/newman-action@v1
+        with:
+          apiKey: ${{ secrets.postmanApiKey }}
+          collection: 18225965-f895719c-ab58-4f3d-ba21-5c918691697e
+          reporters: cli
+      - name: Output summary to console
+        run: echo ${{ steps.run-newman.outputs.summary }}
