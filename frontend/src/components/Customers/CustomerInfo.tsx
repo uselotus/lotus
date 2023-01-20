@@ -187,10 +187,6 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     groupField: "type",
     colorField: "type", // or seriesField in some cases
     color: ["#33658A", "#C3986B", "#D9D9D9", "#171412", "#547AA5"],
-
-    tooltip: {
-      fields: ["type"],
-    },
   };
 
   return (
