@@ -9,7 +9,7 @@ import { PricingUnit } from "../types/pricing-unit-type";
 interface PricingUnitDropDownProps {
   defaultValue?: string;
   setCurrentCurrency: (currency: string) => void;
-  setCurrentSymbol: (symbol: string) => void;
+  setCurrentSymbol?: (symbol: string) => void;
   shouldShowAllOption?: boolean;
 }
 
@@ -51,7 +51,7 @@ const PricingUnitDropDown: React.FC<PricingUnitDropDownProps> = ({
         const selectedPricingUnit = data?.find(
           (unit) => unit.code === currency
         );
-        if (selectedPricingUnit) {
+        if (selectedPricingUnit && setCurrentSymbol) {
           setCurrentSymbol(selectedPricingUnit.symbol);
         }
       }}
