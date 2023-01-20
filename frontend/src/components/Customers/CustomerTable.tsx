@@ -17,18 +17,20 @@ import { useNavigate } from "react-router-dom";
 
 function getHighlightedText(text: string, highlight: string) {
   // Split text on highlight term, include term itself into parts, ignore case
-  const parts = text.split(new RegExp(`(${highlight})`, "gi"));
-  return (
-    <span>
-      {parts.map((part) =>
-        part.toLowerCase() === highlight.toLowerCase() ? (
-          <span className="highlightText">{part}</span>
-        ) : (
-          part
-        )
-      )}
-    </span>
-  );
+  if (text) {
+    const parts = text.split(new RegExp(`(${highlight})`, "gi"));
+    return (
+      <span>
+        {parts.map((part) =>
+          part.toLowerCase() === highlight.toLowerCase() ? (
+            <span className="highlightText">{part}</span>
+          ) : (
+            part
+          )
+        )}
+      </span>
+    );
+  }
 }
 
 interface Props {
@@ -117,7 +119,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
       search: { transform: (value: any) => value },
       render: (_, record) => {
         if (searchQuery) {
-          return getHighlightedText(record.customer_name, searchQuery);
+          getHighlightedText(record.customer_name, searchQuery);
         }
         return record.customer_name;
       },
@@ -206,7 +208,8 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
     return data.filter(
       (item) =>
         item.customer_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.customer_name.toLowerCase().includes(searchQuery.toLowerCase())
+        (item.customer_name &&
+          item.customer_name.toLowerCase().includes(searchQuery.toLowerCase()))
     );
   };
 
