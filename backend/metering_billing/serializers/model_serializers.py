@@ -1319,7 +1319,9 @@ class PlanCreateSerializer(serializers.ModelSerializer):
             display_version_data["plan"] = plan
             display_version_data["organization"] = validated_data["organization"]
             display_version_data["created_by"] = validated_data["created_by"]
-            plan_version = InitialPlanVersionSerializer().create(display_version_data)
+            plan_version = InitialPlanVersionSerializer(context=self.context).create(
+                display_version_data
+            )
             if initial_external_links:
                 for link_data in initial_external_links:
                     link_data["plan"] = plan
@@ -1357,6 +1359,7 @@ class PlanCreateSerializer(serializers.ModelSerializer):
             plan.save()
             return plan
         except Exception as e:
+            print(e)
             plan.delete()
             raise ServerError(e)
 
