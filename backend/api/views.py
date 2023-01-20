@@ -167,6 +167,98 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         customer_data = CustomerSerializer(instance).data
         return Response(customer_data, status=status.HTTP_201_CREATED)
 
+    # @extend_schema(
+    #     request=inline_serializer(
+    #         name="CustomerBatchCreateRequest",
+    #         fields={
+    #             "customers": CustomerCreateSerializer(many=True),
+    #             "behavior_on_existing": serializers.ChoiceField(
+    #                 choices=["merge", "ignore", "overwrite"],
+    #                 help_text="Determines what to do if a customer with the same email or customer_id already exists. Ignore skips, merge merges the existing customer with the new customer, and overwrite overwrites the existing customer with the new customer.",
+    #             ),
+    #         },
+    #     ),
+    #     responses={
+    #         201: inline_serializer(
+    #             name="CustomerBatchCreateSuccess",
+    #             fields={
+    #                 "success": serializers.ChoiceField(choices=["all", "some"]),
+    #                 "failed_customers": serializers.DictField(
+    #                     required=False,
+    #                     help_text="Returns the customers that failed to be created, if any, in the same format as the request.",
+    #                 ),
+    #             },
+    #         ),
+    #         400: inline_serializer(
+    #             name="CustomerBatchCreateFailure",
+    #             fields={
+    #                 "success": serializers.ChoiceField(choices=["none"]),
+    #                 "failed_customers": serializers.DictField(
+    #                     help_text="Returns the customers that failed to be created in the same format as the request."
+    #                 ),
+    #             },
+    #         ),
+    #     },
+    # )
+    # @action(detail=False, methods=["post"])
+    # def batch(self, request, format=None):
+    #     organization = request.organization
+    #     serializer = CustomerCreateSerializer(
+    #         data=request.data["customers"],
+    #         many=True,
+    #         context={"organization": organization},
+    #     )
+    #     serializer.is_valid(raise_exception=True)
+    #     failed_customers = {}
+    #     behavior = request.data.get("behavior_on_existing", "merge")
+    #     for customer in serializer.validated_data:
+    #         try:
+    #             match = Customer.objects.filter(
+    #                 Q(email=customer["email"]) | Q(customer_id=customer["customer_id"]),
+    #                 organization=organization,
+    #             )
+    #             if match.exists():
+    #                 match = match.first()
+    #                 if behavior == "ignore":
+    #                     pass
+    #                 else:
+    #                     if "customer_id" in customer:
+    #                         non_unique_id = Customer.objects.filter(
+    #                             ~Q(pk=match.pk), customer_id=customer["customer_id"]
+    #                         ).exists()
+    #                         if non_unique_id:
+    #                             failed_customers[
+    #                                 customer["customer_id"]
+    #                             ] = "customer_id already exists"
+    #                             continue
+    #                     CustomerUpdateSerializer().update(
+    #                         match, customer, behavior=behavior
+    #                     )
+    #             else:
+    #                 customer["organization"] = organization
+    #                 CustomerCreateSerializer().create(customer)
+    #         except Exception as e:
+    #             identifier = customer.get("customer_id", customer.get("email"))
+    #             failed_customers[identifier] = str(e)
+
+    #     if len(failed_customers) == 0 or len(failed_customers) < len(
+    #         serializer.validated_data
+    #     ):
+    #         return Response(
+    #             {
+    #                 "success": "all" if len(failed_customers) == 0 else "some",
+    #                 "failed_customers": failed_customers,
+    #             },
+    #             status=status.HTTP_201_CREATED,
+    #         )
+    #     return Response(
+    #         {
+    #             "success": "none",
+    #             "failed_customers": failed_customers,
+    #         },
+    #         status=status.HTTP_400_BAD_REQUEST,
+    #     )
+
     def perform_create(self, serializer):
         try:
             return serializer.save(organization=self.request.organization)
@@ -1194,95 +1286,6 @@ class GetCustomerFeatureAccessView(APIView):
         return Response(
             features,
             status=status.HTTP_200_OK,
-        )
-
-
-class CustomerBatchCreateView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
-
-    @extend_schema(
-        request=inline_serializer(
-            name="CustomerBatchCreateRequest",
-            fields={
-                "customers": CustomerCreateSerializer(many=True),
-                "behavior_on_existing": serializers.ChoiceField(
-                    choices=["merge", "ignore", "overwrite"]
-                ),
-            },
-        ),
-        responses={
-            201: inline_serializer(
-                name="CustomerBatchCreateSuccess",
-                fields={
-                    "success": serializers.ChoiceField(choices=["all", "some"]),
-                    "failed_customers": serializers.DictField(required=False),
-                },
-            ),
-            400: inline_serializer(
-                name="CustomerBatchCreateFailure",
-                fields={
-                    "success": serializers.ChoiceField(choices=["none"]),
-                    "failed_customers": serializers.DictField(),
-                },
-            ),
-        },
-    )
-    def post(self, request, format=None):
-        organization = request.organization
-        serializer = CustomerCreateSerializer(
-            data=request.data["customers"],
-            many=True,
-            context={"organization": organization},
-        )
-        serializer.is_valid(raise_exception=True)
-        failed_customers = {}
-        behavior = request.data.get("behavior_on_existing", "merge")
-        for customer in serializer.validated_data:
-            try:
-                match = Customer.objects.filter(
-                    Q(email=customer["email"]) | Q(customer_id=customer["customer_id"]),
-                    organization=organization,
-                )
-                if match.exists():
-                    match = match.first()
-                    if behavior == "ignore":
-                        pass
-                    else:
-                        if "customer_id" in customer:
-                            non_unique_id = Customer.objects.filter(
-                                ~Q(pk=match.pk), customer_id=customer["customer_id"]
-                            ).exists()
-                            if non_unique_id:
-                                failed_customers[
-                                    customer["customer_id"]
-                                ] = "customer_id already exists"
-                                continue
-                        CustomerCreateSerializer().update(
-                            match, customer, behavior=behavior
-                        )
-                else:
-                    customer["organization"] = organization
-                    CustomerCreateSerializer().create(customer)
-            except Exception as e:
-                identifier = customer.get("customer_id", customer.get("email"))
-                failed_customers[identifier] = str(e)
-
-        if len(failed_customers) == 0 or len(failed_customers) < len(
-            serializer.validated_data
-        ):
-            return Response(
-                {
-                    "success": "all" if len(failed_customers) == 0 else "some",
-                    "failed_customers": failed_customers,
-                },
-                status=status.HTTP_201_CREATED,
-            )
-        return Response(
-            {
-                "success": "none",
-                "failed_customers": failed_customers,
-            },
-            status=status.HTTP_400_BAD_REQUEST,
         )
 
 
