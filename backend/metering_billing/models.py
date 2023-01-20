@@ -1302,7 +1302,7 @@ class PlanComponent(models.Model):
         return str(self.billable_metric)
 
     def save(self, *args, **kwargs):
-        if not self.pricing_unit:
+        if self.pricing_unit is None and self.plan_version is not None:
             self.pricing_unit = self.plan_version.pricing_unit
         super().save(*args, **kwargs)
 
