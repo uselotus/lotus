@@ -447,6 +447,7 @@ class SubscriptionViewSet(
             if serializer.validated_data.get("subscription_filters"):
                 for filter in serializer.validated_data["subscription_filters"]:
                     m2m, _ = CategoricalFilter.objects.get_or_create(
+                        organization=organization,
                         property_name=filter["property_name"],
                         comparison_value=[filter["value"]],
                         operator=CATEGORICAL_FILTER_OPERATORS.ISIN,

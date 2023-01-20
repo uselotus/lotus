@@ -207,7 +207,7 @@ class SubscriptionCategoricalFilterSerializer(
         comparison_value = validated_data.pop("value")
         comparison_value = [comparison_value]
         validated_data["comparison_value"] = comparison_value
-        return CategoricalFilter.objects.create(
+        return CategoricalFilter.objects.get_or_create(
             **validated_data, operator=CATEGORICAL_FILTER_OPERATORS.ISIN
         )
 
@@ -1132,6 +1132,11 @@ class SubscriptionRecordCreateSerializer(
             try:
                 cf, _ = CategoricalFilter.objects.get_or_create(**sub_cat_filter_dict)
             except CategoricalFilter.MultipleObjectsReturned:
+                cf = (
+                    CategoricalFilter.objects.filter(**sub_cat_filter_dict)
+                    .first()
+                    .delete()
+                )
                 cf = CategoricalFilter.objects.filter(**sub_cat_filter_dict).first()
             subscription_filters.append(cf)
         sub_record = SubscriptionRecord.objects.create_with_filters(
