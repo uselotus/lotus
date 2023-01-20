@@ -3,7 +3,7 @@ from decimal import Decimal
 import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
-from django.db.models import Q, Sum
+from django.db.models import DecimalField, Q, Sum
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -580,9 +580,17 @@ class CustomerWithRevenueSerializer(serializers.ModelSerializer):
 
     total_amount_due = serializers.SerializerMethodField()
 
-    def get_total_amount_due(self, obj) -> float:
-        total_amount_due = float(self.context.get("total_amount_due"))
-        return total_amount_due
+    def get_total_amount_due(self, obj) -> Decimal:
+        try:
+            return obj.total_amount_due
+        except AttributeError:
+            return (
+                obj.invoices.filter(payment_status=Invoice.PaymentStatus.UNPAID)
+                .aggregate(
+                    unpaid_inv_amount=Sum("cost_due", output_field=DecimalField())
+                )
+                .get("unpaid_inv_amount")
+            )
 
 
 class CustomerSerializer(api_serializers.CustomerSerializer):
@@ -1783,5 +1791,6 @@ class UsageAlertCreateSerializer(serializers.ModelSerializer):
             plan_version=plan_version,
             **validated_data,
         )
+        return usage_alert
         return usage_alert
         return usage_alert

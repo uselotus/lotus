@@ -764,8 +764,8 @@ class CustomerBalanceAdjustment(models.Model):
                 )
             )
             .order_by(
+                F("expires_at").asc(nulls_last=True),
                 F("cost_basis").desc(nulls_last=True),
-                F("expires_at").desc(nulls_last=True),
             )
         )
         am = amount

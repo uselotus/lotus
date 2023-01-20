@@ -1045,7 +1045,7 @@ class GaugeHandler(MetricHandler):
     @staticmethod
     def archive_metric(metric: Metric) -> Metric:
         from .common_query_templates import CAGG_DROP
-        from .gauge_query_templates import GAUGE_DELTA_DROP_TRIGGER
+        from .gauge_query_templates import GAUGE_DELTA_DROP_OLD
 
         organization = metric.organization
         sql_injection_data = {
@@ -1059,7 +1059,7 @@ class GaugeHandler(MetricHandler):
         }
         query = Template(CAGG_DROP).render(**sql_injection_data)
         if metric.event_type == "delta":
-            trigger = Template(GAUGE_DELTA_DROP_TRIGGER).render(**sql_injection_data)
+            trigger = Template(GAUGE_DELTA_DROP_OLD).render(**sql_injection_data)
         with connection.cursor() as cursor:
             cursor.execute(query)
             if metric.event_type == "delta":
