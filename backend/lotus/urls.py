@@ -118,6 +118,16 @@ urlpatterns = [
     path("api/", include((api_router.urls, "api"), namespace="api")),
     path("api/track/", api_views.track_event, name="track_event"),
     path(
+        "api/metric_access/",
+        api_views.MetricAccessView.as_view(),
+        name="metric_access",
+    ),
+    path(
+        "api/feature_access/",
+        api_views.FeatureAccessView.as_view(),
+        name="feature_access",
+    ),
+    path(
         "api/customer_metric_access/",
         api_views.GetCustomerEventAccessView.as_view(),
         name="customer_metric_access",

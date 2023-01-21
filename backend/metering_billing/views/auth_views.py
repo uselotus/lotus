@@ -137,7 +137,7 @@ class LoginView(LoginViewMixin, APIView):
 class DemoLoginView(LoginViewMixin, APIView):
     @extend_schema(
         request=inline_serializer(
-            name="LoginRequest",
+            name="DemoLoginRequest",
             fields={
                 "username": serializers.CharField(),
                 "password": serializers.CharField(),
@@ -145,7 +145,7 @@ class DemoLoginView(LoginViewMixin, APIView):
         ),
         responses={
             200: inline_serializer(
-                name="LoginSuccess",
+                name="DemoLoginSuccess",
                 fields={
                     "detail": serializers.CharField(),
                     "token": serializers.CharField(),
@@ -153,7 +153,7 @@ class DemoLoginView(LoginViewMixin, APIView):
                 },
             ),
             400: inline_serializer(
-                name="LoginFailure",
+                name="DemoLoginFailure",
                 fields={
                     "detail": serializers.CharField(),
                 },
