@@ -28,7 +28,7 @@ export interface PlanDetailType extends PlanType {
 export interface CreatePlanVersionType {
   description?: string;
   plan_id?: string;
-  features: FeatureType[];
+  features: string[];
   components: CreateComponent[];
   flat_rate: number;
   usage_billing_frequency?: string;
@@ -52,7 +52,10 @@ export interface PriceAdjustment {
 }
 
 export interface PlanVersionType
-  extends Omit<CreatePlanVersionType, "components" | "currency_code"> {
+  extends Omit<
+    CreatePlanVersionType,
+    "components" | "currency_code" | "features"
+  > {
   description: string;
   plan_id: string;
   flat_fee_billing_type: string;

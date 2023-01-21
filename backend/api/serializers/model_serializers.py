@@ -32,6 +32,7 @@ from metering_billing.models import (
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.serializer_utils import (
     BalanceAdjustmentUUIDField,
+    FeatureUUIDField,
     InvoiceUUIDField,
     MetricUUIDField,
     PlanUUIDField,
@@ -741,13 +742,20 @@ class FeatureSerializer(
     class Meta:
         model = Feature
         fields = (
+            "feature_id",
             "feature_name",
             "feature_description",
         )
         extra_kwargs = {
-            "feature_name": {"required": True},
-            "feature_description": {"required": True},
+            "feature_id": {
+                "required": True,
+                "read_only": True,
+            },
+            "feature_name": {"required": True, "read_only": True},
+            "feature_description": {"required": True, "read_only": True},
         }
+
+    feature_id = FeatureUUIDField()
 
 
 class PriceTierSerializer(
@@ -1633,5 +1641,6 @@ class UsageAlertSerializer(serializers.ModelSerializer):
     metric = MetricSerializer()
     plan_version = LightweightPlanVersionSerializer()
     metric = MetricSerializer()
+    plan_version = LightweightPlanVersionSerializer()
     plan_version = LightweightPlanVersionSerializer()
     plan_version = LightweightPlanVersionSerializer()

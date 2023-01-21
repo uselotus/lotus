@@ -46,6 +46,7 @@ from metering_billing.serializers.model_serializers import (
     CustomerUpdateSerializer,
     EventSerializer,
     ExternalPlanLinkSerializer,
+    FeatureCreateSerializer,
     FeatureSerializer,
     MetricCreateSerializer,
     MetricSerializer,
@@ -527,9 +528,15 @@ class FeatureViewSet(
     }
     queryset = Feature.objects.all()
 
+    def get_serializer_class(self):
+        if self.action == "create":
+            return FeatureCreateSerializer
+        return FeatureSerializer
+
     def get_queryset(self):
         organization = self.request.organization
-        return Feature.objects.filter(organization=organization)
+        objs = Feature.objects.filter(organization=organization)
+        return objs
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -558,8 +565,16 @@ class FeatureViewSet(
             )
         return response
 
+    @extend_schema(responses=FeatureSerializer)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = self.perform_create(serializer)
+        feature_data = FeatureSerializer(instance).data
+        return Response(feature_data, status=status.HTTP_201_CREATED)
+
     def perform_create(self, serializer):
-        serializer.save(organization=self.request.organization)
+        return serializer.save(organization=self.request.organization)
 
 
 class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -1130,4 +1145,5 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
+        return context
         return context

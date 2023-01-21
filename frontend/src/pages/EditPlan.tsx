@@ -61,7 +61,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
     useState<boolean>(false);
   const [activeVersion, setActiveVersion] = useState<boolean>(false);
   const [activeVersionType, setActiveVersionType] = useState<string>();
-  const [allCurrencies, setAllCurrencies] = useState<PricingUnit[]>([]);
+  const [allCurrencies, setAllCurrencies] = useState<CurrencyType[]>([]);
   const navigate = useNavigate();
   const [componentsData, setComponentsData] = useState<any>([]);
   const [form] = Form.useForm();
@@ -80,7 +80,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
     plan.versions[versionIndex].price_adjustment?.price_adjustment_type ??
       "none"
   );
-  const [selectedCurrency, setSelectedCurrency] = useState<PricingUnit>(
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>(
     plan.versions[versionIndex].currency ?? {
       symbol: "",
       code: "",
@@ -301,6 +301,16 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             usagecomponentslist.push(usagecomponent);
           }
         }
+
+        const featureIdList: string[] = [];
+        const features: any = Object.values(planFeatures);
+        if (features) {
+          for (let i = 0; i < features.length; i++) {
+            featureIdList.push(features[i].feature_id);
+          }
+        }
+
+
         if (values.usage_billing_frequency === "yearly") {
           values.usage_billing_frequency = "end_of_period";
         }
@@ -311,7 +321,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           transition_to_plan_id: values.transition_to_plan_id,
           flat_rate: values.flat_rate,
           components: usagecomponentslist,
-          features: planFeatures,
+          features: featureIdList,
           usage_billing_frequency: values.usage_billing_frequency,
           currency_code: values.plan_currency.code,
         };
@@ -361,7 +371,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             transition_to_plan_id: values.transition_to_plan_id,
             flat_rate: values.flat_rate,
             components: usagecomponentslist,
-            features: planFeatures,
+            features: featureIdList,
             usage_billing_frequency: values.usage_billing_frequency,
             make_active: activeVersion,
             make_active_type: activeVersionType,

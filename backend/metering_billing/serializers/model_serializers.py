@@ -997,6 +997,12 @@ class PriceAdjustmentSerializer(serializers.ModelSerializer):
     price_adjustment_name = serializers.CharField(default="")
 
 
+class FeatureCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Feature
+        fields = ("feature_name", "feature_description")
+
+
 class PlanVersionCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlanVersion
@@ -1038,7 +1044,13 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
     components = PlanComponentCreateSerializer(
         many=True, allow_null=True, required=False, source="plan_components"
     )
-    features = FeatureSerializer(many=True, allow_null=True, required=False)
+    features = SlugRelatedFieldWithOrganization(
+        slug_field="feature_id",
+        queryset=Feature.objects.all(),
+        many=True,
+        allow_null=True,
+        required=False,
+    )
     price_adjustment = PriceAdjustmentSerializer(required=False)
     plan_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
@@ -1135,16 +1147,17 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
         for component in components:
             component.plan_version = billing_plan
             component.save()
-        for feature_data in features_data:
-            feature_data["organization"] = org
-            description = feature_data.pop("description", None)
-            try:
-                f, created = Feature.objects.get_or_create(**feature_data)
-                if created and description:
-                    f.description = description
-                    f.save()
-            except Feature.MultipleObjectsReturned:
-                f = Feature.objects.filter(**feature_data).first()
+        for f in features_data:
+            # feature_data["organization"] = org
+            # description = feature_data.pop("description", None)
+            # try:
+            #     f, created = Feature.objects.get_or_create(**feature_data)
+            #     if created and description:
+            #         f.description = description
+            #         f.save()
+            # except Feature.MultipleObjectsReturned:
+            # f = Feature.objects.filter(**feature_data).first()
+            assert type(f) is Feature
             billing_plan.features.add(f)
         if price_adjustment_data:
             price_adjustment_data["organization"] = org
