@@ -63,8 +63,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
       <div className="py-4 px-8 rounded-lg bg-[#FFFFFF]  border-2 border-solid  border-[#EAEAEB]">
         {metric.metric_type === "custom" ? (
           <div className="flex flex-col">
-            {/* {format(metric.custom_sql, { language: "mysql" })} */}
-            {metric.custom_sql}
+            {format(metric.custom_sql, { language: "sql" })}
           </div>
         ) : (
           <div className="py-4 grid grid-cols-2 items-start justify-between ">
