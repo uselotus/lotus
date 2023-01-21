@@ -53,17 +53,18 @@ reportlab = "*"
 jinja2 = "*"
 sqlparse = "*"
 ruff = "*"
+"ruamel.yaml" = "*"
 
 [dev-packages]
 platformdirs = "*"
-isort = "*"
 pytest-django = "*"
 locust = "*"
 django-silk = "*"
 pytest-cov = "*"
 black = "*"
-pylint = "*"
 sqlalchemy = "*"
+ruff = "*"
+pylint = "*"
 
 [requires]
 python_version = "3.9"

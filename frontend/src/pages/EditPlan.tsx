@@ -35,7 +35,7 @@ import ComponentDisplay from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import TargetCustomerForm from "../components/Plans/TargetCustomerForm";
 import VersionActiveForm from "../components/Plans/VersionActiveForm";
-import { PricingUnit } from "../types/pricing-unit-type";
+import { CurrencyType } from "../types/pricing-unit-type";
 
 interface CustomizedState {
   plan: PlanType;
@@ -61,7 +61,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
     useState<boolean>(false);
   const [activeVersion, setActiveVersion] = useState<boolean>(false);
   const [activeVersionType, setActiveVersionType] = useState<string>();
-  const [allCurrencies, setAllCurrencies] = useState<PricingUnit[]>([]);
+  const [allCurrencies, setAllCurrencies] = useState<CurrencyType[]>([]);
   const navigate = useNavigate();
   const [componentsData, setComponentsData] = useState<any>([]);
   const [form] = Form.useForm();
@@ -80,7 +80,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
     plan.versions[versionIndex].price_adjustment?.price_adjustment_type ??
       "none"
   );
-  const [selectedCurrency, setSelectedCurrency] = useState<PricingUnit>(
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>(
     plan.versions[versionIndex].currency ?? {
       symbol: "",
       code: "",
@@ -301,6 +301,16 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             usagecomponentslist.push(usagecomponent);
           }
         }
+
+        const featureIdList: string[] = [];
+        const features: any = Object.values(planFeatures);
+        if (features) {
+          for (let i = 0; i < features.length; i++) {
+            featureIdList.push(features[i].feature_id);
+          }
+        }
+
+
         if (values.usage_billing_frequency === "yearly") {
           values.usage_billing_frequency = "end_of_period";
         }
@@ -311,9 +321,9 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           transition_to_plan_id: values.transition_to_plan_id,
           flat_rate: values.flat_rate,
           components: usagecomponentslist,
-          features: planFeatures,
+          features: featureIdList,
           usage_billing_frequency: values.usage_billing_frequency,
-          currency_code: values.plan_currency,
+          currency_code: values.plan_currency.code,
         };
         if (values.align_plan == "calendar_aligned") {
           if (values.plan_duration === "yearly") {
@@ -361,11 +371,11 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             transition_to_plan_id: values.transition_to_plan_id,
             flat_rate: values.flat_rate,
             components: usagecomponentslist,
-            features: planFeatures,
+            features: featureIdList,
             usage_billing_frequency: values.usage_billing_frequency,
             make_active: activeVersion,
             make_active_type: activeVersionType,
-            currency_code: values.plan_currency,
+            currency_code: values.plan_currency.code,
           };
           if (values.align_plan == "calendar_aligned") {
             if (values.plan_duration === "yearly") {
@@ -684,7 +694,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             </Col>
             <Col span="24">
               <Card
-                className="w-full my-5"
+                className="w-full my-6"
                 title="Added Features"
                 style={{
                   borderRadius: "0.5rem",

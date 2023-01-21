@@ -6,6 +6,10 @@ from decimal import Decimal
 import pytest
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.models import (
     Event,
     Invoice,
@@ -18,9 +22,7 @@ from metering_billing.models import (
 )
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PRICE_ADJUSTMENT_TYPE
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
+from metering_billing.invoice import generate_invoice
 
 
 @pytest.fixture
@@ -281,7 +283,7 @@ class TestGenerateInvoice:
                 {"num_characters": 125, "peak_bandwith": 148, "email": f"{i}"},
                 {"num_characters": 543, "peak_bandwith": 16, "email": f"{i}"},
             )
-            event_set = baker.make(
+            baker.make(
                 Event,
                 organization=setup_dict["org"],
                 customer=setup_dict["customer"],

@@ -6,6 +6,8 @@ import pytest
 import stripe
 from django.conf import settings
 from django.db.models import Q
+from rest_framework.test import APIClient
+
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Customer,
@@ -17,7 +19,6 @@ from metering_billing.models import (
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PAYMENT_PROVIDERS
-from rest_framework.test import APIClient
 
 STRIPE_SECRET_KEY = settings.STRIPE_SECRET_KEY
 stripe.api_key = STRIPE_SECRET_KEY
@@ -145,7 +146,6 @@ class TestStripeIntegration:
             ~Q(integrations__stripe__id=stripe_customer.id)
         ).delete()
         assert stripe_connector.import_customers(setup_dict["org"]) > 0
-        print(Customer.objects.all().values())
         new_cust = Customer.objects.get(email=stripe_customer.email)
 
         # now lets generate an invoice + for this customer
@@ -168,7 +168,7 @@ class TestStripeIntegration:
         try:
             stripe.Invoice.retrieve(invoice.external_payment_obj_id)
         except Exception as e:
-            assert False, "Payment intent not found for reason: {}".format(e)
+            assert False, f"Payment intent not found for reason: {e}"
 
     def test_update_invoice_status(self, integration_test_common_setup):
         setup_dict = integration_test_common_setup()
@@ -206,7 +206,7 @@ class TestStripeIntegration:
         try:
             stripe.Invoice.retrieve(invoice.external_payment_obj_id)
         except Exception as e:
-            assert False, "Payment intent not found for reason: {}".format(e)
+            assert False, f"Payment intent not found for reason: {e}"
 
         # update the status of the invoice
         new_status = stripe_connector.update_payment_object_status(
@@ -332,7 +332,6 @@ class TestStripeIntegration:
             billing_plan=setup_dict["plan"].display_version,
         ).delete()
         subs = stripe_connector.transfer_subscriptions(setup_dict["org"], end_now=True)
-        stripe_sub = subs[0]
         assert (
             SubscriptionRecord.objects.filter(
                 organization=setup_dict["org"],

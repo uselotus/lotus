@@ -2,9 +2,11 @@
 title: "Webhooks"
 ---
 
-Lotus exposes endpoints to fully integrate into your stack. All webhooks maintain the following structure.
+Webhooks are HTTP callbacks that are triggered when an event occurs. You can use webhooks to get notified when an event occurs in Lotus.
 
 Here is a list of current webhooks.
+
+## Webhook Types
 
 ### invoice.created
 
@@ -13,3 +15,47 @@ This webhook is generated when a subscription ends and an invoice is generated.
 ### invoice.paid
 
 This webhook is generated when a payment through a payment provider integration is successful (i.e. a payment through Stripe).
+
+### usage_alert.triggered
+
+This webhook is generated when a usage alert is triggered. This is useful for notifying your users when they are approaching their usage limit.
+
+## Creating Webhooks
+
+You can create webhooks from the Developer Settings tab of the Settings page. After creating a webhook, you will be able to see the folloowing information, including the webhook secret, which is used for verifying the authenticity of the request.
+
+![Creation](/images/webhooks/webhook_creation.png)
+
+## Consuming Webhooks
+
+Lotus uses a service called Svix to handle the complexity behind webhooks, most importantly the signature verification so you can have peace of mind that the webhooks you receive are authentic. Once you have your webhook secret in hand, [head over to this page](https://docs.svix.com/receiving/verifying-payloads/how) to learn how to verify and webhooks, with examples for all the most popular frameworks including Django, Next, Gin, Ruby, and more!.
+
+## Webhook Response Schema
+
+```ts
+{
+  "attempt": 5,
+  "created_at": "2023-01-20 08:33:35.310436+00:00",
+  "properties": {
+    "event_type": "invoice.created",
+    "payload": {}
+  }
+}
+
+```
+
+<ParamField body="event_type" type="string (WebhookTriggerEventEnum)" required>
+  Enum: `"invoice.created"` `"invoice.paid"` `"usage_alert.triggered"`
+</ParamField>
+
+<ParamField body="payload" type="object" required>
+  The payload of the webhook. The structure of the payload depends on the event
+  type. In the case of `invoice.*`, the response will be an invoice (you can
+  check the schema in the [invoice section](/docs/api/invoice)). In the case of
+  `usage_alert.triggered`, the response will be a `UsageAlertPayload`, explained
+  below.
+</ParamField>
+
+### UsageAlertPayload
+
+![Usage](/images/webhooks/usage_alert_schema.png)

@@ -1,20 +1,61 @@
+import datetime
 import re
+from decimal import Decimal
 from typing import Literal, Optional, Union
 
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Sum
 from metering_billing.invoice import generate_balance_adjustment_invoice
-from metering_billing.models import *
+from metering_billing.models import (
+    CategoricalFilter,
+    Customer,
+    CustomerBalanceAdjustment,
+    Event,
+    ExternalPlanLink,
+    Feature,
+    Invoice,
+    InvoiceLineItem,
+    Metric,
+    NumericFilter,
+    Organization,
+    Plan,
+    PlanComponent,
+    PlanVersion,
+    PriceAdjustment,
+    PriceTier,
+    PricingUnit,
+    Subscription,
+    SubscriptionRecord,
+    Tag,
+    UsageAlert,
+)
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.serializer_utils import (
     BalanceAdjustmentUUIDField,
+    FeatureUUIDField,
+    InvoiceUUIDField,
     MetricUUIDField,
     PlanUUIDField,
     PlanVersionUUIDField,
     SlugRelatedFieldWithOrganization,
     SubscriptionUUIDField,
+    UsageAlertUUIDField,
 )
-from metering_billing.utils.enums import *
+from metering_billing.utils import convert_to_date, now_utc
+from metering_billing.utils.enums import (
+    BATCH_ROUNDING_TYPE,
+    CATEGORICAL_FILTER_OPERATORS,
+    CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
+    FLAT_FEE_BEHAVIOR,
+    FLAT_FEE_BILLING_TYPE,
+    INVOICE_STATUS_ENUM,
+    INVOICING_BEHAVIOR,
+    PAYMENT_PROVIDERS,
+    PRICE_TIER_TYPE,
+    SUBSCRIPTION_STATUS,
+    USAGE_BEHAVIOR,
+    USAGE_BILLING_BEHAVIOR,
+)
 from rest_framework import serializers
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -142,17 +183,14 @@ class CategoricalFilterSerializer(
     class Meta:
         model = CategoricalFilter
         fields = ("property_name", "operator", "comparison_value")
-        extra_kwargs = {
-            "property_name": {"required": True, "read_only": True},
-            "operator": {"required": True, "read_only": True},
-            "comparison_value": {"required": True, "read_only": True},
-        }
 
     comparison_value = serializers.ListField(child=serializers.CharField())
 
 
-class SubscriptionCategoricalFilterSerializer(CategoricalFilterSerializer):
-    class Meta(CategoricalFilterSerializer.Meta):
+class SubscriptionCategoricalFilterSerializer(
+    ConvertEmptyStringToSerializerMixin, serializers.ModelSerializer
+):
+    class Meta:
         model = CategoricalFilter
         fields = ("value", "property_name")
         extra_kwargs = {
@@ -171,7 +209,7 @@ class SubscriptionCategoricalFilterSerializer(CategoricalFilterSerializer):
         comparison_value = validated_data.pop("value")
         comparison_value = [comparison_value]
         validated_data["comparison_value"] = comparison_value
-        return CategoricalFilter.objects.create(
+        return CategoricalFilter.objects.get_or_create(
             **validated_data, operator=CATEGORICAL_FILTER_OPERATORS.ISIN
         )
 
@@ -256,27 +294,34 @@ class InvoiceLineItemSerializer(
             "subtotal": {"required": True},
             "billing_type": {"required": True, "allow_blank": False},
             "metadata": {"required": True},
-            "plan": {"required": True},
-            "subscription_filters": {"required": True},
+            "plan": {"required": True, "allow_null": True},
+            "subscription_filters": {"required": True, "allow_null": True},
         }
 
-    plan = LightweightPlanVersionSerializer(
-        source="associated_subscription_record.billing_plan",
-    )
-    subscription_filters = SubscriptionCategoricalFilterSerializer(
-        source="associated_subscription_record.filters",
-        many=True,
-    )
+    plan = serializers.SerializerMethodField(allow_null=True)
+    subscription_filters = serializers.SerializerMethodField(allow_null=True)
+
+    def get_subscription_filters(
+        self, obj
+    ) -> SubscriptionCategoricalFilterSerializer(many=True, allow_null=True):
+        ass_sub_record = obj.associated_subscription_record
+        if ass_sub_record:
+            return SubscriptionCategoricalFilterSerializer(
+                ass_sub_record.filters.all(), many=True
+            ).data
+        return None
+
+    def get_plan(self, obj) -> LightweightPlanVersionSerializer(allow_null=True):
+        ass_sub_record = obj.associated_subscription_record
+        if ass_sub_record:
+            return LightweightPlanVersionSerializer(ass_sub_record.billing_plan).data
+        return None
 
 
 class LightweightInvoiceLineItemSerializer(InvoiceLineItemSerializer):
     class Meta(InvoiceLineItemSerializer.Meta):
         fields = tuple(set(InvoiceLineItemSerializer.Meta.fields) - {"metadata"})
         extra_kwargs = {**InvoiceLineItemSerializer.Meta.extra_kwargs}
-
-    plan = serializers.CharField(
-        source="associated_subscription_record.billing_plan.plan.plan_name",
-    )
 
 
 class SellerSerializer(
@@ -304,6 +349,7 @@ class InvoiceSerializer(
     class Meta:
         model = Invoice
         fields = (
+            "invoice_id",
             "invoice_number",
             "cost_due",
             "currency",
@@ -320,6 +366,7 @@ class InvoiceSerializer(
             "invoice_pdf",
         )
         extra_kwargs = {
+            "invoice_id": {"required": True, "read_only": True},
             "invoice_number": {"required": True, "read_only": True},
             "cost_due": {"required": True, "read_only": True},
             "issue_date": {"required": True, "read_only": True},
@@ -343,8 +390,12 @@ class InvoiceSerializer(
             "invoice_pdf": {"required": True, "allow_null": True, "read_only": True},
         }
 
+    invoice_id = InvoiceUUIDField()
     external_payment_obj_type = serializers.ChoiceField(
-        choices=PAYMENT_PROVIDERS.choices, allow_null=True, required=True
+        choices=PAYMENT_PROVIDERS.choices,
+        allow_null=True,
+        required=True,
+        allow_blank=False,
     )
     currency = PricingUnitSerializer()
     customer = LightweightCustomerSerializerForInvoice()
@@ -358,7 +409,6 @@ class InvoiceSerializer(
         self, obj
     ) -> Literal[INVOICE_STATUS_ENUM.PAID, INVOICE_STATUS_ENUM.UNPAID,]:
         ps = obj.payment_status
-        print("PSSSSS", ps, Invoice.PaymentStatus.PAID, Invoice.PaymentStatus.UNPAID)
         if ps == Invoice.PaymentStatus.PAID:
             return INVOICE_STATUS_ENUM.PAID
         elif ps == Invoice.PaymentStatus.UNPAID:
@@ -421,6 +471,20 @@ class CustomerSerializer(
             "address",
             "tax_rate",
         )
+        extra_kwargs = {
+            "customer_id": {"required": True, "read_only": True},
+            "email": {"required": True, "read_only": True},
+            "customer_name": {"required": True, "read_only": True},
+            "invoices": {"required": True, "read_only": True},
+            "total_amount_due": {"required": True, "read_only": True},
+            "subscriptions": {"required": True, "read_only": True},
+            "integrations": {"required": True, "read_only": True},
+            "default_currency": {"required": True, "read_only": True},
+            "payment_provider": {"required": True, "read_only": True},
+            "has_payment_method": {"required": True, "read_only": True},
+            "address": {"required": True, "read_only": True},
+            "tax_rate": {"required": True, "read_only": True},
+        }
 
     customer_id = serializers.CharField()
     email = serializers.EmailField()
@@ -439,9 +503,9 @@ class CustomerSerializer(
         allow_blank=False,
     )
     has_payment_method = serializers.SerializerMethodField()
-    address = serializers.SerializerMethodField(required=False, allow_null=True)
+    address = serializers.SerializerMethodField()
 
-    def get_address(self, obj) -> AddressSerializer(allow_null=True, required=False):
+    def get_address(self, obj) -> AddressSerializer(allow_null=True, required=True):
         d = obj.properties.get("address", {})
         try:
             data = AddressSerializer(d).data
@@ -479,28 +543,35 @@ class CustomerSerializer(
         return d
 
     def get_subscriptions(self, obj) -> SubscriptionRecordSerializer(many=True):
-        sr_objs = obj.subscription_records.active().filter(
-            organization=self.context.get("organization"),
-            start_date__lte=now_utc(),
-            end_date__gte=now_utc(),
-        )
+        try:
+            sr_objs = obj.active_subscription_records
+        except AttributeError:
+            sr_objs = (
+                obj.subscription_records.active()
+                .filter(organization=obj.organization)
+                .order_by("start_date")
+            )
         return SubscriptionRecordSerializer(sr_objs, many=True).data
 
     def get_invoices(self, obj) -> LightweightInvoiceSerializer(many=True):
-        timeline = (
-            obj.invoices.filter(
-                ~Q(payment_status=Invoice.PaymentStatus.DRAFT),
-                organization=self.context.get("organization"),
-            )
-            .order_by("-issue_date")
-            .prefetch_related("currency", "line_items", "subscription")
-        )
+        try:
+            timeline = obj.active_invoices
+        except AttributeError:
+            timeline = obj.invoices.filter(
+                payment_status__in=[
+                    Invoice.PaymentStatus.PAID,
+                    Invoice.PaymentStatus.UNPAID,
+                ],
+                organization=obj.organization,
+            ).order_by("-issue_date")
         timeline = LightweightInvoiceSerializer(timeline, many=True).data
         return timeline
 
-    def get_total_amount_due(self, obj) -> float:
-        total_amount_due = float(obj.get_outstanding_revenue())
-        return total_amount_due
+    def get_total_amount_due(self, obj) -> Decimal:
+        try:
+            return obj.total_amount_due
+        except AttributeError:
+            return Decimal(0)
 
 
 class CustomerCreateSerializer(
@@ -670,13 +741,20 @@ class FeatureSerializer(
     class Meta:
         model = Feature
         fields = (
+            "feature_id",
             "feature_name",
             "feature_description",
         )
         extra_kwargs = {
-            "feature_name": {"required": True},
-            "feature_description": {"required": True},
+            "feature_id": {
+                "required": True,
+                "read_only": True,
+            },
+            "feature_name": {"required": True, "read_only": True},
+            "feature_description": {"required": True, "read_only": True},
         }
+
+    feature_id = FeatureUUIDField()
 
 
 class PriceTierSerializer(
@@ -1069,6 +1147,11 @@ class SubscriptionRecordCreateSerializer(
             try:
                 cf, _ = CategoricalFilter.objects.get_or_create(**sub_cat_filter_dict)
             except CategoricalFilter.MultipleObjectsReturned:
+                cf = (
+                    CategoricalFilter.objects.filter(**sub_cat_filter_dict)
+                    .first()
+                    .delete()
+                )
                 cf = CategoricalFilter.objects.filter(**sub_cat_filter_dict).first()
             subscription_filters.append(cf)
         sub_record = SubscriptionRecord.objects.create_with_filters(
@@ -1157,7 +1240,7 @@ class SubscriptionSerializer(
 class SubscriptionInvoiceSerializer(SubscriptionRecordSerializer):
     class Meta(SubscriptionRecordSerializer.Meta):
         model = SubscriptionRecord
-        fields = fields = tuple(
+        fields = tuple(
             set(SubscriptionRecordSerializer.Meta.fields)
             - set(
                 ["customer_id", "plan_id", "billing_plan", "auto_renew", "invoice_pdf"]
@@ -1304,7 +1387,6 @@ class InvoiceListFilterSerializer(serializers.Serializer):
         slug_field="customer_id",
         queryset=Customer.objects.all(),
         required=False,
-        source="customer",
         help_text="A filter for invoices for a specific customer",
     )
     payment_status = serializers.MultipleChoiceField(
@@ -1326,35 +1408,81 @@ class InvoiceListFilterSerializer(serializers.Serializer):
         return data
 
 
+class CreditDrawdownSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomerBalanceAdjustment
+        fields = (
+            "credit_id",
+            "amount",
+            "description",
+            "applied_at",
+        )
+
+    extra_kwargs = {
+        "credit_id": {"read_only": True, "required": True},
+        "amount": {"required": True, "read_only": True},
+        "description": {"required": True, "read_only": True},
+        "applied_at": {"required": True, "read_only": True},
+    }
+
+    credit_id = BalanceAdjustmentUUIDField(source="adjustment_id")
+    applied_at = serializers.DateTimeField(source="effective_at")
+    amount = serializers.DecimalField(max_value=0, decimal_places=10, max_digits=20)
+
+
 class CustomerBalanceAdjustmentSerializer(
     ConvertEmptyStringToSerializerMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = CustomerBalanceAdjustment
         fields = (
-            "adjustment_id",
+            "credit_id",
             "customer",
             "amount",
-            "pricing_unit",
+            "amount_remaining",
+            "currency",
             "description",
             "effective_at",
             "expires_at",
             "status",
-            "parent_adjustment_id",
             "amount_paid",
             "amount_paid_currency",
+            "drawdowns",
         )
+        extra_kwargs = {
+            "credit_id": {"read_only": True, "required": True},
+            "customer": {"read_only": True, "required": True},
+            "amount": {"required": True, "read_only": True},
+            "amount_remaining": {"read_only": True, "required": True},
+            "currency": {"read_only": True, "required": True},
+            "description": {"required": True, "read_only": True},
+            "effective_at": {"required": True, "read_only": True},
+            "expires_at": {"required": True, "read_only": True, "allow_null": True},
+            "status": {"read_only": True, "required": True},
+            "amount_paid": {"read_only": True, "required": True},
+            "amount_paid_currency": {
+                "read_only": True,
+                "required": True,
+                "allow_null": True,
+            },
+            "drawdowns": {"read_only": True, "required": True},
+        }
 
-    adjustment_id = BalanceAdjustmentUUIDField()
-    customer = LightweightCustomerSerializer(read_only=True)
-    pricing_unit = PricingUnitSerializer(read_only=True)
-    parent_adjustment_id = SlugRelatedFieldWithOrganization(
-        slug_field="adjustment_id",
-        required=False,
-        source="parent_adjustment",
-        read_only=True,
-    )
-    amount_paid_currency = PricingUnitSerializer(read_only=True)
+    credit_id = BalanceAdjustmentUUIDField(source="adjustment_id")
+    customer = LightweightCustomerSerializer()
+    currency = PricingUnitSerializer(source="pricing_unit")
+    amount_paid_currency = PricingUnitSerializer(allow_null=True)
+    drawdowns = serializers.SerializerMethodField()
+    amount = serializers.DecimalField(min_value=0, max_digits=20, decimal_places=10)
+    amount_remaining = serializers.SerializerMethodField()
+
+    def get_drawdowns(self, obj) -> CreditDrawdownSerializer(many=True):
+        return CreditDrawdownSerializer(obj.drawdowns, many=True).data
+
+    def get_amount_remaining(
+        self, obj
+    ) -> serializers.DecimalField(min_value=0, max_digits=20, decimal_places=10):
+        return obj.get_remaining_balance()
 
 
 class CustomerBalanceAdjustmentCreateSerializer(
@@ -1365,7 +1493,7 @@ class CustomerBalanceAdjustmentCreateSerializer(
         fields = (
             "customer_id",
             "amount",
-            "pricing_unit_code",
+            "currency_code",
             "description",
             "effective_at",
             "expires_at",
@@ -1375,7 +1503,7 @@ class CustomerBalanceAdjustmentCreateSerializer(
         extra_kwargs = {
             "customer_id": {"required": True, "write_only": True},
             "amount": {"required": True, "write_only": True},
-            "pricing_unit_code": {"required": True, "write_only": True},
+            "currency_code": {"required": True, "write_only": True},
             "description": {"required": False, "write_only": True},
             "effective_at": {"required": False, "write_only": True},
             "expires_at": {"required": False, "write_only": True},
@@ -1389,7 +1517,7 @@ class CustomerBalanceAdjustmentCreateSerializer(
         required=True,
         source="customer",
     )
-    pricing_unit_code = SlugRelatedFieldWithOrganization(
+    currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code",
         queryset=PricingUnit.objects.all(),
         required=True,
@@ -1403,14 +1531,16 @@ class CustomerBalanceAdjustmentCreateSerializer(
         source="amount_paid_currency",
         write_only=True,
     )
+    amount_paid = serializers.DecimalField(
+        min_value=0, max_digits=20, decimal_places=10, required=False
+    )
 
     def validate(self, data):
         data = super().validate(data)
         amount = data.get("amount", 0)
-        data["customer"]
         if amount <= 0:
             raise serializers.ValidationError("Amount must be greater than 0")
-        if data.get("amount_paid") and data.get("amount_paid") <= 0:
+        if data.get("amount_paid_currency_code") and data.get("amount_paid") <= 0:
             raise serializers.ValidationError("Amount paid must be greater than 0")
         return data
 
@@ -1437,7 +1567,13 @@ class CustomerBalanceAdjustmentUpdateSerializer(serializers.ModelSerializer):
         return data
 
     def update(self, instance, validated_data):
+        if instance.status != CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE:
+            raise serializers.ValidationError("Only active credits can be updated")
         instance.description = validated_data.get("description", instance.description)
+        new_expires_at = validated_data.get("expires_at")
+        now = now_utc()
+        if new_expires_at and new_expires_at < now:
+            raise serializers.ValidationError("Expiration date must be in the future")
         instance.expires_at = validated_data.get("expires_at", instance.expires_at)
         instance.save()
         return instance
@@ -1488,3 +1624,22 @@ class CustomerBalanceAdjustmentFilterSerializer(serializers.Serializer):
         source="pricing_unit",
         help_text="Filter to adjustments in a specific currency",
     )
+
+
+class UsageAlertSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UsageAlert
+        fields = (
+            "usage_alert_id",
+            "metric",
+            "plan_version",
+            "threshold",
+        )
+
+    usage_alert_id = UsageAlertUUIDField(read_only=True)
+    metric = MetricSerializer()
+    plan_version = LightweightPlanVersionSerializer()
+    metric = MetricSerializer()
+    plan_version = LightweightPlanVersionSerializer()
+    plan_version = LightweightPlanVersionSerializer()
+    plan_version = LightweightPlanVersionSerializer()

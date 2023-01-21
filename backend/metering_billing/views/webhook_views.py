@@ -66,11 +66,11 @@ def stripe_webhook_endpoint(request):
         )
     except ValueError as e:
         return Response(
-            "Invalid payload: {}".format(e), status=status.HTTP_400_BAD_REQUEST
+            f"Invalid payload: {e}", status=status.HTTP_400_BAD_REQUEST
         )
     except stripe.error.SignatureVerificationError as e:
         return Response(
-            "Invalid signature: {}".format(e), status=status.HTTP_400_BAD_REQUEST
+            f"Invalid signature: {e}", status=status.HTTP_400_BAD_REQUEST
         )
 
     # Handle the checkout.session.completed event

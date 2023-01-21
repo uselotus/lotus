@@ -2,9 +2,10 @@
 import base64
 import copy
 import json
+import logging
 import operator
 from functools import reduce
-from typing import Dict, Union
+from typing import Optional
 
 import posthog
 from api.serializers.model_serializers import (
@@ -36,8 +37,18 @@ from api.serializers.nonmodel_serializers import (
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
-from django.core.cache import cache
-from django.db.models import Count, F, Prefetch, Q
+from django.db.models import (
+    Count,
+    DecimalField,
+    F,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
 from django.db.utils import IntegrityError
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -59,6 +70,7 @@ from metering_billing.models import (
     CustomerBalanceAdjustment,
     Event,
     Invoice,
+    Metric,
     Plan,
     PlanComponent,
     PriceTier,
@@ -68,6 +80,7 @@ from metering_billing.models import (
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.serializer_utils import (
     BalanceAdjustmentUUIDField,
+    InvoiceUUIDField,
     MetricUUIDField,
     PlanUUIDField,
 )
@@ -77,7 +90,19 @@ from metering_billing.utils import (
     date_as_max_dt,
     now_utc,
 )
-from metering_billing.utils.enums import *
+from metering_billing.utils.enums import (
+    CATEGORICAL_FILTER_OPERATORS,
+    CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
+    FLAT_FEE_BEHAVIOR,
+    INVOICING_BEHAVIOR,
+    METRIC_STATUS,
+    ORGANIZATION_SETTING_NAMES,
+    PLAN_STATUS,
+    SUBSCRIPTION_STATUS,
+    USAGE_BEHAVIOR,
+    USAGE_BILLING_BEHAVIOR,
+    USAGE_BILLING_FREQUENCY,
+)
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import (
     action,
@@ -93,7 +118,6 @@ from rest_framework.views import APIView
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
-import logging
 
 logger = logging.getLogger("django.server")
 
@@ -116,27 +140,54 @@ class PermissionPolicyMixin:
                 self.permission_classes = self.permission_classes_per_method.get(
                     handler.__name__
                 )
-        except:
+        except Exception:
             pass
 
         super().check_permissions(request)
 
 
 class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
-    """
-    A simple ViewSet for viewing and editing Customers.
-    """
-
     lookup_field = "customer_id"
     http_method_names = ["get", "post", "head"]
     queryset = Customer.objects.all()
 
     def get_queryset(self):
+        now = now_utc()
         organization = self.request.organization
-        qs = Customer.objects.filter(organization=organization).prefetch_related(
-            "subscription_records",
-            "invoices",
-            "default_currency",
+        qs = Customer.objects.filter(organization=organization)
+        qs = qs.select_related("default_currency")
+        qs = qs.prefetch_related(
+            Prefetch(
+                "subscriptions",
+                queryset=SubscriptionRecord.objects.active(now)
+                .filter(
+                    organization=organization,
+                )
+                .select_related("customer", "billing_plan")
+                .prefetch_related("filters"),
+                to_attr="active_subscription_records",
+            ),
+            Prefetch(
+                "invoices",
+                queryset=Invoice.objects.filter(
+                    organization=organization,
+                    payment_status__in=[
+                        Invoice.PaymentStatus.UNPAID,
+                        Invoice.PaymentStatus.PAID,
+                    ],
+                )
+                .order_by("-issue_date")
+                .select_related("currency", "subscription", "organization")
+                .prefetch_related("line_items"),
+                to_attr="active_invoices",
+            ),
+        )
+        qs = qs.annotate(
+            total_amount_due=Sum(
+                "invoices__cost_due",
+                filter=Q(invoices__payment_status=Invoice.PaymentStatus.UNPAID),
+                output_field=DecimalField(),
+            )
         )
         return qs
 
@@ -145,15 +196,109 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             return CustomerCreateSerializer
         return CustomerSerializer
 
-    @extend_schema(
-        responses={200: CustomerSerializer()},
-    )
+    @extend_schema(responses=CustomerSerializer)
     def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = self.perform_create(serializer)
+        customer_data = CustomerSerializer(instance).data
+        return Response(customer_data, status=status.HTTP_201_CREATED)
+
+    # @extend_schema(
+    #     request=inline_serializer(
+    #         name="CustomerBatchCreateRequest",
+    #         fields={
+    #             "customers": CustomerCreateSerializer(many=True),
+    #             "behavior_on_existing": serializers.ChoiceField(
+    #                 choices=["merge", "ignore", "overwrite"],
+    #                 help_text="Determines what to do if a customer with the same email or customer_id already exists. Ignore skips, merge merges the existing customer with the new customer, and overwrite overwrites the existing customer with the new customer.",
+    #             ),
+    #         },
+    #     ),
+    #     responses={
+    #         201: inline_serializer(
+    #             name="CustomerBatchCreateSuccess",
+    #             fields={
+    #                 "success": serializers.ChoiceField(choices=["all", "some"]),
+    #                 "failed_customers": serializers.DictField(
+    #                     required=False,
+    #                     help_text="Returns the customers that failed to be created, if any, in the same format as the request.",
+    #                 ),
+    #             },
+    #         ),
+    #         400: inline_serializer(
+    #             name="CustomerBatchCreateFailure",
+    #             fields={
+    #                 "success": serializers.ChoiceField(choices=["none"]),
+    #                 "failed_customers": serializers.DictField(
+    #                     help_text="Returns the customers that failed to be created in the same format as the request."
+    #                 ),
+    #             },
+    #         ),
+    #     },
+    # )
+    # @action(detail=False, methods=["post"])
+    # def batch(self, request, format=None):
+    #     organization = request.organization
+    #     serializer = CustomerCreateSerializer(
+    #         data=request.data["customers"],
+    #         many=True,
+    #         context={"organization": organization},
+    #     )
+    #     serializer.is_valid(raise_exception=True)
+    #     failed_customers = {}
+    #     behavior = request.data.get("behavior_on_existing", "merge")
+    #     for customer in serializer.validated_data:
+    #         try:
+    #             match = Customer.objects.filter(
+    #                 Q(email=customer["email"]) | Q(customer_id=customer["customer_id"]),
+    #                 organization=organization,
+    #             )
+    #             if match.exists():
+    #                 match = match.first()
+    #                 if behavior == "ignore":
+    #                     pass
+    #                 else:
+    #                     if "customer_id" in customer:
+    #                         non_unique_id = Customer.objects.filter(
+    #                             ~Q(pk=match.pk), customer_id=customer["customer_id"]
+    #                         ).exists()
+    #                         if non_unique_id:
+    #                             failed_customers[
+    #                                 customer["customer_id"]
+    #                             ] = "customer_id already exists"
+    #                             continue
+    #                     CustomerUpdateSerializer().update(
+    #                         match, customer, behavior=behavior
+    #                     )
+    #             else:
+    #                 customer["organization"] = organization
+    #                 CustomerCreateSerializer().create(customer)
+    #         except Exception as e:
+    #             identifier = customer.get("customer_id", customer.get("email"))
+    #             failed_customers[identifier] = str(e)
+
+    #     if len(failed_customers) == 0 or len(failed_customers) < len(
+    #         serializer.validated_data
+    #     ):
+    #         return Response(
+    #             {
+    #                 "success": "all" if len(failed_customers) == 0 else "some",
+    #                 "failed_customers": failed_customers,
+    #             },
+    #             status=status.HTTP_201_CREATED,
+    #         )
+    #     return Response(
+    #         {
+    #             "success": "none",
+    #             "failed_customers": failed_customers,
+    #         },
+    #         status=status.HTTP_400_BAD_REQUEST,
+    #     )
 
     def perform_create(self, serializer):
         try:
-            serializer.save(organization=self.request.organization)
+            return serializer.save(organization=self.request.organization)
         except IntegrityError as e:
             cause = e.__cause__
             if "unique_email" in str(cause):
@@ -163,7 +308,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             raise ServerError("Unknown error: " + str(cause))
 
     def get_serializer_context(self):
-        context = super(CustomerViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         context.update({"organization": self.request.organization})
         return context
 
@@ -172,7 +317,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         if status.is_success(response.status_code):
             try:
                 username = self.request.user.username
-            except:
+            except Exception:
                 username = None
             organization = self.request.organization or self.request.user.organization
             posthog.capture(
@@ -190,10 +335,6 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
 
 class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
-    """
-    A simple ViewSet for viewing and editing Products.
-    """
-
     serializer_class = PlanSerializer
     lookup_field = "plan_id"
     http_method_names = ["get", "head"]
@@ -212,45 +353,71 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
         now = now_utc()
         organization = self.request.organization
-        qs = Plan.objects.filter(
-            organization=organization, status=PLAN_STATUS.ACTIVE
-        ).prefetch_related(
+        qs = Plan.objects.filter(organization=organization, status=PLAN_STATUS.ACTIVE)
+        # first go for the ones that are one away (FK) and not nested
+        qs = qs.select_related(
             "organization",
-            "organization__pricing_units",
+            "target_customer",
+            "created_by",
+            "parent_plan",
+            "display_version",
+        )
+        # then for many to many / reverse FK but still have
+        qs = qs.prefetch_related("tags", "external_links")
+        # then come the really deep boys
+        # we need to construct the prefetch objects so that we are prefetching the more
+        # deeply nested objectsd as part of the call:
+        # https://forum.djangoproject.com/t/drf-and-nested-serialisers-optimisation-with-prefect-related/4272
+        active_subscriptions_subquery = SubscriptionRecord.objects.filter(
+            billing_plan=OuterRef("pk"),
+            start_date__lte=now,
+            end_date__gte=now,
+        ).annotate(active_subscriptions=Count("*"))
+        qs = qs.prefetch_related(
             Prefetch(
                 "versions",
                 queryset=PlanVersion.objects.filter(
                     organization=organization,
-                ).annotate(
-                    active_subscriptions=Count(
-                        "subscription_record",
-                        filter=Q(
-                            subscription_record__start_date__lte=now,
-                            subscription_record__end_date__gte=now,
+                )
+                .annotate(
+                    active_subscriptions=Coalesce(
+                        Subquery(
+                            active_subscriptions_subquery.values(
+                                "active_subscriptions"
+                            )[:1]
                         ),
-                        output_field=models.IntegerField(),
+                        Value(0),
                     )
+                )
+                .select_related("price_adjustment", "created_by", "pricing_unit")
+                .prefetch_related(
+                    "subscription_records",
+                    "usage_alerts",
+                    "features",
+                )
+                .prefetch_related(
+                    Prefetch(
+                        "plan_components",
+                        queryset=PlanComponent.objects.filter(
+                            organization=organization,
+                        )
+                        .select_related("pricing_unit")
+                        .prefetch_related("tiers")
+                        .prefetch_related(
+                            Prefetch(
+                                "billable_metric",
+                                queryset=Metric.objects.filter(
+                                    organization=organization,
+                                    status=METRIC_STATUS.ACTIVE,
+                                ).prefetch_related(
+                                    "numeric_filters",
+                                    "categorical_filters",
+                                ),
+                            ),
+                        ),
+                    ),
                 ),
-            ),
-            "versions__subscription_records",
-            "versions__usage_alerts",
-            "versions__features",
-            "versions__price_adjustment",
-            "versions__created_by",
-            "versions__pricing_unit",
-            "versions__plan_components",
-            "versions__plan_components__pricing_unit",
-            "versions__plan_components__billable_metric",
-            "versions__plan_components__billable_metric__usage_alerts",
-            "versions__plan_components__billable_metric__numeric_filters",
-            "versions__plan_components__billable_metric__categorical_filters",
-            "versions__plan_components__tiers",
-            "created_by",
-            "display_version",
-            "external_links",
-            "parent_plan",
-            "target_customer",
-            "tags",
+            )
         )
         return qs
 
@@ -259,7 +426,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         if status.is_success(response.status_code):
             try:
                 username = self.request.user.username
-            except:
+            except Exception:
                 username = None
             organization = self.request.organization
             posthog.capture(
@@ -276,7 +443,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return response
 
     def get_serializer_context(self):
-        context = super(PlanViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         if self.request.user.is_authenticated:
             user = self.request.user
@@ -292,10 +459,6 @@ class SubscriptionViewSet(
     mixins.ListModelMixin,
     viewsets.GenericViewSet,
 ):
-    """
-    A simple ViewSet for viewing and editing Subscriptions.
-    """
-
     http_method_names = [
         "get",
         "head",
@@ -304,7 +467,7 @@ class SubscriptionViewSet(
     queryset = SubscriptionRecord.objects.all()
 
     def get_serializer_context(self):
-        context = super(SubscriptionViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
         return context
@@ -345,12 +508,12 @@ class SubscriptionViewSet(
             if serializer.validated_data.get("customer"):
                 args.append(Q(customer=serializer.validated_data["customer"]))
             status_combo = []
-            for status in allowed_status:
-                if status == SUBSCRIPTION_STATUS.ACTIVE:
+            for sub_status in allowed_status:
+                if sub_status == SUBSCRIPTION_STATUS.ACTIVE:
                     status_combo.append(Q(start_date__lte=now, end_date__gte=now))
-                elif status == SUBSCRIPTION_STATUS.ENDED:
+                elif sub_status == SUBSCRIPTION_STATUS.ENDED:
                     status_combo.append(Q(end_date__lt=now))
-                elif status == SUBSCRIPTION_STATUS.NOT_STARTED:
+                elif sub_status == SUBSCRIPTION_STATUS.NOT_STARTED:
                     status_combo.append(Q(start_date__gt=now))
             args.append(reduce(operator.or_, status_combo))
             qs = qs.filter(
@@ -405,6 +568,7 @@ class SubscriptionViewSet(
             if serializer.validated_data.get("subscription_filters"):
                 for filter in serializer.validated_data["subscription_filters"]:
                     m2m, _ = CategoricalFilter.objects.get_or_create(
+                        organization=organization,
                         property_name=filter["property_name"],
                         comparison_value=[filter["value"]],
                         operator=CATEGORICAL_FILTER_OPERATORS.ISIN,
@@ -514,7 +678,7 @@ class SubscriptionViewSet(
         )
 
         # now we can actually create the subscription record
-        response = self.get_serializer(subscription_record).data
+        response = SubscriptionRecordSerializer(subscription_record).data
         return Response(
             response,
             status=status.HTTP_201_CREATED,
@@ -662,7 +826,7 @@ class SubscriptionViewSet(
         if status.is_success(response.status_code):
             try:
                 username = self.request.user.username
-            except:
+            except Exception:
                 username = None
             organization = self.request.organization
             posthog.capture(
@@ -689,17 +853,19 @@ class SubscriptionViewSet(
 
 
 class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
-    """
-    A simple ViewSet for viewing and editing Invoices.
-    """
-
     serializer_class = InvoiceSerializer
     http_method_names = ["get", "patch", "head"]
-    lookup_field = "invoice_number"
+    lookup_field = "invoice_id"
     queryset = Invoice.objects.all()
     permission_classes_per_method = {
         "partial_update": [IsAuthenticated & ValidOrganization],
     }
+
+    def get_object(self):
+        string_uuid = self.kwargs[self.lookup_field]
+        uuid = InvoiceUUIDField().to_internal_value(string_uuid)
+        self.kwargs[self.lookup_field] = uuid
+        return super().get_object()
 
     def get_queryset(self):
         args = [
@@ -707,13 +873,15 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             Q(organization=self.request.organization),
         ]
         if self.action == "list":
-            serializer = InvoiceListFilterSerializer(data=self.request.query_params)
+            serializer = InvoiceListFilterSerializer(
+                data=self.request.query_params, context=self.get_serializer_context()
+            )
             serializer.is_valid(raise_exception=True)
             args.append(
                 Q(payment_status__in=serializer.validated_data["payment_status"])
             )
             if serializer.validated_data.get("customer"):
-                args.append(Q(customer=serializer.validated_data["customer_"]))
+                args.append(Q(customer=serializer.validated_data["customer"]))
 
         return Invoice.objects.filter(*args)
 
@@ -739,7 +907,7 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         )
 
     def get_serializer_context(self):
-        context = super(InvoiceViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
         return context
@@ -749,7 +917,7 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         if status.is_success(response.status_code):
             try:
                 username = self.request.user.username
-            except:
+            except Exception:
                 username = None
             organization = self.request.organization
             posthog.capture(
@@ -782,25 +950,21 @@ class CustomerBalanceAdjustmentViewSet(
     mixins.ListModelMixin,
     viewsets.GenericViewSet,
 ):
-    """
-    A simple ViewSet meant only for creating CustomerBalanceAdjustments.
-    """
-
-    permission_classes = [IsAuthenticated & ValidOrganization]
-    http_method_names = [
-        "get",
-        "head",
-        "post",
-    ]
+    permission_classes = [ValidOrganization]
+    http_method_names = ["get", "head", "post"]
     serializer_class = CustomerBalanceAdjustmentSerializer
-    lookup_field = "adjustment_id"
+    lookup_field = "credit_id"
     queryset = CustomerBalanceAdjustment.objects.all()
 
     def get_object(self):
-        string_uuid = self.kwargs[self.lookup_field]
+        string_uuid = self.kwargs.pop(self.lookup_field, None)
         uuid = BalanceAdjustmentUUIDField().to_internal_value(string_uuid)
+        if self.lookup_field == "credit_id":
+            self.lookup_field = "adjustment_id"
         self.kwargs[self.lookup_field] = uuid
-        return super().get_object()
+        obj = super().get_object()
+        self.lookup_field = "credit_id"
+        return obj
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -819,6 +983,12 @@ class CustomerBalanceAdjustmentViewSet(
         qs = qs.filter(organization=organization)
         context = self.get_serializer_context()
         context["organization"] = organization
+        qs = qs.filter(amount__gt=0)
+        qs = qs.select_related("customer", "pricing_unit", "amount_paid_currency")
+        qs = qs.prefetch_related("drawdowns")
+        qs = qs.annotate(
+            total_drawdowns=Sum("drawdowns__amount"),
+        )
         if self.action == "list":
             args = []
             serializer = CustomerBalanceAdjustmentFilterSerializer(
@@ -844,17 +1014,17 @@ class CustomerBalanceAdjustmentViewSet(
             if expires_before:
                 args.append(Q(expires_at__lte=expires_before))
             if issued_after:
-                args.append(Q(issued_at__gte=issued_after))
+                args.append(Q(created__gte=issued_after))
             if issued_before:
-                args.append(Q(issued_at__lte=issued_before))
+                args.append(Q(created__lte=issued_before))
             if effective_after:
                 args.append(Q(effective_at__gte=effective_after))
             if effective_before:
                 args.append(Q(effective_at__lte=effective_before))
             args.append(Q(customer=serializer.validated_data["customer"]))
             status_combo = []
-            for status in allowed_status:
-                status_combo.append(Q(status=status))
+            for baladj_status in allowed_status:
+                status_combo.append(Q(status=baladj_status))
             args.append(reduce(operator.or_, status_combo))
             if serializer.validated_data.get("pricing_unit"):
                 args.append(Q(pricing_unit=serializer.validated_data["pricing_unit"]))
@@ -866,7 +1036,7 @@ class CustomerBalanceAdjustmentViewSet(
         return qs
 
     def get_serializer_context(self):
-        context = super(CustomerBalanceAdjustmentViewSet, self).get_serializer_context()
+        context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
         return context
@@ -880,7 +1050,7 @@ class CustomerBalanceAdjustmentViewSet(
         return Response(metric_data, status=status.HTTP_201_CREATED)
 
     def perform_create(self, serializer):
-        serializer.save(organization=self.request.organization)
+        return serializer.save(organization=self.request.organization)
 
     @extend_schema(
         parameters=[CustomerBalanceAdjustmentFilterSerializer],
@@ -891,7 +1061,7 @@ class CustomerBalanceAdjustmentViewSet(
 
     @extend_schema(responses=CustomerBalanceAdjustmentSerializer)
     @action(detail=True, methods=["post"])
-    def void(self, request, adjustment_id=None):
+    def void(self, request, credit_id=None):
         adjustment = self.get_object()
         if adjustment.status != CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE:
             raise ValidationError("Cannot void an adjustment that is not active.")
@@ -907,11 +1077,11 @@ class CustomerBalanceAdjustmentViewSet(
 
     @extend_schema(responses=CustomerBalanceAdjustmentSerializer)
     @action(detail=True, methods=["post"], url_path="update")
-    def edit(self, request, adjustment_id=None):
+    def edit(self, request, credit_id=None):
         adjustment = self.get_object()
         serializer = self.get_serializer(adjustment, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
+        serializer.save()
         if getattr(adjustment, "_prefetched_objects_cache", None):
             # If 'prefetch_related' has been applied to a queryset, we need to
             # forcibly invalidate the prefetch cache on the instance.
@@ -929,7 +1099,7 @@ class CustomerBalanceAdjustmentViewSet(
         if status.is_success(response.status_code):
             try:
                 username = self.request.user.username
-            except:
+            except Exception:
                 username = None
             organization = self.request.organization
             posthog.capture(
@@ -977,7 +1147,7 @@ class GetCustomerEventAccessView(APIView):
         serializer.is_valid(raise_exception=True)
         # try:
         #     username = self.request.user.username
-        # except:
+        # except Exception as e:
         #     username = None
         # posthog.capture(
         #     POSTHOG_PERSON
@@ -1080,7 +1250,7 @@ class GetCustomerFeatureAccessView(APIView):
         serializer.is_valid(raise_exception=True)
         # try:
         #     username = self.request.user.username
-        # except:
+        # except Exception as e:
         #     username = None
         # posthog.capture(
         #     POSTHOG_PERSON
@@ -1133,95 +1303,6 @@ class GetCustomerFeatureAccessView(APIView):
         return Response(
             features,
             status=status.HTTP_200_OK,
-        )
-
-
-class CustomerBatchCreateView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
-
-    @extend_schema(
-        request=inline_serializer(
-            name="CustomerBatchCreateRequest",
-            fields={
-                "customers": CustomerCreateSerializer(many=True),
-                "behavior_on_existing": serializers.ChoiceField(
-                    choices=["merge", "ignore", "overwrite"]
-                ),
-            },
-        ),
-        responses={
-            201: inline_serializer(
-                name="CustomerBatchCreateSuccess",
-                fields={
-                    "success": serializers.ChoiceField(choices=["all", "some"]),
-                    "failed_customers": serializers.DictField(required=False),
-                },
-            ),
-            400: inline_serializer(
-                name="CustomerBatchCreateFailure",
-                fields={
-                    "success": serializers.ChoiceField(choices=["none"]),
-                    "failed_customers": serializers.DictField(),
-                },
-            ),
-        },
-    )
-    def post(self, request, format=None):
-        organization = request.organization
-        serializer = CustomerCreateSerializer(
-            data=request.data["customers"],
-            many=True,
-            context={"organization": organization},
-        )
-        serializer.is_valid(raise_exception=True)
-        failed_customers = {}
-        behavior = request.data.get("behavior_on_existing", "merge")
-        for customer in serializer.validated_data:
-            try:
-                match = Customer.objects.filter(
-                    Q(email=customer["email"]) | Q(customer_id=customer["customer_id"]),
-                    organization=organization,
-                )
-                if match.exists():
-                    match = match.first()
-                    if behavior == "ignore":
-                        pass
-                    else:
-                        if "customer_id" in customer:
-                            non_unique_id = Customer.objects.filter(
-                                ~Q(pk=match.pk), customer_id=customer["customer_id"]
-                            ).exists()
-                            if non_unique_id:
-                                failed_customers[
-                                    customer["customer_id"]
-                                ] = "customer_id already exists"
-                                continue
-                        CustomerCreateSerializer().update(
-                            match, customer, behavior=behavior
-                        )
-                else:
-                    customer["organization"] = organization
-                    CustomerCreateSerializer().create(customer)
-            except Exception as e:
-                identifier = customer.get("customer_id", customer.get("email"))
-                failed_customers[identifier] = str(e)
-
-        if len(failed_customers) == 0 or len(failed_customers) < len(
-            serializer.validated_data
-        ):
-            return Response(
-                {
-                    "success": "all" if len(failed_customers) == 0 else "some",
-                    "failed_customers": failed_customers,
-                },
-                status=status.HTTP_201_CREATED,
-            )
-        return Response(
-            {
-                "success": "none",
-                "failed_customers": failed_customers,
-            },
-            status=status.HTTP_400_BAD_REQUEST,
         )
 
 
@@ -1302,7 +1383,7 @@ logger = logging.getLogger("django.server")
 kafka_producer = Producer()
 
 
-def load_event(request: HttpRequest) -> Union[None, Dict]:
+def load_event(request: HttpRequest) -> Optional[dict]:
     """
     Loads an event from the request body.
     """
@@ -1434,4 +1515,9 @@ def track_event(request):
             status=status.HTTP_201_CREATED,
         )
     else:
+        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
+        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
+        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
+        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
+        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)

@@ -4,12 +4,14 @@ from datetime import datetime
 import boto3
 from django.conf import settings
 from django.forms.models import model_to_dict
-from metering_billing.serializers.serializer_utils import PlanUUIDField
-from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
+
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.colors import HexColor
-from reportlab.lib.colors import PCMYKColor, PCMYKColorSep, Color, black, blue, red
+from reportlab.lib.colors import Color
+
+from metering_billing.serializers.serializer_utils import PlanUUIDField
+from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
 
 FONT_XL = 26
 FONT_L = 24
@@ -94,13 +96,13 @@ def write_invoice_details(doc, invoice_number, issue_date, due_date):
     doc.setFont("Times-Bold", FONT_XS)
     doc.drawString(400, 130, "Invoice Details")
     doc.setFont("Times-Roman", FONT_XXS)
-    doc.drawString(400, 145, f"Invoice No.")
+    doc.drawString(400, 145, "Invoice No.")
     doc.drawString(465, 145, f"{invoice_number}")
 
-    doc.drawString(400, 160, f"Date Issued")
+    doc.drawString(400, 160, "Date Issued")
     doc.drawString(465, 160, f'{issue_date.replace("-", "/")}')
 
-    doc.drawString(400, 175, f"Due Date")
+    doc.drawString(400, 175, "Due Date")
     if due_date:
         doc.drawString(465, 175, f'{due_date.replace("-", "/")}')
     else:

@@ -15,15 +15,15 @@ def migrate_jsonfields_to_fk(apps, schema_editor):
     for invoice in Invoice.objects.all():
         try:
             invoice_org = invoice.old_organization["company_name"]
-        except:
+        except Exception:
             invoice_org = None
         try:
             invoice_customer = invoice.old_customer["customer_id"]
-        except:
+        except Exception:
             invoice_customer = None
         try:
             invoice_sub = invoice.old_subscription["subscription_id"]
-        except:
+        except Exception:
             invoice_sub = None
 
         if invoice_org:
@@ -47,7 +47,7 @@ def migrate_jsonfields_to_fk(apps, schema_editor):
                     invoice_customer_object = Customer.objects.get(
                         organization=invoice_org_object, customer_id=invoice_customer
                     )
-                except:
+                except Exception:
                     invoice_customer_object = None
                 invoice_customer_dict[invoice_customer] = invoice_customer_object
             invoice.customer = invoice_customer_object
@@ -60,7 +60,7 @@ def migrate_jsonfields_to_fk(apps, schema_editor):
                     invoice_sub_object = Subscription.objects.get(
                         organization=invoice_org_object, subscription_id=invoice_sub
                     )
-                except:
+                except Exception:
                     invoice_sub_object = None
                 invoice_sub_dict[invoice_sub] = invoice_sub_object
             invoice.subscription = invoice_sub_object

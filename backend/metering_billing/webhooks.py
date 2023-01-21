@@ -11,8 +11,8 @@ SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
 
 def invoice_created_webhook(invoice, organization):
+    from api.serializers.model_serializers import InvoiceSerializer
     from metering_billing.models import WebhookEndpoint
-    from metering_billing.serializers.model_serializers import InvoiceSerializer
 
     if SVIX_CONNECTOR is not None:
         endpoints = (
@@ -27,6 +27,10 @@ def invoice_created_webhook(invoice, organization):
             invoice_data = InvoiceSerializer(invoice).data
             invoice_data = make_all_decimals_floats(invoice_data)
             invoice_data = make_all_dates_times_strings(invoice_data)
+            response = {
+                "event_type": WEBHOOK_TRIGGER_EVENTS.INVOICE_CREATED,
+                "payload": invoice_data,
+            }
             svix.message.create(
                 organization.organization_id.hex,
                 MessageIn(
@@ -39,15 +43,15 @@ def invoice_created_webhook(invoice, organization):
                     payload={
                         "attempt": 5,
                         "created_at": now,
-                        "properties": invoice_data,
+                        "properties": response,
                     },
                 ),
             )
 
 
 def invoice_paid_webhook(invoice, organization):
+    from api.serializers.model_serializers import InvoiceSerializer
     from metering_billing.models import WebhookEndpoint
-    from metering_billing.serializers.model_serializers import InvoiceSerializer
 
     if SVIX_CONNECTOR is not None:
         endpoints = (
@@ -62,6 +66,10 @@ def invoice_paid_webhook(invoice, organization):
             invoice_data = InvoiceSerializer(invoice).data
             invoice_data = make_all_decimals_floats(invoice_data)
             invoice_data = make_all_dates_times_strings(invoice_data)
+            response = {
+                "event_type": WEBHOOK_TRIGGER_EVENTS.INVOICE_PAID,
+                "payload": invoice_data,
+            }
             svix.message.create(
                 organization.organization_id.hex,
                 MessageIn(
@@ -74,21 +82,19 @@ def invoice_paid_webhook(invoice, organization):
                     payload={
                         "attempt": 5,
                         "created_at": now,
-                        "properties": invoice_data,
+                        "properties": response,
                     },
                 ),
             )
 
 
 def usage_alert_webhook(usage_alert, alert_result, subscription_record, organization):
-    from metering_billing.models import WebhookEndpoint
-    from metering_billing.serializers.model_serializers import (
+    from api.serializers.model_serializers import (
         LightweightSubscriptionRecordSerializer,
         UsageAlertSerializer,
     )
-    from metering_billing.serializers.response_serializers import (
-        UsageAlertTriggeredSerializer,
-    )
+    from api.serializers.webhook_serializers import UsageAlertPayload
+    from metering_billing.models import WebhookEndpoint
 
     if SVIX_CONNECTOR is not None:
         endpoints = (
@@ -100,7 +106,7 @@ def usage_alert_webhook(usage_alert, alert_result, subscription_record, organiza
         if endpoints.count() > 0:
             svix = SVIX_CONNECTOR
             now = str(now_utc())
-            data = {
+            alert_data = {
                 "subscription": LightweightSubscriptionRecordSerializer(
                     subscription_record
                 ).data,
@@ -108,15 +114,18 @@ def usage_alert_webhook(usage_alert, alert_result, subscription_record, organiza
                 "usage": alert_result.usage,
                 "time_triggered": alert_result.last_run_timestamp,
             }
-            serialized_data = UsageAlertTriggeredSerializer(data).data
+            response = {
+                "event_type": WEBHOOK_TRIGGER_EVENTS.USAGE_ALERT_TRIGGERED,
+                "payload": UsageAlertPayload(alert_data).data,
+            }
             event_id = (
-                str(organization.organization_id)[:50]
+                str(organization.organization_id.hex)[:50]
                 + "_"
                 + str(usage_alert.usage_alert_id.hex)[:50]
                 + "_"
                 + str(subscription_record.subscription_record_id.hex)[:50]
                 + "_"
-                + str(alert_result.last_run_timestamp)
+                + str(alert_result.last_run_timestamp.timestamp())
                 + "_"
                 + "triggered"
             )
@@ -128,7 +137,7 @@ def usage_alert_webhook(usage_alert, alert_result, subscription_record, organiza
                     payload={
                         "attempt": 5,
                         "created_at": now,
-                        "properties": serialized_data,
+                        "properties": response,
                     },
                 ),
             )

@@ -54,7 +54,7 @@ import {
   OrganizationType,
   PaginatedActionsType,
 } from "../types/account-type";
-import { FeatureType } from "../types/feature-type";
+import { FeatureType, CreateFeatureType } from "../types/feature-type";
 import Cookies from "universal-cookie";
 import {
   CreateBacktestType,
@@ -71,11 +71,8 @@ import {
 } from "../types/stripe-type";
 import { DraftInvoiceType } from "../types/invoice-type";
 import { MarkPaymentStatusAsPaid } from "../types/invoice-type";
-import {
-  CreateBalanceAdjustmentType,
-  BalanceAdjustmentType,
-} from "../types/balance-adjustment";
-import { PricingUnit } from "../types/pricing-unit-type";
+import { CreateCreditType, CreditType } from "../types/balance-adjustment";
+import { CurrencyType } from "../types/pricing-unit-type";
 import { AlertType, CreateAlertType } from "../types/alert-type";
 
 const cookies = new Cookies();
@@ -411,7 +408,7 @@ export const PlansByCustomer = {
 
 export const Features = {
   getFeatures: (): Promise<FeatureType[]> => requests.get("app/features/"),
-  createFeature: (post: FeatureType): Promise<FeatureType> =>
+  createFeature: (post: CreateFeatureType): Promise<FeatureType> =>
     requests.post("app/features/", post),
 };
 
@@ -491,7 +488,7 @@ export const PaymentProcessorIntegration = {
 
 export const Invoices = {
   changeStatus: (data: MarkPaymentStatusAsPaid): Promise<any> => {
-    return requests.patch(`app/invoices/${data.invoice_number}/`, {
+    return requests.patch(`app/invoices/${data.invoice_id}/`, {
       payment_status: data.payment_status,
     });
   },
@@ -500,31 +497,29 @@ export const Invoices = {
   },
 };
 
-export const BalanceAdjustment = {
-  createCredit: (post: CreateBalanceAdjustmentType): Promise<any> =>
-    requests.post("app/balance_adjustments/", post),
+export const Credits = {
+  createCredit: (post: CreateCreditType): Promise<CreditType> =>
+    requests.post("app/credits/", post),
 
   getCreditsByCustomer: (params: {
     customer_id: string;
     format?: string;
-  }): Promise<BalanceAdjustmentType[]> => {
+  }): Promise<CreditType[]> => {
     if (params.format) {
       return requests.get(
-        `app/balance_adjustments/?customer_id=${params.customer_id}?format=${params.format}`
+        `app/credits/?customer_id=${params.customer_id}?format=${params.format}`
       );
     }
-    return requests.get(
-      `app/balance_adjustments/?customer_id=${params.customer_id}`
-    );
+    return requests.get(`app/credits/?customer_id=${params.customer_id}`);
   },
 
-  deleteCredit: (adjustment_id: string): Promise<BalanceAdjustmentType> =>
-    requests.post(`app/balance_adjustments/${adjustment_id}/void/`, {}),
+  deleteCredit: (credit_id: string): Promise<CreditType> =>
+    requests.post(`app/credits/${credit_id}/void/`, {}),
 };
 
 export const PricingUnits = {
-  create: (post: PricingUnit): Promise<PricingUnit> =>
+  create: (post: CurrencyType): Promise<CurrencyType> =>
     requests.post("app/pricing_units/", post),
 
-  list: (): Promise<PricingUnit[]> => requests.get(`app/pricing_units/`),
+  list: (): Promise<CurrencyType[]> => requests.get(`app/pricing_units/`),
 };

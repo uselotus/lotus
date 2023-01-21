@@ -54,9 +54,9 @@ const VersionActiveForm = (props: {
         </div>
       </div>
       {active === true && (
-        <div className="grid grid-row-3 items-center my-5">
-          <div className="separator mb-5" />
-          <h3 className="mb-5">
+        <div className="grid grid-row-3 items-center my-6">
+          <div className="separator mb-6" />
+          <h3 className="mb-6">
             How should subscriptions on the current active version be treated?
           </h3>
           <Select

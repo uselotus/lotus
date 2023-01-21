@@ -15,6 +15,7 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
     def to_internal_value(self, data):
         from metering_billing.models import (
             CustomerBalanceAdjustment,
+            Feature,
             Metric,
             Plan,
             PlanVersion,
@@ -28,11 +29,14 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             data = PlanUUIDField().to_internal_value(data)
         elif self.queryset.model is PlanVersion:
             data = PlanVersionUUIDField().to_internal_value(data)
+        elif self.queryset.model is Feature:
+            data = FeatureUUIDField().to_internal_value(data)
         return super().to_internal_value(data)
 
     def to_representation(self, obj):
         from metering_billing.models import (
             CustomerBalanceAdjustment,
+            Feature,
             Metric,
             Plan,
             PlanVersion,
@@ -47,6 +51,8 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             return PlanUUIDField().to_representation(obj.plan_id)
         elif isinstance(obj, PlanVersion):
             return PlanVersionUUIDField().to_representation(obj.version_id)
+        elif isinstance(obj, Feature):
+            return FeatureUUIDField().to_representation(obj.feature_id)
         return repr
 
 
@@ -132,10 +138,22 @@ class PlanUUIDField(UUIDPrefixField):
         super().__init__("plan_", *args, **kwargs)
 
 
+@extend_schema_field(serializers.RegexField(regex=r"invoice_[0-9a-f]{32}"))
+class InvoiceUUIDField(UUIDPrefixField):
+    def __init__(self, *args, **kwargs):
+        super().__init__("invoice_", *args, **kwargs)
+
+
 @extend_schema_field(serializers.RegexField(regex=r"plan_version_[0-9a-f]{32}"))
 class PlanVersionUUIDField(UUIDPrefixField):
     def __init__(self, *args, **kwargs):
         super().__init__("plan_version_", *args, **kwargs)
+
+
+@extend_schema_field(serializers.RegexField(regex=r"feature_[0-9a-f]{32}"))
+class FeatureUUIDField(UUIDPrefixField):
+    def __init__(self, *args, **kwargs):
+        super().__init__("feature_", *args, **kwargs)
 
 
 @extend_schema_field(serializers.RegexField(regex=r"sub_[0-9a-f]{32}"))

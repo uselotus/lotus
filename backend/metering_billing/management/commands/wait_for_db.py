@@ -14,5 +14,5 @@ class Command(BaseCommand):
         while not db_connection:
             try:
                 db_connection = connections["default"]
-            except:
+            except Exception:
                 time.sleep(1)

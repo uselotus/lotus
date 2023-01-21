@@ -1139,12 +1139,13 @@ class TestCalculateMetricWithFilters:
             billable_metric
         )
         numeric_filter = NumericFilter.objects.create(
+            organization=setup_dict["org"],
             property_name="test_filter_property",
             operator=NUMERIC_FILTER_OPERATORS.GT,
             comparison_value=10,
         )
         billable_metric.numeric_filters.add(numeric_filter)
-        billable_metric.save()
+        billable_metric.refresh_materialized_views()
         time_created = now_utc()
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="test_customer"
@@ -1242,12 +1243,13 @@ class TestCalculateMetricWithFilters:
             billable_metric
         )
         numeric_filter = NumericFilter.objects.create(
+            organization=setup_dict["org"],
             property_name="test_filter_property",
             operator=NUMERIC_FILTER_OPERATORS.EQ,
             comparison_value=10,
         )
         billable_metric.numeric_filters.add(numeric_filter)
-        billable_metric.save()
+        billable_metric.refresh_materialized_views()
         time_created = now_utc() - relativedelta(days=45)
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="foo"
@@ -1332,13 +1334,14 @@ class TestCalculateMetricWithFilters:
             granularity=METRIC_GRANULARITY.MONTH,
             proration=METRIC_GRANULARITY.DAY,
         )
-        numeric_filter = CategoricalFilter.objects.create(
+        categorical_filter = CategoricalFilter.objects.create(
+            organization=setup_dict["org"],
             property_name="test_filter_property",
             operator=CATEGORICAL_FILTER_OPERATORS.ISIN,
             comparison_value=["a", "b", "c"],
         )
-        billable_metric.categorical_filters.add(numeric_filter)
-        billable_metric.save()
+        billable_metric.categorical_filters.add(categorical_filter)
+        billable_metric.refresh_materialized_views()
         time_created = now_utc() - relativedelta(days=31)
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="foo"
@@ -1429,12 +1432,13 @@ class TestCalculateMetricWithFilters:
             billable_metric
         )
         numeric_filter = CategoricalFilter.objects.create(
+            organization=setup_dict["org"],
             property_name="test_filter_property",
             operator=CATEGORICAL_FILTER_OPERATORS.ISNOTIN,
             comparison_value=["a", "b", "c"],
         )
         billable_metric.categorical_filters.add(numeric_filter)
-        billable_metric.save()
+        billable_metric.refresh_materialized_views()
         time_created = now_utc() - relativedelta(days=14, hour=0)
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="foo"
@@ -1452,7 +1456,7 @@ class TestCalculateMetricWithFilters:
             + 3 * [{"num_rows": 5, "test_filter_property": "9yge"}]
             + 3 * [{"num_rows": 6, "test_filter_property": "wedsfgu"}]
             + [{"num_rows": 3, "test_filter_property": "a"}]
-        )  # = 67
+        )  # = 67 but 3 shouldn't count, 64 really
         baker.make(
             Event,
             event_name="rows_inserted",
@@ -1462,19 +1466,17 @@ class TestCalculateMetricWithFilters:
             customer=customer,
             _quantity=20,
         )
-        # 60 in an hour, 5 days ago
+        # 65 in an hour, 5 days ago
         time_created = now_utc() - relativedelta(days=5, hour=0)
-        event_times = [time_created] + [
-            time_created + relativedelta(minutes=i) for i in range(1, 19)
-        ]
+        event_times = [time_created + relativedelta(minutes=i) for i in range(20)]
         properties = (
-            4 * [{"num_rows": 1}]
+            5 * [{"num_rows": 1}]
             + 3 * [{"num_rows": 2}]
             + 3 * [{"num_rows": 3}]
-            + 2 * [{"num_rows": 4}]
+            + 3 * [{"num_rows": 4}]
             + 3 * [{"num_rows": 5}]
             + 3 * [{"num_rows": 6}]
-        )  # = 60
+        )  # = 65
         baker.make(
             Event,
             event_name="rows_inserted",
@@ -1482,7 +1484,7 @@ class TestCalculateMetricWithFilters:
             organization=setup_dict["org"],
             time_created=iter(event_times),
             customer=customer,
-            _quantity=18,
+            _quantity=20,
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
@@ -1515,8 +1517,8 @@ class TestCalculateMetricWithFilters:
             now - relativedelta(days=21),
         )
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
-        # 1 dollar per for 67 rows - 3 free rows = 64 rows * 1 dollar = 64 dollars
-        assert usage_revenue_dict["revenue"] == Decimal(64)
+        # 1 dollar per for 67 rows - 3 free rows - 3 uncoutned rows = 61 rows * 1 dollar =$61
+        assert usage_revenue_dict["revenue"] == Decimal(62)
 
 
 @pytest.mark.django_db(transaction=True)

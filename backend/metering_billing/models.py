@@ -4,7 +4,7 @@ import logging
 import math
 import uuid
 from decimal import Decimal
-from typing import TypedDict
+from typing import Literal, Optional, TypedDict, Union
 
 # import lotus_python
 from dateutil.relativedelta import relativedelta
@@ -39,7 +39,38 @@ from metering_billing.utils import (
     periods_bwn_twodates,
     product_uuid,
 )
-from metering_billing.utils.enums import *
+from metering_billing.utils.enums import (
+    ACCOUNTS_RECEIVABLE_TRANSACTION_TYPES,
+    BACKTEST_STATUS,
+    CATEGORICAL_FILTER_OPERATORS,
+    CHARGEABLE_ITEM_TYPE,
+    CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
+    EVENT_TYPE,
+    FLAT_FEE_BEHAVIOR,
+    FLAT_FEE_BILLING_TYPE,
+    INVOICING_BEHAVIOR,
+    MAKE_PLAN_VERSION_ACTIVE_TYPE,
+    METRIC_AGGREGATION,
+    METRIC_GRANULARITY,
+    METRIC_STATUS,
+    METRIC_TYPE,
+    NUMERIC_FILTER_OPERATORS,
+    ORGANIZATION_SETTING_GROUPS,
+    ORGANIZATION_SETTING_NAMES,
+    PAYMENT_PROVIDERS,
+    PLAN_DURATION,
+    PLAN_STATUS,
+    PLAN_VERSION_STATUS,
+    PRICE_ADJUSTMENT_TYPE,
+    PRODUCT_STATUS,
+    REPLACE_IMMEDIATELY_TYPE,
+    SUPPORTED_CURRENCIES,
+    SUPPORTED_CURRENCIES_VERSION,
+    TAG_GROUP,
+    USAGE_BILLING_FREQUENCY,
+    USAGE_CALC_GRANULARITY,
+    WEBHOOK_TRIGGER_EVENTS,
+)
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
@@ -682,7 +713,12 @@ class CustomerBalanceAdjustment(models.Model):
         super(CustomerBalanceAdjustment, self).save(*args, **kwargs)
 
     def get_remaining_balance(self):
-        dd_aggregate = self.drawdowns.aggregate(drawdowns=Sum("amount"))["drawdowns"]
+        try:
+            dd_aggregate = self.total_drawdowns
+        except AttributeError:
+            dd_aggregate = self.drawdowns.aggregate(drawdowns=Sum("amount"))[
+                "drawdowns"
+            ]
         drawdowns = dd_aggregate or 0
         return self.amount + drawdowns
 
@@ -728,8 +764,8 @@ class CustomerBalanceAdjustment(models.Model):
                 )
             )
             .order_by(
+                F("expires_at").asc(nulls_last=True),
                 F("cost_basis").desc(nulls_last=True),
-                F("expires_at").desc(nulls_last=True),
             )
         )
         am = amount
@@ -1057,6 +1093,11 @@ class Metric(models.Model):
     def __str__(self):
         return self.billable_metric_name or ""
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.status == METRIC_STATUS.ACTIVE and not self.mat_views_provisioned:
+            self.provision_materialized_views()
+
     def get_aggregation_type(self):
         return self.aggregation_type
 
@@ -1087,6 +1128,30 @@ class Metric(models.Model):
         usage = handler.get_subscription_record_current_usage(self, subscription_record)
 
         return usage
+
+    def get_daily_total_usage(
+        self,
+        start_date: datetime.date,
+        end_date: datetime.date,
+        customer: Optional[Customer] = None,
+        top_n: Optional[int] = None,
+    ) -> dict[Union[Customer, Literal["Other"]], dict[datetime.date, Decimal]]:
+        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+
+        handler = METRIC_HANDLER_MAP[self.metric_type]
+        usage = handler.get_daily_total_usage(
+            self, start_date, end_date, customer, top_n
+        )
+
+        return usage
+
+    def refresh_materialized_views(self):
+        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+
+        handler = METRIC_HANDLER_MAP[self.metric_type]
+        handler.create_continuous_aggregate(self, refresh=True)
+        self.mat_views_provisioned = True
+        self.save()
 
     def provision_materialized_views(self):
         from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
@@ -1237,7 +1302,7 @@ class PlanComponent(models.Model):
         return str(self.billable_metric)
 
     def save(self, *args, **kwargs):
-        if not self.pricing_unit:
+        if self.pricing_unit is None and self.plan_version is not None:
             self.pricing_unit = self.plan_version.pricing_unit
         super().save(*args, **kwargs)
 

@@ -3,10 +3,11 @@
 from decimal import Decimal
 
 import django.db.models.deletion
-import metering_billing.utils.utils
 import simple_history.models
 from django.conf import settings
 from django.db import migrations, models
+
+import metering_billing.utils.utils
 
 
 class Migration(migrations.Migration):

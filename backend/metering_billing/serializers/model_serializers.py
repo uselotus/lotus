@@ -3,22 +3,59 @@ from decimal import Decimal
 import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import DecimalField, Q, Sum
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
-from metering_billing.models import *
+from metering_billing.models import (
+    APIToken,
+    Customer,
+    ExternalPlanLink,
+    Feature,
+    Invoice,
+    Metric,
+    Organization,
+    OrganizationSetting,
+    Plan,
+    PlanComponent,
+    PlanVersion,
+    PriceAdjustment,
+    PriceTier,
+    PricingUnit,
+    Product,
+    SubscriptionRecord,
+    Tag,
+    TeamInviteToken,
+    UsageAlert,
+    User,
+    WebhookEndpoint,
+    WebhookTrigger,
+)
 from metering_billing.serializers.serializer_utils import (
     OrganizationSettingUUIDField,
     OrganizationUUIDField,
     PlanUUIDField,
     PlanVersionUUIDField,
     SlugRelatedFieldWithOrganization,
-    UsageAlertUUIDField,
     WebhookEndpointUUIDField,
     WebhookSecretUUIDField,
 )
 from metering_billing.utils import now_utc
-from metering_billing.utils.enums import *
+from metering_billing.utils.enums import (
+    BATCH_ROUNDING_TYPE,
+    MAKE_PLAN_VERSION_ACTIVE_TYPE,
+    METRIC_GRANULARITY,
+    METRIC_STATUS,
+    ORGANIZATION_SETTING_GROUPS,
+    ORGANIZATION_SETTING_NAMES,
+    ORGANIZATION_STATUS,
+    PLAN_DURATION,
+    PLAN_STATUS,
+    PLAN_VERSION_STATUS,
+    PRICE_TIER_TYPE,
+    REPLACE_IMMEDIATELY_TYPE,
+    TAG_GROUP,
+    WEBHOOK_TRIGGER_EVENTS,
+)
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
@@ -543,9 +580,17 @@ class CustomerWithRevenueSerializer(serializers.ModelSerializer):
 
     total_amount_due = serializers.SerializerMethodField()
 
-    def get_total_amount_due(self, obj) -> float:
-        total_amount_due = float(self.context.get("total_amount_due"))
-        return total_amount_due
+    def get_total_amount_due(self, obj) -> Decimal:
+        try:
+            return obj.total_amount_due
+        except AttributeError:
+            return (
+                obj.invoices.filter(payment_status=Invoice.PaymentStatus.UNPAID)
+                .aggregate(
+                    unpaid_inv_amount=Sum("cost_due", output_field=DecimalField())
+                )
+                .get("unpaid_inv_amount")
+            )
 
 
 class CustomerSerializer(api_serializers.CustomerSerializer):
@@ -663,6 +708,8 @@ class MetricCreateSerializer(serializers.ModelSerializer):
             "properties",
             "is_cost_metric",
             "custom_sql",
+            "categorical_filters",
+            "numeric_filters",
         )
         extra_kwargs = {
             "event_name": {"write_only": True, "required": False, "allow_blank": False},
@@ -685,18 +732,13 @@ class MetricCreateSerializer(serializers.ModelSerializer):
                 "allow_null": True,
                 "allow_blank": False,
             },
+            "categorical_filters": {"write_only": True, "required": False},
+            "numeric_filters": {"write_only": True, "required": False},
         }
 
     metric_name = serializers.CharField(source="billable_metric_name")
-    # granularity = serializers.ChoiceField(
-    #     choices=METRIC_GRANULARITY.choices,
-    #     required=False,
-    # )
-    # event_type = serializers.ChoiceField(
-    #     choices=EVENT_TYPE.choices,
-    #     required=False,
-    # )
-    # properties = serializers.JSONField(allow_null=True, required=False)
+    numeric_filters = NumericFilterSerializer(many=True, required=False)
+    categorical_filters = CategoricalFilterSerializer(many=True, required=False)
 
     def validate(self, data):
         data = super().validate(data)
@@ -769,6 +811,7 @@ class PriceTierCreateSerializer(serializers.ModelSerializer):
     batch_rounding_type = serializers.ChoiceField(
         choices=BATCH_ROUNDING_TYPE.choices,
         required=False,
+        allow_null=True,
     )
 
     def validate(self, data):
@@ -817,13 +860,17 @@ class PriceTierCreateSerializer(serializers.ModelSerializer):
 
 
 # PLAN COMPONENT
-class PlanComponentSerializer(api_serializers.PlanComponentSerializer):
-    class Meta(api_serializers.PlanComponentSerializer.Meta):
-        fields = tuple(
-            set(api_serializers.PlanComponentSerializer.Meta.fields)
-            - {"billable_metric", "pricing_unit"}
-        ) + ("metric_id",)
-        extra_kwargs = {**api_serializers.PlanComponentSerializer.Meta.extra_kwargs}
+class PlanComponentCreateSerializer(api_serializers.PlanComponentSerializer):
+    class Meta:
+        model = PlanComponent
+        fields = (
+            "metric_id",
+            "tiers",
+        )
+        extra_kwargs = {
+            "metric_id": {"required": True, "write_only": True},
+            "tiers": {"required": True, "write_only": True},
+        }
 
     metric_id = SlugRelatedFieldWithOrganization(
         slug_field="metric_id",
@@ -855,7 +902,8 @@ class PlanComponentSerializer(api_serializers.PlanComponentSerializer):
         tiers = validated_data.pop("tiers")
         pc = PlanComponent.objects.create(**validated_data)
         for tier in tiers:
-            tier = PriceTierCreateSerializer().create(tier)
+            tier = {**tier, "organization": self.context["organization"]}
+            tier = PriceTierCreateSerializer(context=self.context).create(tier)
             assert type(tier) is PriceTier
             tier.plan_component = pc
             tier.save()
@@ -949,6 +997,12 @@ class PriceAdjustmentSerializer(serializers.ModelSerializer):
     price_adjustment_name = serializers.CharField(default="")
 
 
+class FeatureCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Feature
+        fields = ("feature_name", "feature_description")
+
+
 class PlanVersionCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlanVersion
@@ -987,10 +1041,16 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
             "currency_code": {"write_only": True},
         }
 
-    components = PlanComponentSerializer(
+    components = PlanComponentCreateSerializer(
         many=True, allow_null=True, required=False, source="plan_components"
     )
-    features = FeatureSerializer(many=True, allow_null=True, required=False)
+    features = SlugRelatedFieldWithOrganization(
+        slug_field="feature_id",
+        queryset=Feature.objects.all(),
+        many=True,
+        allow_null=True,
+        required=False,
+    )
     price_adjustment = PriceAdjustmentSerializer(required=False)
     plan_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
@@ -1048,14 +1108,17 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
         pricing_unit = validated_data.pop("currency_code", None)
         components_data = validated_data.pop("plan_components", [])
         if len(components_data) > 0:
-            if pricing_unit is not None:
-                data = [
-                    {**component_data, "pricing_unit": pricing_unit}
-                    for component_data in components_data
-                ]
-            else:
-                data = components_data
-            components = PlanComponentSerializer(many=True).create(data)
+            components_data = [
+                {
+                    **component_data,
+                    "pricing_unit": pricing_unit,
+                    "organization": self.context["organization"],
+                }
+                for component_data in components_data
+            ]
+            components = PlanComponentCreateSerializer(
+                many=True, context=self.context
+            ).create(components_data)
             assert type(components[0]) is PlanComponent
         else:
             components = []
@@ -1084,16 +1147,17 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
         for component in components:
             component.plan_version = billing_plan
             component.save()
-        for feature_data in features_data:
-            feature_data["organization"] = org
-            description = feature_data.pop("description", None)
-            try:
-                f, created = Feature.objects.get_or_create(**feature_data)
-                if created and description:
-                    f.description = description
-                    f.save()
-            except Feature.MultipleObjectsReturned:
-                f = Feature.objects.filter(**feature_data).first()
+        for f in features_data:
+            # feature_data["organization"] = org
+            # description = feature_data.pop("description", None)
+            # try:
+            #     f, created = Feature.objects.get_or_create(**feature_data)
+            #     if created and description:
+            #         f.description = description
+            #         f.save()
+            # except Feature.MultipleObjectsReturned:
+            # f = Feature.objects.filter(**feature_data).first()
+            assert type(f) is Feature
             billing_plan.features.add(f)
         if price_adjustment_data:
             price_adjustment_data["organization"] = org
@@ -1117,19 +1181,9 @@ class LightweightPlanVersionSerializer(
         fields = api_serializers.LightweightPlanVersionSerializer.Meta.fields
 
 
-class UsageAlertSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UsageAlert
-        fields = (
-            "usage_alert_id",
-            "metric",
-            "plan_version",
-            "threshold",
-        )
-
-    usage_alert_id = UsageAlertUUIDField(read_only=True)
-    metric = MetricSerializer()
-    plan_version = LightweightPlanVersionSerializer()
+class UsageAlertSerializer(api_serializers.UsageAlertSerializer):
+    class Meta(api_serializers.UsageAlertSerializer.Meta):
+        fields = api_serializers.UsageAlertSerializer.Meta.fields
 
 
 class PlanVersionDetailSerializer(api_serializers.PlanVersionSerializer):
@@ -1278,7 +1332,9 @@ class PlanCreateSerializer(serializers.ModelSerializer):
             display_version_data["plan"] = plan
             display_version_data["organization"] = validated_data["organization"]
             display_version_data["created_by"] = validated_data["created_by"]
-            plan_version = InitialPlanVersionSerializer().create(display_version_data)
+            plan_version = InitialPlanVersionSerializer(context=self.context).create(
+                display_version_data
+            )
             if initial_external_links:
                 for link_data in initial_external_links:
                     link_data["plan"] = plan
@@ -1316,6 +1372,7 @@ class PlanCreateSerializer(serializers.ModelSerializer):
             plan.save()
             return plan
         except Exception as e:
+            print(e)
             plan.delete()
             raise ServerError(e)
 
@@ -1380,11 +1437,6 @@ class PlanUpdateSerializer(serializers.ModelSerializer):
                     instance.tags.remove(existing_tag)
         instance.save()
         return instance
-
-
-class SubscriptionRecordSerializer(api_serializers.SubscriptionRecordSerializer):
-    class Meta(api_serializers.SubscriptionRecordSerializer.Meta):
-        fields = api_serializers.SubscriptionRecordSerializer.Meta.fields
 
 
 class SubscriptionRecordSerializer(api_serializers.SubscriptionRecordSerializer):
@@ -1755,4 +1807,6 @@ class UsageAlertCreateSerializer(serializers.ModelSerializer):
             plan_version=plan_version,
             **validated_data,
         )
+        return usage_alert
+        return usage_alert
         return usage_alert

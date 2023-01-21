@@ -67,8 +67,7 @@
       "pages": [
         "plan-management/creating-plans",
         "plan-management/plan-templates",
-        "plan-management/versioning",
-        "plan-management/credits"
+        "plan-management/versioning"
       ]
     },
     {
@@ -80,6 +79,10 @@
         "subscription-lifecycle/alerts",
         "subscription-lifecycle/addons"
       ]
+    },
+    {
+      "group": "Credits",
+      "pages": ["credits/credits"]
     },
     {
       "group": "External Integrations",
@@ -143,6 +146,15 @@
           "pages": [
             "api-reference/invoices/list-invoices",
             "api-reference/invoices/get-invoice"
+          ]
+        },
+        {
+          "group": "Credits",
+          "pages": [
+            "api-reference/credits/list-credits",
+            "api-reference/credits/create-credit",
+            "api-reference/credits/void-credit",
+            "api-reference/credits/update-credit"
           ]
         }
       ]

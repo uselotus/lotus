@@ -4,12 +4,12 @@ import React from "react";
 import { useMutation } from "react-query";
 import { toast } from "react-toastify";
 import { PricingUnits } from "../../../../api/api";
-import { PricingUnit } from "../../../../types/pricing-unit-type";
+import { CurrencyType } from "../../../../types/pricing-unit-type";
 
 const CreatePricingUnit = () => {
   const [form] = Form.useForm();
   const mutation = useMutation(
-    (post: PricingUnit) => PricingUnits.create(post),
+    (post: CurrencyType) => PricingUnits.create(post),
     {
       onSuccess: () => {
         toast.success("Successfully created Pricing Unit", {

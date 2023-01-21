@@ -52,6 +52,7 @@ jobs:
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
       DEBUG: False
       KAFKA_URL: "localhost:9092"
+      PYTHONDONTWRITEBYTECODE: 1
 
     steps:
       - uses: actions/checkout@v3
@@ -87,7 +88,7 @@ jobs:
 
       - name: Test Pytest
         run: |
-          pipenv run pytest -k "not test_integrations"
+          pipenv run pytest -k "not integrations"
 
       - name: Test Setup Tasks
         run: |

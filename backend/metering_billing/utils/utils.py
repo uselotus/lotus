@@ -3,12 +3,12 @@ import datetime
 import uuid
 from collections import namedtuple
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
-from typing import List, Type
 
 import pytz
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.db.models import Field, Model
+
 from metering_billing.exceptions.exceptions import ServerError
 from metering_billing.utils.enums import (
     METRIC_GRANULARITY,
@@ -16,8 +16,8 @@ from metering_billing.utils.enums import (
     USAGE_CALC_GRANULARITY,
 )
 
-ModelType = Type[Model]
-Fields = List[Field]
+ModelType = type[Model]
+Fields = list[Field]
 
 
 def convert_to_decimal(value):
