@@ -4,6 +4,7 @@ import copy
 import json
 import logging
 import operator
+from decimal import Decimal
 from functools import reduce
 from typing import Optional
 
@@ -1201,9 +1202,8 @@ class MetricAccessView(APIView):
             return_dict["access_per_subscription"].append(single_sr_dict)
         access = []
         for sr_dict in return_dict["access_per_subscription"]:
-            if (
-                sr_dict["metric_usage"] < sr_dict["metric_total_limit"]
-                or sr_dict["metric_total_limit"] is None
+            if sr_dict["metric_usage"] < (
+                sr_dict["metric_total_limit"] or Decimal("Infinity")
             ):
                 access.append(True)
             elif sr_dict["metric_total_limit"] == 0:
@@ -1690,6 +1690,8 @@ def track_event(request):
             status=status.HTTP_201_CREATED,
         )
     else:
+        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
+        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
