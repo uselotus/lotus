@@ -4,22 +4,19 @@ import logging
 import math
 import uuid
 from decimal import Decimal
-from random import choices
-from typing import TypedDict
+from typing import Literal, Optional, TypedDict, Union
 
 # import lotus_python
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
-from django.core.files.base import ContentFile
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Count, F, FloatField, Q, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
-from django_celery_beat.models import CrontabSchedule, IntervalSchedule, PeriodicTask
 from metering_billing.exceptions.exceptions import (
     AlignmentEngineFailure,
     ExternalConnectionFailure,
@@ -28,39 +25,60 @@ from metering_billing.exceptions.exceptions import (
     OverlappingPlans,
     ServerError,
 )
-from metering_billing.invoice import generate_invoice
 from metering_billing.utils import (
-    backtest_uuid,
     calculate_end_date,
     convert_to_date,
     convert_to_datetime,
     convert_to_decimal,
-    customer_balance_adjustment_uuid,
     customer_uuid,
     date_as_min_dt,
     dates_bwn_two_dts,
     event_uuid,
-    metric_uuid,
     now_plus_day,
     now_utc,
-    organization_uuid,
     periods_bwn_twodates,
-    plan_uuid,
-    plan_version_uuid,
     product_uuid,
-    random_uuid,
-    subscription_record_uuid,
-    subscription_uuid,
-    usage_alert_uuid,
-    webhook_endpoint_uuid,
-    webhook_secret_uuid,
 )
-from metering_billing.utils.enums import *
+from metering_billing.utils.enums import (
+    ACCOUNTS_RECEIVABLE_TRANSACTION_TYPES,
+    BACKTEST_STATUS,
+    CATEGORICAL_FILTER_OPERATORS,
+    CHARGEABLE_ITEM_TYPE,
+    CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
+    EVENT_TYPE,
+    FLAT_FEE_BEHAVIOR,
+    FLAT_FEE_BILLING_TYPE,
+    INVOICING_BEHAVIOR,
+    MAKE_PLAN_VERSION_ACTIVE_TYPE,
+    METRIC_AGGREGATION,
+    METRIC_GRANULARITY,
+    METRIC_STATUS,
+    METRIC_TYPE,
+    NUMERIC_FILTER_OPERATORS,
+    ORGANIZATION_SETTING_GROUPS,
+    ORGANIZATION_SETTING_NAMES,
+    PAYMENT_PROVIDERS,
+    PLAN_DURATION,
+    PLAN_STATUS,
+    PLAN_VERSION_STATUS,
+    PRICE_ADJUSTMENT_TYPE,
+    PRODUCT_STATUS,
+    REPLACE_IMMEDIATELY_TYPE,
+    SUPPORTED_CURRENCIES,
+    SUPPORTED_CURRENCIES_VERSION,
+    TAG_GROUP,
+    USAGE_BILLING_FREQUENCY,
+    USAGE_CALC_GRANULARITY,
+    WEBHOOK_TRIGGER_EVENTS,
+)
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
 from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
 from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -87,23 +105,17 @@ class Organization(models.Model):
     team = models.ForeignKey(
         Team, on_delete=models.CASCADE, null=True, related_name="organizations"
     )
-    organization_id = models.SlugField(default=organization_uuid, max_length=100)
+    organization_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     organization_name = models.CharField(max_length=100, blank=False, null=False)
     payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateField(default=now_utc)
-    payment_plan = models.CharField(
-        max_length=40,
-        choices=PAYMENT_PLANS.choices,
-        default=PAYMENT_PLANS.SELF_HOSTED_FREE,
-        null=False,
-    )
     organization_type = models.PositiveSmallIntegerField(
         choices=OrganizationType.choices, default=OrganizationType.DEVELOPMENT
     )
     default_currency = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="organizations",
         null=True,
         blank=True,
     )
@@ -124,6 +136,14 @@ class Organization(models.Model):
         null=True,
     )
     history = HistoricalRecords()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["organization_name"]),
+            models.Index(fields=["organization_type"]),
+            models.Index(fields=["organization_id"]),
+            models.Index(fields=["team"]),
+        ]
 
     def __str__(self):
         return self.organization_name
@@ -160,9 +180,8 @@ class Organization(models.Model):
         if not self.subscription_filters_setting_provisioned:
             OrganizationSetting.objects.create(
                 organization=self,
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS,
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS,
                 setting_values=[],
-                setting_group=None,
             )
             self.subscription_filters_setting_provisioned = True
             self.save()
@@ -172,7 +191,7 @@ class Organization(models.Model):
 
         setting, _ = OrganizationSetting.objects.get_or_create(
             organization=self,
-            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS,
+            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS,
         )
         if not isinstance(filter_keys, list) and all(
             isinstance(key, str) for key in filter_keys
@@ -187,10 +206,10 @@ class Organization(models.Model):
 
     def provision_webhooks(self):
         if SVIX_CONNECTOR is not None:
-            logger.log("provisioning webhooks")
+            logger.info("provisioning webhooks")
             svix = SVIX_CONNECTOR
             svix.application.create(
-                ApplicationIn(uid=self.organization_id, name=self.organization_name)
+                ApplicationIn(uid=self.organization_id.hex, name=self.organization_name)
             )
             self.webhooks_provisioned = True
         self.save()
@@ -219,17 +238,15 @@ class WebhookEndpointManager(models.Manager):
 
 
 class WebhookEndpoint(models.Model):
-    webhook_endpoint_id = models.SlugField(
-        default=webhook_endpoint_uuid,
-        max_length=100,
-        unique=True,
+    webhook_endpoint_id = models.UUIDField(
+        default=uuid.uuid4, editable=False, unique=True
     )
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="webhook_endpoints"
     )
     name = models.CharField(max_length=100, blank=True, null=True)
     webhook_url = models.CharField(max_length=100)
-    webhook_secret = models.SlugField(max_length=100, default=webhook_secret_uuid)
+    webhook_secret = models.UUIDField(default=uuid.uuid4, editable=False)
 
     objects = WebhookEndpointManager()
 
@@ -238,6 +255,11 @@ class WebhookEndpoint(models.Model):
             models.UniqueConstraint(
                 fields=["organization", "webhook_url"], name="unique_webhook_url"
             )
+        ]
+        indexes = [
+            models.Index(
+                fields=["organization", "webhook_endpoint_id"]
+            ),  # for single lookup
         ]
 
     def save(self, *args, **kwargs):
@@ -249,11 +271,11 @@ class WebhookEndpoint(models.Model):
                 svix = SVIX_CONNECTOR
                 if new:
                     endpoint_create_dict = {
-                        "uid": self.webhook_endpoint_id,
+                        "uid": self.webhook_endpoint_id.hex,
                         "description": self.name,
                         "url": self.webhook_url,
                         "version": 1,
-                        "secret": self.webhook_secret,
+                        "secret": "whsec_" + self.webhook_secret.hex,
                     }
                     if len(triggers) > 0:
                         endpoint_create_dict["filter_types"] = []
@@ -264,7 +286,7 @@ class WebhookEndpoint(models.Model):
                             trigger.webhook_endpoint = self
                             trigger.save()
                     svix_endpoint = svix.endpoint.create(
-                        self.organization.organization_id,
+                        self.organization.organization_id.hex,
                         EndpointIn(**endpoint_create_dict),
                     )
                 else:
@@ -272,13 +294,13 @@ class WebhookEndpoint(models.Model):
                         "trigger_name", flat=True
                     )
                     svix_endpoint = svix.endpoint.get(
-                        self.organization.organization_id,
-                        self.webhook_endpoint_id,
+                        self.organization.organization_id.hex,
+                        self.webhook_endpoint_id.hex,
                     )
 
                     svix_endpoint = svix_endpoint.__dict__
                     svix_update_dict = {}
-                    svix_update_dict["uid"] = self.webhook_endpoint_id
+                    svix_update_dict["uid"] = self.webhook_endpoint_id.hex
                     svix_update_dict["description"] = self.name
                     svix_update_dict["url"] = self.webhook_url
 
@@ -289,26 +311,26 @@ class WebhookEndpoint(models.Model):
                         version += 1
                     svix_update_dict["filter_types"] = list(triggers)
                     svix_update_dict["version"] = version
-                    updated_endpoint = svix.endpoint.update(
-                        self.organization.organization_id,
-                        self.webhook_endpoint_id,
+                    svix.endpoint.update(
+                        self.organization.organization_id.hex,
+                        self.webhook_endpoint_id.hex,
                         EndpointUpdate(**svix_update_dict),
                     )
 
                     current_endpoint_secret = svix.endpoint.get_secret(
-                        self.organization.organization_id,
-                        self.webhook_endpoint_id,
+                        self.organization.organization_id.hex,
+                        self.webhook_endpoint_id.hex,
                     )
-                    if current_endpoint_secret.key != self.webhook_secret:
+                    if current_endpoint_secret.key != self.webhook_secret.hex:
                         svix.endpoint.rotate_secret(
-                            self.organization.organization_id,
-                            self.webhook_endpoint_id,
-                            EndpointSecretRotateIn(key=self.webhook_secret),
+                            self.organization.organization_id.hex,
+                            self.webhook_endpoint_id.hex,
+                            EndpointSecretRotateIn(key=self.webhook_secret.hex),
                         )
-            except HttpError as e:
+            except (HttpError, HTTPValidationError) as e:
                 list_response_application_out = svix.application.list()
                 dt = list_response_application_out.data
-                lst = [x for x in dt if x.uid == self.organization.organization_id]
+                lst = [x for x in dt if x.uid == self.organization.organization_id.hex]
                 try:
                     svix_app = lst[0]
                 except IndexError:
@@ -320,15 +342,17 @@ class WebhookEndpoint(models.Model):
 
                 dictionary = {
                     "error": e,
-                    "organization_id": self.organization.organization_id,
-                    "webhook_endpoint_id": self.webhook_endpoint_id,
+                    "organization_id": self.organization.organization_id.hex,
+                    "webhook_endpoint_id": self.webhook_endpoint_id.hex,
                     "svix_app": svix_app,
                     "endpoint data": list_response_endpoint_out,
                 }
                 self.delete()
 
                 raise ExternalConnectionFailure(
-                    "Webhooks service failed to connect. Did not provision webhook endpoint."
+                    "Webhooks service failed to connect. Did not provision webhook endpoint. Error: {}".format(
+                        dictionary
+                    )
                 )
 
 
@@ -345,6 +369,14 @@ class WebhookTrigger(models.Model):
     trigger_name = models.CharField(
         choices=WEBHOOK_TRIGGER_EVENTS.choices, max_length=40
     )
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=["organization", "webhook_endpoint", "trigger_name"],
+                name="unique_webhook_trigger",
+            )
+        ]
 
 
 class User(AbstractUser):
@@ -430,7 +462,7 @@ class Customer(models.Model):
     default_currency = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="customers",
         null=True,
         blank=True,
         help_text="The currency the customer will be invoiced in",
@@ -487,7 +519,7 @@ class Customer(models.Model):
         ).update(customer=self)
 
     def get_subscription_and_records(self):
-        now = now_utc()
+        now_utc()
         active_subscription = self.subscriptions.active().first()
         if active_subscription:
             active_subscription_records = self.subscription_records.filter(
@@ -523,6 +555,8 @@ class Customer(models.Model):
         return subscription_usages
 
     def get_active_sub_drafts_revenue(self):
+        from metering_billing.invoice import generate_invoice
+
         total = 0
         sub, sub_records = self.get_subscription_and_records()
         if sub is not None and sub_records is not None:
@@ -548,7 +582,7 @@ class Customer(models.Model):
 
     def get_outstanding_revenue(self):
         unpaid_invoice_amount_due = (
-            self.invoices.filter(payment_status=INVOICE_STATUS.UNPAID)
+            self.invoices.filter(payment_status=Invoice.PaymentStatus.UNPAID)
             .aggregate(unpaid_inv_amount=Sum("cost_due"))
             .get("unpaid_inv_amount")
         )
@@ -561,9 +595,7 @@ class CustomerBalanceAdjustment(models.Model):
     This model is used to store the customer balance adjustments.
     """
 
-    adjustment_id = models.SlugField(
-        max_length=100, default=customer_balance_adjustment_uuid
-    )
+    adjustment_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="+", null=True
     )
@@ -574,7 +606,7 @@ class CustomerBalanceAdjustment(models.Model):
     pricing_unit = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="adjustments",
         null=True,
         blank=True,
     )
@@ -595,7 +627,7 @@ class CustomerBalanceAdjustment(models.Model):
     amount_paid_currency = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="paid_adjustments",
         null=True,
         blank=True,
     )
@@ -611,6 +643,15 @@ class CustomerBalanceAdjustment(models.Model):
     class Meta:
         ordering = ["-created"]
         unique_together = ("customer", "created")
+        indexes = [
+            models.Index(
+                fields=["organization", "adjustment_id"]
+            ),  # for lookup for single
+            models.Index(
+                fields=["organization", "customer", "pricing_unit", "-expires_at"]
+            ),  # for lookup for drawdowns
+            models.Index(fields=["status", "expires_at"]),  # for lookup for expired
+        ]
 
     def save(self, *args, **kwargs):
         if self.pk:
@@ -672,7 +713,12 @@ class CustomerBalanceAdjustment(models.Model):
         super(CustomerBalanceAdjustment, self).save(*args, **kwargs)
 
     def get_remaining_balance(self):
-        dd_aggregate = self.drawdowns.aggregate(drawdowns=Sum("amount"))["drawdowns"]
+        try:
+            dd_aggregate = self.total_drawdowns
+        except AttributeError:
+            dd_aggregate = self.drawdowns.aggregate(drawdowns=Sum("amount"))[
+                "drawdowns"
+            ]
         drawdowns = dd_aggregate or 0
         return self.amount + drawdowns
 
@@ -684,7 +730,7 @@ class CustomerBalanceAdjustment(models.Model):
             fmt = now_utc().strftime("%Y-%m-%d %H:%M")
             description = f"Voiding remaining credit at {fmt} UTC"
         else:
-            description = f"Zeroing out remaining credit"
+            description = "Zeroing out remaining credit"
         remaining_balance = self.get_remaining_balance()
         if remaining_balance > 0:
             CustomerBalanceAdjustment.objects.create(
@@ -718,8 +764,8 @@ class CustomerBalanceAdjustment(models.Model):
                 )
             )
             .order_by(
+                F("expires_at").asc(nulls_last=True),
                 F("cost_basis").desc(nulls_last=True),
-                F("expires_at").desc(nulls_last=True),
             )
         )
         am = amount
@@ -905,7 +951,7 @@ class Metric(models.Model):
     )
     properties = models.JSONField(default=dict, blank=True, null=True)
     billable_metric_name = models.CharField(max_length=50, blank=True, null=True)
-    metric_id = models.SlugField(max_length=100, default=metric_uuid)
+    metric_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     event_type = models.CharField(
         max_length=20,
         choices=EVENT_TYPE.choices,
@@ -975,10 +1021,6 @@ class Metric(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["organization", "metric_id"],
-                name="unique_org_metric_id",
-            ),
-            models.UniqueConstraint(
                 fields=["organization", "billable_metric_name"],
                 condition=Q(status=METRIC_STATUS.ACTIVE),
                 name="unique_org_billable_metric_name",
@@ -1006,7 +1048,7 @@ class Metric(models.Model):
                     **{f"{nullable}__in": [None, ""] for nullable in sorted(nullables)}
                 )
                 & Q(status=METRIC_STATUS.ACTIVE),
-                name=f"uq_metric_w_null__"
+                name="uq_metric_w_null__"
                 + "_".join(
                     [
                         "_".join([x[:2] for x in nullable.split("_")])
@@ -1042,9 +1084,19 @@ class Metric(models.Model):
                 )
             )
         ]
+        indexes = [
+            models.Index(fields=["organization", "status"]),
+            models.Index(fields=["organization", "is_cost_metric"]),
+            models.Index(fields=["organization", "metric_id"]),
+        ]
 
     def __str__(self):
         return self.billable_metric_name or ""
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.status == METRIC_STATUS.ACTIVE and not self.mat_views_provisioned:
+            self.provision_materialized_views()
 
     def get_aggregation_type(self):
         return self.aggregation_type
@@ -1077,6 +1129,30 @@ class Metric(models.Model):
 
         return usage
 
+    def get_daily_total_usage(
+        self,
+        start_date: datetime.date,
+        end_date: datetime.date,
+        customer: Optional[Customer] = None,
+        top_n: Optional[int] = None,
+    ) -> dict[Union[Customer, Literal["Other"]], dict[datetime.date, Decimal]]:
+        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+
+        handler = METRIC_HANDLER_MAP[self.metric_type]
+        usage = handler.get_daily_total_usage(
+            self, start_date, end_date, customer, top_n
+        )
+
+        return usage
+
+    def refresh_materialized_views(self):
+        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+
+        handler = METRIC_HANDLER_MAP[self.metric_type]
+        handler.create_continuous_aggregate(self, refresh=True)
+        self.mat_views_provisioned = True
+        self.save()
+
     def provision_materialized_views(self):
         from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 
@@ -1100,6 +1176,17 @@ class UsageRevenueSummary(TypedDict):
 
 
 class PriceTier(models.Model):
+    class PriceTierType(models.IntegerChoices):
+        FLAT = (1, _("Flat"))
+        PER_UNIT = (2, _("Per Unit"))
+        FREE = (3, _("Free"))
+
+    class BatchRoundingType(models.IntegerChoices):
+        ROUND_UP = (1, _("Round Up"))
+        ROUND_DOWN = (2, _("Round Down"))
+        ROUND_NEAREST = (3, _("Round Nearest"))
+        NO_ROUNDING = (4, _("No Rounding"))
+
     organization = models.ForeignKey(
         "Organization", on_delete=models.CASCADE, related_name="price_tiers", null=True
     )
@@ -1110,7 +1197,7 @@ class PriceTier(models.Model):
         null=True,
         blank=True,
     )
-    type = models.CharField(choices=PRICE_TIER_TYPE.choices, max_length=10)
+    type = models.PositiveSmallIntegerField(choices=PriceTierType.choices)
     range_start = models.DecimalField(
         max_digits=20, decimal_places=10, validators=[MinValueValidator(0)]
     )
@@ -1136,10 +1223,8 @@ class PriceTier(models.Model):
         default=1.0,
         validators=[MinValueValidator(0)],
     )
-    batch_rounding_type = models.CharField(
-        choices=BATCH_ROUNDING_TYPE.choices,
-        max_length=20,
-        default=BATCH_ROUNDING_TYPE.NO_ROUNDING,
+    batch_rounding_type = models.PositiveSmallIntegerField(
+        choices=BatchRoundingType.choices,
         blank=True,
         null=True,
     )
@@ -1159,9 +1244,9 @@ class PriceTier(models.Model):
             else self.range_start < usage or self.range_start == 0
         )
         if usage_in_range:
-            if self.type == PRICE_TIER_TYPE.FLAT:
+            if self.type == PriceTier.PriceTierType.FLAT:
                 revenue += self.cost_per_batch
-            elif self.type == PRICE_TIER_TYPE.PER_UNIT:
+            elif self.type == PriceTier.PriceTierType.PER_UNIT:
                 if self.range_end is not None:
                     billable_units = min(
                         usage - self.range_start, self.range_end - self.range_start
@@ -1171,11 +1256,14 @@ class PriceTier(models.Model):
                 if discontinuous_range:
                     billable_units += 1
                 billable_batches = billable_units / self.metric_units_per_batch
-                if self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_UP:
+                if self.batch_rounding_type == PriceTier.BatchRoundingType.ROUND_UP:
                     billable_batches = math.ceil(billable_batches)
-                elif self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_DOWN:
+                elif self.batch_rounding_type == PriceTier.BatchRoundingType.ROUND_DOWN:
                     billable_batches = math.floor(billable_batches)
-                elif self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_NEAREST:
+                elif (
+                    self.batch_rounding_type
+                    == PriceTier.BatchRoundingType.ROUND_NEAREST
+                ):
                     billable_batches = round(billable_batches)
                 revenue += self.cost_per_batch * billable_batches
         return revenue
@@ -1205,7 +1293,7 @@ class PlanComponent(models.Model):
     pricing_unit = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="components",
         null=True,
         blank=True,
     )
@@ -1214,7 +1302,7 @@ class PlanComponent(models.Model):
         return str(self.billable_metric)
 
     def save(self, *args, **kwargs):
-        if not self.pricing_unit:
+        if self.pricing_unit is None and self.plan_version is not None:
             self.pricing_unit = self.plan_version.pricing_unit
         super().save(*args, **kwargs)
 
@@ -1279,6 +1367,7 @@ class PlanComponent(models.Model):
 
 
 class Feature(models.Model):
+    feature_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="features"
     )
@@ -1297,6 +1386,12 @@ class Feature(models.Model):
 
 
 class Invoice(models.Model):
+    class PaymentStatus(models.IntegerChoices):
+        DRAFT = (1, _("Draft"))
+        VOIDED = (2, _("Voided"))
+        PAID = (3, _("Paid"))
+        UNPAID = (4, _("Unpaid"))
+
     cost_due = models.DecimalField(
         decimal_places=10,
         max_digits=20,
@@ -1306,7 +1401,7 @@ class Invoice(models.Model):
     currency = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="invoices",
         null=True,
         blank=True,
     )
@@ -1314,11 +1409,12 @@ class Invoice(models.Model):
     invoice_pdf = models.URLField(max_length=300, null=True, blank=True)
     org_connected_to_cust_payment_provider = models.BooleanField(default=False)
     cust_connected_to_payment_provider = models.BooleanField(default=False)
-    payment_status = models.CharField(
-        max_length=40, choices=INVOICE_STATUS.choices, default=INVOICE_STATUS.UNPAID
+    payment_status = models.PositiveSmallIntegerField(
+        choices=PaymentStatus.choices, default=PaymentStatus.UNPAID
     )
     due_date = models.DateTimeField(max_length=100, null=True, blank=True)
     invoice_number = models.CharField(max_length=13)
+    invoice_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     external_payment_obj_id = models.CharField(max_length=100, blank=True, null=True)
     external_payment_obj_type = models.CharField(
         choices=PAYMENT_PROVIDERS.choices, max_length=40, blank=True, null=True
@@ -1337,27 +1433,25 @@ class Invoice(models.Model):
     )
     history = HistoricalRecords()
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["organization", "payment_status"]),
+            models.Index(fields=["organization", "customer"]),
+            models.Index(fields=["organization", "invoice_number"]),
+            models.Index(fields=["organization", "invoice_id"]),
+            models.Index(fields=["organization", "external_payment_obj_id"]),
+            models.Index(fields=["organization", "subscription", "-issue_date"]),
+        ]
+
     def __str__(self):
         return str(self.invoice_number)
 
     def save(self, *args, **kwargs):
-        # if self.payment_status != INVOICE_STATUS.DRAFT and META and self.cost_due > 0:
-        #     lotus_python.track_event(
-        #         customer_id=self.organization.organization_id,
-        #         event_name="create_invoice",
-        #         properties={
-        #             "amount": float(self.cost_due),
-        #             "currency": self.pricing_unit.code,
-        #             "customer": self.customer.customer_id,
-        #             "subscription": self.subscription.subscription_id,
-        #             "external_type": self.external_payment_obj_type,
-        #         },
-        #     )
         if not self.currency:
             self.currency = self.organization.default_currency
 
         ### Generate invoice number
-        if not self.pk and self.payment_status != INVOICE_STATUS.DRAFT:
+        if not self.pk and self.payment_status != Invoice.PaymentStatus.DRAFT:
             today = now_utc().date()
             today_string = today.strftime("%y%m%d")
             next_invoice_number = "000001"
@@ -1376,14 +1470,17 @@ class Invoice(models.Model):
             self.invoice_number = today_string + "-" + next_invoice_number
             # if not self.due_date:
             #     self.due_date = self.issue_date + datetime.timedelta(days=1)
-        paid_before = self.payment_status == INVOICE_STATUS.PAID
+        paid_before = self.payment_status == Invoice.PaymentStatus.PAID
         super().save(*args, **kwargs)
-        paid_after = self.payment_status == INVOICE_STATUS.PAID
+        paid_after = self.payment_status == Invoice.PaymentStatus.PAID
         if not paid_before and paid_after and self.cost_due > 0:
             invoice_paid_webhook(self, self.organization)
 
 
 class InvoiceLineItem(models.Model):
+    invoice_line_item_id = models.UUIDField(
+        default=uuid.uuid4, unique=True, editable=False
+    )
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
@@ -1406,7 +1503,7 @@ class InvoiceLineItem(models.Model):
     pricing_unit = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="line_items",
         null=True,
         blank=True,
     )
@@ -1512,11 +1609,11 @@ class PlanVersion(models.Model):
         null=True,
         blank=True,
     )
-    version_id = models.SlugField(max_length=250, default=plan_version_uuid)
+    version_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     pricing_unit = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="versions",
         null=True,
         blank=True,
     )
@@ -1527,9 +1624,10 @@ class PlanVersion(models.Model):
             models.UniqueConstraint(
                 fields=["plan", "version"], name="unique_plan_version"
             ),
-            models.UniqueConstraint(
-                fields=["organization", "version_id"], name="unique_version_id"
-            ),
+        ]
+        indexes = [
+            models.Index(fields=["organization", "status", "plan"]),
+            models.Index(fields=["organization", "version_id"]),
         ]
 
     def __str__(self) -> str:
@@ -1621,7 +1719,7 @@ class Plan(models.Model):
     status = models.CharField(
         choices=PLAN_STATUS.choices, max_length=40, default=PLAN_STATUS.ACTIVE
     )
-    plan_id = models.SlugField(default=plan_uuid, max_length=100, unique=True)
+    plan_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     created_on = models.DateTimeField(default=now_utc)
     created_by = models.ForeignKey(
         User,
@@ -1666,6 +1764,10 @@ class Plan(models.Model):
                 name="both_null_or_both_not_null",
             )
         ]
+        indexes = [
+            models.Index(fields=["organization", "status"]),
+            models.Index(fields=["organization", "plan_id"]),
+        ]
 
     def __str__(self):
         return f"{self.plan_name}"
@@ -1684,9 +1786,6 @@ class Plan(models.Model):
             )
         )
         return versions_count
-
-    def version_numbers(self):
-        return self.versions.all().values_list("version", flat=True)
 
     def make_version_active(
         self, plan_version, make_active_type=None, replace_immediately_type=None
@@ -1860,7 +1959,7 @@ class Subscription(models.Model):
     )
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
-    subscription_id = models.SlugField(max_length=100, default=subscription_uuid)
+    subscription_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     objects = SubscriptionManager()
 
     class Meta:
@@ -1870,13 +1969,13 @@ class Subscription(models.Model):
                 name="start_date_less_than_end_date",
             ),
             models.UniqueConstraint(
-                fields=["subscription_id", "organization"],
-                name="unique_subscription_id",
-            ),
-            models.UniqueConstraint(
                 fields=["customer", "start_date", "end_date"],
                 name="unique_customer_start_end_date",
             ),
+        ]
+        indexes = [
+            models.Index(fields=["-end_date"]),
+            models.Index(fields=["organization", "customer", "start_date", "end_date"]),
         ]
 
     def __str__(self):
@@ -1900,7 +1999,7 @@ class Subscription(models.Model):
                     overlapping_subscriptions,
                 )
                 raise AlignmentEngineFailure(
-                    f"An unexpected error in the alignment engine has occurred. Please contact support."
+                    "An unexpected error in the alignment engine has occurred. Please contact support."
                 )
         super(Subscription, self).save(*args, **kwargs)
 
@@ -1954,6 +2053,7 @@ class Subscription(models.Model):
 
     def handle_remove_plan(self):
         active_sub_records = self.customer.subscription_records.active()
+
         active_subs_with_yearly_quarterly = active_sub_records.filter(
             billing_plan__plan__plan_duration__in=[
                 PLAN_DURATION.YEARLY,
@@ -2085,8 +2185,8 @@ class SubscriptionRecord(models.Model):
         default=True,
         help_text="Whether this subscription came from a renewal or from a first-time. Defaults to true on creation.",
     )
-    subscription_record_id = models.SlugField(
-        max_length=100, default=subscription_record_uuid
+    subscription_record_id = models.UUIDField(
+        default=uuid.uuid4, editable=False, unique=True
     )
     filters = models.ManyToManyField(
         CategoricalFilter,
@@ -2108,10 +2208,6 @@ class SubscriptionRecord(models.Model):
 
     class Meta:
         constraints = [
-            UniqueConstraint(
-                fields=["organization", "subscription_record_id"],
-                name="unique_subscription_record_id",
-            ),
             CheckConstraint(
                 check=Q(start_date__lte=F("end_date")), name="end_date_gte_start_date"
             ),
@@ -2219,8 +2315,8 @@ class SubscriptionRecord(models.Model):
 
     def amount_already_invoiced(self):
         billed_invoices = self.line_items.filter(
-            ~Q(invoice__payment_status=INVOICE_STATUS.VOIDED)
-            & ~Q(invoice__payment_status=INVOICE_STATUS.DRAFT),
+            ~Q(invoice__payment_status=Invoice.PaymentStatus.VOIDED)
+            & ~Q(invoice__payment_status=Invoice.PaymentStatus.DRAFT),
             subtotal__isnull=False,
         ).aggregate(tot=Sum("subtotal"))["tot"]
         return billed_invoices or 0
@@ -2230,10 +2326,10 @@ class SubscriptionRecord(models.Model):
         # set up the billing plan for this subscription
         plan = self.billing_plan
         # set up other details of the subscription
-        plan_start_date = self.start_date
-        plan_end_date = self.end_date
+        self.start_date
+        self.end_date
         # extract other objects that we need when calculating usage
-        customer = self.customer
+        self.customer
         plan_components_qs = plan.plan_components.all()
         # For each component of the plan, calculate usage/revenue
         for plan_component in plan_components_qs:
@@ -2302,7 +2398,7 @@ class SubscriptionRecord(models.Model):
             rev_per_day = component.calculate_revenue_per_day(self)
             for period, d in rev_per_day.items():
                 period = convert_to_date(period)
-                usage_qty = d["usage_qty"]
+                d["usage_qty"]
                 revenue = d["revenue"]
                 if period in return_dict:
                     return_dict[period] += revenue
@@ -2321,7 +2417,7 @@ class Backtest(models.Model):
         Organization, on_delete=models.CASCADE, related_name="backtests"
     )
     time_created = models.DateTimeField(default=now_utc)
-    backtest_id = models.SlugField(max_length=100, default=backtest_uuid, unique=True)
+    backtest_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     kpis = models.JSONField(default=list)
     backtest_results = models.JSONField(default=dict, blank=True)
     status = models.CharField(
@@ -2369,12 +2465,17 @@ class OrganizationSetting(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="settings"
     )
-    setting_id = models.SlugField(default=random_uuid, max_length=100, unique=True)
+    setting_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     setting_name = models.CharField(
-        max_length=100,
+        choices=ORGANIZATION_SETTING_NAMES.choices, max_length=64
     )
     setting_values = models.JSONField(default=dict, blank=True)
-    setting_group = models.CharField(max_length=100, blank=True, null=True)
+    setting_group = models.CharField(
+        choices=ORGANIZATION_SETTING_GROUPS.choices,
+        blank=True,
+        null=True,
+        max_length=64,
+    )
     history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
@@ -2493,6 +2594,7 @@ class Tag(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="tags"
     )
+    tag_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     tag_name = models.CharField(max_length=50)
     tag_group = models.CharField(choices=TAG_GROUP.choices, max_length=15)
     tag_hex = models.CharField(max_length=7, null=True)
@@ -2513,7 +2615,7 @@ class UsageAlert(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="usage_alerts"
     )
-    usage_alert_id = models.SlugField(default=usage_alert_uuid, max_length=50)
+    usage_alert_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     metric = models.ForeignKey(
         Metric, on_delete=models.CASCADE, related_name="usage_alerts"
     )
@@ -2523,12 +2625,7 @@ class UsageAlert(models.Model):
     threshold = models.DecimalField(max_digits=20, decimal_places=10)
 
     class Meta:
-        constraints = [
-            UniqueConstraint(
-                fields=["organization", "usage_alert_id"],
-                name="unique_alert_id_per_org",
-            ),
-        ]
+        constraints = []
 
     def save(self, *args, **kwargs):
         if self.metric.metric_type != METRIC_TYPE.COUNTER:

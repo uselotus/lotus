@@ -67,8 +67,7 @@
       "pages": [
         "plan-management/creating-plans",
         "plan-management/plan-templates",
-        "plan-management/versioning",
-        "plan-management/credits"
+        "plan-management/versioning"
       ]
     },
     {
@@ -80,6 +79,10 @@
         "subscription-lifecycle/alerts",
         "subscription-lifecycle/addons"
       ]
+    },
+    {
+      "group": "Credits",
+      "pages": ["credits/credits"]
     },
     {
       "group": "External Integrations",
@@ -108,7 +111,7 @@
         },
         {
           "group": "Events",
-          "pages": ["api-reference/events/tracking",          
+          "pages": ["api-reference/events/tracking",
             "api-reference/events/verify-ingestion"
         ]
         },
@@ -118,8 +121,20 @@
             "api-reference/customers/create-customer",
             "api-reference/customers/retrieve-customer",
             "api-reference/customers/list-customers",
-            "api-reference/customers/get-customer-access",
-            "api-reference/customers/customer-feature-access"
+            {
+              "group": "Deprecated Methods",
+              "pages": [
+                "api-reference/customers/deprecated_methods/get-customer-access",
+                "api-reference/customers/deprecated_methods/customer-feature-access"
+              ]
+            }
+          ]
+        },
+        {
+          "group": "Access",
+          "pages": [
+            "api-reference/access/feature-access",
+            "api-reference/access/metric-access"
           ]
         },
         {
@@ -143,6 +158,15 @@
           "pages": [
             "api-reference/invoices/list-invoices",
             "api-reference/invoices/get-invoice"
+          ]
+        },
+        {
+          "group": "Credits",
+          "pages": [
+            "api-reference/credits/list-credits",
+            "api-reference/credits/create-credit",
+            "api-reference/credits/void-credit",
+            "api-reference/credits/update-credit"
           ]
         }
       ]

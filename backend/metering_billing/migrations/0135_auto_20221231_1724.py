@@ -5,7 +5,7 @@ from django.db import migrations
 
 def transfer_component_granularity_to_metric(apps, schema_editor):
     PlanComponent = apps.get_model("metering_billing", "PlanComponent")
-    Metric = apps.get_model("metering_billing", "Metric")
+    apps.get_model("metering_billing", "Metric")
     for component in PlanComponent.objects.all():
         ass_metric = component.billable_metric
         if not ass_metric.proration:
@@ -14,7 +14,6 @@ def transfer_component_granularity_to_metric(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metering_billing", "0134_auto_20221231_1724"),
     ]

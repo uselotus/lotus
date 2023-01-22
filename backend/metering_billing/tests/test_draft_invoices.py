@@ -4,26 +4,21 @@ from decimal import Decimal
 
 import pytest
 from django.urls import reverse
-from metering_billing.invoice import generate_invoice
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.models import (
     Event,
     Invoice,
     Metric,
     PlanComponent,
-    PlanVersion,
     PriceAdjustment,
     PriceTier,
     Subscription,
 )
 from metering_billing.utils import now_utc
-from metering_billing.utils.enums import (
-    INVOICE_STATUS,
-    PRICE_ADJUSTMENT_TYPE,
-    PRICE_TIER_TYPE,
-)
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
+from metering_billing.utils.enums import PRICE_ADJUSTMENT_TYPE
 
 
 @pytest.fixture
@@ -69,7 +64,7 @@ def draft_invoice_test_common_setup(
             {"num_characters": 125, "peak_bandwith": 148},
             {"num_characters": 543, "peak_bandwith": 16},
         )
-        event_set = baker.make(
+        baker.make(
             Event,
             organization=org,
             customer=customer,
@@ -103,14 +98,14 @@ def draft_invoice_test_common_setup(
             if fmu > 0:
                 PriceTier.objects.create(
                     plan_component=pc,
-                    type=PRICE_TIER_TYPE.FREE,
+                    type=PriceTier.PriceTierType.FREE,
                     range_start=0,
                     range_end=fmu,
                 )
                 start = fmu
             PriceTier.objects.create(
                 plan_component=pc,
-                type=PRICE_TIER_TYPE.PER_UNIT,
+                type=PriceTier.PriceTierType.PER_UNIT,
                 range_start=start,
                 cost_per_batch=cpb,
                 metric_units_per_batch=mupb,
@@ -139,7 +134,7 @@ class TestGenerateInvoice:
         assert len(active_subscriptions) == 1
 
         prev_invoices_len = Invoice.objects.filter(
-            payment_status=INVOICE_STATUS.DRAFT
+            payment_status=Invoice.PaymentStatus.DRAFT
         ).count()
         payload = {"customer_id": setup_dict["customer"].customer_id}
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
@@ -150,7 +145,7 @@ class TestGenerateInvoice:
         )
         assert len(after_active_subscriptions) == len(active_subscriptions)
         new_invoices_len = Invoice.objects.filter(
-            payment_status=INVOICE_STATUS.DRAFT
+            payment_status=Invoice.PaymentStatus.DRAFT
         ).count()
 
         assert new_invoices_len == prev_invoices_len  # don't generate from drafts

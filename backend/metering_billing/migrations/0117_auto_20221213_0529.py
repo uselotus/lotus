@@ -108,7 +108,6 @@ def pricing_unit_to_org(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metering_billing", "0116_backtestsubstitution_organization_and_more"),
     ]

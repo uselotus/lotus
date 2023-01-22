@@ -3,7 +3,7 @@ import React, { FC, useState, useEffect } from "react";
 import type { ProColumns } from "@ant-design/pro-components";
 import { ProTable } from "@ant-design/pro-components";
 import {
-  CustomerPlus,
+  CustomerSummary,
   CustomerTableItem,
   CustomerTotal,
 } from "../../types/customer-type";
@@ -17,22 +17,24 @@ import { useNavigate } from "react-router-dom";
 
 function getHighlightedText(text: string, highlight: string) {
   // Split text on highlight term, include term itself into parts, ignore case
-  const parts = text.split(new RegExp(`(${highlight})`, "gi"));
-  return (
-    <span>
-      {parts.map((part) =>
-        part.toLowerCase() === highlight.toLowerCase() ? (
-          <span className="highlightText">{part}</span>
-        ) : (
-          part
-        )
-      )}
-    </span>
-  );
+  if (text) {
+    const parts = text.split(new RegExp(`(${highlight})`, "gi"));
+    return (
+      <span>
+        {parts.map((part) =>
+          part.toLowerCase() === highlight.toLowerCase() ? (
+            <span className="highlightText">{part}</span>
+          ) : (
+            part
+          )
+        )}
+      </span>
+    );
+  }
 }
 
 interface Props {
-  customerArray: CustomerPlus[];
+  customerArray: CustomerSummary[];
   totals: CustomerTotal[] | undefined;
 }
 
@@ -59,10 +61,16 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
       const dataInstance: CustomerTableItem[] = [];
       if (totals !== undefined) {
         for (let i = 0; i < customerArray.length; i++) {
+          const customer_info = customerArray[i];
+          const total =
+            totals.find(
+              (total) => total.customer_id === customer_info.customer_id
+            )?.total_amount_due ?? 0.0;
           const entry: CustomerTableItem = {
-            ...customerArray[i],
-            ...totals[i],
+            ...customer_info,
+            total_amount_due: total,
           };
+
           dataInstance.push(entry);
         }
       } else {
@@ -111,7 +119,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
       search: { transform: (value: any) => value },
       render: (_, record) => {
         if (searchQuery) {
-          return getHighlightedText(record.customer_name, searchQuery);
+          getHighlightedText(record.customer_name, searchQuery);
         }
         return record.customer_name;
       },
@@ -138,7 +146,8 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
 
       render: (_, record) => (
         <div className="self-center">
-          {record.total_amount_due !== undefined ? (
+          {record.total_amount_due !== undefined &&
+          record.total_amount_due !== null ? (
             <div>${record.total_amount_due.toFixed(2)}</div>
           ) : (
             <div>${0.0}</div>
@@ -189,14 +198,18 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
     });
   };
 
-  const getFilteredTableData = (data: CustomerTableItem[]) => {
+  const getFilteredTableData = (data: CustomerTableItem[] | undefined) => {
+    if (data === undefined) {
+      return data;
+    }
     if (!searchQuery) {
       return data;
     }
     return data.filter(
       (item) =>
         item.customer_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.customer_name.toLowerCase().includes(searchQuery.toLowerCase())
+        (item.customer_name &&
+          item.customer_name.toLowerCase().includes(searchQuery.toLowerCase()))
     );
   };
 

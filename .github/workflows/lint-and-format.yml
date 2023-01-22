@@ -1,0 +1,25 @@
+name: Lint and Prettier
+
+on: [push]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          path: frontend
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16
+
+      - name: Install dependencies
+        run: cd frontend/frontend && yarn
+
+      # - name: Lint with ESLint
+      #   run: yarn lint
+      - name: Run Prettier
+        run: cd frontend/frontend && yarn pretty

@@ -15,13 +15,13 @@ import { toast } from "react-toastify";
 
 import { CustomerType } from "../../types/customer-type";
 import { CustomerCostType } from "../../types/revenue-type";
-import { PricingUnit } from "../../types/pricing-unit-type";
+import { CurrencyType } from "../../types/pricing-unit-type";
 import { country_json } from "../../assets/country_codes";
 
 interface CustomerInfoViewProps {
   data: CustomerType;
   cost_data: CustomerCostType;
-  pricingUnits: PricingUnit[];
+  pricingUnits: CurrencyType[];
   onDateChange: (start_date: string, end_date: string) => void;
   refetch: VoidFunction;
 }
@@ -139,7 +139,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
         return {
           date: day.date,
           amount: metric.cost,
-          metric: metric.metric.metric_name,
+          metric: metric.metric.billable_metric_name,
           type: "cost",
         };
       });
@@ -186,11 +186,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     seriesField: "metric",
     groupField: "type",
     colorField: "type", // or seriesField in some cases
-    color: ["#C3986B", "#33658A", "#D9D9D9", "#171412", "#547AA5"],
-
-    tooltip: {
-      fields: ["type"],
-    },
+    color: ["#33658A", "#C3986B", "#D9D9D9", "#171412", "#547AA5"],
   };
 
   return (
@@ -276,6 +272,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                 <b>Amount Due On Next Invoice:</b>{" "}
                 {data?.default_currency?.symbol}
                 {invoiceData?.invoices !== undefined &&
+                  invoiceData?.invoices !== null &&
                   invoiceData?.invoices.length > 0 &&
                   invoiceData?.invoices[0].cost_due.toFixed(2)}
               </p>

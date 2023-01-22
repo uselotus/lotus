@@ -37,7 +37,7 @@ function RevenueDisplay(props: {
     <Paper color="white" border={true}>
       <div className="grid grid-flow-col auto-cols-auto	 justify-between">
         <div>
-          <p className="text-base font-normal mb-4">Earned Revenue</p>
+          <p className="text-base mb-4">Earned Revenue</p>
           {props.isLoading ? (
             <LoadingSpinner />
           ) : (
@@ -53,7 +53,7 @@ function RevenueDisplay(props: {
         </div>
 
         <div>
-          <p className="text-base font-normal mb-4">Previous Period</p>
+          <p className="text-base mb-4">Previous Period</p>
           {percentageChange >= 0 ? (
             <span className="text-[#34B220] text-3xl">
               +{percentageChange.toFixed(2)}%{" "}
