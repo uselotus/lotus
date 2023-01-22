@@ -485,6 +485,12 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "drf_standardized_errors.handler.exception_handler",
     "COERCE_DECIMAL_TO_STRING": False,
 }
+OIDC_DRF_AUTH_BACKEND = "mozilla_django_oidc.auth.OIDCAuthenticationBackend"
+OIDC_OP_USER_ENDPOINT = "https://hello.uselotus.io/oidc/v1/userinfo"
+OIDC_OP_TOKEN_ENDPOINT = None
+OIDC_RP_CLIENT_ID = None
+OIDC_RP_CLIENT_SECRET = None
+OIDC_CREATE_USER = True
 
 DRF_STANDARDIZED_ERRORS = {
     # class responsible for handling the exceptions. Can be subclassed to change

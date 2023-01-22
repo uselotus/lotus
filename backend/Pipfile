@@ -54,6 +54,7 @@ jinja2 = "*"
 sqlparse = "*"
 ruff = "*"
 "ruamel.yaml" = "*"
+mozilla-django-oidc = "*"
 
 [dev-packages]
 platformdirs = "*"
