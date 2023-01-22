@@ -1476,7 +1476,7 @@ class Ping(APIView):
         return Response(
             {
                 "organization_id": OrganizationUUIDField().to_representation(
-                    organization
+                    organization.organization_id
                 ),
             },
             status=status.HTTP_200_OK,
