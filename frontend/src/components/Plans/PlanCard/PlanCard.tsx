@@ -25,13 +25,15 @@ import createPlanTagsList from "../helpers/createPlanTagsList";
 
 interface PlanCardProps {
   plan: PlanType;
+  pane: "All" | "Monthly" | "Yearly" | "Quarterly";
   createTagMutation: (variables: {
     plan_id: string;
     tags: PlanType["tags"];
+    pane: "All" | "Monthly" | "Yearly" | "Quarterly";
   }) => void;
 }
 
-const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
+const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
   const { plan_tags } = useGlobalStore((state) => state.org);
 
   const queryClient = useQueryClient();
@@ -188,6 +190,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
                         createTagMutation({
                           plan_id: plan.plan_id,
                           tags,
+                          pane,
                         });
                       }
                     }}
@@ -209,7 +212,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
                   const newTag = createTags(inputRef.current!.value);
                   tags.push(newTag);
 
-                  createTagMutation({ plan_id: plan.plan_id, tags });
+                  createTagMutation({ plan_id: plan.plan_id, tags, pane });
                 }}
               >
                 <input
