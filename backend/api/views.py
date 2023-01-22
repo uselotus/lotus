@@ -87,6 +87,7 @@ from metering_billing.serializers.serializer_utils import (
     BalanceAdjustmentUUIDField,
     InvoiceUUIDField,
     MetricUUIDField,
+    OrganizationUUIDField,
     PlanUUIDField,
 )
 from metering_billing.utils import (
@@ -1474,8 +1475,9 @@ class Ping(APIView):
         organization = request.organization
         return Response(
             {
-                "status": "success",
-                "organization_id": organization.organization_id,
+                "organization_id": OrganizationUUIDField().to_representation(
+                    organization
+                ),
             },
             status=status.HTTP_200_OK,
         )
@@ -1690,6 +1692,7 @@ def track_event(request):
             status=status.HTTP_201_CREATED,
         )
     else:
+        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
