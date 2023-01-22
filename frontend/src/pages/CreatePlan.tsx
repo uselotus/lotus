@@ -423,7 +423,7 @@ const CreatePlan = () => {
                     </Form.Item>
                     <Form.Item
                       name="flat_fee_billing_type"
-                      label="Recurring Billing Type"
+                      label="Base Billing Type"
                     >
                       <Select>
                         <Select.Option value="in_advance">
@@ -497,6 +497,7 @@ const CreatePlan = () => {
                 }}
                 extra={[
                   <Button
+                    key="add-component"
                     htmlType="button"
                     onClick={() => showComponentModal()}
                   >
