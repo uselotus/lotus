@@ -460,7 +460,19 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
     return ""
 
 
-def get_invoice_presigned_url(invoice_model) -> str:
+def s3_file_exists(bucket_name, key):
+    try:
+        s3.Object(bucket_name, key).load()
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "404":
+            return False
+        else:
+            raise
+    else:
+        return True
+
+
+def get_invoice_presigned_url(invoice_model):
 
     organization_id = invoice_model.organization
     organization_model = Organization.objects.filter(id=organization_id).first()
@@ -473,9 +485,12 @@ def get_invoice_presigned_url(invoice_model) -> str:
 
     key = f"{organization_id}/{customer_id}/invoice_pdf_{invoice_number}.pdf"
 
+    if not s3_file_exists(bucket_name=bucket_name, key=key):
+        return {"exists": False, "url": ""}
+
     url = s3.generate_presigned_url(
         ClientMethod="get_object",
         Params={"Bucket": bucket_name, "Key": key},
         ExpiresIn=36000000,  # URL will expire in 1 hour
     )
-    return url
+    return {"exists": True, "url": url}
