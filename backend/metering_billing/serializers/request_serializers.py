@@ -1,7 +1,4 @@
 from metering_billing.models import Customer
-from metering_billing.serializers.model_serializers import (
-    SubscriptionCategoricalFilterSerializer,
-)
 from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganization,
 )
@@ -10,25 +7,6 @@ from metering_billing.utils.enums import (
     ORGANIZATION_SETTING_NAMES,
 )
 from rest_framework import serializers
-
-
-class CancelSubscriptionRequestSerializer(serializers.Serializer):
-    subscription_id = serializers.CharField(required=True)
-    bill_now = serializers.BooleanField(default=False)
-    revoke_access = serializers.BooleanField(default=False)
-
-
-class UpdateSubscriptionPlanVersionRequestSerializer(serializers.Serializer):
-    subscription_id = serializers.CharField(required=True)
-    new_version_id = serializers.CharField(required=True)
-    update_behavior = serializers.ChoiceField(
-        choices=["replace_immediately", "replace_on_renewal"]
-    )
-
-
-class MergeCustomersRequestSerializer(serializers.Serializer):
-    customer1_id = serializers.CharField(required=True)
-    customer2_id = serializers.CharField(required=True)
 
 
 class PeriodComparisonRequestSerializer(serializers.Serializer):

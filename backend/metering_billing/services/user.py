@@ -2,7 +2,6 @@ import logging
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import BadHeaderError, EmailMultiAlternatives
 from rest_framework.authtoken.models import Token
@@ -11,7 +10,7 @@ logger = logging.getLogger("django.server")
 DEFAULT_FROM_EMAIL = settings.DEFAULT_FROM_EMAIL
 
 
-class UserService(object):
+class UserService:
     def __init__(self, User):
         self.User = User
 

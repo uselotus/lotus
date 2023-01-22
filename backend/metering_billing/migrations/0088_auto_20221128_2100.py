@@ -14,7 +14,6 @@ def make_metric_ids_unique(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metering_billing", "0087_alter_metric_unique_together_and_more"),
     ]

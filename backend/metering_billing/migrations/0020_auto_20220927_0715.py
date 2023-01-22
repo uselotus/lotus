@@ -13,7 +13,6 @@ def gen_uuid(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metering_billing", "0019_subscription_subscription_uid_and_more"),
     ]

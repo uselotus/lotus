@@ -1,49 +1,44 @@
-@import url('https://fonts.googleapis.com/css2?family=Arimo:wght@400;500;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Alliance+No+2&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Arimo:wght@400;500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Alliance+No+2&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-
-
-
 @font-face {
-    font-family: 'Menlo Regular';
-    font-style: normal;
-    font-weight: normal;
-    src: local('Menlo'), url('../fonts/Menlo-Regular.woff') format('woff');
+  font-family: "Menlo Regular";
+  font-style: normal;
+  font-weight: normal;
+  src: local("Menlo"), url("../fonts/Menlo-Regular.woff") format("woff");
 }
 @font-face {
   font-family: "Alliance No.2";
-  src: local url('../fonts/Alliance-No.2-Regular.woff') format('woff');
+  src: local url("../fonts/Alliance-No.2-Regular.woff") format("woff");
 }
 .Inter {
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
 }
 @font-face {
-    font-family: 'Satoshi Regular';
-    font-style: normal;
-    font-weight: normal;
-    src: local('Satoshi'), url('../fonts/Satoshi-Regular.woff') format('woff');
+  font-family: "Satoshi Regular";
+  font-style: normal;
+  font-weight: normal;
+  src: local("Satoshi"), url("../fonts/Satoshi-Regular.woff") format("woff");
 }
 
 .font-menlo {
-    font-family: Menlo, serif;
+  font-family: Menlo, serif;
 }
 
 .font-satoshi {
-    font-family: Satoshi, serif;
+  font-family: Satoshi, serif;
 }
 .font-alliance {
-  font-family:  "Alliance No.2", sans-serif;
+  font-family: "Alliance No.2", sans-serif;
 }
-
 
 svg {
   vertical-align: baseline;
 }
-
 
 :root {
   --toastify-color-success: #cca43b;
@@ -82,7 +77,7 @@ h3 {
 
 html,
 body {
-  font-family:  "Alliance No.2", sans-serif;
+  font-family: "Alliance No.2", sans-serif;
   padding: 0;
   margin: 0;
   font-weight: 500;
@@ -105,7 +100,12 @@ a {
 .ant-descriptions-header {
   margin-bottom: 0;
 }
-
+.ant-input-number-input:invalid {
+  border: 2px solid red;
+}
+.ant-input-number-input-wrap:has(> .ant-input-number-input:invalid) {
+  border: 2px solid red;
+}
 .ant-descriptions-title {
   font-size: 26px;
   line-height: 30px;
@@ -125,14 +125,14 @@ a {
   height: 88px;
   border-bottom: 1px solid rgba(29, 29, 31, 0.1);
 }
-/* tabs */ 
+/* tabs */
 .ant-tabs-tab.ant-tabs-tab-active {
-  border-bottom: 2px solid #C3986B !important;
+  border-bottom: 2px solid #c3986b !important;
   z-index: 2;
-  color: #C3986B!important;
+  color: #c3986b !important;
 }
-.ant-tabs-tab.ant-tabs-tab-active>.ant-tabs-tab-btn {
-color: #C3986B !important;
+.ant-tabs-tab.ant-tabs-tab-active > .ant-tabs-tab-btn {
+  color: #c3986b !important;
 }
 .ant-switch {
   color: #fff;
@@ -141,10 +141,10 @@ color: #C3986B !important;
   background-color: #cca43b;
 }
 .ant-page-header.ant-page-header-ghost {
- height: 0px;
+  height: 0px;
 }
-.ant-table-row.ant-table-row-level-0  td.arr:not(:first-of-type) {
-text-align: right  !important;
+.ant-table-row.ant-table-row-level-0 td.arr:not(:first-of-type) {
+  text-align: right !important;
 }
 .ant-picker {
   border-radius: 100px;
@@ -229,20 +229,20 @@ text-align: right  !important;
 }
 
 .pos-relative {
-    position: relative !important
+  position: relative !important;
 }
 .customer-search {
-    margin-bottom: 20px !important;
-    width: 400px !important;
+  margin-bottom: 20px !important;
+  width: 400px !important;
 }
 
 .highlightText {
-    background: #cca43b4f;
-    border-radius: 4px;
+  background: #cca43b4f;
+  border-radius: 4px;
 }
 
 .mt-0 {
-    margin-top: 0 !important;
+  margin-top: 0 !important;
 }
 
 /**
@@ -291,7 +291,7 @@ text-align: right  !important;
 }
 
 .apiKeyCopyClass {
-    border: 0.5px solid #0000008f;
-    border-radius: 6px;
-    box-shadow: 0 0 3px rgba(33, 33, 33, 0.2);
+  border: 0.5px solid #0000008f;
+  border-radius: 6px;
+  box-shadow: 0 0 3px rgba(33, 33, 33, 0.2);
 }

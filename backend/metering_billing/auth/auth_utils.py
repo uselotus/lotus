@@ -1,6 +1,5 @@
 import jwt
 from django.core.cache import cache
-from django.db.models import Q
 from django.http import HttpResponseBadRequest
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -138,8 +137,8 @@ class OIDCAuthentication(BaseAuthentication):
 def get_organization_from_key(key):
     try:
         api_key = APIToken.objects.get_from_key(key)
-    except:
-        raise NoMatchingAPIKey("API Key starting with {} not known".format(key[:5]))
+    except Exception:
+        raise NoMatchingAPIKey(f"API Key starting with {key[:5]} not known")
     organization = api_key.organization
     return organization
 
@@ -198,7 +197,7 @@ def fast_api_key_validation_and_cache(request):
     if not organization_pk:
         try:
             api_key = APIToken.objects.get_from_key(key)
-        except:
+        except Exception:
             return HttpResponseBadRequest("Invalid API key"), False
         organization_pk = api_key.organization.pk
         expiry_date = api_key.expiry_date

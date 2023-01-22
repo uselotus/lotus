@@ -15,7 +15,7 @@ import { MetricType } from "../../types/metric-type";
 import type { InputRef } from "antd";
 import type { FormInstance } from "antd/es/form";
 import { Tier } from "../../types/plan-type";
-import { PricingUnit } from "../../types/pricing-unit-type";
+import { CurrencyType } from "../../types/pricing-unit-type";
 
 const { Option } = Select;
 const { Panel } = Collapse;
@@ -261,7 +261,7 @@ type Props = {
   handleComponentAdd: (s: any) => void;
   editComponentItem: any;
   setEditComponentsItem: (s: any) => void;
-  currency: PricingUnit;
+  currency: CurrencyType;
 };
 function UsageComponentForm({
   handleComponentAdd,
@@ -294,7 +294,8 @@ function UsageComponentForm({
     editComponentItem?.tiers ?? initialTier
   );
   const [rangeEnd, setRangeEnd] = useState<number | undefined>(
-    editComponentItem?.tiers[-1]?.range_end ?? undefined
+    editComponentItem?.tiers[editComponentItem?.tiers.length - 1]?.range_end ??
+      undefined
   );
 
   /// Ouput accepted proration grandularities for a given metric
@@ -408,14 +409,14 @@ function UsageComponentForm({
     {
       title: "First Unit",
       dataIndex: "range_start",
-      width: "20%",
+      width: "17%",
       align: "center",
       editable: true,
     },
     {
       title: "Last Unit",
       dataIndex: "range_end",
-      width: "20%",
+      width: "17%",
       align: "center",
 
       editable: true,
@@ -431,7 +432,7 @@ function UsageComponentForm({
       title: "Charge Type",
       dataIndex: "type",
       editable: true,
-      width: "20%",
+      width: "17%",
       align: "center",
     },
     {
@@ -439,12 +440,12 @@ function UsageComponentForm({
       dataIndex: "cost_per_batch",
       editable: true,
       align: "center",
-      width: "15%",
+      width: "13%",
     },
     {
       title: "Units",
       dataIndex: "metric_units_per_batch",
-      width: "15%",
+      width: "13%",
       align: "center",
       editable: true,
       render: (text: any, record: Tier) => {
@@ -458,14 +459,14 @@ function UsageComponentForm({
     {
       title: "Rounding Type",
       dataIndex: "batch_rounding_type",
-      width: "15%",
+      width: "23%",
       align: "center",
       editable: true,
       render: (text: any, record: Tier) => {
         if (record.type === "flat" || record.type === "free") {
           return "-";
         } else {
-          return record.batch_rounding_type;
+          return <div>{record.batch_rounding_type}</div>;
         }
       },
     },
@@ -473,7 +474,7 @@ function UsageComponentForm({
     {
       title: "Delete",
       dataIndex: "delete",
-      width: "10%",
+      width: "8%",
       align: "center",
       render: (_, record) =>
         currentTiers.length > 1 &&

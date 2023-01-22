@@ -4,6 +4,8 @@ title: "Credits"
 
 Lotus' credit system offers your customers more flexibility when accessing your product. With it, you can offer a promotional credit for new customers' first usage up to a certain dollar amount, reimburse customers for downtime or missed SLAs, or offer discounted prepayment options.
 
+Credits are tracked in a credit ledger, an append-only log of all credits-related transactions for a customer, providing a full audit log for the current credit balance and ensuring that a transaction can never be deleted.
+
 ## Seeing a Customer's Credits
 
 To check a customer's credit balance, you can easily navigate to the "Credits" tab on their account page. This section provides a comprehensive overview of all credit grants, including effective/expiration dates and associated drawdowns.
@@ -20,7 +22,7 @@ To provide your customers with credit, you can simply click on the "Create Credi
 
 ## Consuming Credits
 
-Credits are automatically deducted from a customer's invoice balance (after tax) at invoice generation time. Additionally, you can manually draw down or void a customer's credit balance if necessary.
+Credits are automatically deducted from a customer's invoice balance (after tax) at invoice generation time. Additionally, you can manually draw down or void a customer's credit balance if necessary. When consuming credits, they will be drawn down first by expiration date and then by cost basis. Additionally, when voiding a credit, only the unconsumed portion of the credit will be voided.
 
 ## Future Developments
 

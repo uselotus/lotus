@@ -1,4 +1,20 @@
 ---
 title: "Get invoice"
-openapi: "GET /api/invoices/{invoice_number}/"
+openapi: "GET /api/invoices/{invoice_id}/"
 ---
+
+<CodeGroup>
+
+```py Python
+lotus.get_invoice(
+    invoice_id='plan_0569173ee6654369',
+)
+```
+
+```ts Typescript
+await lotus.getInvoice({
+  planId: "plan_0569173ee6654369",
+}); // Will return a promise
+```
+
+</CodeGroup>

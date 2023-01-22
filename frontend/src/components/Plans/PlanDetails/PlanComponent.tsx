@@ -1,5 +1,5 @@
 // @ts-ignore
-import React, { FC, useRef, useState } from "react";
+import React, { FC, useEffect, useRef, useState } from "react";
 import "./PlanDetails.css";
 import { Table, Typography, Tag, Modal, Button, InputNumber } from "antd";
 import { CheckCircleOutlined } from "@ant-design/icons";
@@ -11,7 +11,7 @@ import {
   PlanVersionType,
   Tier,
 } from "../../../types/plan-type";
-import { PricingUnit } from "../../../types/pricing-unit-type";
+import { CurrencyType } from "../../../types/pricing-unit-type";
 import createShortenedText from "../helpers/createShortenedText";
 import DropdownComponent from "../../base/Dropdown/Dropdown";
 import PlansTags from "../PlanTags";
@@ -33,6 +33,7 @@ import { toast } from "react-toastify";
 interface PlanComponentsProps {
   components?: Component[];
   plan: PlanType;
+  refetch: VoidFunction;
   updateBillingFrequencyMutation: (
     billing_frequency: "monthly" | "quarterly" | "yearly"
   ) => void;
@@ -52,7 +53,7 @@ const findAlertForComponent = (
   });
 };
 
-const renderCost = (record: Tier, pricing_unit: PricingUnit) => {
+const renderCost = (record: Tier, pricing_unit: CurrencyType) => {
   switch (record.type) {
     case "per_unit":
       return (
@@ -93,7 +94,7 @@ export const PlanSummary = ({
   const windowWidth = useMediaQuery();
   const inputRef = useRef<HTMLInputElement | null>(null!);
   return (
-    <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card  shadow-lg ">
+    <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card">
       <Typography.Title className="pt-4 whitespace-pre-wrap !text-[18px] level={2}">
         Summary
       </Typography.Title>
@@ -120,7 +121,7 @@ export const PlanSummary = ({
           <div className="!text-card-grey">{plan.active_subscriptions}</div>
         </div>
 
-        <div className="flex items-center justify-between text-card-text gap-2 mb-1">
+        <div className="flex items-center justify-between text-card-text gap-2 mb-2">
           <div className="font-normal whitespace-nowrap leading-4">
             Linked External IDs
           </div>
@@ -234,7 +235,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
   };
 
   return (
-    <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card  shadow-lg ">
+    <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card ">
       <Typography.Title className="pt-4 whitespace-pre-wrap grid gap-4 !text-[18px] items-center grid-cols-1 md:grid-cols-2">
         <div>Plan Information</div>
         <div>
@@ -331,6 +332,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
 const PlanComponents: FC<PlanComponentsProps> = ({
   components,
   plan,
+  refetch,
   updateBillingFrequencyMutation,
   alerts,
   plan_version_id,
@@ -341,18 +343,18 @@ const PlanComponents: FC<PlanComponentsProps> = ({
   const [isCreateAlert, setIsCreateAlert] = useState(true);
   const [currentComponent, setCurrentComponent] = useState<Component>();
   const [currentAlertId, setCurrentAlertId] = useState<string>();
-
+  const [isInvalid, setIsInvalid] = useState(false);
   const queryClient = new QueryClient();
-
   const createAlertMutation = useMutation(
     (post: CreateAlertType) => Plan.createAlert(post),
     {
       onSuccess: () => {
         setIsModalVisible(false);
-        queryClient.invalidateQueries("plan_details");
+
         setAlertThreshold(0);
-        toast.success("Successfully created alert. Please the refresh page.");
-        window.location.reload(false);
+        refetch();
+        toast.success("Successfully created alert.");
+        // window.location.reload(false);
       },
     }
   );
@@ -362,13 +364,13 @@ const PlanComponents: FC<PlanComponentsProps> = ({
     {
       onSuccess: () => {
         setIsModalVisible(false);
-        queryClient.invalidateQueries("plan_details");
-        toast.success("Deleted alert");
-        window.location.reload(false);
+
+        refetch();
+        // toast.success("Deleted alert");
       },
     }
   );
-
+  useEffect(() => {}, [plan]);
   const deleteAlert = (usage_alert_id: string) => {
     deleteAlertMutation.mutate({
       usage_alert_id: usage_alert_id,
@@ -415,7 +417,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
   return (
     <div className="">
       {components && components.length > 0 ? (
-        <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg ">
+        <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card ">
           <Typography.Title className="pt-4 whitespace-pre-wrap !text-[18px]">
             Added Components
           </Typography.Title>
@@ -535,6 +537,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                       <Button
                         key="submit"
                         type="primary"
+                        disabled={isInvalid}
                         onClick={() => submitAlertModal(currentComponent)}
                       >
                         Create
@@ -551,6 +554,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                       <Button
                         key="submit"
                         type="primary"
+                        disabled={isInvalid}
                         onClick={() =>
                           submitAlertModal(currentComponent, currentAlertId)
                         }
@@ -560,21 +564,25 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                     ]
               }
             >
-              <div className="flex flex-row justify-center items-center gap-4">
+              <div className="flex flex-col justify-center items-center gap-4">
                 {currentComponent?.billable_metric.metric_name} reaches:{"  "}
                 <InputNumber
-                  className="ml-2 mr-2"
+                  type={"number"}
+                  pattern="[0-9]+"
                   onChange={(value) => {
-                    console.log(typeof value);
                     if (value && typeof value === "number") {
                       setAlertThreshold(value);
+                      setIsInvalid(false);
                     }
-                    if (typeof value === "string") {
-                      toast.success("Please enter a number");
+                    if (value === null) {
+                      setIsInvalid(true);
                     }
                   }}
                   value={alertThreshold}
                 />
+                {isInvalid && (
+                  <div className="text-red-800">Please enter a number</div>
+                )}
               </div>
             </Modal>
           </div>
@@ -600,7 +608,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
           </div>
         </div>
       ) : (
-        <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg ">
+        <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card">
           <Typography.Title level={2}>Added Components</Typography.Title>
           <div className="w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
           <div className="text-card-grey text-base">No components added</div>

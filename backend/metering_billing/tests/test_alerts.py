@@ -1,14 +1,14 @@
 import itertools
 import json
-import urllib.parse
 from datetime import timedelta
-from decimal import Decimal
-from urllib.parse import urlencode
 
 import pytest
-from dateutil.relativedelta import relativedelta
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     Event,
@@ -21,10 +21,6 @@ from metering_billing.models import (
 )
 from metering_billing.tasks import refresh_alerts_inner
 from metering_billing.utils import now_utc
-from metering_billing.utils.enums import PRICE_TIER_TYPE
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -105,14 +101,14 @@ def alerts_test_common_setup(
             if fmu > 0:
                 PriceTier.objects.create(
                     plan_component=pc,
-                    type=PRICE_TIER_TYPE.FREE,
+                    type=PriceTier.PriceTierType.FREE,
                     range_start=0,
                     range_end=fmu,
                 )
                 start = fmu
             PriceTier.objects.create(
                 plan_component=pc,
-                type=PRICE_TIER_TYPE.PER_UNIT,
+                type=PriceTier.PriceTierType.PER_UNIT,
                 range_start=start,
                 cost_per_batch=cpb,
                 metric_units_per_batch=mupb,
@@ -125,8 +121,8 @@ def alerts_test_common_setup(
                 org, billing_plan, customer
             )
         payload = {
-            "metric_id": metric_set[0].metric_id,
-            "plan_version_id": billing_plan.version_id,
+            "metric_id": "metric_" + metric_set[0].metric_id.hex,
+            "plan_version_id": billing_plan.version_id.hex,
             "threshold": 50,
         }
         setup_dict["payload"] = payload

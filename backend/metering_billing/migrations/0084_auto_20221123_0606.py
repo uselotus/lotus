@@ -4,9 +4,9 @@ from django.db import migrations
 
 
 def prepopulate(apps, schema_editor):
-    PlanComponent = apps.get_model("metering_billing", "PlanComponent")
-    PriceTier = apps.get_model("metering_billing", "PriceTier")
-    PlanVersion = apps.get_model("metering_billing", "PlanVersion")
+    apps.get_model("metering_billing", "PlanComponent")
+    apps.get_model("metering_billing", "PriceTier")
+    apps.get_model("metering_billing", "PlanVersion")
     PricingUnit = apps.get_model("metering_billing", "PricingUnit")
     Invoice = apps.get_model("metering_billing", "Invoice")
     Customer = apps.get_model("metering_billing", "Customer")
@@ -32,7 +32,6 @@ def prepopulate(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metering_billing", "0083_alter_customerbalanceadjustment_options_and_more"),
     ]

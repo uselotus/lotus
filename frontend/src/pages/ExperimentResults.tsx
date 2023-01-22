@@ -100,8 +100,8 @@ const ExperimentResults: FC = () => {
       ) : (
         <div className="">
           <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-1 border-2 border-solid rounded border-[#EAEAEB] px-6 py-5 bg-white">
-              <div className="grid grid-cols-1 gap-5">
+            <div className="col-span-1 border-2 border-solid rounded border-[#EAEAEB] px-6 py-6 bg-white">
+              <div className="grid grid-cols-1 gap-6">
                 <div className="mb-3">
                   <h2 className="font-bold">{experiment?.backtest_name}</h2>
                 </div>
@@ -120,7 +120,7 @@ const ExperimentResults: FC = () => {
                 </div>
               </div>
             </div>
-            <div className="col-span-2 flex flex-col border-2 col border-solid rounded border-[#EAEAEB] px-6 py-5 bg-white ">
+            <div className="col-span-2 flex flex-col border-2 col border-solid rounded border-[#EAEAEB] px-6 py-6 bg-white ">
               <div className="flex flex-row space-x-8 content-center	 ">
                 <h2> Substitutions</h2>
                 <Select

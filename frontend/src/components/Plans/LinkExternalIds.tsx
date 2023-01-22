@@ -16,6 +16,7 @@ const LinksExternalIds: React.FC<LinkExternalIdsProps> = ({
   externalIds: tags,
   createExternalLink,
   deleteExternalLink,
+  setExternalLinks,
 }) => {
   const [inputVisible, setInputVisible] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -41,8 +42,15 @@ const LinksExternalIds: React.FC<LinkExternalIdsProps> = ({
   };
 
   const handleInputConfirm = () => {
-    if (inputValue && tags.indexOf(inputValue) === -1) {
+    if (inputValue && tags.indexOf(inputValue) === -1 && !setExternalLinks) {
       createExternalLink && createExternalLink(inputValue);
+    } else if (
+      inputValue &&
+      tags.indexOf(inputValue) === -1 &&
+      setExternalLinks
+    ) {
+      tags.push(inputValue);
+      setExternalLinks(tags);
     }
     setInputVisible(false);
     setInputValue("");
@@ -85,7 +93,11 @@ const LinksExternalIds: React.FC<LinkExternalIdsProps> = ({
       {!inputVisible && (
         <Badge
           onClick={() => setInputVisible(true)}
-          className="bg-[#E0E7FF] text-[#3730A3]"
+          className={
+            setExternalLinks
+              ? "bg-[#E0E7FF] text-[#3730A3] cursor-pointer w-1/2"
+              : "bg-[#E0E7FF] text-[#3730A3] cursor-pointer"
+          }
         >
           <Badge.Content>Link External IDs</Badge.Content>
         </Badge>

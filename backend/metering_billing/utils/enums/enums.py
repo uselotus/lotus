@@ -2,17 +2,11 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 
-class INVOICE_STATUS(models.TextChoices):
+class INVOICE_STATUS_ENUM(models.TextChoices):
     DRAFT = ("draft", _("Draft"))
     VOIDED = ("voided", _("Voided"))
     PAID = ("paid", _("Paid"))
     UNPAID = ("unpaid", _("Unpaid"))
-
-
-class PAYMENT_PLANS(models.TextChoices):
-    SELF_HOSTED_FREE = ("self_hosted_free", _("Self-Hosted Free"))
-    CLOUD = ("cloud", _("Cloud"))
-    SELF_HOSTED_ENTERPRISE = ("self_hosted_enterprise", _("Self-Hosted Enterprise"))
 
 
 class PRICE_TIER_TYPE(models.TextChoices):
@@ -258,13 +252,17 @@ class ORGANIZATION_SETTING_NAMES(models.TextChoices):
         "generate_customer_after_creating_in_lotus",
         _("Generate in Stripe after Lotus"),
     )
-    SUBSCRIPTION_FILTERS = ("subscription_filters", _("Subscription Filters"))
-
+    SUBSCRIPTION_FILTER_KEYS = (
+        "subscription_filter_keys",
+        _("Subscription Filter Keys"),
+    )
+    PAYMENT_GRACE_PERIOD = ("payment_grace_period", _("Payment Grace Period"))
 
 
 class TAG_GROUP(models.TextChoices):
     PLAN = ("plan", _("Plan"))
 
+
 class ORGANIZATION_SETTING_GROUPS(models.TextChoices):
     STRIPE = ("stripe", _("Stripe"))
-
+    BILLING = ("billing", _("Billing"))
