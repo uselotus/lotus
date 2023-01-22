@@ -3,10 +3,11 @@ import { MetricType } from "../../types/metric-type";
 import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
 import { Metrics } from "../../api/api";
-import { format } from "sql-formatter";
-// @ts-ignore
 import React, { FC } from "react";
 import { colorMap } from "./MetricTable";
+import createShortenedText from "../Plans/helpers/createShortenedText";
+import CopyText from "../base/CopytoClipboard";
+import useMediaQuery from "../../hooks/useWindowQuery";
 
 interface MetricDetailsProps {
   metric: MetricType;
@@ -24,6 +25,7 @@ const operatorDisplayMap = new Map<string, string>([
 
 const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
   const queryClient = useQueryClient();
+  const windowWidth = useMediaQuery();
   const mutation = useMutation(
     (metric_id: string) => Metrics.archiveMetric(metric_id),
     {
@@ -63,10 +65,31 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
       <div className="py-4 px-8 rounded-lg bg-[#FFFFFF]  border-2 border-solid  border-[#EAEAEB]">
         {metric.metric_type === "custom" ? (
           <div className="flex flex-col">
-            {format(metric.custom_sql, { language: "sql" })}
+            <p>
+              <b className="mr-2">Metric ID:</b>{" "}
+              <div className="flex gap-1 text-card-grey font-menlo">
+                {" "}
+                <div>
+                  {createShortenedText(metric.metric_id, windowWidth >= 2500)}
+                </div>
+                <CopyText showIcon onlyIcon textToCopy={metric.metric_id} />
+              </div>
+            </p>
+            <b>Query:</b>
+            {format(metric.custom_sql, { language: "mysql" })}
           </div>
         ) : (
           <div className="py-4 grid grid-cols-2 items-start justify-between ">
+            <p>
+              <b className="mr-2">Metric ID:</b>{" "}
+              <div className="flex gap-1 text-card-grey font-menlo">
+                {" "}
+                <div>
+                  {createShortenedText(metric.metric_id, windowWidth >= 2500)}
+                </div>
+                <CopyText showIcon onlyIcon textToCopy={metric.metric_id} />
+              </div>
+            </p>
             <p>
               <b className="mr-2">Event Name:</b> {metric.event_name}
             </p>

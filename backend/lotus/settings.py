@@ -520,7 +520,7 @@ SPECTACULAR_SETTINGS = {
         "Lotus is an open-core pricing and billing engine. We enable API companies to"
         " automate and optimize their custom usage-based pricing for any metric."
     ),
-    "VERSION": "0.9.0",
+    "VERSION": "0.9.1",
     "SERVE_INCLUDE_SCHEMA": False,
     "APPEND_COMPONENTS": {
         "securitySchemes": {

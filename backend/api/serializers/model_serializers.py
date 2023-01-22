@@ -162,19 +162,17 @@ class LightweightPlanVersionSerializer(
 ):
     class Meta:
         model = PlanVersion
-        fields = (
-            "plan_name",
-            "plan_id",
-            "version",
-        )
+        fields = ("plan_name", "plan_id", "version", "version_id")
         extra_kwargs = {
             "plan_id": {"required": True, "read_only": True},
             "plan_name": {"required": True, "read_only": True},
             "version": {"required": True, "read_only": True},
+            "version_id": {"required": True, "read_only": True},
         }
 
     plan_name = serializers.CharField(source="plan.plan_name")
     plan_id = PlanUUIDField(source="plan.plan_id")
+    version_id = PlanVersionUUIDField(read_only=True)
 
 
 class CategoricalFilterSerializer(
@@ -569,7 +567,7 @@ class CustomerSerializer(
 
     def get_total_amount_due(self, obj) -> Decimal:
         try:
-            return obj.total_amount_due
+            return obj.total_amount_due or Decimal(0)
         except AttributeError:
             return Decimal(0)
 
@@ -671,6 +669,26 @@ class NumericFilterSerializer(
     class Meta:
         model = NumericFilter
         fields = ("property_name", "operator", "comparison_value")
+
+
+class LightweightMetricSerializer(
+    ConvertEmptyStringToSerializerMixin, serializers.ModelSerializer
+):
+    class Meta:
+        model = Metric
+        fields = (
+            "metric_id",
+            "event_name",
+            "metric_name",
+        )
+        extra_kwargs = {
+            "metric_id": {"required": True, "read_only": True, "allow_blank": False},
+            "event_name": {"required": True, "read_only": True},
+            "metric_name": {"required": True, "read_only": True},
+        }
+
+    metric_id = MetricUUIDField()
+    metric_name = serializers.CharField(source="billable_metric_name")
 
 
 class MetricSerializer(
@@ -1178,16 +1196,6 @@ class SubscriptionRecordCreateSerializer(
             sub_record.flat_fee_behavior = FLAT_FEE_BEHAVIOR.PRORATE
             sub_record.save()
         return sub_record
-
-
-class LightweightPlanVersionSerializer(PlanVersionSerializer):
-    class Meta(PlanVersionSerializer.Meta):
-        model = PlanVersion
-        fields = ("plan_id", "plan_name", "version_id")
-
-    plan_name = serializers.CharField(read_only=True, source="plan.plan_name")
-    plan_id = PlanUUIDField(read_only=True, source="plan.plan_id")
-    version_id = PlanVersionUUIDField(read_only=True)
 
 
 class LightweightSubscriptionRecordSerializer(SubscriptionRecordSerializer):

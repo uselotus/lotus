@@ -17,6 +17,7 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             CustomerBalanceAdjustment,
             Feature,
             Metric,
+            Organization,
             Plan,
             PlanVersion,
         )
@@ -31,6 +32,8 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             data = PlanVersionUUIDField().to_internal_value(data)
         elif self.queryset.model is Feature:
             data = FeatureUUIDField().to_internal_value(data)
+        elif self.queryset.model is Organization:
+            data = OrganizationUUIDField().to_internal_value(data)
         return super().to_internal_value(data)
 
     def to_representation(self, obj):
@@ -38,6 +41,7 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             CustomerBalanceAdjustment,
             Feature,
             Metric,
+            Organization,
             Plan,
             PlanVersion,
         )
@@ -53,6 +57,8 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             return PlanVersionUUIDField().to_representation(obj.version_id)
         elif isinstance(obj, Feature):
             return FeatureUUIDField().to_representation(obj.feature_id)
+        elif isinstance(obj, Organization):
+            return OrganizationUUIDField().to_representation(obj.organization_id)
         return repr
 
 

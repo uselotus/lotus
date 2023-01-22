@@ -1,5 +1,6 @@
 ---
 title: "API Overview"
+openapi: GET /api/ping/
 ---
 
 ## Getting Started
@@ -15,3 +16,18 @@ Your API key obtained in the Lotus Frontend Settings tab, is only visible once y
 If you create a new API key, your **old API key will be revoked** and it will not authenticate endpoints.
 
 The API key must be passed into the _X-API-KEY_ header in your requests.
+
+To confirm that your API key is working, you can make a request to the _/api/ping_ endpoint. This will return the id of the organization the API key belongs to. 
+
+<CodeGroup>
+
+```py Python
+lotus.ping()
+```
+
+```ts Typescript
+await lotus.ping();
+```
+
+</CodeGroup>
+

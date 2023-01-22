@@ -54,7 +54,7 @@ const FeatureForm = (props: {
           feature_name: createdFeatureName,
           feature_description: createdFeatureDescription,
         };
-        
+
         Features.createFeature(newFeature).then((res) => {
           queryClient.invalidateQueries("feature_list");
           setNewFeatures([...newFeatures, res]);
