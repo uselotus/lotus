@@ -8,17 +8,19 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-        # with:
-        #   path: frontend
+        with:
+          path: frontend
       - name: Setup Node.js
         uses: actions/setup-node@v2
         with:
           node-version: 14
 
       - name: Install dependencies
+        working-directory: ./frontend
         run: yarn
 
       # - name: Lint with ESLint
       #   run: yarn lint
       - name: Run Prettier
+        working-directory: ./frontend
         run: pwd && yarn pretty
