@@ -17,9 +17,9 @@ jobs:
           node-version: 16
 
       - name: Install dependencies
-        run: cd frontend && yarn
+        run: cd frontend/frontend && yarn
 
       # - name: Lint with ESLint
       #   run: yarn lint
       - name: Run Prettier
-        run: cd frontend && yarn pretty
+        run: cd frontend/frontend && ls && yarn pretty
