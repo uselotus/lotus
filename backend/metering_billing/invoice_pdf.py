@@ -423,11 +423,10 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
 
     if settings.DEBUG is False:
         try:
-
             # Upload the file to s3
 
             invoice_number = invoice["invoice_number"]
-            organization_id = invoice["organization"]
+            organization_id = organization_model.organization_id
             customer_id = customer["customer_id"]
             team_model = Team.objects.filter(id=organization_model.team).first()
             team_id = team_model.team_id
@@ -447,15 +446,36 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
 
             s3.Object(bucket_name, key)
 
-            url = s3.generate_presigned_url(
-                ClientMethod="get_object",
-                Params={"Bucket": bucket_name, "Key": key},
-                ExpiresIn=36000000,  # URL will expire in 1 hour
-            )
-            return url
+            # url = s3.generate_presigned_url(
+            #     ClientMethod="get_object",
+            #     Params={"Bucket": bucket_name, "Key": key},
+            #     ExpiresIn=36000000,  # URL will expire in 1 hour
+            # )
+            # return url
         except Exception as e:
             print(e)
     # # else:
     # invoice_number = invoice["invoice_number"]
     # doc.save("image_files/invoice_pdf_" + invoice_number + ".pdf")
     return ""
+
+
+def get_invoice_presigned_url(invoice_model) -> str:
+
+    organization_id = invoice_model.organization
+    organization_model = Organization.objects.filter(id=organization_id).first()
+    team_id = Team.objects.filter(id=organization_model.team).first().team_id
+    invoice_number = invoice_model.invoice_number
+
+    customer_id = invoice_model.customer.customer_id
+
+    bucket_name = "lotus-" + team_id
+
+    key = f"{organization_id}/{customer_id}/invoice_pdf_{invoice_number}.pdf"
+
+    url = s3.generate_presigned_url(
+        ClientMethod="get_object",
+        Params={"Bucket": bucket_name, "Key": key},
+        ExpiresIn=36000000,  # URL will expire in 1 hour
+    )
+    return url
