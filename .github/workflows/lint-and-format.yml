@@ -5,6 +5,9 @@ on: [push]
 jobs:
   lint:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -16,11 +19,9 @@ jobs:
           node-version: 14
 
       - name: Install dependencies
-        working-directory: ./frontend
         run: yarn
 
       # - name: Lint with ESLint
       #   run: yarn lint
       - name: Run Prettier
-        working-directory: ./frontend
-        run: pwd && yarn pretty
+        run: ls && yarn pretty
