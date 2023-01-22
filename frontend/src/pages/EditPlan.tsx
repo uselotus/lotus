@@ -310,7 +310,6 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           }
         }
 
-
         if (values.usage_billing_frequency === "yearly") {
           values.usage_billing_frequency = "end_of_period";
         }

@@ -33,9 +33,6 @@ const downloadFile = async (s3link) => {
   }
 };
 
-
-  
-
 // @ts-ignore
 const lotusUrl = new URL("./lotusIcon.svg", import.meta.url).href;
 
@@ -64,15 +61,12 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
   );
 
   useEffect(() => {
-
     if (selectedRecord !== undefined) {
       changeStatus.mutate({
         invoice_id: selectedRecord.invoice_id,
         payment_status:
-          selectedRecord.payment_status === "unpaid"
-            ? "paid"
-            : "unpaid",
-      });       
+          selectedRecord.payment_status === "unpaid" ? "paid" : "unpaid",
+      });
     }
   }, [selectedRecord]);
 
@@ -157,12 +151,10 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
                               record.payment_status === "unpaid"
                                 ? "paid"
                                 : "unpaid",
-                          });       
+                          });
                         } else {
-                            setSelectedRecord(record);
-
-                          }
-
+                          setSelectedRecord(record);
+                        }
                       }}
                     >
                       <div className="archiveLabel">
