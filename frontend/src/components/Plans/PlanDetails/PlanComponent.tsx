@@ -96,7 +96,7 @@ export const PlanSummary = ({
   return (
     <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card">
       <Typography.Title className="pt-4 whitespace-pre-wrap !text-[18px] level={2}">
-        Summary
+        Summary (All Versions)
       </Typography.Title>
 
       <div>
