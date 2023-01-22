@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 
 import boto3
+from botocore.exceptions import ClientError
 from django.conf import settings
 from django.forms.models import model_to_dict
 
@@ -12,6 +13,7 @@ from reportlab.lib.colors import Color
 
 from metering_billing.serializers.serializer_utils import PlanUUIDField
 from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
+from metering_billing.models import Organization, Team
 
 FONT_XL = 26
 FONT_L = 24
@@ -21,6 +23,21 @@ FONT_XS = 12
 FONT_XXS = 10
 
 black01 = Color(0, 0, 0, alpha=0.1)
+
+s3 = boto3.resource(
+    "s3",
+    aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+    aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+)
+
+
+def s3_bucket_exists(bucket_name) -> bool:
+    try:
+        s3.head_bucket(Bucket=bucket_name)
+        return True
+    except ClientError as e:
+        int(e.response["Error"]["Code"])
+        return False
 
 
 def transform_date(date: datetime) -> str:
@@ -216,6 +233,7 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
     subscription = model_to_dict(invoice_model.subscription)
     invoice = model_to_dict(invoice_model)
     currency = model_to_dict(invoice_model.currency)
+    organization_model = Organization.objects.filter(id=organization).first()
 
     write_invoice_title(doc)
     # draw_logo(doc)
@@ -405,23 +423,29 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
 
     if settings.DEBUG is False:
         try:
+
             # Upload the file to s3
-            s3 = boto3.resource(
-                "s3",
-                aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
-                aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
-            )
+
             invoice_number = invoice["invoice_number"]
             organization_id = invoice["organization"]
             customer_id = customer["customer_id"]
-            bucket_name = os.environ["AWS_S3_INVOICE_BUCKET"]
+            team_model = Team.objects.filter(id=organization_model.team).first()
+            team_id = team_model.team_id
+
+            bucket_name = "lotus-" + team_id
+
+            if s3_bucket_exists(bucket_name):
+                pass
+            else:
+                s3.create_bucket(
+                    Bucket=bucket_name,
+                )
+
             key = f"{organization_id}/{customer_id}/invoice_pdf_{invoice_number}.pdf"
             buffer.seek(0)
             s3.Bucket(bucket_name).upload_fileobj(buffer, key)
 
             s3.Object(bucket_name, key)
-
-            s3 = boto3.client("s3")
 
             url = s3.generate_presigned_url(
                 ClientMethod="get_object",
