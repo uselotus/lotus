@@ -124,7 +124,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
             {metric.metric_type === "rate" && (
               <p>
                 <b className="mr-2">Aggregation Type:</b>
-                {!!metric.billable_aggregation_type ? (
+                {metric.billable_aggregation_type ? (
                   <Tag>{metric.billable_aggregation_type}</Tag>
                 ) : (
                   "N/A"
@@ -134,7 +134,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
             {metric.metric_type === "gauge" && (
               <p>
                 <b className="mr-2">Event Type:</b>
-                {!!metric.event_type ? <Tag>{metric.event_type}</Tag> : "N/A"}
+                {metric.event_type ? <Tag>{metric.event_type}</Tag> : "N/A"}
               </p>
             )}
 

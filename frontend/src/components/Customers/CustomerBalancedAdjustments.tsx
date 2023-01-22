@@ -1,5 +1,5 @@
 import { Table, Button, Select, Dropdown, Menu, Tag } from "antd";
-import { FC, useState, useEffect } from "react";
+import React, { FC, useState, useEffect } from "react";
 // @ts-ignore
 import React from "react";
 import { CreditType, DrawdownType } from "../../types/balance-adjustment";
@@ -36,7 +36,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    let total: number = 0;
+    let total = 0;
     transformedData.forEach((credit) => {
       if (credit.currency.code === selectedCurrency) {
         total += credit.amount;
@@ -255,7 +255,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
           Credit Balance: {selectedSymbol} {sumOfCredits}
         </div>
       )}
-      {!!data?.length ? (
+      {data?.length ? (
         <Table
           rowKey={(record) => record.credit_id}
           columns={getTableColumns()}

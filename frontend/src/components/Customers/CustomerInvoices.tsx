@@ -1,5 +1,5 @@
 import { Button, Dropdown, Menu, Table, Tag, Tooltip } from "antd";
-import { FC, useEffect } from "react";
+import React, { FC, useEffect } from "react";
 // @ts-ignore
 import React from "react";
 import { InvoiceType, MarkPaymentStatusAsPaid } from "../../types/invoice-type";

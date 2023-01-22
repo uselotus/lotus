@@ -1,8 +1,7 @@
 import { Button, Steps } from "antd";
 import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import CreateOrganization from "../components/Registration/CreateOrganization";
-import { Organizaton } from "../components/Registration/CreateOrganization";
+import CreateOrganization, { Organizaton } from "../components/Registration/CreateOrganization";
 import { Authentication } from "../api/api";
 import { useMutation, useQueryClient } from "react-query";
 import { CreateOrgAccountType } from "../types/account-type";

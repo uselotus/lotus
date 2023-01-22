@@ -2,8 +2,7 @@ import React, { useState } from "react";
 import { FeatureType, CreateFeatureType } from "../../types/feature-type";
 import { Button, Divider, Modal, Select, Input, message } from "antd";
 import { Features } from "../../api/api";
-import { UseQueryResult, useQuery } from "react-query";
-import { useMutation, useQueryClient } from "react-query";
+import { UseQueryResult, useQuery , useMutation, useQueryClient } from "react-query";
 
 const { Option } = Select;
 

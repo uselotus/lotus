@@ -555,7 +555,11 @@ const CreatePlan = () => {
                   borderStyle: "solid",
                 }}
                 extra={[
-                  <Button htmlType="button" onClick={showFeatureModal}>
+                  <Button
+                    key="add-feature"
+                    htmlType="button"
+                    onClick={showFeatureModal}
+                  >
                     Add Feature
                   </Button>,
                 ]}

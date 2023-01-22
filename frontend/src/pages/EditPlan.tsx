@@ -9,7 +9,7 @@ import {
   Col,
   Radio,
 } from "antd";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
 import { useMutation, useQueryClient } from "react-query";

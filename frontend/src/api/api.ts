@@ -69,8 +69,7 @@ import {
   TransferSub,
   UpdateStripeSettingParams,
 } from "../types/stripe-type";
-import { DraftInvoiceType } from "../types/invoice-type";
-import { MarkPaymentStatusAsPaid } from "../types/invoice-type";
+import { DraftInvoiceType , MarkPaymentStatusAsPaid } from "../types/invoice-type";
 import { CreateCreditType, CreditType } from "../types/balance-adjustment";
 import { CurrencyType } from "../types/pricing-unit-type";
 import { AlertType, CreateAlertType } from "../types/alert-type";

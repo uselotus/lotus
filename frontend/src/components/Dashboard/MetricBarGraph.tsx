@@ -33,7 +33,7 @@ function MetricBarGraph(props: { range: any }) {
       })
     );
   const changeMetric = (value: string) => {
-    let compressedArray: ChartDataType[] = [];
+    const compressedArray: ChartDataType[] = [];
     setSelectedMetric(value);
 
     if (data?.metrics && Object.keys(data.metrics).length > 0) {

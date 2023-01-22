@@ -8,11 +8,10 @@ import {
   Menu,
   Dropdown,
   Checkbox,
-} from "antd";
+ DatePicker } from "antd";
 import dayjs from "dayjs";
 import React, { useState } from "react";
 import { useQuery, useMutation, QueryClient } from "react-query";
-import { DatePicker } from "antd";
 import { Webhook, APIKey } from "../../../../api/api";
 import { MoreOutlined } from "@ant-design/icons";
 import { toast } from "react-toastify";
@@ -165,7 +164,7 @@ export const DeveloperTab = () => {
       return;
     }
 
-    let triggers: string[] = [];
+    const triggers: string[] = [];
     if (isInvoiceGenerated) {
       triggers.push("invoice.created");
     }
@@ -175,7 +174,7 @@ export const DeveloperTab = () => {
     if (isUsageAlertTriggered) {
       triggers.push("usage_alert.triggered");
     }
-    let endpointPost: WebhookEndpointCreate = {
+    const endpointPost: WebhookEndpointCreate = {
       name: webhookName,
       webhook_url: new URL(`https://${webhookUrl}`),
       triggers_in: triggers,
@@ -189,7 +188,7 @@ export const DeveloperTab = () => {
       return;
     }
 
-    let endpointPost: APIKeyCreate = {
+    const endpointPost: APIKeyCreate = {
       name: apiKeyName,
     };
     // if expiry date is a datetime parseable string, include it in endpointPost
