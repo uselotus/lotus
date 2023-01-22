@@ -582,7 +582,7 @@ class CustomerWithRevenueSerializer(serializers.ModelSerializer):
 
     def get_total_amount_due(self, obj) -> Decimal:
         try:
-            return obj.total_amount_due
+            return obj.total_amount_due or 0
         except AttributeError:
             return (
                 obj.invoices.filter(payment_status=Invoice.PaymentStatus.UNPAID)

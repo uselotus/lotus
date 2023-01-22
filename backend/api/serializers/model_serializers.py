@@ -568,7 +568,7 @@ class CustomerSerializer(
 
     def get_total_amount_due(self, obj) -> Decimal:
         try:
-            return obj.total_amount_due
+            return obj.total_amount_due or Decimal(0)
         except AttributeError:
             return Decimal(0)
 
