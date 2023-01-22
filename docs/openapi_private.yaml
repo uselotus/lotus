@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Lotus API
-  version: 0.9.0
+  version: 0.9.1
   description: Lotus is an open-core pricing and billing engine. We enable API companies
     to automate and optimize their custom usage-based pricing for any metric.
 paths:
@@ -291,8 +291,8 @@ paths:
             - inactive
             type: string
           default:
-          - active
           - inactive
+          - active
         description: Filter to a specific set of adjustment statuses. Defaults to
           both active and inactive.
       tags:
@@ -2664,35 +2664,35 @@ components:
     BacktestDetail:
       type: object
       properties:
-        start_date:
+        backtest_results:
+          $ref: '#/components/schemas/AllSubstitutionResults'
+        time_created:
           type: string
-          format: date
-        backtest_name:
-          type: string
-          maxLength: 100
+          format: date-time
         status:
           enum:
           - running
           - completed
           - failed
           type: string
+        backtest_id:
+          type: string
         backtest_substitutions:
           type: array
           items:
             $ref: '#/components/schemas/BacktestSubstitution'
-        backtest_results:
-          $ref: '#/components/schemas/AllSubstitutionResults'
-        backtest_id:
+        backtest_name:
           type: string
-        end_date:
+          maxLength: 100
+        start_date:
           type: string
           format: date
         kpis:
           type: object
           additionalProperties: {}
-        time_created:
+        end_date:
           type: string
-          format: date-time
+          format: date
       required:
       - backtest_id
       - backtest_name
@@ -2868,9 +2868,6 @@ components:
     ConfirmConnected:
       type: object
       properties:
-        status:
-          type: string
-          default: success
         organization_id:
           type: string
       required:
@@ -3394,17 +3391,10 @@ components:
     DraftInvoice:
       type: object
       properties:
-        start_date:
-          type: string
-          format: date
-          readOnly: true
-        due_date:
+        issue_date:
           type: string
           format: date-time
           readOnly: true
-          nullable: true
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
         cost_due:
           type: number
           format: double
@@ -3413,20 +3403,27 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           readOnly: true
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
+        start_date:
+          type: string
+          format: date
+          readOnly: true
         invoice_id:
           type: string
+        end_date:
+          type: string
+          format: date
+          readOnly: true
+        due_date:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
         line_items:
           type: array
           items:
             $ref: '#/components/schemas/GroupedLineItem'
-          readOnly: true
-        issue_date:
-          type: string
-          format: date-time
-          readOnly: true
-        end_date:
-          type: string
-          format: date
           readOnly: true
       required:
       - cost_due
@@ -3819,6 +3816,29 @@ components:
           type: string
           writeOnly: true
           nullable: true
+        flat_rate:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
+          writeOnly: true
+        month_anchor:
+          type: integer
+          maximum: 12
+          minimum: 1
+          writeOnly: true
+          nullable: true
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponentCreateRequest'
+          nullable: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustmentRequest'
+        currency_code:
+          type: string
+          minLength: 1
         flat_fee_billing_type:
           enum:
           - in_arrears
@@ -3835,38 +3855,15 @@ components:
             type: string
             format: uuid
             nullable: true
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustmentRequest'
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponentCreateRequest'
-          nullable: true
+        transition_to_plan_id:
+          type: string
+          format: uuid
         day_anchor:
           type: integer
           maximum: 31
           minimum: 1
           writeOnly: true
           nullable: true
-        month_anchor:
-          type: integer
-          maximum: 12
-          minimum: 1
-          writeOnly: true
-          nullable: true
-        currency_code:
-          type: string
-          minLength: 1
-        transition_to_plan_id:
-          type: string
-          format: uuid
-        flat_rate:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: 0
-          exclusiveMaximum: true
-          writeOnly: true
       required:
       - flat_fee_billing_type
     InviteRequestRequest:
@@ -4178,17 +4175,6 @@ components:
     LightweightInvoice:
       type: object
       properties:
-        start_date:
-          type: string
-          format: date
-          readOnly: true
-        due_date:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
         invoice_number:
           type: string
           readOnly: true
@@ -4196,20 +4182,10 @@ components:
           type: string
           readOnly: true
           nullable: true
-        payment_status:
-          enum:
-          - paid
-          - unpaid
+        issue_date:
           type: string
+          format: date-time
           readOnly: true
-        external_payment_obj_type:
-          enum:
-          - stripe
-          - 
-          type: string
-          nullable: true
-        seller:
-          $ref: '#/components/schemas/Seller'
         cost_due:
           type: number
           format: double
@@ -4218,16 +4194,37 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           readOnly: true
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
+        external_payment_obj_type:
+          enum:
+          - stripe
+          - 
+          type: string
+          nullable: true
+        payment_status:
+          enum:
+          - paid
+          - unpaid
+          type: string
+          readOnly: true
         invoice_id:
           type: string
-        issue_date:
+        start_date:
           type: string
-          format: date-time
+          format: date
           readOnly: true
         end_date:
           type: string
           format: date
           readOnly: true
+        due_date:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        seller:
+          $ref: '#/components/schemas/Seller'
       required:
       - cost_due
       - currency
@@ -4244,21 +4241,6 @@ components:
     LightweightInvoiceLineItem:
       type: object
       properties:
-        start_date:
-          type: string
-          format: date-time
-        subtotal:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-        plan:
-          allOf:
-          - $ref: '#/components/schemas/LightweightPlanVersion'
-          nullable: true
-          readOnly: true
         subscription_filters:
           type: array
           items:
@@ -4268,9 +4250,6 @@ components:
         name:
           type: string
           maxLength: 100
-        end_date:
-          type: string
-          format: date-time
         billing_type:
           enum:
           - in_arrears
@@ -4278,6 +4257,14 @@ components:
           - 
           type: string
           nullable: true
+        plan:
+          allOf:
+          - $ref: '#/components/schemas/LightweightPlanVersion'
+          nullable: true
+          readOnly: true
+        start_date:
+          type: string
+          format: date-time
         quantity:
           type: number
           format: double
@@ -4285,6 +4272,16 @@ components:
           minimum: 0
           exclusiveMaximum: true
           nullable: true
+        end_date:
+          type: string
+          format: date-time
+        subtotal:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
       required:
       - billing_type
       - end_date
@@ -4366,18 +4363,14 @@ components:
     LightweightSubscriptionRecordRequest:
       type: object
       properties:
+        fully_billed:
+          type: boolean
+          description: Whether the subscription has been fully billed and finalized.
         start_date:
           type: string
           format: date-time
           description: The time the subscription starts. This will be a string in
             yyyy-mm-dd HH:mm:ss format in UTC time.
-        fully_billed:
-          type: boolean
-          description: Whether the subscription has been fully billed and finalized.
-        is_new:
-          type: boolean
-          description: Whether this subscription came from a renewal or from a first-time.
-            Defaults to true on creation.
         billing_plan:
           $ref: '#/components/schemas/LightweightPlanVersionRequest'
         end_date:
@@ -4389,6 +4382,10 @@ components:
           type: boolean
           description: Whether the subscription automatically renews. Defaults to
             true.
+        is_new:
+          type: boolean
+          description: Whether this subscription came from a renewal or from a first-time.
+            Defaults to true on creation.
       required:
       - auto_renew
       - billing_plan
