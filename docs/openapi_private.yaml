@@ -542,13 +542,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequestRequest'
+              $ref: '#/components/schemas/DemoLoginRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/LoginRequestRequest'
+              $ref: '#/components/schemas/DemoLoginRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/LoginRequestRequest'
+              $ref: '#/components/schemas/DemoLoginRequestRequest'
         required: true
       security:
       - basicAuth: []
@@ -560,13 +560,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginSuccess'
+                $ref: '#/components/schemas/DemoLoginSuccess'
           description: ''
         '400':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginFailure'
+                $ref: '#/components/schemas/DemoLoginFailure'
           description: ''
   /app/demo_register/:
     post:
@@ -745,13 +745,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/FeatureRequest'
+              $ref: '#/components/schemas/FeatureCreateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/FeatureRequest'
+              $ref: '#/components/schemas/FeatureCreateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/FeatureRequest'
+              $ref: '#/components/schemas/FeatureCreateRequest'
         required: true
       security:
       - knoxTokenAuth: []
@@ -2468,6 +2468,32 @@ components:
       required:
       - api_key
       - key
+    AccessMethodsSubscriptionRecord:
+      type: object
+      properties:
+        start_date:
+          type: string
+          format: date-time
+          readOnly: true
+          description: The time the subscription starts. This will be a string in
+            yyyy-mm-dd HH:mm:ss format in UTC time.
+        end_date:
+          type: string
+          format: date-time
+          readOnly: true
+          description: The time the subscription starts. This will be a string in
+            yyyy-mm-dd HH:mm:ss format in UTC time.
+        subscription_filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
+        plan:
+          $ref: '#/components/schemas/LightweightPlanVersion'
+      required:
+      - end_date
+      - plan
+      - start_date
+      - subscription_filters
     Action:
       type: object
       description: DRF serializer for :class:`~activity.models.Action`.
@@ -2638,15 +2664,24 @@ components:
     BacktestDetail:
       type: object
       properties:
+        start_date:
+          type: string
+          format: date
+        backtest_name:
+          type: string
+          maxLength: 100
         status:
           enum:
           - running
           - completed
           - failed
           type: string
-        backtest_name:
-          type: string
-          maxLength: 100
+        backtest_substitutions:
+          type: array
+          items:
+            $ref: '#/components/schemas/BacktestSubstitution'
+        backtest_results:
+          $ref: '#/components/schemas/AllSubstitutionResults'
         backtest_id:
           type: string
         end_date:
@@ -2658,15 +2693,6 @@ components:
         time_created:
           type: string
           format: date-time
-        start_date:
-          type: string
-          format: date
-        backtest_results:
-          $ref: '#/components/schemas/AllSubstitutionResults'
-        backtest_substitutions:
-          type: array
-          items:
-            $ref: '#/components/schemas/BacktestSubstitution'
       required:
       - backtest_id
       - backtest_name
@@ -2839,6 +2865,16 @@ components:
       - metric_name
       - metric_total_limit
       - metric_usage
+    ConfirmConnected:
+      type: object
+      properties:
+        status:
+          type: string
+          default: success
+        organization_id:
+          type: string
+      required:
+      - organization_id
     ConfirmIdemsReceived:
       type: object
       properties:
@@ -3280,6 +3316,38 @@ components:
       required:
       - customer_usages
       - date
+    DemoLoginFailure:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    DemoLoginRequestRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+      required:
+      - password
+      - username
+    DemoLoginSuccess:
+      type: object
+      properties:
+        detail:
+          type: string
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+      required:
+      - detail
+      - token
+      - user
     DemoRegistrationDetailRequest:
       type: object
       properties:
@@ -3326,6 +3394,15 @@ components:
     DraftInvoice:
       type: object
       properties:
+        start_date:
+          type: string
+          format: date
+          readOnly: true
+        due_date:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
         currency:
           $ref: '#/components/schemas/PricingUnit'
         cost_due:
@@ -3336,6 +3413,13 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           readOnly: true
+        invoice_id:
+          type: string
+        line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroupedLineItem'
+          readOnly: true
         issue_date:
           type: string
           format: date-time
@@ -3343,22 +3427,6 @@ components:
         end_date:
           type: string
           format: date
-          readOnly: true
-        invoice_id:
-          type: string
-        due_date:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
-        start_date:
-          type: string
-          format: date
-          readOnly: true
-        line_items:
-          type: array
-          items:
-            $ref: '#/components/schemas/GroupedLineItem'
           readOnly: true
       required:
       - cost_due
@@ -3491,16 +3559,54 @@ components:
     Feature:
       type: object
       properties:
+        feature_id:
+          type: string
         feature_name:
           type: string
-          maxLength: 50
+          readOnly: true
         feature_description:
           type: string
+          readOnly: true
           nullable: true
       required:
       - feature_description
+      - feature_id
       - feature_name
-    FeatureRequest:
+    FeatureAccessPerSubscription:
+      type: object
+      properties:
+        subscription:
+          $ref: '#/components/schemas/AccessMethodsSubscriptionRecord'
+        access:
+          type: boolean
+      required:
+      - access
+      - subscription
+    FeatureAccessResponse:
+      type: object
+      properties:
+        customer:
+          $ref: '#/components/schemas/LightweightCustomer'
+        access:
+          type: boolean
+          description: Whether or not the customer has access to this feature. The
+            default behavior for this is whether any of the customer's plans have
+            access to this feature. If you have specified subscription filters, then
+            this will be whether any of the customer's plans that match the subscription
+            filters have access to this feature. You can customize the behavior of
+            this flag by setting a policy in your Organization settings in the frontend.
+        feature:
+          $ref: '#/components/schemas/Feature'
+        access_per_subscription:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureAccessPerSubscription'
+      required:
+      - access
+      - access_per_subscription
+      - customer
+      - feature
+    FeatureCreateRequest:
       type: object
       properties:
         feature_name:
@@ -3511,7 +3617,6 @@ components:
           type: string
           nullable: true
       required:
-      - feature_description
       - feature_name
     GetEventAccess:
       type: object
@@ -3704,21 +3809,6 @@ components:
     InitialPlanVersionRequest:
       type: object
       properties:
-        flat_fee_billing_type:
-          enum:
-          - in_arrears
-          - in_advance
-          type: string
-          writeOnly: true
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponentCreateRequest'
-          nullable: true
-        description:
-          type: string
-          writeOnly: true
-          nullable: true
         usage_billing_frequency:
           enum:
           - monthly
@@ -3729,6 +3819,47 @@ components:
           type: string
           writeOnly: true
           nullable: true
+        flat_fee_billing_type:
+          enum:
+          - in_arrears
+          - in_advance
+          type: string
+          writeOnly: true
+        description:
+          type: string
+          writeOnly: true
+          nullable: true
+        features:
+          type: array
+          items:
+            type: string
+            format: uuid
+            nullable: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustmentRequest'
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponentCreateRequest'
+          nullable: true
+        day_anchor:
+          type: integer
+          maximum: 31
+          minimum: 1
+          writeOnly: true
+          nullable: true
+        month_anchor:
+          type: integer
+          maximum: 12
+          minimum: 1
+          writeOnly: true
+          nullable: true
+        currency_code:
+          type: string
+          minLength: 1
+        transition_to_plan_id:
+          type: string
+          format: uuid
         flat_rate:
           type: number
           format: double
@@ -3736,31 +3867,6 @@ components:
           minimum: 0
           exclusiveMaximum: true
           writeOnly: true
-        day_anchor:
-          type: integer
-          maximum: 31
-          minimum: 1
-          writeOnly: true
-          nullable: true
-        transition_to_plan_id:
-          type: string
-          format: uuid
-        currency_code:
-          type: string
-          minLength: 1
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustmentRequest'
-        month_anchor:
-          type: integer
-          maximum: 12
-          minimum: 1
-          writeOnly: true
-          nullable: true
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/FeatureRequest'
-          nullable: true
       required:
       - flat_fee_billing_type
     InviteRequestRequest:
@@ -4072,26 +4178,30 @@ components:
     LightweightInvoice:
       type: object
       properties:
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
-        cost_due:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-          readOnly: true
-        issue_date:
-          type: string
-          format: date-time
-          readOnly: true
-        end_date:
+        start_date:
           type: string
           format: date
           readOnly: true
-        invoice_id:
+        due_date:
           type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
+        invoice_number:
+          type: string
+          readOnly: true
+        external_payment_obj_id:
+          type: string
+          readOnly: true
+          nullable: true
+        payment_status:
+          enum:
+          - paid
+          - unpaid
+          type: string
+          readOnly: true
         external_payment_obj_type:
           enum:
           - stripe
@@ -4100,27 +4210,23 @@ components:
           nullable: true
         seller:
           $ref: '#/components/schemas/Seller'
-        invoice_number:
-          type: string
+        cost_due:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
           readOnly: true
-        external_payment_obj_id:
+        invoice_id:
           type: string
-          readOnly: true
-          nullable: true
-        due_date:
+        issue_date:
           type: string
           format: date-time
           readOnly: true
-          nullable: true
-        start_date:
+        end_date:
           type: string
           format: date
-          readOnly: true
-        payment_status:
-          enum:
-          - paid
-          - unpaid
-          type: string
           readOnly: true
       required:
       - cost_due
@@ -4138,7 +4244,7 @@ components:
     LightweightInvoiceLineItem:
       type: object
       properties:
-        end_date:
+        start_date:
           type: string
           format: date-time
         subtotal:
@@ -4148,26 +4254,6 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        name:
-          type: string
-          maxLength: 100
-        billing_type:
-          enum:
-          - in_arrears
-          - in_advance
-          - 
-          type: string
-          nullable: true
-        start_date:
-          type: string
-          format: date-time
-        quantity:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: 0
-          exclusiveMaximum: true
-          nullable: true
         plan:
           allOf:
           - $ref: '#/components/schemas/LightweightPlanVersion'
@@ -4179,6 +4265,26 @@ components:
             $ref: '#/components/schemas/SubscriptionCategoricalFilter'
           nullable: true
           readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        end_date:
+          type: string
+          format: date-time
+        billing_type:
+          enum:
+          - in_arrears
+          - in_advance
+          - 
+          type: string
+          nullable: true
+        quantity:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
+          nullable: true
       required:
       - billing_type
       - end_date
@@ -4188,6 +4294,21 @@ components:
       - start_date
       - subscription_filters
       - subtotal
+    LightweightMetric:
+      type: object
+      properties:
+        metric_id:
+          type: string
+        event_name:
+          type: string
+          readOnly: true
+          description: Name of the event that this metric is tracking.
+        metric_name:
+          type: string
+      required:
+      - event_name
+      - metric_id
+      - metric_name
     LightweightOrganization:
       type: object
       properties:
@@ -4222,10 +4343,14 @@ components:
         version:
           type: integer
           readOnly: true
+        version_id:
+          type: string
+          readOnly: true
       required:
       - plan_id
       - plan_name
       - version
+      - version_id
     LightweightPlanVersionRequest:
       type: object
       properties:
@@ -4241,29 +4366,29 @@ components:
     LightweightSubscriptionRecordRequest:
       type: object
       properties:
-        fully_billed:
-          type: boolean
-          description: Whether the subscription has been fully billed and finalized.
-        end_date:
-          type: string
-          format: date-time
-          description: The time the subscription starts. This will be a string in
-            yyyy-mm-dd HH:mm:ss format in UTC time.
-        billing_plan:
-          $ref: '#/components/schemas/LightweightPlanVersionRequest'
-        auto_renew:
-          type: boolean
-          description: Whether the subscription automatically renews. Defaults to
-            true.
         start_date:
           type: string
           format: date-time
           description: The time the subscription starts. This will be a string in
             yyyy-mm-dd HH:mm:ss format in UTC time.
+        fully_billed:
+          type: boolean
+          description: Whether the subscription has been fully billed and finalized.
         is_new:
           type: boolean
           description: Whether this subscription came from a renewal or from a first-time.
             Defaults to true on creation.
+        billing_plan:
+          $ref: '#/components/schemas/LightweightPlanVersionRequest'
+        end_date:
+          type: string
+          format: date-time
+          description: The time the subscription starts. This will be a string in
+            yyyy-mm-dd HH:mm:ss format in UTC time.
+        auto_renew:
+          type: boolean
+          description: Whether the subscription automatically renews. Defaults to
+            true.
       required:
       - auto_renew
       - billing_plan
@@ -4438,6 +4563,73 @@ components:
       - numeric_filters
       - property_name
       - proration
+    MetricAccessPerSubscription:
+      type: object
+      properties:
+        subscription:
+          $ref: '#/components/schemas/AccessMethodsSubscriptionRecord'
+        metric_usage:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
+          description: The current usage of the metric. Keep in mind the current usage
+            of the metric can be different from the billable usage of the metric.
+            For examnple, for a gauge metric, the `metric_usage` is the current value
+            of the gauge, while the billable usage is the accumulated tiem at each
+            gauge level at the end of the subscription.
+        metric_free_limit:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
+          nullable: true
+          description: If you specified a free tier of usage for this metric, this
+            is the amount of usage that is free. Will be 0 if you didn't specify a
+            free limit for this metric or this subscription doesn't have access to
+            this metric, and null if the free tier is unlimited.
+        metric_total_limit:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
+          nullable: true
+          description: The total limit of the metric. Will be 0 if this subscription
+            doesn't have access to this metric, and null if there is no limit to this
+            metric.
+      required:
+      - metric_free_limit
+      - metric_total_limit
+      - metric_usage
+      - subscription
+    MetricAccessResponse:
+      type: object
+      properties:
+        customer:
+          $ref: '#/components/schemas/LightweightCustomer'
+        access:
+          type: boolean
+          description: Whether or not the customer has access to this metric. The
+            default behavior for this is whether all of the customer's plans (that
+            have access to the metric) are below the total limit of the metric. If
+            you have specified subscription filters, then this will be whether all
+            of the customer's plans that match the subscription filters are below
+            the total limit of the metric. You can customize the behavior of this
+            flag by setting a policy in your Organization settings in the frontend.
+        metric:
+          $ref: '#/components/schemas/LightweightMetric'
+        access_per_subscription:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetricAccessPerSubscription'
+      required:
+      - access
+      - access_per_subscription
+      - customer
+      - metric
     MetricCreateRequest:
       type: object
       properties:
@@ -5412,8 +5604,9 @@ components:
         features:
           type: array
           items:
-            $ref: '#/components/schemas/FeatureRequest'
-          nullable: true
+            type: string
+            format: uuid
+            nullable: true
         price_adjustment:
           $ref: '#/components/schemas/PriceAdjustmentRequest'
         usage_billing_frequency:

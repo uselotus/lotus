@@ -29,10 +29,14 @@ from api.serializers.model_serializers import (
     SubscriptionRecordUpdateSerializer,
 )
 from api.serializers.nonmodel_serializers import (
+    FeatureAccessRequestSerialzier,
+    FeatureAccessResponseSerializer,
     GetCustomerEventAccessRequestSerializer,
     GetCustomerFeatureAccessRequestSerializer,
     GetEventAccessSerializer,
     GetFeatureAccessSerializer,
+    MetricAccessRequestSerializer,
+    MetricAccessResponseSerializer,
 )
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
@@ -1125,6 +1129,92 @@ class CustomerBalanceAdjustmentViewSet(
         return response
 
 
+class MetricAccessView(APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    @extend_schema(
+        parameters=[MetricAccessRequestSerializer],
+        responses={
+            200: MetricAccessResponseSerializer,
+        },
+    )
+    def get(self, request, format=None):
+        result, success = fast_api_key_validation_and_cache(request)
+        if not success:
+            return result
+        else:
+            organization_pk = result
+        serializer = MetricAccessRequestSerializer(
+            data=request.query_params, context={"organization_pk": organization_pk}
+        )
+        serializer.is_valid(raise_exception=True)
+        customer = serializer.validated_data["customer"]
+        metric = serializer.validated_data["metric"]
+        subscription_records = SubscriptionRecord.objects.active().filter(
+            organization_id=organization_pk,
+            customer=customer,
+        )
+        subscription_filters_set = {
+            (x["property_name"], x["value"])
+            for x in serializer.validated_data.get("subscription_filters", [])
+        }
+        subscription_records = subscription_records.prefetch_related(
+            "billing_plan__plan_components",
+            "billing_plan__plan_components__billable_metric",
+            "billing_plan__plan_components__tiers",
+            "billing_plan__plan",
+            "filters",
+        )
+        return_dict = {
+            "customer": customer,
+            "metric": metric,
+            "access": False,
+            "access_per_subscription": [],
+        }
+        for sr in subscription_records:
+            if subscription_filters_set:
+                sr_filters_set = {(x.property_name, x.value) for x in sr.filters.all()}
+                if not subscription_filters_set.issubset(sr_filters_set):
+                    continue
+            single_sr_dict = {
+                "subscription": sr,
+                "metric_usage": 0,
+                "metric_free_limit": 0,
+                "metric_total_limit": 0,
+            }
+            for component in sr.billing_plan.plan_components.all():
+                check_metric = component.billable_metric
+                if check_metric == metric:
+                    tiers = sorted(component.tiers.all(), key=lambda x: x.range_start)
+                    free_limit = (
+                        tiers[0].range_end
+                        if tiers[0].type == PriceTier.PriceTierType.FREE
+                        else 0
+                    )
+                    total_limit = tiers[-1].range_end
+                    current_usage = metric.get_subscription_record_current_usage(sr)
+                    single_sr_dict["metric_usage"] = current_usage
+                    single_sr_dict["metric_free_limit"] = free_limit
+                    single_sr_dict["metric_total_limit"] = total_limit
+                    break
+            return_dict["access_per_subscription"].append(single_sr_dict)
+        access = []
+        for sr_dict in return_dict["access_per_subscription"]:
+            if (
+                sr_dict["metric_usage"] < sr_dict["metric_total_limit"]
+                or sr_dict["metric_total_limit"] is None
+            ):
+                access.append(True)
+            elif sr_dict["metric_total_limit"] == 0:
+                continue
+            else:
+                access.append(False)
+        return_dict["access"] = any(access)
+        serializer = MetricAccessResponseSerializer(return_dict)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class GetCustomerEventAccessView(APIView):
     permission_classes = []
     authentication_classes = []
@@ -1134,6 +1224,7 @@ class GetCustomerEventAccessView(APIView):
         responses={
             200: GetEventAccessSerializer(many=True),
         },
+        deprecated=True,
     )
     def get(self, request, format=None):
         result, success = fast_api_key_validation_and_cache(request)
@@ -1228,6 +1319,65 @@ class GetCustomerEventAccessView(APIView):
         )
 
 
+class FeatureAccessView(APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    @extend_schema(
+        parameters=[FeatureAccessRequestSerialzier],
+        responses={
+            200: FeatureAccessResponseSerializer,
+        },
+    )
+    def get(self, request, format=None):
+        result, success = fast_api_key_validation_and_cache(request)
+        if not success:
+            return result
+        else:
+            organization_pk = result
+        serializer = FeatureAccessRequestSerialzier(
+            data=request.query_params, context={"organization_pk": organization_pk}
+        )
+        serializer.is_valid(raise_exception=True)
+        customer = serializer.validated_data["customer"]
+        feature = serializer.validated_data["feature"]
+        subscription_records = SubscriptionRecord.objects.active().filter(
+            organization_id=organization_pk,
+            customer=customer,
+        )
+        subscription_filters_set = {
+            (x["property_name"], x["value"])
+            for x in serializer.validated_data.get("subscription_filters", [])
+        }
+        subscription_records = subscription_records.prefetch_related(
+            "billing_plan__features",
+            "billing_plan__plan",
+            "filters",
+        )
+        return_dict = {
+            "customer": customer,
+            "feature": feature,
+            "access": False,
+            "access_per_subscription": [],
+        }
+        for sr in subscription_records:
+            if subscription_filters_set:
+                sr_filters_set = {(x.property_name, x.value) for x in sr.filters.all()}
+                if not subscription_filters_set.issubset(sr_filters_set):
+                    continue
+            single_sr_dict = {
+                "subscription": sr,
+                "access": False,
+            }
+            if feature in sr.billing_plan.features.all():
+                single_sr_dict["access"] = True
+            return_dict["access_per_subscription"].append(single_sr_dict)
+        access = [d["access"] for d in return_dict["access_per_subscription"]]
+        return_dict["access"] = any(access)
+        serializer = FeatureAccessResponseSerializer(return_dict)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class GetCustomerFeatureAccessView(APIView):
     permission_classes = []
     authentication_classes = []
@@ -1237,6 +1387,7 @@ class GetCustomerFeatureAccessView(APIView):
         responses={
             200: GetFeatureAccessSerializer(many=True),
         },
+        deprecated=True,
     )
     def get(self, request, format=None):
         result, success = fast_api_key_validation_and_cache(request)
@@ -1302,6 +1453,30 @@ class GetCustomerFeatureAccessView(APIView):
         GetFeatureAccessSerializer(many=True).validate(features)
         return Response(
             features,
+            status=status.HTTP_200_OK,
+        )
+
+
+class Ping(APIView):
+    permission_classes = [HasUserAPIKey & ValidOrganization]
+
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="ConfirmConnected",
+                fields={
+                    "organization_id": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def get(self, request, format=None):
+        organization = request.organization
+        return Response(
+            {
+                "status": "success",
+                "organization_id": organization.organization_id,
+            },
             status=status.HTTP_200_OK,
         )
 
@@ -1515,6 +1690,8 @@ def track_event(request):
             status=status.HTTP_201_CREATED,
         )
     else:
+        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
+        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
