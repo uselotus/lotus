@@ -14,6 +14,8 @@ from reportlab.lib.colors import Color
 from metering_billing.serializers.serializer_utils import PlanUUIDField
 from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
 from metering_billing.models import Organization, Team
+from io import BytesIO
+
 
 FONT_XL = 26
 FONT_L = 24
@@ -486,7 +488,11 @@ def get_invoice_presigned_url(invoice_model):
     key = f"{organization_id}/{customer_id}/invoice_pdf_{invoice_number}.pdf"
 
     if not s3_file_exists(bucket_name=bucket_name, key=key):
-        return {"exists": False, "url": ""}
+        line_items = invoice_model.line_items.all()
+
+        generate_invoice_pdf(
+            invoice_model, organization_id, customer_id, line_items, BytesIO()
+        )
 
     url = s3.generate_presigned_url(
         ClientMethod="get_object",
