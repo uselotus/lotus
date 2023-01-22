@@ -21,4 +21,4 @@ jobs:
       # - name: Lint with ESLint
       #   run: yarn lint
       - name: Run Prettier
-        run: yarn pretty --cwd frontend
+        run: pwd && yarn pretty
