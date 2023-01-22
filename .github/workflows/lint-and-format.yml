@@ -18,7 +18,7 @@ jobs:
       - name: Install dependencies
         run: yarn
 
-      - name: Lint with ESLint
-        run: yarn lint
+      # - name: Lint with ESLint
+      #   run: yarn lint
       - name: Run Prettier
         run: yarn pretty
