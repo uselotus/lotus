@@ -116,6 +116,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # API Views
     path("api/", include((api_router.urls, "api"), namespace="api")),
+    path("api/ping/", api_views.Ping.as_view(), name="ping"),
     path("api/track/", api_views.track_event, name="track_event"),
     path(
         "api/metric_access/",

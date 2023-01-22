@@ -1457,6 +1457,30 @@ class GetCustomerFeatureAccessView(APIView):
         )
 
 
+class Ping(APIView):
+    permission_classes = [HasUserAPIKey & ValidOrganization]
+
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="ConfirmConnected",
+                fields={
+                    "organization_id": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def get(self, request, format=None):
+        organization = request.organization
+        return Response(
+            {
+                "status": "success",
+                "organization_id": organization.organization_id,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 class ConfirmIdemsReceivedView(APIView):
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
