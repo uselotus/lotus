@@ -1,8 +1,8 @@
 import { Button, Dropdown, Menu, Table, Tag, Tooltip } from "antd";
-import { FC } from "react";
+import { FC, useEffect } from "react";
 // @ts-ignore
 import React from "react";
-import { InvoiceType, MarkInvoiceStatusAsPaid } from "../../types/invoice-type";
+import { InvoiceType, MarkPaymentStatusAsPaid } from "../../types/invoice-type";
 // @ts-ignore
 import dayjs from "dayjs";
 import { useMutation } from "react-query";
@@ -41,14 +41,16 @@ interface Props {
 }
 
 const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
+  const [selectedRecord, setSelectedRecord] = React.useState();
   const changeStatus = useMutation(
-    (post: MarkInvoiceStatusAsPaid) => Invoices.changeStatus(post),
+    (post: MarkPaymentStatusAsPaid) => Invoices.changeStatus(post),
     {
       onSuccess: (data) => {
         const status = data.payment_status.toUpperCase();
         toast.success(`Successfully Changed Invoice Status to ${status}`, {
           position: toast.POSITION.TOP_CENTER,
         });
+        selectedRecord.payment_status = data.payment_status;
       },
       onError: () => {
         toast.error("Failed to Changed Invoice Status", {
@@ -57,6 +59,16 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
       },
     }
   );
+
+  useEffect(() => {
+    if (selectedRecord !== undefined) {
+      changeStatus.mutate({
+        invoice_id: selectedRecord.invoice_id,
+        payment_status:
+          selectedRecord.payment_status === "unpaid" ? "paid" : "unpaid",
+      });
+    }
+  }, [selectedRecord]);
 
   const columns = [
     {
@@ -132,17 +144,17 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
                     <Menu.Item
                       key="2"
                       onClick={() => {
-                        changeStatus.mutate({
-                          invoice_number: record.invoice_number,
-                          payment_status:
-                            record.payment_status === "unpaid"
-                              ? "paid"
-                              : "unpaid",
-                        });
-                        record.payment_status =
-                          record.payment_status === "unpaid"
-                            ? "paid"
-                            : "unpaid";
+                        if (selectedRecord === record) {
+                          changeStatus.mutate({
+                            invoice_id: record.invoice_id,
+                            payment_status:
+                              record.payment_status === "unpaid"
+                                ? "paid"
+                                : "unpaid",
+                          });
+                        } else {
+                          setSelectedRecord(record);
+                        }
                       }}
                     >
                       <div className="archiveLabel">

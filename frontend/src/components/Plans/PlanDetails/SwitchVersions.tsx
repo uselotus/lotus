@@ -171,8 +171,8 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
           </div>
         </Link>
       </div>
-      <div className="bg-white mb-5 flex flex-col py-4 px-10 rounded-lg">
-        <div className="grid gap-6 grid-cols-1  md:grid-cols-3">
+      <div className="bg-white mb-6 flex flex-col py-4 px-10 rounded-lg space-y-12">
+        <div className="grid gap-12 grid-cols-1  md:grid-cols-3">
           <div className="col-span-1">
             <PlanSummary
               plan={plan}
@@ -200,9 +200,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
           <PlanFeatures features={selectedVersion.features} />
         </div>
 
-        <div className="separator pt-4" />
-
-        <div className=" mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg ">
+        <div className=" mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card">
           <Typography.Title className="!text-[18px]" level={2}>
             Price Adjustments:{" "}
             {getPriceAdjustmentEnding(

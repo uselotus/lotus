@@ -1,15 +1,14 @@
-import json
-import re
-
 import pytest
-from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
-from metering_billing.models import Plan, PlanVersion, Subscription, SubscriptionRecord
-from metering_billing.utils import now_utc
-from metering_billing.utils.enums import *
-from model_bakery import baker
-from rest_framework import serializers, status
+from rest_framework import status
 from rest_framework.test import APIClient
+
+from metering_billing.utils.enums import (
+    FLAT_FEE_BILLING_TYPE,
+    PLAN_DURATION,
+    PLAN_VERSION_STATUS,
+    TAG_GROUP,
+)
 
 
 @pytest.fixture
@@ -74,7 +73,7 @@ class TestOrganizationTags:
         response = client.patch(
             reverse(
                 "organization-detail",
-                kwargs={"organization_id": org.organization_id},
+                kwargs={"organization_id": "org_" + org.organization_id.hex},
             ),
             payload,
             format="json",
@@ -104,7 +103,7 @@ class TestOrganizationTags:
         response = client.patch(
             reverse(
                 "organization-detail",
-                kwargs={"organization_id": org.organization_id},
+                kwargs={"organization_id": "org_" + org.organization_id.hex},
             ),
             payload,
             format="json",
@@ -128,7 +127,7 @@ class TestOrganizationTags:
         response = client.patch(
             reverse(
                 "organization-detail",
-                kwargs={"organization_id": org.organization_id},
+                kwargs={"organization_id": "org_" + org.organization_id.hex},
             ),
             payload,
             format="json",

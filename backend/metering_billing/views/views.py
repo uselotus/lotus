@@ -1,41 +1,64 @@
-import datetime
 import logging
 from decimal import Decimal
 
-import posthog
-from dateutil import parser
 from django.conf import settings
-from django.core.cache import cache
 from django.db.models import Count, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
-from metering_billing.auth import parse_organization
-from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
-from metering_billing.exceptions.exceptions import NotFoundException
+from metering_billing.exceptions import (
+    ExternalConnectionFailure,
+    ExternalConnectionInvalid,
+    NotFoundException,
+)
 from metering_billing.invoice import generate_invoice
-from metering_billing.models import APIToken, Customer, Metric, SubscriptionRecord
+from metering_billing.models import (
+    Customer,
+    Invoice,
+    Metric,
+    Organization,
+    PlanVersion,
+    SubscriptionRecord,
+)
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
-from metering_billing.serializers.auth_serializers import *
-from metering_billing.serializers.backtest_serializers import *
-from metering_billing.serializers.model_serializers import *
-from metering_billing.serializers.request_serializers import *
-from metering_billing.serializers.response_serializers import *
+from metering_billing.serializers.model_serializers import (
+    CustomerSummarySerializer,
+    CustomerWithRevenueSerializer,
+    DraftInvoiceSerializer,
+    MetricSerializer,
+)
+from metering_billing.serializers.request_serializers import (
+    CostAnalysisRequestSerializer,
+    DraftInvoiceRequestSerializer,
+    PeriodComparisonRequestSerializer,
+    PeriodMetricUsageRequestSerializer,
+)
+from metering_billing.serializers.response_serializers import (
+    CostAnalysisSerializer,
+    PeriodMetricRevenueResponseSerializer,
+    PeriodMetricUsageResponseSerializer,
+    PeriodSubscriptionsResponseSerializer,
+)
+from metering_billing.serializers.serializer_utils import OrganizationUUIDField
 from metering_billing.utils import (
     convert_to_date,
+    convert_to_datetime,
     convert_to_decimal,
     date_as_max_dt,
     date_as_min_dt,
     make_all_dates_times_strings,
     make_all_decimals_floats,
+    now_utc,
     periods_bwn_twodates,
 )
 from metering_billing.utils.enums import (
-    FLAT_FEE_BILLING_TYPE,
+    METRIC_STATUS,
+    METRIC_TYPE,
     PAYMENT_PROVIDERS,
-    SUBSCRIPTION_STATUS,
     USAGE_CALC_GRANULARITY,
 )
+from metering_billing.views.model_views import CustomerViewSet
 from rest_framework import serializers, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -59,7 +82,7 @@ class PeriodMetricRevenueView(APIView):
         organization = request.organization
         serializer = PeriodComparisonRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        p1_start, p1_end, p2_start, p2_end = [
+        p1_start, p1_end, p2_start, p2_end = (
             serializer.validated_data.get(key, None)
             for key in [
                 "period_1_start_date",
@@ -67,7 +90,7 @@ class PeriodMetricRevenueView(APIView):
                 "period_2_start_date",
                 "period_2_end_date",
             ]
-        ]
+        )
         p1_start, p2_start = date_as_min_dt(p1_start), date_as_min_dt(p2_start)
         p1_end, p2_end = date_as_max_dt(p1_end), date_as_max_dt(p2_end)
         return_dict = {}
@@ -76,13 +99,13 @@ class PeriodMetricRevenueView(APIView):
             organization=organization,
             issue_date__gte=p1_start,
             issue_date__lte=p1_end,
-            payment_status=INVOICE_STATUS.PAID,
+            payment_status=Invoice.PaymentStatus.PAID,
         ).aggregate(tot=Sum("cost_due"))["tot"]
         p2_collected = Invoice.objects.filter(
             organization=organization,
             issue_date__gte=p2_start,
             issue_date__lte=p2_end,
-            payment_status=INVOICE_STATUS.PAID,
+            payment_status=Invoice.PaymentStatus.PAID,
         ).aggregate(tot=Sum("cost_due"))["tot"]
         return_dict["total_revenue_period_1"] = p1_collected or Decimal(0)
         return_dict["total_revenue_period_2"] = p2_collected or Decimal(0)
@@ -143,10 +166,10 @@ class CostAnalysisView(APIView):
         organization = request.organization
         serializer = CostAnalysisRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        start_date, end_date, customer_id = [
+        start_date, end_date, customer_id = (
             serializer.validated_data.get(key, None)
             for key in ["start_date", "end_date", "customer_id"]
-        ]
+        )
         try:
             customer = Customer.objects.get(
                 organization=organization, customer_id=customer_id
@@ -166,15 +189,14 @@ class CostAnalysisView(APIView):
                 "revenue": Decimal(0),
             }
         cost_metrics = Metric.objects.filter(
-            organization=organization, is_cost_metric=True
+            organization=organization, is_cost_metric=True, status=METRIC_STATUS.ACTIVE
         )
-        for metric in []:
-            usage_ret = metric.get_usage(
+        for metric in cost_metrics:
+            usage_ret = metric.get_daily_total_usage(
                 start_date,
                 end_date,
-                granularity=USAGE_CALC_GRANULARITY.DAILY,
                 customer=customer,
-            ).get(customer.customer_name, {})
+            ).get(customer, {})
             for date, usage in usage_ret.items():
                 date = convert_to_date(date)
                 usage = convert_to_decimal(usage)
@@ -250,7 +272,7 @@ class PeriodSubscriptionsView(APIView):
         organization = request.organization
         serializer = PeriodComparisonRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        p1_start, p1_end, p2_start, p2_end = [
+        p1_start, p1_end, p2_start, p2_end = (
             serializer.validated_data.get(key, None)
             for key in [
                 "period_1_start_date",
@@ -258,17 +280,21 @@ class PeriodSubscriptionsView(APIView):
                 "period_2_start_date",
                 "period_2_end_date",
             ]
-        ]
+        )
         p1_start, p2_start = date_as_min_dt(p1_start), date_as_min_dt(p2_start)
         p1_end, p2_end = date_as_max_dt(p1_end), date_as_max_dt(p2_end)
 
         return_dict = {}
         for i, (p_start, p_end) in enumerate([[p1_start, p1_end], [p2_start, p2_end]]):
-            p_subs = SubscriptionRecord.objects.filter(
-                Q(start_date__range=[p_start, p_end])
-                | Q(end_date__range=[p_start, p_end]),
-                organization=organization,
-            ).values(customer_name=F("customer__customer_name"), new=F("is_new"))
+            p_subs = (
+                SubscriptionRecord.objects.filter(
+                    Q(start_date__range=[p_start, p_end])
+                    | Q(end_date__range=[p_start, p_end]),
+                    organization=organization,
+                )
+                .select_related("customer")
+                .values(customer_name=F("customer__customer_name"), new=F("is_new"))
+            )
             seen_dict = {}
             for sub in p_subs:
                 if (
@@ -289,7 +315,6 @@ class PeriodSubscriptionsView(APIView):
 
 
 class PeriodMetricUsageView(APIView):
-
     permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
@@ -304,118 +329,36 @@ class PeriodMetricUsageView(APIView):
         organization = request.organization
         serializer = PeriodMetricUsageRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        q_start, q_end, top_n = [
+        q_start, q_end, top_n = (
             serializer.validated_data.get(key, None)
             for key in ["start_date", "end_date", "top_n_customers"]
-        ]
+        )
         q_start = convert_to_datetime(q_start, date_behavior="min")
         q_end = convert_to_datetime(q_end, date_behavior="max")
-        subscription_records = (
-            SubscriptionRecord.objects.filter(
-                Q(start_date__range=[q_start, q_end])
-                | Q(end_date__range=[q_start, q_end])
-                | Q(start_date__lte=q_start, end_date__gte=q_end),
-                organization=organization,
-            )
-            .select_related("billing_plan")
-            .select_related("customer")
-            .prefetch_related("billing_plan__plan_components")
-            .prefetch_related("billing_plan__plan_components__billable_metric")
-            .prefetch_related("billing_plan__plan_components__tiers")
+        final_results = {}
+        metrics = organization.metrics.filter(
+            ~Q(metric_type=METRIC_TYPE.CUSTOM), status=METRIC_STATUS.ACTIVE
         )
-        return_dict = {}
-        allowed_periods = set(
-            convert_to_date(period)
-            for period in periods_bwn_twodates(
-                USAGE_CALC_GRANULARITY.DAILY, q_start, q_end
+        for metric in metrics:
+            metric_dict = {}
+            per_customer_usage = metric.get_daily_total_usage(
+                start_date=q_start, end_date=q_end, customer=None, top_n=top_n
             )
-        )
-        for sr in subscription_records:
-            for pc in sr.billing_plan.plan_components.all():
-                metric = pc.billable_metric
-                if metric.billable_metric_name not in return_dict:
-                    return_dict[metric.billable_metric_name] = {
-                        "data": {},
-                        "total_usage": 0,
-                        "top_n_customers": {},
-                    }
-                res = pc.billable_metric.get_subscription_record_daily_billable_usage(
-                    sr
+            for customer, customer_dict in per_customer_usage.items():
+                for date, usage in customer_dict.items():
+                    if date not in metric_dict:
+                        metric_dict[date] = {}
+                    cust = customer if customer == "Other" else customer.customer_name
+                    metric_dict[date][cust] = convert_to_decimal(usage)
+            final_results[metric.billable_metric_name] = {
+                "data": sorted(
+                    [{"date": k, "customer_usages": v} for k, v in metric_dict.items()],
+                    key=lambda x: x["date"],
                 )
-                for date, usage in res.items():
-                    if date not in allowed_periods:
-                        continue
-                    usage = convert_to_decimal(usage)
-                    return_dict[metric.billable_metric_name]["total_usage"] += usage
-                    if date not in return_dict[metric.billable_metric_name]["data"]:
-                        return_dict[metric.billable_metric_name]["data"][date] = {
-                            "total_usage": Decimal(0),
-                            "customer_usages": {},
-                        }
-                    return_dict[metric.billable_metric_name]["data"][date][
-                        "total_usage"
-                    ] += usage
-                    if (  # add custoemr to date customer usages
-                        sr.customer.customer_name
-                        not in return_dict[metric.billable_metric_name]["data"][date][
-                            "customer_usages"
-                        ]
-                    ):
-                        return_dict[metric.billable_metric_name]["data"][date][
-                            "customer_usages"
-                        ][sr.customer.customer_name] = Decimal(0)
-                    return_dict[metric.billable_metric_name]["data"][date][
-                        "customer_usages"
-                    ][
-                        sr.customer.customer_name
-                    ] += usage  # add usage to individual customer on day
-                    if (
-                        sr.customer.customer_name
-                        not in return_dict[metric.billable_metric_name][
-                            "top_n_customers"
-                        ]
-                    ):
-                        return_dict[metric.billable_metric_name]["top_n_customers"][
-                            sr.customer.customer_name
-                        ] = 0
-                    return_dict[metric.billable_metric_name]["top_n_customers"][
-                        sr.customer.customer_name
-                    ] += usage
-        if top_n:
-            for metric, metric_dict in return_dict.items():
-                top_n_customers = sorted(
-                    metric_dict["top_n_customers"].items(),
-                    key=lambda x: x[1],
-                    reverse=True,
-                )[:top_n]
-                metric_dict["top_n_customers"] = [x[0] for x in top_n_customers]
-                metric_dict["top_n_customers_usage"] = [x[1] for x in top_n_customers]
-        else:
-            for metric, metric_dict in return_dict.items():
-                del metric_dict["top_n_customers"]
-        for metric, metric_dict in return_dict.items():
-            metric_dict["data"] = [
-                {
-                    "date": convert_to_date(k),
-                    "total_usage": v["total_usage"],
-                    "customer_usages": v["customer_usages"],
-                }
-                for k, v in metric_dict["data"].items()
-            ]
-            if "top_n_customers" in metric_dict:
-                for date_dict in metric_dict["data"]:
-                    new_dict = {}
-                    for customer, usage in date_dict["customer_usages"].items():
-                        if customer not in metric_dict["top_n_customers"]:
-                            if "Other" not in new_dict:
-                                new_dict["Other"] = 0
-                            new_dict["Other"] += usage
-                        else:
-                            new_dict[customer] = usage
-                    date_dict["customer_usages"] = new_dict
-            metric_dict["data"] = sorted(metric_dict["data"], key=lambda x: x["date"])
-        return_dict = {"metrics": return_dict}
-        serializer = PeriodMetricUsageResponseSerializer(data=return_dict)
+            }
+        serializer = PeriodMetricUsageResponseSerializer(
+            data={"metrics": final_results}
+        )
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data
         ret = make_all_decimals_floats(ret)
@@ -462,9 +405,8 @@ class ChangeUserOrganizationView(APIView):
         new_organization_id = request.data.get("transfer_to_organization_id")
         if not new_organization_id:
             raise ValidationError("No organization ID provided")
-        new_organization = Organization.objects.filter(
-            organization_id=new_organization_id
-        ).first()
+        org_uuid = OrganizationUUIDField().to_internal_value(new_organization_id)
+        new_organization = Organization.objects.filter(organization_id=org_uuid).first()
         if not new_organization:
             raise ValidationError("Organization not found")
         user.organization = new_organization
@@ -507,7 +449,6 @@ class CustomersSummaryView(APIView):
 
 
 class CustomersWithRevenueView(APIView):
-
     permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
@@ -518,18 +459,9 @@ class CustomersWithRevenueView(APIView):
         """
         Return current usage for a customer during a given billing period.
         """
-        organization = request.organization
-        customers = Customer.objects.filter(organization=organization)
-        cust = []
-        for customer in customers:
-            total_amount_due = customer.get_outstanding_revenue()
-            serializer = CustomerWithRevenueSerializer(
-                customer,
-                context={
-                    "total_amount_due": total_amount_due,
-                },
-            )
-            cust.append(serializer.data)
+        request.organization
+        customers = CustomerViewSet.get_queryset(self)
+        cust = CustomerWithRevenueSerializer(customers, many=True).data
         cust = make_all_decimals_floats(cust)
         return Response(cust, status=status.HTTP_200_OK)
 

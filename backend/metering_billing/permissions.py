@@ -1,10 +1,10 @@
 import logging
 
-from django.utils.translation import gettext_lazy as _
-from metering_billing.exceptions import NoAPIKeyProvided
-from metering_billing.models import APIToken
 from rest_framework import permissions
 from rest_framework_api_key.permissions import BaseHasAPIKey
+
+from metering_billing.exceptions import NoAPIKeyProvided
+from metering_billing.models import APIToken
 
 logger = logging.getLogger("django.server")
 
@@ -38,8 +38,12 @@ class ValidOrganization(permissions.BasePermission):
         return org is not None
 
     def has_object_permission(self, request, view, obj):
+        from metering_billing.models import Organization
+
         # Instance must have an attribute named `owner`.
         org = request.organization
         if org is None and request.user.is_authenticated:
             org = request.user.organization
+        if isinstance(obj, Organization):
+            return obj == org
         return obj.organization == org

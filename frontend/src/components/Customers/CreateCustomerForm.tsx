@@ -2,6 +2,9 @@ import { Modal, Form, Input, Select } from "antd";
 // @ts-ignore
 import React from "react";
 import PricingUnitDropDown from "../PricingUnitDropDown";
+import { PaymentProcessorIntegration } from "../../api/api";
+import { PaymentProcessorStatusType } from "../../types/payment-processor-type";
+import { useQuery } from "react-query";
 
 export interface CreateCustomerState {
   name: string;
@@ -21,7 +24,21 @@ const CreateCustomerForm = (props: {
   onCancel: () => void;
 }) => {
   const [form] = Form.useForm();
+  const [paymentProviders, setPaymentProviders] = React.useState<string[]>([]);
 
+  const { data, isLoading } = useQuery<PaymentProcessorStatusType[]>(
+    ["payment_processor_integration_list"],
+    () => PaymentProcessorIntegration.getPaymentProcessorConnectionStatus(),
+    {
+      onSuccess: (data) => {
+        //set payment provider name in paymentproviders list if connected is true
+        const connectedProviders = data
+          .filter((item) => item.connected)
+          .map((item) => item.payment_provider_name);
+        setPaymentProviders(connectedProviders);
+      },
+    }
+  );
   return (
     <Modal
       visible={props.visible}
@@ -41,9 +58,6 @@ const CreateCustomerForm = (props: {
       }}
     >
       <Form form={form} layout="vertical" name="customer_form">
-        <Form.Item name="name" label="Name">
-          <Input />
-        </Form.Item>
         <Form.Item
           name="email"
           label="Email"
@@ -69,21 +83,37 @@ const CreateCustomerForm = (props: {
         >
           <Input />
         </Form.Item>
+        <Form.Item name="name" label="Name">
+          <Input />
+        </Form.Item>
+
         <div className="grid grid-cols-6 items-center gap-4">
-          <Form.Item
-            className="col-span-2"
-            name="payment_provider"
-            label="Payment Provider"
-          >
-            <Select options={[{ label: "Stripe", value: "stripe" }]} />
-          </Form.Item>
-          <Form.Item
-            className="col-span-4"
-            name="payment_provider_id"
-            label="Payment Provider ID"
-          >
-            <Input />
-          </Form.Item>
+          {paymentProviders.length > 0 && (
+            <Form.Item
+              className="col-span-2"
+              name="payment_provider"
+              label="Payment Provider"
+            >
+              <Select>
+                {paymentProviders.map((provider) => (
+                  <Select.Option key={provider} value={provider}>
+                    {provider}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+          )}
+
+          {paymentProviders.length > 0 && (
+            <Form.Item
+              className="col-span-4"
+              name="payment_provider_id"
+              label="Payment Provider ID"
+            >
+              <Input />
+            </Form.Item>
+          )}
+
           <Form.Item
             className="col-span-4"
             name="default_currency_code"

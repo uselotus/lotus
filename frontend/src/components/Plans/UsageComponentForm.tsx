@@ -15,7 +15,7 @@ import { MetricType } from "../../types/metric-type";
 import type { InputRef } from "antd";
 import type { FormInstance } from "antd/es/form";
 import { Tier } from "../../types/plan-type";
-import { PricingUnit } from "../../types/pricing-unit-type";
+import { CurrencyType } from "../../types/pricing-unit-type";
 
 const { Option } = Select;
 const { Panel } = Collapse;
@@ -261,7 +261,7 @@ type Props = {
   handleComponentAdd: (s: any) => void;
   editComponentItem: any;
   setEditComponentsItem: (s: any) => void;
-  currency: PricingUnit;
+  currency: CurrencyType;
 };
 function UsageComponentForm({
   handleComponentAdd,
@@ -294,7 +294,8 @@ function UsageComponentForm({
     editComponentItem?.tiers ?? initialTier
   );
   const [rangeEnd, setRangeEnd] = useState<number | undefined>(
-    editComponentItem?.tiers[-1]?.range_end ?? undefined
+    editComponentItem?.tiers[editComponentItem?.tiers.length - 1]?.range_end ??
+      undefined
   );
 
   /// Ouput accepted proration grandularities for a given metric

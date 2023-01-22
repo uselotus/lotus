@@ -5,31 +5,16 @@ description:
   Lotus."
 ---
 
-Metrics represent everything that you want to track in your software. Some of
-the most common metrics you can define are users/seats, API calls, and gb of
-storage.
+Metrics represent everything that you want to track in your software and either bill on, or restrict access to. The metrics you define can later be packaged into plans and used to bill your customers or regulate their access to parts of your product based on their usage.
 
-Metrics can be as complex as you need to be and come in a few basic types.
+Lotus supports three types of metrics out of the box:
 
-1. **Counter**  
-   A counter metric is an aggregation (think `SUM`, `COUNT`, `MAX`, or other
-   SQL-like aggregations) over events or the properties of events. For example,
-   you could keep track of the `COUNT` of API calls made to your service, or the
-   `SUM` of bytes uploaded to your service.
-2. **Gauge**  
-   The key difference between a counter and a gauge metric is what the
-   events represent. Whereas in a counter we aggregate over the events, in a
-   gauge, the events are simply informing us about updates to some
-   underlying state. For example, the number of seats currently active, or the
-   storage currently in use. We don't actually aggregate over the events
-   themselves, but rather over the state that they represent
-3. **Rate**  
-   Rate metrics are very similar to counter metrics. Whereas counter metrics
-   aggregate over events that occur in a billing period, a rate keeps track of
-   windowed time periods of finer granularity than the entire billing period.
-   For example, if you were running a database company, your monthly plan might
-   include a rate metric that represents the number of database inserts per
-   minute.
+1. **Counter**
+   Counter metrics allow you to track specific events or the properties of events, such as the total number of API calls made to a service or the sum of bytes uploaded. The key feature of counter metrics is that they aggregate data, similar to SQL-like aggregations like SUM or COUNT.
+2. **Gauge**
+   Gauge metrics track updates to a specific state, such as the number of active seats or the storage currently in use. The key difference between gauge and counter metrics is that events in gauge metrics simply represent changes to the state, whereas counter metrics aggregate data over events. Some examples of gauge metrics are the number of active seats in a SaaS product or the number of GB used in a storage service.
+3. **Rate**
+  Rate metrics are similar to counter metrics in that they aggregate data over time periods. However, rate metrics have a finer granularity than billing periods, such as the number of database inserts per minute. This allows you to track usage that can be billed based on a time-based rate, such as the number of database inserts per minute.
 
 ### Counter Metrics
 
@@ -59,30 +44,11 @@ The allowed aggregation metrics are:
 
 ### Gauge Metrics
 
-Defining a gauge metric also starts with defining the `event_name`,
-`metric_name`, and `event_type`.
+To define a gauge metric, you'll need to specify the event_name, metric_name, and event_type. Lotus currently supports two event_types: DELTA and TOTAL. The DELTA event represents a change in the underlying state, such as a change in the number of active seats, and could have values like +1 or -2 to represent a seat(s) being added or removed. The TOTAL event represents the current value of the underlying state, such as the total gigabytes of storage a customer is using.
 
-Lotus currently supports two `event_type`s:
+Gauge metrics can additionally can have an optional `proration` field. The allowed values for `proration` are `second`, `minute`, `hour`, `day`, `month`, `quarter`, and `year`. The proration fieldis a way for you to allow for "fair" pricing.
 
-- `DELTA`: The event represents a change in the underlying state. For example,
-  the events could represent the change in the number of active seats, and could
-  have values like `+1` or `-2` to represent a seat(s) being added or removed.
-- `TOTAL`: The event represents the current value of the underlying state. For
-  example, the events could represent the total gigabytes of storage a customer
-  is using, and could have values like `10` or `50` to represent the total.
-
-gauge metrics additionally require a `granularity` field. This field
-specifies the size of the smallest time periods you want to track your metric
-over. The allowed values are:
-
-- `hour`
-- `day`
-- `week`
-- `total`
-
-For example, you may want to have a gauge metric that tracks the number of
-seats currently active. However, sometimes companies want to prorate at a
-smaller interval. For example, Notion's pricing states:
+For example, Notion's pricing states:
 
 <Note>
 If you added members, your account will be charged a prorated amount based on
@@ -93,135 +59,37 @@ you removed members, your account will be credited in the same way.
 
 </Note>
 
-In this case, you would set the granularity to `day`, and we would automatically
-take care of the rest. If you're not interested in prorating, then you can set
-the granularity to `total`.
-
-Currently, we provide two types of aggregations for billing:
-
-- `MAX` **:property field required**
-  - Take the max of the state over the `granularity` period.
-- `LAST` **:property field required**
-  - Take the latest value of the state over the `granularity` period.
+In this case, you would set the `proration` to `day`, and we would automatically
+take care of the rest.
 
 ### Rate Metrics
 
-Defining a rate metric also starts with defining the `event_name` and
-`metric_name`.
+Rate metrics are used to track the number of occurrences of a specific event over a smaller period of time than the duration of a subscription.
 
-Rate metrics also require a `granularity` field. This field specifies the size
-of the smallest time periods you want to track your metric over. The allowed
-values are:
+To define a rate metric, you'll need to specify the `event_name` and `metric_name`. Additionally, you'll need to specify the `granularity` of the metric, which determines the size of the subperiods to track your metric over. The allowed granularities for rate metrics are `minute`, `hour`, `day` and `month`.
 
-- `minute`
-- `hour`
-- `day`
+For example, you may have a metric that tracks the number of rows inserted into your database. If you only wanted to allow a certain number of database inserts per hour, you would set the `granularity` to `hour`.
 
-For example, you may have a metric that tracks the number of rows inserted into
-your database. If you only wanted to allow a certain number of database inserts
-per hour, you would set the granularity to `hour`.
-
-To calculate whether a customer has exceeded their rate limit, you must specify
-an `aggregation_type`. The allowed values are:
-
-- `COUNT`
-  - A simple count over the total number of events recorded during the rate
-    period.
-- `SUM` **:property field required**
-  - Sum over a certain property of each event.
-- `MAX` **:property field required**
-  - Take the max of a certain property field over all events in the rate period.
-
-Additionally, we need another aggregation, `rate_aggregation`, to arrive at a
-final "usage number" for the billing period, derived from all the windowed
-periods of length `granularity`. The allowed values are:
-
-- `MAX` **:property field required**
-
-For example, if you wanted to charge on a rate metric with an `hour` granularity
-and `count` aggregation, we would charge based on the maximum number of events
-seen over all sliding windows of 1 hour.
-
-We are currently working on adding support for more aggregation types.
+The aggregation within the subperiod works the same way as counter metrics. To calculate whether a customer has exceeded their rate limit, you must specify an `aggregation_type`. The allowed values are `COUNT`, `SUM`, and `MAX` (`UNIQUE` is not supported at this time).
 
 ## Examples
 
 #### Counter Metric
 
 The following example shows a counter metric that takes in events called
-`api_post`. At the end of the billing period, we will take the `SUM` of the
-property `num_widgets_created` over all these events. That will be a customer's
-usage for the billing period. We will later define how to transform that usage
-quantity into a price, specifically when creating
-[plan components](/plan-management/creating-plans).
+`generate_text`. At the end of the billing period, we will take the `COUNT` of events with this name. That will be a customer's usage for the billing period. We will later define how to transform that usage quantity into a price, specifically when creating [plan components](/plan-management/creating-plans).
 
-![Counter Metric Example](/images/metering/counter-76e9e744f673874f4fa99469fa758890.png)
-
-This is an example of what an event might look like:
-
-```json
-{
-  "event_name": "api_post",
-  "customer_id": "cust_123",
-  "properties": {
-    "num_widgets_created": 14,
-    "time_taken": 0.5,
-    "project_id": "123456"
-  }
-}
-```
+![Counter Metric Example](/images/metering/create_counter_metric.png)
 
 #### Gauge Metric
 
-The following example shows how we might implement a gauge metric that
-tracks the number of active seats in a company. Because we have an aggregation
-type of `max` and a period of `day`, we will calculate the maximum number of
-seats seen over each day. In essence, we will be tracking user-days. Because we
-have an event type of `total`, the specified property will represent the current
-value of the number of seats. Again, this is simply a definition of the metric.
-We will later define how to transform that usage quantity into a price, when
-creating [plan components](/plan-management/creating-plans).
+Here is how we woudl define a gauge metric that tracks the number of active seats. We are using `DELTA` events, which means we are tracking the change in the number of active seats. We are also using the `day` proration, which means we will prorate the price based on the number of days of the billing period the seat was active.
 
-![Gauge Metric Example](/images/metering/continuous-faab26e6d6f06d5d14d2ab1efaf5ebb4.png)
-
-This is an example of what an event might look like:
-
-```json
-{
-  "event_name": "seats",
-  "customer_id": "cust_123",
-  "properties": {
-    "seat_count": 4,
-    "seat_change": -1,
-    "admin_seat": true
-  }
-}
-```
+![Gauge Metric Example](/images/metering/create_gauge_metric.png)
 
 #### Rate metric
 
 This example shows how we might implement a rate metric that tracks the number
-of rows inserted into a database. Because we have an aggregation type of `count`
-and a period of `minute`, the usage is defined as the numebr of events seen per
-minute on a rolling window. Further, we also have a rate aggregation type. This
-specifies that over all rolling 1-minute periods, we will take the one with the
-maximum count of `db_insert` events and use that as the usage for the billing
-period. Again, this is simply a definition of the metric. We will later define
-how to transform that usage quantity into a price, when creating
-[plan components](/plan-management/creating-plans).
+of rows inserted into a database. 
 
-![Rate Metric Example](/images/metering/rate-a29fd040f4a7bbcaa51110288b6b4dc3.png)
-
-This is an example of what an event might look like:
-
-```json
-{
-  "event_name": "db_insert",
-  "customer_id": "cust_123",
-  "properties": {
-    "table_name": "record_table",
-    "num_rows": 10,
-    "kb_size": 10
-  }
-}
-```
+![Rate Metric Example](/images/metering/create_rate_metric.png)

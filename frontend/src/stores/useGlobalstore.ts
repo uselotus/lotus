@@ -1,7 +1,7 @@
 import create from "zustand";
 import { OrganizationType } from "../types/account-type";
 import { PlanType } from "../types/plan-type";
-import { PricingUnit } from "../types/pricing-unit-type";
+import { CurrencyType } from "../types/pricing-unit-type";
 type GlobalStoreState = {
   username: string;
   org: IOrgStoreType;
@@ -12,7 +12,7 @@ type GlobalStoreState = {
 interface IOrgStoreType {
   organization_id: string;
   organization_name: string;
-  default_currency?: PricingUnit;
+  default_currency?: CurrencyType;
   environment?: string;
   plan_tags: PlanType["tags"];
   current_user: { username: string };

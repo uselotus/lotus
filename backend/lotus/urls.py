@@ -18,7 +18,6 @@ from django.conf import settings
 from django.conf.urls import include
 from django.contrib import admin
 from django.urls import path, re_path
-from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 from metering_billing.views import auth_views, organization_views, webhook_views
 from metering_billing.views.model_views import (
@@ -90,9 +89,9 @@ router.register(
 router.register(r"organizations", OrganizationViewSet, basename="organization")
 router.register(r"pricing_units", PricingUnitViewSet, basename="pricing_unit")
 router.register(
-    r"balance_adjustments",
+    r"credits",
     CustomerBalanceAdjustmentViewSet,
-    basename="balance_adjustment",
+    basename="credit",
 )
 router.register(r"api_tokens", APITokenViewSet, basename="api_token")
 router.register(r"usage_alerts", UsageAlertViewSet, basename="usage_alert")
@@ -107,9 +106,9 @@ api_router.register(
 )
 api_router.register(r"invoices", api_views.InvoiceViewSet, basename="invoice")
 api_router.register(
-    r"balance_adjustments",
+    r"credits",
     api_views.CustomerBalanceAdjustmentViewSet,
-    basename="balance_adjustment",
+    basename="credit",
 )
 
 urlpatterns = [
@@ -117,7 +116,18 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # API Views
     path("api/", include((api_router.urls, "api"), namespace="api")),
+    path("api/ping/", api_views.Ping.as_view(), name="ping"),
     path("api/track/", api_views.track_event, name="track_event"),
+    path(
+        "api/metric_access/",
+        api_views.MetricAccessView.as_view(),
+        name="metric_access",
+    ),
+    path(
+        "api/feature_access/",
+        api_views.FeatureAccessView.as_view(),
+        name="feature_access",
+    ),
     path(
         "api/customer_metric_access/",
         api_views.GetCustomerEventAccessView.as_view(),
@@ -127,11 +137,6 @@ urlpatterns = [
         "api/customer_feature_access/",
         api_views.GetCustomerFeatureAccessView.as_view(),
         name="customer_feature_access",
-    ),
-    path(
-        "api/batch_create_customers/",
-        api_views.CustomerBatchCreateView.as_view(),
-        name="batch_create_customers",
     ),
     path(
         "api/verify_idems_received/",

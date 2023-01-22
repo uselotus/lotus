@@ -1,7 +1,7 @@
 def remove_invalid_subscription_methods(endpoints):
     # your modifications to the list of operations that are exposed in the schema
     to_remove = []
-    for (path, path_regex, method, callback) in endpoints:
+    for path, path_regex, method, callback in endpoints:
         if (path == r"/api/subscriptions/" and method == "POST") or (
             path == r"/api/subscriptions/{subscription_id}/"
         ):
@@ -44,13 +44,6 @@ def remove_required_external_payment_obj_type(result, **kwargs):
         for x in schemas["LightweightInvoice"]["required"]
         if x not in ["external_payment_obj_type"]
     ]
-    return result
-
-
-def add_external_payment_obj_type_to_required(result, **kwargs):
-    schemas = result.get("components", {}).get("schemas", {})
-    if "external_payment_obj_type" not in schemas["LightweightInvoice"]["required"]:
-        schemas["LightweightInvoice"]["required"].append("external_payment_obj_type")
     return result
 
 

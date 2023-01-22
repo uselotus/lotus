@@ -6,21 +6,44 @@ import time
 import uuid
 
 import numpy as np
-import pytz
 from dateutil.relativedelta import relativedelta
-from django.core.management.base import BaseCommand
-from faker import Faker
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
-from metering_billing.invoice import generate_invoice
-from metering_billing.models import *
-from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from metering_billing.models import (
+    APIToken,
+    Backtest,
+    BacktestSubstitution,
+    CategoricalFilter,
+    Customer,
+    CustomerBalanceAdjustment,
+    CustomPricingUnitConversion,
+    Event,
+    ExternalPlanLink,
+    Feature,
+    Invoice,
+    InvoiceLineItem,
+    Metric,
+    NumericFilter,
+    Organization,
+    Plan,
+    PlanComponent,
+    PlanVersion,
+    PriceAdjustment,
+    PriceTier,
+    PricingUnit,
+    Product,
+    Subscription,
+    SubscriptionRecord,
+    TeamInviteToken,
+    User,
+    WebhookEndpoint,
+    WebhookTrigger,
+)
 from metering_billing.tasks import run_backtest, run_generate_invoice
 from metering_billing.utils import (
     calculate_end_date,
     date_as_max_dt,
     date_as_min_dt,
     now_utc,
-    plan_version_uuid,
 )
 from metering_billing.utils.enums import (
     BACKTEST_KPI,
@@ -29,10 +52,10 @@ from metering_billing.utils.enums import (
     METRIC_AGGREGATION,
     METRIC_GRANULARITY,
     METRIC_TYPE,
+    ORGANIZATION_SETTING_NAMES,
     PLAN_DURATION,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
-    PRICE_TIER_TYPE,
 )
 from model_bakery import baker
 
@@ -60,7 +83,7 @@ def setup_demo3(
             logger.info("[DEMO3]: creating from scratch")
         try:
             user = User.objects.get(username=username, email=email)
-        except:
+        except Exception:
             user = User.objects.create_user(
                 username=username, email=email, password=password
             )
@@ -176,13 +199,13 @@ def setup_demo3(
         metric = METRIC_HANDLER_MAP[METRIC_TYPE.COUNTER].create_metric(validated_data)
         assert metric is not None
         metrics_map[name] = metric
-    calls = metrics_map["calls"]
+    metrics_map["calls"]
     sum_words = metrics_map["sum_words"]
     sum_compute = metrics_map["sum_compute"]
-    unique_lang = metrics_map["unique_lang"]
-    unique_subsections = metrics_map["unique_subsections"]
+    metrics_map["unique_lang"]
+    metrics_map["unique_subsections"]
     num_seats = metrics_map["num_seats"]
-    compute_cost = metrics_map["compute_cost"]
+    metrics_map["compute_cost"]
     # SET THE BILLING PLANS
     plan = Plan.objects.create(
         plan_name="Free Plan",
@@ -198,7 +221,6 @@ def setup_demo3(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=0,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization, plan_version=free_bp, billable_metric=sum_words, free_units=2_000
@@ -222,7 +244,6 @@ def setup_demo3(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=49,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -249,7 +270,6 @@ def setup_demo3(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=99,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -276,7 +296,6 @@ def setup_demo3(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=279,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -303,7 +322,6 @@ def setup_demo3(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=19,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -343,7 +361,6 @@ def setup_demo3(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=59,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -383,7 +400,6 @@ def setup_demo3(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=179,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -617,7 +633,7 @@ def setup_demo4(
             logger.info("[DEMO4]: creating from scratch")
         try:
             user = User.objects.get(username=username, email=email)
-        except:
+        except Exception:
             user = User.objects.create_user(
                 username=username, email=email, password=password
             )
@@ -752,7 +768,7 @@ def setup_demo4(
         assert metric is not None
         metrics_map[name] = metric
     calls = metrics_map["calls"]
-    unique_users = metrics_map["unique_users"]
+    metrics_map["unique_users"]
     session_recordings = metrics_map["session_recordings"]
     sum_time = metrics_map["sum_time"]
     num_seats = metrics_map["num_seats"]
@@ -771,7 +787,6 @@ def setup_demo4(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=0,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization, plan_version=free_bp, billable_metric=calls, free_units=50
@@ -799,7 +814,6 @@ def setup_demo4(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=29,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -832,7 +846,6 @@ def setup_demo4(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=69,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -865,7 +878,6 @@ def setup_demo4(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=59,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -905,7 +917,6 @@ def setup_demo4(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=119,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -945,7 +956,6 @@ def setup_demo4(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=89,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -1008,7 +1018,7 @@ def setup_demo4(
             offset = np.random.randint(0, 30)
             beginning = beginning + relativedelta(days=offset)
             for months in range(6):
-                start_time = time.time()
+                time.time()
                 sub_start = beginning + relativedelta(months=months)
                 plan = plan_dict[cust_set_name][months]
                 if cust_set_name == "big":
@@ -1155,8 +1165,8 @@ def setup_demo4(
                     sr.fully_billed = True
                     sr.billing_plan.replace_with = cur_replace_with
                     sr.save()
-                end_time = time.time()
-    now = now_utc()
+                time.time()
+    now_utc()
     # backtest = Backtest.objects.create(
     #     backtest_name=organization,
     #     start_date="2022-08-01",
@@ -1191,7 +1201,7 @@ def setup_paas_demo(
         logger.info("[PAAS DEMO]: creating from scratch")
     try:
         user = User.objects.get(username=username, email=email)
-    except:
+    except Exception:
         user = User.objects.create_user(
             username=username, email=email, password=password
         )
@@ -1205,7 +1215,7 @@ def setup_paas_demo(
         organization.save()
     organization = user.organization
     setting = organization.settings.get(
-        setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+        setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
     )
     setting.setting_values = ["shard_id"]
     big_customers = []
@@ -1425,7 +1435,7 @@ def create_pc_and_tiers(
             plan_component=pc,
             range_start=0,
             range_end=free_units,
-            type=PRICE_TIER_TYPE.FREE,
+            type=PriceTier.PriceTierType.FREE,
             organization=organization,
         )
         range_start = free_units
@@ -1434,10 +1444,11 @@ def create_pc_and_tiers(
             plan_component=pc,
             range_start=range_start,
             range_end=max_units,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             cost_per_batch=cost_per_batch,
             metric_units_per_batch=metric_units_per_batch,
             organization=organization,
+            batch_rounding_type=PriceTier.BatchRoundingType.NO_ROUNDING,
         )
 
 

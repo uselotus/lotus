@@ -11,7 +11,7 @@ import {
   PlanVersionType,
   Tier,
 } from "../../../types/plan-type";
-import { PricingUnit } from "../../../types/pricing-unit-type";
+import { CurrencyType } from "../../../types/pricing-unit-type";
 import createShortenedText from "../helpers/createShortenedText";
 import DropdownComponent from "../../base/Dropdown/Dropdown";
 import PlansTags from "../PlanTags";
@@ -53,7 +53,7 @@ const findAlertForComponent = (
   });
 };
 
-const renderCost = (record: Tier, pricing_unit: PricingUnit) => {
+const renderCost = (record: Tier, pricing_unit: CurrencyType) => {
   switch (record.type) {
     case "per_unit":
       return (
@@ -94,7 +94,7 @@ export const PlanSummary = ({
   const windowWidth = useMediaQuery();
   const inputRef = useRef<HTMLInputElement | null>(null!);
   return (
-    <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card  shadow-lg ">
+    <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card">
       <Typography.Title className="pt-4 whitespace-pre-wrap !text-[18px] level={2}">
         Summary
       </Typography.Title>
@@ -121,7 +121,7 @@ export const PlanSummary = ({
           <div className="!text-card-grey">{plan.active_subscriptions}</div>
         </div>
 
-        <div className="flex items-center justify-between text-card-text gap-2 mb-1">
+        <div className="flex items-center justify-between text-card-text gap-2 mb-2">
           <div className="font-normal whitespace-nowrap leading-4">
             Linked External IDs
           </div>
@@ -235,7 +235,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
   };
 
   return (
-    <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card  shadow-lg ">
+    <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card ">
       <Typography.Title className="pt-4 whitespace-pre-wrap grid gap-4 !text-[18px] items-center grid-cols-1 md:grid-cols-2">
         <div>Plan Information</div>
         <div>
@@ -417,7 +417,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
   return (
     <div className="">
       {components && components.length > 0 ? (
-        <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg ">
+        <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card ">
           <Typography.Title className="pt-4 whitespace-pre-wrap !text-[18px]">
             Added Components
           </Typography.Title>
@@ -608,7 +608,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
           </div>
         </div>
       ) : (
-        <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg ">
+        <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card">
           <Typography.Title level={2}>Added Components</Typography.Title>
           <div className="w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
           <div className="text-card-grey text-base">No components added</div>

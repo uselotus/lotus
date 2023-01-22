@@ -2,7 +2,6 @@ import time
 
 from django.core.management.base import BaseCommand
 from django.db import connections
-from django.db.utils import OperationalError
 
 
 class Command(BaseCommand):
@@ -15,5 +14,5 @@ class Command(BaseCommand):
         while not db_connection:
             try:
                 db_connection = connections["default"]
-            except:
+            except Exception:
                 time.sleep(1)

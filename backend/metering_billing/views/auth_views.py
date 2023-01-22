@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 
 # import lotus_python
@@ -17,9 +18,12 @@ from metering_billing.exceptions import (
     InvalidRequest,
     RegistrationFailure,
 )
-from metering_billing.models import Organization, TeamInviteToken, User
-from metering_billing.serializers.auth_serializers import *
-from metering_billing.serializers.model_serializers import *
+from metering_billing.models import Organization, Team, TeamInviteToken, User
+from metering_billing.serializers.auth_serializers import (
+    DemoRegistrationSerializer,
+    RegistrationSerializer,
+)
+from metering_billing.serializers.model_serializers import UserSerializer
 from metering_billing.serializers.serializer_utils import EmailSerializer
 from metering_billing.services.user import user_service
 from metering_billing.utils import now_utc
@@ -29,6 +33,8 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+logger = logging.getLogger("django.server")
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 META = settings.META
@@ -131,7 +137,7 @@ class LoginView(LoginViewMixin, APIView):
 class DemoLoginView(LoginViewMixin, APIView):
     @extend_schema(
         request=inline_serializer(
-            name="LoginRequest",
+            name="DemoLoginRequest",
             fields={
                 "username": serializers.CharField(),
                 "password": serializers.CharField(),
@@ -139,7 +145,7 @@ class DemoLoginView(LoginViewMixin, APIView):
         ),
         responses={
             200: inline_serializer(
-                name="LoginSuccess",
+                name="DemoLoginSuccess",
                 fields={
                     "detail": serializers.CharField(),
                     "token": serializers.CharField(),
@@ -147,7 +153,7 @@ class DemoLoginView(LoginViewMixin, APIView):
                 },
             ),
             400: inline_serializer(
-                name="LoginFailure",
+                name="DemoLoginFailure",
                 fields={
                     "detail": serializers.CharField(),
                 },
@@ -222,7 +228,7 @@ class LogoutView(LogoutViewMixin):
             return JsonResponse(
                 {"detail": "You're not logged in."}, status=status.HTTP_400_BAD_REQUEST
             )
-        return super(LogoutView, self).post(request, format)
+        return super().post(request, format)
 
 
 class InitResetPasswordView(APIView):
@@ -317,7 +323,9 @@ class SessionView(APIView):
             "isAuthenticated": request.user.is_authenticated,
         }
         if request.user.is_authenticated:
-            resp["organization_id"] = (request.user.organization.organization_id,)
+            resp["organization_id"] = (
+                "org_" + request.user.organization.organization_id.hex
+            )
         return JsonResponse(resp)
 
 

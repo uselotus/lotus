@@ -60,8 +60,8 @@ export const CustomerByPlanPie = (props: any) => {
       {isLoading ? (
         <LoadingSpinner />
       ) : (
-        <div>
-          <h2>Plan Distribution</h2>
+        <div className="">
+          <h2>Current Plan Distribution</h2>
           <div className="h-[390px]">
             <Pie {...config} />
           </div>

@@ -1,5 +1,11 @@
-from api.serializers.model_serializers import SubscriptionCategoricalFilterSerializer
-from metering_billing.models import Customer, Metric
+from api.serializers.model_serializers import (
+    FeatureSerializer,
+    LightweightCustomerSerializer,
+    LightweightMetricSerializer,
+    LightweightPlanVersionSerializer,
+    SubscriptionCategoricalFilterSerializer,
+)
+from metering_billing.models import Customer, Feature, Metric, SubscriptionRecord
 from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganizationPK,
 )
@@ -57,6 +63,85 @@ class GetEventAccessSerializer(serializers.Serializer):
     )
 
 
+class AccessMethodsSubscriptionRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubscriptionRecord
+        fields = (
+            "start_date",
+            "end_date",
+            "subscription_filters",
+            "plan",
+        )
+        extra_kwargs = {
+            "start_date": {"required": True, "read_only": True},
+            "end_date": {"required": True, "read_only": True},
+            "subscription_filters": {"required": True, "read_only": True},
+            "plan": {"required": True, "read_only": True},
+        }
+
+    subscription_filters = SubscriptionCategoricalFilterSerializer(
+        many=True, source="filters"
+    )
+    plan = LightweightPlanVersionSerializer(source="billing_plan")
+
+
+class MetricAccessPerSubscriptionSerializer(serializers.Serializer):
+    subscription = AccessMethodsSubscriptionRecordSerializer()
+    metric_usage = serializers.DecimalField(
+        help_text="The current usage of the metric. Keep in mind the current usage of the metric can be different from the billable usage of the metric. For examnple, for a gauge metric, the `metric_usage` is the current value of the gauge, while the billable usage is the accumulated tiem at each gauge level at the end of the subscription.",
+        max_digits=20,
+        decimal_places=10,
+        min_value=0,
+    )
+    metric_free_limit = serializers.DecimalField(
+        allow_null=True,
+        help_text="If you specified a free tier of usage for this metric, this is the amount of usage that is free. Will be 0 if you didn't specify a free limit for this metric or this subscription doesn't have access to this metric, and null if the free tier is unlimited.",
+        max_digits=20,
+        decimal_places=10,
+        min_value=0,
+    )
+    metric_total_limit = serializers.DecimalField(
+        allow_null=True,
+        help_text="The total limit of the metric. Will be 0 if this subscription doesn't have access to this metric, and null if there is no limit to this metric.",
+        max_digits=20,
+        decimal_places=10,
+        min_value=0,
+    )
+
+
+class MetricAccessResponseSerializer(serializers.Serializer):
+    customer = LightweightCustomerSerializer()
+    access = serializers.BooleanField(
+        help_text="Whether or not the customer has access to this metric. The default behavior for this is whether all of the customer's plans (that have access to the metric) are below the total limit of the metric. If you have specified subscription filters, then this will be whether all of the customer's plans that match the subscription filters are below the total limit of the metric. You can customize the behavior of this flag by setting a policy in your Organization settings in the frontend."
+    )
+    metric = LightweightMetricSerializer()
+    access_per_subscription = MetricAccessPerSubscriptionSerializer(many=True)
+
+
+class MetricAccessRequestSerializer(serializers.Serializer):
+    customer_id = SlugRelatedFieldWithOrganizationPK(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        help_text="The customer_id of the customer you want to check access.",
+    )
+    metric_id = SlugRelatedFieldWithOrganizationPK(
+        slug_field="metric_id",
+        queryset=Metric.objects.all(),
+        help_text="The metric_id of the metric you want to check access for.",
+    )
+    subscription_filters = SubscriptionCategoricalFilterSerializer(
+        many=True,
+        required=False,
+        help_text="Used if you want to restrict the access check to only plans that fulfill certain subscription filter criteria. If your billing model does not have the ability multiple plans or subscriptions per customer, this is likely not relevant for you. ",
+    )
+
+    def validate(self, data):
+        data = super().validate(data)
+        data["metric"] = data.pop("metric_id", None)
+        data["customer"] = data.pop("customer_id", None)
+        return data
+
+
 class GetCustomerEventAccessRequestSerializer(serializers.Serializer):
     customer_id = SlugRelatedFieldWithOrganizationPK(
         slug_field="customer_id",
@@ -97,6 +182,44 @@ class GetCustomerEventAccessRequestSerializer(serializers.Serializer):
         return data
 
 
+class FeatureAccessPerSubscriptionSerializer(serializers.Serializer):
+    subscription = AccessMethodsSubscriptionRecordSerializer()
+    access = serializers.BooleanField()
+
+
+class FeatureAccessResponseSerializer(serializers.Serializer):
+    customer = LightweightCustomerSerializer()
+    access = serializers.BooleanField(
+        help_text="Whether or not the customer has access to this feature. The default behavior for this is whether any of the customer's plans have access to this feature. If you have specified subscription filters, then this will be whether any of the customer's plans that match the subscription filters have access to this feature. You can customize the behavior of this flag by setting a policy in your Organization settings in the frontend."
+    )
+    feature = FeatureSerializer()
+    access_per_subscription = FeatureAccessPerSubscriptionSerializer(many=True)
+
+
+class FeatureAccessRequestSerialzier(serializers.Serializer):
+    customer_id = SlugRelatedFieldWithOrganizationPK(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        help_text="The customer_id of the customer you want to check access.",
+    )
+    feature_id = SlugRelatedFieldWithOrganizationPK(
+        slug_field="feature_id",
+        queryset=Feature.objects.all(),
+        help_text="The feature_id of the feature you want to check access for.",
+    )
+    subscription_filters = SubscriptionCategoricalFilterSerializer(
+        many=True,
+        required=False,
+        help_text="The subscription filters that are applied to this plan's relationship with the customer. If your billing model does not have the ability multiple plans or subscriptions per customer, this is likely not relevant for you. ",
+    )
+
+    def validate(self, data):
+        data = super().validate(data)
+        data["feature"] = data.pop("feature_id", None)
+        data["customer"] = data.pop("customer_id", None)
+        return data
+
+
 class GetCustomerFeatureAccessRequestSerializer(serializers.Serializer):
     customer_id = SlugRelatedFieldWithOrganizationPK(
         slug_field="customer_id",
@@ -116,4 +239,5 @@ class GetCustomerFeatureAccessRequestSerializer(serializers.Serializer):
         data = super().validate(data)
         data["customer"] = data.pop("customer_id", None)
 
+        return data
         return data
