@@ -1,9 +1,6 @@
 import { Button, Dropdown, Menu, Table, Tag, Tooltip } from "antd";
 import React, { FC, useEffect } from "react";
-// @ts-ignore
-import React from "react";
 import { InvoiceType, MarkPaymentStatusAsPaid } from "../../types/invoice-type";
-// @ts-ignore
 import dayjs from "dayjs";
 import { useMutation } from "react-query";
 import { Invoices } from "../../api/api";
@@ -33,7 +30,6 @@ const downloadFile = async (s3link) => {
   }
 };
 
-// @ts-ignore
 const lotusUrl = new URL("./lotusIcon.svg", import.meta.url).href;
 
 interface Props {

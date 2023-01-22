@@ -1,9 +1,6 @@
 import { Table, Button, Select, Dropdown, Menu, Tag } from "antd";
 import React, { FC, useState, useEffect } from "react";
-// @ts-ignore
-import React from "react";
 import { CreditType, DrawdownType } from "../../types/balance-adjustment";
-// @ts-ignore
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 import PricingUnitDropDown from "../PricingUnitDropDown";
