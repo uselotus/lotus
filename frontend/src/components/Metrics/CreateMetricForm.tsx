@@ -54,7 +54,7 @@ const CreateMetricForm = (props: {
     if (customSQL) {
       // format the SQL code
       const formattedSQL = format(customSQL, {
-        language: "sql",
+        language: "postgresql",
       });
       setCustomSQL(formattedSQL);
     }
@@ -132,10 +132,11 @@ const CreateMetricForm = (props: {
             if (rate) {
               values.metric_type = "rate";
             }
-            if (values.metric_type === "custom") {
-              values.custom_sql = format(customSQL);
+            if (values.metric_type === "custom" && customSQL) {
+              values.custom_sql = format(customSQL, {
+                language: "postgresql",
+              });
             }
-            console.log(values);
             props.onSave(values);
             setCustomSQL("SELECT COUNT(*) as usage_qty FROM events");
             form.resetFields();
