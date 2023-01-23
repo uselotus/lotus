@@ -78,9 +78,9 @@ def draw_vr(doc, x, y, offset):
 
 
 def write_invoice_title(doc):
-    doc.setFont("Times-Roman", FONT_L)
+    doc.setFont("Inter", FONT_L)
     doc.drawString(25, 50, "Invoice")
-    doc.setFont("Times-Roman", FONT_XXS)
+    doc.setFont("Inter", FONT_XXS)
     doc.drawString(470, 770, "Thank you for your buisness.")
 
 
@@ -89,9 +89,9 @@ def write_seller_details(
 ):
     if email is None:
         email = ""
-    doc.setFont("Times-Bold", FONT_XS)
+    doc.setFont("Inter", FONT_XS)
     doc.drawString(75, 130, name[:12] + "...")
-    doc.setFont("Times-Roman", FONT_XXS)
+    doc.setFont("Inter", FONT_XXS)
     doc.drawString(75, 145, line1)
     doc.drawString(75, 160, f"{city} {state}, {postal_code}")
     doc.drawString(75, 175, country)
@@ -104,9 +104,9 @@ def write_customer_details(doc, name, line1, city, state, country, postal_code, 
         email = ""
     if name is None:
         name = ""
-    doc.setFont("Times-Bold", FONT_M)
+    doc.setFont("Inter-Bold", FONT_M)
     doc.drawString(225, 130, "Billed To")
-    doc.setFont("Times-Roman", FONT_XS)
+    doc.setFont("Inter", FONT_XS)
     doc.drawString(225, 145, name)
     doc.drawString(225, 160, line1)
     doc.drawString(225, 175, f"{city} {state}, {postal_code}")
@@ -115,9 +115,9 @@ def write_customer_details(doc, name, line1, city, state, country, postal_code, 
 
 
 def write_invoice_details(doc, invoice_number, issue_date, due_date):
-    doc.setFont("Times-Bold", FONT_XS)
+    doc.setFont("Inter-Bold", FONT_XS)
     doc.drawString(400, 130, "Invoice Details")
-    doc.setFont("Times-Roman", FONT_XXS)
+    doc.setFont("Inter", FONT_XXS)
     doc.drawString(400, 145, "Invoice No.")
     doc.drawString(465, 145, f"{invoice_number}")
 
@@ -129,21 +129,21 @@ def write_invoice_details(doc, invoice_number, issue_date, due_date):
         doc.drawString(465, 175, f'{due_date.replace("-", "/")}')
     else:
         doc.drawString(465, 175, f'{issue_date.replace("-", "/")}')
-    doc.setFont("Times-Roman", FONT_XXS)
+    doc.setFont("Inter", FONT_XXS)
 
     doc.setFillColor(HexColor("#9CA3AF"))
     doc.drawString(25, 770, f"#{invoice_number}")
 
 
 def write_summary_header(doc, start_date, end_date):
-    doc.setFont("Times-Roman", 22)
+    doc.setFont("Inter", 22)
     doc.setFillColor("black")
     doc.drawString(75, 255, "Summary")
-    doc.setFont("Times-Roman", FONT_XXS)
+    doc.setFont("Inter", FONT_XXS)
     doc.setFillColor(HexColor("#9CA3AF"))
     doc.drawString(167, 255, f"{start_date} - {end_date}")
     doc.setFillColor("black")
-    doc.setFont("Times-Roman", FONT_XS)
+    doc.setFont("Inter", FONT_XS)
     doc.setFillColor(HexColor("#9CA3AF"))
     doc.drawString(75, 290, "Services")
     doc.drawString(475, 290, "Amount")
@@ -153,7 +153,7 @@ def write_summary_header(doc, start_date, end_date):
 
 def write_line_item_group(doc, name, amount, currency, line_item_start):
     title_offset = line_item_start + 20
-    doc.setFont("Times-Roman", FONT_S)
+    doc.setFont("Inter", FONT_S)
     doc.drawString(75, title_offset, name)
     doc.drawString(475, title_offset, f'{currency}{"{:g}".format(float(amount))}')
     return line_item_start + 45
@@ -161,7 +161,7 @@ def write_line_item_group(doc, name, amount, currency, line_item_start):
 
 def write_line_item_headers(doc, line_item_start):
     offset = line_item_start + 5
-    doc.setFont("Times-Roman", FONT_XXS)
+    doc.setFont("Inter", FONT_XXS)
     doc.setFillColor(HexColor("#9CA3AF"))
     doc.drawString(100, offset, "Item")
     doc.drawString(225, offset, "Dates")
@@ -184,7 +184,7 @@ def write_line_item(
 ):
     doc.setFillColor("black")
     offset = line_item_start + 12
-    doc.setFont("Times-Roman", FONT_XXS)
+    doc.setFont("Inter", FONT_XXS)
 
     # simple text wrap
     words = name.split()
@@ -223,10 +223,10 @@ def write_line_item(
 
 def write_total(doc, currency_symbol, total, current_y):
     offset = current_y + 75
-    doc.setFont("Times-Roman", FONT_XS)
+    doc.setFont("Inter", FONT_XS)
     doc.drawString(80, offset, "TAX")
     doc.drawString(80, offset + 24, "Credits")
-    doc.setFont("Times-Roman", FONT_M)
+    doc.setFont("Inter", FONT_M)
     doc.drawString(80, offset + 60, "Total")
     doc.drawString(475, offset + 60, f"{currency_symbol}{total}")
     draw_hr(doc, offset + 75)
@@ -386,7 +386,7 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
                 doc.showPage()
                 line_item_start_y = 40
 
-                doc.setFont("Times-Roman", FONT_XXS)
+                doc.setFont("Inter", FONT_XXS)
                 invoice_number = invoice["invoice_number"]
                 doc.setFillColor(HexColor("#9CA3AF"))
                 doc.drawString(25, 770, f"#{invoice_number}")
@@ -413,7 +413,7 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
             doc.showPage()
             line_item_start_y = 40
 
-            doc.setFont("Times-Roman", FONT_XXS)
+            doc.setFont("Inter", FONT_XXS)
             invoice_number = invoice["invoice_number"]
             doc.setFillColor(HexColor("#9CA3AF"))
             doc.drawString(25, 770, f"#{invoice_number}")
