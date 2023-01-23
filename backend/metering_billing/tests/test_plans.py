@@ -646,53 +646,52 @@ class TestUpdatePlanVersion:
         )
         assert len(plan.versions.all()) == 2
 
-    # test creating  a new plan and then creating 2 new versions of that plan and checking the output of getplans
-    # def test_create_multiple_inactive_versions(self, plan_test_common_setup):
-    #     setup_dict = plan_test_common_setup()
 
-    #     # add in the plan, along with initial version
-    #     response = setup_dict["client"].post(
-    #         reverse("plan-list"),
-    #         data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
-    #         content_type="application/json",
-    #     )
-    #     plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
-    #     first_plan_version = plan.display_version
+@pytest.mark.django_db(transaction=True)
+class TestAddOns:
+    def test_add_addon_to_plan_version(self, plan_test_common_setup):
+        setup_dict = plan_test_common_setup()
 
-    #     # now add in the plan ID to the payload, and send a post request for the new version
-    #     setup_dict["plan_version_payload"]["plan_id"] = plan.plan_id
-    #     setup_dict["plan_version_payload"]["make_active"] = False
-    #     response = setup_dict["client"].post(
-    #         reverse("plan_version-list"),
-    #         data=json.dumps(setup_dict["plan_version_payload"], cls=DjangoJSONEncoder),
-    #         content_type="application/json",
-    #     )
+        # add in the plan, along with initial version
+        response = setup_dict["client"].post(
+            reverse("plan-list"),
+            data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
+        plan_version = plan.display_version
+        version_id = plan_version.version_id
 
-    #     # finally lets update the first one back to active
-    #     setup_dict["plan_version_update_payload"]["status"] = PLAN_VERSION_STATUS.ACTIVE
-    #     response = setup_dict["client"].patch(
-    #         reverse(
-    #             "plan_version-detail",
-    #             kwargs={"version_id": first_plan_version.version_id},
-    #         ),
-    #         data=json.dumps(
-    #             setup_dict["plan_version_update_payload"], cls=DjangoJSONEncoder
-    #         ),
-    #         content_type="application/json",
-    #     )
+        # now add in the plan ID to the payload, and send a post request for the new version
+        setup_dict["plan_version_payload"]["plan_id"] = plan.plan_id
+        setup_dict["plan_version_payload"][
+            "make_active_type"
+        ] = MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_ON_ACTIVE_VERSION_RENEWAL
+        response = setup_dict["client"].post(
+            reverse("plan_version-list"),
+            data=json.dumps(setup_dict["plan_version_payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        plan_version = PlanVersion.objects.get(version_id=version_id)
+        assert plan_version.addons.count() == 0
 
-    #     # now add in the plan ID to the payload, and send a post request for the new version
-    #     setup_dict["plan_version_payload"]["plan_id"] = plan.plan_id
-    #     setup_dict["plan_version_payload"]["make_active"] = False
-    #     response = setup_dict["client"].post(
-    #         reverse("plan_version-list"),
-    #         data=json.dumps(setup_dict["plan_version_payload"], cls=DjangoJSONEncoder),
-    #         content_type="application/json",
-    #     )
-
-    #     # finally lets update the first one back to active
-
-    #     ##response for api/plans
-    #     response = setup_dict["client"].get(reverse("plan-list"))
-    #     assert response.status_code == status.HTTP_200_OK
-    #     assert len(response.data.versions) == 3
+        # now add in the addon to the plan version
+        setup_dict["plan_version_addon_payload"]["plan_version_id"] = version_id
+        response = setup_dict["client"].post(
+            reverse("plan_version_addon-list"),
+            data=json.dumps(
+                setup_dict["plan_version_addon_payload"], cls=DjangoJSONEncoder
+            ),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        plan_version = PlanVersion.objects.get(version_id=version_id)
+        assert plan_version.addons.count() == 1
+        assert plan_version.addons.all()[0].addon_id == setup_dict["addon"].addon_id
+        assert plan_version.addons.all()[0].quantity == 1
+        assert plan_version.addons.all()[0].price == 10
+        assert plan_version.addons.all()[0].currency == "USD"
+        assert plan_version.addons.all()[0].tax_rate == 0.0
+        assert plan_version.addons.all()[0].tax_amount == 0.0
+        assert plan_version.addons.all()[0].tax_included is False
+        assert plan_version.addons.all
