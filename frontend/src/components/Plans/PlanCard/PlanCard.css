@@ -1,35 +1,9 @@
-.planCard {
-  width: 370px;
-  border-radius: 6px;
-  position: relative;
-  background: white;
-  padding: 20px;
-  cursor: pointer;
-
-  box-shadow: 0px 159px 63px rgba(174, 173, 173, 0.01),
-    0px 89px 54px rgba(174, 173, 173, 0.02),
-    0px 40px 40px rgba(174, 173, 173, 0.03),
-    0px 10px 22px rgba(174, 173, 173, 0.03),
-    0px 0px 0px rgba(174, 173, 173, 0.03);
-}
-
 .planCard:hover {
   box-shadow: 0 0 10px rgba(33, 33, 33, 0.2);
 }
 
 .activeSubscriptions {
-  font-size: 20px;
   color: #c3986b;
-  letter-spacing: -0.01em;
-  display: flex;
-  align-items: center;
-}
-
-.planDetailsLabel {
-  font-weight: 500;
-  line-height: 24px;
-  letter-spacing: -0.01em;
-  color: #9b9ba1;
 }
 
 .planDetailsValue {
@@ -45,12 +19,12 @@
   align-items: center;
 }
 
-.planIdOverflow {
+/* .planIdOverflow {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   width: 80%;
-}
+} */
 
 .planMenuArchiveIcon {
   color: #c20022;

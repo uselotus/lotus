@@ -28,7 +28,7 @@ import CustomerInfoView from "./CustomerInfo";
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
 import CopyText from "../base/CopytoClipboard";
-import { PricingUnit } from "../../types/pricing-unit-type";
+import { CurrencyType } from "../../types/pricing-unit-type";
 
 function CustomerDetail(props: {
   visible: boolean;
@@ -47,8 +47,8 @@ function CustomerDetail(props: {
   const [customerSubscriptions, setCustomerSubscriptions] = useState<
     DetailPlan[]
   >([]);
-  const { data: pricingUnits }: UseQueryResult<PricingUnit[]> = useQuery<
-    PricingUnit[]
+  const { data: pricingUnits }: UseQueryResult<CurrencyType[]> = useQuery<
+    CurrencyType[]
   >(["pricing_unit_list"], () =>
     PricingUnits.list().then((res) => {
       return res;
@@ -60,7 +60,7 @@ function CustomerDetail(props: {
         return res;
       })
     );
-  
+
   const { data: cost_analysis, isLoading: cost_analysis_loading } =
     useQuery<CustomerCostType>(
       ["customer_cost_analysis", props.customer_id, startDate, endDate],
@@ -194,12 +194,12 @@ function CustomerDetail(props: {
       width="70%"
     >
       {props.plans === undefined ? (
-        <div>
+        <div className="min-h-[60%]">
           <LoadingSpinner />
         </div>
       ) : (
         <div className="flex justify-between flex-col max-w mx-3">
-          <div className="text-left	">
+          <div className="text-left">
             <h1 className="mb-4">{data?.customer_name}</h1>
             <div className="flex flex-row items-center">
               <div className="plansDetailLabel">ID:&nbsp; </div>
@@ -225,7 +225,7 @@ function CustomerDetail(props: {
                     onDateChange={refetchGraphData}
                   />
                 ) : (
-                  <h2> No Data </h2>
+                  <h2 className="h-192"> No Data </h2>
                 )}
               </Tabs.TabPane>
               <Tabs.TabPane tab="Subscriptions" key="subscriptions">
@@ -241,7 +241,9 @@ function CustomerDetail(props: {
                       onAutoRenewOff={turnSubscriptionAutoRenewOff}
                     />
                   </div>
-                ) : null}
+                ) : (
+                  <div className="h-192"></div>
+                )}
               </Tabs.TabPane>
               <Tabs.TabPane tab="Invoices" key="invoices">
                 <CustomerInvoiceView invoices={data?.invoices} />

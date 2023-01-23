@@ -1,8 +1,8 @@
 import { Button, Dropdown, Menu, Table, Tag, Tooltip } from "antd";
-import { FC } from "react";
+import { FC, useEffect } from "react";
 // @ts-ignore
 import React from "react";
-import { InvoiceType, MarkInvoiceStatusAsPaid } from "../../types/invoice-type";
+import { InvoiceType, MarkPaymentStatusAsPaid } from "../../types/invoice-type";
 // @ts-ignore
 import dayjs from "dayjs";
 import { useMutation } from "react-query";
@@ -10,6 +10,28 @@ import { Invoices } from "../../api/api";
 import { toast } from "react-toastify";
 import { MoreOutlined } from "@ant-design/icons";
 import { integrationsMap } from "../../types/payment-processor-type";
+
+import axios from "axios";
+
+const downloadFile = async (s3link) => {
+  if (!s3link) {
+    toast.error("No file to download");
+    return;
+  }
+  try {
+    const response = await axios.get(s3link, {
+      responseType: "blob",
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "file_name.pdf");
+    document.body.appendChild(link);
+    link.click();
+  } catch (error) {
+    console.error(error);
+  }
+};
 
 // @ts-ignore
 const lotusUrl = new URL("./lotusIcon.svg", import.meta.url).href;
@@ -19,14 +41,16 @@ interface Props {
 }
 
 const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
+  const [selectedRecord, setSelectedRecord] = React.useState();
   const changeStatus = useMutation(
-    (post: MarkInvoiceStatusAsPaid) => Invoices.changeStatus(post),
+    (post: MarkPaymentStatusAsPaid) => Invoices.changeStatus(post),
     {
       onSuccess: (data) => {
         const status = data.payment_status.toUpperCase();
         toast.success(`Successfully Changed Invoice Status to ${status}`, {
           position: toast.POSITION.TOP_CENTER,
         });
+        selectedRecord.payment_status = data.payment_status;
       },
       onError: () => {
         toast.error("Failed to Changed Invoice Status", {
@@ -35,6 +59,16 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
       },
     }
   );
+
+  useEffect(() => {
+    if (selectedRecord !== undefined) {
+      changeStatus.mutate({
+        invoice_id: selectedRecord.invoice_id,
+        payment_status:
+          selectedRecord.payment_status === "unpaid" ? "paid" : "unpaid",
+      });
+    }
+  }, [selectedRecord]);
 
   const columns = [
     {
@@ -95,14 +129,14 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
             {record.payment_status.toUpperCase()}
           </Tag>
           {!record.external_payment_obj_type && (
-            <div
-              className="absolute right-3"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
               <Dropdown
                 overlay={
                   <Menu>
-                    <Menu.Item key="1">
+                    <Menu.Item
+                      key="1"
+                      onClick={() => downloadFile(record.invoice_pdf)}
+                    >
                       <div className="archiveLabel">
                         Download Invoice Information
                       </div>
@@ -110,17 +144,17 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
                     <Menu.Item
                       key="2"
                       onClick={() => {
-                        changeStatus.mutate({
-                          invoice_number: record.invoice_number,
-                          payment_status:
-                            record.payment_status === "unpaid"
-                              ? "paid"
-                              : "unpaid",
-                        });
-                        record.payment_status =
-                          record.payment_status === "unpaid"
-                            ? "paid"
-                            : "unpaid";
+                        if (selectedRecord === record) {
+                          changeStatus.mutate({
+                            invoice_id: record.invoice_id,
+                            payment_status:
+                              record.payment_status === "unpaid"
+                                ? "paid"
+                                : "unpaid",
+                          });
+                        } else {
+                          setSelectedRecord(record);
+                        }
                       }}
                     >
                       <div className="archiveLabel">

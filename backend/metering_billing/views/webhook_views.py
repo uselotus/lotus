@@ -1,9 +1,8 @@
 import stripe
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
-from metering_billing.exceptions.exceptions import StripeWebhookFailure
 from metering_billing.models import Customer, Invoice
-from metering_billing.utils.enums import INVOICE_STATUS, PAYMENT_PROVIDERS
+from metering_billing.utils.enums import PAYMENT_PROVIDERS
 from rest_framework import status
 from rest_framework.decorators import (
     api_view,
@@ -11,7 +10,6 @@ from rest_framework.decorators import (
     permission_classes,
 )
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
 STRIPE_WEBHOOK_SECRET = settings.STRIPE_WEBHOOK_SECRET
 
@@ -23,7 +21,7 @@ def _invoice_paid_handler(event):
         external_payment_obj_type=PAYMENT_PROVIDERS.STRIPE, external_payment_obj_id=id
     ).first()
     if matching_invoice:
-        matching_invoice.payment_status = INVOICE_STATUS.PAID
+        matching_invoice.payment_status = Invoice.PaymentStatus.PAID
         matching_invoice.save()
 
 
@@ -68,11 +66,11 @@ def stripe_webhook_endpoint(request):
         )
     except ValueError as e:
         return Response(
-            "Invalid payload: {}".format(e), status=status.HTTP_400_BAD_REQUEST
+            f"Invalid payload: {e}", status=status.HTTP_400_BAD_REQUEST
         )
     except stripe.error.SignatureVerificationError as e:
         return Response(
-            "Invalid signature: {}".format(e), status=status.HTTP_400_BAD_REQUEST
+            f"Invalid signature: {e}", status=status.HTTP_400_BAD_REQUEST
         )
 
     # Handle the checkout.session.completed event

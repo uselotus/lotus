@@ -17,6 +17,8 @@ SELECT
     AVG(
         ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
     )
+    {%- elif query_type == "unique" -%}
+    COUNT( DISTINCT "metering_billing_usageevent"."properties" ->> '{{ property_name }}' )
     {%- elif query_type == "max" -%}
     MAX(
         ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
@@ -32,30 +34,30 @@ WHERE
     AND "metering_billing_usageevent"."organization_id" = {{ organization_id }}
     AND "metering_billing_usageevent"."time_created" <= NOW()
     {%- for property_name, operator, comparison in numeric_filters %}
-    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal 
-        {% if operator == "gt" %} 
-        > 
-        {% elif operator == "gte" %} 
-        >= 
-        {% elif operator == "lt" %} 
-        < 
-        {% elif operator == "lte" %} 
-        <= 
+    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
+        {% if operator == "gt" %}
+        >
+        {% elif operator == "gte" %}
+        >=
+        {% elif operator == "lt" %}
+        <
+        {% elif operator == "lte" %}
+        <=
         {% elif operator == "eq" %}
         =
         {% endif %}
         {{ comparison }}
     {%- endfor %}
     {%- for property_name, operator, comparison in categorical_filters %}
-    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')
+    AND (COALESCE("metering_billing_usageevent"."properties" ->> '{{ property_name }}', ''))
         {% if operator == "isnotin" %}
         NOT
         {% endif %}
-        IN ( 
-            {%- for pval in comparison %} 
+        IN (
+            {%- for pval in comparison %}
             '{{ pval }}'
-            {%- if not loop.last %},{% endif %} 
-            {%- endfor %} 
+            {%- if not loop.last %},{% endif %}
+            {%- endfor %}
         )
     {%- endfor %}
 GROUP BY
@@ -93,11 +95,11 @@ WHERE
     AND bucket <= NOW()
     {%- for property_name, property_values in filter_properties.items() %}
     AND {{ property_name }}
-        IN ( 
-            {%- for pval in property_values %} 
-            '{{ pval }}' 
-            {%- if not loop.last %},{% endif %} 
-            {%- endfor %} 
+        IN (
+            {%- for pval in property_values %}
+            '{{ pval }}'
+            {%- if not loop.last %},{% endif %}
+            {%- endfor %}
         )
     {%- endfor %}
 GROUP BY
@@ -130,38 +132,38 @@ WHERE
     {% endif %}
     {%- for property_name, property_values in filter_properties.items() %}
     AND {{ property_name }}
-        IN ( 
-            {%- for pval in property_values %} 
-            '{{ pval }}' 
-            {%- if not loop.last %},{% endif %} 
-            {%- endfor %} 
+        IN (
+            {%- for pval in property_values %}
+            '{{ pval }}'
+            {%- if not loop.last %},{% endif %}
+            {%- endfor %}
         )
     {%- endfor %}
     {%- for property_name, operator, comparison in numeric_filters %}
-    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal 
-        {% if operator == "gt" %} 
-        > 
-        {% elif operator == "gte" %} 
-        >= 
-        {% elif operator == "lt" %} 
-        < 
-        {% elif operator == "lte" %} 
-        <= 
+    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
+        {% if operator == "gt" %}
+        >
+        {% elif operator == "gte" %}
+        >=
+        {% elif operator == "lt" %}
+        <
+        {% elif operator == "lte" %}
+        <=
         {% elif operator == "eq" %}
         =
         {% endif %}
         {{ comparison }}
     {%- endfor %}
     {%- for property_name, operator, comparison in categorical_filters %}
-    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')
+    AND (COALESCE("metering_billing_usageevent"."properties" ->> '{{ property_name }}', ''))
         {% if operator == "isnotin" %}
         NOT
         {% endif %}
-        IN ( 
-            {%- for pval in comparison %} 
+        IN (
+            {%- for pval in comparison %}
             '{{ pval }}'
-            {%- if not loop.last %},{% endif %} 
-            {%- endfor %} 
+            {%- if not loop.last %},{% endif %}
+            {%- endfor %}
         )
     {%- endfor %}
 GROUP BY
@@ -204,4 +206,52 @@ ORDER BY
     {%- endfor %}
     , "metering_billing_usageevent"."properties" ->> '{{ property_name }}'
     , "metering_billing_usageevent"."time_created" ASC
+"""
+
+
+COUNTER_TOTAL_PER_DAY = """
+WITH per_customer AS (
+    SELECT
+        customer_id
+        , time_bucket_gapfill('1 day', bucket) AS time_bucket
+        , SUM(usage_qty) AS usage_qty_per_day
+    FROM
+        {{ cagg_name }}
+    WHERE
+        bucket <= NOW()
+        {% if customer_id is not none %}
+        AND customer_id = {{ customer_id }}
+        {% endif %}
+        AND bucket >= '{{ start_date }}'::timestamptz
+        AND bucket <=  '{{ end_date }}'::timestamptz
+    GROUP BY
+        customer_id
+        , time_bucket
+    ORDER BY
+        usage_qty_per_day DESC
+), top_n AS (
+    SELECT 
+        customer_id
+        , SUM(usage_qty_per_day) AS total_usage_qty
+    FROM
+        per_customer
+    GROUP BY
+        customer_id
+    ORDER BY
+        total_usage_qty DESC
+    LIMIT {{ top_n }}
+)
+SELECT 
+    COALESCE(top_n.customer_id, -1) AS customer_id
+    , SUM(per_customer.usage_qty_per_day) AS usage_qty
+    , per_customer.time_bucket AS time_bucket
+FROM 
+    per_customer
+LEFT JOIN
+    top_n
+ON
+    per_customer.customer_id = top_n.customer_id
+GROUP BY
+    COALESCE(top_n.customer_id, -1)
+    , per_customer.time_bucket
 """

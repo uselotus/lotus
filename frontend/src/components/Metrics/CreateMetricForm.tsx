@@ -9,12 +9,15 @@ import {
   Switch,
   Collapse,
   Button,
+  Tag,
 } from "antd";
 import { MetricType } from "../../types/metric-type";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import AceEditor from "react-ace";
-import "ace-builds/src-noconflict/mode-sql";
+import "ace-builds/src-noconflict/mode-mysql";
 import "ace-builds/src-noconflict/theme-github";
+import "ace-builds/src-noconflict/ext-language_tools";
+
 const { Option } = Select;
 const { Panel } = Collapse;
 
@@ -42,7 +45,9 @@ const CreateMetricForm = (props: {
   const [rate, setRate] = useState(false);
   const [preset, setPreset] = useState("none");
   const [filters, setFilters] = useState();
-  const [customSQL, setCustomSQL] = useState<null | string>();
+  const [customSQL, setCustomSQL] = useState<null | string>(
+    "SELECT COUNT(*) as usage_qty FROM events"
+  );
 
   // useEffect(() => {
   //   if (props.visible === false) {
@@ -125,6 +130,7 @@ const CreateMetricForm = (props: {
             if (values.metric_type === "custom") {
               values.custom_sql = customSQL;
             }
+            console.log(values);
             props.onSave(values);
             form.resetFields();
             setRate(false);
@@ -183,18 +189,21 @@ const CreateMetricForm = (props: {
               <Input />
             </Form.Item>
           </Tooltip>
-          <Form.Item
-            name="event_name"
-            label="Event Name"
-            rules={[
-              {
-                required: true,
-                message: "Please input the name of the event you want to track",
-              },
-            ]}
-          >
-            <Input />
-          </Form.Item>
+          {eventType !== "custom" && (
+            <Form.Item
+              name="event_name"
+              label="Event Name"
+              rules={[
+                {
+                  required: true,
+                  message:
+                    "Please input the name of the event you want to track",
+                },
+              ]}
+            >
+              <Input />
+            </Form.Item>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -223,7 +232,7 @@ const CreateMetricForm = (props: {
             >
               <Radio value="counter">Counter</Radio>
               <Radio value="gauge">Gauge</Radio>
-              {/* <Radio value="custom">Custom</Radio> */}
+              <Radio value="custom">Custom (Beta)</Radio>
             </Radio.Group>
           </Form.Item>
           <Form.Item label="Does this metric represent a cost?">
@@ -302,7 +311,7 @@ const CreateMetricForm = (props: {
                   ) : null
                 }
               </Form.Item>
-              <div className="mb-5">
+              <div className="mb-4">
                 <h4>
                   Add Rate. This will allow you to track the metric over windows
                   of time.
@@ -426,20 +435,92 @@ const CreateMetricForm = (props: {
           )}
         </Form.Item>
         {eventType === "custom" && (
-          <AceEditor
-            mode="sql"
-            theme="github"
-            onChange={(newValue) => setCustomSQL(newValue)}
-            value={customSQL ? customSQL : ""}
-            editorProps={{ $blockScrolling: true }}
-            setOptions={{
-              enableBasicAutocompletion: true,
-              enableLiveAutocompletion: true,
-              enableSnippets: true,
-              showLineNumbers: true,
-              tabSize: 2,
-            }}
-          />
+          <div>
+            <p>
+              The query you're building should calculate the raw usage number
+              for a customer's subscription. You'll define the price of the
+              accumulated usage later. You'll have access to a table called{" "}
+              <Tag>events</Tag>containing all of the events for the customer
+              whose subscription usage you're calculating. Each row represents
+              an event and has the following columns available:
+            </p>
+            <h4>
+              <Tag>
+                event_name (
+                <a href="https://www.postgresql.org/docs/current/datatype-character.html">
+                  string
+                </a>
+                )
+              </Tag>{" "}
+              the name of the event.
+            </h4>
+            <h4>
+              <Tag>
+                properties (
+                <a href="https://www.postgresql.org/docs/current/datatype-json.html">
+                  jsonb
+                </a>
+                )
+              </Tag>{" "}
+              the properties you specified when you sent the event.
+            </h4>
+            <h4>
+              <Tag>
+                time_created (
+                <a href="https://www.postgresql.org/docs/current/datatype-datetime.html">
+                  timestamptz
+                </a>
+                )
+              </Tag>{" "}
+              the time the event happened.
+            </h4>
+            <h4>
+              <Tag>
+                start_date (
+                <a href="https://www.postgresql.org/docs/current/datatype-datetime.html">
+                  timestamptz
+                </a>
+                )
+              </Tag>{" "}
+              the start time of the current subscription.
+            </h4>
+            <h4>
+              <Tag>
+                end_date (
+                <a href="https://www.postgresql.org/docs/current/datatype-datetime.html">
+                  timestamptz
+                </a>
+                )
+              </Tag>
+              the end time of the current subscription.
+            </h4>
+            <p>
+              Please return a single row with a a column named{" "}
+              <Tag>usage_qty</Tag>. If you return more than one, we will use the
+              first one. If you return none, we will assume the usage is 0.{" "}
+            </p>
+            <p>
+              Full SQL support is available, including joins, subqueries, CTEs,
+              and window functions.
+            </p>
+            <AceEditor
+              mode="mysql"
+              theme="github"
+              placeholder="SELECT * FROM events"
+              onChange={(newValue) => setCustomSQL(newValue)}
+              name="custom_sql"
+              highlightActiveLine={true}
+              value={customSQL ? customSQL : ""}
+              showGutter={true}
+              setOptions={{
+                enableBasicAutocompletion: true,
+                enableLiveAutocompletion: true,
+                enableSnippets: true,
+                showLineNumbers: true,
+                tabSize: 2,
+              }}
+            />
+          </div>
         )}
 
         {eventType !== "custom" && (

@@ -2,30 +2,21 @@ import collections
 import datetime
 import uuid
 from collections import namedtuple
-from datetime import timezone
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
-from typing import Iterator, List, Sequence, Type
 
 import pytz
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
-from django.apps import apps
-from django.apps.registry import Apps
-from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
-from django.db import connection, transaction
 from django.db.models import Field, Model
-from django.utils.translation import gettext_lazy as _
 from metering_billing.exceptions.exceptions import ServerError
 from metering_billing.utils.enums import (
     METRIC_GRANULARITY,
     PLAN_DURATION,
     USAGE_CALC_GRANULARITY,
 )
-from numpy import isin
 
-ModelType = Type[Model]
-Fields = List[Field]
+ModelType = type[Model]
+Fields = list[Field]
 
 
 def convert_to_decimal(value):
@@ -463,6 +454,10 @@ def addon_version_uuid():
 
 def addon_sr_uuid():
     return "addon_sr_" + str(uuid.uuid4().hex)
+
+
+def usage_alert_uuid():
+    return "usgalert_" + str(uuid.uuid4().hex)
 
 
 def random_uuid():

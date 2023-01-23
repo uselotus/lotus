@@ -8,7 +8,7 @@ services:
       - ./pgdata_prod:/var/lib/postgresql/data
     env_file:
       - ./env/.env.prod
-  
+
   svix-server:
     image: svix/svix-server
     environment:
@@ -16,13 +16,13 @@ services:
       SVIX_REDIS_DSN: redis://redis
       SVIX_DB_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db
     env_file:
-      - ./env/.env.dev
+      - ./env/.env.prod
     ports:
       - "8071:8071"
     depends_on:
     - db
     - redis
-    links: 
+    links:
     - db
     - redis
     restart: on-failure

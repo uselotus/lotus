@@ -8,18 +8,6 @@
 
 <!-- PROJECT SHIELDS -->
 <!--
-*** I'm using markdown "reference style" links for readability.
-*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
-*** See the bottom of this document for the declaration of the reference variables
-*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
-*** https://www.markdownguide.org/basic-syntax/#reference-style-links
--->
-<!-- [![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
-[![LinkedIn][linkedin-shield]][linkedin-url] -->
 
 <!-- PROJECT LOGO -->
 
@@ -43,6 +31,9 @@
 </p>
 
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
+<div align="center">
+   <a href="https://www.producthunt.com/posts/lotus-6109ec1a-4e40-4280-8af3-c698da29e79e?utm_source=badge-top-post-badge&utm_medium=badge&utm_souce=badge-lotus&#0045;6109ec1a&#0045;4e40&#0045;4280&#0045;8af3&#0045;c698da29e79e" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/top-post-badge.svg?post_id=374178&theme=neutral&period=daily" alt="Lotus - Open&#0045;source&#0032;pricing&#0032;&#0038;&#0032;billing | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
+</div>
 
 <br/>
 
@@ -54,7 +45,7 @@ Lotus provides a flexible and modular control panel on top of your existing quot
 
 <br/>
 
-[Website](https://www.uselotus.io/) · [Issues](https://github.com/uselotus/lotus/issues) · [Docs](https://docs.uselotus.io/docs/overview/why-lotus) · [Contact Us](founders@uselotus.io)
+[Website](https://www.uselotus.io/) · [Issues](https://github.com/uselotus/lotus/issues) · [Docs](https://docs.uselotus.io/docs/overview/why-lotus)
 
 <br/>
 
@@ -70,7 +61,7 @@ Test out Lotus with a demo account [here](https://demo.uselotus.io/register).
 
 The cloud version is best for convenience and fast deployment. This version also gets access to features faster than the self-hosted version.
 
-Sign up for our `beta` [here](https://dsl2wm77apy.typeform.com/to/pehx2YSQ?typeform-source=www.uselotus.io) or email us at founders@uselotus.io for more details.
+Sign up for a hosted account [here](https://dsl2wm77apy.typeform.com/to/pehx2YSQ?typeform-source=www.uselotus.io) or email us at founders@uselotus.io for more details.
 
 ### :bust_in_silhouette: Self-Hosted Version
 
@@ -78,7 +69,7 @@ Best if you want to keep your data local or want full control and extensibility.
 
 #### :computer: Local Instance
 
-1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and start Docker
 2. Clone the repo and navigate to the project
    ```sh
    git clone https://github.com/uselotus/lotus.git && cd lotus

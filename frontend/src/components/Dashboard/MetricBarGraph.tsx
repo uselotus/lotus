@@ -32,12 +32,35 @@ function MetricBarGraph(props: { range: any }) {
         return res;
       })
     );
+  const changeMetric = (value: string) => {
+    let compressedArray: ChartDataType[] = [];
+    setSelectedMetric(value);
 
+    if (data?.metrics && Object.keys(data.metrics).length > 0) {
+      const daily_data = data?.metrics[value].data;
+
+      for (let i = 0; i < daily_data.length; i++) {
+        const date = daily_data[i].date;
+        for (const k in daily_data[i].customer_usages) {
+          compressedArray.push({
+            date: date,
+            metric_amount: daily_data[i].customer_usages[k],
+            type: k,
+          });
+        }
+      }
+    }
+    setChartData(compressedArray);
+  };
   useEffect(() => {
     if (data?.metrics && Object.keys(data.metrics).length > 0) {
       setMetricList(Object.keys(data.metrics));
       setSelectedMetric(Object.keys(data.metrics)[0]);
       changeMetric(Object.keys(data.metrics)[0]);
+    } else {
+      setMetricList([]);
+      setSelectedMetric(undefined);
+      changeMetric("");
     }
   }, [data]);
 
@@ -74,28 +97,9 @@ function MetricBarGraph(props: { range: any }) {
     );
   }
 
-  const changeMetric = (value: string) => {
-    let compressedArray: ChartDataType[] = [];
-    setSelectedMetric(value);
-
-    const daily_data = data.metrics[value].data;
-
-    for (let i = 0; i < daily_data.length; i++) {
-      const date = daily_data[i].date;
-      for (const k in daily_data[i].customer_usages) {
-        compressedArray.push({
-          date: date,
-          metric_amount: daily_data[i].customer_usages[k],
-          type: k,
-        });
-      }
-    }
-    setChartData(compressedArray);
-  };
-
   return (
     <Paper border={true} color="white">
-      <div className="flex flex-row items-center mb-5 space-x-4">
+      <div className="flex flex-row items-center mb-8 space-x-4 justify-between">
         <h2>Metric Usage</h2>
         <Select
           defaultValue="Select Metric"
@@ -111,7 +115,7 @@ function MetricBarGraph(props: { range: any }) {
         </Select>
       </div>
 
-      <div className="mt-5">
+      <div className="mt-6">
         <Column {...config} />
       </div>
     </Paper>

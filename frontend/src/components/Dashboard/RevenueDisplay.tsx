@@ -27,16 +27,17 @@ function RevenueDisplay(props: {
   isLoading: boolean;
 }) {
   const [percentageChange, setPercentageChange] = useState<number>(0);
+
   useEffect(() => {
     setPercentageChange(
       computePercentageChange(props.earned_revenue_1, props.earned_revenue_2)
     );
-  }, [props.total_revenue_1, props.total_revenue_2]);
+  }, [props.earned_revenue_1, props.earned_revenue_2]);
   return (
     <Paper color="white" border={true}>
       <div className="grid grid-flow-col auto-cols-auto	 justify-between">
         <div>
-          <p className="text-base font-normal mb-4">Earned Revenue</p>
+          <p className="text-base mb-4">Earned Revenue</p>
           {props.isLoading ? (
             <LoadingSpinner />
           ) : (
@@ -52,7 +53,7 @@ function RevenueDisplay(props: {
         </div>
 
         <div>
-          <p className="text-base font-normal mb-4">Previous Period</p>
+          <p className="text-base mb-4">Previous Period</p>
           {percentageChange >= 0 ? (
             <span className="text-[#34B220] text-3xl">
               +{percentageChange.toFixed(2)}%{" "}

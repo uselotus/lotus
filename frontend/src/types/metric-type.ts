@@ -37,9 +37,6 @@ export interface MetricUsage {
 }
 interface MetricUsageValue {
   data: UsageData[];
-  top_n_customers?: { name: string }[];
-  total_usage: number;
-  top_n_customers_usage?: number;
 }
 
 interface UsageData {

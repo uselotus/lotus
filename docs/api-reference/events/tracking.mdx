@@ -1,6 +1,6 @@
 ---
 openapi: POST /api/track/
-description: "Tracking product usage is one of the most common operations you'll make in Lotus. 
+description: "Tracking product usage is one of the most common operations you'll make in Lotus.
 
 It's used to capture any event that you might want to bill on at any point."
 ---
@@ -16,8 +16,9 @@ lotus.track_event(
   properties={
       'region': 'US',
       'mb_used': 150
-    }
-  idempotency_id='c9799bf9-e5c9-4007-8d10-0663d045d23c'
+    },
+  idempotency_id='c9799bf9-e5c9-4007-8d10-0663d045d23c',
+  time_created: "2023-01-01T21:58:14.193Z"
 )
 ```
 

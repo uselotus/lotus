@@ -4,10 +4,10 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient, UseQueryResult } from "react-query";
 import { toast } from "react-toastify";
-import { BalanceAdjustment, PricingUnits } from "../api/api";
-import { CreateBalanceAdjustmentType } from "../types/balance-adjustment";
+import { Credits, PricingUnits } from "../api/api";
+import { CreateCreditType } from "../types/balance-adjustment";
 import { useQuery } from "react-query";
-import { PricingUnit } from "../types/pricing-unit-type";
+import { CurrencyType } from "../types/pricing-unit-type";
 import PricingUnitDropDown from "../components/PricingUnitDropDown";
 // @ts-ignore
 import dayjs from "dayjs";
@@ -22,8 +22,8 @@ const CreateCredit = ({ customerId, onSubmit }) => {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
 
-  const { data, isLoading }: UseQueryResult<PricingUnit[]> = useQuery<
-    PricingUnit[]
+  const { data, isLoading }: UseQueryResult<CurrencyType[]> = useQuery<
+    CurrencyType[]
   >(["pricing_unit_list"], () =>
     PricingUnits.list().then((res) => {
       return res;
@@ -49,7 +49,7 @@ const CreateCredit = ({ customerId, onSubmit }) => {
   };
 
   const mutation = useMutation(
-    (post: CreateBalanceAdjustmentType) => BalanceAdjustment.createCredit(post),
+    (post: CreateCreditType) => Credits.createCredit(post),
     {
       onSuccess: () => {
         toast.success("Successfully created Credit", {
@@ -58,6 +58,7 @@ const CreateCredit = ({ customerId, onSubmit }) => {
         form.resetFields();
         queryClient.invalidateQueries(["customer_list"]);
         queryClient.invalidateQueries(["balance_adjustments"]);
+        queryClient.invalidateQueries(["customer_detail", customerId]);
       },
       onError: () => {
         toast.error("Failed to create Credit", {
@@ -74,13 +75,12 @@ const CreateCredit = ({ customerId, onSubmit }) => {
         mutation.mutate({
           customer_id: customerId,
           amount: values.amount,
-          amount_currency: values.amount_currency,
           description: values.description,
-          pricing_unit_code: values.pricing_unit_code,
+          currency_code: values.pricing_unit_code,
           effective_at: values.effective_at,
           expires_at: values.expires_at,
           amount_paid: values.amount_paid,
-          amount_paid_currency: values.amount_paid_currency,
+          amount_paid_currency_code: values.amount_paid_currency,
         });
         onSubmit();
       })

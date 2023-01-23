@@ -1,7 +1,8 @@
 import { MetricType } from "./metric-type";
 import { FeatureType } from "./feature-type";
-import { PricingUnit } from "./pricing-unit-type";
+import { CurrencyType } from "./pricing-unit-type";
 import { LightweightCustomerType } from "./customer-type";
+import { AlertType } from "./alert-type";
 
 export interface PlanType {
   plan_name: string;
@@ -17,16 +18,17 @@ export interface PlanType {
   display_version: PlanVersionType;
   num_versions: number;
   active_subscriptions: number;
+  tags: { tag_color: string; tag_hex: string; tag_name: string }[];
 }
 
-export interface PlanDetailType extends Omit<PlanType, "display_version"> {
+export interface PlanDetailType extends PlanType {
   versions: PlanVersionType[];
 }
 
 export interface CreatePlanVersionType {
   description?: string;
   plan_id?: string;
-  features: FeatureType[];
+  features: string[];
   components: CreateComponent[];
   flat_rate: number;
   usage_billing_frequency?: string;
@@ -50,7 +52,10 @@ export interface PriceAdjustment {
 }
 
 export interface PlanVersionType
-  extends Omit<CreatePlanVersionType, "components" | "currency_code"> {
+  extends Omit<
+    CreatePlanVersionType,
+    "components" | "currency_code" | "features"
+  > {
   description: string;
   plan_id: string;
   flat_fee_billing_type: string;
@@ -66,7 +71,8 @@ export interface PlanVersionType
   features: FeatureType[];
   plan_name?: string;
   usage_billing_frequency?: "monthly" | "quarterly" | "yearly";
-  currency: PricingUnit;
+  currency: CurrencyType;
+  alerts: AlertType[];
 }
 
 export interface LightweightPlanVersionType {
@@ -127,7 +133,7 @@ export interface Component {
   tiers: Tier[];
   proration_granularity: string;
   id?: number;
-  pricing_unit: PricingUnit;
+  pricing_unit: CurrencyType;
 }
 
 export interface Tier {
@@ -191,4 +197,6 @@ export interface ReplaceLaterType extends PlanVersionUpdateType {
 export interface UpdatePlanType {
   plan_name?: string;
   status?: "active" | "archived";
+  plan_duration?: "monthly" | "quarterly" | "yearly";
+  tags?: PlanType["tags"];
 }

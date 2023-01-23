@@ -21,7 +21,7 @@ export const FeatureDisplay: FC<{
               type="text"
               icon={<DeleteOutlined />}
               danger
-              onClick={() => removeFeature(feature.feature_name)}
+              onClick={() => removeFeature(feature.feature_id)}
             />
           </div>
           <div className="planFeatureDesc px-4">

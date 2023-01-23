@@ -27,11 +27,11 @@ import posthog
 import sentry_sdk
 from decouple import config
 from dotenv import load_dotenv
-from kafka import KafkaConsumer, KafkaProducer
+from kafka import KafkaConsumer
 from kafka.admin import KafkaAdminClient, NewTopic
 from kafka.errors import TopicAlreadyExistsError
 from sentry_sdk.integrations.django import DjangoIntegration
-from svix.api import EventTypeIn, Svix, SvixAsync, SvixOptions
+from svix.api import EventTypeIn, Svix, SvixOptions
 
 logger = logging.getLogger("django.server")
 
@@ -40,7 +40,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 try:
     path = Path(__file__).resolve().parent.parent.parent / "env/.env.test"
     load_dotenv(dotenv_path=path)
-except:
+except Exception:
     pass
 
 VITE_API_URL = config("VITE_API_URL", default="http://localhost:8000")
@@ -287,7 +287,7 @@ if KAFKA_HOST:
         KAFKA_HOST = KAFKA_HOST
     else:
         KAFKA_HOST = [
-            "{}:{}".format(parsedUrl.hostname, parsedUrl.port)
+            f"{parsedUrl.hostname}:{parsedUrl.port}"
             for parsedUrl in [urlparse(url) for url in KAFKA_HOST.split(",")]
         ]
     producer_config = {
@@ -345,9 +345,9 @@ if os.environ.get("REDIS_URL"):
         else os.environ.get("REDIS_URL")
     )
 elif DOCKERIZED:
-    REDIS_URL = f"redis://redis:6379"
+    REDIS_URL = "redis://redis:6379"
 else:
-    REDIS_URL = f"redis://localhost:6379"
+    REDIS_URL = "redis://localhost:6379"
 
 # Celery Settings
 CELERY_BROKER_URL = f"{REDIS_URL}/0"
@@ -520,7 +520,7 @@ SPECTACULAR_SETTINGS = {
         "Lotus is an open-core pricing and billing engine. We enable API companies to"
         " automate and optimize their custom usage-based pricing for any metric."
     ),
-    "VERSION": "0.0.1",
+    "VERSION": "0.9.1",
     "SERVE_INCLUDE_SCHEMA": False,
     "APPEND_COMPONENTS": {
         "securitySchemes": {
@@ -559,9 +559,7 @@ SPECTACULAR_SETTINGS = {
         "MetricGranularityEnum": "metering_billing.utils.enums.METRIC_GRANULARITY.choices",
         "PlanVersionStatusEnum": "metering_billing.utils.enums.PLAN_VERSION_STATUS.choices",
         "PlanStatusEnum": "metering_billing.utils.enums.PLAN_STATUS.choices",
-        "BacktestStatusEnum": "metering_billing.utils.enums.BACKTEST_STATUS.choices",
         "ProductStatusEnum": "metering_billing.utils.enums.PRODUCT_STATUS.choices",
-        "InvoiceStatusEnum": "metering_billing.utils.enums.INVOICE_STATUS.choices",
         "FailureStatusEnum": ["eror"],
         "SuccessStatusEnum": ["success"],
         "TrackEventSuccessEnum": ["all", "some"],
@@ -658,7 +656,7 @@ elif SVIX_API_KEY == "" and SVIX_JWT_SECRET != "":
         SVIX_API_KEY = encoded
         hostname, _, ips = socket.gethostbyname_ex("svix-server")
         svix = Svix(SVIX_API_KEY, SvixOptions(server_url=f"http://{ips[0]}:8071"))
-    except Exception as e:
+    except Exception:
         svix = None
 else:
     svix = None
@@ -684,5 +682,13 @@ if SVIX_CONNECTOR is not None:
                     name="invoice.paid",
                 )
             )
-    except:
+        if "usage_alert.triggered" not in list_response_event_type_out:
+            event_type_out = svix.event_type.create(
+                EventTypeIn(
+                    description="Usage alert is triggered",
+                    archived=False,
+                    name="usage_alert.triggered",
+                )
+            )
+    except Exception:
         SVIX_CONNECTOR = None

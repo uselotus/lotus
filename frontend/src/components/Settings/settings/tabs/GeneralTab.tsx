@@ -1,5 +1,5 @@
 // @ts-ignore
-import React, { FC, useState } from "react";
+import React, { FC, useEffect, useState } from "react";
 import {
   useMutation,
   useQuery,
@@ -18,15 +18,14 @@ import {
   Tag,
 } from "antd";
 import { Organization, PricingUnits } from "../../../../api/api";
-import { PricingUnit } from "../../../../types/pricing-unit-type";
+import { CurrencyType } from "../../../../types/pricing-unit-type";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../../../LoadingSpinner";
-import useGlobalStore, {
-  IOrgStoreType,
-} from "../../../../stores/useGlobalstore";
+import useGlobalStore from "../../../../stores/useGlobalstore";
 import { QueryErrors } from "../../../../types/error-response-types";
 import { OrganizationType } from "../../../../types/account-type";
 import { country_json } from "../../../../assets/country_codes";
+import { PlusOutlined } from "@ant-design/icons";
 
 interface InviteWithEmailForm extends HTMLFormControlsCollection {
   email: string;
@@ -43,12 +42,13 @@ const GeneralTab: FC = () => {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
   const org = useGlobalStore((state) => state.org);
-  const setOrgInfoToStore = useGlobalStore((state) => state.setOrgInfo);
-  const [currentCurrency, setCurrentCurrency] = useState("");
   const [taxRate, setTaxRate] = useState(0);
   const [invoiceGracePeriod, setInvoiceGracePeriod] = useState(0);
   const [displayTaxRate, setDisplayTaxRate] = useState(0);
   const [displayInvoiceGracePeriod, setDisplayInvoiceGracePeriod] = useState(0);
+  const [subscriptionFilters, setSubscriptionFilters] = useState<string[]>([]);
+  const [newSubscriptionFilter, setNewSubscriptionFilter] =
+    useState<string>("");
 
   const [line1, setLine1] = React.useState("");
   const [line2, setLine2] = React.useState("");
@@ -56,10 +56,14 @@ const GeneralTab: FC = () => {
   const [state, setState] = React.useState("");
   const [country, setCountry] = React.useState("");
   const [postalCode, setPostalCode] = React.useState("");
+  const [currentCurrency, setCurrentCurrency] = useState("");
+  const [formSubscriptionFilters, setFormSubscriptionFilters] =
+    React.useState<string[]>(subscriptionFilters);
+
   const {
     data: pricingUnits,
     isLoading: pricingUnitsLoading,
-  }: UseQueryResult<PricingUnit[]> = useQuery<PricingUnit[]>(
+  }: UseQueryResult<CurrencyType[]> = useQuery<CurrencyType[]>(
     ["pricing_unit_list"],
     () =>
       PricingUnits.list().then((res) => {
@@ -67,61 +71,56 @@ const GeneralTab: FC = () => {
       })
   );
 
-  const { isLoading } = useQuery(
+  const { data: orgData, isLoading } = useQuery(
     ["organization"],
     () =>
       Organization.get().then((res) => {
-        //if the default currency is null, then don't set it, otherwise setCurrentCurrency
-        if (
-          res[0].default_currency !== undefined &&
-          res[0].default_currency !== null
-        ) {
-          setCurrentCurrency(res[0].default_currency.code);
-        }
-        if (res[0].tax_rate === null) {
-          setTaxRate(0);
-          setDisplayTaxRate(0);
-        } else {
-          setTaxRate(res[0].tax_rate);
-          setDisplayTaxRate(res[0].tax_rate);
-        }
-        if (res[0].invoice_grace_period === null) {
-          setInvoiceGracePeriod(0);
-          setDisplayInvoiceGracePeriod(0);
-        } else {
-          setInvoiceGracePeriod(res[0].invoice_grace_period);
-          setDisplayInvoiceGracePeriod(res[0].invoice_grace_period);
-        }
-
         return res[0];
       }),
-    {
-      onSuccess: (data) => {
-        if (
-          data.default_currency !== undefined &&
-          data.default_currency !== null
-        ) {
-          setCurrentCurrency(data.default_currency.code);
-        }
-        const storeOrgObject: IOrgStoreType = {
-          organization_id: data.organization_id,
-          company_name: data.company_name,
-          default_currency: data.default_currency
-            ? data.default_currency
-            : undefined,
-          environment: undefined,
-        };
-
-        setOrgInfoToStore(storeOrgObject);
-        setLine1(data.address ? data.address.line1 : "");
-        setLine2(data.address && data.address.line2 ? data.address.line2 : "");
-        setCity(data.address ? data.address.city : "");
-        setState(data.address ? data.address.state : "");
-        setCountry(data.address ? data.address.country : "");
-        setPostalCode(data.address ? data.address.postal_code : "");
-      },
-    }
+    {}
   );
+
+  useEffect(() => {
+    if (orgData !== undefined) {
+      if (
+        orgData.default_currency !== undefined &&
+        orgData.default_currency !== null
+      ) {
+        setCurrentCurrency(orgData.default_currency.code);
+      }
+      if (orgData.tax_rate === null) {
+        setTaxRate(0);
+        setDisplayTaxRate(0);
+      } else {
+        setTaxRate(orgData.tax_rate);
+        setDisplayTaxRate(orgData.tax_rate);
+      }
+      if (orgData.payment_grace_period === null) {
+        setInvoiceGracePeriod(0);
+        setDisplayInvoiceGracePeriod(0);
+      } else {
+        setInvoiceGracePeriod(orgData.payment_grace_period);
+        setDisplayInvoiceGracePeriod(orgData.payment_grace_period);
+      }
+
+      if (
+        orgData.default_currency !== undefined &&
+        orgData.default_currency !== null
+      ) {
+        setCurrentCurrency(orgData.default_currency.code);
+      }
+
+      setLine1(orgData.address ? orgData.address.line1 : "");
+      setLine2(
+        orgData.address && orgData.address.line2 ? orgData.address.line2 : ""
+      );
+      setCity(orgData.address ? orgData.address.city : "");
+      setState(orgData.address ? orgData.address.state : "");
+      setCountry(orgData.address ? orgData.address.country : "");
+      setPostalCode(orgData.address ? orgData.address.postal_code : "");
+      setSubscriptionFilters(orgData.subscription_filter_keys);
+    }
+  }, [orgData]);
 
   const handleEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(event.target.value);
@@ -153,22 +152,25 @@ const GeneralTab: FC = () => {
       default_currency_code: string;
       address: OrganizationType["address"];
       tax_rate: number;
-      invoice_grace_period: number;
+      payment_grace_period: number;
+      subscription_filter_keys: string[];
     }) =>
       Organization.updateOrganization(
         obj.org_id,
         obj.default_currency_code,
         obj.tax_rate,
-        obj.invoice_grace_period,
-        obj.address
+        obj.payment_grace_period,
+        obj.address,
+        obj.subscription_filter_keys
       ),
     {
       onSuccess: () => {
+        setIsEdit(false);
+
         toast.success("Successfully Updated Organization Settings", {
           position: toast.POSITION.TOP_CENTER,
         });
-        queryClient.invalidateQueries("organization");
-        setIsEdit(false);
+        queryClient.invalidateQueries(["organization"]);
         form.resetFields();
       },
       onError: () => {
@@ -203,7 +205,7 @@ const GeneralTab: FC = () => {
         <div className="flex flex-col w-6/12 justify-between">
           {mutation.isLoading && <LoadingSpinner />}
           <p className=" text-[16px]">
-            <b>Company Name:</b> {org.company_name}
+            <b>Company Name:</b> {org.organization_name}
           </p>
           <p className=" text-[16px]">
             <b className="">Default Organization Currency:</b>{" "}
@@ -219,12 +221,11 @@ const GeneralTab: FC = () => {
             )}
           </p>
           <p className="text-[16px] space-y-2">
-            <b>Billing address:</b>{" "}
-            <p>{line1.length ? line1 : "1292 Lane Place"}</p>
-            <p>{city.length ? city : "Cambridge MA"}</p>
+            <b>Billing address:</b> <p>{line1.length ? line1 : "Address"}</p>
+            <p>{city.length ? city : "City State"}</p>
             <p>
-              {country.length ? country : "USA"}{" "}
-              {postalCode.length ? postalCode : "92342"}
+              {country.length ? country : "Country"}{" "}
+              {postalCode.length ? postalCode : "Zip"}
             </p>
           </p>
           <p className="text-[16px]">
@@ -240,6 +241,12 @@ const GeneralTab: FC = () => {
               <b>Organization Tax Rate:</b> None
             </p>
           )}
+          <p className="text-[16px]">
+            <b>Subscription Filters:</b>{" "}
+            {orgData?.subscription_filter_keys.map((filter) => {
+              return <Tag key={filter}>{filter}</Tag>;
+            })}
+          </p>
 
           <div className=" flex justify-end"></div>
         </div>
@@ -275,15 +282,10 @@ const GeneralTab: FC = () => {
               org_id: org.organization_id,
               default_currency_code: currentCurrency,
               tax_rate: fourDP(taxRate),
-              invoice_grace_period: invoiceGracePeriod,
+              payment_grace_period: invoiceGracePeriod,
               address: submittedAddress,
+              subscription_filter_keys: subscriptionFilters,
             });
-            // updateOrg.mutate({
-            //   org_id: org.organization_id,
-            //   default_currency_code: currentCurrency,
-            //   tax_rate: fourDP(taxRate),
-            //   invoice_grace_period: invoiceGracePeriod,
-            // });
           }
         }}
       >
@@ -291,13 +293,13 @@ const GeneralTab: FC = () => {
           <Form
             form={form}
             initialValues={{
-              company_name: org?.company_name,
+              organization_name: org?.organization_name,
               default_currency: org?.default_currency?.code,
             }}
           >
             <Form.Item
               label="Company Name"
-              name="company_name"
+              name="organization_name"
               rules={[
                 {
                   required: true,
@@ -377,7 +379,7 @@ const GeneralTab: FC = () => {
                 />
               </div>
             </Form.Item>
-            <Form.Item label="Payment Grace Period" name="invoice_grace_period">
+            <Form.Item label="Payment Grace Period" name="payment_grace_period">
               <Input
                 type="number"
                 step="1"
@@ -385,6 +387,48 @@ const GeneralTab: FC = () => {
                 defaultValue={invoiceGracePeriod}
               />
             </Form.Item>
+            <Form.Item label="Subscription Filters" name="subscription_filters">
+              <Select
+                mode="multiple"
+                value={subscriptionFilters.map((filter) => filter)}
+                placeholder="Select subscription filters"
+                onChange={(e) => setSubscriptionFilters(e)}
+                optionLabelProp="label"
+                options={formSubscriptionFilters.map((filter) => {
+                  return { label: filter, value: filter };
+                })}
+              />
+            </Form.Item>
+
+            <Input
+              value={newSubscriptionFilter}
+              placeholder="Enter New Subscription Filter"
+              onChange={(e) => setNewSubscriptionFilter(e.target.value)}
+            ></Input>
+            <Button
+              onClick={() => {
+                if (newSubscriptionFilter.length !== 0) {
+                  setFormSubscriptionFilters([
+                    ...formSubscriptionFilters,
+                    newSubscriptionFilter,
+                  ]);
+
+                  setNewSubscriptionFilter("");
+                }
+              }}
+              type="primary"
+              size="small"
+              key="create-plan"
+              className="hover:!bg-primary-700 mt-4 float-right py-4"
+              style={{ background: "#C3986B", borderColor: "#C3986B" }}
+            >
+              <div className="flex items-center  justify-between text-white">
+                <div>
+                  <PlusOutlined className="!text-white w-12 h-12 cursor-pointer" />
+                  Create Filter
+                </div>
+              </div>
+            </Button>
           </Form>
         </div>
       </Modal>

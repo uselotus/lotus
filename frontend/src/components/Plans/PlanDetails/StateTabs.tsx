@@ -71,7 +71,7 @@ const StateTabs: FC<StateTabsProps> = ({
   };
 
   return (
-    <div className="flex items-center justify-around tabsContainer">
+    <div className="flex items-center w-full justify-between tabsContainer">
       {tabs.map((tab) => (
         <Tooltip title={getToolTipText(tab)}>
           <div
@@ -104,9 +104,9 @@ const StateTabs: FC<StateTabsProps> = ({
         }}
         title={"Are you sure you want to make v" + version + " active?"}
       >
-        <div className="space-y-4">
+        <div className="space-y-4 ">
           <div className="grid grid-row-3 items-center my-5">
-            <h3 className="mb-5">
+            <h3 className="mb-6">
               How should subscriptions on the current active version be treated?
             </h3>
             <Select
@@ -125,7 +125,7 @@ const StateTabs: FC<StateTabsProps> = ({
               </Select.Option>
             </Select>
           </div>
-          <div className="separator mb-5" />
+          <div className="separator mb-6" />
 
           <h3 className="mb-8 font-bold">New Active Version: v{version}</h3>
           <div className="grid grid-cols-3">

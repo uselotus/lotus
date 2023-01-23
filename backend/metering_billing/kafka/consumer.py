@@ -1,5 +1,4 @@
 import logging
-import os
 from dataclasses import dataclass
 
 import posthog
@@ -28,7 +27,6 @@ class ConsumerConfig:
 
 
 class Consumer(metaclass=Singleton):
-
     __connection = None
 
     def __init__(self):
@@ -47,9 +45,9 @@ class Consumer(metaclass=Singleton):
                     write_batch_events_to_db(
                         msg.value["events"], msg.value["organization_id"]
                     )
-                except:
+                except Exception:
                     continue
-        except:
+        except Exception:
             logger.info(f"Could not consume from topic: {self.topic}")
             raise
 
@@ -73,7 +71,7 @@ def write_batch_events_to_db(events_list, org_pk):
     idem_ids = [x.idempotency_id for x in event_obj_list]
     repeat_idem = Event.objects.filter(
         Q(time_created__gte=now_minus_45_days) | Q(inserted_at__gte=now_minus_7_days),
-        organization_id=organization,
+        organization=organization,
         idempotency_id__in=idem_ids,
     ).exists()
     events_to_insert = []
@@ -83,7 +81,7 @@ def write_batch_events_to_db(events_list, org_pk):
             event_idem_exists = Event.objects.filter(
                 Q(time_created__gte=now_minus_45_days)
                 | Q(inserted_at__gte=now_minus_7_days),
-                organization_id=organization,
+                organization=organization,
                 idempotency_id__in=idem_ids,
             ).exists()
             if not event_idem_exists:
@@ -111,10 +109,10 @@ def write_batch_events_to_db(events_list, org_pk):
         cache.delete_many(cache_keys_to_invalidate)
     for org, num_events in event_org_map.items():
         posthog.capture(
-            POSTHOG_PERSON if POSTHOG_PERSON else org.company_name + " (API Key)",
+            POSTHOG_PERSON if POSTHOG_PERSON else org.organization_name + " (API Key)",
             event="track_event",
             properties={
                 "ingested_events": num_events,
-                "organization": org.company_name,
+                "organization": org.organization_name,
             },
         )

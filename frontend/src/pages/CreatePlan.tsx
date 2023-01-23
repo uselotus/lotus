@@ -23,13 +23,13 @@ import {
   PlanType,
 } from "../types/plan-type";
 import { Plan, Organization } from "../api/api";
-import { FeatureType } from "../types/feature-type";
+import { CreateFeatureType, FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
 import LinkExternalIds from "../components/Plans/LinkExternalIds";
 import { PageLayout } from "../components/base/PageLayout";
 import { ComponentDisplay } from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
-import { PricingUnit } from "../types/pricing-unit-type";
+import { CurrencyType } from "../types/pricing-unit-type";
 
 interface ComponentDisplay {
   metric: string;
@@ -49,8 +49,8 @@ const durationConversion = {
 const CreatePlan = () => {
   const [componentVisible, setcomponentVisible] = useState<boolean>();
   const [allPlans, setAllPlans] = useState<PlanType[]>([]);
-  const [allCurrencies, setAllCurrencies] = useState<PricingUnit[]>([]);
-  const [selectedCurrency, setSelectedCurrency] = useState<PricingUnit>({
+  const [allCurrencies, setAllCurrencies] = useState<CurrencyType[]>([]);
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>({
     symbol: "",
     code: "",
     name: "",
@@ -112,7 +112,7 @@ const CreatePlan = () => {
     for (let i = 0; i < newFeatures.length; i++) {
       if (
         planFeatures.some(
-          (feat) => feat.feature_name === newFeatures[i].feature_name
+          (feat) => feat.feature_id === newFeatures[i].feature_id
         )
       ) {
       } else {
@@ -129,9 +129,9 @@ const CreatePlan = () => {
     setFeatureVisible(true);
   };
 
-  const removeFeature = (feature_name: string) => {
+  const removeFeature = (feature_id: string) => {
     setPlanFeatures(
-      planFeatures.filter((item) => item.feature_name !== feature_name)
+      planFeatures.filter((item) => item.feature_id !== feature_id)
     );
   };
 
@@ -213,6 +213,14 @@ const CreatePlan = () => {
           }
         }
 
+        const featureIdList: string[] = [];
+        const features: any = Object.values(planFeatures);
+        if (features) {
+          for (let i = 0; i < features.length; i++) {
+            featureIdList.push(features[i].feature_id);
+          }
+        }
+
         if (values.usage_billing_frequency === "yearly") {
           values.usage_billing_frequency = "end_of_period";
         }
@@ -222,7 +230,7 @@ const CreatePlan = () => {
           transition_to_plan_id: values.transition_to_plan_id,
           flat_rate: values.flat_rate,
           components: usagecomponentslist,
-          features: planFeatures,
+          features: featureIdList,
           usage_billing_frequency: values.usage_billing_frequency,
           currency_code: values.plan_currency,
         };
@@ -262,7 +270,6 @@ const CreatePlan = () => {
           plan_duration: values.plan_duration,
           initial_version: initialPlanVersion,
         };
-
         const links = values.initial_external_links;
         if (links?.length) {
           plan.initial_external_links = links.map((link) => ({
@@ -539,7 +546,7 @@ const CreatePlan = () => {
 
             <Col span="24">
               <Card
-                className="w-full my-5"
+                className="w-full my-6"
                 title="Added Features"
                 style={{
                   borderRadius: "0.5rem",

@@ -1,10 +1,9 @@
 import os
 import ssl
 
+import cronitor.celery
 from celery import Celery
 from django.conf import settings
-import cronitor.celery
-
 
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "lotus.settings")
