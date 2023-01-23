@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import { Metrics } from "../../api/api";
 import React, { FC } from "react";
 import { colorMap } from "./MetricTable";
-import createShortenedText from "../Plans/helpers/createShortenedText";
+import createShortenedText from "../../helpers/createShortenedText";
 import CopyText from "../base/CopytoClipboard";
 import useMediaQuery from "../../hooks/useWindowQuery";
 import { format } from "sql-formatter";

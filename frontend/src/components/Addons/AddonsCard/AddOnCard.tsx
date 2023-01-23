@@ -7,10 +7,10 @@ import CopyText from "../../base/CopytoClipboard";
 import createShortenedText from "../../../helpers/createShortenedText";
 import capitalize from "../../../helpers/capitalize";
 import useMediaQuery from "../../../hooks/useWindowQuery";
-import { AddOnType } from "../../../types/add-on-type";
+import { AddonType } from "../../../types/addon-type";
 
 interface AddOnCardProps {
-  add_on: AddOnType;
+  add_on: AddonType;
 }
 
 const AddOnsCard: FC<AddOnCardProps> = ({ add_on }) => {

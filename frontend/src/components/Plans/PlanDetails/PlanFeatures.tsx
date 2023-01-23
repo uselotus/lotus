@@ -4,7 +4,7 @@ import "./PlanDetails.css";
 import { FeatureType } from "../../../types/feature-type";
 import { Typography } from "antd";
 import CopyText from "../../base/CopytoClipboard";
-import createShortenedText from "../helpers/createShortenedText";
+import createShortenedText from "../../../helpers/createShortenedText";
 import useMediaQuery from "../../../hooks/useWindowQuery";
 
 interface PlanFeaturesProps {

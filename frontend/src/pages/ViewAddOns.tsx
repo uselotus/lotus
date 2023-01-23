@@ -12,12 +12,12 @@ import {
 import { PageLayout } from "../components/base/PageLayout";
 import LoadingSpinner from "../components/LoadingSpinner";
 import AddOnsCard from "../components/Addons/AddonsCard/AddOnCard";
-import { AddOnType } from "../types/add-on-type";
+import { AddonType } from "../types/addon-type";
 
 const ViewAddOns: FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [addOns, setAddOns] = useState<AddOnType[]>([
+  const [addOns, setAddOns] = useState<AddonType[]>([
     {
       name: "Words A-O",
       active_customers: "23",

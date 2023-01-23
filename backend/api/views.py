@@ -10,9 +10,8 @@ from typing import Optional
 
 import posthog
 from api.serializers.model_serializers import (
-    AddOnAttachSerializer,
-    AddOnRecordSerializer,
-    AddOnUpdateSerializer,
+    AddOnSubscriptionRecordCreateSerializer,
+    AddOnSubscriptionRecordSerializer,
     CustomerBalanceAdjustmentCreateSerializer,
     CustomerBalanceAdjustmentFilterSerializer,
     CustomerBalanceAdjustmentSerializer,
@@ -491,9 +490,9 @@ class SubscriptionViewSet(
         elif self.action == "add":
             return SubscriptionRecordCreateSerializer
         elif self.action == "attach_addon":
-            return AddOnAttachSerializer
-        elif self.action == "update_addon":
-            return AddOnUpdateSerializer
+            return AddOnSubscriptionRecordCreateSerializer
+        # elif self.action == "update_addon":
+        #     return AddOnSubscriptionRecordUpdateSerializer
         else:
             return SubscriptionRecordSerializer
 
@@ -836,41 +835,42 @@ class SubscriptionViewSet(
         ret = SubscriptionRecordSerializer(return_qs, many=True).data
         return Response(ret, status=status.HTTP_200_OK)
 
-    @extend_schema(responses=AddOnRecordSerializer(many=True))
+    @extend_schema(responses=AddOnSubscriptionRecordSerializer(many=True))
     @action(detail=False, methods=["post"], url_path="attach_addon")
     def attach_addon(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         srs = serializer.save()
         return Response(
-            AddOnRecordSerializer(srs, many=True).data, status=status.HTTP_200_OK
-        )
-
-    @extend_schema(responses=AddOnRecordSerializer(many=True))
-    @action(detail=False, methods=["post"], url_path="update_addon")
-    def update_addon(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        add_ons_to_edit = serializer.validated_data.get("add_ons_to_edit")
-        if serializer.validated_data.get("turn_off_auto_renew"):
-            for sr in add_ons_to_edit:
-                sr.auto_renew = False
-        if serializer.validated_data.get("end_now"):
-            now = now_utc()
-            for sr in add_ons_to_edit:
-                sr.end_date = now
-        if serializer.validated_data.get("flat_fee_behavior"):
-            for sr in add_ons_to_edit:
-                prev_flat_fee_behavior = sr.flat_fee_behavior
-                sr.flat_fee_behavior = serializer.validated_data.get(
-                    "flat_fee_behavior"
-                )
-        for sr in add_ons_to_edit:
-            sr.save()
-        return Response(
-            AddOnRecordSerializer(add_ons_to_edit, many=True).data,
+            AddOnSubscriptionRecordSerializer(srs, many=True).data,
             status=status.HTTP_200_OK,
         )
+
+    # @extend_schema(responses=AddOnSubscriptionRecordSerializer(many=True))
+    # @action(detail=False, methods=["post"], url_path="update_addon")
+    # def update_addon(self, request, *args, **kwargs):
+    #     serializer = self.get_serializer(data=request.data)
+    #     serializer.is_valid(raise_exception=True)
+    #     add_ons_to_edit = serializer.validated_data.get("add_ons_to_edit")
+    #     if serializer.validated_data.get("turn_off_auto_renew"):
+    #         for sr in add_ons_to_edit:
+    #             sr.auto_renew = False
+    #     if serializer.validated_data.get("end_now"):
+    #         now = now_utc()
+    #         for sr in add_ons_to_edit:
+    #             sr.end_date = now
+    #     if serializer.validated_data.get("flat_fee_behavior"):
+    #         for sr in add_ons_to_edit:
+    #             sr.flat_fee_behavior
+    #             sr.flat_fee_behavior = serializer.validated_data.get(
+    #                 "flat_fee_behavior"
+    #             )
+    #     for sr in add_ons_to_edit:
+    #         sr.save()
+    #     return Response(
+    #         AddOnSubscriptionRecordSerializer(add_ons_to_edit, many=True).data,
+    #         status=status.HTTP_200_OK,
+    #     )
 
     def dispatch(self, request, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)

@@ -12,11 +12,11 @@ import {
   Tier,
 } from "../../../types/plan-type";
 import { CurrencyType } from "../../../types/pricing-unit-type";
-import createShortenedText from "../helpers/createShortenedText";
+import createShortenedText from "../../../helpers/createShortenedText";
 import DropdownComponent from "../../base/Dropdown/Dropdown";
 import PlansTags from "../PlanTags";
 import LinkExternalIds from "../LinkExternalIds";
-import capitalize from "../helpers/capitalize";
+import capitalize from "../../../helpers/capitalize";
 import CopyText from "../../base/CopytoClipboard";
 import dayjs from "dayjs";
 import useVersionStore from "../../../stores/useVersionStore";

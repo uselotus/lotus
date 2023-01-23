@@ -17,6 +17,14 @@ from django.db.models import Count, F, FloatField, Q, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+
 from metering_billing.exceptions.exceptions import (
     AlignmentEngineFailure,
     ExternalConnectionFailure,
@@ -72,13 +80,6 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -1570,7 +1571,7 @@ class PlanVersion(models.Model):
     description = models.TextField(null=True, blank=True)
     version = models.PositiveSmallIntegerField()
     flat_fee_billing_type = models.CharField(
-        max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices
+        max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices, null=True, blank=True
     )
     usage_billing_frequency = models.CharField(
         max_length=40, choices=USAGE_BILLING_FREQUENCY.choices, null=True, blank=True
@@ -1700,12 +1701,42 @@ class PriceAdjustment(models.Model):
 
 class BasePlanManager(models.Manager):
     def get_queryset(self):
-        return super().get_queryset().filter(plan_type=Plan.PlanType.BASE)
+        return super().get_queryset().filter(addon_spec__isnull=True)
 
 
 class AddOnPlanManager(models.Manager):
     def get_queryset(self):
-        return super().get_queryset().filter(plan_type=Plan.PlanType.ADDON)
+        return super().get_queryset().filter(addon_spec__isnull=False)
+
+
+class AddOnSpecification(models.Model):
+    class BillingFrequency(models.IntegerChoices):
+        ONE_TIME = (1, _("one_time"))
+        RECURRING = (2, _("recurring"))
+
+    class FlatFeeInvoicingBehaviorOnAttach(models.IntegerChoices):
+        INVOICE_ON_ATTACH = (1, _("invoice_on_attach"))
+        INVOICE_ON_SUBSCRIPTION_END = (2, _("invoice_on_subscription_end"))
+
+    class RecurringFlatFeeTiming(models.IntegerChoices):
+        IN_ADVANCE = (1, _("in_advance"))
+        IN_ARREARS = (2, _("in_arrears"))
+
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="+"
+    )
+    billing_frequency = models.PositiveSmallIntegerField(
+        choices=BillingFrequency.choices, default=BillingFrequency.ONE_TIME
+    )
+    flat_fee_invoicing_behavior_on_attach = models.PositiveSmallIntegerField(
+        choices=FlatFeeInvoicingBehaviorOnAttach.choices,
+        default=FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_ATTACH,
+    )
+    recurring_flat_fee_timing = models.PositiveSmallIntegerField(
+        choices=RecurringFlatFeeTiming.choices,
+        null=True,
+        blank=True,
+    )
 
 
 class Plan(models.Model):
@@ -1767,16 +1798,14 @@ class Plan(models.Model):
         related_name="custom_plans",
         help_text="If you are using our plan templating feature to create a new plan, this field will be set to the customer for which this plan is designed for. Keep in mind that this field and the parent_plan field are mutually necessary.",
     )
-    plan_type = models.PositiveSmallIntegerField(
-        choices=PlanType.choices,
-        default=PlanType.BASE,
-        help_text="The type of the plan: Base plan or add-on",
+    addon_spec = models.OneToOneField(
+        AddOnSpecification, on_delete=models.CASCADE, null=True, blank=True
     )
+    tags = models.ManyToManyField("Tag", blank=True, related_name="plans")
+    created_on = models.DateTimeField(default=now_utc, null=True)
 
     objects = BasePlanManager()
     addons = AddOnPlanManager()
-    tags = models.ManyToManyField("Tag", blank=True, related_name="plans")
-    created_on = models.DateTimeField(default=now_utc, null=True)
 
     history = HistoricalRecords()
 

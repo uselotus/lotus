@@ -1,12 +1,16 @@
 from decimal import Decimal
 
-import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
 from django.db.models import DecimalField, Q, Sum
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
+import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
+    AddOnSpecification,
     APIToken,
     Customer,
     ExternalPlanLink,
@@ -39,7 +43,7 @@ from metering_billing.serializers.serializer_utils import (
     WebhookEndpointUUIDField,
     WebhookSecretUUIDField,
 )
-from metering_billing.utils import addon_uuid, addon_version_uuid, now_utc
+from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     BATCH_ROUNDING_TYPE,
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
@@ -56,8 +60,6 @@ from metering_billing.utils.enums import (
     TAG_GROUP,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
@@ -1805,31 +1807,31 @@ class AddOnCreateSerializer(serializers.ModelSerializer):
         fields = (
             "addon_name",
             "description",
-            "flat_fee_billing_type",
             "flat_rate",
             "components",
             "features",
             "currency_code",
+            "invoice_when",
+            "billing_frequency",
+            "recurring_flat_fee_timing",
         )
         extra_kwargs = {
-            "addon_name": {"write_only": True},
-            "description": {"write_only": True},
-            "flat_fee_billing_type": {"write_only": True},
-            "flat_rate": {"write_only": True},
-            "components": {"write_only": True},
-            "features": {"write_only": True},
-            "currency_code": {"write_only": True},
+            "addon_name": {"required": True},
+            "description": {"required": True},
+            "flat_rate": {"required": True},
+            "components": {"required": True},
+            "features": {"required": True},
+            "currency_code": {"required": True, "allow_null": True},
+            "invoice_when": {"required": True},
+            "billing_frequency": {"required": True},
+            "recurring_flat_fee_timing": {"required": True, "allow_null": True},
         }
 
     addon_name = serializers.CharField(
         help_text="The name of the add-on plan.",
-        source="plan_name",
     )
     description = serializers.CharField(
         help_text="The description of the add-on plan.",
-    )
-    flat_fee_billing_type = serializers.CharField(
-        help_text="The flat fee billing type of the add-on plan.",
     )
     flat_rate = serializers.DecimalField(
         help_text="The flat rate of the add-on plan.",
@@ -1837,32 +1839,45 @@ class AddOnCreateSerializer(serializers.ModelSerializer):
         max_digits=20,
     )
     components = PlanComponentCreateSerializer(
-        many=True, allow_null=True, required=False, source="plan_components"
+        many=True, allow_null=True, required=False
     )
     features = SlugRelatedFieldWithOrganization(
         slug_field="feature_id",
         queryset=Feature.objects.all(),
         many=True,
+        allow_null=True,
         required=False,
     )
     currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code",
         queryset=PricingUnit.objects.all(),
+        required=False,
+    )
+    invoice_when = serializers.ChoiceField(
+        choices=AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.labels
+    )
+    billing_frequency = serializers.ChoiceField(
+        choices=AddOnSpecification.BillingFrequency.labels
+    )
+    recurring_flat_fee_timing = serializers.ChoiceField(
+        choices=AddOnSpecification.RecurringFlatFeeTiming.labels,
+        required=False,
         allow_null=True,
     )
 
     def validate(self, data):
         data = super().validate(data)
         # make sure every plan component has a unique metric
-        if data.get("plan_components"):
+        if data.get("components"):
             component_metrics = []
-            for component in data.get("plan_components"):
+            for component in data.get("components"):
                 if component.get("billable_metric") in component_metrics:
                     raise serializers.ValidationError(
                         "Plan components must have unique metrics."
                     )
                 else:
                     component_metrics.append(component.get("metric"))
+        # if tehres any paid components add on must have a currency code
         pricing_unit = data.pop("currency_code", None)
         if pricing_unit is None:
             no_flat_rate = data.get("flat_rate") == Decimal(0)
@@ -1878,37 +1893,95 @@ class AddOnCreateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     "A currency code is required for paid add-ons."
                 )
+        # convert string fields to int fields
+        if (
+            data.get("billing_frequency")
+            == AddOnSpecification.BillingFrequency.ONE_TIME.label
+        ):
+            data["billing_frequency"] = AddOnSpecification.BillingFrequency.ONE_TIME
+        elif (
+            data.get("billing_frequency")
+            == AddOnSpecification.BillingFrequency.RECURRING.label
+        ):
+            data["billing_frequency"] = AddOnSpecification.BillingFrequency.RECURRING
+
+        if (
+            data.get("invoice_when")
+            == AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_ATTACH.label
+        ):
+            data[
+                "invoice_when"
+            ] = AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_ATTACH
+        elif (
+            data.get("invoice_when")
+            == AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_SUBSCRIPTION_END.label
+        ):
+            data[
+                "invoice_when"
+            ] = (
+                AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_SUBSCRIPTION_END
+            )
+
+        if (
+            data.get("recurring_flat_fee_timing")
+            == AddOnSpecification.RecurringFlatFeeTiming.IN_ADVANCE.label
+        ):
+            data[
+                "recurring_flat_fee_timing"
+            ] = AddOnSpecification.RecurringFlatFeeTiming.IN_ADVANCE
+        elif (
+            data.get("recurring_flat_fee_timing")
+            == AddOnSpecification.RecurringFlatFeeTiming.IN_ARREARS.label
+        ):
+            data[
+                "recurring_flat_fee_timing"
+            ] = AddOnSpecification.RecurringFlatFeeTiming.IN_ARREARS
+        # if the billing frequenct us recurring, then the recurring flat fee timing must be set
+        if (
+            data.get("billing_frequency")
+            == AddOnSpecification.BillingFrequency.RECURRING
+            and data.get("recurring_flat_fee_timing") is None
+        ):
+            raise serializers.ValidationError(
+                "Recurring flat fee timing must be set for recurring add-ons."
+            )
         return data
 
     def create(self, validated_data):
         now = now_utc()
         org = validated_data["organization"]
+        # invoice_when, billing_frequency, recurring_flat_fee_timing
+        addon_spec_data = {
+            "organization": org,
+            "billing_frequency": validated_data["billing_frequency"],
+            "invoice_when": validated_data["invoice_when"],
+            "recurring_flat_fee_timing": validated_data["recurring_flat_fee_timing"],
+        }
+        addon_spec = AddOnSpecification.objects.create(**addon_spec_data)
+        # start off by cretaing the plan
         plan_create_data = {
             "organization": org,
             "plan_name": validated_data["addon_name"],
             "status": PLAN_STATUS.ACTIVE,
-            "plan_id": addon_uuid(),
             "created_by": validated_data["created_by"],
             "created_on": now,
-            "plan_type": Plan.PlanType.addon,
+            "addon_spec": addon_spec,
         }
         plan = Plan.addons.create(**plan_create_data)
 
+        # create the plan version
         plan_version_data = {
             "organization": org,
             "plan": plan,
             "description": validated_data["description"],
-            "flat_fee_billing_type": validated_data["flat_fee_billing_type"],
             "status": PLAN_VERSION_STATUS.ACTIVE,
             "flat_rate": validated_data["flat_rate"],
             "created_by": validated_data["created_by"],
             "created_on": now,
-            "version_id": addon_version_uuid(),
             "version": 1,
         }
-
         pricing_unit = validated_data.pop("currency_code", None)
-        components_data = validated_data.pop("plan_components", [])
+        components_data = validated_data.pop("components", [])
         if len(components_data) > 0:
             if pricing_unit is not None:
                 data = [
@@ -1917,7 +1990,9 @@ class AddOnCreateSerializer(serializers.ModelSerializer):
                 ]
             else:
                 data = components_data
-            components = PlanComponentSerializer(many=True).create(data)
+            components = PlanComponentCreateSerializer(
+                many=True, context={**self.context, "organization": org}
+            ).create(data)
         else:
             components = []
         features_data = validated_data.pop("features", [])
@@ -1927,18 +2002,8 @@ class AddOnCreateSerializer(serializers.ModelSerializer):
         for component in components:
             component.plan_version = billing_plan
             component.save()
-        for feature_data in features_data:
-            feature_data["organization"] = org
-            description = feature_data.pop("description", None)
-            try:
-                f, created = Feature.objects.get_or_create(**feature_data)
-                if created and description:
-                    f.description = description
-                    f.save()
-            except Feature.MultipleObjectsReturned:
-                f = Feature.objects.filter(**feature_data).first()
+        for f in features_data:
             billing_plan.features.add(f)
-        billing_plan.save()
         plan.display_version = billing_plan
         plan.save()
         return plan
@@ -1970,7 +2035,4 @@ class UsageAlertCreateSerializer(serializers.ModelSerializer):
             plan_version=plan_version,
             **validated_data,
         )
-        return usage_alert
-        return usage_alert
-        return usage_alert
         return usage_alert
