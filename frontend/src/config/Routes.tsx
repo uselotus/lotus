@@ -16,6 +16,7 @@ import PlanDetails from "../components/Plans/PlanDetails/PlanDetails";
 import EditPlanLoader from "../pages/EditPlanLoader";
 import StripeIntegrationView from "../integrations/pages/StripeIntegrationView";
 import CreateCredit from "../pages/CreateBalanceAdjustment";
+import ViewAddOns from "../pages/ViewAddOns";
 
 const { Sider } = Layout;
 
@@ -61,6 +62,7 @@ const AppRoutes: FC = () => {
             <Route path="/plans" element={<ViewPlans />} />
             <Route path="/plans/:planId" element={<PlanDetails />} />
             <Route path="create-plan" element={<CreatePlan />} />
+            <Route path="/add-ons" element={<ViewAddOns />} />
             <Route
               path="create-version/:planId"
               element={<EditPlanLoader type="version" />}
