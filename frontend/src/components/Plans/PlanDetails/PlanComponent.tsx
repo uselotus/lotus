@@ -426,7 +426,10 @@ const PlanComponents: FC<PlanComponentsProps> = ({
           </div>
           <div className="grid gap-6 grid-cols-1 xl:grid-cols-4">
             {components.map((component) => (
-              <div className="pt-2 pb-4 bg-primary-50 mt-2  mb-2 p-4 min-h-[152px] min-w-[270px]">
+              <div
+                className="pt-2 pb-4 bg-primary-50 mt-2  mb-2 p-4 min-h-[152px] min-w-[270px]"
+                key={component.id}
+              >
                 <div className="text-base text-card-text align-middle">
                   <div> {component.billable_metric.metric_name}</div>
                 </div>
@@ -472,7 +475,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                 </div>
                 <div className=" w-full h-[1.5px] mt-4 bg-card-divider mb-2" />
 
-                <div className="mt-4">
+                <div className="mt-4 self-end">
                   <div
                     className="flex"
                     onClick={() => {

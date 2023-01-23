@@ -15,19 +15,7 @@ const downloadFile = async (s3link) => {
     toast.error("No file to download");
     return;
   }
-  try {
-    const response = await axios.get(s3link, {
-      responseType: "blob",
-    });
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "file_name.pdf");
-    document.body.appendChild(link);
-    link.click();
-  } catch (error) {
-    console.error(error);
-  }
+  window.open(s3link);
 };
 
 const getPdfUrl = async (invoice: InvoiceType) => {

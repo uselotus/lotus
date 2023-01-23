@@ -33,7 +33,8 @@ except ClientError:
 
 def s3_bucket_exists(bucket_name) -> bool:
     try:
-        s3.head_bucket(Bucket=bucket_name)
+        s3_client = boto3.client("s3")
+        s3_client.head_bucket(Bucket=bucket_name)
         return True
     except ClientError as e:
         int(e.response["Error"]["Code"])
@@ -73,10 +74,19 @@ def draw_vr(doc, x, y, offset):
 
 
 def write_invoice_title(doc):
-    doc.setFont("Inter", FONT_L)
+    doc.setFont("Times-Roman", FONT_L)
     doc.drawString(25, 50, "Invoice")
-    doc.setFont("Inter", FONT_XXS)
+    doc.setFont("Times-Roman", FONT_XXS)
     doc.drawString(470, 770, "Thank you for your buisness.")
+
+
+def shortenStrings(string, length):
+    if string is None:
+        return ""
+    if len(string) > length:
+        return string[:length] + "..."
+    else:
+        return string
 
 
 def write_seller_details(
@@ -84,14 +94,15 @@ def write_seller_details(
 ):
     if email is None:
         email = ""
-    doc.setFont("Inter", FONT_XS)
-    doc.drawString(75, 130, name[:12] + "...")
-    doc.setFont("Inter", FONT_XXS)
+    doc.setFont("Times-Bold", FONT_M)
+
+    doc.drawString(75, 130, shortenStrings(name, 18))
+    doc.setFont("Times-Roman", FONT_XXS)
     doc.drawString(75, 145, line1)
-    doc.drawString(75, 160, f"{city} {state}, {postal_code}")
-    doc.drawString(75, 175, country)
-    doc.drawString(75, 190, number)
-    doc.drawString(75, 205, email)
+    if city and state and country and postal_code:
+        doc.drawString(75, 160, f"{city}, {state}, {postal_code}")
+    doc.drawString(75, 175, shortenStrings(country, 18))
+    doc.drawString(75, 205, shortenStrings(email, 18))
 
 
 def write_customer_details(doc, name, line1, city, state, country, postal_code, email):
@@ -99,20 +110,21 @@ def write_customer_details(doc, name, line1, city, state, country, postal_code, 
         email = ""
     if name is None:
         name = ""
-    doc.setFont("Inter-Bold", FONT_M)
+    doc.setFont("Times-Bold", FONT_M)
     doc.drawString(225, 130, "Billed To")
-    doc.setFont("Inter", FONT_XS)
-    doc.drawString(225, 145, name)
+    doc.setFont("Times-Roman", FONT_XS)
+    doc.drawString(225, 145, shortenStrings(name, 18))
     doc.drawString(225, 160, line1)
-    doc.drawString(225, 175, f"{city} {state}, {postal_code}")
-    doc.drawString(225, 190, country)
-    doc.drawString(225, 205, email)
+    if city and state and postal_code:
+        doc.drawString(225, 175, f"{city}, {state}, {postal_code}")
+    doc.drawString(225, 190, shortenStrings(country, 18))
+    doc.drawString(225, 205, shortenStrings(email, 18))
 
 
 def write_invoice_details(doc, invoice_number, issue_date, due_date):
-    doc.setFont("Inter-Bold", FONT_XS)
+    doc.setFont("Times-Bold", FONT_XS)
     doc.drawString(400, 130, "Invoice Details")
-    doc.setFont("Inter", FONT_XXS)
+    doc.setFont("Times-Roman", FONT_XXS)
     doc.drawString(400, 145, "Invoice No.")
     doc.drawString(465, 145, f"{invoice_number}")
 
@@ -124,21 +136,21 @@ def write_invoice_details(doc, invoice_number, issue_date, due_date):
         doc.drawString(465, 175, f'{due_date.replace("-", "/")}')
     else:
         doc.drawString(465, 175, f'{issue_date.replace("-", "/")}')
-    doc.setFont("Inter", FONT_XXS)
+    doc.setFont("Times-Roman", FONT_XXS)
 
     doc.setFillColor(HexColor("#9CA3AF"))
     doc.drawString(25, 770, f"#{invoice_number}")
 
 
 def write_summary_header(doc, start_date, end_date):
-    doc.setFont("Inter", 22)
+    doc.setFont("Times-Roman", 22)
     doc.setFillColor("black")
     doc.drawString(75, 255, "Summary")
-    doc.setFont("Inter", FONT_XXS)
+    doc.setFont("Times-Roman", FONT_XXS)
     doc.setFillColor(HexColor("#9CA3AF"))
     doc.drawString(167, 255, f"{start_date} - {end_date}")
     doc.setFillColor("black")
-    doc.setFont("Inter", FONT_XS)
+    doc.setFont("Times-Roman", FONT_XS)
     doc.setFillColor(HexColor("#9CA3AF"))
     doc.drawString(75, 290, "Services")
     doc.drawString(475, 290, "Amount")
@@ -148,7 +160,7 @@ def write_summary_header(doc, start_date, end_date):
 
 def write_line_item_group(doc, name, amount, currency, line_item_start):
     title_offset = line_item_start + 20
-    doc.setFont("Inter", FONT_S)
+    doc.setFont("Times-Roman", FONT_S)
     doc.drawString(75, title_offset, name)
     doc.drawString(475, title_offset, f'{currency}{"{:g}".format(float(amount))}')
     return line_item_start + 45
@@ -156,7 +168,7 @@ def write_line_item_group(doc, name, amount, currency, line_item_start):
 
 def write_line_item_headers(doc, line_item_start):
     offset = line_item_start + 5
-    doc.setFont("Inter", FONT_XXS)
+    doc.setFont("Times-Roman", FONT_XXS)
     doc.setFillColor(HexColor("#9CA3AF"))
     doc.drawString(100, offset, "Item")
     doc.drawString(225, offset, "Dates")
@@ -179,7 +191,7 @@ def write_line_item(
 ):
     doc.setFillColor("black")
     offset = line_item_start + 12
-    doc.setFont("Inter", FONT_XXS)
+    doc.setFont("Times-Roman", FONT_XXS)
 
     # simple text wrap
     words = name.split()
@@ -216,15 +228,20 @@ def write_line_item(
     return line_item_start + 35
 
 
-def write_total(doc, currency_symbol, total, current_y):
+def write_total(doc, currency_symbol, total, current_y, total_tax, total_credits):
     offset = current_y + 75
-    doc.setFont("Inter", FONT_XS)
+    doc.setFont("Times-Roman", FONT_XS)
     doc.drawString(80, offset, "TAX")
-    doc.drawString(80, offset + 24, "Credits")
-    doc.setFont("Inter", FONT_M)
+    doc.drawString(475, offset, f"{currency_symbol}{total_tax}")
+
+    if total_credits > 0:
+        doc.drawString(80, offset + 24, "Credits")
+        doc.drawString(475, offset + 24, "-" + f"{currency_symbol}{total_credits}")
+
+    doc.setFont("Times-Roman", FONT_M)
     doc.drawString(80, offset + 60, "Total")
     doc.drawString(475, offset + 60, f"{currency_symbol}{total}")
-    draw_hr(doc, offset + 75)
+    draw_hr(doc, offset + 80)
 
 
 def generate_invoice_pdf(
@@ -306,13 +323,16 @@ def generate_invoice_pdf(
             transform_date(invoice.issue_date),
         )
 
-    draw_big_hr(doc, 200)
+    # draw_big_hr(doc, 200)
 
-    write_summary_header(
-        doc,
-        transform_date(subscription.start_date),
-        transform_date(subscription.end_date),
-    )
+    if subscription:
+        {
+            write_summary_header(
+                doc,
+                transform_date(subscription.start_date),
+                transform_date(subscription.end_date),
+            )
+        }
 
     grouped_line_items = {}
     for line_item in line_items:
@@ -346,6 +366,7 @@ def generate_invoice_pdf(
 
     line_item_start_y = 312
     taxes = []
+    consumed_credits = []
     for group in grouped_line_items:
         amount = sum(
             model_to_dict(line_item)["subtotal"]
@@ -358,10 +379,17 @@ def generate_invoice_pdf(
         pt3 = group[0]
         if pt3 is not None:
             pt3 = pt3[1]
+        if not pt2 and not pt3 and pt1:
+            subscription_title = pt1
+        elif not pt1:
+            subscription_title = "Credit"
+        else:
+            subscription_title = f"{pt1} - {pt2} - {pt3}"
+        print(subscription_title)
         line_item_start_y = write_line_item_group(
             doc,
-            f"{pt1} - {pt2} : {pt3} ",
-            amount,
+            subscription_title,
+            amount.normalize(),
             currency.symbol,
             line_item_start_y,
         )
@@ -372,6 +400,12 @@ def generate_invoice_pdf(
             if line_item_model.chargeable_item_type == CHARGEABLE_ITEM_TYPE.TAX:
                 taxes.append(line_item_model)
                 continue
+            if (
+                line_item_model.chargeable_item_type
+                == CHARGEABLE_ITEM_TYPE.CUSTOMER_ADJUSTMENT
+            ):
+                consumed_credits.append(line_item_model)
+                continue
             line_item_count += 1
             line_item = model_to_dict(line_item_model)
             line_item_start_y = write_line_item(
@@ -380,8 +414,8 @@ def generate_invoice_pdf(
                 line_item["name"],
                 transform_date(line_item["start_date"]),
                 transform_date(line_item["end_date"]),
-                line_item["quantity"],
-                line_item["subtotal"],
+                line_item["quantity"].normalize(),
+                line_item["subtotal"].normalize(),
                 currency.symbol,
                 line_item["billing_type"],
                 line_item_start_y,
@@ -391,7 +425,7 @@ def generate_invoice_pdf(
                 doc.showPage()
                 line_item_start_y = 40
 
-                doc.setFont("Inter", FONT_XXS)
+                doc.setFont("Times-Roman", FONT_XXS)
                 invoice_number = invoice["invoice_number"]
                 doc.setFillColor(HexColor("#9CA3AF"))
                 doc.drawString(25, 770, f"#{invoice_number}")
@@ -401,52 +435,66 @@ def generate_invoice_pdf(
         draw_vr(doc, 90, line_item_start_y - 22, 5)
         draw_hr(doc, line_item_start_y)
 
+    total_tax = 0.0
     for tax_line_item in taxes:
         line_item = model_to_dict(tax_line_item)
-        line_item_start_y = write_line_item(
-            doc,
-            line_item["name"],
-            transform_date(line_item["start_date"]),
-            transform_date(line_item["end_date"]),
-            line_item["quantity"],
-            line_item["subtotal"],
-            currency.symbol,
-            line_item["billing_type"],
-            line_item_start_y,
-        )
-        if line_item_start_y > 655:
-            doc.showPage()
-            line_item_start_y = 40
+        # line_item_start_y = write_line_item(
+        #     doc,
+        #     line_item["name"],
+        #     transform_date(line_item["start_date"]),
+        #     transform_date(line_item["end_date"]),
+        #     line_item["quantity"],
+        #     line_item["subtotal"],
+        #     currency.symbol,
+        #     line_item["billing_type"],
+        #     line_item_start_y,
+        # )
+        # if line_item_start_y > 655:
+        #     doc.showPage()
+        #     line_item_start_y = 40
 
-            doc.setFont("Inter", FONT_XXS)
-            invoice_number = invoice["invoice_number"]
-            doc.setFillColor(HexColor("#9CA3AF"))
-            doc.drawString(25, 770, f"#{invoice_number}")
-            doc.setFillColor("black")
-            doc.drawString(470, 770, "Thank you for your buisness.")
+        #     doc.setFont("Times-Roman", FONT_XXS)
+        #     invoice_number = invoice["invoice_number"]
+        #     doc.setFillColor(HexColor("#9CA3AF"))
+        #     doc.drawString(25, 770, f"#{invoice_number}")
+        #     doc.setFillColor("black")
+        #     doc.drawString(470, 770, "Thank you for your buisness.")
+        total_tax += float(line_item["subtotal"])
 
-    write_total(doc, currency.symbol, round(invoice.cost_due, 2), line_item_start_y)
+    total_credits = 0.0
+    for credit_line_item in consumed_credits:
+        line_item = model_to_dict(credit_line_item)
+        total_credits += float(line_item["subtotal"])
+    write_total(
+        doc,
+        currency.symbol,
+        round(invoice.cost_due, 2),
+        line_item_start_y,
+        total_tax,
+        total_credits,
+    )
 
     doc.save()
 
-    if settings.DEBUG is False:
+    if not settings.DEBUG:
         try:
             # Upload the file to s3
-
             invoice_number = invoice.invoice_number
-            organization_id = organization.organization_id
+            organization_id = organization.organization_id.hex
             customer_id = customer.customer_id
             team = organization.team
             team_id = team.team_id.hex
 
-            bucket_name = "lotus-" + team_id
+            if settings.DEBUG:
+                bucket_name = "dev-" + team_id
+            else:
+                bucket_name = "lotus-" + team_id
 
             if s3_bucket_exists(bucket_name):
-                pass
+                print("Bucket exists")
             else:
-                s3.create_bucket(
-                    Bucket=bucket_name,
-                )
+                s3.create_bucket(Bucket=bucket_name, ACL="private")
+                print("Created bucket", bucket_name)
 
             key = f"{organization_id}/{customer_id}/invoice_pdf_{invoice_number}.pdf"
             buffer.seek(0)
@@ -454,17 +502,9 @@ def generate_invoice_pdf(
 
             s3.Object(bucket_name, key)
 
-            # url = s3.generate_presigned_url(
-            #     ClientMethod="get_object",
-            #     Params={"Bucket": bucket_name, "Key": key},
-            #     ExpiresIn=36000000,  # URL will expire in 1 hour
-            # )
-            # return url
         except Exception as e:
             print(e)
-    # # else:
-    # invoice_number = invoice["invoice_number"]
-    # doc.save("image_files/invoice_pdf_" + invoice_number + ".pdf")
+
     return ""
 
 
@@ -487,16 +527,22 @@ def get_invoice_presigned_url(invoice: Invoice):
 
     customer_id = invoice.customer.customer_id
 
-    bucket_name = "lotus-" + team_id
+    if settings.DEBUG:
+        bucket_name = "dev-" + team_id
+        return {"exists": False, "url": ""}
 
-    key = f"{organization_id}/{customer_id}/invoice_pdf_{invoice_number}.pdf"
+    else:
+        bucket_name = "lotus-" + team_id
+        key = f"{organization_id}/{customer_id}/invoice_pdf_{invoice_number}.pdf"
 
-    if not s3_file_exists(bucket_name=bucket_name, key=key):
-        generate_invoice_pdf(invoice, BytesIO())
+        if not s3_file_exists(bucket_name=bucket_name, key=key):
+            generate_invoice_pdf(invoice, BytesIO())
 
-    url = s3.generate_presigned_url(
-        ClientMethod="get_object",
-        Params={"Bucket": bucket_name, "Key": key},
-        ExpiresIn=3600,  # URL will expire in 1 hour
-    )
+        s3_client = boto3.client("s3")
+
+        url = s3_client.generate_presigned_url(
+            ClientMethod="get_object",
+            Params={"Bucket": bucket_name, "Key": key},
+            ExpiresIn=3600,  # URL will expire in 1 hour
+        )
     return {"exists": True, "url": url}
