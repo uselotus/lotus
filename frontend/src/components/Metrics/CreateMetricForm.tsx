@@ -14,9 +14,10 @@ import {
 import { MetricType } from "../../types/metric-type";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import AceEditor from "react-ace";
-import "ace-builds/src-noconflict/mode-mysql";
+import "ace-builds/src-noconflict/mode-sql";
 import "ace-builds/src-noconflict/theme-github";
 import "ace-builds/src-noconflict/ext-language_tools";
+import { format } from "sql-formatter";
 
 const { Option } = Select;
 const { Panel } = Collapse;
@@ -49,11 +50,15 @@ const CreateMetricForm = (props: {
     "SELECT COUNT(*) as usage_qty FROM events"
   );
 
-  // useEffect(() => {
-  //   if (props.visible === false) {
-  //     form.resetFields();
-  //   }
-  // }, [props.visible]);
+  const formatSQL = () => {
+    if (customSQL) {
+      // format the SQL code
+      const formattedSQL = format(customSQL, {
+        language: "postgresql",
+      });
+      setCustomSQL(formattedSQL);
+    }
+  };
 
   const [costMetric, setCostMetric] = useState(false);
 
@@ -127,11 +132,13 @@ const CreateMetricForm = (props: {
             if (rate) {
               values.metric_type = "rate";
             }
-            if (values.metric_type === "custom") {
-              values.custom_sql = customSQL;
+            if (values.metric_type === "custom" && customSQL) {
+              values.custom_sql = format(customSQL, {
+                language: "postgresql",
+              });
             }
-            console.log(values);
             props.onSave(values);
+            setCustomSQL("SELECT COUNT(*) as usage_qty FROM events");
             form.resetFields();
             setRate(false);
             setEventType("counter");
@@ -503,8 +510,17 @@ const CreateMetricForm = (props: {
               Full SQL support is available, including joins, subqueries, CTEs,
               and window functions.
             </p>
+            <Button
+              className="float-right"
+              onClick={() => {
+                formatSQL();
+              }}
+            >
+              Format
+            </Button>
             <AceEditor
-              mode="mysql"
+              width="80%"
+              mode="sql"
               theme="github"
               placeholder="SELECT * FROM events"
               onChange={(newValue) => setCustomSQL(newValue)}

@@ -2,11 +2,10 @@ import React, { FC, useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "react-query";
 import { useNavigate } from "react-router-dom";
 import { PlanDetailType, PlanType, PlanVersionType } from "../types/plan-type";
-import { Plan } from "../api/api";
+import { Plan , Backtests } from "../api/api";
 import { Form, Button, Input, Radio, Select, Modal } from "antd";
 import { PageLayout } from "../components/base/PageLayout";
 import { CreateBacktestType, Substitution } from "../types/experiment-type";
-import { Backtests } from "../api/api";
 import { toast } from "react-toastify";
 import { usePlanState, usePlanUpdater } from "../context/PlanContext";
 import dayjs from "dayjs";
@@ -84,7 +83,7 @@ const CreateBacktest: FC = () => {
   );
 
   const runBacktest = () => {
-    var singlesubscription: Substitution[];
+    let singlesubscription: Substitution[];
     if (currentPlan && replacementPlan) {
       submitSubstitution();
     } else if (substitutions.length === 0) {

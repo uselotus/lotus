@@ -36,6 +36,7 @@ from api.serializers.nonmodel_serializers import (
     GetCustomerFeatureAccessRequestSerializer,
     GetEventAccessSerializer,
     GetFeatureAccessSerializer,
+    GetInvoicePdfURLRequestSerializer,
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
 )
@@ -68,6 +69,7 @@ from metering_billing.exceptions import (
 )
 from metering_billing.exceptions.exceptions import NotFoundException
 from metering_billing.invoice import generate_invoice
+from metering_billing.invoice_pdf import get_invoice_presigned_url
 from metering_billing.kafka.producer import Producer
 from metering_billing.models import (
     CategoricalFilter,
@@ -1483,6 +1485,31 @@ class Ping(APIView):
         )
 
 
+class GetInvoicePdfURL(APIView):
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
+
+    @extend_schema(
+        parameters=[GetInvoicePdfURLRequestSerializer],
+        responses={
+            200: inline_serializer(
+                name="GetInvoicePdfURLResponse",
+                fields={
+                    "url": serializers.URLField(),
+                },
+            ),
+        },
+    )
+    def get(self, request, format=None):
+        organization = request.organization
+        serializer = GetInvoicePdfURLRequestSerializer(
+            data=request.query_params, context={"organization": organization}
+        )
+        serializer.is_valid(raise_exception=True)
+        invoice = serializer.validated_data["invoice"]
+        url = get_invoice_presigned_url(invoice).get("url")
+        return Response({"url": url}, status=status.HTTP_200_OK)
+
+
 class ConfirmIdemsReceivedView(APIView):
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
@@ -1692,6 +1719,8 @@ def track_event(request):
             status=status.HTTP_201_CREATED,
         )
     else:
+        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
+        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)

@@ -25,15 +25,14 @@ export interface CustomerType {
   tax_rate?: number;
 }
 
-export interface LightweightCustomerType
-  extends Omit<
+export type LightweightCustomerType = Omit<
     CustomerType,
     | "invoices"
     | "subscriptions"
     | "default_currency"
     | "total_amount_due"
     | "integrations"
-  > {}
+  >
 
 export interface CustomerCreateType
   extends Omit<

@@ -1,6 +1,7 @@
 import logging
 from decimal import Decimal
 
+import api.views as api_views
 from django.conf import settings
 from django.db.models import Count, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -655,50 +656,8 @@ class TransferSubscriptionsView(APIView):
         )
 
 
-# class ExperimentalToActiveView(APIView):
-#     permission_classes = [IsAuthenticated | ValidOrganization]
-
-#     @extend_schema(
-#         request=ExperimentalToActiveRequestSerializer(),
-#         responses={
-#             200: inline_serializer(
-#                 name="ExperimentalToActiveSuccess",
-#                 fields={
-#                     "status": serializers.ChoiceField(choices=["success"]),
-#                     "detail": serializers.CharField(),
-#                 },
-#             ),
-#             400: inline_serializer(
-#                 name="ExperimentalToActiveFailure",
-#                 fields={
-#                     "status": serializers.ChoiceField(choices=["error"]),
-#                     "detail": serializers.CharField(),
-#                 },
-#             ),
-#         },
-#     )
-#     def post(self, request, format=None):
-#         organization = request.organization
-#         serializer = ExperimentalToActiveRequestSerializer(data=request.data)
-#         serializer.is_valid(raise_exception=True)
-#         billing_plan = serializer.validated_data["version_id"]
-#         try:
-#             billing_plan.status = PLAN_STATUS.ACTIVE
-#         except Exception as e:
-#             return Response(
-#                 {
-#                     "status": "error",
-#                     "detail": f"Error converting experimental plan to active plan: {e}",
-#                 },
-#                 status=status.HTTP_400_BAD_REQUEST,
-#             )
-#         return Response(
-#             {
-#                 "status": "success",
-#                 "detail": f"Plan {billing_plan} succesfully converted from experimental to active.",
-#             },
-#             status=status.HTTP_200_OK,
-#         )
+class GetInvoicePdfURL(api_views.GetInvoicePdfURL):
+    pass
 
 
 class PlansByNumCustomersView(APIView):

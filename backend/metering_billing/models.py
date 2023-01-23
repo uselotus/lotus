@@ -84,12 +84,10 @@ logger = logging.getLogger("django.server")
 META = settings.META
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
-###TODO: write this
-# def save_pdf_to_s3()
-
 
 class Team(models.Model):
     name = models.CharField(max_length=100, blank=False, null=False)
+    team_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     def __str__(self):
         return self.name
@@ -149,7 +147,7 @@ class Organization(models.Model):
         return self.organization_name
 
     def save(self, *args, **kwargs):
-        for k, _ in self.payment_provider_ids.items():
+        for k, v in self.payment_provider_ids.items():
             if k not in PAYMENT_PROVIDERS:
                 raise ExternalConnectionInvalid(
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"

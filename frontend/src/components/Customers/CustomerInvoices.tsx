@@ -1,11 +1,8 @@
 import { Button, Dropdown, Menu, Table, Tag, Tooltip } from "antd";
-import { FC, useEffect } from "react";
-// @ts-ignore
-import React from "react";
+import React, { FC, useEffect } from "react";
 import { InvoiceType, MarkPaymentStatusAsPaid } from "../../types/invoice-type";
-// @ts-ignore
 import dayjs from "dayjs";
-import { useMutation } from "react-query";
+import { useMutation, useQuery } from "react-query";
 import { Invoices } from "../../api/api";
 import { toast } from "react-toastify";
 import { MoreOutlined } from "@ant-design/icons";
@@ -18,22 +15,20 @@ const downloadFile = async (s3link) => {
     toast.error("No file to download");
     return;
   }
+  window.open(s3link);
+};
+
+const getPdfUrl = async (invoice: InvoiceType) => {
   try {
-    const response = await axios.get(s3link, {
-      responseType: "blob",
-    });
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "file_name.pdf");
-    document.body.appendChild(link);
-    link.click();
-  } catch (error) {
-    console.error(error);
+    const response = await Invoices.getInvoiceUrl(invoice.invoice_id);
+    const pdfUrl = response.url;
+    downloadFile(pdfUrl);
+  } catch (err) {
+    toast.error("Error downloading file");
+    console.log(err);
   }
 };
 
-// @ts-ignore
 const lotusUrl = new URL("./lotusIcon.svg", import.meta.url).href;
 
 interface Props {
@@ -133,10 +128,7 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
               <Dropdown
                 overlay={
                   <Menu>
-                    <Menu.Item
-                      key="1"
-                      onClick={() => downloadFile(record.invoice_pdf)}
-                    >
+                    <Menu.Item key="1" onClick={() => getPdfUrl(record)}>
                       <div className="archiveLabel">
                         Download Invoice Information
                       </div>

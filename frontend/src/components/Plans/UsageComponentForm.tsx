@@ -26,8 +26,8 @@ type EditableTableProps = Parameters<typeof Table>[0];
 type ColumnTypes = Exclude<EditableTableProps["columns"], undefined>;
 type ValidateTiersType = { isValid: boolean; message: string }[];
 const validateTiers = (tiers: Tier[]): ValidateTiersType => {
-  var currentStart = 0;
-  var currentEnd: number | undefined;
+  let currentStart = 0;
+  let currentEnd: number | undefined;
 
   const arr2: ValidateTiersType = tiers.map((tier, index) => {
     if (index === 0) {
@@ -312,9 +312,9 @@ function UsageComponentForm({
       (metric) => metric.metric_name === form.getFieldValue("metric")
     );
 
-    var valid_granularities: string[] = [];
+    const valid_granularities: string[] = [];
     if (currentMetric) {
-      for (var i = 0; i < all_proration_granularity.length; i++) {
+      for (let i = 0; i < all_proration_granularity.length; i++) {
         if (currentMetric.granularity === all_proration_granularity[i]) {
           valid_granularities.push(all_proration_granularity[i]);
           break;

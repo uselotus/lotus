@@ -5,12 +5,11 @@ import {
   PaymentProcessorConnectionResponseType,
   StripeConnectionRequestType,
 } from "../types/payment-processor-type";
-import { useSearchParams } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+import { useSearchParams , useNavigate } from "react-router-dom";
 import { Button } from "antd";
 
 const StripeRedirect: FC = () => {
-  let [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [connected, setConnected] = useState<string | boolean>(
     "Not Yet Connected"
   );

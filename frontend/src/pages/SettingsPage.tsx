@@ -5,8 +5,7 @@ import IntegrationsTab from "../components/Settings/settings/tabs/IntegrationsTa
 import { DeveloperTab } from "../components/Settings/settings/tabs/DeveloperTab";
 import TeamTab from "../components/Settings/settings/tabs/TeamTab";
 import { PageLayout } from "../components/base/PageLayout";
-import { useNavigate } from "react-router-dom";
-import { useParams } from "react-router-dom";
+import { useNavigate , useParams } from "react-router-dom";
 import GeneralTab from "../components/Settings/settings/tabs/GeneralTab";
 import CreatePricingUnit from "../components/Settings/settings/tabs/CreatePricingUnitTab";
 
