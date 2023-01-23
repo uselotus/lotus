@@ -172,7 +172,7 @@ WITH rate_per_bucket AS (
         OVER (
             PARTITION BY customer_id
             {%- for group_by_field in group_by %}
-            , group_by_field
+            , {{ group_by_field }}
             {%- endfor %}
             ORDER BY bucket ASC
             RANGE BETWEEN INTERVAL '{{ lookback_qty }} {{ lookback_units }}' PRECEDING AND CURRENT ROW
@@ -251,7 +251,7 @@ WITH rate_per_bucket AS (
         OVER (
             PARTITION BY customer_id
             {%- for group_by_field in group_by %}
-            , group_by_field
+            , {{ group_by_field }}
             {%- endfor %}
             ORDER BY bucket ASC
             RANGE BETWEEN INTERVAL '{{ lookback_qty }} {{ lookback_units }}' PRECEDING AND CURRENT ROW
