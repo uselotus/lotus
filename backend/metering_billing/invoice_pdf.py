@@ -1,21 +1,16 @@
-import os
 from datetime import datetime
+from io import BytesIO
 
 import boto3
 from botocore.exceptions import ClientError
 from django.conf import settings
 from django.forms.models import model_to_dict
-
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from reportlab.lib.colors import HexColor
-from reportlab.lib.colors import Color
-
+from metering_billing.models import Invoice
 from metering_billing.serializers.serializer_utils import PlanUUIDField
 from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
-from metering_billing.models import Organization, Team
-from io import BytesIO
-
+from reportlab.lib.colors import Color, HexColor
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 FONT_XL = 26
 FONT_L = 24
@@ -29,8 +24,8 @@ black01 = Color(0, 0, 0, alpha=0.1)
 try:
     s3 = boto3.resource(
         "s3",
-        aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
-        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
     )
 except ClientError:
     pass
@@ -232,34 +227,37 @@ def write_total(doc, currency_symbol, total, current_y):
     draw_hr(doc, offset + 75)
 
 
-def generate_invoice_pdf(invoice_model, organization, customer, line_items, buffer):
+def generate_invoice_pdf(
+    invoice: Invoice,
+    buffer,
+):
     doc = canvas.Canvas(buffer, pagesize=letter, bottomup=0)
 
-    subscription = model_to_dict(invoice_model.subscription)
-    invoice = model_to_dict(invoice_model)
-    currency = model_to_dict(invoice_model.currency)
-    organization_model = Organization.objects.filter(id=organization).first()
-
+    customer = invoice.customer
+    organization = invoice.organization
+    subscription = invoice.subscription
+    currency = invoice.currency
+    line_items = invoice.line_items.all()
     write_invoice_title(doc)
     # draw_logo(doc)
 
-    address = organization["properties"].get("address")
+    address = organization.properties.get("address")
     if address:
         write_seller_details(
             doc,
-            organization["organization_name"],
-            organization["properties"]["address"]["line1"],
-            organization["properties"]["city"],
-            organization["properties"]["state"],
-            organization["properties"]["address"]["country"],
-            organization["properties"]["address"]["postal_code"],
-            organization["phone"],
-            organization["email"],
+            organization.organization_name,
+            address["line1"],
+            address["city"],
+            address["state"],
+            address["country"],
+            address["postal_code"],
+            organization.phone,
+            organization.email,
         )
     else:
         write_seller_details(
             doc,
-            organization["organization_name"],
+            organization.organization_name,
             "",
             "",
             "",
@@ -269,51 +267,51 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
             "",
         )
 
-    customer_address = customer["properties"].get("address")
+    customer_address = customer.properties.get("address")
     if customer_address:
         write_customer_details(
             doc,
-            customer["customer_name"],
-            customer["properties"]["address"]["line1"],
-            customer["properties"]["address"]["city"],
-            customer["properties"]["address"]["state"],
-            customer["properties"]["address"]["country"],
-            customer["properties"]["address"]["postal_code"],
-            customer["email"],
+            customer.customer_name,
+            customer_address["line1"],
+            customer_address["city"],
+            customer_address["state"],
+            customer_address["country"],
+            customer_address["postal_code"],
+            customer.email,
         )
     else:
         write_customer_details(
             doc,
-            customer["customer_name"],
+            customer.customer_name,
             "",
             "",
             "",
             "",
             "",
-            customer["email"],
+            customer.email,
         )
 
-    if invoice["due_date"]:
+    if invoice.due_date:
         write_invoice_details(
             doc,
-            invoice["invoice_number"],
-            transform_date(invoice["issue_date"]),
-            transform_date(invoice["due_date"]),
+            invoice.invoice_number,
+            transform_date(invoice.issue_date),
+            transform_date(invoice.due_date),
         )
     else:
         write_invoice_details(
             doc,
-            invoice["invoice_number"],
-            transform_date(invoice["issue_date"]),
-            transform_date(invoice["issue_date"]),
+            invoice.invoice_number,
+            transform_date(invoice.issue_date),
+            transform_date(invoice.issue_date),
         )
 
     draw_big_hr(doc, 200)
 
     write_summary_header(
         doc,
-        transform_date(subscription["start_date"]),
-        transform_date(subscription["end_date"]),
+        transform_date(subscription.start_date),
+        transform_date(subscription.end_date),
     )
 
     grouped_line_items = {}
@@ -353,11 +351,18 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
             model_to_dict(line_item)["subtotal"]
             for line_item in grouped_line_items[group]
         )
+        pt1 = group[2]
+        pt2 = group[0]
+        if pt2 is not None:
+            pt2 = pt2[0]
+        pt3 = group[0]
+        if pt3 is not None:
+            pt3 = pt3[1]
         line_item_start_y = write_line_item_group(
             doc,
-            f"{group[2]} - {group[0][0]} : {group[0][1]} ",
+            f"{pt1} - {pt2} : {pt3} ",
             amount,
-            currency["symbol"],
+            currency.symbol,
             line_item_start_y,
         )
         line_item_start_y = write_line_item_headers(doc, line_item_start_y)
@@ -377,7 +382,7 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
                 transform_date(line_item["end_date"]),
                 line_item["quantity"],
                 line_item["subtotal"],
-                currency["symbol"],
+                currency.symbol,
                 line_item["billing_type"],
                 line_item_start_y,
             )
@@ -405,7 +410,7 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
             transform_date(line_item["end_date"]),
             line_item["quantity"],
             line_item["subtotal"],
-            currency["symbol"],
+            currency.symbol,
             line_item["billing_type"],
             line_item_start_y,
         )
@@ -420,9 +425,7 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
             doc.setFillColor("black")
             doc.drawString(470, 770, "Thank you for your buisness.")
 
-    write_total(
-        doc, currency["symbol"], round(invoice["cost_due"], 2), line_item_start_y
-    )
+    write_total(doc, currency.symbol, round(invoice.cost_due, 2), line_item_start_y)
 
     doc.save()
 
@@ -430,11 +433,11 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
         try:
             # Upload the file to s3
 
-            invoice_number = invoice["invoice_number"]
-            organization_id = organization_model.organization_id
-            customer_id = customer["customer_id"]
-            team_model = Team.objects.filter(id=organization_model.team).first()
-            team_id = team_model.team_id
+            invoice_number = invoice.invoice_number
+            organization_id = organization.organization_id
+            customer_id = customer.customer_id
+            team = organization.team
+            team_id = team.team_id.hex
 
             bucket_name = "lotus-" + team_id
 
@@ -477,26 +480,19 @@ def s3_file_exists(bucket_name, key):
         return True
 
 
-def get_invoice_presigned_url(invoice_model):
+def get_invoice_presigned_url(invoice: Invoice):
+    organization_id = invoice.organization.organization_id.hex
+    team_id = invoice.organization.team.team_id.hex
+    invoice_number = invoice.invoice_number
 
-    print("get_invoice_presigned_url")
-    organization_id = invoice_model.organization
-    organization_model = Organization.objects.filter(id=organization_id).first()
-    team_id = Team.objects.filter(id=organization_model.team).first().team_id
-    invoice_number = invoice_model.invoice_number
-
-    customer_id = invoice_model.customer.customer_id
+    customer_id = invoice.customer.customer_id
 
     bucket_name = "lotus-" + team_id
 
     key = f"{organization_id}/{customer_id}/invoice_pdf_{invoice_number}.pdf"
 
     if not s3_file_exists(bucket_name=bucket_name, key=key):
-        line_items = invoice_model.line_items.all()
-
-        generate_invoice_pdf(
-            invoice_model, organization_id, customer_id, line_items, BytesIO()
-        )
+        generate_invoice_pdf(invoice, BytesIO())
 
     url = s3.generate_presigned_url(
         ClientMethod="get_object",
