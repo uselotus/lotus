@@ -1,12 +1,9 @@
 from decimal import Decimal
 
+import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
 from django.db.models import DecimalField, Q, Sum
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-
-import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -59,6 +56,8 @@ from metering_billing.utils.enums import (
     TAG_GROUP,
     WEBHOOK_TRIGGER_EVENTS,
 )
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
@@ -425,6 +424,21 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
                 )
         subscription_filter_keys = validated_data.get("subscription_filter_keys", None)
         if subscription_filter_keys is not None:
+            prohibited_keys = [
+                "alter",
+                "create",
+                "drop",
+                "delete",
+                "insert",
+                "replace",
+                "truncate",
+                "update",
+                "union",
+            ]
+            if any(key.lower() in prohibited_keys for key in subscription_filter_keys):
+                raise serializers.ValidationError(
+                    "Subscription filter keys cannot contain SQL keywords"
+                )
             update_subscription_filter_settings_task.delay(
                 instance.pk,
                 subscription_filter_keys,
