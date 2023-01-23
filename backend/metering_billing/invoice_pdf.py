@@ -501,6 +501,6 @@ def get_invoice_presigned_url(invoice_model):
     url = s3.generate_presigned_url(
         ClientMethod="get_object",
         Params={"Bucket": bucket_name, "Key": key},
-        ExpiresIn=36000000,  # URL will expire in 1 hour
+        ExpiresIn=3600,  # URL will expire in 1 hour
     )
     return {"exists": True, "url": url}
