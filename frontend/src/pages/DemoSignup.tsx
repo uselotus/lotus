@@ -2,10 +2,9 @@ import { Button, Card, Form, Input } from "antd";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Organizaton } from "../components/Registration/CreateOrganization";
-import { Authentication } from "../api/api";
+import { Authentication , instance } from "../api/api";
 import { useMutation, useQueryClient } from "react-query";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { instance } from "../api/api";
 import Cookies from "universal-cookie";
 import { toast } from "react-toastify";
 

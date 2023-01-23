@@ -119,6 +119,7 @@ const GeneralTab: FC = () => {
       setCountry(orgData.address ? orgData.address.country : "");
       setPostalCode(orgData.address ? orgData.address.postal_code : "");
       setSubscriptionFilters(orgData.subscription_filter_keys);
+      setFormSubscriptionFilters(orgData.subscription_filter_keys);
     }
   }, [orgData]);
 

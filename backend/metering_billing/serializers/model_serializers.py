@@ -201,15 +201,13 @@ class OrganizationSerializer(serializers.ModelSerializer):
     def get_subscription_filter_keys(
         self, obj
     ) -> serializers.ListField(child=serializers.CharField()):
-        subscription_filter_keys_setting = OrganizationSetting.objects.filter(
-            organization=obj,
-            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS,
-        ).first()
-        if subscription_filter_keys_setting:
-            val = subscription_filter_keys_setting.setting_values
+        if not obj.subscription_filters_setting_provisioned:
+            return []
         else:
-            val = []
-        return val
+            setting = obj.settings.get(
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
+            )
+            return setting.setting_values
 
     def get_team_name(self, obj) -> str:
         team = obj.team
@@ -426,8 +424,24 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
                 )
         subscription_filter_keys = validated_data.get("subscription_filter_keys", None)
         if subscription_filter_keys is not None:
+            prohibited_keys = [
+                "alter",
+                "create",
+                "drop",
+                "delete",
+                "insert",
+                "replace",
+                "truncate",
+                "update",
+                "union",
+            ]
+            if any(key.lower() in prohibited_keys for key in subscription_filter_keys):
+                raise serializers.ValidationError(
+                    "Subscription filter keys cannot contain SQL keywords"
+                )
             update_subscription_filter_settings_task.delay(
-                instance.pk, subscription_filter_keys
+                instance.pk,
+                subscription_filter_keys,
             )
         instance.save()
         return instance

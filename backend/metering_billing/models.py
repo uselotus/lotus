@@ -84,12 +84,10 @@ logger = logging.getLogger("django.server")
 META = settings.META
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
-###TODO: write this
-# def save_pdf_to_s3()
-
 
 class Team(models.Model):
     name = models.CharField(max_length=100, blank=False, null=False)
+    team_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     def __str__(self):
         return self.name
@@ -149,7 +147,7 @@ class Organization(models.Model):
         return self.organization_name
 
     def save(self, *args, **kwargs):
-        for k, _ in self.payment_provider_ids.items():
+        for k, v in self.payment_provider_ids.items():
             if k not in PAYMENT_PROVIDERS:
                 raise ExternalConnectionInvalid(
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
@@ -189,15 +187,23 @@ class Organization(models.Model):
     def update_subscription_filter_settings(self, filter_keys):
         from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 
-        setting, _ = OrganizationSetting.objects.get_or_create(
-            organization=self,
-            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS,
-        )
-        if not isinstance(filter_keys, list) and all(
-            isinstance(key, str) for key in filter_keys
-        ):
-            raise ValidationError("filter keys must be a list of strings")
-        setting.setting_values = filter_keys
+        if not self.subscription_filters_setting_provisioned:
+            self.provision_subscription_filter_settings()
+        try:
+            setting = self.settings.get(
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
+            )
+        except OrganizationSetting.DoesNotExist:
+            self.subscription_filters_setting_provisioned = False
+            self.save()
+            self.provision_subscription_filter_settings()
+            setting = self.settings.get(
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
+            )
+        current_setting_values = set(setting.setting_values)
+        new_setting_values = set(filter_keys)
+        combined = sorted(list(current_setting_values.union(new_setting_values)))
+        setting.setting_values = combined
         setting.save()
         for metric in self.metrics.all():
             METRIC_HANDLER_MAP[metric.metric_type].create_continuous_aggregate(

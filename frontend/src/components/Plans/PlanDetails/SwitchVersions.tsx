@@ -3,7 +3,7 @@
 import React, { FC, Fragment, useEffect, useState } from "react";
 
 import "./SwitchVersions.css";
-import { PlusOutlined } from "@ant-design/icons";
+import { PlusOutlined , MoreOutlined , DeleteOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import {
   PlanDetailType,
@@ -14,10 +14,8 @@ import PlanComponents, { PlanInfo, PlanSummary } from "./PlanComponent";
 import PlanFeatures from "./PlanFeatures";
 import StateTabs from "./StateTabs";
 import { Dropdown, Menu, Button, Typography } from "antd";
-import { MoreOutlined } from "@ant-design/icons";
 // @ts-ignore
 import dayjs from "dayjs";
-import { DeleteOutlined } from "@ant-design/icons";
 import { Plan } from "../../../api/api";
 import { useMutation, useQueryClient } from "react-query";
 

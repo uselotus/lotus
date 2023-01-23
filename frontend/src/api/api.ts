@@ -69,8 +69,10 @@ import {
   TransferSub,
   UpdateStripeSettingParams,
 } from "../types/stripe-type";
-import { DraftInvoiceType } from "../types/invoice-type";
-import { MarkPaymentStatusAsPaid } from "../types/invoice-type";
+import {
+  DraftInvoiceType,
+  MarkPaymentStatusAsPaid,
+} from "../types/invoice-type";
 import { CreateCreditType, CreditType } from "../types/balance-adjustment";
 import { CurrencyType } from "../types/pricing-unit-type";
 import { AlertType, CreateAlertType } from "../types/alert-type";
@@ -494,6 +496,9 @@ export const Invoices = {
   },
   getDraftInvoice: (customer_id: string): Promise<DraftInvoiceType> => {
     return requests.get("app/draft_invoice/", { params: { customer_id } });
+  },
+  getInvoiceUrl: (invoice_id: string): Promise<{ url: string }> => {
+    return requests.get(`app/invoice_url/`, { params: { invoice_id } });
   },
 };
 

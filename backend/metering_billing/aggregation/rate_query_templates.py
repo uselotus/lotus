@@ -24,7 +24,7 @@ SELECT
     )
     {% endif %} AS usage_qty
     {%- for group_by_field in group_by %}
-    ,"metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }}
+    , "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }}
     {%- endfor %}
 FROM
     "metering_billing_usageevent"
@@ -74,7 +74,7 @@ WHERE
 GROUP BY
     "metering_billing_usageevent"."customer_id"
     {%- for group_by_field in group_by %}
-    , "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }}
+    , {{ group_by_field }}
     {%- endfor %}
 """
 
@@ -147,7 +147,7 @@ WHERE
 GROUP BY
     "metering_billing_usageevent"."customer_id"
     {%- for group_by_field in group_by %}
-    , "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }}
+    , {{ group_by_field }}
     {%- endfor %}
     , bucket
 """
@@ -172,7 +172,7 @@ WITH rate_per_bucket AS (
         OVER (
             PARTITION BY customer_id
             {%- for group_by_field in group_by %}
-            , group_by_field
+            , {{ group_by_field }}
             {%- endfor %}
             ORDER BY bucket ASC
             RANGE BETWEEN INTERVAL '{{ lookback_qty }} {{ lookback_units }}' PRECEDING AND CURRENT ROW
@@ -251,7 +251,7 @@ WITH rate_per_bucket AS (
         OVER (
             PARTITION BY customer_id
             {%- for group_by_field in group_by %}
-            , group_by_field
+            , {{ group_by_field }}
             {%- endfor %}
             ORDER BY bucket ASC
             RANGE BETWEEN INTERVAL '{{ lookback_qty }} {{ lookback_units }}' PRECEDING AND CURRENT ROW

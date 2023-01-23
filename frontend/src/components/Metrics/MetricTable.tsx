@@ -36,7 +36,7 @@ interface Props {
 const MetricTable: FC<Props> = ({ metricArray }) => {
   const formRef = useRef<ProFormInstance>();
   const [currentMetric, setCurrentMetric] = useState<MetricType | null>();
-  var filters: any[];
+  let filters: any[];
 
   const mergeFilters = (
     numeric_filters: any[] | undefined,

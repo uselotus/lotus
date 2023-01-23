@@ -637,7 +637,8 @@ class CounterHandler(MetricHandler):
                     cursor.execute(second_drop_query)
                 cursor.execute(second_query)
                 cursor.execute(second_refresh_query)
-                cursor.execute(second_compression_query)
+                if not refresh:
+                    cursor.execute(second_compression_query)
 
     @staticmethod
     def create_metric(validated_data: dict) -> Metric:
@@ -1045,7 +1046,8 @@ class GaugeHandler(MetricHandler):
                 cursor.execute(Template(CAGG_DROP).render(**sql_injection_data))
             cursor.execute(query)
             cursor.execute(refresh_query)
-            cursor.execute(compression_query)
+            if not refresh:
+                cursor.execute(compression_query)
 
     @staticmethod
     def archive_metric(metric: Metric) -> Metric:
@@ -1484,7 +1486,8 @@ class RateHandler(MetricHandler):
                 cursor.execute(Template(CAGG_DROP).render(**sql_injection_data))
             cursor.execute(query)
             cursor.execute(refresh_query)
-            cursor.execute(compression_query)
+            if not refresh:
+                cursor.execute(compression_query)
 
     @staticmethod
     def archive_metric(metric: Metric) -> Metric:

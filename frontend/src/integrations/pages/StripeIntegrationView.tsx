@@ -1,7 +1,6 @@
 // @ts-ignore
 import React, { FC, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+import { useParams , useNavigate } from "react-router-dom";
 import { PageLayout } from "../../components/base/PageLayout";
 import { Button } from "antd";
 import { useMutation, useQuery } from "react-query";
@@ -20,7 +19,7 @@ const TOAST_POSITION = toast.POSITION.TOP_CENTER;
 //create FC component called StripeIntegration
 const StripeIntegrationView: FC = () => {
   //create variable called {id} and set it to type string
-  let { id } = useParams<{ id: string }>();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isSettingValue, setIsSettingValue] = useState(false);
   const [currentStripeSetting, setCurrentStripeSetting] =

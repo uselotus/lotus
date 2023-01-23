@@ -85,12 +85,12 @@ const SubscriptionView: FC<Props> = ({
   };
 
   const cancelAndBill = (plan_id, subscription_filters) => {
-    let query_params: CancelSubscriptionQueryParams = {
+    const query_params: CancelSubscriptionQueryParams = {
       plan_id: plan_id,
       subscription_filters: subscription_filters,
       customer_id: customer_id,
     };
-    let body: CancelSubscriptionBody = {
+    const body: CancelSubscriptionBody = {
       usage_behavior: "bill_full",
       flat_fee_behavior: "prorate",
       invoicing_behavior: "invoice_now",
@@ -99,12 +99,12 @@ const SubscriptionView: FC<Props> = ({
   };
 
   const cancelAndDontBill = (plan_id, subscription_filters) => {
-    let query_params: CancelSubscriptionQueryParams = {
+    const query_params: CancelSubscriptionQueryParams = {
       plan_id: plan_id,
       subscription_filters: subscription_filters,
       customer_id: customer_id,
     };
-    let body: CancelSubscriptionBody = {
+    const body: CancelSubscriptionBody = {
       usage_behavior: "bill_none",
       flat_fee_behavior: "prorate",
       invoicing_behavior: "invoice_now",
@@ -228,8 +228,8 @@ const SubscriptionView: FC<Props> = ({
 
   const handleAttachPlanSubmit = () => {
     if (selectedPlan) {
-      let plan = idtoPlan[selectedPlan];
-      let props: CreateSubscriptionType = {
+      const plan = idtoPlan[selectedPlan];
+      const props: CreateSubscriptionType = {
         customer_id: customer_id,
         plan_id: plan.plan_id,
         start_date: new Date().toISOString(),

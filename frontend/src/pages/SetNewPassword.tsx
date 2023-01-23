@@ -1,12 +1,11 @@
 import React, { FC, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Authentication } from "../api/api";
+import { Authentication , instance } from "../api/api";
 import { Card, Input, Button, Form } from "antd";
 import "./Login.css";
 import { useQueryClient, useMutation } from "react-query";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { instance } from "../api/api";
 import Cookies from "universal-cookie";
 import { QueryErrors } from "../types/error-response-types";
 
