@@ -1,9 +1,12 @@
 from decimal import Decimal
 
-import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
 from django.db.models import DecimalField, Q, Sum
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
+import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -56,8 +59,6 @@ from metering_billing.utils.enums import (
     TAG_GROUP,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
@@ -201,15 +202,13 @@ class OrganizationSerializer(serializers.ModelSerializer):
     def get_subscription_filter_keys(
         self, obj
     ) -> serializers.ListField(child=serializers.CharField()):
-        subscription_filter_keys_setting = OrganizationSetting.objects.filter(
-            organization=obj,
-            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS,
-        ).first()
-        if subscription_filter_keys_setting:
-            val = subscription_filter_keys_setting.setting_values
+        if not obj.subscription_filters_setting_provisioned:
+            return []
         else:
-            val = []
-        return val
+            setting = obj.settings.get(
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
+            )
+            return setting.setting_values
 
     def get_team_name(self, obj) -> str:
         team = obj.team
@@ -427,7 +426,8 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
         subscription_filter_keys = validated_data.get("subscription_filter_keys", None)
         if subscription_filter_keys is not None:
             update_subscription_filter_settings_task.delay(
-                instance.pk, subscription_filter_keys
+                instance.pk,
+                subscription_filter_keys,
             )
         instance.save()
         return instance

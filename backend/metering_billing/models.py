@@ -189,15 +189,23 @@ class Organization(models.Model):
     def update_subscription_filter_settings(self, filter_keys):
         from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 
-        setting, _ = OrganizationSetting.objects.get_or_create(
-            organization=self,
-            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS,
-        )
-        if not isinstance(filter_keys, list) and all(
-            isinstance(key, str) for key in filter_keys
-        ):
-            raise ValidationError("filter keys must be a list of strings")
-        setting.setting_values = filter_keys
+        if not self.subscription_filters_setting_provisioned:
+            self.provision_subscription_filter_settings()
+        try:
+            setting = self.settings.get(
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
+            )
+        except OrganizationSetting.DoesNotExist:
+            self.subscription_filters_setting_provisioned = False
+            self.save()
+            self.provision_subscription_filter_settings()
+            setting = self.settings.get(
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
+            )
+        current_setting_values = set(setting.setting_values)
+        new_setting_values = set(filter_keys)
+        combined = sorted(list(current_setting_values.union(new_setting_values)))
+        setting.setting_values = combined
         setting.save()
         for metric in self.metrics.all():
             METRIC_HANDLER_MAP[metric.metric_type].create_continuous_aggregate(
