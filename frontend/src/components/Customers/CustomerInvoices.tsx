@@ -2,7 +2,7 @@ import { Button, Dropdown, Menu, Table, Tag, Tooltip } from "antd";
 import React, { FC, useEffect } from "react";
 import { InvoiceType, MarkPaymentStatusAsPaid } from "../../types/invoice-type";
 import dayjs from "dayjs";
-import { useMutation } from "react-query";
+import { useMutation, useQuery } from "react-query";
 import { Invoices } from "../../api/api";
 import { toast } from "react-toastify";
 import { MoreOutlined } from "@ant-design/icons";
@@ -27,6 +27,16 @@ const downloadFile = async (s3link) => {
     link.click();
   } catch (error) {
     console.error(error);
+  }
+};
+
+const getPdfUrl = async (invoice: InvoiceType) => {
+  try {
+    const response = await Invoices.getInvoiceUrl(invoice.invoice_id);
+    const pdfUrl = response.url;
+    downloadFile(pdfUrl);
+  } catch (err) {
+    toast.error("Error downloading file");
   }
 };
 
@@ -129,10 +139,7 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
               <Dropdown
                 overlay={
                   <Menu>
-                    <Menu.Item
-                      key="1"
-                      onClick={() => downloadFile(record.invoice_pdf)}
-                    >
+                    <Menu.Item key="1" onClick={() => getPdfUrl(record)}>
                       <div className="archiveLabel">
                         Download Invoice Information
                       </div>
