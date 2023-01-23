@@ -26,11 +26,14 @@ FONT_XXS = 10
 
 black01 = Color(0, 0, 0, alpha=0.1)
 
-s3 = boto3.resource(
-    "s3",
-    aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
-    aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
-)
+try:
+    s3 = boto3.resource(
+        "s3",
+        aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+    )
+except ClientError:
+    pass
 
 
 def s3_bucket_exists(bucket_name) -> bool:
@@ -476,6 +479,7 @@ def s3_file_exists(bucket_name, key):
 
 def get_invoice_presigned_url(invoice_model):
 
+    print("get_invoice_presigned_url")
     organization_id = invoice_model.organization
     organization_model = Organization.objects.filter(id=organization_id).first()
     team_id = Team.objects.filter(id=organization_model.team).first().team_id
