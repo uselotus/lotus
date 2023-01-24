@@ -17,14 +17,6 @@ from django.db.models import Count, F, FloatField, Q, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-
 from metering_billing.exceptions.exceptions import (
     AlignmentEngineFailure,
     ExternalConnectionFailure,
@@ -36,7 +28,6 @@ from metering_billing.exceptions.exceptions import (
 from metering_billing.utils import (
     calculate_end_date,
     convert_to_date,
-    convert_to_datetime,
     convert_to_decimal,
     customer_uuid,
     date_as_min_dt,
@@ -80,6 +71,13 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -2325,8 +2323,6 @@ class SubscriptionRecord(models.Model):
         new_filters = kwargs.pop("subscription_filters", [])
         now = now_utc()
         subscription = self.customer.subscriptions.active(self.start_date).first()
-        if not isinstance(self.start_date, datetime.datetime):
-            self.start_date = convert_to_datetime(self.start_date)
         if not subscription:
             raise ServerError(
                 "Unexpected error: subscription date alignment engine failed."
@@ -2796,4 +2792,5 @@ class UsageAlertResult(models.Model):
             self.triggered_count = self.triggered_count + 1
         self.last_run_value = new_value
         self.last_run_timestamp = now
+        self.save()
         self.save()

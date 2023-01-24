@@ -863,7 +863,6 @@ class TestCalculateMetricProrationForGauge:
         calculated_amt = (Decimal(87) - Decimal(60)) / Decimal(60) * Decimal(100)
         assert abs(usage_revenue_dict["revenue"] - calculated_amt) < Decimal(0.01)
 
-        {}
         response = setup_dict["client"].get(
             reverse("cost_analysis"),
             {
