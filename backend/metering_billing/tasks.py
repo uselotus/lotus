@@ -6,7 +6,6 @@ from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
-from django.forms.models import model_to_dict
 from metering_billing.exceptions.exceptions import AlignmentEngineFailure
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.backtest_serializers import (
@@ -46,15 +45,9 @@ def generate_invoice_pdf_async(invoice_pk):
     from metering_billing.invoice_pdf import generate_invoice_pdf
     from metering_billing.models import Invoice
 
-    invoice = Invoice.objects.select_related("customer", "organization").get(
-        pk=invoice_pk
-    )
-    line_items = invoice.line_items.all()
+    invoice = Invoice.objects.get(pk=invoice_pk)
     pdf_url = generate_invoice_pdf(
         invoice,
-        model_to_dict(invoice.organization),
-        model_to_dict(invoice.customer),
-        line_items,
         BytesIO(),
     )
     invoice.invoice_pdf = pdf_url

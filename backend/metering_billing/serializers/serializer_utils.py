@@ -16,6 +16,7 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
         from metering_billing.models import (
             CustomerBalanceAdjustment,
             Feature,
+            Invoice,
             Metric,
             Organization,
             Plan,
@@ -34,12 +35,15 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             data = FeatureUUIDField().to_internal_value(data)
         elif self.queryset.model is Organization:
             data = OrganizationUUIDField().to_internal_value(data)
+        elif self.queryset.model is Invoice:
+            data = InvoiceUUIDField().to_internal_value(data)
         return super().to_internal_value(data)
 
     def to_representation(self, obj):
         from metering_billing.models import (
             CustomerBalanceAdjustment,
             Feature,
+            Invoice,
             Metric,
             Organization,
             Plan,
@@ -59,6 +63,8 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             return FeatureUUIDField().to_representation(obj.feature_id)
         elif isinstance(obj, Organization):
             return OrganizationUUIDField().to_representation(obj.organization_id)
+        elif isinstance(obj, Invoice):
+            return InvoiceUUIDField().to_representation(obj.invoice_id)
         return repr
 
 

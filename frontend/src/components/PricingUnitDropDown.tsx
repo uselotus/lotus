@@ -1,9 +1,8 @@
 import { Select } from "antd";
 // @ts-ignore
 import React from "react";
-import { UseQueryResult } from "react-query";
+import { UseQueryResult , useQuery } from "react-query";
 import { PricingUnits } from "../api/api";
-import { useQuery } from "react-query";
 import { CurrencyType } from "../types/pricing-unit-type";
 
 interface PricingUnitDropDownProps {

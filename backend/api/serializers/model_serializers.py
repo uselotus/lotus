@@ -435,7 +435,6 @@ class LightweightInvoiceSerializer(InvoiceSerializer):
                 [
                     "line_items",
                     "customer",
-                    "invoice_pdf",
                 ]
             )
         )

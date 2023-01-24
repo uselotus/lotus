@@ -8,6 +8,7 @@ import { colorMap } from "./MetricTable";
 import createShortenedText from "../Plans/helpers/createShortenedText";
 import CopyText from "../base/CopytoClipboard";
 import useMediaQuery from "../../hooks/useWindowQuery";
+import { format } from "sql-formatter";
 
 interface MetricDetailsProps {
   metric: MetricType;
@@ -26,6 +27,11 @@ const operatorDisplayMap = new Map<string, string>([
 const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
   const queryClient = useQueryClient();
   const windowWidth = useMediaQuery();
+
+  const formattedSQL = metric.custom_sql
+    ? format(metric.custom_sql, { language: "postgresql" })
+    : "";
+  console.log(formattedSQL);
   const mutation = useMutation(
     (metric_id: string) => Metrics.archiveMetric(metric_id),
     {
@@ -76,8 +82,10 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
               </div>
             </p>
             <b>Query:</b>
-            {/* {format(metric.custom_sql, { language: "mysql" })} */}
-            {metric.custom_sql}
+            <p className="text-sm text-gray-800 font-mono whitespace-pre">
+              {" "}
+              {formattedSQL}
+            </p>
           </div>
         ) : (
           <div className="py-4 grid grid-cols-2 items-start justify-between ">
@@ -125,7 +133,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
             {metric.metric_type === "rate" && (
               <p>
                 <b className="mr-2">Aggregation Type:</b>
-                {!!metric.billable_aggregation_type ? (
+                {metric.billable_aggregation_type ? (
                   <Tag>{metric.billable_aggregation_type}</Tag>
                 ) : (
                   "N/A"
@@ -135,7 +143,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
             {metric.metric_type === "gauge" && (
               <p>
                 <b className="mr-2">Event Type:</b>
-                {!!metric.event_type ? <Tag>{metric.event_type}</Tag> : "N/A"}
+                {metric.event_type ? <Tag>{metric.event_type}</Tag> : "N/A"}
               </p>
             )}
 

@@ -157,7 +157,8 @@
           "group": "Invoices",
           "pages": [
             "api-reference/invoices/list-invoices",
-            "api-reference/invoices/get-invoice"
+            "api-reference/invoices/get-invoice",
+            "api-reference/invoices/get-invoice-pdf"
           ]
         },
         {

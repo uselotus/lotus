@@ -3,7 +3,6 @@ import datetime
 import uuid
 from collections import namedtuple
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
-from typing import List, Type
 
 import pytz
 from dateutil import parser
