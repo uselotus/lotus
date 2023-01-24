@@ -3,6 +3,7 @@ from decimal import Decimal
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
+
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
@@ -43,6 +44,7 @@ def generate_invoice(
     Generate an invoice for a subscription.
     """
     from metering_billing.models import (
+        AddOnSpecification,
         Invoice,
         InvoiceLineItem,
         OrganizationSetting,
@@ -155,12 +157,7 @@ def generate_invoice(
                             organization=organization,
                         )
             # next plan flat fee calculation
-            if billing_plan.transition_to:
-                next_bp = billing_plan.transition_to.display_version
-            elif billing_plan.replace_with:
-                next_bp = billing_plan.replace_with
-            else:
-                next_bp = billing_plan
+            next_bp = find_next_billing_plan(subscription_record)
             if generate_next_subscription_record:
                 if (
                     subscription.end_date >= subscription_record.end_date
@@ -185,21 +182,37 @@ def generate_invoice(
                     next_subscription_record = None
             else:
                 next_subscription_record = subscription_record
+
             if charge_next_plan and next_subscription_record is not None:
-                if (
+                in_advance_direct = (
                     next_bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
+                )
+                if next_bp.plan.addon_spec:
+                    in_advance_addon = (
+                        next_bp.plan.addon_spec.recurring_flat_fee_timing
+                        == AddOnSpecification.RecurringFlatFeeTiming.IN_ADVANCE
+                    )
+                else:
+                    in_advance_addon = False
+                charge_in_advance = in_advance_direct or in_advance_addon
+                if (
+                    charge_in_advance
                     and next_bp.flat_rate > 0
                     and subscription_record.auto_renew
                 ):
                     new_start = date_as_min_dt(
                         subscription_record.end_date + relativedelta(days=1)
                     )
+                    next_duration = (
+                        next_bp.plan.plan_duration
+                        or find_next_billing_plan(
+                            subscription_record.parent
+                        ).plan.plan_duration
+                    )
                     InvoiceLineItem.objects.create(
                         name=f"{next_bp.plan.plan_name} v{next_bp.version} Flat Fee - Next Period",
                         start_date=new_start,
-                        end_date=calculate_end_date(
-                            next_bp.plan.plan_duration, new_start
-                        ),
+                        end_date=calculate_end_date(next_duration, new_start),
                         quantity=1,
                         subtotal=next_bp.flat_rate,
                         billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
@@ -264,6 +277,16 @@ def generate_invoice(
         invoices.append(invoice)
 
     return invoices
+
+
+def find_next_billing_plan(subscription_record):
+    if subscription_record.billing_plan.transition_to:
+        next_bp = subscription_record.billing_plan.transition_to.display_version
+    elif subscription_record.billing_plan.replace_with:
+        next_bp = subscription_record.billing_plan.replace_with
+    else:
+        next_bp = subscription_record.billing_plan
+    return next_bp
 
 
 def apply_taxes(invoice, customer, organization):
@@ -440,4 +463,5 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
         generate_invoice_pdf_async.delay(invoice.pk)
         invoice_created_webhook(invoice, organization)
 
+    return invoice
     return invoice

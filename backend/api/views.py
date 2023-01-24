@@ -474,7 +474,7 @@ class SubscriptionViewSet(
         "head",
         "post",
     ]
-    queryset = SubscriptionRecord.objects.all()
+    queryset = SubscriptionRecord.base_objects.all()
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -843,7 +843,7 @@ class SubscriptionViewSet(
         srs = serializer.save()
         return Response(
             AddOnSubscriptionRecordSerializer(srs, many=True).data,
-            status=status.HTTP_200_OK,
+            status=status.HTTP_201_CREATED,
         )
 
     # @extend_schema(responses=AddOnSubscriptionRecordSerializer(many=True))
@@ -1219,7 +1219,9 @@ class MetricAccessView(APIView):
             "access": False,
             "access_per_subscription": [],
         }
-        for sr in subscription_records:
+        for sr in subscription_records.filter(
+            billing_plan__plan__addon_spec__isnull=True
+        ):
             if subscription_filters_set:
                 sr_filters_set = {(x.property_name, x.value) for x in sr.filters.all()}
                 if not subscription_filters_set.issubset(sr_filters_set):
@@ -1245,6 +1247,23 @@ class MetricAccessView(APIView):
                     single_sr_dict["metric_free_limit"] = free_limit
                     single_sr_dict["metric_total_limit"] = total_limit
                     break
+            addon_srs = sr.addon_subscription_records.all()
+            for addon_sr in addon_srs:
+                for component in addon_sr.billing_plan.plan_components.all():
+                    check_metric = component.billable_metric
+                    if check_metric == metric:
+                        total_limit = tiers[-1].range_end
+                        current_usage = metric.get_subscription_record_current_usage(
+                            addon_sr
+                        )
+                        if single_sr_dict["metric_total_limit"] is None:
+                            single_sr_dict["metric_total_limit"] += total_limit
+                        elif total_limit is None:
+                            single_sr_dict["metric_total_limit"] = None
+                        else:
+                            single_sr_dict["metric_total_limit"] += total_limit
+                        break
+
             return_dict["access_per_subscription"].append(single_sr_dict)
         access = []
         for sr_dict in return_dict["access_per_subscription"]:
@@ -1259,110 +1278,6 @@ class MetricAccessView(APIView):
         return_dict["access"] = any(access)
         serializer = MetricAccessResponseSerializer(return_dict)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-class GetCustomerEventAccessView(APIView):
-    permission_classes = []
-    authentication_classes = []
-
-    @extend_schema(
-        parameters=[GetCustomerEventAccessRequestSerializer],
-        responses={
-            200: GetEventAccessSerializer(many=True),
-        },
-        deprecated=True,
-    )
-    def get(self, request, format=None):
-        result, success = fast_api_key_validation_and_cache(request)
-        if not success:
-            return result
-        else:
-            organization_pk = result
-        serializer = GetCustomerEventAccessRequestSerializer(
-            data=request.query_params, context={"organization_pk": organization_pk}
-        )
-        serializer.is_valid(raise_exception=True)
-        # try:
-        #     username = self.request.user.username
-        # except Exception as e:
-        #     username = None
-        # posthog.capture(
-        #     POSTHOG_PERSON
-        #     if POSTHOG_PERSON
-        #     else (username if username else organization.organization_name + " (Unknown)"),
-        #     event="get_access",
-        #     properties={"organization": organization.organization_name},
-        # )
-        customer = serializer.validated_data["customer"]
-        event_name = serializer.validated_data.get("event_name")
-        access_metric = serializer.validated_data.get("metric")
-        subscription_records = (
-            SubscriptionRecord.objects.active()
-            .select_related("billing_plan")
-            .filter(
-                organization_id=organization_pk,
-                customer=customer,
-            )
-        )
-        subscription_filters = {
-            x["property_name"]: x["value"]
-            for x in serializer.validated_data.get("subscription_filters", [])
-        }
-        for key, value in subscription_filters.items():
-            key = f"properties__{key}"
-            subscription_records = subscription_records.filter(**{key: value})
-        metrics = []
-        subscription_records = subscription_records.prefetch_related(
-            "billing_plan__plan_components",
-            "billing_plan__plan_components__billable_metric",
-            "billing_plan__plan_components__tiers",
-            "filters",
-        )
-        for sr in subscription_records:
-            subscription_filters = []
-            for filter in sr.filters.all():
-                subscription_filters.append(
-                    {
-                        "property_name": filter.property_name,
-                        "value": filter.comparison_value[0],
-                    }
-                )
-            single_sub_dict = {
-                "plan_id": PlanUUIDField().to_representation(
-                    sr.billing_plan.plan.plan_id
-                ),
-                "subscription_filters": subscription_filters,
-                "usage_per_component": [],
-            }
-            for component in sr.billing_plan.plan_components.all():
-                metric = component.billable_metric
-                if metric.event_name == event_name or access_metric == metric:
-                    metric_name = metric.billable_metric_name
-                    tiers = sorted(component.tiers.all(), key=lambda x: x.range_start)
-                    free_limit = (
-                        tiers[0].range_end
-                        if tiers[0].type == PriceTier.PriceTierType.FREE
-                        else None
-                    )
-                    total_limit = tiers[-1].range_end
-                    current_usage = metric.get_subscription_record_current_usage(sr)
-                    unique_tup_dict = {
-                        "event_name": metric.event_name,
-                        "metric_name": metric_name,
-                        "metric_usage": current_usage,
-                        "metric_free_limit": free_limit,
-                        "metric_total_limit": total_limit,
-                        "metric_id": MetricUUIDField().to_representation(
-                            metric.metric_id
-                        ),
-                    }
-                    single_sub_dict["usage_per_component"].append(unique_tup_dict)
-            metrics.append(single_sub_dict)
-        GetEventAccessSerializer(many=True).validate(metrics)
-        return Response(
-            metrics,
-            status=status.HTTP_200_OK,
-        )
 
 
 class FeatureAccessView(APIView):
@@ -1406,7 +1321,9 @@ class FeatureAccessView(APIView):
             "access": False,
             "access_per_subscription": [],
         }
-        for sr in subscription_records:
+        for sr in subscription_records.filter(
+            billing_plan__plan__addon_spec__isnull=True
+        ):
             if subscription_filters_set:
                 sr_filters_set = {(x.property_name, x.value) for x in sr.filters.all()}
                 if not subscription_filters_set.issubset(sr_filters_set):
@@ -1415,92 +1332,18 @@ class FeatureAccessView(APIView):
                 "subscription": sr,
                 "access": False,
             }
-            if feature in sr.billing_plan.features.all():
+            all_billing_plan_features = sr.billing_plan.features.all()
+            for addon in sr.addon_subscription_records.all():
+                all_billing_plan_features = (
+                    all_billing_plan_features | addon.features.all()
+                )
+            if feature in all_billing_plan_features.distinct():
                 single_sr_dict["access"] = True
             return_dict["access_per_subscription"].append(single_sr_dict)
         access = [d["access"] for d in return_dict["access_per_subscription"]]
         return_dict["access"] = any(access)
         serializer = FeatureAccessResponseSerializer(return_dict)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-class GetCustomerFeatureAccessView(APIView):
-    permission_classes = []
-    authentication_classes = []
-
-    @extend_schema(
-        parameters=[GetCustomerFeatureAccessRequestSerializer],
-        responses={
-            200: GetFeatureAccessSerializer(many=True),
-        },
-        deprecated=True,
-    )
-    def get(self, request, format=None):
-        result, success = fast_api_key_validation_and_cache(request)
-        if not success:
-            return result
-        else:
-            organization_pk = result
-        serializer = GetCustomerFeatureAccessRequestSerializer(
-            data=request.query_params, context={"organization_pk": organization_pk}
-        )
-        serializer.is_valid(raise_exception=True)
-        # try:
-        #     username = self.request.user.username
-        # except Exception as e:
-        #     username = None
-        # posthog.capture(
-        #     POSTHOG_PERSON
-        #     if POSTHOG_PERSON
-        #     else (username if username else organization.organization_name + " (Unknown)"),
-        #     event="get_access",
-        #     properties={"organization": organization.organization_name},
-        # )
-        customer = serializer.validated_data["customer"]
-        feature_name = serializer.validated_data.get("feature_name")
-        subscriptions = (
-            SubscriptionRecord.objects.active()
-            .select_related("billing_plan")
-            .filter(
-                organization_id=organization_pk,
-                customer=customer,
-            )
-        )
-        subscription_filters = {
-            x["property_name"]: x["value"]
-            for x in serializer.validated_data.get("subscription_filters", [])
-        }
-        for key, value in subscription_filters.items():
-            key = f"properties__{key}"
-            subscriptions = subscriptions.filter(**{key: value})
-        features = []
-        subscriptions = subscriptions.prefetch_related("billing_plan__features")
-        for sub in subscriptions:
-            subscription_filters = []
-            for filter in sub.filters.all():
-                subscription_filters.append(
-                    {
-                        "property_name": filter.property_name,
-                        "value": filter.comparison_value[0],
-                    }
-                )
-            sub_dict = {
-                "feature_name": feature_name,
-                "plan_id": PlanUUIDField().to_representation(
-                    sub.billing_plan.plan.plan_id
-                ),
-                "subscription_filters": subscription_filters,
-                "access": False,
-            }
-            for feature in sub.billing_plan.features.all():
-                if feature.feature_name == feature_name:
-                    sub_dict["access"] = True
-            features.append(sub_dict)
-        GetFeatureAccessSerializer(many=True).validate(features)
-        return Response(
-            features,
-            status=status.HTTP_200_OK,
-        )
 
 
 class Ping(APIView):
@@ -1775,3 +1618,189 @@ def track_event(request):
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
+
+
+###### DEPRECATED ######
+
+
+class GetCustomerFeatureAccessView(APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    @extend_schema(
+        parameters=[GetCustomerFeatureAccessRequestSerializer],
+        responses={
+            200: GetFeatureAccessSerializer(many=True),
+        },
+        deprecated=True,
+    )
+    def get(self, request, format=None):
+        result, success = fast_api_key_validation_and_cache(request)
+        if not success:
+            return result
+        else:
+            organization_pk = result
+        serializer = GetCustomerFeatureAccessRequestSerializer(
+            data=request.query_params, context={"organization_pk": organization_pk}
+        )
+        serializer.is_valid(raise_exception=True)
+        # try:
+        #     username = self.request.user.username
+        # except Exception as e:
+        #     username = None
+        # posthog.capture(
+        #     POSTHOG_PERSON
+        #     if POSTHOG_PERSON
+        #     else (username if username else organization.organization_name + " (Unknown)"),
+        #     event="get_access",
+        #     properties={"organization": organization.organization_name},
+        # )
+        customer = serializer.validated_data["customer"]
+        feature_name = serializer.validated_data.get("feature_name")
+        subscriptions = (
+            SubscriptionRecord.objects.active()
+            .select_related("billing_plan")
+            .filter(
+                organization_id=organization_pk,
+                customer=customer,
+            )
+        )
+        subscription_filters = {
+            x["property_name"]: x["value"]
+            for x in serializer.validated_data.get("subscription_filters", [])
+        }
+        for key, value in subscription_filters.items():
+            key = f"properties__{key}"
+            subscriptions = subscriptions.filter(**{key: value})
+        features = []
+        subscriptions = subscriptions.prefetch_related("billing_plan__features")
+        for sub in subscriptions:
+            subscription_filters = []
+            for filter in sub.filters.all():
+                subscription_filters.append(
+                    {
+                        "property_name": filter.property_name,
+                        "value": filter.comparison_value[0],
+                    }
+                )
+            sub_dict = {
+                "feature_name": feature_name,
+                "plan_id": PlanUUIDField().to_representation(
+                    sub.billing_plan.plan.plan_id
+                ),
+                "subscription_filters": subscription_filters,
+                "access": False,
+            }
+            for feature in sub.billing_plan.features.all():
+                if feature.feature_name == feature_name:
+                    sub_dict["access"] = True
+            features.append(sub_dict)
+        GetFeatureAccessSerializer(many=True).validate(features)
+        return Response(
+            features,
+            status=status.HTTP_200_OK,
+        )
+
+
+class GetCustomerEventAccessView(APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    @extend_schema(
+        parameters=[GetCustomerEventAccessRequestSerializer],
+        responses={
+            200: GetEventAccessSerializer(many=True),
+        },
+        deprecated=True,
+    )
+    def get(self, request, format=None):
+        result, success = fast_api_key_validation_and_cache(request)
+        if not success:
+            return result
+        else:
+            organization_pk = result
+        serializer = GetCustomerEventAccessRequestSerializer(
+            data=request.query_params, context={"organization_pk": organization_pk}
+        )
+        serializer.is_valid(raise_exception=True)
+        # try:
+        #     username = self.request.user.username
+        # except Exception as e:
+        #     username = None
+        # posthog.capture(
+        #     POSTHOG_PERSON
+        #     if POSTHOG_PERSON
+        #     else (username if username else organization.organization_name + " (Unknown)"),
+        #     event="get_access",
+        #     properties={"organization": organization.organization_name},
+        # )
+        customer = serializer.validated_data["customer"]
+        event_name = serializer.validated_data.get("event_name")
+        access_metric = serializer.validated_data.get("metric")
+        subscription_records = (
+            SubscriptionRecord.objects.active()
+            .select_related("billing_plan")
+            .filter(
+                organization_id=organization_pk,
+                customer=customer,
+            )
+        )
+        subscription_filters = {
+            x["property_name"]: x["value"]
+            for x in serializer.validated_data.get("subscription_filters", [])
+        }
+        for key, value in subscription_filters.items():
+            key = f"properties__{key}"
+            subscription_records = subscription_records.filter(**{key: value})
+        metrics = []
+        subscription_records = subscription_records.prefetch_related(
+            "billing_plan__plan_components",
+            "billing_plan__plan_components__billable_metric",
+            "billing_plan__plan_components__tiers",
+            "filters",
+        )
+        for sr in subscription_records:
+            subscription_filters = []
+            for filter in sr.filters.all():
+                subscription_filters.append(
+                    {
+                        "property_name": filter.property_name,
+                        "value": filter.comparison_value[0],
+                    }
+                )
+            single_sub_dict = {
+                "plan_id": PlanUUIDField().to_representation(
+                    sr.billing_plan.plan.plan_id
+                ),
+                "subscription_filters": subscription_filters,
+                "usage_per_component": [],
+            }
+            for component in sr.billing_plan.plan_components.all():
+                metric = component.billable_metric
+                if metric.event_name == event_name or access_metric == metric:
+                    metric_name = metric.billable_metric_name
+                    tiers = sorted(component.tiers.all(), key=lambda x: x.range_start)
+                    free_limit = (
+                        tiers[0].range_end
+                        if tiers[0].type == PriceTier.PriceTierType.FREE
+                        else None
+                    )
+                    total_limit = tiers[-1].range_end
+                    current_usage = metric.get_subscription_record_current_usage(sr)
+                    unique_tup_dict = {
+                        "event_name": metric.event_name,
+                        "metric_name": metric_name,
+                        "metric_usage": current_usage,
+                        "metric_free_limit": free_limit,
+                        "metric_total_limit": total_limit,
+                        "metric_id": MetricUUIDField().to_representation(
+                            metric.metric_id
+                        ),
+                    }
+                    single_sub_dict["usage_per_component"].append(unique_tup_dict)
+            metrics.append(single_sub_dict)
+        GetEventAccessSerializer(many=True).validate(metrics)
+        return Response(
+            metrics,
+            status=status.HTTP_200_OK,
+        )

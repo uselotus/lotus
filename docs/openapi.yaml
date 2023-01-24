@@ -1336,35 +1336,35 @@ components:
     BacktestDetail:
       type: object
       properties:
+        backtest_results:
+          $ref: '#/components/schemas/AllSubstitutionResults'
+        start_date:
+          type: string
+          format: date
         status:
           enum:
           - running
           - completed
           - failed
           type: string
-        backtest_results:
-          $ref: '#/components/schemas/AllSubstitutionResults'
         kpis:
           type: object
           additionalProperties: {}
+        backtest_name:
+          type: string
+          maxLength: 100
         end_date:
           type: string
           format: date
+        time_created:
+          type: string
+          format: date-time
         backtest_id:
           type: string
         backtest_substitutions:
           type: array
           items:
             $ref: '#/components/schemas/BacktestSubstitution'
-        time_created:
-          type: string
-          format: date-time
-        start_date:
-          type: string
-          format: date
-        backtest_name:
-          type: string
-          maxLength: 100
       required:
       - backtest_id
       - backtest_name
@@ -2063,27 +2063,11 @@ components:
     DraftInvoice:
       type: object
       properties:
-        due_date:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
         currency:
           $ref: '#/components/schemas/PricingUnit'
-        line_items:
-          type: array
-          items:
-            $ref: '#/components/schemas/GroupedLineItem'
-          readOnly: true
-        end_date:
+        start_date:
           type: string
           format: date
-          readOnly: true
-        invoice_id:
-          type: string
-        issue_date:
-          type: string
-          format: date-time
           readOnly: true
         cost_due:
           type: number
@@ -2093,9 +2077,25 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           readOnly: true
-        start_date:
+        due_date:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        invoice_id:
+          type: string
+        end_date:
           type: string
           format: date
+          readOnly: true
+        line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroupedLineItem'
+          readOnly: true
+        issue_date:
+          type: string
+          format: date-time
           readOnly: true
       required:
       - cost_due
@@ -2486,8 +2486,47 @@ components:
     InitialPlanVersionRequest:
       type: object
       properties:
+        flat_fee_billing_type:
+          enum:
+          - in_arrears
+          - in_advance
+          - ''
+          - 
+          type: string
+          writeOnly: true
+          nullable: true
+        currency_code:
+          type: string
+          minLength: 1
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponentCreateRequest'
+          nullable: true
+        day_anchor:
+          type: integer
+          maximum: 31
+          minimum: 1
+          writeOnly: true
+          nullable: true
         price_adjustment:
           $ref: '#/components/schemas/PriceAdjustmentRequest'
+        month_anchor:
+          type: integer
+          maximum: 12
+          minimum: 1
+          writeOnly: true
+          nullable: true
+        features:
+          type: array
+          items:
+            type: string
+            format: uuid
+            nullable: true
+        description:
+          type: string
+          writeOnly: true
+          nullable: true
         usage_billing_frequency:
           enum:
           - monthly
@@ -2498,45 +2537,6 @@ components:
           type: string
           writeOnly: true
           nullable: true
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponentCreateRequest'
-          nullable: true
-        transition_to_plan_id:
-          type: string
-          format: uuid
-        flat_fee_billing_type:
-          enum:
-          - in_arrears
-          - in_advance
-          - ''
-          - 
-          type: string
-          writeOnly: true
-          nullable: true
-        description:
-          type: string
-          writeOnly: true
-          nullable: true
-        features:
-          type: array
-          items:
-            type: string
-            format: uuid
-            nullable: true
-        day_anchor:
-          type: integer
-          maximum: 31
-          minimum: 1
-          writeOnly: true
-          nullable: true
-        month_anchor:
-          type: integer
-          maximum: 12
-          minimum: 1
-          writeOnly: true
-          nullable: true
         flat_rate:
           type: number
           format: double
@@ -2544,9 +2544,9 @@ components:
           minimum: 0
           exclusiveMaximum: true
           writeOnly: true
-        currency_code:
+        transition_to_plan_id:
           type: string
-          minLength: 1
+          format: uuid
     InviteRequestRequest:
       type: object
       properties:
@@ -2824,6 +2824,66 @@ components:
       - addon_name
       - addon_type
       - billing_frequency
+    LightweightAddonRequest:
+      type: object
+      properties:
+        addon_name:
+          type: string
+          minLength: 1
+          description: The name of the add-on plan.
+        addon_id:
+          type: string
+          minLength: 1
+          description: The ID of the add-on plan.
+      required:
+      - addon_id
+      - addon_name
+    LightweightAddonSubscriptionRecord:
+      type: object
+      properties:
+        start_date:
+          type: string
+          format: date-time
+          description: The time the subscription starts. This will be a string in
+            yyyy-mm-dd HH:mm:ss format in UTC time.
+        end_date:
+          type: string
+          format: date-time
+          description: The time the subscription starts. This will be a string in
+            yyyy-mm-dd HH:mm:ss format in UTC time.
+        addon:
+          $ref: '#/components/schemas/LightweightAddon'
+        fully_billed:
+          type: boolean
+          description: Whether the subscription has been fully billed and finalized.
+      required:
+      - addon
+      - end_date
+      - fully_billed
+      - start_date
+    LightweightAddonSubscriptionRecordRequest:
+      type: object
+      properties:
+        start_date:
+          type: string
+          format: date-time
+          description: The time the subscription starts. This will be a string in
+            yyyy-mm-dd HH:mm:ss format in UTC time.
+        end_date:
+          type: string
+          format: date-time
+          description: The time the subscription starts. This will be a string in
+            yyyy-mm-dd HH:mm:ss format in UTC time.
+        addon:
+          $ref: '#/components/schemas/LightweightAddonRequest'
+        fully_billed:
+          type: boolean
+          description: Whether the subscription has been fully billed and finalized.
+      required:
+      - addon
+      - end_date
+      - fully_billed
+      - start_date
     LightweightCustomer:
       type: object
       properties:
@@ -2882,34 +2942,38 @@ components:
     LightweightInvoice:
       type: object
       properties:
-        due_date:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
         currency:
           $ref: '#/components/schemas/PricingUnit'
+        start_date:
+          type: string
+          format: date
+          readOnly: true
+        external_payment_obj_id:
+          type: string
+          readOnly: true
+          nullable: true
+        invoice_number:
+          type: string
+          readOnly: true
         payment_status:
           enum:
           - paid
           - unpaid
           type: string
           readOnly: true
+        seller:
+          $ref: '#/components/schemas/Seller'
         invoice_pdf:
           type: string
           format: uri
           readOnly: true
           nullable: true
-        end_date:
+        external_payment_obj_type:
+          enum:
+          - stripe
+          - 
           type: string
-          format: date
-          readOnly: true
-        invoice_id:
-          type: string
-        issue_date:
-          type: string
-          format: date-time
-          readOnly: true
+          nullable: true
         cost_due:
           type: number
           format: double
@@ -2918,25 +2982,21 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           readOnly: true
-        external_payment_obj_type:
-          enum:
-          - stripe
-          - 
-          type: string
-          nullable: true
-        invoice_number:
-          type: string
-          readOnly: true
-        start_date:
+        end_date:
           type: string
           format: date
           readOnly: true
-        seller:
-          $ref: '#/components/schemas/Seller'
-        external_payment_obj_id:
+        due_date:
           type: string
+          format: date-time
           readOnly: true
           nullable: true
+        invoice_id:
+          type: string
+        issue_date:
+          type: string
+          format: date-time
+          readOnly: true
       required:
       - cost_due
       - currency
@@ -2954,21 +3014,18 @@ components:
     LightweightInvoiceLineItem:
       type: object
       properties:
-        subtotal:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-        plan:
-          allOf:
-          - $ref: '#/components/schemas/LightweightPlanVersion'
-          nullable: true
-          readOnly: true
-        end_date:
+        start_date:
           type: string
           format: date-time
+        name:
+          type: string
+          maxLength: 100
+        subscription_filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
+          nullable: true
+          readOnly: true
         quantity:
           type: number
           format: double
@@ -2976,15 +3033,13 @@ components:
           minimum: 0
           exclusiveMaximum: true
           nullable: true
-        start_date:
-          type: string
-          format: date-time
-        subscription_filters:
-          type: array
-          items:
-            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
-          nullable: true
-          readOnly: true
+        subtotal:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
         billing_type:
           enum:
           - in_arrears
@@ -2992,9 +3047,14 @@ components:
           - 
           type: string
           nullable: true
-        name:
+        end_date:
           type: string
-          maxLength: 100
+          format: date-time
+        plan:
+          allOf:
+          - $ref: '#/components/schemas/LightweightPlanVersion'
+          nullable: true
+          readOnly: true
       required:
       - billing_type
       - end_date
@@ -3076,26 +3136,6 @@ components:
     LightweightSubscriptionRecord:
       type: object
       properties:
-        is_new:
-          type: boolean
-          description: Whether this subscription came from a renewal or from a first-time.
-            Defaults to true on creation.
-        billing_plan:
-          $ref: '#/components/schemas/LightweightPlanVersion'
-        fully_billed:
-          type: boolean
-          description: Whether the subscription has been fully billed and finalized.
-        customer:
-          $ref: '#/components/schemas/LightweightCustomer'
-        end_date:
-          type: string
-          format: date-time
-          description: The time the subscription starts. This will be a string in
-            yyyy-mm-dd HH:mm:ss format in UTC time.
-        auto_renew:
-          type: boolean
-          description: Whether the subscription automatically renews. Defaults to
-            true.
         plan_detail:
           allOf:
           - $ref: '#/components/schemas/LightweightPlanVersion'
@@ -3105,12 +3145,37 @@ components:
           format: date-time
           description: The time the subscription starts. This will be a string in
             yyyy-mm-dd HH:mm:ss format in UTC time.
+        auto_renew:
+          type: boolean
+          description: Whether the subscription automatically renews. Defaults to
+            true.
+        addons:
+          type: array
+          items:
+            $ref: '#/components/schemas/LightweightAddonSubscriptionRecord'
         subscription_filters:
           type: array
           items:
             $ref: '#/components/schemas/SubscriptionCategoricalFilter'
           readOnly: true
+        is_new:
+          type: boolean
+          description: Whether this subscription came from a renewal or from a first-time.
+            Defaults to true on creation.
+        customer:
+          $ref: '#/components/schemas/LightweightCustomer'
+        billing_plan:
+          $ref: '#/components/schemas/LightweightPlanVersion'
+        end_date:
+          type: string
+          format: date-time
+          description: The time the subscription starts. This will be a string in
+            yyyy-mm-dd HH:mm:ss format in UTC time.
+        fully_billed:
+          type: boolean
+          description: Whether the subscription has been fully billed and finalized.
       required:
+      - addons
       - auto_renew
       - billing_plan
       - customer
@@ -3123,16 +3188,7 @@ components:
     LightweightSubscriptionRecordRequest:
       type: object
       properties:
-        is_new:
-          type: boolean
-          description: Whether this subscription came from a renewal or from a first-time.
-            Defaults to true on creation.
-        billing_plan:
-          $ref: '#/components/schemas/LightweightPlanVersionRequest'
-        fully_billed:
-          type: boolean
-          description: Whether the subscription has been fully billed and finalized.
-        end_date:
+        start_date:
           type: string
           format: date-time
           description: The time the subscription starts. This will be a string in
@@ -3141,12 +3197,26 @@ components:
           type: boolean
           description: Whether the subscription automatically renews. Defaults to
             true.
-        start_date:
+        addons:
+          type: array
+          items:
+            $ref: '#/components/schemas/LightweightAddonSubscriptionRecordRequest'
+        is_new:
+          type: boolean
+          description: Whether this subscription came from a renewal or from a first-time.
+            Defaults to true on creation.
+        billing_plan:
+          $ref: '#/components/schemas/LightweightPlanVersionRequest'
+        end_date:
           type: string
           format: date-time
           description: The time the subscription starts. This will be a string in
             yyyy-mm-dd HH:mm:ss format in UTC time.
+        fully_billed:
+          type: boolean
+          description: Whether the subscription has been fully billed and finalized.
       required:
+      - addons
       - auto_renew
       - billing_plan
       - end_date
@@ -5112,7 +5182,12 @@ components:
         fully_billed:
           type: boolean
           description: Whether the subscription has been fully billed and finalized.
+        addons:
+          type: array
+          items:
+            $ref: '#/components/schemas/LightweightAddonSubscriptionRecord'
       required:
+      - addons
       - auto_renew
       - billing_plan
       - customer
@@ -5225,7 +5300,12 @@ components:
         fully_billed:
           type: boolean
           description: Whether the subscription has been fully billed and finalized.
+        addons:
+          type: array
+          items:
+            $ref: '#/components/schemas/LightweightAddonSubscriptionRecordRequest'
       required:
+      - addons
       - auto_renew
       - billing_plan
       - end_date

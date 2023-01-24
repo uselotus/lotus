@@ -1531,6 +1531,9 @@ class InvoiceLineItem(models.Model):
     )
     metadata = models.JSONField(default=dict, blank=True, null=True)
 
+    def __str__(self):
+        return self.name + " " + str(self.invoice.invoice_number) + f"[{self.subtotal}]"
+
     def save(self, *args, **kwargs):
         if not self.pricing_unit:
             self.pricing_unit = self.invoice.organization.default_currency
@@ -1709,18 +1712,25 @@ class AddOnPlanManager(models.Manager):
         return super().get_queryset().filter(addon_spec__isnull=False)
 
 
+class BillingFrequency(models.IntegerChoices):
+    ONE_TIME = (1, _("one_time"))
+    RECURRING = (2, _("recurring"))
+
+
+class FlatFeeInvoicingBehaviorOnAttach(models.IntegerChoices):
+    INVOICE_ON_ATTACH = (1, _("invoice_on_attach"))
+    INVOICE_ON_SUBSCRIPTION_END = (2, _("invoice_on_subscription_end"))
+
+
+class RecurringFlatFeeTiming(models.IntegerChoices):
+    IN_ADVANCE = (1, _("in_advance"))
+    IN_ARREARS = (2, _("in_arrears"))
+
+
 class AddOnSpecification(models.Model):
-    class BillingFrequency(models.IntegerChoices):
-        ONE_TIME = (1, _("one_time"))
-        RECURRING = (2, _("recurring"))
-
-    class FlatFeeInvoicingBehaviorOnAttach(models.IntegerChoices):
-        INVOICE_ON_ATTACH = (1, _("invoice_on_attach"))
-        INVOICE_ON_SUBSCRIPTION_END = (2, _("invoice_on_subscription_end"))
-
-    class RecurringFlatFeeTiming(models.IntegerChoices):
-        IN_ADVANCE = (1, _("in_advance"))
-        IN_ARREARS = (2, _("in_arrears"))
+    BillingFrequency = BillingFrequency
+    FlatFeeInvoicingBehaviorOnAttach = FlatFeeInvoicingBehaviorOnAttach
+    RecurringFlatFeeTiming = RecurringFlatFeeTiming
 
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="+"
@@ -1738,12 +1748,23 @@ class AddOnSpecification(models.Model):
         blank=True,
     )
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=Q(
+                    recurring_flat_fee_timing__isnull=True,
+                    billing_frequency=BillingFrequency.ONE_TIME,
+                )
+                | Q(
+                    recurring_flat_fee_timing__isnull=False,
+                    billing_frequency=BillingFrequency.RECURRING,
+                ),
+                name="billing_frequency_one_time_recurring_flat_fee_timing_isnull",
+            ),
+        ]
+
 
 class Plan(models.Model):
-    class PlanType(models.IntegerChoices):
-        BASE = (1, _("Base"))
-        ADDON = (2, _("Add-on"))
-
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="plans"
     )
@@ -2206,6 +2227,20 @@ class SubscriptionRecordManager(models.Manager):
         return self.filter(start_date__gt=time)
 
 
+class BaseSubscriptionRecordManager(SubscriptionRecordManager):
+    def get_queryset(self):
+        return (
+            super().get_queryset().filter(billing_plan__plan__addon_spec__isnull=True)
+        )
+
+
+class AddOnSubscriptionRecordManager(SubscriptionRecordManager):
+    def get_queryset(self):
+        return (
+            super().get_queryset().filter(billing_plan__plan__addon_spec__isnull=False)
+        )
+
+
 class SubscriptionRecord(models.Model):
     organization = models.ForeignKey(
         Organization,
@@ -2268,10 +2303,12 @@ class SubscriptionRecord(models.Model):
         null=True,
         blank=True,
         on_delete=models.CASCADE,
-        related_name="addons",
+        related_name="addon_subscription_records",
         help_text="The parent subscription record.",
     )
     objects = SubscriptionRecordManager()
+    addon_objects = AddOnSubscriptionRecordManager()
+    base_objects = BaseSubscriptionRecordManager()
     history = HistoricalRecords()
 
     class Meta:
