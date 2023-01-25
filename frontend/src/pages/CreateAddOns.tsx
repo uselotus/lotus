@@ -46,19 +46,19 @@ const CreateAddOns = () => {
   const navigate = useNavigate();
   const [componentsData, setComponentsData] = useState<CreateComponent[]>([]);
   const [form] = Form.useForm();
-  const [addon_name, setAddonName] = useState("");
-  const [description, setDescription] = useState("");
-  const [billing_frequency, setBillingFrequency] = useState("");
+  const [addon_name, setAddonName] = useState<string | null>(null!);
+  const [description, setDescription] = useState<string | null>(null);
+  const [billing_frequency, setBillingFrequency] = useState<string | null>(
+    null
+  );
   const [addon_type, setAddonType] = useState<AddonTypeOption>("flat_fee");
-  const [base_cost, setBaseCost] = useState<number | undefined>(0.0);
+  const [base_cost, setBaseCost] = useState<number | null>(0.0);
   const [recurring_flat_fee_timing, setRecurringFlatFeeTiming] = useState("");
-  const [invoice_when, setInvoiceWhen] = useState("");
+  const [invoice_when, setInvoiceWhen] = useState<string | null>(null);
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>([]);
   const [editComponentItem, setEditComponentsItem] =
     useState<CreateComponent>();
-  const [availableBillingTypes, setAvailableBillingTypes] = useState<
-    { name: string; label: string }[]
-  >([{ label: "Monthly", name: "monthly" }]);
+  let card: React.ReactNode | null = null;
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -215,12 +215,52 @@ const CreateAddOns = () => {
       invoice_when,
       recurring_flat_fee_timing: recurring_flat_fee_timing
         ? recurring_flat_fee_timing
-        : undefined,
+        : null,
       currency_code: selectedCurrency.code,
     };
     mutation.mutate(addons);
   };
-
+  if (
+    (addon_type === "usage" && billing_frequency === "one_time") ||
+    (addon_type === "flat_fee" && billing_frequency === "recurring")
+  ) {
+    console.log("yasdh");
+    card = (
+      <Card
+        title="Added Components"
+        className="h-full mb-6"
+        style={{
+          borderRadius: "0.5rem",
+          borderWidth: "2px",
+          borderColor: "#EAEAEB",
+          borderStyle: "solid",
+        }}
+        extra={[
+          <Button
+            key="add-component"
+            htmlType="button"
+            onClick={() => showComponentModal()}
+          >
+            Add Component
+          </Button>,
+        ]}
+      >
+        <Form.Item
+          wrapperCol={{ span: 24 }}
+          shouldUpdate={(prevValues, curValues) =>
+            prevValues.components !== curValues.components
+          }
+        >
+          <ComponentDisplay
+            componentsData={componentsData}
+            handleComponentEdit={handleComponentEdit}
+            deleteComponent={deleteComponent}
+            pricing_unit={selectedCurrency}
+          />
+        </Form.Item>
+      </Card>
+    );
+  }
   return (
     <PageLayout
       title="Create Add Ons"
@@ -266,6 +306,24 @@ const CreateAddOns = () => {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Ex: Cheapest add-on for small scale businesses"
                 />
+              </Form.Item>
+              <Form.Item name="addon_type">
+                <label className="mb-4 required">Type</label>
+                <Select
+                  placeholder="Flat"
+                  onChange={(e) => {
+                    if (e === "flat_fee") {
+                      setShowInvoicing(true);
+                    } else {
+                      setShowInvoicing(false);
+                    }
+                    setAddonType(e);
+                  }}
+                  className="w-full"
+                >
+                  <Select.Option value="flat_fee">Flat</Select.Option>
+                  <Select.Option value="usage">Usage Based</Select.Option>
+                </Select>
               </Form.Item>
               <Form.Item name="billing frequency">
                 <label className="mb-4 required">Billing Frequency</label>
@@ -315,26 +373,7 @@ const CreateAddOns = () => {
                 </Form.Item>
               </div>
 
-              <div className="grid grid-cols-2 gap-6 mt-2 mb-2">
-                <Form.Item name="addon_type">
-                  <label className="mb-4 required">Type</label>
-                  <Select
-                    placeholder="Flat"
-                    onChange={(e) => {
-                      if (e === "flat_fee") {
-                        setShowInvoicing(true);
-                      } else {
-                        setShowInvoicing(false);
-                      }
-                      setAddonType(e);
-                    }}
-                    className="w-full"
-                  >
-                    <Select.Option value="flat_fee">Flat</Select.Option>
-                    <Select.Option value="usage">Usage Based</Select.Option>
-                  </Select>
-                </Form.Item>
-
+              {billing_frequency === "recurring" && (
                 <Form.Item name="recurring_flat_fee_timing">
                   <label className="mb-4 nowrap required"> Billing Type</label>
                   <Select
@@ -350,7 +389,7 @@ const CreateAddOns = () => {
                     </Select.Option>
                   </Select>
                 </Form.Item>
-              </div>
+              )}
 
               {showInvoicing && (
                 <Form.Item name="invoice_when">
@@ -372,39 +411,8 @@ const CreateAddOns = () => {
             </Card>
 
             <div className="col-span-2">
-              <Card
-                title="Added Components"
-                className="h-full mb-6"
-                style={{
-                  borderRadius: "0.5rem",
-                  borderWidth: "2px",
-                  borderColor: "#EAEAEB",
-                  borderStyle: "solid",
-                }}
-                extra={[
-                  <Button
-                    key="add-component"
-                    htmlType="button"
-                    onClick={() => showComponentModal()}
-                  >
-                    Add Component
-                  </Button>,
-                ]}
-              >
-                <Form.Item
-                  wrapperCol={{ span: 24 }}
-                  shouldUpdate={(prevValues, curValues) =>
-                    prevValues.components !== curValues.components
-                  }
-                >
-                  <ComponentDisplay
-                    componentsData={componentsData}
-                    handleComponentEdit={handleComponentEdit}
-                    deleteComponent={deleteComponent}
-                    pricing_unit={selectedCurrency}
-                  />
-                </Form.Item>
-              </Card>
+              {card}
+
               <Card
                 className="w-full !mt-8"
                 title="Added Features"
