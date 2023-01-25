@@ -1,10 +1,10 @@
-import { PlusOutlined } from "@ant-design/icons";
 import type { InputRef } from "antd";
 import { Input, Tag, Tooltip } from "antd";
-// @ts-ignore
+import { motion, AnimatePresence } from "framer-motion";
+
 import React, { useEffect, useRef, useState, memo } from "react";
 import Badge from "../base/Badges/Badges";
-
+const MotionTag = motion(Tag, { forwardMotionProps: true });
 interface LinkExternalIdsProps {
   externalIds: string[];
   setExternalLinks?: (links: string[]) => void;
@@ -57,27 +57,39 @@ const LinksExternalIds: React.FC<LinkExternalIdsProps> = ({
   };
 
   return (
-    <>
-      {tags.map((tag) => {
-        const isLongTag = tag.length > 20;
-        const tagElem = (
-          <Tag
-            className="edit-tag"
-            key={tag}
-            closable
-            onClose={() => handleClose(tag)}
-          >
-            <span>{isLongTag ? `${tag.slice(0, 20)}...` : tag}</span>
-          </Tag>
-        );
-        return isLongTag ? (
-          <Tooltip title={tag} key={tag}>
-            {tagElem}
-          </Tooltip>
-        ) : (
-          tagElem
-        );
-      })}
+    <div>
+      <AnimatePresence initial={false}>
+        {tags.map((tag) => {
+          const isLongTag = tag.length > 20;
+          const tagElem = (
+            <MotionTag
+              className="edit-tag relative"
+              key={tag}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{
+                opacity: 0,
+              }}
+              transition={{
+                opacity: {
+                  duration: 0.18,
+                },
+              }}
+              closable
+              onClose={() => handleClose(tag)}
+            >
+              <span>{isLongTag ? `${tag.slice(0, 20)}...` : tag}</span>
+            </MotionTag>
+          );
+          return isLongTag ? (
+            <Tooltip title={tag} key={tag}>
+              {tagElem}
+            </Tooltip>
+          ) : (
+            tagElem
+          );
+        })}
+      </AnimatePresence>
       {inputVisible && (
         <Input
           ref={inputRef}
@@ -95,14 +107,14 @@ const LinksExternalIds: React.FC<LinkExternalIdsProps> = ({
           onClick={() => setInputVisible(true)}
           className={
             setExternalLinks
-              ? "bg-[#E0E7FF] text-[#3730A3] cursor-pointer w-1/2"
-              : "bg-[#E0E7FF] text-[#3730A3] cursor-pointer"
+              ? "bg-[#E0E7FF] text-[#3730A3] cursor-pointer mt-2 w-1/2"
+              : "bg-[#E0E7FF] text-[#3730A3] cursor-pointer mt-2"
           }
         >
           <Badge.Content>Link External IDs</Badge.Content>
         </Badge>
       )}
-    </>
+    </div>
   );
 };
 const LinkExternalIds = memo(LinksExternalIds);

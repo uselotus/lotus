@@ -3,6 +3,7 @@ from decimal import Decimal
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
+
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
@@ -16,6 +17,7 @@ from metering_billing.utils.enums import (
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     FLAT_FEE_BEHAVIOR,
     FLAT_FEE_BILLING_TYPE,
+    INVOICE_CHARGE_TIMING_TYPE,
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
 )
@@ -396,12 +398,12 @@ def apply_customer_balance_adjustments(invoice, customer, organization, draft):
     subtotal = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
     if subtotal < 0:
         InvoiceLineItem.objects.create(
-            name="Balance Adjustment [CREDIT]",
+            name=f"Credit Grant: {invoice.currency.symbol}{subtotal}",
             start_date=invoice.issue_date,
             end_date=invoice.issue_date,
             quantity=None,
             subtotal=-subtotal,
-            billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+            billing_type=INVOICE_CHARGE_TIMING_TYPE.ONE_TIME,
             chargeable_item_type=CHARGEABLE_ITEM_TYPE.CUSTOMER_ADJUSTMENT,
             invoice=invoice,
             organization=organization,
@@ -411,7 +413,7 @@ def apply_customer_balance_adjustments(invoice, customer, organization, draft):
                 organization=organization,
                 customer=customer,
                 amount=-subtotal,
-                description=f"Balance increase from invoice {invoice.invoice_number} generated on {issue_date_fmt}",
+                description=f"Credit Grant from invoice {invoice.invoice_number} generated on {issue_date_fmt}",
                 created=issue_date,
                 effective_at=issue_date,
                 status=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
@@ -435,7 +437,7 @@ def apply_customer_balance_adjustments(invoice, customer, organization, draft):
                     end_date=issue_date,
                     quantity=None,
                     subtotal=-balance_adjustment + leftover,
-                    billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+                    billing_type=INVOICE_CHARGE_TIMING_TYPE.ONE_TIME,
                     chargeable_item_type=CHARGEABLE_ITEM_TYPE.CUSTOMER_ADJUSTMENT,
                     invoice=invoice,
                     organization=organization,
@@ -478,12 +480,12 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
 
     # Create the invoice line item
     InvoiceLineItem.objects.create(
-        name="Balance Adjustment Grant",
+        name=f"Credit Grant: {balance_adjustment.amount_paid_currency.symbol}{balance_adjustment.amount}",
         start_date=issue_date,
         end_date=issue_date,
-        quantity=balance_adjustment.amount,
+        quantity=None,
         subtotal=balance_adjustment.amount_paid,
-        billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+        billing_type=INVOICE_CHARGE_TIMING_TYPE.ONE_TIME,
         chargeable_item_type=CHARGEABLE_ITEM_TYPE.ONE_TIME_CHARGE,
         invoice=invoice,
         organization=organization,

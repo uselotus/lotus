@@ -209,9 +209,14 @@ def write_line_item(
             line += " " + word
     doc.drawString(100, offset, line)
 
-    doc.drawString(
-        225, offset, f'{start_date.replace("-", "/")} - {end_date.replace("-", "/")}'
-    )
+    if start_date == end_date:
+        start_date = transform_date(start_date)
+        date_string = str(start_date.replace("-", "/"))
+    else:
+        start_date = transform_date(start_date)
+        end_date = transform_date(end_date)
+        date_string = f'{start_date.replace("-", "/")} - {end_date.replace("-", "/")}'
+    doc.drawString(225, offset, date_string)
 
     if quantity:
         new_quantity = "{:g}".format(float(quantity))
@@ -414,8 +419,8 @@ def generate_invoice_pdf(
                 doc,
                 # "long name and this should wrap to somee",
                 line_item["name"],
-                transform_date(line_item["start_date"]),
-                transform_date(line_item["end_date"]),
+                line_item["start_date"],
+                line_item["end_date"],
                 line_item["quantity"].normalize(),
                 line_item["subtotal"].normalize(),
                 currency.symbol,
