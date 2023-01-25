@@ -223,7 +223,7 @@ const CreateAddOns = () => {
 
   return (
     <PageLayout
-      title="Create Plan"
+      title="Create Add Ons"
       onBack={goBackPage}
       extra={[
         <Button

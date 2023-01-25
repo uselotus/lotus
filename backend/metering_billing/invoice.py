@@ -3,7 +3,6 @@ from decimal import Decimal
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
-
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
@@ -279,11 +278,11 @@ def check_subscription_record_renews(subscription, subscription_record):
         return subscription_record.auto_renew and subscription_record.parent.auto_renew
 
 
-def calculate_subscription_record_flat_fees(subscription_record, billing_plan, invoice):
+def calculate_subscription_record_flat_fees(subscription_record, invoice):
     from metering_billing.models import InvoiceLineItem
 
     amt_already_billed = subscription_record.amount_already_invoiced()
-
+    billing_plan = subscription_record.billing_plan
     start = subscription_record.start_date
     end = subscription_record.end_date
     if subscription_record.flat_fee_behavior == FLAT_FEE_BEHAVIOR.PRORATE:
