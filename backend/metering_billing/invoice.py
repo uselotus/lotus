@@ -3,6 +3,7 @@ from decimal import Decimal
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
+
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
@@ -142,6 +143,8 @@ def generate_invoice(
 
 
 def calculate_subscription_record_usage_fees(subscription_record, invoice):
+    from metering_billing.models import InvoiceLineItem
+
     billing_plan = subscription_record.billing_plan
     # only calculate this for parent plans! addons should never calculate
     if (
@@ -161,7 +164,7 @@ def calculate_subscription_record_usage_fees(subscription_record, invoice):
                 invoice=invoice,
                 associated_subscription_record=subscription_record,
                 associated_plan_version=billing_plan,
-                organization=organization,
+                organization=subscription_record.organization,
             )
 
 

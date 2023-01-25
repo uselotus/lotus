@@ -6,40 +6,10 @@ import logging
 import operator
 from decimal import Decimal
 from functools import reduce
+from itertools import chain
 from typing import Optional
 
 import posthog
-from dateutil import parser
-from dateutil.relativedelta import relativedelta
-from django.conf import settings
-from django.db.models import (
-    Count,
-    DecimalField,
-    F,
-    OuterRef,
-    Prefetch,
-    Q,
-    Subquery,
-    Sum,
-    Value,
-)
-from django.db.models.functions import Coalesce
-from django.db.utils import IntegrityError
-from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from drf_spectacular.utils import extend_schema, inline_serializer
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import (
-    action,
-    api_view,
-    authentication_classes,
-    permission_classes,
-)
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
 from api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
     AddOnSubscriptionRecordSerializer,
@@ -73,6 +43,25 @@ from api.serializers.nonmodel_serializers import (
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
 )
+from dateutil import parser
+from dateutil.relativedelta import relativedelta
+from django.conf import settings
+from django.db.models import (
+    Count,
+    DecimalField,
+    F,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
+from django.db.utils import IntegrityError
+from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
 from metering_billing.exceptions import (
     DuplicateCustomer,
@@ -125,6 +114,17 @@ from metering_billing.utils.enums import (
     USAGE_BILLING_BEHAVIOR,
     USAGE_BILLING_FREQUENCY,
 )
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import (
+    action,
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -557,30 +557,51 @@ class SubscriptionViewSet(
                 raise Exception("Invalid action")
             serializer.is_valid(raise_exception=True)
             args = []
-            args.append(Q(start_date__lte=now, end_date__gte=now))
             args.append(Q(customer=serializer.validated_data["customer"]))
-            if serializer.validated_data.get("plan"):
-                args.append(Q(billing_plan__plan=serializer.validated_data["plan"]))
             organization = self.request.organization
             args.append(Q(organization=organization))
-            qs = (
-                SubscriptionRecord.objects.filter(*args)
-                .select_related("billing_plan")
-                .prefetch_related(
-                    Prefetch(
-                        "billing_plan__plan_components",
-                        queryset=PlanComponent.objects.all(),
-                    )
-                )
-                .prefetch_related(
-                    Prefetch(
-                        "billing_plan__plan_components__tiers",
-                        queryset=PriceTier.objects.all(),
-                    )
-                )
+            if serializer.validated_data.get("plan"):
+                addon_args = copy.deepcopy(args)
+                args.append(Q(billing_plan__plan=serializer.validated_data["plan"]))
+            else:
+                addon_args = args
+            qs = SubscriptionRecord.objects.active().filter(*args)
+            qs = qs.select_related("billing_plan")
+            qs = qs.prefetch_related(
+                Prefetch(
+                    "billing_plan__plan_components",
+                    queryset=PlanComponent.objects.all(),
+                ),
+                Prefetch(
+                    "billing_plan__plan_components__billable_metric",
+                    queryset=Metric.objects.all(),
+                ),
+                Prefetch(
+                    "billing_plan__plan_components__tiers",
+                    queryset=PriceTier.objects.all(),
+                ),
+                Prefetch(
+                    "addons",
+                    queryset=SubscriptionRecord.objects.filter(*addon_args)
+                    .select_related("billing_plan")
+                    .prefetch_related(
+                        Prefetch(
+                            "billing_plan__plan_components",
+                            queryset=PlanComponent.objects.all(),
+                        ),
+                        Prefetch(
+                            "billing_plan__plan_components__tiers",
+                            queryset=PriceTier.objects.all(),
+                        ),
+                    ),
+                ),
+            )
+            qs = SubscriptionRecord.objects.filter(
+                pk__in=list(chain(qs, *[r.addons.all() for r in qs]))
             )
 
             if serializer.validated_data.get("subscription_filters"):
+                filters = []
                 for filter in serializer.validated_data["subscription_filters"]:
                     m2m, _ = CategoricalFilter.objects.get_or_create(
                         organization=organization,
@@ -588,7 +609,11 @@ class SubscriptionViewSet(
                         comparison_value=[filter["value"]],
                         operator=CATEGORICAL_FILTER_OPERATORS.ISIN,
                     )
-                    qs = qs.filter(filters=m2m)
+                    filters.append(m2m)
+                query = reduce(
+                    lambda acc, filter: acc & Q(filters=filter), filters, Q()
+                )
+                qs = qs.filter(query)
         return qs
 
     @extend_schema(
@@ -742,7 +767,7 @@ class SubscriptionViewSet(
                 generate_invoice(subscription, qs.filter(customer=customer))
                 subscription.handle_remove_plan()
 
-        return_qs = SubscriptionRecord.objects.filter(
+        return_qs = SubscriptionRecord.base_objects.filter(
             pk__in=original_qs, organization=organization
         )
         ret = SubscriptionRecordSerializer(return_qs, many=True).data
@@ -778,9 +803,26 @@ class SubscriptionViewSet(
         turn_off_auto_renew = serializer.validated_data.get("turn_off_auto_renew")
         end_date = serializer.validated_data.get("end_date")
         if replace_billing_plan:
+            qs = qs.filter(
+                billing_plan__plan__addon_spec__isnull=True
+            )  # no addons in replace
             now = now_utc()
             keep_separate = usage_behavior == USAGE_BEHAVIOR.KEEP_SEPARATE
+            replace_plan_metrics = {
+                pc.billable_metric for pc in replace_billing_plan.plan_components.all()
+            }
             for subscription_record in qs:
+                original_sub_record_plan_metrics = {
+                    pc.billable_metric
+                    for sub_rec in subscription_record.addons.all()
+                    for pc in sub_rec.billing_plan.plan_components.all()
+                }
+                if replace_plan_metrics.intersection(original_sub_record_plan_metrics):
+                    logger.debug(
+                        "Cannot switch to a plan with overlapping metrics with the current addons."
+                    )
+                    original_qs.remove(subscription_record.pk)
+                    continue
                 sr = SubscriptionRecord.objects.create(
                     organization=subscription_record.organization,
                     customer=subscription_record.customer,
@@ -830,7 +872,7 @@ class SubscriptionViewSet(
             if len(update_dict) > 0:
                 qs.update(**update_dict)
 
-        return_qs = SubscriptionRecord.objects.filter(
+        return_qs = SubscriptionRecord.base_objects.filter(
             pk__in=original_qs, organization=organization
         )
         ret = SubscriptionRecordSerializer(return_qs, many=True).data
@@ -1248,23 +1290,22 @@ class MetricAccessView(APIView):
                     single_sr_dict["metric_free_limit"] = free_limit
                     single_sr_dict["metric_total_limit"] = total_limit
                     break
-            addon_srs = sr.addon_subscription_records.all()
-            for addon_sr in addon_srs:
-                for component in addon_sr.billing_plan.plan_components.all():
-                    check_metric = component.billable_metric
-                    if check_metric == metric:
-                        total_limit = tiers[-1].range_end
-                        current_usage = metric.get_subscription_record_current_usage(
-                            addon_sr
-                        )
-                        if single_sr_dict["metric_total_limit"] is None:
-                            single_sr_dict["metric_total_limit"] += total_limit
-                        elif total_limit is None:
-                            single_sr_dict["metric_total_limit"] = None
-                        else:
-                            single_sr_dict["metric_total_limit"] += total_limit
-                        break
-
+            # addon_srs = sr.addon_subscription_records.all()
+            # for addon_sr in addon_srs:
+            #     for component in addon_sr.billing_plan.plan_components.all():
+            #         check_metric = component.billable_metric
+            #         if check_metric == metric:
+            #             total_limit = tiers[-1].range_end
+            #             current_usage = metric.get_subscription_record_current_usage(
+            #                 addon_sr
+            #             )
+            #             if single_sr_dict["metric_total_limit"] is None:
+            #                 single_sr_dict["metric_total_limit"] += total_limit
+            #             elif total_limit is None:
+            #                 single_sr_dict["metric_total_limit"] = None
+            #             else:
+            #                 single_sr_dict["metric_total_limit"] += total_limit
+            #             break
             return_dict["access_per_subscription"].append(single_sr_dict)
         access = []
         for sr_dict in return_dict["access_per_subscription"]:

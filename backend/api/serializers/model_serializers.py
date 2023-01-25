@@ -1363,7 +1363,7 @@ class SubscriptionRecordFilterSerializer(serializers.Serializer):
     plan_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
         source="billing_plan.plan",
-        queryset=Plan.objects.all(),
+        queryset=Plan.objects.filter(addon_spec__isnull=True),
         required=True,
         help_text="Filter to a specific plan.",
     )
@@ -1384,7 +1384,7 @@ class SubscriptionRecordFilterSerializerDelete(SubscriptionRecordFilterSerialize
     plan_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
         source="billing_plan.plan",
-        queryset=Plan.objects.all(),
+        queryset=Plan.objects.filter(addon_spec__isnull=True),
         required=False,
         help_text="Filter to a specific plan. If not specified, all plans will be included in the cancellation request.",
     )
@@ -1419,7 +1419,7 @@ class ListSubscriptionRecordFilter(SubscriptionRecordFilterSerializer):
     plan_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
         source="billing_plan.plan",
-        queryset=Plan.objects.all(),
+        queryset=Plan.objects.filter(addon_spec__isnull=True),
         required=False,
         help_text="Filter to a specific plan.",
     )
@@ -1889,6 +1889,15 @@ class AddOnSubscriptionRecordCreateSerializer(serializers.ModelSerializer):
                 "Multiple subscriptions found for the given customer ID, plan ID, and subscription filters."
             )
         data["attach_to_subscription_record"] = valid[0]
+        metrics_in_addon = data["addon_id"].display_version.metrics.all()
+        metrics_in_attach_sr = data[
+            "attach_to_subscription_record"
+        ].billing_plan.metrics.all()
+        intersection = metrics_in_addon & metrics_in_attach_sr
+        if len(intersection) > 0:
+            raise ValidationError(
+                f"The add-on and the subscription to which it is being attached both contain the following metrics: {', '.join([x.metric_id for x in intersection])}."
+            )
         return data
 
     def create(self, validated_data):
