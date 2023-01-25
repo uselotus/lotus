@@ -152,7 +152,7 @@ const AddOnComponents: FC<AddOnsComponentsProps> = ({
                   <div> {component.billable_metric.metric_name}</div>
                 </div>
                 <div>
-                  <div className=" w-full h-[1.5px] mt-4 bg-card-divider mb-2" />
+                  <div className="w-full h-[1.5px] mt-4 bg-card-divider mb-2" />
                   <Table
                     dataSource={component.tiers}
                     pagination={false}

@@ -220,11 +220,7 @@ const CreateAddOns = () => {
     };
     mutation.mutate(addons);
   };
-  if (
-    (addon_type === "usage" && billing_frequency === "one_time") ||
-    (addon_type === "flat_fee" && billing_frequency === "recurring")
-  ) {
-    console.log("yasdh");
+  if ( addon_type === "usage" ) {
     card = (
       <Card
         title="Added Components"
@@ -337,7 +333,7 @@ const CreateAddOns = () => {
                 </Select>
               </Form.Item>
               <div className="grid grid-cols-2 gap-6 mt-2 mb-2">
-                <Form.Item name="base cost">
+                <Form.Item name="base_cost">
                   <label className="mb-4 required">Base Cost</label>
                   <InputNumber
                     className="w-full"
@@ -375,7 +371,7 @@ const CreateAddOns = () => {
 
               {billing_frequency === "recurring" && (
                 <Form.Item name="recurring_flat_fee_timing">
-                  <label className="mb-4 nowrap required"> Billing Type</label>
+                  <label className="mb-4 nowrap required"> Base Cost Billing Type</label>
                   <Select
                     onChange={(e) => setRecurringFlatFeeTiming(e)}
                     className="w-full"
@@ -391,7 +387,6 @@ const CreateAddOns = () => {
                 </Form.Item>
               )}
 
-              {showInvoicing && (
                 <Form.Item name="invoice_when">
                   <label className="mb-4">Invoicing When</label>
                   <Select
@@ -407,7 +402,6 @@ const CreateAddOns = () => {
                     </Select.Option>
                   </Select>
                 </Form.Item>
-              )}
             </Card>
 
             <div className="col-span-2">

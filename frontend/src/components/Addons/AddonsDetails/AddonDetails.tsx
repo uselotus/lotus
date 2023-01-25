@@ -86,12 +86,11 @@ const AddonDetails: FC = () => {
                 <AddOnInfo addOnInfo={addon} />
               </div>
 
-              <div className="grid gap-18 grid-cols-1  md:grid-cols-2">
-                <AddOnComponents
-                  refetch={refetch}
-                  plan={addon}
-                  components={addon?.components}
-                />
+              <div className="grid gap-18 grid-cols-1  md:grid-cols-2 w-full">
+              {addon?.components.length > 0 && (
+                <AddOnComponents 
+                  refetch={refetch} plan={addon} components={addon?.components} />
+                )}
                 <AddOnFeatures features={addon?.features} />
               </div>
             </div>

@@ -16,13 +16,13 @@ const AddOnFeatures: FC<AddOnFeaturesFeaturesProps> = ({ features }) => {
       <Typography.Title className="!text-[18px]" level={2}>
         Features
       </Typography.Title>
-      <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
+      <div className="h-[1.5px] mt-6 bg-card-divider mb-2" />
       <div className="grid gap-6 grid-cols-1 xl:grid-cols-4">
         {features && features.length > 0 ? (
           features.map((feature) => (
             <div
               key={feature.feature_id}
-              className="pt-2 pb-4 bg-primary-50 mt-2  mb-2 p-4 min-h-[152px]"
+              className="pt-2 pb-4 bg-primary-50 mt-2  mb-2 p-4 min-h-[152px] min-w-[270px]"
             >
               <div className="text-base text-card-text">
                 <div>{feature.feature_name}</div>
