@@ -8,18 +8,18 @@ import useMediaQuery from "../../../hooks/useWindowQuery";
 interface AddOnInfoProps {
   addOnInfo: AddonType;
 }
+export const constructBillType = (str: string) => {
+  if (str.includes("_")) {
+    return str
+      .split("_")
+      .map((el) => capitalize(el))
+      .join(" ");
+  } else {
+    return str;
+  }
+};
 const AddOnInfo = ({ addOnInfo }: AddOnInfoProps) => {
   const windowWidth = useMediaQuery();
-  const constructBillType = (str: string) => {
-    if (str.includes("_")) {
-      return str
-        .split("_")
-        .map((el) => capitalize(el))
-        .join(" ");
-    } else {
-      return str;
-    }
-  };
 
   return (
     <div className="min-h-[200px]  w-full p-8 cursor-pointer font-alliance rounded-sm bg-card ">

@@ -8,6 +8,7 @@ import createShortenedText from "../../../helpers/createShortenedText";
 import capitalize from "../../../helpers/capitalize";
 import useMediaQuery from "../../../hooks/useWindowQuery";
 import { AddonType } from "../../../types/addon-type";
+import { constructBillType } from "../AddonsDetails/AddOnInfo";
 
 interface AddOnCardProps {
   add_on: AddonType;
@@ -51,9 +52,9 @@ const AddOnsCard: FC<AddOnCardProps> = ({ add_on }) => {
   //   );
 
   const goToAddOnDetail = () => {
-    navigate("/add_on/" + add_on.addon_id);
+    navigate("/add-ons/" + add_on.addon_id);
   };
-
+  console.log(add_on);
   return (
     <div
       className="min-h-[200px]  min-w-[246px] p-6 cursor-pointer  rounded-sm bg-card  shadow-lg hover:shadow-neutral-400"
@@ -109,7 +110,10 @@ const AddOnsCard: FC<AddOnCardProps> = ({ add_on }) => {
 
         <div className="flex items-center justify-between text-card-text gap-2 mb-1">
           <div className="font-normal whitespace-nowrap leading-4">Price</div>
-          <div className="text-card-grey font-main"> {add_on.flat_rate}</div>
+          <div className="text-card-grey font-main">
+            {add_on.currency?.symbol}
+            {add_on.flat_rate}
+          </div>
         </div>
 
         <div className="flex items-center text-card-text justify-between gap-2 mb-1">
@@ -118,7 +122,7 @@ const AddOnsCard: FC<AddOnCardProps> = ({ add_on }) => {
           </div>
           <div className="text-card-grey font-main">
             {" "}
-            {capitalize(add_on.billing_frequency)}
+            {constructBillType(capitalize(add_on.billing_frequency!))}
           </div>
         </div>
       </div>

@@ -60,22 +60,22 @@ const AddonDetails: FC = () => {
           </div>
         </div>
       )}
-      {/* {isError && (
+      {isError && (
         <div className="flex flex-col items-center justify-center h-full">
           <h2 className="4">Could Not Load Add-On</h2>
           <Button type="primary" onClick={() => navigate(-1)}>
             Go Back
           </Button>
         </div>
-      )} */}
-      {add_on && (
+      )}
+      {addon && (
         <div>
           <PageLayout
             title={
               <div>
-                <div className="font-alliance">{add_on.addon_name}</div>
+                <div className="font-alliance">{addon.addon_name}</div>
                 <div className="text-base Inter text-card-grey ml-2">
-                  {add_on.description}
+                  {addon.description}
                 </div>
               </div>
             }
@@ -83,16 +83,16 @@ const AddonDetails: FC = () => {
           <div className="mx-10">
             <div className="bg-white mb-6 flex flex-col py-4 px-10 rounded-lg space-y-12">
               <div>
-                <AddOnInfo addOnInfo={add_on} />
+                <AddOnInfo addOnInfo={addon} />
               </div>
 
               <div className="grid gap-18 grid-cols-1  md:grid-cols-2">
                 <AddOnComponents
                   refetch={refetch}
-                  plan={add_on}
-                  components={add_on?.components}
+                  plan={addon}
+                  components={addon?.components}
                 />
-                <AddOnFeatures features={add_on?.features} />
+                <AddOnFeatures features={addon?.features} />
               </div>
             </div>
           </div>
