@@ -71,7 +71,6 @@ import {
 import { CreateCreditType, CreditType } from "../types/balance-adjustment";
 import { CurrencyType } from "../types/pricing-unit-type";
 import { AlertType, CreateAlertType } from "../types/alert-type";
-import { APIKeyType, APIKeyCreate, APIKeyCreateResponse } from "../types/apikey-type";
 
 const cookies = new Cookies();
 
