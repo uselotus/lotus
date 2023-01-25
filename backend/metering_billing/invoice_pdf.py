@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from io import BytesIO
 
@@ -20,6 +21,8 @@ FONT_XS = 12
 FONT_XXS = 10
 
 black01 = Color(0, 0, 0, alpha=0.1)
+
+logger = logging.getLogger("django.server")
 
 try:
     s3 = boto3.resource(
@@ -495,10 +498,10 @@ def generate_invoice_pdf(
                 bucket_name = "lotus-" + team_id
 
             if s3_bucket_exists(bucket_name):
-                print("Bucket exists")
+                logger.debug("Bucket exists")
             else:
                 s3.create_bucket(Bucket=bucket_name, ACL="private")
-                print("Created bucket", bucket_name)
+                logger.debug("Created bucket", bucket_name)
 
             key = f"{organization_id}/{customer_id}/invoice_pdf_{invoice_number}.pdf"
             buffer.seek(0)
@@ -549,4 +552,5 @@ def get_invoice_presigned_url(invoice: Invoice):
             Params={"Bucket": bucket_name, "Key": key},
             ExpiresIn=3600,  # URL will expire in 1 hour
         )
+    return {"exists": True, "url": url}
     return {"exists": True, "url": url}

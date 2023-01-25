@@ -36,7 +36,6 @@ from metering_billing.exceptions.exceptions import (
 from metering_billing.utils import (
     calculate_end_date,
     convert_to_date,
-    convert_to_datetime,
     convert_to_decimal,
     customer_uuid,
     date_as_min_dt,
@@ -1322,9 +1321,8 @@ class PlanComponent(models.Model):
         revenue = 0
         tiers = self.tiers.all()
         for i, tier in enumerate(tiers):
-            if (
-                i > 0
-            ):  # this is for determining whether this is a continuous or discontinuous range
+            if i> 0:  
+                # this is for determining whether this is a continuous or discontinuous range
                 prev_tier_end = tiers[i - 1].range_end
                 tier_revenue = tier.calculate_revenue(
                     usage_qty, prev_tier_end=prev_tier_end
@@ -1530,7 +1528,16 @@ class InvoiceLineItem(models.Model):
         null=True,
         related_name="line_items",
     )
+    associated_plan_version = models.ForeignKey(
+        "PlanVersion",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="line_items",
+    )
     metadata = models.JSONField(default=dict, blank=True, null=True)
+
+    def __str__(self):
+        return self.name + " " + str(self.invoice.invoice_number) + f"[{self.subtotal}]"
 
     def save(self, *args, **kwargs):
         if not self.pricing_unit:
@@ -1572,7 +1579,7 @@ class PlanVersion(models.Model):
     description = models.TextField(null=True, blank=True)
     version = models.PositiveSmallIntegerField()
     flat_fee_billing_type = models.CharField(
-        max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices
+        max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices, null=True, blank=True
     )
     usage_billing_frequency = models.CharField(
         max_length=40, choices=USAGE_BILLING_FREQUENCY.choices, null=True, blank=True
@@ -1700,13 +1707,78 @@ class PriceAdjustment(models.Model):
             return self.price_adjustment_amount
 
 
+class BasePlanManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(addon_spec__isnull=True)
+
+
+class AddOnPlanManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(addon_spec__isnull=False)
+
+
+class BillingFrequency(models.IntegerChoices):
+    ONE_TIME = (1, _("one_time"))
+    RECURRING = (2, _("recurring"))
+
+
+class FlatFeeInvoicingBehaviorOnAttach(models.IntegerChoices):
+    INVOICE_ON_ATTACH = (1, _("invoice_on_attach"))
+    INVOICE_ON_SUBSCRIPTION_END = (2, _("invoice_on_subscription_end"))
+
+
+class RecurringFlatFeeTiming(models.IntegerChoices):
+    IN_ADVANCE = (1, _("in_advance"))
+    IN_ARREARS = (2, _("in_arrears"))
+
+
+class AddOnSpecification(models.Model):
+    BillingFrequency = BillingFrequency
+    FlatFeeInvoicingBehaviorOnAttach = FlatFeeInvoicingBehaviorOnAttach
+    RecurringFlatFeeTiming = RecurringFlatFeeTiming
+
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="+"
+    )
+    billing_frequency = models.PositiveSmallIntegerField(
+        choices=BillingFrequency.choices, default=BillingFrequency.ONE_TIME
+    )
+    flat_fee_invoicing_behavior_on_attach = models.PositiveSmallIntegerField(
+        choices=FlatFeeInvoicingBehaviorOnAttach.choices,
+        default=FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_ATTACH,
+    )
+    recurring_flat_fee_timing = models.PositiveSmallIntegerField(
+        choices=RecurringFlatFeeTiming.choices,
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=Q(
+                    recurring_flat_fee_timing__isnull=True,
+                    billing_frequency=BillingFrequency.ONE_TIME,
+                )
+                | Q(
+                    recurring_flat_fee_timing__isnull=False,
+                    billing_frequency=BillingFrequency.RECURRING,
+                ),
+                name="billing_frequency_one_time_recurring_flat_fee_timing_isnull",
+            ),
+        ]
+
+
 class Plan(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="plans"
     )
     plan_name = models.CharField(max_length=100, help_text="Name of the plan")
     plan_duration = models.CharField(
-        choices=PLAN_DURATION.choices, max_length=40, help_text="Duration of the plan"
+        choices=PLAN_DURATION.choices,
+        max_length=40,
+        help_text="Duration of the plan",
+        null=True,
     )
     display_version = models.ForeignKey(
         "PlanVersion",
@@ -1752,8 +1824,14 @@ class Plan(models.Model):
         related_name="custom_plans",
         help_text="If you are using our plan templating feature to create a new plan, this field will be set to the customer for which this plan is designed for. Keep in mind that this field and the parent_plan field are mutually necessary.",
     )
+    addon_spec = models.OneToOneField(
+        AddOnSpecification, on_delete=models.CASCADE, null=True, blank=True
+    )
     tags = models.ManyToManyField("Tag", blank=True, related_name="plans")
     created_on = models.DateTimeField(default=now_utc, null=True)
+
+    objects = BasePlanManager()
+    addons = AddOnPlanManager()
 
     history = HistoricalRecords()
 
@@ -2154,6 +2232,20 @@ class SubscriptionRecordManager(models.Manager):
         return self.filter(start_date__gt=time)
 
 
+class BaseSubscriptionRecordManager(SubscriptionRecordManager):
+    def get_queryset(self):
+        return (
+            super().get_queryset().filter(billing_plan__plan__addon_spec__isnull=True)
+        )
+
+
+class AddOnSubscriptionRecordManager(SubscriptionRecordManager):
+    def get_queryset(self):
+        return (
+            super().get_queryset().filter(billing_plan__plan__addon_spec__isnull=False)
+        )
+
+
 class SubscriptionRecord(models.Model):
     organization = models.ForeignKey(
         Organization,
@@ -2211,7 +2303,17 @@ class SubscriptionRecord(models.Model):
         default=False,
         help_text="Whether the subscription has been fully billed and finalized.",
     )
+    parent = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="addon_subscription_records",
+        help_text="The parent subscription record.",
+    )
     objects = SubscriptionRecordManager()
+    addon_objects = AddOnSubscriptionRecordManager()
+    base_objects = BaseSubscriptionRecordManager()
     history = HistoricalRecords()
 
     class Meta:
@@ -2228,8 +2330,6 @@ class SubscriptionRecord(models.Model):
         new_filters = kwargs.pop("subscription_filters", [])
         now = now_utc()
         subscription = self.customer.subscriptions.active(self.start_date).first()
-        if not isinstance(self.start_date, datetime.datetime):
-            self.start_date = convert_to_datetime(self.start_date)
         if not subscription:
             raise ServerError(
                 "Unexpected error: subscription date alignment engine failed."
@@ -2699,4 +2799,5 @@ class UsageAlertResult(models.Model):
             self.triggered_count = self.triggered_count + 1
         self.last_run_value = new_value
         self.last_run_timestamp = now
+        self.save()
         self.save()

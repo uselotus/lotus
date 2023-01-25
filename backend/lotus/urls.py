@@ -22,6 +22,7 @@ from django.views.generic import TemplateView
 from metering_billing.views import auth_views, organization_views, webhook_views
 from metering_billing.views.model_views import (
     ActionViewSet,
+    AddOnViewSet,
     APITokenViewSet,
     BacktestViewSet,
     CustomerBalanceAdjustmentViewSet,
@@ -95,6 +96,7 @@ router.register(
     basename="credit",
 )
 router.register(r"api_tokens", APITokenViewSet, basename="api_token")
+router.register(r"addons", AddOnViewSet, basename="addon")
 router.register(r"usage_alerts", UsageAlertViewSet, basename="usage_alert")
 
 

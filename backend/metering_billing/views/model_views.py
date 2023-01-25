@@ -1,16 +1,22 @@
 # import lotus_python
-import api.views as api_views
 import posthog
 from actstream.models import Action
+from django.conf import settings
+from django.core.cache import cache
+from django.db.utils import IntegrityError
+from drf_spectacular.utils import OpenApiCallback, extend_schema, inline_serializer
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.pagination import CursorPagination
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+import api.views as api_views
 from api.serializers.webhook_serializers import (
     InvoiceCreatedSerializer,
     InvoicePaidSerializer,
     UsageAlertTriggeredSerializer,
 )
-from django.conf import settings
-from django.core.cache import cache
-from django.db.utils import IntegrityError
-from drf_spectacular.utils import OpenApiCallback, extend_schema, inline_serializer
 from metering_billing.exceptions import (
     DuplicateMetric,
     DuplicateWebhookEndpoint,
@@ -42,6 +48,8 @@ from metering_billing.serializers.backtest_serializers import (
 )
 from metering_billing.serializers.model_serializers import (
     ActionSerializer,
+    AddOnCreateSerializer,
+    AddOnSerializer,
     APITokenSerializer,
     CustomerUpdateSerializer,
     EventSerializer,
@@ -73,6 +81,7 @@ from metering_billing.serializers.request_serializers import (
     OrganizationSettingFilterSerializer,
 )
 from metering_billing.serializers.serializer_utils import (
+    AddonUUIDField,
     MetricUUIDField,
     OrganizationSettingUUIDField,
     OrganizationUUIDField,
@@ -88,11 +97,6 @@ from metering_billing.utils.enums import (
     PAYMENT_PROVIDERS,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import action
-from rest_framework.pagination import CursorPagination
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -1112,6 +1116,54 @@ class CustomerBalanceAdjustmentViewSet(api_views.CustomerBalanceAdjustmentViewSe
     pass
 
 
+class AddOnViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated & ValidOrganization]
+    http_method_names = ["get", "head", "post"]
+    lookup_field = "plan_id"
+    lookup_url_kwarg = "addon_id"
+    queryset = Plan.addons.all()
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        organization = self.request.organization
+        context.update({"organization": organization})
+        return context
+
+    def get_object(self):
+        string_uuid = self.kwargs[self.lookup_url_kwarg]
+        uuid = AddonUUIDField().to_internal_value(string_uuid)
+        self.kwargs[self.lookup_url_kwarg] = uuid
+        return super().get_object()
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return AddOnCreateSerializer
+        return AddOnSerializer
+
+    def perform_create(self, serializer):
+        if self.request.user.is_authenticated:
+            user = self.request.user
+        else:
+            user = None
+        instance = serializer.save(
+            organization=self.request.organization, created_by=user
+        )
+        return instance
+
+    def get_queryset(self):
+        filter_kwargs = {"organization": self.request.organization}
+        qs = self.queryset
+        return qs.filter(**filter_kwargs)
+
+    @extend_schema(responses=AddOnSerializer)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = self.perform_create(serializer)
+        addon_data = AddOnSerializer(instance).data
+        return Response(addon_data, status=status.HTTP_201_CREATED)
+
+
 class UsageAlertViewSet(viewsets.ModelViewSet):
     """
     ViewSet for viewing and editing UsageAlerts.
@@ -1145,5 +1197,4 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
-        return context
         return context

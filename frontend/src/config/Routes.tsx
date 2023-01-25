@@ -16,6 +16,9 @@ import PlanDetails from "../components/Plans/PlanDetails/PlanDetails";
 import EditPlanLoader from "../pages/EditPlanLoader";
 import StripeIntegrationView from "../integrations/pages/StripeIntegrationView";
 import CreateCredit from "../pages/CreateBalanceAdjustment";
+import ViewAddOns from "../pages/ViewAddOns";
+import CreateAddOns from "../pages/CreateAddOns";
+import AddonDetails from "../components/Addons/AddonsDetails/AddonDetails";
 
 const { Sider } = Layout;
 
@@ -50,7 +53,7 @@ const AppRoutes: FC = () => {
 
         <Layout
           style={
-            currentPath === "plans"
+            currentPath === "plans" || currentPath === "add-ons"
               ? { background: "#ffffff" }
               : { background: "#FAFAFA" }
           }
@@ -61,6 +64,9 @@ const AppRoutes: FC = () => {
             <Route path="/plans" element={<ViewPlans />} />
             <Route path="/plans/:planId" element={<PlanDetails />} />
             <Route path="create-plan" element={<CreatePlan />} />
+            <Route path="create-addons" element={<CreateAddOns />} />
+            <Route path="/add-ons" element={<ViewAddOns />} />
+            <Route path="/add-ons/:addOnId" element={<AddonDetails />} />
             <Route
               path="create-version/:planId"
               element={<EditPlanLoader type="version" />}

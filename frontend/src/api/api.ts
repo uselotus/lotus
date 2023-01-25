@@ -6,6 +6,9 @@ import {
   CustomerSummary,
 } from "../types/customer-type";
 import {
+  AddonType, CreateAddonType
+} from "../types/addon-type";
+import {
   WebhookEndpoint,
   WebhookEndpointCreate,
   WebhookEndpointUpdate,
@@ -186,6 +189,15 @@ export const Customer = {
     }
   ): Promise<SubscriptionType> =>
     requests.post(`app/subscriptions/update/`, post, params),
+};
+
+
+export const Addon = {
+  getAddons: (): Promise<AddonType[]> => requests.get("app/addons/"),
+  getAddon: (addon_id: string): Promise<AddonType> =>
+    requests.get(`app/addons/${addon_id}/`),
+  createAddon: (post: CreateAddonType): Promise<AddonType> =>
+    requests.post("app/addons/", post),
 };
 
 export const Plan = {
