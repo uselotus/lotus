@@ -23,6 +23,7 @@
     "antd": "4.22.4",
     "axios": "0.27.2",
     "babel-plugin-import": "1.13.5",
+    "@lotus-fern/api" : "0.0.25",
     "dayjs": "1.11.5",
     "depcheck": "^1.4.3",
     "eslint": "^8.32.0",

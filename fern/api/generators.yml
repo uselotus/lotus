@@ -1,0 +1,52 @@
+default-group: local
+groups:
+  local: 
+    generators: 
+      # Fern can make the transition to FastAPI easier
+      # - name: fernapi/fern-fastapi-server
+      #   version: 0.0.43
+      #   output:
+      #     location: local-file-system
+      #     path: ../../backend/fern
+      - name: fernapi/fern-typescript-sdk
+        version: 0.0.261-7-g8276934
+        output:
+          location: npm
+          url: npm.buildwithfern.com
+          package-name: '@lotus-fern/api'
+          # token: ${LOTUS_FERN_TOKEN}
+      - name: fernapi/fern-openapi
+        version: 0.0.18
+        output:
+          location: local-file-system
+          path: ../../openapi
+  external: 
+    # NOTE: The following pro plan features are useful for public API companies: 
+    # - Filtering endpoints by audience
+    # - Syncing to GitHub
+    # - Publishing to NPM
+    # - Publishing + Integration with Postman
+    # The block here uses these features to show you what what setup would look like
+    audiences:
+      - external
+    generators: 
+      - name: fernapi/fern-typescript-sdk
+        version: 0.0.260
+        output:
+          location: npm
+          package-name: '@fern-api/lotus'
+          token: ${FERN_NPM_TOKEN}
+        github:
+          repository: fern-lotus/lotus-node
+      - name: fernapi/fern-openapi
+        version: 0.0.18
+        github:
+          repository: fern-lotus/lotus-openapi
+      - name: fernapi/fern-postman
+        version: 0.0.34
+        output:
+          location: postman
+          api-key: ${FERN_POSTMAN_API_KEY}
+          workspace-id: 29e14e41-df06-46fc-b2ba-4528fc1bc797
+        github:
+          repository: fern-lotus/lotus-postman

@@ -1,0 +1,217 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/fern-api/fern/main/fern.schema.json
+
+services:
+  http:
+    CustomersService:
+      auth: true
+      base-path: /api/customers
+      audiences:
+        - external
+      endpoints:
+        create:
+          path: ""
+          method: POST
+          request: CustomerCreateRequest
+          response: Customer
+
+        retrieve:
+          path: /{customer_id}
+          method: GET
+          path-parameters:
+            customer_id:
+              type: string
+              docs: |
+                The id provided when creating the customer, we suggest matching
+                with your internal customer id in your backend
+          response: Customer
+
+        listAll:
+          path: ""
+          method: GET
+          response: list<Customer>
+
+types:
+  CustomerCreateRequest:
+    properties:
+      customer_name:
+        type: optional<string>
+        docs: The display name of the customer
+      customer_id:
+        type: string
+        docs: >
+          The id provided when creating the customer, we suggest matching
+          with your internal customer id in your backend.
+      email:
+        type: string
+        docs: >
+          The primary email address of the customer, must be the same
+          as the email address used to create the customer in the payment provider
+      payment_provider:
+        type: optional<PaymentProvider>
+        docs: >
+          The payment provider this customer is associated with. Currently,
+          only Stripe is supported.
+      payment_provider_id:
+        type: optional<string>
+        docs: >
+          The customer's ID in the specified payment provider. Please
+          note that payment_provider and payment_provider_id are mutually necessary.
+      metadata:
+        type: optional<map<string, unknown>>
+        docs: Extra metadata for the customer
+      default_currency_code:
+        type: optional<string>
+        docs: >
+          The currency code this customer will be invoiced in. Codes
+          are 3 letters, e.g. 'USD'.
+      address: optional<Address>
+      tax_rate:
+        type: optional<double>
+        docs: Tax rate as percentage. For example, 10.5 for 10.5%
+
+  Customer:
+    properties:
+      customer_id: string
+      email: string
+      customer_name: string
+      invoices: list<LightweightInvoice>
+      total_amount_due: double
+      subscriptions: list<SubscriptionRecord>
+      integration:
+        docs: >
+          A dictionary containing the customer's integrations. Keys are
+          the integration type, and the value is a dictionary containing the integration's
+          properties, which can vary by integration.
+        type: CustomerIntegrations
+      default_currency: PricingUnit
+      payment_provider: optional<PaymentProvider>
+      has_payment_method: boolean
+      address: optional<Address>
+      tax_rate:
+        docs: Tax rate as percentage. For example, 10.5 for 10.5%
+        type: double
+
+  Address:
+    properties:
+      city:
+        docs: City, district, suburb, town, or village
+        type: string
+      country:
+        docs: ISO 3166-1 alpha-2 country code
+        type: string
+      line1:
+        docs: Address line 1 (e.g., street, PO Box, or company name)
+        type: string
+      line2:
+        docs: Address line 2 (e.g., apartment, suite, unit, or building)
+        type: optional<string>
+      postal_code:
+        docs: ZIP or postal code
+        type: string
+      state:
+        docs: State, county, province, or region
+        type: string
+
+  LightweightInvoice:
+    properties:
+      currency: PricingUnit
+      external_payment_obj_id: optional<string>
+      seller: Seller
+      invoice_id: string
+      end_date: string
+      invoice_number: string
+      cost_due: double
+      due_date: optional<string>
+      payment_status: PaymentStatus
+      invoice_pdf: optional<string>
+      start_date: string
+      issue_date: string
+      external_payment_obj_type: optional<PaymentProvider>
+
+  PricingUnit:
+    properties:
+      code: string
+      name: string
+      symbol: string
+
+  SubscriptionRecord:
+    properties:
+      start_date:
+        docs: >-
+          The time the subscription starts. This will be a string in yyyy-mm-dd
+          HH:mm:ss format in UTC time.
+        type: string
+      end_date:
+        docs: >-
+          The time the subscription starts. This will be a string in yyyy-mm-dd
+          HH:mm:ss format in UTC time.
+        type: string
+      auto_renew:
+        docs: Whether the subscription automatically renews. Defaults to true.
+        type: boolean
+      is_new:
+        docs: >-
+          Whether this subscription came from a renewal or from a first-time.
+          Defaults to true on creation.
+        type: boolean
+      subscription_filters: list<SubscriptionCategoricalFilter>
+      customer: LightweightCustomer
+      billing_plan: LightweightPlanVersion
+      fully_billed:
+        docs: Whether the subscription has been fully billed and finalized.
+        type: boolean
+
+  SubscriptionCategoricalFilter:
+    properties:
+      value: string
+      property_name:
+        docs: "The string name of the property to filter on. Example: 'product_id'"
+        type: string
+
+  LightweightCustomer:
+    properties:
+      customer_name:
+        docs: The display name of the customer
+        type: optional<string>
+      email:
+        docs: >-
+          The primary email address of the customer, must be the same as the
+          email address used to create the customer in the payment provider
+        type: optional<string>
+      customer_id:
+        docs: >-
+          The id provided when creating the customer, we suggest matching with
+          your internal customer id in your backend
+        type: string
+
+  LightweightPlanVersion:
+    properties:
+      plan_name: string
+      plan_id: string
+      version: integer
+      version_id: string
+
+  CustomerIntegrations:
+    properties:
+      stripe: optional<CustomerStripeIntegration>
+
+  CustomerStripeIntegration:
+    properties:
+      stripe_id: string
+      has_payment_method: boolean
+
+  PaymentProvider:
+    enum:
+      - stripe
+
+  Seller:
+    properties:
+      name: string
+      address: optional<Address>
+      phone: optional<string>
+      email: optional<string>
+
+  PaymentStatus:
+    enum:
+      - paid
+      - unpaid

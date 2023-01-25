@@ -1,0 +1,13 @@
+name: api
+display-name: Lotus API
+default-environment: Cloud
+auth: TokenHeader
+auth-schemes: 
+  TokenHeader: 
+    header: Authorization
+    type: string
+environments: 
+  Cloud: https://api.uselotus.io
+  Local: http://localhost:8000
+audiences: 
+  - external

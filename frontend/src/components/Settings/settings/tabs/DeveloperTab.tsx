@@ -12,7 +12,7 @@ import {
 import dayjs from "dayjs";
 import React, { useState } from "react";
 import { useQuery, useMutation, QueryClient } from "react-query";
-import { Webhook, APIKey } from "../../../../api/api";
+import { Webhook } from "../../../../api/api";
 import { MoreOutlined } from "@ant-design/icons";
 import { toast } from "react-toastify";
 import {
@@ -20,11 +20,8 @@ import {
   WebhookEndpointCreate,
 } from "../../../../types/webhook-type";
 import CopyText from "../../../base/CopytoClipboard";
-import {
-  APIKeyType,
-  APIKeyCreate,
-  APIKeyCreateResponse,
-} from "../../../../types/apikey-type";
+import { FERN_API_CLIENT } from "../../../../api/fern";
+import { LotusApi } from "@lotus-fern/api";
 
 function isValidHttpUrl(string) {
   let url;
@@ -46,7 +43,7 @@ export const DeveloperTab = () => {
   const [apiKeyName, setAPIKeyName] = useState<string>("");
   const [apiKeyExpire, setAPIKeyExpire] = useState<string>("");
   const [webhookSelected, setWebhookSelected] = useState<WebhookEndpoint>();
-  const [apiKeySelected, setApiKeySelected] = useState<APIKeyType>();
+  const [apiKeySelected, setApiKeySelected] = useState<LotusApi.ApiToken>();
   const [isInvoiceGenerated, setIsInvoiceGenerated] = useState<boolean>(false);
   const [isInvoicePaid, setIsInvoicePaid] = useState<boolean>(false);
   const [isUsageAlertTriggered, setIsUsageAlertTriggered] =
@@ -104,7 +101,7 @@ export const DeveloperTab = () => {
 
   const { data: apiKeyData, refetch: refetchAPIKey } = useQuery(
     "api_keys",
-    () => APIKey.getKeys()
+    () => FERN_API_CLIENT.apiToken.listAll()
   );
 
   const createWebhookMutation = useMutation(
@@ -130,9 +127,9 @@ export const DeveloperTab = () => {
   );
 
   const createAPIKeyMutation = useMutation(
-    (apiKey: APIKeyCreate) => APIKey.createKey(apiKey),
+    (createRequest: LotusApi.CreateApiTokenRequest) => FERN_API_CLIENT.apiToken.create(createRequest),
     {
-      onSuccess: (record: APIKeyCreateResponse) => {
+      onSuccess: (record: LotusApi.CreateApiTokenResponse) => {
         queryClient.invalidateQueries("api_keys");
         refetchAPIKey();
         setAPIKeyName("");
@@ -188,12 +185,12 @@ export const DeveloperTab = () => {
       return;
     }
 
-    const endpointPost: APIKeyCreate = {
+    const endpointPost: LotusApi.CreateApiTokenRequest = {
       name: apiKeyName,
     };
     // if expiry date is a datetime parseable string, include it in endpointPost
     if (apiKeyExpire !== undefined && apiKeyExpire !== "") {
-      endpointPost["expiry_date"] = apiKeyExpire;
+      endpointPost["expiryDate"] = apiKeyExpire;
     }
 
     createAPIKeyMutation.mutate(endpointPost);
@@ -216,7 +213,7 @@ export const DeveloperTab = () => {
 
   const handleDeleteKey = (id: string | undefined) => {
     if (id) {
-      APIKey.deleteKey(id)
+      FERN_API_CLIENT.apiToken.delete(id)
         .then((data) => {
           toast.success("API Key deleted successfully");
           queryClient.invalidateQueries("api_keys");
@@ -231,7 +228,7 @@ export const DeveloperTab = () => {
 
   const handleRollKey = (id: string | undefined) => {
     if (id) {
-      APIKey.rollKey(id)
+      FERN_API_CLIENT.apiToken.roll(id)
         .then((data) => {
           toast.success("API Key rolled successfully");
           queryClient.invalidateQueries("api_keys");
@@ -283,8 +280,8 @@ export const DeveloperTab = () => {
             },
             {
               title: "Expiry Date",
-              dataIndex: "expiry_date",
-              key: "expiry_date",
+              dataIndex: "expiryDate",
+              key: "expiryDate",
             },
             {
               title: "Created At",

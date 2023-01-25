@@ -25,6 +25,13 @@ module.exports = {
     },
   },
   rules: {
-    // Add your own rules here to override ones from the extended configs.
+    "import/no-unresolved": [
+      "error",
+      // eslint-plugin-import doesn't read the "exports" field in package.json
+      // https://github.com/import-js/eslint-plugin-import/issues/1810
+      {
+        ignore: ["^@lotus-fern/api$"],
+      },
+    ],
   },
 };
