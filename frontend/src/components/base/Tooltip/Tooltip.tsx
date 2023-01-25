@@ -8,7 +8,7 @@ export type TooltipProps = {
 const Tooltip = ({ children }: TooltipProps) => {
   return <span className="group relative">{children}</span>;
 };
-const TooltipTop = ({ children, className }: TooltipProps) => (
+const TooltipTop = ({ children, className = "" }: TooltipProps) => (
   <span
     className={
       !className
@@ -22,7 +22,7 @@ const TooltipTop = ({ children, className }: TooltipProps) => (
     {children}
   </span>
 );
-const TooltipBottom = ({ children, className }: TooltipProps) => (
+const TooltipBottom = ({ children, className = "" }: TooltipProps) => (
   <span
     className={
       !className

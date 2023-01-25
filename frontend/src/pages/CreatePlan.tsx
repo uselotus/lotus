@@ -289,6 +289,7 @@ const CreatePlan = () => {
       extra={[
         <Button
           key="create"
+          id="create-plan-button"
           onClick={() => form.submit()}
           size="large"
           type="primary"

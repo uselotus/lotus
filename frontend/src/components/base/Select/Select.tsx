@@ -25,7 +25,7 @@ const SelectLabel = ({
   </label>
 );
 const SelectElement = forwardRef<SelectRef, PropsWithChildren<SelectProps>>(
-  ({ children, className, onChange, disabled }, ref) => (
+  ({ children, className = "", onChange, disabled }, ref) => (
     <select
       className={
         !className

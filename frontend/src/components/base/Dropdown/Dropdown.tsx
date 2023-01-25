@@ -46,7 +46,7 @@ const useDropdownContext = () => {
 };
 const Container: React.FC<PropsWithChildren<DropdownProps>> = ({
   children,
-  className,
+  className = "",
 }) => {
   const { isOpen } = useDropdownContext();
   return (
@@ -77,7 +77,7 @@ const Container: React.FC<PropsWithChildren<DropdownProps>> = ({
 
 const MenuItem: React.FC<PropsWithChildren<DropdownProps>> = ({
   children,
-  className,
+  className = "",
   onSelect,
 }) => {
   const { closeHandler, isOpen, selected } = useDropdownContext();

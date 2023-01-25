@@ -6,7 +6,7 @@ interface BadgeProps {
   onClick?: VoidFunction;
 }
 const Badge = ({
-  className,
+  className = "",
   children,
   style,
   onClick,
@@ -27,7 +27,7 @@ const Badge = ({
   </span>
 );
 const BadgeDot = ({
-  className,
+  className = "",
   style,
   fill,
 }: PropsWithChildren<BadgeProps>) => (
