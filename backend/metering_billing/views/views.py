@@ -1,10 +1,16 @@
 import logging
 from decimal import Decimal
 
-import api.views as api_views
 from django.conf import settings
 from django.db.models import Count, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+import api.views as api_views
 from metering_billing.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
@@ -58,11 +64,6 @@ from metering_billing.utils.enums import (
     USAGE_CALC_GRANULARITY,
 )
 from metering_billing.views.model_views import CustomerViewSet
-from rest_framework import serializers, status
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -171,6 +172,8 @@ class CostAnalysisView(APIView):
             serializer.validated_data.get(key, None)
             for key in ["start_date", "end_date", "customer_id"]
         )
+        start_time = convert_to_datetime(start_date, date_behavior="min")
+        end_time = convert_to_datetime(end_date, date_behavior="max")
         try:
             customer = Customer.objects.get(
                 organization=organization, customer_id=customer_id
@@ -217,9 +220,9 @@ class CostAnalysisView(APIView):
             items["cost_data"] = [v for k, v in items["cost_data"].items()]
         subscriptions = (
             SubscriptionRecord.objects.filter(
-                Q(start_date__range=[start_date, end_date])
-                | Q(end_date__range=[start_date, end_date])
-                | (Q(start_date__lte=start_date) & Q(end_date__gte=end_date)),
+                Q(start_date__range=[start_time, end_time])
+                | Q(end_date__range=[start_time, end_time])
+                | (Q(start_date__lte=start_time) & Q(end_date__gte=end_time)),
                 organization=organization,
                 customer=customer,
             )
