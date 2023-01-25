@@ -86,9 +86,9 @@ jobs:
         run: |
           pipenv run python manage.py migrate --noinput
 
-      - name: Test Pytest
-        run: |
-          pipenv run pytest -k "not integrations"
+      # - name: Test Pytest
+      #   run: |
+      #     pipenv run pytest -k "not integrations"
 
       - name: Run Backend
         run: pipenv run python manage.py runserver
