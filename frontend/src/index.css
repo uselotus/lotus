@@ -111,7 +111,25 @@ a {
   line-height: 30px;
   font-weight: 700;
 }
-
+.ant-input.w-full {
+  min-width: 150%;
+  margin-top: 10px;
+}
+.required:after {
+  content:" *";
+  color: red;
+}
+.ant-input-number.w-full {
+  min-width: 150%;
+  margin-top: 10px;
+}
+.ant-select.w-full {
+  min-width: 150%;
+  margin-top: 10px;
+}
+.ant-select.margin {
+  margin-top: 10px;
+}
 .ant-descriptions-small .ant-descriptions-title {
   font-size: 16px;
   line-height: 18px;

@@ -61,7 +61,7 @@ const AddOnsCard: FC<AddOnCardProps> = ({ add_on }) => {
       aria-hidden
     >
       <Typography.Title className="pt-4 flex font-alliance" level={2}>
-        <span>{add_on.name}</span>
+        <span>{add_on.addon_name}</span>
         {/* <span
           className="ml-auto"
           onClick={(e) => e.stopPropagation()}
@@ -83,7 +83,7 @@ const AddOnsCard: FC<AddOnCardProps> = ({ add_on }) => {
         <div>
           <div className="mb-2">
             <div className="pr-1 font-normal font-alliance not-italic whitespace-nowrap  text-darkgold">
-              Total Active Customer: {add_on.active_customers}
+              Total Active Customer: {add_on.active_instances}
             </div>
             <div className=" w-full h-[1.5px] mt-6 bg-card-divider" />
           </div>
@@ -104,15 +104,12 @@ const AddOnsCard: FC<AddOnCardProps> = ({ add_on }) => {
 
         <div className="flex items-center justify-between text-card-text gap-2 mb-1">
           <div className="font-normal whitespace-nowrap leading-4">Type</div>
-          <div className="text-card-grey font-main">{add_on.type}</div>
+          <div className="text-card-grey font-main">{add_on.addon_type}</div>
         </div>
 
         <div className="flex items-center justify-between text-card-text gap-2 mb-1">
           <div className="font-normal whitespace-nowrap leading-4">Price</div>
-          <div className="text-card-grey font-main">
-            {" "}
-            {add_on.price.includes(".00") ? `$${add_on.price}` : add_on.price}
-          </div>
+          <div className="text-card-grey font-main"> {add_on.flat_rate}</div>
         </div>
 
         <div className="flex items-center text-card-text justify-between gap-2 mb-1">

@@ -3,7 +3,7 @@
 import React, { FC, Fragment, useEffect, useState } from "react";
 
 import "./SwitchVersions.css";
-import { PlusOutlined , MoreOutlined , DeleteOutlined } from "@ant-design/icons";
+import { PlusOutlined, MoreOutlined, DeleteOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import {
   PlanDetailType,
@@ -59,17 +59,15 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
   className,
 }) => {
   const activePlanVersion = versions.find((x) => x.status === "active");
-  if (!activePlanVersion) {
-    return <div>No Active Plan</div>;
-  }
 
-  const [selectedVersion, setSelectedVersion] =
-    useState<PlanVersionType>(activePlanVersion);
+  const [selectedVersion, setSelectedVersion] = useState<
+    PlanVersionType | undefined
+  >(activePlanVersion);
   const [capitalizedState, setCapitalizedState] = useState<string>("");
   const queryClient = useQueryClient();
 
   const isSelectedVersion = (other_id: string) =>
-    selectedVersion.version_id === other_id;
+    selectedVersion?.version_id === other_id;
   const createTag = useMutation(
     ({ plan_id, tags }: { plan_id: string; tags: PlanType["tags"] }) =>
       Plan.updatePlan(plan_id, {
@@ -111,17 +109,19 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
     setSelectedVersion(plan.versions.find((x) => x.status === "active")!);
   }, [plan]);
   useEffect(() => {
-    setCapitalizedState(capitalize(selectedVersion.status));
-  }, [selectedVersion.status]);
-
+    setCapitalizedState(capitalize(selectedVersion!.status));
+  }, [selectedVersion?.status]);
+  if (!activePlanVersion) {
+    return <div>No Active Plan</div>;
+  }
   const menu = (
     <Menu>
       <Menu.Item
         key="1"
-        onClick={() => archivemutation.mutate(selectedVersion.version_id)}
+        onClick={() => archivemutation.mutate(selectedVersion!.version_id)}
         disabled={
-          selectedVersion.status === "active" ||
-          selectedVersion.status === "grandfathered"
+          selectedVersion?.status === "active" ||
+          selectedVersion?.status === "grandfathered"
         }
       >
         <div className="planMenuArchiveIcon">
@@ -158,7 +158,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         ))}
         <Link
           type="text"
-          to={"/create-version/" + selectedVersion.plan_id}
+          to={"/create-version/" + selectedVersion?.plan_id}
           className="mx-4"
         >
           <div className="flex items-center justify-center px-2 py-2 rounded-[20px] hover:bg-[#EAEAEB]">
@@ -180,7 +180,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
             />
           </div>
           <div className="col-span-2">
-            <PlanInfo plan={plan} version={selectedVersion} />
+            <PlanInfo plan={plan} version={selectedVersion!} />
           </div>
         </div>
 
@@ -189,22 +189,22 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
             refetch={refetch}
             updateBillingFrequencyMutation={updateBillingFrequency.mutate}
             plan={plan}
-            components={selectedVersion.components}
-            alerts={selectedVersion.alerts}
-            plan_version_id={selectedVersion.version_id}
+            components={selectedVersion?.components}
+            alerts={selectedVersion?.alerts}
+            plan_version_id={selectedVersion!.version_id}
           />
         </div>
         <div>
-          <PlanFeatures features={selectedVersion.features} />
+          <PlanFeatures features={selectedVersion?.features} />
         </div>
 
         <div className=" mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card">
           <Typography.Title className="!text-[18px]" level={2}>
             Price Adjustments:{" "}
             {getPriceAdjustmentEnding(
-              selectedVersion.price_adjustment?.price_adjustment_type,
-              selectedVersion.price_adjustment?.price_adjustment_amount,
-              selectedVersion.currency.symbol
+              selectedVersion?.price_adjustment?.price_adjustment_type,
+              selectedVersion?.price_adjustment?.price_adjustment_amount,
+              selectedVersion!.currency.symbol
             )}
           </Typography.Title>
         </div>

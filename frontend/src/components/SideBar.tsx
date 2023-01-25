@@ -4,6 +4,7 @@ import {
   UserOutlined,
   DashboardOutlined,
   SettingOutlined,
+  DatabaseOutlined,
   BookOutlined,
   BorderlessTableOutlined,
   LineChartOutlined,
@@ -55,7 +56,7 @@ const SideBar: FC = () => {
     },
     {
       key: "/add-ons",
-      icon: <BorderlessTableOutlined />,
+      icon: <DatabaseOutlined />,
       label: "Add-ons",
       onClick: () => navigate("/add-ons"),
     },
@@ -108,7 +109,7 @@ const SideBar: FC = () => {
     },
     {
       key: "/add-ons",
-      icon: <BorderlessTableOutlined />,
+      icon: <DatabaseOutlined />,
       label: "Add-ons",
       onClick: () => navigate("/add-ons"),
     },

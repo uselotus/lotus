@@ -28,15 +28,21 @@ export interface AddonType {
   invoice_when: InvoiceWhen;
   billing_frequency: AddonBillingFrequency;
   recurring_flat_fee_timing?: RecurringFlatFeeTiming;
-  addon_type: AddonType;
+  addon_type: AddonTypeOption;
 }
 
 export interface CreateAddonType
   extends Omit<
     AddonType,
-    "addon_id" | "components" | "features" | "currency" | "active_instances"
+    | "addon_id"
+    | "components"
+    | "features"
+    | "currency"
+    | "active_instances"
+    | "addon_type"
   > {
   components: CreateComponent[];
   features: string[];
   currency_code?: string;
+  addon_type: AddonTypeOption;
 }
