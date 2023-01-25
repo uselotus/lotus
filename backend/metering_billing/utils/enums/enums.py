@@ -93,6 +93,12 @@ class FLAT_FEE_BILLING_TYPE(models.TextChoices):
     IN_ADVANCE = ("in_advance", _("In Advance"))
 
 
+class INVOICE_CHARGE_TIMING_TYPE(models.TextChoices):
+    IN_ARREARS = ("in_arrears", _("In Arrears"))
+    IN_ADVANCE = ("in_advance", _("In Advance"))
+    ONE_TIME = ("one_time", _("One Time"))
+
+
 class USAGE_CALC_GRANULARITY(models.TextChoices):
     DAILY = ("day", _("Daily"))
     TOTAL = ("total", _("Total"))
