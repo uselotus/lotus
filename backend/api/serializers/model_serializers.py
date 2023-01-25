@@ -5,9 +5,6 @@ from typing import Literal, Optional, Union
 
 from django.conf import settings
 from django.db.models import Sum
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-
 from metering_billing.invoice import (
     generate_balance_adjustment_invoice,
     generate_invoice,
@@ -64,6 +61,8 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
@@ -1773,7 +1772,7 @@ class AddOnSerializer(serializers.ModelSerializer):
         return obj.addon_spec.get_flat_fee_invoicing_behavior_on_attach_display()
 
     def get_addon_type(self, obj) -> Literal["flat", "usage_based"]:
-        if obj.plan_components.all().count() > 0:
+        if obj.display_version.plan_components.all().count() > 0:
             return "usage_based"
         return "flat"
 

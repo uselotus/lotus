@@ -1388,7 +1388,6 @@ class PlanCreateSerializer(serializers.ModelSerializer):
             plan.save()
             return plan
         except Exception as e:
-            print(e)
             plan.delete()
             raise ServerError(e)
 
@@ -1954,7 +1953,7 @@ class AddOnCreateSerializer(serializers.ModelSerializer):
         addon_spec_data = {
             "organization": org,
             "billing_frequency": validated_data["billing_frequency"],
-            "invoice_when": validated_data["invoice_when"],
+            "flat_fee_invoicing_behavior_on_attach": validated_data["invoice_when"],
             "recurring_flat_fee_timing": validated_data["recurring_flat_fee_timing"],
         }
         addon_spec = AddOnSpecification.objects.create(**addon_spec_data)

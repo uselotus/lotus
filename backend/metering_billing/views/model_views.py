@@ -1,22 +1,16 @@
 # import lotus_python
+import api.views as api_views
 import posthog
 from actstream.models import Action
-from django.conf import settings
-from django.core.cache import cache
-from django.db.utils import IntegrityError
-from drf_spectacular.utils import OpenApiCallback, extend_schema, inline_serializer
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import action
-from rest_framework.pagination import CursorPagination
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-
-import api.views as api_views
 from api.serializers.webhook_serializers import (
     InvoiceCreatedSerializer,
     InvoicePaidSerializer,
     UsageAlertTriggeredSerializer,
 )
+from django.conf import settings
+from django.core.cache import cache
+from django.db.utils import IntegrityError
+from drf_spectacular.utils import OpenApiCallback, extend_schema, inline_serializer
 from metering_billing.exceptions import (
     DuplicateMetric,
     DuplicateWebhookEndpoint,
@@ -96,6 +90,11 @@ from metering_billing.utils.enums import (
     PAYMENT_PROVIDERS,
     WEBHOOK_TRIGGER_EVENTS,
 )
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.pagination import CursorPagination
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -1140,6 +1139,16 @@ class AddOnViewSet(viewsets.ModelViewSet):
             return AddOnCreateSerializer
         return AddOnSerializer
 
+    def perform_create(self, serializer):
+        if self.request.user.is_authenticated:
+            user = self.request.user
+        else:
+            user = None
+        instance = serializer.save(
+            organization=self.request.organization, created_by=user
+        )
+        return instance
+
     def get_queryset(self):
         filter_kwargs = {"organization": self.request.organization}
         qs = self.queryset
@@ -1148,9 +1157,7 @@ class AddOnViewSet(viewsets.ModelViewSet):
     @extend_schema(responses=AddOnSerializer)
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        print("serializer", serializer)
         serializer.is_valid(raise_exception=True)
-        print("nah", serializer)
         instance = self.perform_create(serializer)
         addon_data = AddOnSerializer(instance).data
         return Response(addon_data, status=status.HTTP_201_CREATED)

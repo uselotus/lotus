@@ -181,7 +181,6 @@ class TestGetAccess:
             "metric_id": setup_dict["allow_limit_metrics"][0].metric_id,
         }
         response = setup_dict["client"].get(reverse("metric_access"), payload)
-        print(response.data)
         assert response.status_code == status.HTTP_200_OK
         response = response.json()
         assert (
@@ -280,7 +279,6 @@ class TestGetAccess:
             "feature_id": setup_dict["features"][1].feature_id,
         }
         response = setup_dict["client"].get(reverse("feature_access"), payload)
-        print(response.data)
         assert response.status_code == status.HTTP_200_OK
         feature = response.json()
         assert (
