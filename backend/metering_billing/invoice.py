@@ -3,7 +3,6 @@ from decimal import Decimal
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
-
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
@@ -86,7 +85,6 @@ def generate_invoice(
         # Create the invoice
         invoice = Invoice.objects.create(**invoice_kwargs)
         invoices[currency] = invoice
-
     for subscription_record in subscription_records:
         invoice = invoices[subscription_record.billing_plan.pricing_unit]
         # usage calculation
@@ -140,7 +138,7 @@ def generate_invoice(
             generate_invoice_pdf_async.delay(invoice.pk)
             invoice_created_webhook(invoice, organization)
 
-    return invoices
+    return list(invoices.values())
 
 
 def calculate_subscription_record_usage_fees(subscription_record, invoice):
@@ -292,7 +290,7 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice):
             end - start
         ).total_seconds() / subscription_record.unadjusted_duration_seconds
         flat_fee_due = billing_plan.flat_rate * convert_to_decimal(proration_factor)
-    elif subscription_record.flat_fee_behavior is not FLAT_FEE_BEHAVIOR.REFUND:
+    elif subscription_record.flat_fee_behavior is FLAT_FEE_BEHAVIOR.REFUND:
         flat_fee_due = Decimal(0)
     else:
         flat_fee_due = billing_plan.flat_rate

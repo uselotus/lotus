@@ -10,6 +10,37 @@ from itertools import chain
 from typing import Optional
 
 import posthog
+from dateutil import parser
+from dateutil.relativedelta import relativedelta
+from django.conf import settings
+from django.db.models import (
+    Count,
+    DecimalField,
+    F,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
+from django.db.utils import IntegrityError
+from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import (
+    action,
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
     AddOnSubscriptionRecordSerializer,
@@ -43,25 +74,6 @@ from api.serializers.nonmodel_serializers import (
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
 )
-from dateutil import parser
-from dateutil.relativedelta import relativedelta
-from django.conf import settings
-from django.db.models import (
-    Count,
-    DecimalField,
-    F,
-    OuterRef,
-    Prefetch,
-    Q,
-    Subquery,
-    Sum,
-    Value,
-)
-from django.db.models.functions import Coalesce
-from django.db.utils import IntegrityError
-from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
 from metering_billing.exceptions import (
     DuplicateCustomer,
@@ -114,17 +126,6 @@ from metering_billing.utils.enums import (
     USAGE_BILLING_BEHAVIOR,
     USAGE_BILLING_FREQUENCY,
 )
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import (
-    action,
-    api_view,
-    authentication_classes,
-    permission_classes,
-)
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -581,7 +582,7 @@ class SubscriptionViewSet(
                     queryset=PriceTier.objects.all(),
                 ),
                 Prefetch(
-                    "addons",
+                    "addon_subscription_records",
                     queryset=SubscriptionRecord.objects.filter(*addon_args)
                     .select_related("billing_plan")
                     .prefetch_related(
@@ -597,7 +598,12 @@ class SubscriptionViewSet(
                 ),
             )
             qs = SubscriptionRecord.objects.filter(
-                pk__in=list(chain(qs, *[r.addons.all() for r in qs]))
+                pk__in=[
+                    sr.pk
+                    for sr in chain(
+                        qs, *[r.addon_subscription_records.all() for r in qs]
+                    )
+                ]
             )
 
             if serializer.validated_data.get("subscription_filters"):
@@ -814,7 +820,7 @@ class SubscriptionViewSet(
             for subscription_record in qs:
                 original_sub_record_plan_metrics = {
                     pc.billable_metric
-                    for sub_rec in subscription_record.addons.all()
+                    for sub_rec in subscription_record.addon_subscription_records.all()
                     for pc in sub_rec.billing_plan.plan_components.all()
                 }
                 if replace_plan_metrics.intersection(original_sub_record_plan_metrics):

@@ -5,9 +5,6 @@ from typing import Literal, Optional, Union
 
 from django.conf import settings
 from django.db.models import Sum
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-
 from metering_billing.invoice import (
     generate_balance_adjustment_invoice,
     generate_invoice,
@@ -64,6 +61,8 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
@@ -1889,10 +1888,16 @@ class AddOnSubscriptionRecordCreateSerializer(serializers.ModelSerializer):
                 "Multiple subscriptions found for the given customer ID, plan ID, and subscription filters."
             )
         data["attach_to_subscription_record"] = valid[0]
-        metrics_in_addon = data["addon_id"].display_version.metrics.all()
-        metrics_in_attach_sr = data[
-            "attach_to_subscription_record"
-        ].billing_plan.metrics.all()
+        metrics_in_addon = {
+            pc.billable_metric
+            for pc in data["addon_id"].display_version.plan_components.all()
+        }
+        metrics_in_attach_sr = {
+            pc.billable_metric
+            for pc in data[
+                "attach_to_subscription_record"
+            ].billing_plan.plan_components.all()
+        }
         intersection = metrics_in_addon & metrics_in_attach_sr
         if len(intersection) > 0:
             raise ValidationError(

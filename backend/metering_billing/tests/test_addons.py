@@ -71,12 +71,14 @@ def addon_test_common_setup(
             Metric,
             organization=org,
             event_name="email_sent",
-            property_name=itertools.cycle(["num_characters", "peak_bandwith", ""]),
-            usage_aggregation_type=itertools.cycle(["sum", "max", "count"]),
-            billable_metric_name=itertools.cycle(
-                ["count_chars", "peak_bandwith", "email_sent"]
+            property_name=itertools.cycle(
+                ["num_characters", "peak_bandwith", None, "recipients"]
             ),
-            _quantity=3,
+            usage_aggregation_type=itertools.cycle(["sum", "max", "count", "sum"]),
+            billable_metric_name=itertools.cycle(
+                ["count_chars", "peak_bandwith", "email_sent", "sum recipients"]
+            ),
+            _quantity=4,
         )
         for metric in metric_set:
             METRIC_HANDLER_MAP[metric.metric_type].create_continuous_aggregate(metric)
@@ -191,7 +193,7 @@ def addon_test_common_setup(
         setup_dict["recurring_addon_spec"] = recurring_addon_spec
         pc = PlanComponent.objects.create(
             plan_version=recurring_addon_version,
-            billable_metric=metric_set[2],
+            billable_metric=metric_set[3],
         )
         PriceTier.objects.create(
             plan_component=pc,
@@ -200,7 +202,7 @@ def addon_test_common_setup(
             cost_per_batch=0.25,
             metric_units_per_batch=mupb,
             range_end=100,
-        )  # extra 100 pack of emails for $1 + 0.25 for each extra email
+        )  # this metric is not in the other plan
 
         payload = {
             "name": "test_subscription",
@@ -551,7 +553,7 @@ class TestAttachAddon:
         # prorated flat fee
         assert 0 < recent_inv.cost_due < setup_dict["recurring_addon_version"].flat_rate
 
-    def test_usager_based_add_on(self, addon_test_common_setup):
+    def test_usage_based_add_on(self, addon_test_common_setup):
         num_subscriptions = 0
         setup_dict = addon_test_common_setup(
             num_subscriptions=num_subscriptions,
