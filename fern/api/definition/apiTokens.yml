@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/fern-api/fern/main/fern.schema.json
+
+services:
+  http:
+    ApiTokensService:
+      auth: true
+      base-path: /api_tokens
+      endpoints:
+        list:
+          path: ""
+          method: GET
+          docs: API endpoint that allows API Tokens to be viewed or edited.
+          response: list<APIToken>
+
+types:
+  APIToken:
+    properties:
+      name:
+        docs: >-
+          A free-form name for the API key. Need not be unique. 50 characters
+          max.
+        type: optional<string>
+      prefix: string
+      expiry_date:
+        docs: Once API key expires, clients cannot use it anymore.
+        type: optional<string>
+      created: string

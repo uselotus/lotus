@@ -1,0 +1,407 @@
+openapi: 3.0.1
+info:
+  title: Lotus API
+  version: ''
+paths:
+  /api_tokens:
+    get:
+      description: API endpoint that allows API Tokens to be viewed or edited.
+      operationId: ApiTokensService.list
+      tags:
+        - ApiTokens
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/APIToken'
+      security: &ref_0
+        - XApiKeyAuth: []
+  /api/customers:
+    post:
+      operationId: CustomersService.create
+      tags:
+        - Customers
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+      security: *ref_0
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerCreateRequest'
+    get:
+      operationId: CustomersService.listAll
+      tags:
+        - Customers
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Customer'
+      security: *ref_0
+  /api/customers/{customer_id}:
+    get:
+      operationId: CustomersService.retrieve
+      tags:
+        - Customers
+      parameters:
+        - name: customer_id
+          in: path
+          description: |
+            The id provided when creating the customer, we suggest matching
+            with your internal customer id in your backend
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+      security: *ref_0
+components:
+  schemas:
+    APIToken:
+      type: object
+      properties:
+        name:
+          type: string
+          description: >-
+            A free-form name for the API key. Need not be unique. 50 characters
+            max.
+        prefix:
+          type: string
+        expiry_date:
+          type: string
+          description: Once API key expires, clients cannot use it anymore.
+        created:
+          type: string
+      required:
+        - prefix
+        - created
+    CustomerCreateRequest:
+      type: object
+      properties:
+        customer_name:
+          type: string
+          description: The display name of the customer
+        customer_id:
+          type: string
+          description: >
+            The id provided when creating the customer, we suggest matching with
+            your internal customer id in your backend. 
+        email:
+          type: string
+          description: >
+            The primary email address of the customer, must be the same as the
+            email address used to create the customer in the payment provider
+        payment_provider:
+          $ref: '#/components/schemas/PaymentProvider'
+          description: >
+            The payment provider this customer is associated with. Currently,
+            only Stripe is supported.
+        payment_provider_id:
+          type: string
+          description: >
+            The customer's ID in the specified payment provider. Please note
+            that payment_provider and payment_provider_id are mutually
+            necessary.
+        metadata:
+          type: object
+          additionalProperties: {}
+          description: Extra metadata for the customer
+        default_currency_code:
+          type: string
+          description: >
+            The currency code this customer will be invoiced in. Codes are 3
+            letters, e.g. 'USD'.
+        address:
+          $ref: '#/components/schemas/Address'
+        tax_rate:
+          type: number
+          format: double
+          description: Tax rate as percentage. For example, 10.5 for 10.5%
+      required:
+        - customer_id
+        - email
+    Customer:
+      type: object
+      properties:
+        customer_id:
+          type: string
+        email:
+          type: string
+        customer_name:
+          type: string
+        invoices:
+          type: array
+          items:
+            $ref: '#/components/schemas/LightweightInvoice'
+        total_amount_due:
+          type: number
+          format: double
+        subscriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionRecord'
+        integration:
+          $ref: '#/components/schemas/CustomerIntegrations'
+          description: >
+            A dictionary containing the customer's integrations. Keys are the
+            integration type, and the value is a dictionary containing the
+            integration's properties, which can vary by integration.
+        default_currency:
+          $ref: '#/components/schemas/PricingUnit'
+        payment_provider:
+          $ref: '#/components/schemas/PaymentProvider'
+        has_payment_method:
+          type: boolean
+        address:
+          $ref: '#/components/schemas/Address'
+        tax_rate:
+          type: number
+          format: double
+          description: Tax rate as percentage. For example, 10.5 for 10.5%
+      required:
+        - customer_id
+        - email
+        - customer_name
+        - invoices
+        - total_amount_due
+        - subscriptions
+        - integration
+        - default_currency
+        - has_payment_method
+        - tax_rate
+    Address:
+      type: object
+      properties:
+        city:
+          type: string
+          description: City, district, suburb, town, or village
+        country:
+          type: string
+          description: ISO 3166-1 alpha-2 country code
+        line1:
+          type: string
+          description: Address line 1 (e.g., street, PO Box, or company name)
+        line2:
+          type: string
+          description: Address line 2 (e.g., apartment, suite, unit, or building)
+        postal_code:
+          type: string
+          description: ZIP or postal code
+        state:
+          type: string
+          description: State, county, province, or region
+      required:
+        - city
+        - country
+        - line1
+        - postal_code
+        - state
+    LightweightInvoice:
+      type: object
+      properties:
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
+        external_payment_obj_id:
+          type: string
+        seller:
+          $ref: '#/components/schemas/Seller'
+        invoice_id:
+          type: string
+        end_date:
+          type: string
+        invoice_number:
+          type: string
+        cost_due:
+          type: number
+          format: double
+        due_date:
+          type: string
+        payment_status:
+          $ref: '#/components/schemas/PaymentStatus'
+        invoice_pdf:
+          type: string
+        start_date:
+          type: string
+        issue_date:
+          type: string
+        external_payment_obj_type:
+          $ref: '#/components/schemas/PaymentProvider'
+      required:
+        - currency
+        - seller
+        - invoice_id
+        - end_date
+        - invoice_number
+        - cost_due
+        - payment_status
+        - start_date
+        - issue_date
+    PricingUnit:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        symbol:
+          type: string
+      required:
+        - code
+        - name
+        - symbol
+    SubscriptionRecord:
+      type: object
+      properties:
+        start_date:
+          type: string
+          description: >-
+            The time the subscription starts. This will be a string in
+            yyyy-mm-dd HH:mm:ss format in UTC time.
+        end_date:
+          type: string
+          description: >-
+            The time the subscription starts. This will be a string in
+            yyyy-mm-dd HH:mm:ss format in UTC time.
+        auto_renew:
+          type: boolean
+          description: Whether the subscription automatically renews. Defaults to true.
+        is_new:
+          type: boolean
+          description: >-
+            Whether this subscription came from a renewal or from a first-time.
+            Defaults to true on creation.
+        subscription_filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
+        customer:
+          $ref: '#/components/schemas/LightweightCustomer'
+        billing_plan:
+          $ref: '#/components/schemas/LightweightPlanVersion'
+        fully_billed:
+          type: boolean
+          description: Whether the subscription has been fully billed and finalized.
+      required:
+        - start_date
+        - end_date
+        - auto_renew
+        - is_new
+        - subscription_filters
+        - customer
+        - billing_plan
+        - fully_billed
+    SubscriptionCategoricalFilter:
+      type: object
+      properties:
+        value:
+          type: string
+        property_name:
+          type: string
+          description: 'The string name of the property to filter on. Example: ''product_id'''
+      required:
+        - value
+        - property_name
+    LightweightCustomer:
+      type: object
+      properties:
+        customer_name:
+          type: string
+          description: The display name of the customer
+        email:
+          type: string
+          description: >-
+            The primary email address of the customer, must be the same as the
+            email address used to create the customer in the payment provider
+        customer_id:
+          type: string
+          description: >-
+            The id provided when creating the customer, we suggest matching with
+            your internal customer id in your backend
+      required:
+        - customer_id
+    LightweightPlanVersion:
+      type: object
+      properties:
+        plan_name:
+          type: string
+        plan_id:
+          type: string
+        version:
+          type: integer
+        version_id:
+          type: string
+      required:
+        - plan_name
+        - plan_id
+        - version
+        - version_id
+    CustomerIntegrations:
+      type: object
+      properties:
+        stripe:
+          $ref: '#/components/schemas/CustomerStripeIntegration'
+    CustomerStripeIntegration:
+      type: object
+      properties:
+        stripe_id:
+          type: string
+        has_payment_method:
+          type: boolean
+      required:
+        - stripe_id
+        - has_payment_method
+    PaymentProvider:
+      type: string
+      enum:
+        - stripe
+    Seller:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          $ref: '#/components/schemas/Address'
+        phone:
+          type: string
+        email:
+          type: string
+      required:
+        - name
+    PaymentStatus:
+      type: string
+      enum:
+        - paid
+        - unpaid
+  securitySchemes:
+    XApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-KEY
+servers:
+  - url: https://api.uselotus.io
+    description: Cloud
+  - url: http://localhost:8000
+    description: Local
