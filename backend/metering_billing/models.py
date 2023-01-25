@@ -17,6 +17,14 @@ from django.db.models import Count, F, FloatField, Q, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+
 from metering_billing.exceptions.exceptions import (
     AlignmentEngineFailure,
     ExternalConnectionFailure,
@@ -71,13 +79,6 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -1523,6 +1524,12 @@ class InvoiceLineItem(models.Model):
     )
     associated_subscription_record = models.ForeignKey(
         "SubscriptionRecord",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="line_items",
+    )
+    associated_plan_version = models.ForeignKey(
+        "PlanVersion",
         on_delete=models.SET_NULL,
         null=True,
         related_name="line_items",
