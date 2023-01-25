@@ -13,7 +13,7 @@ import { PageLayout } from "../components/base/PageLayout";
 import { ComponentDisplay } from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import { CurrencyType } from "../types/pricing-unit-type";
-import { CreateAddonType } from "../types/addon-type";
+import { AddonTypeOption, CreateAddonType } from "../types/addon-type";
 
 interface ComponentDisplay {
   metric: string;
@@ -49,7 +49,7 @@ const CreateAddOns = () => {
   const [addon_name, setAddonName] = useState("");
   const [description, setDescription] = useState("");
   const [billing_frequency, setBillingFrequency] = useState("");
-  const [addon_type, setAddonType] = useState("");
+  const [addon_type, setAddonType] = useState<AddonTypeOption>("flat_fee");
   const [base_cost, setBaseCost] = useState<number | undefined>(0.0);
   const [recurring_flat_fee_timing, setRecurringFlatFeeTiming] = useState("");
   const [invoice_when, setInvoiceWhen] = useState("");

@@ -13,7 +13,7 @@ const RecurringFlatFeeTimingOptions = ["in_advance", "in_arrears"];
 export type RecurringFlatFeeTiming =
   (typeof RecurringFlatFeeTimingOptions)[number];
 
-const AddonTypeOptions = ["flat_fee", "usage"];
+const AddonTypeOptions: ["flat_fee", "usage"] = ["flat_fee", "usage"];
 export type AddonTypeOption = (typeof AddonTypeOptions)[number];
 
 export interface AddonType {
