@@ -42,5 +42,9 @@ groups:
           repository: fern-lotus/lotus-openapi
       - name: fernapi/fern-postman
         version: 0.0.34
+        output:
+          location: postman
+          api-key: ${FERN_POSTMAN_API_KEY}
+          workspace-id: 29e14e41-df06-46fc-b2ba-4528fc1bc797
         github:
           repository: fern-lotus/lotus-postman

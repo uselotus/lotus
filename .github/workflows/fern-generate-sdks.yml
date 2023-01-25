@@ -1,0 +1,25 @@
+name: ci
+
+on: [push]
+
+jobs: 
+  fern-generate-external-sdks: 
+    needs: fern-check
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup node
+        uses: actions/setup-node@v3
+      
+      - name: Download Fern
+        run: npm install -g fern-api
+
+      - name: Release SDKs, OpenAPI, Postman
+        env:
+          FERN_NPM_TOKEN: ${{ secrets.FERN_NPM_TOKEN }}
+          FERN_POSTMAN_API_KEY: ${{ secrets.FERN_POSTMAN_API_KEY }}
+          FERN_TOKEN: ${{ secrets.FERN_TOKEN }}
+        run: fern generate --group external --version ${{ github.ref_name }} --log-level debug
