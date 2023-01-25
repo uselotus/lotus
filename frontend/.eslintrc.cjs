@@ -5,6 +5,7 @@ module.exports = {
     "plugin:react/recommended",
     "plugin:react-hooks/recommended", // This line was added
     "plugin:import/recommended",
+    "plugin:import/typescript",
     "plugin:jsx-a11y/recommended",
     "plugin:@typescript-eslint/recommended",
     // This disables the formatting rules in ESLint that Prettier is going to be responsible for handling.

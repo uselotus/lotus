@@ -8,89 +8,89 @@ services:
       audiences:
         - external
       endpoints:
-        create: 
+        create:
           path: ""
           method: POST
           request: CustomerCreateRequest
           response: Customer
-        
-        retrieve: 
+
+        retrieve:
           path: /{customer_id}
           method: GET
-          path-parameters: 
-            customer_id: 
+          path-parameters:
+            customer_id:
               type: string
-              docs: | 
+              docs: |
                 The id provided when creating the customer, we suggest matching
                 with your internal customer id in your backend
           response: Customer
-        
-        listAll: 
+
+        listAll:
           path: ""
           method: GET
           response: list<Customer>
-        
-types: 
+
+types:
   CustomerCreateRequest:
-    properties: 
-      customer_name: 
+    properties:
+      customer_name:
         type: optional<string>
         docs: The display name of the customer
-      customer_id: 
+      customer_id:
         type: string
-        docs: > 
+        docs: >
           The id provided when creating the customer, we suggest matching
-          with your internal customer id in your backend. 
-      email: 
+          with your internal customer id in your backend.
+      email:
         type: string
-        docs: > 
+        docs: >
           The primary email address of the customer, must be the same
           as the email address used to create the customer in the payment provider
-      payment_provider: 
+      payment_provider:
         type: optional<PaymentProvider>
-        docs: > 
+        docs: >
           The payment provider this customer is associated with. Currently,
           only Stripe is supported.
-      payment_provider_id: 
+      payment_provider_id:
         type: optional<string>
-        docs: > 
+        docs: >
           The customer's ID in the specified payment provider. Please
           note that payment_provider and payment_provider_id are mutually necessary.
-      metadata: 
+      metadata:
         type: optional<map<string, unknown>>
         docs: Extra metadata for the customer
-      default_currency_code: 
+      default_currency_code:
         type: optional<string>
-        docs: > 
+        docs: >
           The currency code this customer will be invoiced in. Codes
           are 3 letters, e.g. 'USD'.
-      address: optional<Address>  
-      tax_rate: 
+      address: optional<Address>
+      tax_rate:
         type: optional<double>
         docs: Tax rate as percentage. For example, 10.5 for 10.5%
-  
-  Customer: 
-    properties: 
+
+  Customer:
+    properties:
       customer_id: string
       email: string
       customer_name: string
       invoices: list<LightweightInvoice>
       total_amount_due: double
       subscriptions: list<SubscriptionRecord>
-      integration: 
-        docs: > 
+      integration:
+        docs: >
           A dictionary containing the customer's integrations. Keys are
           the integration type, and the value is a dictionary containing the integration's
           properties, which can vary by integration.
         type: CustomerIntegrations
       default_currency: PricingUnit
-      payment_provider: optional<PaymentProvider> 
+      payment_provider: optional<PaymentProvider>
       has_payment_method: boolean
       address: optional<Address>
-      tax_rate: 
-        docs:  Tax rate as percentage. For example, 10.5 for 10.5%
+      tax_rate:
+        docs: Tax rate as percentage. For example, 10.5 for 10.5%
         type: double
-  
+
   Address:
     properties:
       city:
@@ -111,7 +111,7 @@ types:
       state:
         docs: State, county, province, or region
         type: string
-  
+
   LightweightInvoice:
     properties:
       currency: PricingUnit
@@ -127,7 +127,7 @@ types:
       start_date: string
       issue_date: string
       external_payment_obj_type: optional<PaymentProvider>
-  
+
   PricingUnit:
     properties:
       code: string
@@ -183,14 +183,14 @@ types:
           The id provided when creating the customer, we suggest matching with
           your internal customer id in your backend
         type: string
-  
+
   LightweightPlanVersion:
     properties:
       plan_name: string
       plan_id: string
       version: integer
       version_id: string
-  
+
   CustomerIntegrations:
     properties:
       stripe: optional<CustomerStripeIntegration>
@@ -200,19 +200,18 @@ types:
       stripe_id: string
       has_payment_method: boolean
 
-  PaymentProvider: 
-    enum: 
+  PaymentProvider:
+    enum:
       - stripe
-  
+
   Seller:
     properties:
       name: string
       address: optional<Address>
       phone: optional<string>
       email: optional<string>
-  
+
   PaymentStatus:
     enum:
       - paid
       - unpaid
-        

@@ -11,11 +11,6 @@ import {
   WebhookEndpointUpdate,
 } from "../types/webhook-type";
 import {
-  APIKeyType,
-  APIKeyCreate,
-  APIKeyCreateResponse,
-} from "../types/apikey-type";
-import {
   PlanType,
   CreatePlanType,
   UpdatePlanType,
@@ -76,6 +71,7 @@ import {
 import { CreateCreditType, CreditType } from "../types/balance-adjustment";
 import { CurrencyType } from "../types/pricing-unit-type";
 import { AlertType, CreateAlertType } from "../types/alert-type";
+import { APIKeyType, APIKeyCreate, APIKeyCreateResponse } from "../types/apikey-type";
 
 const cookies = new Cookies();
 
@@ -252,16 +248,6 @@ export const Webhook = {
     wh_id: number,
     post: WebhookEndpointUpdate
   ): Promise<WebhookEndpoint> => requests.patch(`app/webhooks/${wh_id}/`, post),
-};
-
-export const APIKey = {
-  getKeys: (): Promise<APIKeyType[]> => requests.get("app/api_tokens/"),
-  createKey: (post: APIKeyCreate): Promise<APIKeyCreateResponse> =>
-    requests.post("app/api_tokens/", post),
-  deleteKey: (prefix: string): Promise<any> =>
-    requests.delete(`app/api_tokens/${prefix}/`),
-  rollKey: (prefix: string): Promise<APIKeyCreateResponse> =>
-    requests.post(`app/api_tokens/${prefix}/roll/`, {}),
 };
 
 export const Authentication = {

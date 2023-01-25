@@ -4,11 +4,38 @@ info:
   version: ''
 paths:
   /api_tokens:
+    post:
+      operationId: ApiTokenService.create
+      tags:
+        - ApiToken
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateApiTokenResponse'
+      security: &ref_0
+        - AuthorizationAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                expiry_date:
+                  type: string
+              required:
+                - name
     get:
       description: API endpoint that allows API Tokens to be viewed or edited.
-      operationId: ApiTokensService.list
+      operationId: ApiTokenService.listAll
       tags:
-        - ApiTokens
+        - ApiToken
       parameters: []
       responses:
         '200':
@@ -18,9 +45,42 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/APIToken'
-      security: &ref_0
-        - XApiKeyAuth: []
+                  $ref: '#/components/schemas/ApiToken'
+      security: *ref_0
+  /api_tokens/{prefix}:
+    delete:
+      operationId: ApiTokenService.delete
+      tags:
+        - ApiToken
+      parameters:
+        - name: prefix
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: ''
+      security: *ref_0
+  /api_tokens/{prefix}/roll:
+    post:
+      operationId: ApiTokenService.roll
+      tags:
+        - ApiToken
+      parameters:
+        - name: prefix
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RollApiTokenResponse'
+      security: *ref_0
   /api/customers:
     post:
       operationId: CustomersService.create
@@ -80,7 +140,7 @@ paths:
       security: *ref_0
 components:
   schemas:
-    APIToken:
+    ApiToken:
       type: object
       properties:
         name:
@@ -98,6 +158,26 @@ components:
       required:
         - prefix
         - created
+    CreateApiTokenResponse:
+      type: object
+      properties:
+        key:
+          type: string
+        token:
+          $ref: '#/components/schemas/ApiToken'
+      required:
+        - key
+        - token
+    RollApiTokenResponse:
+      type: object
+      properties:
+        key:
+          type: string
+        token:
+          $ref: '#/components/schemas/ApiToken'
+      required:
+        - key
+        - token
     CustomerCreateRequest:
       type: object
       properties:
@@ -108,7 +188,7 @@ components:
           type: string
           description: >
             The id provided when creating the customer, we suggest matching with
-            your internal customer id in your backend. 
+            your internal customer id in your backend.
         email:
           type: string
           description: >
@@ -396,10 +476,10 @@ components:
         - paid
         - unpaid
   securitySchemes:
-    XApiKeyAuth:
+    AuthorizationAuth:
       type: apiKey
       in: header
-      name: X-API-KEY
+      name: Authorization
 servers:
   - url: https://api.uselotus.io
     description: Cloud

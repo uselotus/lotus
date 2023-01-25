@@ -1,10 +1,10 @@
 name: api
 display-name: Lotus API
 default-environment: Cloud
-auth: ApiKey
+auth: TokenHeader
 auth-schemes: 
-  ApiKey: 
-    header: X-API-KEY
+  TokenHeader: 
+    header: Authorization
     type: string
 environments: 
   Cloud: https://api.uselotus.io
