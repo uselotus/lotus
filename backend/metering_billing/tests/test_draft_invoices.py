@@ -10,6 +10,7 @@ from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Event,
     Invoice,
@@ -22,7 +23,6 @@ from metering_billing.models import (
 )
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PRICE_ADJUSTMENT_TYPE
-from metering_billing.invoice import generate_invoice
 
 
 @pytest.fixture
@@ -303,8 +303,6 @@ class TestGenerateInvoice:
             SubscriptionRecord.objects.all(),
             draft=False,
         )
-        for x in result_invoices[0].line_items.all().values():
-            print(x)
 
         assert len(result_invoices) == 1
 

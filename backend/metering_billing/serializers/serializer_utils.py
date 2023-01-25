@@ -199,6 +199,6 @@ class WebhookSecretUUIDField(UUIDPrefixField):
 
 
 @extend_schema_field(serializers.RegexField(regex=r"addon_[0-9a-f]{32}"))
-class AddOnUUIDField(UUIDPrefixField):
+class AddonUUIDField(UUIDPrefixField):
     def __init__(self, *args, **kwargs):
         super().__init__("addon_", *args, **kwargs)
