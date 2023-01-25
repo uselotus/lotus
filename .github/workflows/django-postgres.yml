@@ -90,6 +90,9 @@ jobs:
         run: |
           pipenv run pytest -k "not integrations"
 
+      - name: Run Backend
+        run: pipenv run python manage.py runserver
+
       - name: Install dependencies
         run: cd ../frontend/ && yarn install
       - name: Run Cypress tests
