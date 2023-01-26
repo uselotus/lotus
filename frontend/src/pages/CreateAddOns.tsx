@@ -221,7 +221,7 @@ const CreateAddOns = () => {
     mutation.mutate(addons);
   };
   if (
-    (addon_type === "usage" && billing_frequency === "one_time") ||
+    (addon_type === "usage" && billing_frequency !== "flat_fee") ||
     (addon_type === "flat_fee" && billing_frequency === "recurring")
   ) {
     console.log("yasdh");
