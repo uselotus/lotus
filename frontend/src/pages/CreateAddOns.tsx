@@ -220,7 +220,11 @@ const CreateAddOns = () => {
     };
     mutation.mutate(addons);
   };
-  if ( addon_type === "usage" ) {
+  if (
+    (addon_type === "usage" && billing_frequency === "one_time") ||
+    (addon_type === "flat_fee" && billing_frequency === "recurring")
+  ) {
+    console.log("yasdh");
     card = (
       <Card
         title="Added Components"
@@ -272,6 +276,27 @@ const CreateAddOns = () => {
           Preview & publish
         </Button>,
       ]}
+      hasBackButton
+      aboveTitle
+      backButton={
+        <div className="mt-10">
+          <Button
+            onClick={() => navigate(-1)}
+            type="primary"
+            size="large"
+            className="ml-[10px] mt-[32px]"
+            key="create-custom-plan"
+            style={{
+              background: "#F5F5F5",
+              borderColor: "#F5F5F5",
+            }}
+          >
+            <div className="flex items-center justify-between text-black">
+              <div>&larr; Go back</div>
+            </div>
+          </Button>
+        </div>
+      }
     >
       <Form.Provider>
         <Form
@@ -285,7 +310,16 @@ const CreateAddOns = () => {
           labelAlign="left"
         >
           <div className="grid gap-12 grid-cols-1  md:grid-cols-3">
-            <Card className="col-span-1" title="Add-on Information">
+            <Card
+              style={{
+                borderRadius: "0.5rem",
+                borderWidth: "2px",
+                borderColor: "#EAEAEB",
+                borderStyle: "solid",
+              }}
+              className="col-span-1"
+              title="Add-on Information"
+            >
               <Form.Item name="add-on name">
                 <label className="mb-4 required">Add-on Name </label>
                 <Input
@@ -333,7 +367,7 @@ const CreateAddOns = () => {
                 </Select>
               </Form.Item>
               <div className="grid grid-cols-2 gap-6 mt-2 mb-2">
-                <Form.Item name="base_cost">
+                <Form.Item name="base cost">
                   <label className="mb-4 required">Base Cost</label>
                   <InputNumber
                     className="w-full"
@@ -371,7 +405,7 @@ const CreateAddOns = () => {
 
               {billing_frequency === "recurring" && (
                 <Form.Item name="recurring_flat_fee_timing">
-                  <label className="mb-4 nowrap required"> Base Cost Billing Type</label>
+                  <label className="mb-4 nowrap required"> Billing Type</label>
                   <Select
                     onChange={(e) => setRecurringFlatFeeTiming(e)}
                     className="w-full"
@@ -387,6 +421,7 @@ const CreateAddOns = () => {
                 </Form.Item>
               )}
 
+              {showInvoicing && (
                 <Form.Item name="invoice_when">
                   <label className="mb-4">Invoicing When</label>
                   <Select
@@ -402,13 +437,14 @@ const CreateAddOns = () => {
                     </Select.Option>
                   </Select>
                 </Form.Item>
+              )}
             </Card>
 
             <div className="col-span-2">
               {card}
 
               <Card
-                className="w-full !mt-8"
+                className="w-full"
                 title="Added Features"
                 style={{
                   borderRadius: "0.5rem",
