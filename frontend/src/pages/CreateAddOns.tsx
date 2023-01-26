@@ -221,10 +221,9 @@ const CreateAddOns = () => {
     mutation.mutate(addons);
   };
   if (
-    (addon_type === "usage" && billing_frequency === "one_time") ||
+    (addon_type === "usage" && billing_frequency !== "flat_fee") ||
     (addon_type === "flat_fee" && billing_frequency === "recurring")
   ) {
-    console.log("yasdh");
     card = (
       <Card
         title="Added Components"
@@ -284,7 +283,7 @@ const CreateAddOns = () => {
             onClick={() => navigate(-1)}
             type="primary"
             size="large"
-            className="ml-[10px] mt-[32px]"
+            className="mt-[32px]"
             key="create-custom-plan"
             style={{
               background: "#F5F5F5",
