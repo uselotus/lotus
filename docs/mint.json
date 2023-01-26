@@ -43,9 +43,9 @@
       "url": "api-reference"
     },
     {
-      "name": "Blog",
+      "name": "Tutorials",
       "icon": "newspaper",
-      "url": "https://www.uselotus.io/journal"
+      "url": "tutorial"
     },
     {
       "name": "Github",
@@ -97,6 +97,10 @@
     {
       "group": "Other",
       "pages": ["webhooks/webhooks", "experimentation/backtests", "idempotency", "errors/error-responses"]
+    },
+    {
+      "group": "Tutorials",
+      "pages":[]
     },
     {
       "group": "API Reference",
