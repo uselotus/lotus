@@ -3,6 +3,7 @@ from decimal import Decimal
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
+
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
@@ -513,5 +514,4 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
         generate_invoice_pdf_async.delay(invoice.pk)
         invoice_created_webhook(invoice, organization)
 
-    return invoice
     return invoice

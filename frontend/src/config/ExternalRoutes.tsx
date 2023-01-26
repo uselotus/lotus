@@ -14,7 +14,7 @@ const ExternalRoutes: FC<{ redirectTo: string }> = ({ redirectTo }) => {
       <Route
         path="/register"
         element={
-          import.meta.env.VITE_IS_DEMO === "true" ? (
+          (import.meta as any).env.VITE_IS_DEMO === "true" ? (
             <DemoSignup />
           ) : (
             <Register />
@@ -32,9 +32,9 @@ const ExternalRoutes: FC<{ redirectTo: string }> = ({ redirectTo }) => {
       <Route
         path="/*"
         element={
-          import.meta.env.VITE_IS_DEMO === "true" ? (
+          (import.meta as any).env.VITE_IS_DEMO === "true" ? (
             <Navigate replace to={"/register"} />
-          ) : import.meta.env.USE_ZITADEL === "true" ? (
+          ) : (import.meta as any).env.USE_ZITADEL === "true" ? (
             <OIDCLogin />
           ) : (
             <Login />

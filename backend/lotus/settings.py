@@ -207,7 +207,9 @@ TEMPLATES = [
 WSGI_APPLICATION = "lotus.wsgi.application"
 
 AUTH_USER_MODEL = "metering_billing.User"
-AUTHENTICATION_BACKENDS = ["metering_billing.model_backend.EmailOrUsernameModelBackend"]
+AUTHENTICATION_BACKENDS = [
+    "metering_billing.auth.auth_backends.EmailOrUsernameModelBackend",
+]
 SOCIAL_AUTH_JSONFIELD_ENABLED = True
 # SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 # SESSION_COOKIE_AGE = 2 * 60 * 60  # set just 10 seconds to test
@@ -479,13 +481,14 @@ REST_FRAMEWORK = {
         "metering_billing.permissions.ValidOrganization",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        "mozilla_django_oidc.contrib.drf.OIDCAuthentication",
         "knox.auth.TokenAuthentication",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "drf_standardized_errors.handler.exception_handler",
     "COERCE_DECIMAL_TO_STRING": False,
 }
-OIDC_DRF_AUTH_BACKEND = "mozilla_django_oidc.auth.OIDCAuthenticationBackend"
+OIDC_DRF_AUTH_BACKEND = "metering_billing.auth.auth_backends.OIDCAuthenticationBackend"
 OIDC_OP_USER_ENDPOINT = "https://hello.uselotus.io/oidc/v1/userinfo"
 OIDC_OP_TOKEN_ENDPOINT = None
 OIDC_RP_CLIENT_ID = None

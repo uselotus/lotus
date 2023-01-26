@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 
 const OIDCLogin: React.FC = () => {
   // TODO: these values need to be parameterised in the application.
-  const clientID = "testclient@lotus";
+  const clientID = "196134552282923012@lotus";//(import.meta as any).env.ZITADEL_CLIENT_ID;
   const redirectURI = window.location.origin + "/authorize";
   const authorizeURL = "https://hello.uselotus.io/oauth/v2/authorize";
 
@@ -58,8 +58,6 @@ const OIDCLogin: React.FC = () => {
     params.append("scope", "openid email profile");
     params.append("code_challenge", digest64);
     params.append("code_challenge_method", "S256"); // zitadel requires this to be S256 (= sha256)
-
-    alert(requestURL);
 
     window.location.href = requestURL.href;
   }

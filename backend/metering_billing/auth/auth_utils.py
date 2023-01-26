@@ -1,136 +1,286 @@
-import jwt
+import base64
+import hashlib
+import json
+import logging
+
+import requests
+from django.contrib.auth import get_user_model
+from django.contrib.auth.backends import ModelBackend
 from django.core.cache import cache
+from django.core.exceptions import ImproperlyConfigured, SuspiciousOperation
 from django.http import HttpResponseBadRequest
-from django.utils import timezone
+from django.utils.encoding import force_bytes, smart_bytes, smart_str
+from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
+from josepy.b64 import b64decode
+from josepy.jwk import JWK
+from josepy.jws import JWS, Header
+from mozilla_django_oidc.utils import import_from_settings
+
 from metering_billing.exceptions import (
     NoMatchingAPIKey,
     OrganizationMismatch,
     UserNoOrganization,
 )
-from metering_billing.models import APIToken
+from metering_billing.models import APIToken, User
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.utils import now_utc
-from rest_framework import exceptions
-from rest_framework.authentication import BaseAuthentication, get_authorization_header
+
+LOGGER = logging.getLogger(__name__)
 
 
-class OIDCAuthentication(BaseAuthentication):
+def default_username_algo(email):
+    """Generate username for the Django user.
+
+    :arg str/unicode email: the email address to use to generate a username
+
+    :returns: str/unicode
+
     """
-    // This example was originally taken from the Zitadel docs at https://zitadel.com/docs/examples/secure-api/go
-    //
+    # bluntly stolen from django-browserid
+    # store the username as a base64 encoded sha224 of the email address
+    # this protects against data leakage because usernames are often
+    # treated as public identifiers (so we can't use the email address).
+    username = base64.urlsafe_b64encode(
+        hashlib.sha1(force_bytes(email)).digest()
+    ).rstrip(b"=")
 
-    //
-    // Backends need to protect their APIs by checking the headers of HTTP requests.
-    // Some application architectures perform these checks at the boundaries (ie,
-    // within nginx, Kong etc), but doing so provides less defense; it's much better to check
-    // at the application level - indeed, at every level - which also happens to give you the
-    // option of enabling *public* (non-protected) APIs from different microservices, which
-    // turns out to be pretty useful.
-    //
-    // **Great care must be taken with backend APIs to ensure that the endpoints are protected**.
-    // Typically, we would avoid problems by using prebuilt templates and patterns with default good
-    // behaviours to build new microservices, and any deviation from these patterns would require strict
-    // code review.
-    //
-    // All HTTP requests from clients to protected URLs need to contain an Authroization header which
-    // contains the access token. The access token must be validated by your code before you provide access to an API.
-    //
-    // Access tokens can be in one of two different formats: "opaque" or JWT. The format of the access token
-    // is defined by the server, but note that this version of the backend assumes JWTs only. (The original
-    // opaque token code has been commented out to provide clarity about how it works, while retaining a
-    // record of how to do it).
-    //
-    // # OPAQUE ACCESS TOKENS
-    //
-    // Opaque tokens are identifiers that can't be decoded by the
-    // client. To validate an opaque access token requires a round-trip call to
-    // Zitadel, which adds latency, and is potentially less reliable. On the other
-    // hand, opaque tokens reveal nothing at all to the client, and are relatively
-    // compact.
-    //
-    // # JWT ACCESS TOKENS
-    //
-    // JWT tokens, on the other hand, are **self-contained** - they are signed by
-    // the auth server - and therefore can be validated without an additional API round
-    // trip. JWT tokens contain signed information about the user and (optionally) the
-    // roles provided to the user, which we can use for authorization and auditing.
-    //
-    // The fact that JWTs are signed by the auth server means that they can be used
-    // securely, with much less latency, despite being provided by a client over
-    // which we have no control.
-    //
-    // For these reasons, we prefer JWT tokens, even though they are less compact.
-    //
-    // BACKEND APIS
-    //
-    // This server provides a single protected API, /backend/jwt, which uses offline validation to validate
-    // the token.
-    //
-    // It also includes a commented-out route called /backend/protected, which uses the Zitadel API call
-    // to validate the token.
-    //
-    // Both APIs will work with JWT tokens, but only the first will work for opaque tokens.
-    // You can see the token settings in Zitadel -> Projects -> [My Project] -> [Frontend Client] -> Token Settings
-    //
-    // NOTES:
-    // * Access Tokens can have a long lifetime; offline checking does not provide a means to cancel a
-    //   token. This means that some other method may be needed to cancel a token. This requires more consideration.
-    // * JWTs can become quite large if you try to fit too many claims (user parameters) and roles into them.
-    //   Care will need to be taken when extending the contents of a JWT.
-    //
-    // Auth0 has some more information on the different token formats; see
-    // https://auth0.com/docs/secure/tokens/access-tokens#management-api-access-tokens
-    """
+    return smart_str(username)
 
-    def authenticate(self, request):
-        auth = get_authorization_header(request).split()
-        prefix = "BEARER"
 
-        if not auth:
-            return None
-        if auth[0].lower() != prefix.lower():
-            # Authorization header is possibly for another backend
-            return None
-        if len(auth) == 1:
-            msg = _("Invalid token header. No credentials provided.")
-            raise exceptions.AuthenticationFailed(msg)
-        elif len(auth) > 2:
-            msg = _("Invalid token header. " "Token string should not contain spaces.")
-            raise exceptions.AuthenticationFailed(msg)
+class OIDCAuthenticationBackend(ModelBackend):
+    """Override Django's authentication."""
 
-        user, auth_token = self.authenticate_credentials(auth[1])
-        return (user, auth_token)
+    def __init__(self, *args, **kwargs):
+        """Initialize settings."""
+        self.OIDC_OP_TOKEN_ENDPOINT = self.get_settings("OIDC_OP_TOKEN_ENDPOINT")
+        self.OIDC_OP_USER_ENDPOINT = self.get_settings("OIDC_OP_USER_ENDPOINT")
+        self.OIDC_OP_JWKS_ENDPOINT = self.get_settings("OIDC_OP_JWKS_ENDPOINT", None)
+        self.OIDC_RP_CLIENT_ID = self.get_settings("OIDC_RP_CLIENT_ID")
+        self.OIDC_RP_CLIENT_SECRET = self.get_settings("OIDC_RP_CLIENT_SECRET")
+        self.OIDC_RP_SIGN_ALGO = self.get_settings("OIDC_RP_SIGN_ALGO", "HS256")
+        self.OIDC_RP_IDP_SIGN_KEY = self.get_settings("OIDC_RP_IDP_SIGN_KEY", None)
 
-    def authenticate_credentials(self, token):
-        """
-        Due to the random nature of hashing a value, this must inspect
-        each auth_token individually to find the correct one.
-        Tokens that have expired will be deleted and skipped
-        """
-        msg = _("Invalid token.")
-        token = token.decode("utf-8")
-        secret = settings.SECRET_KEY
-        jwt.decode(token, "secret", algorithms=["HS256"])
+        if self.OIDC_RP_SIGN_ALGO.startswith("RS") and (
+            self.OIDC_RP_IDP_SIGN_KEY is None and self.OIDC_OP_JWKS_ENDPOINT is None
+        ):
+            msg = "{} alg requires OIDC_RP_IDP_SIGN_KEY or OIDC_OP_JWKS_ENDPOINT to be configured."
+            raise ImproperlyConfigured(msg.format(self.OIDC_RP_SIGN_ALGO))
+
+        self.UserModel = get_user_model()
+
+    @staticmethod
+    def get_settings(attr, *args):
+        return import_from_settings(attr, *args)
+
+    def describe_user_by_claims(self, claims):
+        email = claims.get("email")
+        return "email {}".format(email)
+
+    def filter_users_by_claims(self, claims):
+        """Return all users matching the specified email."""
+        email = claims.get("email")
+        if not email:
+            return self.UserModel.objects.none()
+        return self.UserModel.objects.filter(email__iexact=email)
+
+    def verify_claims(self, claims):
+        """Verify the provided claims to decide if authentication should be allowed."""
+
+        # Verify claims required by default configuration
+        scopes = self.get_settings("OIDC_RP_SCOPES", "openid email")
+        if "email" in scopes.split():
+            return "email" in claims
+
+        LOGGER.warning(
+            "Custom OIDC_RP_SCOPES defined. "
+            "You need to override `verify_claims` for custom claims verification."
+        )
+
+        return True
+
+    def create_user(self, claims):
+        """Return object for a newly created user account."""
+        email = claims.get("email")
+        username = self.get_username(claims)
+        return self.UserModel.objects.create_user(username, email=email)
+
+    def get_username(self, claims):
+        """Generate username based on claims."""
+        # bluntly stolen from django-browserid
+        # https://github.com/mozilla/django-browserid/blob/master/django_browserid/auth.py
+        username_algo = self.get_settings("OIDC_USERNAME_ALGO", None)
+
+        if username_algo:
+            if isinstance(username_algo, str):
+                username_algo = import_string(username_algo)
+            return username_algo(claims.get("email"))
+
+        return default_username_algo(claims.get("email"))
+
+    def update_user(self, user, claims):
+        """Update existing user with new claims, if necessary save, and return user"""
+        return user
+
+    def _verify_jws(self, payload, key):
+        """Verify the given JWS payload with the given key and return the payload"""
+        jws = JWS.from_compact(payload)
+
         try:
-            return self.validate_user(auth_token)
-        except:
-            raise exceptions.AuthenticationFailed(msg)
+            alg = jws.signature.combined.alg.name
+        except KeyError:
+            msg = "No alg value found in header"
+            raise SuspiciousOperation(msg)
 
-    def renew_token(self, auth_token):
-        current_expiry = auth_token.expiry
-        new_expiry = timezone.now() + knox_settings.TOKEN_TTL
-        auth_token.expiry = new_expiry
-        # Throttle refreshing of token to avoid db writes
-        delta = (new_expiry - current_expiry).total_seconds()
-        if delta > knox_settings.MIN_REFRESH_INTERVAL:
-            auth_token.save(update_fields=("expiry",))
+        if alg != self.OIDC_RP_SIGN_ALGO:
+            msg = (
+                "The provider algorithm {!r} does not match the client's "
+                "OIDC_RP_SIGN_ALGO.".format(alg)
+            )
+            raise SuspiciousOperation(msg)
 
-    def validate_user(self, auth_token):
-        if not auth_token.user.is_active:
-            raise exceptions.AuthenticationFailed(_("User inactive or deleted."))
-        return (auth_token.user, auth_token)
+        if isinstance(key, str):
+            # Use smart_bytes here since the key string comes from settings.
+            jwk = JWK.load(smart_bytes(key))
+        else:
+            # The key is a json returned from the IDP JWKS endpoint.
+            jwk = JWK.from_json(key)
+
+        if not jws.verify(jwk):
+            msg = "JWS token verification failed."
+            raise SuspiciousOperation(msg)
+
+        return jws.payload
+
+    def retrieve_matching_jwk(self, token):
+        """Get the signing key by exploring the JWKS endpoint of the OP."""
+        response_jwks = requests.get(
+            self.OIDC_OP_JWKS_ENDPOINT,
+            verify=self.get_settings("OIDC_VERIFY_SSL", True),
+            timeout=self.get_settings("OIDC_TIMEOUT", None),
+            proxies=self.get_settings("OIDC_PROXY", None),
+        )
+        response_jwks.raise_for_status()
+        jwks = response_jwks.json()
+
+        # Compute the current header from the given token to find a match
+        jws = JWS.from_compact(token)
+        json_header = jws.signature.protected
+        header = Header.json_loads(json_header)
+
+        key = None
+        for jwk in jwks["keys"]:
+            if import_from_settings("OIDC_VERIFY_KID", True) and jwk[
+                "kid"
+            ] != smart_str(header.kid):
+                continue
+            if "alg" in jwk and jwk["alg"] != smart_str(header.alg):
+                continue
+            key = jwk
+        if key is None:
+            raise SuspiciousOperation("Could not find a valid JWKS.")
+        return key
+
+    def get_payload_data(self, token, key):
+        """Helper method to get the payload of the JWT token."""
+        if self.get_settings("OIDC_ALLOW_UNSECURED_JWT", False):
+            header, payload_data, signature = token.split(b".")
+            header = json.loads(smart_str(b64decode(header)))
+
+            # If config allows unsecured JWTs check the header and return the decoded payload
+            if "alg" in header and header["alg"] == "none":
+                return b64decode(payload_data)
+
+        # By default fallback to verify JWT signatures
+        return self._verify_jws(token, key)
+
+    def get_userinfo(self, access_token, id_token, payload):
+        """Return user details dictionary. The id_token and payload are not used in
+        the default implementation, but may be used when overriding this method"""
+
+        user_response = requests.get(
+            self.OIDC_OP_USER_ENDPOINT,
+            headers={"Authorization": "Bearer {0}".format(access_token)},
+            verify=self.get_settings("OIDC_VERIFY_SSL", True),
+            timeout=self.get_settings("OIDC_TIMEOUT", None),
+            proxies=self.get_settings("OIDC_PROXY", None),
+        )
+        user_response.raise_for_status()
+        return user_response.json()
+
+    def authenticate(self, request, **kwargs):
+        """Authenticates a user based on the OIDC code flow."""
+
+        self.request = request
+        if not self.request:
+            return None
+
+        auth_header = request.headers.get("Authorization", None)
+        if auth_header is None:
+            return None
+        parts = auth_header.split()
+        if parts[0].lower() != "bearer":
+            return None
+        if len(parts) != 2:
+            return None
+        access_token = parts[1]
+
+        # Check if the JWT signature is already in cache
+        user_id = cache.get(access_token)
+        if user_id:
+            user = User.objects.get(pk=user_id)
+            cache.set(access_token, user_id, 600)  # reset the 10 minute cache timer
+            return user
+
+        try:
+            user = self.get_or_create_user(access_token)
+            cache.set(
+                access_token, user.pk, 600
+            )  # cache the JWT signature for 10 minutes
+            return user
+        except SuspiciousOperation as exc:
+            LOGGER.warning("failed to get or create user: %s", exc)
+            return None
+
+    def get_or_create_user(self, access_token):
+        """Returns a User instance if 1 user is found. Creates a user if not found
+        and configured to do so. Returns nothing if multiple users are matched."""
+
+        user_info = self.get_userinfo(access_token)
+
+        claims_verified = self.verify_claims(user_info)
+        if not claims_verified:
+            msg = "Claims verification failed"
+            raise SuspiciousOperation(msg)
+
+        # email based filtering
+        users = self.filter_users_by_claims(user_info)
+
+        if len(users) == 1:
+            return self.update_user(users[0], user_info)
+        elif len(users) > 1:
+            # In the rare case that two user accounts have the same email address,
+            # bail. Randomly selecting one seems really wrong.
+            msg = "Multiple users returned"
+            raise SuspiciousOperation(msg)
+        elif self.get_settings("OIDC_CREATE_USER", True):
+            user = self.create_user(user_info)
+            return user
+        else:
+            LOGGER.debug(
+                "Login failed: No user with %s found, and " "OIDC_CREATE_USER is False",
+                self.describe_user_by_claims(user_info),
+            )
+            return None
+
+    def get_user(self, user_id):
+        """Return a user based on the id."""
+
+        try:
+            return self.UserModel.objects.get(pk=user_id)
+        except self.UserModel.DoesNotExist:
+            return None
 
 
 # AUTH METHODS
