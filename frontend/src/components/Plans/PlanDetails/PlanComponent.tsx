@@ -12,11 +12,11 @@ import {
   Tier,
 } from "../../../types/plan-type";
 import { CurrencyType } from "../../../types/pricing-unit-type";
-import createShortenedText from "../helpers/createShortenedText";
+import createShortenedText from "../../../helpers/createShortenedText";
 import DropdownComponent from "../../base/Dropdown/Dropdown";
 import PlansTags from "../PlanTags";
 import LinkExternalIds from "../LinkExternalIds";
-import capitalize from "../helpers/capitalize";
+import capitalize from "../../../helpers/capitalize";
 import CopyText from "../../base/CopytoClipboard";
 import dayjs from "dayjs";
 import useVersionStore from "../../../stores/useVersionStore";
@@ -96,7 +96,7 @@ export const PlanSummary = ({
   return (
     <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card">
       <Typography.Title className="pt-4 whitespace-pre-wrap !text-[18px] level={2}">
-        Summary
+        Summary (All Versions)
       </Typography.Title>
 
       <div>
@@ -426,7 +426,10 @@ const PlanComponents: FC<PlanComponentsProps> = ({
           </div>
           <div className="grid gap-6 grid-cols-1 xl:grid-cols-4">
             {components.map((component) => (
-              <div className="pt-2 pb-4 bg-primary-50 mt-2  mb-2 p-4 min-h-[152px] min-w-[270px]">
+              <div
+                className="pt-2 pb-4 bg-primary-50 mt-2  mb-2 p-4 min-h-[152px] min-w-[270px]"
+                key={component.id}
+              >
                 <div className="text-base text-card-text align-middle">
                   <div> {component.billable_metric.metric_name}</div>
                 </div>
@@ -472,7 +475,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                 </div>
                 <div className=" w-full h-[1.5px] mt-4 bg-card-divider mb-2" />
 
-                <div className="mt-4">
+                <div className="mt-4 self-end">
                   <div
                     className="flex"
                     onClick={() => {

@@ -7,10 +7,6 @@ import pytest
 from dateutil.relativedelta import relativedelta
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
-
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     Event,
@@ -33,6 +29,9 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_FREQUENCY,
 )
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -1408,3 +1407,27 @@ class TestRegressions:
             content_type="application/json",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_refresh_rate_metric_doesnt_fail(self, subscription_test_common_setup):
+        from metering_billing.utils.enums import (
+            METRIC_AGGREGATION,
+            METRIC_GRANULARITY,
+            METRIC_TYPE,
+        )
+
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=0, auth_method="session_auth"
+        )
+        Metric.objects.create(
+            organization=setup_dict["org"],
+            event_name="rows_inserted",
+            property_name="num_rows",
+            usage_aggregation_type=METRIC_AGGREGATION.SUM,
+            billable_aggregation_type=METRIC_AGGREGATION.MAX,
+            metric_type=METRIC_TYPE.RATE,
+            granularity=METRIC_GRANULARITY.DAY,
+        )
+        try:
+            setup_dict["org"].update_subscription_filter_settings(["email"])
+        except Exception as e:
+            assert False, e

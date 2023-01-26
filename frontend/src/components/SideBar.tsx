@@ -4,6 +4,7 @@ import {
   UserOutlined,
   DashboardOutlined,
   SettingOutlined,
+  DatabaseOutlined,
   BookOutlined,
   BorderlessTableOutlined,
   LineChartOutlined,
@@ -13,6 +14,7 @@ import {
 
 import { useNavigate, useLocation } from "react-router-dom";
 import { Authentication } from "../api/api";
+import { ItemType } from "antd/lib/menu/hooks/useItems";
 
 const imgUrl = new URL("./Head.png", import.meta.url).href;
 
@@ -27,7 +29,7 @@ const SideBar: FC = () => {
     });
   };
 
-  const menuItemsBasic: any = [
+  const menuItemsBasic: ItemType[] = [
     {
       key: "/dashboard",
       icon: <DashboardOutlined />,
@@ -52,7 +54,12 @@ const SideBar: FC = () => {
       label: "Plans",
       onClick: () => navigate("/plans"),
     },
-
+    {
+      key: "/add-ons",
+      icon: <DatabaseOutlined />,
+      label: "Add-ons",
+      onClick: () => navigate("/add-ons"),
+    },
     {
       key: "/metrics",
       icon: <LineChartOutlined />,
@@ -75,7 +82,7 @@ const SideBar: FC = () => {
     },
   ];
 
-  const menuItemsAdmin: any = [
+  const menuItemsAdmin: ItemType[] = [
     {
       key: "/dashboard",
       icon: <DashboardOutlined />,
@@ -100,7 +107,12 @@ const SideBar: FC = () => {
       label: "Plans",
       onClick: () => navigate("/plans"),
     },
-
+    {
+      key: "/add-ons",
+      icon: <DatabaseOutlined />,
+      label: "Add-ons",
+      onClick: () => navigate("/add-ons"),
+    },
     {
       key: "/metrics",
       icon: <LineChartOutlined />,
@@ -128,7 +140,6 @@ const SideBar: FC = () => {
     },
   ];
 
-  // @ts-ignore
   const menuItems =
     import.meta.env.VITE_IS_DEMO === "true" ? menuItemsBasic : menuItemsAdmin;
 

@@ -1,12 +1,11 @@
 // create react FC component called EditPlanLoader
 import React, { Fragment, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams , useNavigate } from "react-router-dom";
 import { useQuery } from "react-query";
 import { Plan } from "../api/api";
 import { PlanDetailType } from "../types/plan-type";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { usePlanState } from "../context/PlanContext";
-import { useNavigate } from "react-router-dom";
 import { Button } from "antd";
 import EditPlan from "./EditPlan";
 

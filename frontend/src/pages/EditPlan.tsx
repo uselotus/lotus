@@ -9,7 +9,7 @@ import {
   Col,
   Radio,
 } from "antd";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
 import { useMutation, useQueryClient } from "react-query";
@@ -28,8 +28,6 @@ import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { usePlanUpdater } from "../context/PlanContext";
-// @ts-ignore
-import React from "react";
 import { PageLayout } from "../components/base/PageLayout";
 import ComponentDisplay from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";

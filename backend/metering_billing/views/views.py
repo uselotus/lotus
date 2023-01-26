@@ -4,6 +4,13 @@ from decimal import Decimal
 from django.conf import settings
 from django.db.models import Count, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+import api.views as api_views
 from metering_billing.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
@@ -57,11 +64,6 @@ from metering_billing.utils.enums import (
     USAGE_CALC_GRANULARITY,
 )
 from metering_billing.views.model_views import CustomerViewSet
-from rest_framework import serializers, status
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -170,6 +172,8 @@ class CostAnalysisView(APIView):
             serializer.validated_data.get(key, None)
             for key in ["start_date", "end_date", "customer_id"]
         )
+        start_time = convert_to_datetime(start_date, date_behavior="min")
+        end_time = convert_to_datetime(end_date, date_behavior="max")
         try:
             customer = Customer.objects.get(
                 organization=organization, customer_id=customer_id
@@ -216,9 +220,9 @@ class CostAnalysisView(APIView):
             items["cost_data"] = [v for k, v in items["cost_data"].items()]
         subscriptions = (
             SubscriptionRecord.objects.filter(
-                Q(start_date__range=[start_date, end_date])
-                | Q(end_date__range=[start_date, end_date])
-                | (Q(start_date__lte=start_date) & Q(end_date__gte=end_date)),
+                Q(start_date__range=[start_time, end_time])
+                | Q(end_date__range=[start_time, end_time])
+                | (Q(start_date__lte=start_time) & Q(end_date__gte=end_time)),
                 organization=organization,
                 customer=customer,
             )
@@ -264,7 +268,6 @@ class PeriodSubscriptionsView(APIView):
     permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
-        request=PeriodComparisonRequestSerializer,
         parameters=[PeriodComparisonRequestSerializer],
         responses={200: PeriodSubscriptionsResponseSerializer},
     )
@@ -655,50 +658,8 @@ class TransferSubscriptionsView(APIView):
         )
 
 
-# class ExperimentalToActiveView(APIView):
-#     permission_classes = [IsAuthenticated | ValidOrganization]
-
-#     @extend_schema(
-#         request=ExperimentalToActiveRequestSerializer(),
-#         responses={
-#             200: inline_serializer(
-#                 name="ExperimentalToActiveSuccess",
-#                 fields={
-#                     "status": serializers.ChoiceField(choices=["success"]),
-#                     "detail": serializers.CharField(),
-#                 },
-#             ),
-#             400: inline_serializer(
-#                 name="ExperimentalToActiveFailure",
-#                 fields={
-#                     "status": serializers.ChoiceField(choices=["error"]),
-#                     "detail": serializers.CharField(),
-#                 },
-#             ),
-#         },
-#     )
-#     def post(self, request, format=None):
-#         organization = request.organization
-#         serializer = ExperimentalToActiveRequestSerializer(data=request.data)
-#         serializer.is_valid(raise_exception=True)
-#         billing_plan = serializer.validated_data["version_id"]
-#         try:
-#             billing_plan.status = PLAN_STATUS.ACTIVE
-#         except Exception as e:
-#             return Response(
-#                 {
-#                     "status": "error",
-#                     "detail": f"Error converting experimental plan to active plan: {e}",
-#                 },
-#                 status=status.HTTP_400_BAD_REQUEST,
-#             )
-#         return Response(
-#             {
-#                 "status": "success",
-#                 "detail": f"Plan {billing_plan} succesfully converted from experimental to active.",
-#             },
-#             status=status.HTTP_200_OK,
-#         )
+class GetInvoicePdfURL(api_views.GetInvoicePdfURL):
+    pass
 
 
 class PlansByNumCustomersView(APIView):

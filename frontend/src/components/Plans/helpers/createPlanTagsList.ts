@@ -8,7 +8,7 @@ const createPlanTagsList = (
   const flat = [...planTags].map((el) => el.tag_name);
 
   const opt = [...orgPlanTypes].map((el) => ({ ...el, from: "org" }));
-  let t = [...pt, ...opt];
+  const t = [...pt, ...opt];
   // get non-distinct tag name values
   const nonDistinctTags = t.filter(
     (val) => val.from === "org" && !flat.includes(val.tag_name)

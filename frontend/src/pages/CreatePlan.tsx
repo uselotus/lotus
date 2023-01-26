@@ -309,6 +309,7 @@ const CreatePlan = () => {
             align_plan: "calendar_aligned",
             usage_billing_frequency: "monthly",
           }}
+          onValuesChange={(e) => console.log(e)}
           onFinish={submitPricingPlan}
           onFinishFailed={onFinishFailed}
           autoComplete="off"
@@ -423,7 +424,7 @@ const CreatePlan = () => {
                     </Form.Item>
                     <Form.Item
                       name="flat_fee_billing_type"
-                      label="Recurring Billing Type"
+                      label="Base Billing Type"
                     >
                       <Select>
                         <Select.Option value="in_advance">
@@ -497,6 +498,7 @@ const CreatePlan = () => {
                 }}
                 extra={[
                   <Button
+                    key="add-component"
                     htmlType="button"
                     onClick={() => showComponentModal()}
                   >
@@ -555,7 +557,11 @@ const CreatePlan = () => {
                   borderStyle: "solid",
                 }}
                 extra={[
-                  <Button htmlType="button" onClick={showFeatureModal}>
+                  <Button
+                    key="add-feature"
+                    htmlType="button"
+                    onClick={showFeatureModal}
+                  >
                     Add Feature
                   </Button>,
                 ]}

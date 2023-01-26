@@ -1,7 +1,7 @@
 // @ts-ignore
 import React, { FC, useEffect } from "react";
 import { Column } from "@ant-design/plots";
-import { useQueryClient } from "react-query";
+import { useQueryClient , useMutation } from "react-query";
 
 import { Button, Select, Tag, Form, Input } from "antd";
 import { DraftInvoiceType } from "../../types/invoice-type";
@@ -9,7 +9,6 @@ import { DraftInvoiceType } from "../../types/invoice-type";
 // @ts-ignore
 import dayjs from "dayjs";
 import LoadingSpinner from "../LoadingSpinner";
-import { useMutation } from "react-query";
 import { Customer } from "../../api/api";
 import { toast } from "react-toastify";
 
@@ -61,7 +60,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
   const [isEditing, setIsEditing] = React.useState(false);
   const queryClient = useQueryClient();
 
-  let invoiceData: DraftInvoiceType | undefined = queryClient.getQueryData([
+  const invoiceData: DraftInvoiceType | undefined = queryClient.getQueryData([
     "draft_invoice",
     data.customer_id,
   ]);
@@ -135,7 +134,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
   };
   useEffect(() => {
     const newgraphdata = cost_data.per_day.map((day: any) => {
-      var result_list = day.cost_data.map((metric: any) => {
+      const result_list = day.cost_data.map((metric: any) => {
         return {
           date: day.date,
           amount: metric.cost,
@@ -156,8 +155,8 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
   }, [cost_data]);
 
   const onSwitch = (key: string) => {
-    var start_date;
-    var end_date = dayjs().format("YYYY-MM-DD");
+    let start_date;
+    const end_date = dayjs().format("YYYY-MM-DD");
 
     switch (key) {
       case "1":

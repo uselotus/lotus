@@ -20,7 +20,7 @@ function RevenueBarGraph(props: {
 
   useEffect(() => {
     if (props.data) {
-      let compressedArray: RevenueChartData[] = [];
+      const compressedArray: RevenueChartData[] = [];
       for (let i = 0; i < props.data.length; i++) {
         const metric = props.data[i].metric;
         for (const k in props.data[i].data) {

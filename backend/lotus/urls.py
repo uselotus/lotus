@@ -22,6 +22,7 @@ from django.views.generic import TemplateView
 from metering_billing.views import auth_views, organization_views, webhook_views
 from metering_billing.views.model_views import (
     ActionViewSet,
+    AddOnViewSet,
     APITokenViewSet,
     BacktestViewSet,
     CustomerBalanceAdjustmentViewSet,
@@ -49,6 +50,7 @@ from metering_billing.views.views import (  # MergeCustomersView,; ExperimentalT
     CustomersSummaryView,
     CustomersWithRevenueView,
     DraftInvoiceView,
+    GetInvoicePdfURL,
     ImportCustomersView,
     ImportPaymentObjectsView,
     PeriodMetricRevenueView,
@@ -94,6 +96,7 @@ router.register(
     basename="credit",
 )
 router.register(r"api_tokens", APITokenViewSet, basename="api_token")
+router.register(r"addons", AddOnViewSet, basename="addon")
 router.register(r"usage_alerts", UsageAlertViewSet, basename="usage_alert")
 
 
@@ -118,6 +121,7 @@ urlpatterns = [
     path("api/", include((api_router.urls, "api"), namespace="api")),
     path("api/ping/", api_views.Ping.as_view(), name="ping"),
     path("api/track/", api_views.track_event, name="track_event"),
+    path("api/invoice_url/", api_views.GetInvoicePdfURL.as_view(), name="invoice_url"),
     path(
         "api/metric_access/",
         api_views.MetricAccessView.as_view(),
@@ -145,6 +149,7 @@ urlpatterns = [
     ),
     # App views
     path("app/", include(router.urls)),
+    path("app/invoice_url/", GetInvoicePdfURL.as_view(), name="invoice_url"),
     path(
         "app/customer_summary/",
         CustomersSummaryView.as_view(),

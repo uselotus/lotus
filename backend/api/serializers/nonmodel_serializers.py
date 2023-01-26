@@ -1,3 +1,5 @@
+from rest_framework import serializers
+
 from api.serializers.model_serializers import (
     FeatureSerializer,
     LightweightCustomerSerializer,
@@ -5,11 +7,50 @@ from api.serializers.model_serializers import (
     LightweightPlanVersionSerializer,
     SubscriptionCategoricalFilterSerializer,
 )
-from metering_billing.models import Customer, Feature, Metric, SubscriptionRecord
+from metering_billing.models import (
+    Customer,
+    Feature,
+    Invoice,
+    Metric,
+    SubscriptionRecord,
+)
 from metering_billing.serializers.serializer_utils import (
+    SlugRelatedFieldWithOrganization,
     SlugRelatedFieldWithOrganizationPK,
 )
-from rest_framework import serializers
+
+
+class GetInvoicePdfURLRequestSerializer(serializers.Serializer):
+    invoice_id = SlugRelatedFieldWithOrganization(
+        slug_field="invoice_id",
+        queryset=Invoice.objects.all(),
+        help_text="The invoice_id of the invoice you want to get the PDF URL for.",
+        required=False,
+        allow_null=True,
+    )
+    invoice_number = SlugRelatedFieldWithOrganization(
+        slug_field="invoice_number",
+        queryset=Invoice.objects.all(),
+        help_text="The invoice_number of the invoice you want to get the PDF URL for.",
+        required=False,
+        allow_null=True,
+    )
+
+    def validate(self, data):
+        if "invoice_id" not in data and "invoice_number" not in data:
+            raise serializers.ValidationError(
+                "You must provide either an invoice_id or an invoice_number."
+            )
+        if (
+            data.get("invoice_id") is not None
+            and data.get("invoice_number") is not None
+        ):
+            if data["invoice_id"] != data["invoice_number"]:
+                raise serializers.ValidationError(
+                    "The invoice_id and invoice_number do not match."
+                )
+        data["invoice"] = data.get("invoice_id") or data.get("invoice_number")
+        return data
 
 
 class GetFeatureAccessSerializer(serializers.Serializer):
@@ -239,5 +280,7 @@ class GetCustomerFeatureAccessRequestSerializer(serializers.Serializer):
         data = super().validate(data)
         data["customer"] = data.pop("customer_id", None)
 
+        return data
+        return data
         return data
         return data

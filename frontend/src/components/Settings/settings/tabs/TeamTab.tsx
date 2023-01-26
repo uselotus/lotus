@@ -89,7 +89,7 @@ const TeamTab: FC = () => {
                         dataIndex: "status",
                         key: "status",
                         render: (status: string) => {
-                          let color = status === "Active" ? "green" : "yellow";
+                          const color = status === "Active" ? "green" : "yellow";
                           return (
                             <Tag color={color} key={status}>
                               {status.toUpperCase()}

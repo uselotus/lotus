@@ -1,6 +1,5 @@
-// @ts-ignore
-import React, { FC, useEffect, useState } from "react";
-import { Button, Row, Col, Tabs } from "antd";
+import React, { FC, useCallback, useEffect, useState } from "react";
+import { Button, Tabs } from "antd";
 import { Plan } from "../api/api";
 import { ArrowRightOutlined, PlusOutlined } from "@ant-design/icons";
 import { PlanType } from "../types/plan-type";
@@ -12,7 +11,6 @@ import {
   useQueryClient,
 } from "react-query";
 import { PageLayout } from "../components/base/PageLayout";
-import { FeatureType } from "../types/feature-type";
 import PlanCard from "../components/Plans/PlanCard/PlanCard";
 import LoadingSpinner from "../components/LoadingSpinner";
 
@@ -32,39 +30,99 @@ const ViewPlans: FC = () => {
     navigate("/create-plan");
   };
 
-  const setPlans = (data: PlanType[]) => {
-    const yearlystandard = data.filter(
-      (plan) => plan.plan_duration === "yearly" && !plan.parent_plan
-    );
-    const yearlycustom = data.filter(
-      (plan) => plan.plan_duration === "yearly" && plan.parent_plan
-    );
-    const monthlystandard = data.filter(
-      (plan) => plan.plan_duration === "monthly" && !plan.parent_plan
-    );
-    const monthlycustom = data.filter(
-      (plan) => plan.plan_duration === "monthly" && plan.parent_plan
-    );
-    const quarterlystandard = data.filter(
-      (plan) => plan.plan_duration === "quarterly" && !plan.parent_plan
-    );
-    const quarterlycustom = data.filter(
-      (plan) => plan.plan_duration === "quarterly" && plan.parent_plan
-    );
-    const allcustom = data.filter((plan) => plan.parent_plan);
-    const allplans = data.filter((plan) => !plan.parent_plan);
+  const setPlans = useCallback(
+    (
+      data: PlanType[],
+      tabPane?: "Monthly" | "Yearly" | "Quarterly" | "All"
+    ) => {
+      if (tabPane) {
+        // go through all possible matches and set state
+        switch (tabPane) {
+          case "All":
+            setAllCustom(data.filter((plan) => plan.parent_plan));
+            setAllPlans(data.filter((plan) => !plan.parent_plan));
+            return;
+          case "Monthly":
+            setMonthlyCustom(
+              data.filter(
+                (plan) => plan.plan_duration === "monthly" && plan.parent_plan
+              )
+            );
+            setMonthlyPlans(
+              data.filter(
+                (plan) => plan.plan_duration === "monthly" && !plan.parent_plan
+              )
+            );
+            return;
+          case "Yearly":
+            setYearlyPlans(
+              data.filter(
+                (plan) => plan.plan_duration === "yearly" && !plan.parent_plan
+              )
+            );
+            setYearlyCustom(
+              data.filter(
+                (plan) => plan.plan_duration === "yearly" && plan.parent_plan
+              )
+            );
+            return;
+          default:
+            setQuarterlyPlans(
+              data.filter(
+                (plan) =>
+                  plan.plan_duration === "quarterly" && !plan.parent_plan
+              )
+            );
+            setQuarterlyCustom(
+              data.filter(
+                (plan) => plan.plan_duration === "quarterly" && plan.parent_plan
+              )
+            );
+            return;
+        }
+      } else {
+        const yearlystandard = data.filter(
+          (plan) => plan.plan_duration === "yearly" && !plan.parent_plan
+        );
+        const yearlycustom = data.filter(
+          (plan) => plan.plan_duration === "yearly" && plan.parent_plan
+        );
+        const monthlystandard = data.filter(
+          (plan) => plan.plan_duration === "monthly" && !plan.parent_plan
+        );
+        const monthlycustom = data.filter(
+          (plan) => plan.plan_duration === "monthly" && plan.parent_plan
+        );
+        const quarterlystandard = data.filter(
+          (plan) => plan.plan_duration === "quarterly" && !plan.parent_plan
+        );
+        const quarterlycustom = data.filter(
+          (plan) => plan.plan_duration === "quarterly" && plan.parent_plan
+        );
+        const allcustom = data.filter((plan) => plan.parent_plan);
+        const allplans = data.filter((plan) => !plan.parent_plan);
 
-    setAllCustom(allcustom);
-    setAllPlans(allplans);
-    setYearlyPlans(yearlystandard);
-    setMonthlyPlans(monthlystandard);
-    setYearlyCustom(yearlycustom);
-    setMonthlyCustom(monthlycustom);
-    setQuarterlyPlans(quarterlystandard);
-    setQuarterlyCustom(quarterlycustom);
-  };
+        setAllCustom(allcustom);
+        setAllPlans(allplans);
+        setYearlyPlans(yearlystandard);
+        setMonthlyPlans(monthlystandard);
+        setYearlyCustom(yearlycustom);
+        setMonthlyCustom(monthlycustom);
+        setQuarterlyPlans(quarterlystandard);
+        setQuarterlyCustom(quarterlycustom);
+      }
+    },
+    []
+  );
   const createTag = useMutation(
-    ({ plan_id, tags }: { plan_id: string; tags: PlanType["tags"] }) =>
+    ({
+      plan_id,
+      tags,
+    }: {
+      plan_id: string;
+      tags: PlanType["tags"];
+      pane: "Monthly" | "Yearly" | "Quarterly" | "All";
+    }) =>
       Plan.updatePlan(plan_id, {
         tags,
       }),
@@ -96,7 +154,7 @@ const ViewPlans: FC = () => {
     if (data) {
       setPlans(data);
     }
-  }, []);
+  }, [data, setPlans]);
 
   return (
     <PageLayout
@@ -128,6 +186,7 @@ const ViewPlans: FC = () => {
               <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {allPlans?.map((item, key) => (
                   <PlanCard
+                    pane="All"
                     createTagMutation={createTag.mutate}
                     plan={item}
                     key={key}
@@ -148,6 +207,7 @@ const ViewPlans: FC = () => {
               <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4 mt-4">
                 {allCustom?.map((item, key) => (
                   <PlanCard
+                    pane="All"
                     createTagMutation={createTag.mutate}
                     plan={item}
                     key={key}
@@ -164,6 +224,7 @@ const ViewPlans: FC = () => {
               <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {monthlyPlans?.map((item, key) => (
                   <PlanCard
+                    pane="Monthly"
                     createTagMutation={createTag.mutate}
                     plan={item}
                     key={key}
@@ -184,6 +245,7 @@ const ViewPlans: FC = () => {
               <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {monthlyCustom?.map((item, key) => (
                   <PlanCard
+                    pane="Monthly"
                     createTagMutation={createTag.mutate}
                     plan={item}
                     key={key}
@@ -200,6 +262,7 @@ const ViewPlans: FC = () => {
               <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {quarterlyPlans?.map((item, key) => (
                   <PlanCard
+                    pane="Quarterly"
                     createTagMutation={createTag.mutate}
                     plan={item}
                     key={key}
@@ -219,6 +282,7 @@ const ViewPlans: FC = () => {
               <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {quarterlyCustom?.map((item, key) => (
                   <PlanCard
+                    pane="Quarterly"
                     createTagMutation={createTag.mutate}
                     plan={item}
                     key={key}
@@ -234,6 +298,7 @@ const ViewPlans: FC = () => {
               <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {yearlyPlans?.map((item, key) => (
                   <PlanCard
+                    pane="Yearly"
                     createTagMutation={createTag.mutate}
                     plan={item}
                     key={key}
@@ -253,6 +318,7 @@ const ViewPlans: FC = () => {
               <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {yearlyCustom?.map((item, key) => (
                   <PlanCard
+                    pane="Yearly"
                     createTagMutation={createTag.mutate}
                     plan={item}
                     key={key}

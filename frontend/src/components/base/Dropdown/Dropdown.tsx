@@ -93,7 +93,7 @@ const MenuItem: React.FC<PropsWithChildren<DropdownProps>> = ({
       role="menuitem"
       tabIndex={-1}
       onKeyDown={(e) => {
-        let element = children as unknown as { type: string };
+        const element = children as unknown as { type: string };
         if (element.type === "input" && e.key === "Enter") {
           onSelect && onSelect(isOpen, selected);
           closeHandler(children);
@@ -101,7 +101,7 @@ const MenuItem: React.FC<PropsWithChildren<DropdownProps>> = ({
       }}
       onClick={(e) => {
         e.preventDefault();
-        let element = children as unknown as { type: string };
+        const element = children as unknown as { type: string };
         if (element.type !== "input") {
           onSelect!(isOpen, selected);
           closeHandler(children);

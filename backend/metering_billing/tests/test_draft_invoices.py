@@ -1,13 +1,16 @@
 import itertools
+import json
 from datetime import timedelta
 from decimal import Decimal
 
 import pytest
+from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Event,
     Invoice,
@@ -16,6 +19,7 @@ from metering_billing.models import (
     PriceAdjustment,
     PriceTier,
     Subscription,
+    SubscriptionRecord,
 )
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PRICE_ADJUSTMENT_TYPE
@@ -75,6 +79,9 @@ def draft_invoice_test_common_setup(
         )
         metric_set = baker.make(
             Metric,
+            billable_metric_name=itertools.cycle(
+                ["Email Character Count", "Peak Bandwith", "Email Count"]
+            ),
             organization=org,
             event_name="email_sent",
             property_name=itertools.cycle(["num_characters", "peak_bandwith", ""]),
@@ -111,6 +118,8 @@ def draft_invoice_test_common_setup(
                 metric_units_per_batch=mupb,
             )
         setup_dict["billing_plan"] = plan_version
+        plan.display_version = plan_version
+        plan.save()
         subscription, subscription_record = add_subscription_to_org(
             org, plan_version, customer, now_utc() - timedelta(days=3)
         )
@@ -245,3 +254,56 @@ class TestGenerateInvoice:
         assert response.status_code == status.HTTP_200_OK
         after_cost = response.data["invoices"][0]["cost_due"]
         assert (before_cost * Decimal("1.2") - after_cost) < Decimal("0.01")
+
+    def test_generate_invoice_pdf(self, draft_invoice_test_common_setup):
+        setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
+        SubscriptionRecord.objects.all().delete()
+        Subscription.objects.all().delete()
+        Event.objects.all().delete()
+        setup_dict["org"].update_subscription_filter_settings(["email"])
+        payload = {
+            "start_date": now_utc() - timedelta(days=5),
+            "customer_id": setup_dict["customer"].customer_id,
+            "plan_id": setup_dict["billing_plan"].plan.plan_id,
+        }
+        for i in range(5):
+            payload["subscription_filters"] = [
+                {"property_name": "email", "value": f"{i}"}
+            ]
+
+            response = setup_dict["client"].post(
+                reverse("subscription-add"),
+                data=json.dumps(payload, cls=DjangoJSONEncoder),
+                content_type="application/json",
+            )
+            assert response.status_code == status.HTTP_201_CREATED
+
+            event_properties = (
+                {"num_characters": 350, "peak_bandwith": 65, "email": f"{i}"},
+                {"num_characters": 125, "peak_bandwith": 148, "email": f"{i}"},
+                {"num_characters": 543, "peak_bandwith": 16, "email": f"{i}"},
+            )
+            baker.make(
+                Event,
+                organization=setup_dict["org"],
+                customer=setup_dict["customer"],
+                event_name="email_sent",
+                time_created=now_utc() - timedelta(days=1),
+                properties=itertools.cycle(event_properties),
+                cust_id=setup_dict["customer"].customer_id,
+                _quantity=3,
+            )
+
+        payload = {
+            "customer_id": setup_dict["customer"].customer_id,
+            "include_next_period": False,
+        }
+        result_invoices = generate_invoice(
+            Subscription.objects.all().first(),
+            SubscriptionRecord.objects.all(),
+            draft=False,
+        )
+
+        assert len(result_invoices) == 1
+
+        assert result_invoices[0].invoice_pdf != ""
