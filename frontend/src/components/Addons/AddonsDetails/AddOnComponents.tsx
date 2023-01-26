@@ -5,8 +5,9 @@ import { Table, Typography, Modal, Button, InputNumber } from "antd";
 import { Plan } from "../../../api/api";
 import { AddonType } from "../../../types/addon-type";
 import { AlertType, CreateAlertType } from "../../../types/alert-type";
-import { Component } from "../../../types/plan-type";
+import { Component, Tier } from "../../../types/plan-type";
 import Select from "../../base/Select/Select";
+import { CurrencyType } from "../../../types/pricing-unit-type";
 interface AddOnsComponentsProps {
   components?: Component[];
   plan: AddonType;
