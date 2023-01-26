@@ -332,11 +332,12 @@ const CreatePlan = () => {
                         },
                       ]}
                     >
-                      <Input placeholder="Ex: Starter Plan" />
+                      <Input  id="planNameInput" placeholder="Ex: Starter Plan" />
                     </Form.Item>
                     <Form.Item label="Description" name="description">
                       <Input
                         type="textarea"
+                        id="planDescInput"
                         placeholder="Ex: Cheapest plan for small scale businesses"
                       />
                     </Form.Item>

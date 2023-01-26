@@ -91,7 +91,7 @@ const ViewCustomers: FC = () => {
     <PageLayout
       title="Customers"
       extra={[
-        <Button type="primary" size="large" onClick={openCustomerModal}>
+        <Button id='create-cutsomer-model' type="primary" size="large" onClick={openCustomerModal}>
           Create Customer
         </Button>,
       ]}
