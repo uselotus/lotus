@@ -10,7 +10,7 @@ import {
   CancelSubscriptionQueryParams,
 } from "../../types/subscription-type";
 import LoadingSpinner from "../LoadingSpinner";
-import { Customer, PricingUnits } from "../../api/api";
+import { Customer, Plan, PricingUnits } from "../../api/api";
 import SubscriptionView from "./CustomerSubscriptionView";
 import {
   useMutation,
@@ -24,19 +24,24 @@ import CustomerInvoiceView from "./CustomerInvoices";
 import CustomerBalancedAdjustments from "./CustomerBalancedAdjustments";
 import { CustomerCostType } from "../../types/revenue-type";
 import CustomerInfoView from "./CustomerInfo";
-// @ts-ignore
+
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
 import CopyText from "../base/CopytoClipboard";
 import { CurrencyType } from "../../types/pricing-unit-type";
-
-function CustomerDetail(props: {
-  visible: boolean;
-  onCancel: () => void;
-  customer_id: string;
-  plans: PlanType[] | undefined;
-  changePlan: (plan_id: string, customer_id: string) => void;
-}) {
+import { useParams } from "react-router-dom";
+type CustomerDetailsParams = {
+  customerId: string;
+};
+function CustomerDetail() {
+  const { data: plans }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
+    ["plan_list"],
+    () =>
+      Plan.getPlans().then((res) => {
+        return res;
+      })
+  );
+  const { customerId: customer_id } = useParams<CustomerDetailsParams>();
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
   const [startDate, setStartDate] = useState<string>(
@@ -55,18 +60,18 @@ function CustomerDetail(props: {
     })
   );
   const { data, isLoading, refetch }: UseQueryResult<CustomerType> =
-    useQuery<CustomerType>(["customer_detail", props.customer_id], () =>
-      Customer.getCustomerDetail(props.customer_id).then((res) => {
+    useQuery<CustomerType>(["customer_detail", customer_id], () =>
+      Customer.getCustomerDetail(customer_id as string).then((res) => {
         return res;
       })
     );
 
   const { data: cost_analysis, isLoading: cost_analysis_loading } =
     useQuery<CustomerCostType>(
-      ["customer_cost_analysis", props.customer_id, startDate, endDate],
-      () => Customer.getCost(props.customer_id, startDate, endDate),
+      ["customer_cost_analysis", customer_id, startDate, endDate],
+      () => Customer.getCost(customer_id as string, startDate, endDate),
       {
-        enabled: props.visible,
+        enabled: true,
         placeholderData: {
           per_day: [],
           total_revenue: 0,
@@ -173,10 +178,7 @@ function CustomerDetail(props: {
   const refetchGraphData = (start_date: string, end_date: string) => {
     setStartDate(start_date);
     setEndDate(end_date);
-    queryClient.invalidateQueries([
-      "customer_cost_analysis",
-      props.customer_id,
-    ]);
+    queryClient.invalidateQueries(["customer_cost_analysis", customer_id]);
   };
 
   const createSubscription = (props: CreateSubscriptionType) => {
@@ -185,15 +187,19 @@ function CustomerDetail(props: {
 
   return (
     <Modal
-      visible={props.visible}
+      visible={true}
       title={"Customer Detail"}
-      onCancel={props.onCancel}
+      onCancel={() => {
+        console.log("cancel");
+      }}
       okType="default"
-      onOk={props.onCancel}
+      onOk={() => {
+        console.log("cancel");
+      }}
       footer={null}
       width="70%"
     >
-      {props.plans === undefined ? (
+      {plans === undefined ? (
         <div className="min-h-[60%]">
           <LoadingSpinner />
         </div>
@@ -212,7 +218,7 @@ function CustomerDetail(props: {
             className="flex items-center flex-col mt-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <Tabs defaultActiveKey="subscriptions" centered className="w-full">
+            <Tabs defaultActiveKey="detail" centered className="w-full">
               <Tabs.TabPane tab="Detail" key="detail">
                 {data !== undefined &&
                 cost_analysis !== undefined &&
@@ -230,11 +236,11 @@ function CustomerDetail(props: {
               </Tabs.TabPane>
               <Tabs.TabPane tab="Subscriptions" key="subscriptions">
                 {data !== undefined ? (
-                  <div key={props.customer_id}>
+                  <div key={customer_id}>
                     <SubscriptionView
-                      customer_id={props.customer_id}
+                      customer_id={customer_id as string}
                       subscriptions={data.subscriptions}
-                      plans={props.plans}
+                      plans={plans}
                       onCreate={createSubscription}
                       onCancel={cancelSubscription}
                       onPlanChange={changeSubscriptionPlan}
@@ -249,7 +255,9 @@ function CustomerDetail(props: {
                 <CustomerInvoiceView invoices={data?.invoices} />
               </Tabs.TabPane>
               <Tabs.TabPane tab="Credits" key="credits">
-                <CustomerBalancedAdjustments customerId={props.customer_id} />
+                <CustomerBalancedAdjustments
+                  customerId={customer_id as string}
+                />
               </Tabs.TabPane>
               {/*
                <Tabs.TabPane tab="Integrations" key="integrations">

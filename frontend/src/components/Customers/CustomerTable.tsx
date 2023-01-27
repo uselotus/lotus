@@ -186,18 +186,6 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
 
   const changePlan = (plan_id: string, customer_id: string) => {};
 
-  const rowModal = (record: any) => {
-    setCustomerVisible(true);
-    setCustomerState({
-      title: "Customer Detail",
-      name: record.customer_name,
-      customer_id: record.customer_id,
-      subscriptions: record.subscriptions,
-      total_amount_due: record.total_amount_due,
-      email: record.email,
-    });
-  };
-
   const getFilteredTableData = (data: CustomerTableItem[] | undefined) => {
     if (data === undefined) {
       return data;
@@ -226,11 +214,9 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
           columns={columns}
           dataSource={getFilteredTableData(tableData)}
           rowKey="customer_id"
-          onRow={(record, rowIndex) => {
+          onRow={(record) => {
             return {
-              onClick: (event) => {
-                rowModal(record);
-              }, // click row
+              onClick: () => navigate("/customers/" + record.customer_id), // click row
             };
           }}
           toolBarRender={false}
@@ -243,17 +229,6 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
           }}
           options={false}
         />
-
-        {customerVisible && (
-          <CustomerDetail
-            key={customerState.customer_id}
-            visible={customerVisible}
-            onCancel={onDetailCancel}
-            changePlan={changePlan}
-            plans={data}
-            customer_id={customerState.customer_id}
-          />
-        )}
       </div>
     </>
   );

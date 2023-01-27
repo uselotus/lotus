@@ -1,14 +1,9 @@
-import React, { FC, useState } from "react";
+import React, { FC } from "react";
 import { Button } from "antd";
-import { Addon, Plan } from "../api/api";
-import { ArrowRightOutlined, PlusOutlined } from "@ant-design/icons";
+import { Addon } from "../api/api";
+import { PlusOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import {
-  useQuery,
-  UseQueryResult,
-  useMutation,
-  useQueryClient,
-} from "react-query";
+import { useQuery, UseQueryResult, useQueryClient } from "react-query";
 import DBSVG from "../components/base/db-svg";
 import { PageLayout } from "../components/base/PageLayout";
 import LoadingSpinner from "../components/LoadingSpinner";

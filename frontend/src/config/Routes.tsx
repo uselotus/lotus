@@ -19,6 +19,7 @@ import CreateCredit from "../pages/CreateBalanceAdjustment";
 import ViewAddOns from "../pages/ViewAddOns";
 import CreateAddOns from "../pages/CreateAddOns";
 import AddonDetails from "../components/Addons/AddonsDetails/AddonDetails";
+import CustomerDetail from "../components/Customers/CustomerDetail";
 
 const { Sider } = Layout;
 
@@ -53,7 +54,9 @@ const AppRoutes: FC = () => {
 
         <Layout
           style={
-            currentPath === "plans" || currentPath === "add-ons"
+            currentPath === "plans" ||
+            currentPath === "add-ons" ||
+            currentPath === "customers"
               ? { background: "#ffffff" }
               : { background: "#FAFAFA" }
           }
@@ -81,6 +84,7 @@ const AppRoutes: FC = () => {
             />
             <Route path="/plan" />
             <Route path="/customers" element={<ViewCustomers />} />
+            <Route path="/customers/:customerId" element={<CustomerDetail />} />
             <Route path="/metrics" element={<ViewMetrics />} />
             <Route path="/customers-create" element={<CreatePlan />} />
             {/* <Route

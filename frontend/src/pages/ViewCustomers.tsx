@@ -1,4 +1,3 @@
-// @ts-ignore
 import React, { FC, useState } from "react";
 import CustomerTable from "../components/Customers/CustomerTable";
 import {
@@ -8,7 +7,7 @@ import {
   CustomerSummary,
 } from "../types/customer-type";
 import { Customer } from "../api/api";
-
+import { PlusOutlined } from "@ant-design/icons";
 import { Button } from "antd";
 import LoadingSpinner from "../components/LoadingSpinner";
 import {
@@ -91,8 +90,20 @@ const ViewCustomers: FC = () => {
     <PageLayout
       title="Customers"
       extra={[
-        <Button type="primary" size="large" onClick={openCustomerModal}>
-          Create Customer
+        <Button
+          onClick={openCustomerModal}
+          type="primary"
+          size="large"
+          key="create-plan"
+          className="hover:!bg-primary-700"
+          style={{ background: "#C3986B", borderColor: "#C3986B" }}
+        >
+          <div className="flex items-center  justify-between text-white">
+            <div>
+              <PlusOutlined className="!text-white w-12 h-12 cursor-pointer" />
+              Create Customer
+            </div>
+          </div>
         </Button>,
       ]}
     >

@@ -1,12 +1,10 @@
-// @ts-ignore
 import React, { FC, useEffect } from "react";
 import { Column } from "@ant-design/plots";
 import { useQueryClient, useMutation } from "react-query";
 
-import { Button, Select, Tag, Form, Input } from "antd";
+import { Button, Select, Tag, Form, Input, Typography } from "antd";
 import { DraftInvoiceType } from "../../types/invoice-type";
 
-// @ts-ignore
 import dayjs from "dayjs";
 import LoadingSpinner from "../LoadingSpinner";
 import { Customer } from "../../api/api";
@@ -16,6 +14,11 @@ import { CustomerType } from "../../types/customer-type";
 import { CustomerCostType } from "../../types/revenue-type";
 import { CurrencyType } from "../../types/pricing-unit-type";
 import { country_json } from "../../assets/country_codes";
+import CustomerCard from "./Card/CustomerCard";
+import { PencilSquareIcon } from "../base/PencilIcon";
+import CopyText from "../base/CopytoClipboard";
+import createShortenedText from "../../helpers/createShortenedText";
+import useMediaQuery from "../../hooks/useWindowQuery";
 
 interface CustomerInfoViewProps {
   data: CustomerType;
@@ -31,6 +34,8 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
   onDateChange,
   refetch,
 }) => {
+  const windowWidth = useMediaQuery();
+
   const [transformedGraphData, setTransformedGraphData] = React.useState<any>(
     []
   );
@@ -204,7 +209,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-8">
+      {/* <div className="grid grid-cols-2 gap-8">
         <div className="border-2 border-solid rounded border-[#EAEAEB] py-4 px-8">
           {!isEditing ? (
             <div>
@@ -241,19 +246,6 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                 ) : (
                   "N/A"
                 )}
-                {/* {data.default_currency ? (
-              <PricingUnitDropDown
-                defaultValue={data.default_currency.code}
-                setCurrentCurrency={(value) =>
-                  updateCustomer.mutate({
-                    customer_id: data.customer_id,
-                    default_currency_code: value,
-                  })
-                }
-              />
-            ) : (
-              "N/A"
-            )} */}
               </p>
 
               <p>
@@ -423,6 +415,115 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
               </span>
             )}
           </div>
+        </div>
+      </div> */}
+      <div className="grid gap-12 grid-cols-1   md:grid-cols-3">
+        <div className="col-span-2">
+          <CustomerCard className="overflow-x-clip">
+            <CustomerCard.Heading>
+              <div className="flex">
+                <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
+                  Customer Details
+                </Typography.Title>
+                <div className="ml-auto">
+                  <PencilSquareIcon />
+                </div>
+              </div>
+              <div className=" w-full h-[1.5px] mt-6 bg-card-divider" />
+            </CustomerCard.Heading>
+            {/* REMOVE THIS GAP WHEN YOU NO LONGER RENDER A MODAL */}
+            <CustomerCard.Container className="grid gap-72  items-center grid-cols-1 md:grid-cols-[repeat(2,_minmax(0,_0.3fr))]">
+              <CustomerCard.Block className="w-[256px] text-sm">
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Name
+                  </div>
+                  <div className="flex gap-1">
+                    {" "}
+                    <div className="Inter">{data.customer_name}</div>
+                  </div>
+                </CustomerCard.Item>
+                <CustomerCard.Item>
+                  <div className="font-normal text-card-text font-alliance whitespace-nowrap leading-4">
+                    Add-On ID
+                  </div>
+                  <div className="flex gap-1 !text-card-grey font-menlo">
+                    {" "}
+                    <div>
+                      {createShortenedText(
+                        data.customer_id as string,
+                        windowWidth >= 2500
+                      )}
+                    </div>
+                    <CopyText
+                      showIcon
+                      onlyIcon
+                      textToCopy={data.customer_id as string}
+                    />
+                  </div>
+                </CustomerCard.Item>
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Billing Address
+                  </div>
+                  <div className="flex gap-1">
+                    {" "}
+                    <div className="Inter">
+                      {data.address ? (
+                        <div>
+                          {data.address.line1},{data.address.state},
+                          {data.address.country} {data.address.postal_code}
+                        </div>
+                      ) : (
+                        "N/A"
+                      )}
+                    </div>
+                  </div>
+                </CustomerCard.Item>
+              </CustomerCard.Block>
+              <CustomerCard.Block className="w-[256px] text-sm">
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Email
+                  </div>
+                  <div className="flex gap-1">
+                    {" "}
+                    <div className="Inter">{data.email}</div>
+                  </div>
+                </CustomerCard.Item>
+                <CustomerCard.Item>
+                  <div className="font-normal text-card-text font-alliance whitespace-nowrap leading-4">
+                    Default Currency
+                  </div>
+                  <div className="flex gap-1 !text-card-text Inter">
+                    {" "}
+                    <div>
+                      {data.default_currency.code}-
+                      {data.default_currency.symbol}
+                    </div>
+                  </div>
+                </CustomerCard.Item>
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Billing Address
+                  </div>
+                  <div className="flex gap-1">
+                    {" "}
+                    <div className="Inter">
+                      {data.address ? (
+                        <div>
+                          {data.address.line1},{data.address.state},
+                          {data.address.country} {data.address.postal_code}
+                        </div>
+                      ) : (
+                        "N/A"
+                      )}
+                    </div>
+                  </div>
+                </CustomerCard.Item>
+              </CustomerCard.Block>
+            </CustomerCard.Container>
+          </CustomerCard>
         </div>
       </div>
       <div className="space-y-4 mt-8">
