@@ -45,7 +45,7 @@
     {
       "name": "Tutorials",
       "icon": "newspaper",
-      "url": "tutorial"
+      "url": "tutorials"
     },
     {
       "name": "Github",
@@ -100,7 +100,8 @@
     },
     {
       "group": "Tutorials",
-      "pages":[]
+      "pages":["tutorials/tutorials-overview",
+        "tutorials/data-platform"]
     },
     {
       "group": "API Reference",
