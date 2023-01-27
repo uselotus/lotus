@@ -1,19 +1,21 @@
 ---
-title: "Data Platform Example"
+title: "Custom Plans and Contracts"
 ---
 
-Retrieves an array of credits.
+# Situation
 
-<CodeGroup>
+An especially challenge thing for software companies can be juggling the balance between their sales led and product led monetization.
 
-```py Python
-lotus.list_credits(customer_id='cust_0569173ee6654369')
-```
+On the monetization side, their needs to be set, transparent plans for the majority of customers in mid-market and then bespoke custom contracts for larger startups and enteprises.
 
-```ts Typescript
-await lotus.listCredits({
-  customerId: "cust_0569173ee6654369",
-});
-```
+A challenge with most pricing infrustructure is organizing tens and potentially hundreds of custom plans with discounts, added features, and negotiated usage volume.
 
-</CodeGroup>
+Then more complexity arises when renewals change the details of the custom plan or an org wide pricing change forces all non sales led plans to change. Issues over how to grandfather (let existing customers stay on the plans they signed up for) and make or break a massive pricing change.
+
+Many billing systems don't offer enough flexibility so companies end up building plan management in house, writing complex code with no owner that get more and more confusing over time.
+
+Instead companies can utilize Lotus to manage all their plans in an organizaed way.
+
+## Creating Custom Plans In Lotus
+
+The first step towards customizing plans per customer is
