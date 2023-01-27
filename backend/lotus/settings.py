@@ -690,5 +690,13 @@ if SVIX_CONNECTOR is not None:
                     name="usage_alert.triggered",
                 )
             )
+        if "customer.created" not in list_response_event_type_out:
+            event_type_out = svix.event_type.create(
+                EventTypeIn(
+                    description="Customer is created",
+                    archived=False,
+                    name="customer.created",
+                )
+            )
     except Exception:
         SVIX_CONNECTOR = None
