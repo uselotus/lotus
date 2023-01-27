@@ -54,7 +54,7 @@ const CreateAddOns = () => {
   const [addon_type, setAddonType] = useState<AddonTypeOption>("flat_fee");
   const [base_cost, setBaseCost] = useState<number | null>(0.0);
   const [recurring_flat_fee_timing, setRecurringFlatFeeTiming] = useState("");
-  const [invoice_when, setInvoiceWhen] = useState<string | null>(null);
+  const [invoice_when, setInvoiceWhen] = useState<string>("invoice_on_attach");
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>([]);
   const [editComponentItem, setEditComponentsItem] =
     useState<CreateComponent>();

@@ -199,7 +199,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         </div>
 
         <div className=" mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card">
-          <Typography.Title className="!text-[18px]" level={2}>
+          <Typography.Title className="!text-[18px]">
             Price Adjustments:{" "}
             {getPriceAdjustmentEnding(
               selectedVersion?.price_adjustment?.price_adjustment_type,
