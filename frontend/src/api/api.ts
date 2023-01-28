@@ -5,9 +5,7 @@ import {
   CustomerCreateType,
   CustomerSummary,
 } from "../types/customer-type";
-import {
-  AddonType, CreateAddonType
-} from "../types/addon-type";
+import { AddonType, CreateAddonType } from "../types/addon-type";
 import {
   WebhookEndpoint,
   WebhookEndpointCreate,
@@ -82,12 +80,11 @@ import { AlertType, CreateAlertType } from "../types/alert-type";
 
 const cookies = new Cookies();
 
-const bearerToken = cookies.get("Bearer");
+const bearerToken = sessionStorage.getItem("lotusAccessToken");
 const token = cookies.get("Token");
 if (bearerToken) {
   axios.defaults.headers.common["Authorization"] = `Bearer ${bearerToken}`;
-}
-if (token) {
+} else if (token) {
   axios.defaults.headers.common["Authorization"] = `Token ${token}`;
 }
 
@@ -195,7 +192,6 @@ export const Customer = {
   ): Promise<SubscriptionType> =>
     requests.post(`app/subscriptions/update/`, post, params),
 };
-
 
 export const Addon = {
   getAddons: (): Promise<AddonType[]> => requests.get("app/addons/"),

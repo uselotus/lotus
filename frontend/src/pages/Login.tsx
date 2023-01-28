@@ -47,7 +47,7 @@ const Login: FC = () => {
     navigate("/dashboard");
   };
 
-  const isDemo = import.meta.env.VITE_IS_DEMO === "true";
+  const isDemo = (import.meta as any).env.VITE_IS_DEMO === "true";
 
   const mutation = useMutation(
     (data: { username: string; password: string }) =>
@@ -60,7 +60,7 @@ const Login: FC = () => {
         setIsAuthenticated(true);
         const { token, detail, user } = response;
         setUsernameToStore(user.username);
-        if (import.meta.env.VITE_API_URL === "https://api.uselotus.io/") {
+        if ((import.meta as any).env.VITE_API_URL === "https://api.uselotus.io/") {
           posthog.group("company", user.organization_id, {
             organization_name: user.organization_name,
           });
@@ -146,8 +146,8 @@ const Login: FC = () => {
                 </Link>
               </Form>
             </Card>
-            {(import.meta.env.VITE_API_URL !== "https://api.uselotus.io/" ||
-              import.meta.env.IS_DEMO == "true") && (
+            {((import.meta as any).env.VITE_API_URL !== "https://api.uselotus.io/" ||
+              (import.meta as any).env.VITE_IS_DEMO === "true") && (
               <div>
                 <Button
                   type="primary"

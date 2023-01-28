@@ -209,6 +209,7 @@ WSGI_APPLICATION = "lotus.wsgi.application"
 AUTH_USER_MODEL = "metering_billing.User"
 AUTHENTICATION_BACKENDS = [
     "metering_billing.auth.auth_backends.EmailOrUsernameModelBackend",
+    "metering_billing.auth.auth_backends.OIDCAuthenticationBackend",
 ]
 SOCIAL_AUTH_JSONFIELD_ENABLED = True
 # SESSION_EXPIRE_AT_BROWSER_CLOSE = True
@@ -489,11 +490,11 @@ REST_FRAMEWORK = {
     "COERCE_DECIMAL_TO_STRING": False,
 }
 OIDC_DRF_AUTH_BACKEND = "metering_billing.auth.auth_backends.OIDCAuthenticationBackend"
-OIDC_OP_USER_ENDPOINT = "https://hello.uselotus.io/oidc/v1/userinfo"
-OIDC_OP_TOKEN_ENDPOINT = None
-OIDC_RP_CLIENT_ID = None
-OIDC_RP_CLIENT_SECRET = None
-OIDC_CREATE_USER = True
+OIDC_OP_USER_ENDPOINT = config("OIDC_OP_USER_ENDPOINT", default=None)
+OIDC_OP_TOKEN_ENDPOINT = config("OIDC_OP_TOKEN_ENDPOINT", default=None)
+OIDC_RP_CLIENT_ID = config("OIDC_RP_CLIENT_ID", default=None)
+OIDC_RP_CLIENT_SECRET = config("OIDC_RP_CLIENT_SECRET", default=None)
+OIDC_CREATE_USER = config("OIDC_CREATE_USER", default=True, cast=bool)
 
 DRF_STANDARDIZED_ERRORS = {
     # class responsible for handling the exceptions. Can be subclassed to change

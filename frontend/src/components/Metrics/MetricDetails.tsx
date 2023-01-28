@@ -31,7 +31,6 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
   const formattedSQL = metric.custom_sql
     ? format(metric.custom_sql, { language: "postgresql" })
     : "";
-  console.log(formattedSQL);
   const mutation = useMutation(
     (metric_id: string) => Metrics.archiveMetric(metric_id),
     {

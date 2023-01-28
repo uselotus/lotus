@@ -140,7 +140,6 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         {versions.map((version) => (
           <div
             onClick={(e) => {
-              console.log(e.target);
               refetch();
               setSelectedVersion(version);
             }}

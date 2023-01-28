@@ -7,7 +7,10 @@ from decimal import ROUND_DOWN, ROUND_UP, Decimal
 import pytz
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Field, Model
+
 from metering_billing.exceptions.exceptions import ServerError
 from metering_billing.utils.enums import (
     METRIC_GRANULARITY,
@@ -17,6 +20,20 @@ from metering_billing.utils.enums import (
 
 ModelType = type[Model]
 Fields = list[Field]
+
+
+def import_from_settings(attr, *args):
+    """
+    Load an attribute from the django settings.
+    :raises:
+        ImproperlyConfigured
+    """
+    try:
+        if args:
+            return getattr(settings, attr, args[0])
+        return getattr(settings, attr)
+    except AttributeError:
+        raise ImproperlyConfigured("Setting {0} not found".format(attr))
 
 
 def convert_to_decimal(value):

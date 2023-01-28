@@ -89,7 +89,8 @@ const TeamTab: FC = () => {
                         dataIndex: "status",
                         key: "status",
                         render: (status: string) => {
-                          const color = status === "Active" ? "green" : "yellow";
+                          const color =
+                            status === "Active" ? "green" : "yellow";
                           return (
                             <Tag color={color} key={status}>
                               {status.toUpperCase()}
@@ -121,26 +122,28 @@ const TeamTab: FC = () => {
             </div>
           </div>
         </div>
-        <div className="basis-5/12 justify-self-center	">
-          <h2>Invite to Team</h2>
-          <div className="w-96">
-            <Form onFinish={handleSendInviteEmail} name="normal_login">
-              <Form.Item>
-                <label htmlFor="email">Email</label>
-                <Input
-                  type="text"
-                  name="email"
-                  value={email}
-                  defaultValue="user123@email.com"
-                  onChange={handleEmailChange}
-                />
-              </Form.Item>
-              <Form.Item>
-                <Button htmlType="submit">Send Invite</Button>
-              </Form.Item>
-            </Form>
+        {(import.meta as any).env.VITE_USE_OIDC !== "true" && (
+          <div className="basis-5/12 justify-self-center	">
+            <h2>Invite to Team</h2>
+            <div className="w-96">
+              <Form onFinish={handleSendInviteEmail} name="normal_login">
+                <Form.Item>
+                  <label htmlFor="email">Email</label>
+                  <Input
+                    type="text"
+                    name="email"
+                    value={email}
+                    defaultValue="user123@email.com"
+                    onChange={handleEmailChange}
+                  />
+                </Form.Item>
+                <Form.Item>
+                  <Button htmlType="submit">Send Invite</Button>
+                </Form.Item>
+              </Form>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {mutation.isLoading && <LoadingSpinner />}

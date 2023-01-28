@@ -11,6 +11,13 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
 from knox.views import LogoutView as KnoxLogoutView
+from rest_framework import serializers, status
+from rest_framework.authentication import BasicAuthentication
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from metering_billing.demos import setup_demo4
 from metering_billing.exceptions import (
     DuplicateOrganization,
@@ -19,6 +26,7 @@ from metering_billing.exceptions import (
     RegistrationFailure,
 )
 from metering_billing.models import Organization, Team, TeamInviteToken, User
+from metering_billing.permissions import ValidOrganization
 from metering_billing.serializers.auth_serializers import (
     DemoRegistrationSerializer,
     RegistrationSerializer,
@@ -27,12 +35,6 @@ from metering_billing.serializers.model_serializers import UserSerializer
 from metering_billing.serializers.serializer_utils import EmailSerializer
 from metering_billing.services.user import user_service
 from metering_billing.utils import now_utc
-from rest_framework import serializers, status
-from rest_framework.authentication import BasicAuthentication
-from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 logger = logging.getLogger("django.server")
 
@@ -305,7 +307,7 @@ class ResetPasswordView(APIView):
 
 
 class SessionView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated & ValidOrganization]
 
     @extend_schema(
         request=None,
@@ -322,10 +324,12 @@ class SessionView(APIView):
         resp = {
             "isAuthenticated": request.user.is_authenticated,
         }
-        if request.user.is_authenticated:
+        if request.user.is_authenticated and request.user.organization:
             resp["organization_id"] = (
                 "org_" + request.user.organization.organization_id.hex
             )
+        else:
+            resp["organization_id"] = None
         return JsonResponse(resp)
 
 

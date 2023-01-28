@@ -1,10 +1,9 @@
 import logging
 
-from rest_framework import permissions
-from rest_framework_api_key.permissions import BaseHasAPIKey
-
 from metering_billing.exceptions import NoAPIKeyProvided
 from metering_billing.models import APIToken
+from rest_framework import permissions
+from rest_framework_api_key.permissions import BaseHasAPIKey
 
 logger = logging.getLogger("django.server")
 

@@ -13,8 +13,8 @@ import posthog from "posthog-js";
 import useGlobalStore, { IOrgStoreType } from "./stores/useGlobalstore";
 
 //telemetry for cloud version only
-if (import.meta.env.VITE_API_URL === "https://api.uselotus.io/") {
-  posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
+if ((import.meta as any).env.VITE_API_URL === "https://api.uselotus.io/") {
+  posthog.init((import.meta as any).env.VITE_POSTHOG_KEY, {
     api_host: "https://app.posthog.com",
   });
 }
@@ -101,7 +101,7 @@ function App() {
         <div>
           <ToastContainer
             autoClose={3000}
-            bodyClassName=" text-gold font-main"
+            bodyClassName="text-gold font-main"
             position="top-center"
           />
           <PlanProvider>
@@ -117,7 +117,7 @@ function App() {
             toastClassName="rounded-md bg-background font-main"
             bodyClassName=" text-gold font-main"
           />
-          <ExternalRoutes redirectTo={pathname} />
+          <ExternalRoutes />
         </div>
       );
     }

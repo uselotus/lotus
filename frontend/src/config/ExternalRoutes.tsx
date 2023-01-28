@@ -8,7 +8,7 @@ import Register from "../pages/Registration";
 import SetNewPassword from "../pages/SetNewPassword";
 import DemoSignup from "../pages/DemoSignup";
 
-const ExternalRoutes: FC<{ redirectTo: string }> = ({ redirectTo }) => {
+const ExternalRoutes: FC = () => {
   return (
     <Routes>
       <Route
@@ -23,10 +23,7 @@ const ExternalRoutes: FC<{ redirectTo: string }> = ({ redirectTo }) => {
       />
       <Route path="/login-legacy" element={<Login />} />
       <Route path="/login" element={<OIDCLogin />} />
-      <Route
-        path="/authorize"
-        element={<OIDCAuthorization redirectTo={redirectTo} />}
-      />
+      <Route path="/authorize" element={<OIDCAuthorization />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/set-new-password" element={<SetNewPassword />} />
       <Route
@@ -34,7 +31,7 @@ const ExternalRoutes: FC<{ redirectTo: string }> = ({ redirectTo }) => {
         element={
           (import.meta as any).env.VITE_IS_DEMO === "true" ? (
             <Navigate replace to={"/register"} />
-          ) : (import.meta as any).env.USE_ZITADEL === "true" ? (
+          ) : (import.meta as any).env.VITE_USE_OIDC === "true" ? (
             <OIDCLogin />
           ) : (
             <Login />

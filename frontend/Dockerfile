@@ -14,6 +14,10 @@ RUN yarn config set network-timeout 300000 && \
 # Bundle app source
 COPY public/ ./public/
 COPY src/ ./src/
+# change OIDC_CLIENT_ID, OIDC_OP_AUTHORIZATION_ENDPOINT, and OIDC_OP_TOKEN_ENDPOINT env variables to be prefixed with VITE_ to be used in the frontend
+# ENV VITE_OIDC_CLIENT_ID=$OIDC_CLIENT_ID
+# ENV VITE_OIDC_OP_AUTHORIZATION_ENDPOINT=$OIDC_OP_AUTHORIZATION_ENDPOINT
+# ENV VITE_OIDC_OP_TOKEN_ENDPOINT=$OIDC_OP_TOKEN_ENDPOINT
 # ---------------------------------------
 # Build stage
 # ---------------------------------------

@@ -1,11 +1,12 @@
 import logging
+import uuid
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
 from django.core.cache import cache
 from django.core.exceptions import SuspiciousOperation
 from django.db.models import Q
-from metering_billing.models import User
+from metering_billing.models import Team, User
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
 LOGGER = logging.getLogger(__name__)
@@ -13,6 +14,10 @@ LOGGER = logging.getLogger(__name__)
 
 class OIDCAuthenticationBackend(OIDCAuthenticationBackend):
     """Override Django's authentication."""
+
+    def get_username(self, claims):
+        """Generate username based on claims."""
+        return claims.get("email")
 
     def get_or_create_user(self, access_token, id_token, payload):
         """Returns a User instance if 1 user is found. Creates a user if not found
@@ -23,7 +28,6 @@ class OIDCAuthenticationBackend(OIDCAuthenticationBackend):
             user = User.objects.get(pk=user_id)
             cache.set(access_token, user_id, 600)  # reset the 10 minute cache timer
             return user
-
         user_info = self.get_userinfo(access_token, id_token, payload)
 
         claims_verified = self.verify_claims(user_info)
@@ -45,24 +49,35 @@ class OIDCAuthenticationBackend(OIDCAuthenticationBackend):
             msg = "Multiple users returned"
             raise SuspiciousOperation(msg)
         elif self.get_settings("OIDC_CREATE_USER", True):
+            roles = user_info.get("urn:zitadel:iam:org:project:roles")
+            if roles:
+                team = None
+                # Iterate through roles and check if a team with corresponding id exists
+                for role in roles:
+                    try:
+                        team_id = uuid.UUID(role)
+                    except ValueError:
+                        continue
+                    if Team.objects.filter(team_id=team_id).exists():
+                        team = Team.objects.get(team_id=team_id)
+                        break
+                if team is None:
+                    msg = "No team found for the roles in access token"
+                    raise SuspiciousOperation(msg)
             user = self.create_user(user_info)
+            user.team = team
+            user.organization = team.organizations.first()
+            user.save()
             cache.set(
                 access_token, user.pk, 600
             )  # cache the JWT signature for 10 minutes
+            # Check if roles key exists in access token
             return user
         else:
             LOGGER.debug(
                 "Login failed: No user with %s found, and " "OIDC_CREATE_USER is False",
                 self.describe_user_by_claims(user_info),
             )
-            return None
-
-    def get_user(self, user_id):
-        """Return a user based on the id."""
-
-        try:
-            return self.UserModel.objects.get(pk=user_id)
-        except self.UserModel.DoesNotExist:
             return None
 
 

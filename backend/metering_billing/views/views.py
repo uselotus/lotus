@@ -70,7 +70,7 @@ POSTHOG_PERSON = settings.POSTHOG_PERSON
 
 
 class PeriodMetricRevenueView(APIView):
-    permission_classes = [IsAuthenticated | ValidOrganization]
+    permission_classes = [IsAuthenticated & ValidOrganization]
 
     @extend_schema(
         request=PeriodComparisonRequestSerializer,
@@ -153,7 +153,7 @@ class PeriodMetricRevenueView(APIView):
 
 
 class CostAnalysisView(APIView):
-    permission_classes = [IsAuthenticated | ValidOrganization]
+    permission_classes = [IsAuthenticated & ValidOrganization]
 
     @extend_schema(
         request=CostAnalysisRequestSerializer,
@@ -265,7 +265,7 @@ class CostAnalysisView(APIView):
 
 
 class PeriodSubscriptionsView(APIView):
-    permission_classes = [IsAuthenticated | ValidOrganization]
+    permission_classes = [IsAuthenticated & ValidOrganization]
 
     @extend_schema(
         parameters=[PeriodComparisonRequestSerializer],
@@ -318,7 +318,7 @@ class PeriodSubscriptionsView(APIView):
 
 
 class PeriodMetricUsageView(APIView):
-    permission_classes = [IsAuthenticated | ValidOrganization]
+    permission_classes = [IsAuthenticated & ValidOrganization]
 
     @extend_schema(
         request=PeriodMetricUsageRequestSerializer,
@@ -370,7 +370,7 @@ class PeriodMetricUsageView(APIView):
 
 
 class SettingsView(APIView):
-    permission_classes = [IsAuthenticated | ValidOrganization]
+    permission_classes = [IsAuthenticated & ValidOrganization]
 
     def get(self, request, format=None):
         """
@@ -383,7 +383,7 @@ class SettingsView(APIView):
 
 
 class ChangeUserOrganizationView(APIView):
-    permission_classes = [IsAuthenticated | ValidOrganization]
+    permission_classes = [IsAuthenticated & ValidOrganization]
 
     @extend_schema(
         request=inline_serializer(
@@ -418,7 +418,7 @@ class ChangeUserOrganizationView(APIView):
 
 
 class CustomersSummaryView(APIView):
-    permission_classes = [IsAuthenticated | ValidOrganization]
+    permission_classes = [IsAuthenticated & ValidOrganization]
 
     @extend_schema(
         request=None,
@@ -452,7 +452,7 @@ class CustomersSummaryView(APIView):
 
 
 class CustomersWithRevenueView(APIView):
-    permission_classes = [IsAuthenticated | ValidOrganization]
+    permission_classes = [IsAuthenticated & ValidOrganization]
 
     @extend_schema(
         request=None,
@@ -518,7 +518,7 @@ class DraftInvoiceView(APIView):
 
 
 class ImportCustomersView(APIView):
-    permission_classes = [IsAuthenticated | ValidOrganization]
+    permission_classes = [IsAuthenticated & ValidOrganization]
 
     @extend_schema(
         request=inline_serializer(
@@ -564,7 +564,7 @@ class ImportCustomersView(APIView):
 
 
 class ImportPaymentObjectsView(APIView):
-    permission_classes = [IsAuthenticated | ValidOrganization]
+    permission_classes = [IsAuthenticated & ValidOrganization]
 
     @extend_schema(
         request=inline_serializer(
@@ -611,7 +611,7 @@ class ImportPaymentObjectsView(APIView):
 
 
 class TransferSubscriptionsView(APIView):
-    permission_classes = [IsAuthenticated | ValidOrganization]
+    permission_classes = [IsAuthenticated & ValidOrganization]
 
     @extend_schema(
         request=inline_serializer(
@@ -663,7 +663,7 @@ class GetInvoicePdfURL(api_views.GetInvoicePdfURL):
 
 
 class PlansByNumCustomersView(APIView):
-    permission_classes = [IsAuthenticated | ValidOrganization]
+    permission_classes = [IsAuthenticated & ValidOrganization]
 
     @extend_schema(
         request=inline_serializer(

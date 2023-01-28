@@ -25,7 +25,6 @@ const getPdfUrl = async (invoice: InvoiceType) => {
     downloadFile(pdfUrl);
   } catch (err) {
     toast.error("Error downloading file");
-    console.log(err);
   }
 };
 
