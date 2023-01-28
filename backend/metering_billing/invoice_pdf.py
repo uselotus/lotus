@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from decimal import Decimal
 from io import BytesIO
 
 import boto3
@@ -218,11 +219,11 @@ def write_line_item(
         date_string = f'{start_date.replace("-", "/")} - {end_date.replace("-", "/")}'
     doc.drawString(225, offset, date_string)
 
-    if quantity:
+    if quantity is not None:
         new_quantity = "{:g}".format(float(quantity))
         doc.drawString(350, offset, str(new_quantity))
     else:
-        doc.drawString(350, offset, str(quantity))
+        doc.drawString(350, offset, "")
     if subtotal:
         new_subtotal = "{:g}".format(float(subtotal))
         doc.drawString(412.5, offset, f"{currency_symbol}{str(new_subtotal)}")
@@ -421,7 +422,9 @@ def generate_invoice_pdf(
                 line_item["name"],
                 line_item["start_date"],
                 line_item["end_date"],
-                line_item["quantity"].normalize(),
+                line_item["quantity"].normalize()
+                if isinstance(line_item["quantity"], Decimal)
+                else line_item["quantity"],
                 line_item["subtotal"].normalize(),
                 currency.symbol,
                 line_item["billing_type"],
