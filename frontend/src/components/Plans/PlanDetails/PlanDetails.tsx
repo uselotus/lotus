@@ -198,12 +198,11 @@ const PlanDetails: FC = () => {
             }
             hasBackButton
             backButton={
-              <div className="mt-10">
+              <div className="mt-10 ml-12">
                 <Button
                   onClick={() => navigate(-1)}
                   type="primary"
                   size="large"
-                  className="ml-[10px]"
                   key="create-custom-plan"
                   style={{
                     background: "#FAFAFA",

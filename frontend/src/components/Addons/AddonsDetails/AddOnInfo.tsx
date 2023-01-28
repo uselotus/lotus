@@ -28,50 +28,57 @@ const AddOnInfo = ({ addOnInfo }: AddOnInfoProps) => {
       </Typography.Title>
       <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
       <div className="grid  items-center grid-cols-1 md:grid-cols-[repeat(2,_minmax(0,_0.3fr))]">
-        <div className="w-[240px]">
-          <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-            <div className="font-normal whitespace-nowrap leading-4">
+        <div className="w-[256px]">
+          <div className="flex items-center justify-between text-card-text !gap-20 mb-1">
+            <div className="font-normal text-card-text font-alliance whitespace-nowrap leading-4">
               Add-On ID
             </div>
-            <div className="flex gap-1 text-card-grey font-menlo">
+            <div className="flex gap-1 !text-card-grey font-menlo">
               {" "}
               <div>
-                {createShortenedText(addOnInfo.addon_id, windowWidth >= 2500)}
+                {createShortenedText(
+                  addOnInfo.addon_id as string,
+                  windowWidth >= 2500
+                )}
               </div>
-              <CopyText showIcon onlyIcon textToCopy={addOnInfo.addon_id} />
+              <CopyText
+                showIcon
+                onlyIcon
+                textToCopy={addOnInfo.addon_id as string}
+              />
             </div>
           </div>
-          <div className="flex items-center text-card-text justify-between mb-1">
-            <div className=" font-normal whitespace-nowrap leading-4">
+          <div className="flex items-center  text-card-text justify-between mb-1">
+            <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
               Price
             </div>
-            <div className="flex gap-1">
+            <div className="flex gap-1 text-left">
               {" "}
-              <div className="text-gold">{`${addOnInfo.currency?.symbol}${addOnInfo.flat_rate}`}</div>
+              <div className="text-gold Inter">{`${addOnInfo.currency?.symbol}${addOnInfo.flat_rate}`}</div>
             </div>
           </div>
         </div>
 
-        <div className="w-[240px]">
+        <div className="w-[256px]">
           <div className="flex items-center text-card-text justify-between gap-2 mb-1">
-            <div className=" font-bold font-alliance whitespace-nowrap leading-4">
+            <div className=" font-alliance font-normal whitespace-nowrap leading-4">
               Type
             </div>
             <div className="flex gap-1 ">
               {" "}
-              <div className="!text-card-grey">
-                {constructBillType(addOnInfo.addon_type)}
+              <div className="!text-card-grey Inter">
+                {capitalize(constructBillType(addOnInfo.addon_type))}
               </div>
             </div>
           </div>
 
           <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-            <div className="font-bold font-alliance whitespace-nowrap leading-4">
+            <div className="font-alliance font-normal whitespace-nowrap leading-4">
               Billing Frequency
             </div>
             <div>
-              <div className="!text-card-grey">
-                {constructBillType(addOnInfo.billing_frequency)}
+              <div className="!text-card-grey Inter">
+                {constructBillType(addOnInfo.billing_frequency as string)}
               </div>
             </div>
           </div>

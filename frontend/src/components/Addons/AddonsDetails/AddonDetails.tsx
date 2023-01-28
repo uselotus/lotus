@@ -79,6 +79,26 @@ const AddonDetails: FC = () => {
                 </div>
               </div>
             }
+            hasBackButton
+            aboveTitle
+            backButton={
+              <div>
+                <Button
+                  onClick={() => navigate(-1)}
+                  type="primary"
+                  size="large"
+                  key="create-custom-plan"
+                  style={{
+                    background: "#F5F5F5",
+                    borderColor: "#F5F5F5",
+                  }}
+                >
+                  <div className="flex items-center justify-between text-black">
+                    <div>&larr; Go back</div>
+                  </div>
+                </Button>
+              </div>
+            }
           ></PageLayout>
           <div className="mx-10">
             <div className="bg-white mb-6 flex flex-col py-4 px-10 rounded-lg space-y-12">
@@ -87,9 +107,12 @@ const AddonDetails: FC = () => {
               </div>
 
               <div className="grid gap-18 grid-cols-1  md:grid-cols-2 w-full">
-              {addon?.components.length > 0 && (
-                <AddOnComponents 
-                  refetch={refetch} plan={addon} components={addon?.components} />
+                {addon?.components.length > 0 && (
+                  <AddOnComponents
+                    refetch={refetch}
+                    plan={addon}
+                    components={addon?.components}
+                  />
                 )}
                 <AddOnFeatures features={addon?.features} />
               </div>
