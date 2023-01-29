@@ -1,7 +1,7 @@
 // @ts-ignore
 import React, { FC, useEffect } from "react";
 import { Column } from "@ant-design/plots";
-import { useQueryClient , useMutation } from "react-query";
+import { useQueryClient, useMutation } from "react-query";
 
 import { Button, Select, Tag, Form, Input } from "antd";
 import { DraftInvoiceType } from "../../types/invoice-type";
@@ -36,7 +36,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
   );
   const [form] = Form.useForm();
   const [currentCurrency, setCurrentCurrency] = React.useState<string>(
-    data.default_currency.code
+    data.default_currency.code ? data.default_currency.code : ""
   );
   const [taxRate, setTaxRate] = React.useState(
     data.tax_rate ? data.tax_rate : 0
