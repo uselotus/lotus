@@ -1,8 +1,20 @@
 // @ts-ignore
 import React, { FC, useEffect, useRef, useState } from "react";
 import "./PlanDetails.css";
-import { Table, Typography, Tag, Modal, Button, InputNumber } from "antd";
-import { CheckCircleOutlined } from "@ant-design/icons";
+import {
+  Table,
+  Typography,
+  Menu,
+  Modal,
+  Button,
+  InputNumber,
+  Dropdown,
+} from "antd";
+import {
+  CheckCircleOutlined,
+  MoreOutlined,
+  DeleteOutlined,
+} from "@ant-design/icons";
 import StateTabs from "./StateTabs";
 import {
   Component,
@@ -27,9 +39,10 @@ import createTags from "../helpers/createTags";
 import useGlobalStore from "../../../stores/useGlobalstore";
 import createPlanTagsList from "../helpers/createPlanTagsList";
 import { AlertType, CreateAlertType } from "../../../types/alert-type";
-import { useMutation, QueryClient } from "react-query";
+import { useMutation, useQueryClient } from "react-query";
 import { Plan } from "../../../api/api";
 import { toast } from "react-toastify";
+
 interface PlanComponentsProps {
   components?: Component[];
   plan: PlanType;
@@ -93,6 +106,7 @@ export const PlanSummary = ({
   const { plan_tags } = useGlobalStore((state) => state.org);
   const windowWidth = useMediaQuery();
   const inputRef = useRef<HTMLInputElement | null>(null!);
+
   return (
     <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card">
       <Typography.Title className="pt-4 whitespace-pre-wrap !text-[18px] level={2}">
@@ -222,6 +236,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
       return str;
     }
   };
+  const queryClient = useQueryClient();
   const schedule = (duration: "monthly" | "yearly" | "quarterly") => {
     switch (duration) {
       case "monthly":
@@ -234,11 +249,40 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
     }
   };
 
+  const archivemutation = useMutation(
+    (version_id: string) =>
+      Plan.archivePlanVersion(version_id, { status: "archived" }),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("plan_list");
+        queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
+      },
+    }
+  );
+  const menu = (
+    <Menu>
+      <Menu.Item
+        key="1"
+        onClick={() => archivemutation.mutate(version!.version_id)}
+        disabled={
+          version?.status === "active" || version?.status === "grandfathered"
+        }
+      >
+        <div className="planMenuArchiveIcon">
+          <div>
+            <DeleteOutlined />
+          </div>
+          <div className="archiveLabel">Archive</div>
+        </div>
+      </Menu.Item>
+    </Menu>
+  );
+
   return (
     <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card ">
       <Typography.Title className="pt-4 whitespace-pre-wrap grid gap-4 !text-[18px] items-center grid-cols-1 md:grid-cols-2">
         <div>Plan Information</div>
-        <div>
+        <div className="flex flex-row">
           <StateTabs
             activeTab={capitalize(version.status)}
             version_id={version.version_id}
@@ -246,6 +290,17 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
             activeVersion={version.version}
             tabs={["Active", "Grandfathered", "Retiring", "Inactive"]}
           />
+          <span className="ml-auto" onClick={(e) => e.stopPropagation()}>
+            <Dropdown overlay={menu} trigger={["click"]}>
+              <Button
+                type="text"
+                size="small"
+                onClick={(e) => e.preventDefault()}
+              >
+                <MoreOutlined />
+              </Button>
+            </Dropdown>
+          </span>
         </div>
       </Typography.Title>
       <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
@@ -344,7 +399,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
   const [currentComponent, setCurrentComponent] = useState<Component>();
   const [currentAlertId, setCurrentAlertId] = useState<string>();
   const [isInvalid, setIsInvalid] = useState(false);
-  const queryClient = new QueryClient();
+  const queryClient = useQueryClient();
   const createAlertMutation = useMutation(
     (post: CreateAlertType) => Plan.createAlert(post),
     {

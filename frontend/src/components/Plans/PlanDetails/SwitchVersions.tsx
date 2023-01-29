@@ -93,15 +93,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
       },
     }
   );
-  const archivemutation = useMutation(
-    (version_id: string) =>
-      Plan.archivePlanVersion(version_id, { status: "archived" }),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries("plan_list");
-      },
-    }
-  );
+
   // useEffect(() => {
   //   setSelectedVersion(versions.find((x) => x.status === "active")!);
   // }, [versions]);
@@ -114,25 +106,6 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
   if (!activePlanVersion) {
     return <div>No Active Plan</div>;
   }
-  const menu = (
-    <Menu>
-      <Menu.Item
-        key="1"
-        onClick={() => archivemutation.mutate(selectedVersion!.version_id)}
-        disabled={
-          selectedVersion?.status === "active" ||
-          selectedVersion?.status === "grandfathered"
-        }
-      >
-        <div className="planMenuArchiveIcon">
-          <div>
-            <DeleteOutlined />
-          </div>
-          <div className="archiveLabel">Archive</div>
-        </div>
-      </Menu.Item>
-    </Menu>
-  );
 
   return (
     <div>
