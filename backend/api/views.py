@@ -121,6 +121,7 @@ from metering_billing.utils.enums import (
     METRIC_STATUS,
     ORGANIZATION_SETTING_NAMES,
     PLAN_STATUS,
+    PLAN_VERSION_STATUS,
     SUBSCRIPTION_STATUS,
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
@@ -389,6 +390,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             Prefetch(
                 "versions",
                 queryset=PlanVersion.objects.filter(
+                    ~Q(status=PLAN_VERSION_STATUS.ARCHIVED),
                     organization=organization,
                 )
                 .annotate(
