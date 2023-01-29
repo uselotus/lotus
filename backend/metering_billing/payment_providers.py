@@ -6,6 +6,7 @@ from urllib.parse import urlencode
 
 import pytz
 import stripe
+import base64
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import F, Prefetch, Q
@@ -28,8 +29,16 @@ logger = logging.getLogger("django.server")
 
 SELF_HOSTED = settings.SELF_HOSTED
 STRIPE_SECRET_KEY = settings.STRIPE_SECRET_KEY
+BRAINTREE_SECRET_KEY = settings.BRAINTREE_SECRET_KEY
 VITE_STRIPE_CLIENT = settings.VITE_STRIPE_CLIENT
 VITE_API_URL = settings.VITE_API_URL
+
+
+def base64_encode(data: str) -> str:
+    string_bytes = data.encode("ascii")
+    base64_bytes = base64.b64encode(string_bytes)
+    base64_string = base64_bytes.decode("ascii")
+    return base64_string
 
 
 class PaymentProvider(abc.ABC):
@@ -105,6 +114,35 @@ class PaymentProvider(abc.ABC):
     def initialize_settings(self, organization) -> None:
         """This method will be called when a user clicks on the connect button for a payment processor. It should initialize the settings for the payment processor for the organization."""
         pass
+
+
+class BraintreeConnector(PaymentProvider):
+    def __init__(self):
+        self.secret_key = base64_encode(BRAINTREE_SECRET_KEY)
+        self.self_hosted = SELF_HOSTED
+        self.headers = {
+            "Authorization": f"Basic {self.secret_key}",
+            "Content-Type": "application/json",
+        }
+        self.base_url = "https://payments.braintree-api.com/graphql"
+
+    def working(self) -> bool:
+        return self.secret_key != "" and self.secret_key is not None
+
+    def customer_connected(self, customer) -> bool:
+        pp_ids = customer.integrations
+        braintree_dict = pp_ids.get(PAYMENT_PROVIDERS.BRAINTREE, {})
+        stripe_id = braintree_dict.get("id", None)
+        return stripe_id is not None
+
+    def organization_connected(self, organization) -> bool:
+        if self.self_hosted:
+            return self.secret_key != "" and self.secret_key is not None
+        else:
+            return (
+                organization.payment_provider_ids.get(PAYMENT_PROVIDERS.BRAINTREE, "")
+                != ""
+            )
 
 
 class StripeConnector(PaymentProvider):
@@ -614,4 +652,5 @@ class StripeConnector(PaymentProvider):
 
 PAYMENT_PROVIDER_MAP = {
     PAYMENT_PROVIDERS.STRIPE: StripeConnector(),
+    PAYMENT_PROVIDERS.BRAINTREE: BraintreeConnector(),
 }

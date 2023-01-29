@@ -39,6 +39,7 @@ class PRICE_ADJUSTMENT_TYPE(models.TextChoices):
 
 class PAYMENT_PROVIDERS(models.TextChoices):
     STRIPE = ("stripe", _("Stripe"))
+    BRAINTREE = ("braintree", _("Braintree"))
 
 
 class METRIC_TYPE(models.TextChoices):
