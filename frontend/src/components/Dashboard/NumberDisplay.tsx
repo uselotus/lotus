@@ -19,38 +19,48 @@ const displayMetric = (metric: number | undefined): number => {
   return metric;
 };
 
-function RevenueDisplay(props: {
-  total_revenue_1: number | undefined;
-  total_revenue_2: number | undefined;
-  earned_revenue_1: number | undefined;
-  earned_revenue_2: number | undefined;
+const renderMetric = (metric: number | undefined, currency?: string) => {
+  if (metric === undefined) {
+    return 0;
+  }
+  if (currency) {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(metric);
+  }
+  return metric;
+};
+
+function NumberDisplay(props: {
+  metric_1: number | undefined;
+  metric_2: number | undefined;
   isLoading: boolean;
+  title: string;
+  currency?: string;
 }) {
   const [percentageChange, setPercentageChange] = useState<number>(0);
 
   useEffect(() => {
     setPercentageChange(
-      computePercentageChange(props.earned_revenue_1, props.earned_revenue_2)
+      computePercentageChange(props.metric_1, props.metric_2)
     );
-  }, [props.earned_revenue_1, props.earned_revenue_2]);
+  }, [props.metric_1, props.metric_2]);
   return (
-    <Paper color="white" border={true}>
+    <Paper border={true}>
       <div className="grid grid-flow-col auto-cols-auto  justify-between">
         <div>
           <p className="text-sm mb-4 leading-[18px] font-normal">
-            Earned Revenue
+            {props.title}
           </p>
           {props.isLoading ? (
-            <div className="flex justify-center">
+            <div className="flex flex-row justify-center">
               <LoadingSpinner />
             </div>
           ) : (
             <Fragment>
-              <span className="text-2xl font-bold mb-4">
-                {new Intl.NumberFormat("en-US", {
-                  style: "currency",
-                  currency: "USD",
-                }).format(displayMetric(props.earned_revenue_1))}
+              <span className="text-3xl font-bold mb-4">
+                {renderMetric(displayMetric(props.metric_1), props.currency)}
               </span>
               <p className="text-sm mb-4 mt-4 leading-[18px] font-normal">
                 Prev. Period{" "}
@@ -67,22 +77,9 @@ function RevenueDisplay(props: {
             </Fragment>
           )}
         </div>
-
-        <div>
-          <p className="text-base mb-4">Previous Period</p>
-          {percentageChange >= 0 ? (
-            <span className="text-[#34B220] text-3xl">
-              +{percentageChange.toFixed(2)}%{" "}
-            </span>
-          ) : (
-            <span className="text-[#cf1322] text-3xl">
-              {percentageChange.toFixed(0)}%{" "}
-            </span>
-          )}
-        </div>
       </div>
     </Paper>
   );
 }
 
-export default RevenueDisplay;
+export default NumberDisplay;
