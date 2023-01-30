@@ -201,7 +201,7 @@ const ViewPlans: FC = () => {
             )}
             <div className="mt-12">
               {allCustom?.length > 0 && (
-                <h2 className="text-center text-bold mb-4">Custom Plans</h2>
+                <h2 className="text-center text-bold mb-8">Custom Plans</h2>
               )}
 
               <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4 mt-4">
@@ -239,7 +239,7 @@ const ViewPlans: FC = () => {
             )}
             <div className="mt-12">
               {monthlyCustom?.length > 0 && (
-                <h2 className="text-center">Custom Plans</h2>
+                <h2 className="text-center mb-8">Custom Plans</h2>
               )}
 
               <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
@@ -277,7 +277,7 @@ const ViewPlans: FC = () => {
             )}
             <div className="mt-12">
               {quarterlyCustom?.length > 0 && (
-                <h2 className="text-center">Custom Plans</h2>
+                <h2 className="text-center mb-8">Custom Plans</h2>
               )}
               <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {quarterlyCustom?.map((item, key) => (
@@ -313,7 +313,7 @@ const ViewPlans: FC = () => {
             )}
             <div className="mt-12">
               {yearlyCustom?.length > 0 && (
-                <h2 className="text-center">Custom Plans</h2>
+                <h2 className="text-center mb-8">Custom Plans</h2>
               )}
               <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {yearlyCustom?.map((item, key) => (
