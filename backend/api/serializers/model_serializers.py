@@ -1854,6 +1854,7 @@ class AddOnSubscriptionRecordSerializer(serializers.ModelSerializer):
             "end_date",
             "parent",
             "fully_billed",
+            "auto_renew",
         )
         extra_kwargs = {
             "customer": {"read_only": True, "required": True},
@@ -1862,6 +1863,7 @@ class AddOnSubscriptionRecordSerializer(serializers.ModelSerializer):
             "end_date": {"read_only": True, "required": True},
             "parent": {"read_only": True, "required": True},
             "fully_billed": {"read_only": True, "required": True},
+            "auto_renew": {"read_only": True, "required": True},
         }
 
     customer = LightweightCustomerSerializer()
@@ -2005,6 +2007,7 @@ class AddOnSubscriptionRecordCreateSerializer(serializers.ModelSerializer):
             else FLAT_FEE_BEHAVIOR.CHARGE_FULL,
             parent=attach_to_sr,
             fully_billed=is_fully_billed,
+            quantity=validated_data["quantity"],
         )
         for sf in attach_to_sr.filters.all():
             sr.filters.add(sf)

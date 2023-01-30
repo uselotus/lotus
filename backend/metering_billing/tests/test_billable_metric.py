@@ -5,8 +5,11 @@ from decimal import Decimal
 
 import pytest
 from dateutil.relativedelta import relativedelta
-from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     CategoricalFilter,
@@ -18,6 +21,7 @@ from metering_billing.models import (
     PlanVersion,
     PriceTier,
 )
+from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     CATEGORICAL_FILTER_OPERATORS,
@@ -31,9 +35,6 @@ from metering_billing.utils.enums import (
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
 )
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
 
 
 @pytest.fixture

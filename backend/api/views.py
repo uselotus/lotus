@@ -10,6 +10,37 @@ from itertools import chain
 from typing import Optional
 
 import posthog
+from dateutil import parser
+from dateutil.relativedelta import relativedelta
+from django.conf import settings
+from django.db.models import (
+    Count,
+    DecimalField,
+    F,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
+from django.db.utils import IntegrityError
+from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import (
+    action,
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
     AddonSubscriptionRecordFilterSerializer,
@@ -45,25 +76,6 @@ from api.serializers.nonmodel_serializers import (
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
 )
-from dateutil import parser
-from dateutil.relativedelta import relativedelta
-from django.conf import settings
-from django.db.models import (
-    Count,
-    DecimalField,
-    F,
-    OuterRef,
-    Prefetch,
-    Q,
-    Subquery,
-    Sum,
-    Value,
-)
-from django.db.models.functions import Coalesce
-from django.db.utils import IntegrityError
-from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
 from metering_billing.exceptions import (
     DuplicateCustomer,
@@ -116,17 +128,6 @@ from metering_billing.utils.enums import (
     USAGE_BILLING_BEHAVIOR,
     USAGE_BILLING_FREQUENCY,
 )
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import (
-    action,
-    api_view,
-    authentication_classes,
-    permission_classes,
-)
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -551,13 +552,15 @@ class SubscriptionViewSet(
             data = {
                 "subscription_filters": subscription_filters,
                 "customer_id": dict_params.get("customer_id"),
-                "plan_id": dict_params.get("plan_id"),
             }
+            if dict_params.get("plan_id"):
+                data["plan_id"] = dict_params.get("plan_id")
             if self.action == "edit":
                 serializer = SubscriptionRecordFilterSerializer(
                     data=data, context=context
                 )
             elif self.action == "cancel":
+                print("data", data)
                 serializer = SubscriptionRecordFilterSerializerDelete(
                     data=data, context=context
                 )
@@ -567,7 +570,9 @@ class SubscriptionViewSet(
                 )
             else:
                 raise Exception("Invalid action")
+            print("serializer")
             serializer.is_valid(raise_exception=True)
+            print("done")
             # unpack whats in teh serialized data
 
             customer = serializer.validated_data.get("customer")
@@ -633,6 +638,7 @@ class SubscriptionViewSet(
                 "subscription_filters": subscription_filters,
                 "attached_customer_id": dict_params.get("attached_customer_id"),
                 "attached_plan_id": dict_params.get("attached_plan_id"),
+                "addon_id": dict_params.get("addon_id"),
             }
             serializer = AddonSubscriptionRecordFilterSerializer(
                 data=data, context=context
@@ -973,26 +979,51 @@ class SubscriptionViewSet(
     )
     @action(detail=False, methods=["post"], url_path="addons/update")
     def update_addon(self, request, *args, **kwargs):
-        # serializer = self.get_serializer(data=request.data)
-        # serializer.is_valid(raise_exception=True)
-        # addons_to_edit = serializer.validated_data.get("addons_to_edit")
-        # if serializer.validated_data.get("turn_off_auto_renew"):
-        #     for sr in addons_to_edit:
-        #         sr.auto_renew = False
-        # if serializer.validated_data.get("end_now"):
-        #     now = now_utc()
-        #     for sr in addons_to_edit:
-        #         sr.end_date = now
-        # if serializer.validated_data.get("flat_fee_behavior"):
-        #     for sr in addons_to_edit:
-        #         sr.flat_fee_behavior
-        #         sr.flat_fee_behavior = serializer.validated_data.get(
-        #             "flat_fee_behavior"
-        #         )
-        # for sr in addons_to_edit:
-        #     sr.save()
+        qs = self.get_queryset()
+        organization = self.request.organization
+        original_qs = list(copy.copy(qs).values_list("pk", flat=True))
+        if qs.count() == 0:
+            raise NotFoundException("Subscription matching the given filters not found")
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        billing_behavior = serializer.validated_data.get("invoicing_behavior")
+        turn_off_auto_renew = serializer.validated_data.get("turn_off_auto_renew")
+        end_date = serializer.validated_data.get("end_date")
+        quantity = serializer.validated_data.get("quantity")
+        update_dict = {}
+        if turn_off_auto_renew:
+            update_dict["auto_renew"] = False
+        if end_date:
+            update_dict["end_date"] = end_date
+            update_dict["next_billing_date"] = end_date
+        if quantity:
+            update_dict["quantity"] = quantity
+        if len(update_dict) > 0:
+            qs.update(**update_dict)
+        if (
+            billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW
+            and "quantity" in update_dict
+        ):
+            customer = qs.first().customer
+            subscription = (
+                Subscription.objects.active()
+                .filter(
+                    organization=customer.organization,
+                    customer=customer,
+                )
+                .first()
+            )
+            new_qs = SubscriptionRecord.addon_objects.filter(
+                pk__in=original_qs, organization=organization
+            )
+            if billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
+                generate_invoice(subscription, new_qs)
+
+        return_qs = SubscriptionRecord.addon_objects.filter(
+            pk__in=original_qs, organization=organization
+        )
         return Response(
-            AddOnSubscriptionRecordSerializer(addons_to_edit, many=True).data,
+            AddOnSubscriptionRecordSerializer(return_qs, many=True).data,
             status=status.HTTP_200_OK,
         )
 
@@ -1002,26 +1033,48 @@ class SubscriptionViewSet(
     )
     @action(detail=False, methods=["post"], url_path="addons/cancel")
     def cancel_addon(self, request, *args, **kwargs):
-        # serializer = self.get_serializer(data=request.data)
-        # serializer.is_valid(raise_exception=True)
-        # addons_to_edit = serializer.validated_data.get("addons_to_edit")
-        # if serializer.validated_data.get("turn_off_auto_renew"):
-        #     for sr in addons_to_edit:
-        #         sr.auto_renew = False
-        # if serializer.validated_data.get("end_now"):
-        #     now = now_utc()
-        #     for sr in addons_to_edit:
-        #         sr.end_date = now
-        # if serializer.validated_data.get("flat_fee_behavior"):
-        #     for sr in addons_to_edit:
-        #         sr.flat_fee_behavior
-        #         sr.flat_fee_behavior = serializer.validated_data.get(
-        #             "flat_fee_behavior"
-        #         )
-        # for sr in addons_to_edit:
-        #     sr.save()
+        qs = self.get_queryset()
+        original_qs = list(copy.copy(qs).values_list("pk", flat=True))
+        organization = self.request.organization
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
+        usage_behavior = serializer.validated_data["usage_behavior"]
+        invoicing_behavior = serializer.validated_data["invoicing_behavior"]
+        now = now_utc()
+        qs_pks = list(qs.values_list("pk", flat=True))
+        qs.update(
+            flat_fee_behavior=flat_fee_behavior,
+            invoice_usage_charges=usage_behavior == USAGE_BILLING_BEHAVIOR.BILL_FULL,
+            auto_renew=False,
+            end_date=now,
+            fully_billed=invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW,
+        )
+        qs = SubscriptionRecord.addon_objects.filter(
+            pk__in=qs_pks, organization=organization
+        )
+        customer_ids = qs.values_list("customer", flat=True).distinct()
+        customer_set = Customer.objects.filter(
+            id__in=customer_ids, organization=organization
+        )
+        if invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
+            for customer in customer_set:
+                subscription = (
+                    Subscription.objects.active()
+                    .filter(
+                        organization=customer.organization,
+                        customer=customer,
+                    )
+                    .first()
+                )
+                generate_invoice(subscription, qs.filter(customer=customer))
+                subscription.handle_remove_plan()
+
+        return_qs = SubscriptionRecord.addon_objects.filter(
+            pk__in=original_qs, organization=organization
+        )
         return Response(
-            AddOnSubscriptionRecordSerializer(addons_to_edit, many=True).data,
+            AddOnSubscriptionRecordSerializer(return_qs, many=True).data,
             status=status.HTTP_200_OK,
         )
 
@@ -1385,7 +1438,10 @@ class MetricAccessView(APIView):
                 "metric_free_limit": 0,
                 "metric_total_limit": 0,
             }
-            for component in sr.billing_plan.plan_components.all():
+            components = sr.billing_plan.plan_components.all()
+            for addon in sr.addon_subscription_records.all():
+                components = components | addon.billing_plan.plan_components.all()
+            for component in components:
                 check_metric = component.billable_metric
                 if check_metric == metric:
                     tiers = sorted(component.tiers.all(), key=lambda x: x.range_start)
