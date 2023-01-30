@@ -449,7 +449,10 @@ export const Events = {
     period_1_end_date: string,
     period_2_start_date: string,
     period_2_end_date: string
-  ): Promise<{ count_period_1: number; count_period_2: number }> =>
+  ): Promise<{
+    total_events_period_1: number;
+    total_events_period_2: number;
+  }> =>
     requests.get("app/event_count/", {
       params: {
         period_1_start_date,
