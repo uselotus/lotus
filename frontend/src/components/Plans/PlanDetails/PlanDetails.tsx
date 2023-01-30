@@ -197,13 +197,14 @@ const PlanDetails: FC = () => {
               )
             }
             hasBackButton
+            aboveTitle
             backButton={
-              <div className="mt-10 ml-12">
+              <div>
                 <Button
                   onClick={() => navigate(-1)}
                   type="primary"
                   size="large"
-                  key="create-custom-plan"
+                  key="go-back"
                   style={{
                     background: "#FAFAFA",
                     borderColor: "#FAFAFA",

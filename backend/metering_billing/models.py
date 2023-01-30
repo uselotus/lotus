@@ -172,6 +172,7 @@ class Organization(models.Model):
             self.default_currency = PricingUnit.objects.get(
                 organization=self, code="USD"
             )
+            self.save()
         self.provision_subscription_filter_settings()
 
     def provision_subscription_filter_settings(self):
