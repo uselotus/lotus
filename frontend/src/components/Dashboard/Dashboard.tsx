@@ -57,7 +57,9 @@ const Dashboard: FC = () => {
       GetSubscriptions.getSubscriptionOverview(
         dateRange[0].format("YYYY-MM-DD"),
         dateRange[1].format("YYYY-MM-DD"),
-        dateRange[0].subtract(1, "month").format("YYYY-MM-DD"),
+        dateRange[0]
+          .subtract(dayjs.duration(dateRange[1].diff(dateRange[0])))
+          .format("YYYY-MM-DD"),
         dateRange[1].subtract(1, "month").format("YYYY-MM-DD")
       ).then((res) => {
         return res;
@@ -69,7 +71,11 @@ const Dashboard: FC = () => {
     () =>
       Events.getEventCount(
         dateRange[0].format("YYYY-MM-DD"),
-        dateRange[1].format("YYYY-MM-DD")
+        dateRange[1].format("YYYY-MM-DD"),
+        dateRange[0]
+          .subtract(dayjs.duration(dateRange[1].diff(dateRange[0])))
+          .format("YYYY-MM-DD"),
+        dateRange[1].subtract(1, "month").format("YYYY-MM-DD")
       ).then((res) => {
         return res;
       })

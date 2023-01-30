@@ -102,7 +102,7 @@ function MetricBarGraph(props: { range: any }) {
   }
 
   return (
-    <Paper border={true} color="white">
+    <Paper border={true}>
       <div className="flex flex-row items-center mb-12 space-x-4 justify-between">
         <h2>Metric Usage</h2>
         <Select

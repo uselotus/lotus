@@ -56,7 +56,7 @@ export const CustomerByPlanPie = (props: any) => {
     },
   };
   return (
-    <Paper color="white" className="h-full" border={true}>
+    <Paper className="h-full" border={true}>
       {isLoading ? (
         <LoadingSpinner />
       ) : (

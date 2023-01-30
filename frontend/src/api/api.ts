@@ -445,10 +445,19 @@ export const Events = {
   getEventPreviews: (c: string): Promise<EventPages> =>
     requests.get("app/events/", { params: { c } }),
   getEventCount: (
-    start_date: Date,
-    end_date: Date
+    period_1_start_date: string,
+    period_1_end_date: string,
+    period_2_start_date: string,
+    period_2_end_date: string
   ): Promise<{ count_period_1: number; count_period_2: number }> =>
-    requests.get("app/event_count/", { start_date, end_date }),
+    requests.get("app/event_count/", {
+      params: {
+        period_1_start_date,
+        period_1_end_date,
+        period_2_start_date,
+        period_2_end_date,
+      },
+    }),
 };
 
 export const APIToken = {
