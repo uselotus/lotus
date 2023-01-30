@@ -5,6 +5,7 @@ from decimal import Decimal
 from urllib.parse import urlencode
 
 import pytz
+import requests
 import stripe
 import base64
 from dateutil.relativedelta import relativedelta
@@ -143,6 +144,68 @@ class BraintreeConnector(PaymentProvider):
                 organization.payment_provider_ids.get(PAYMENT_PROVIDERS.BRAINTREE, "")
                 != ""
             )
+
+    def create_payment_object(self, invoice) -> str:
+        stripe.api_key = self.secret_key
+        # check everything works as expected + build invoice item
+        logger.error(
+            "Invoice does not have a external_payment_obj_id ID",
+            extra={"customer": invoice.id},
+        )
+        assert invoice.external_payment_obj_id is None
+
+        customer = invoice.customer
+        braintree_method_id = customer.integrations.get(
+            PAYMENT_PROVIDERS.BRAINTREE, {}
+        ).get("id")
+        logger.error(
+            "Customer does not have a Braintree ID", extra={"customer": customer.id}
+        )
+        assert braintree_method_id is not None, "Customer does not have a Braintree ID"
+
+        body = """
+                mutation {
+                createTransaction(
+                    id: 1
+                    scientific_name: "mangifera"
+                    tree_name: "mangifera indica"
+                    fruit_name: "Mango"ß
+                    family: "Anacardiaceae"
+                    origin: "India"
+                    description: "Mango is yellow"
+                    bloom: "Summer"
+                    maturation_fruit: "Mango"
+                    life_cycle: "100"
+                    climatic_zone: "humid"
+                ) {
+                    id
+                    scientific_name
+                    tree_name
+                    fruit_name
+                    origin
+                }
+                }
+                {
+            "input": {
+                "paymentMethodId": "fake-valid-nonce",
+                "transaction": {
+                "amount": "1.00"
+                }
+            }
+            }
+                """
+
+        response = requests.post(
+            url=self.base_url, headers=self.headers, data={"query": body}
+        )
+        if response.status_code != 200:
+            logger.error(
+                "Braintree returned a non-200 status code",
+                extra={"status_code": response.status_code},
+            )
+            raise Exception("Braintree returned a non-200 status code")
+
+        return "stripe_invoice.id"
 
 
 class StripeConnector(PaymentProvider):
