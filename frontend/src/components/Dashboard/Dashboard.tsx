@@ -128,8 +128,8 @@ const Dashboard: FC = () => {
             </div>
             <div className="col-span-3">
               <NumberDisplay
-                metric_1={eventData?.total_events_period_1 ?? 0}
-                metric_2={eventData?.total_events_period_2 ?? 0}
+                metric_1={eventData?.total_events_period_1}
+                metric_2={eventData?.total_events_period_2}
                 isLoading={false}
                 title={"Events Tracked"}
               />{" "}
