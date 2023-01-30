@@ -560,7 +560,6 @@ class SubscriptionViewSet(
                     data=data, context=context
                 )
             elif self.action == "cancel":
-                print("data", data)
                 serializer = SubscriptionRecordFilterSerializerDelete(
                     data=data, context=context
                 )
@@ -570,9 +569,7 @@ class SubscriptionViewSet(
                 )
             else:
                 raise Exception("Invalid action")
-            print("serializer")
             serializer.is_valid(raise_exception=True)
-            print("done")
             # unpack whats in teh serialized data
 
             customer = serializer.validated_data.get("customer")

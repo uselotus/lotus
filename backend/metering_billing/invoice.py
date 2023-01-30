@@ -3,7 +3,6 @@ from decimal import Decimal
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
-
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
@@ -405,7 +404,6 @@ def apply_customer_balance_adjustments(invoice, customer, organization, draft):
     if invoice.payment_status == Invoice.PaymentStatus.PAID or draft:
         return
     subtotal = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
-    print(f"subtotal: {subtotal}")
     if subtotal < 0:
         InvoiceLineItem.objects.create(
             name=f"Credit Grant: {invoice.currency.symbol}{subtotal}",

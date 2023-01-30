@@ -303,7 +303,6 @@ class TestUpdateSub:
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        print(response.json())
 
         after_active_subscriptions = Subscription.objects.active().filter(
             organization=setup_dict["org"],
