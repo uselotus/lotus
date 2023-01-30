@@ -453,7 +453,7 @@ export const Events = {
     total_events_period_1: number;
     total_events_period_2: number;
   }> =>
-    requests.get("app/event_count/", {
+    requests.get("app/period_events/", {
       params: {
         period_1_start_date,
         period_1_end_date,
