@@ -3,7 +3,6 @@ import json
 from datetime import timedelta
 
 import pytest
-from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 from model_bakery import baker
 from rest_framework import status
@@ -19,6 +18,7 @@ from metering_billing.models import (
     UsageAlert,
     UsageAlertResult,
 )
+from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.tasks import refresh_alerts_inner
 from metering_billing.utils import now_utc
 

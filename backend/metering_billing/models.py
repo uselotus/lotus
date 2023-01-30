@@ -2313,6 +2313,7 @@ class SubscriptionRecord(models.Model):
         related_name="addon_subscription_records",
         help_text="The parent subscription record.",
     )
+    quantity = models.PositiveIntegerField(default=1)
     objects = SubscriptionRecordManager()
     addon_objects = AddOnSubscriptionRecordManager()
     base_objects = BaseSubscriptionRecordManager()
@@ -2326,7 +2327,8 @@ class SubscriptionRecord(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.customer.customer_name}  {self.billing_plan.plan.plan_name} : {self.start_date.date()} to {self.end_date.date()}"
+        addon = "[ADDON] " if self.billing_plan.plan.addon_spec else ""
+        return f"{addon}{self.customer.customer_name}  {self.billing_plan.plan.plan_name} : {self.start_date.date()} to {self.end_date.date()}"
 
     def save(self, *args, **kwargs):
         new_filters = kwargs.pop("subscription_filters", [])

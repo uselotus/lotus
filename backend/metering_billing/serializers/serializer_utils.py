@@ -1,8 +1,20 @@
+import datetime
 import uuid
 
+from django.core.serializers.json import DjangoJSONEncoder
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+
+
+class DjangoJSONEncoder(DjangoJSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime.datetime):
+            r = obj.isoformat()
+            if r.endswith("+00:00"):
+                r = r[:-6] + "Z"
+            return r
+        return super(DjangoJSONEncoder, self).default(obj)
 
 
 class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
@@ -201,4 +213,8 @@ class WebhookSecretUUIDField(UUIDPrefixField):
 @extend_schema_field(serializers.RegexField(regex=r"addon_[0-9a-f]{32}"))
 class AddonUUIDField(UUIDPrefixField):
     def __init__(self, *args, **kwargs):
+        super().__init__("addon_", *args, **kwargs)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__("addon_", *args, **kwargs)
         super().__init__("addon_", *args, **kwargs)
