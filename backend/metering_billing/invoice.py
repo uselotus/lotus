@@ -285,15 +285,17 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice):
     billing_plan = subscription_record.billing_plan
     start = subscription_record.start_date
     end = subscription_record.end_date
+    quantity = subscription_record.quantity
+    base_fee = billing_plan.flat_rate_rate * quantity
     if subscription_record.flat_fee_behavior == FLAT_FEE_BEHAVIOR.PRORATE:
         proration_factor = (
             end - start
         ).total_seconds() / subscription_record.unadjusted_duration_seconds
-        flat_fee_due = billing_plan.flat_rate * convert_to_decimal(proration_factor)
+        flat_fee_due = base_fee * convert_to_decimal(proration_factor)
     elif subscription_record.flat_fee_behavior is FLAT_FEE_BEHAVIOR.REFUND:
         flat_fee_due = Decimal(0)
     else:
-        flat_fee_due = billing_plan.flat_rate
+        flat_fee_due = base_fee
     if abs(float(amt_already_billed) - float(flat_fee_due)) < 0.01:
         pass
     else:
@@ -514,5 +516,4 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
         generate_invoice_pdf_async.delay(invoice.pk)
         invoice_created_webhook(invoice, organization)
 
-    return invoice
     return invoice
