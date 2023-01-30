@@ -438,7 +438,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
 
   const handleDeleteAlert = () => {
     deleteAlertMutation.mutate({
-      usage_alert_id: currentAlertId,
+      usage_alert_id: currentAlertId as string,
     });
     queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
   };

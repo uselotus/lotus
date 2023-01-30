@@ -4,12 +4,12 @@ import {
   Card,
   List,
   Form,
-  Select,
   Button,
   Dropdown,
   Menu,
   Tag,
   Cascader,
+  Typography,
 } from "antd";
 import type { DefaultOptionType } from "antd/es/cascader";
 import {
@@ -25,7 +25,14 @@ import dayjs from "dayjs";
 
 import DraftInvoice from "./DraftInvoice";
 import { Link } from "react-router-dom";
-
+import CustomerCard from "./Card/CustomerCard";
+import Divider from "../base/Divider/Divider";
+import CopyText from "../base/CopytoClipboard";
+import createShortenedText from "../../helpers/createShortenedText";
+import useMediaQuery from "../../hooks/useWindowQuery";
+import Badge from "../base/Badges/Badges";
+import DropdownComponent from "../base/Dropdown/Dropdown";
+import Select from "../base/Select/Select";
 interface Props {
   customer_id: string;
   subscriptions: SubscriptionType[];
@@ -75,7 +82,7 @@ const SubscriptionView: FC<Props> = ({
 }) => {
   const [selectedPlan, setSelectedPlan] = useState<string>();
   const [form] = Form.useForm();
-
+  const windowWidth = useMediaQuery();
   const [idtoPlan, setIDtoPlan] = useState<{ [key: string]: PlanType }>({});
   const [planList, setPlanList] =
     useState<{ label: string; value: string }[]>();
@@ -278,8 +285,124 @@ const SubscriptionView: FC<Props> = ({
     <div className="mt-auto">
       <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Active Plans</h2>
       <div className="flex flex-col justify-center">
-        <List>
+        <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
           {subscriptions.map((subPlan) => (
+            <CustomerCard key={subPlan.end_date}>
+              <CustomerCard.Heading>
+                <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
+                  {subPlan.billing_plan.plan_name}
+                </Typography.Title>
+                <Divider />
+                <CustomerCard.Container>
+                  <CustomerCard.Block>
+                    <CustomerCard.Item>
+                      <div className="font-normal text-card-text font-alliance whitespace-nowrap leading-4">
+                        ID
+                      </div>
+                      <div className="flex gap-1 !text-card-grey font-menlo">
+                        {" "}
+                        <div>
+                          {createShortenedText(
+                            subPlan.billing_plan.plan_id as string,
+                            windowWidth >= 2500
+                          )}
+                        </div>
+                        <CopyText
+                          showIcon
+                          onlyIcon
+                          textToCopy={subPlan.billing_plan.plan_id as string}
+                        />
+                      </div>
+                    </CustomerCard.Item>
+                    <CustomerCard.Item>
+                      <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                        Start Date
+                      </div>
+                      <div className="flex gap-1">
+                        {" "}
+                        <div className="Inter">{subPlan.start_date}</div>
+                      </div>
+                    </CustomerCard.Item>
+                    <CustomerCard.Item>
+                      <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                        End Date
+                      </div>
+                      <div className="flex gap-1">
+                        {" "}
+                        <div className="Inter">{subPlan.end_date}</div>
+                      </div>
+                    </CustomerCard.Item>
+                    <CustomerCard.Item>
+                      <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                        Renews
+                      </div>
+                      <div className="flex gap-1">
+                        {" "}
+                        <div className={`Inter`}>
+                          <Badge
+                            className={` ${
+                              !subPlan.auto_renew
+                                ? "bg-rose-700 text-white"
+                                : "bg-emerald-100"
+                            }`}
+                          >
+                            <Badge.Content>
+                              {String(subPlan.auto_renew)}
+                            </Badge.Content>
+                          </Badge>
+                        </div>
+                      </div>
+                    </CustomerCard.Item>
+                  </CustomerCard.Block>
+                  <Divider />
+                  <DropdownComponent>
+                    <DropdownComponent.Trigger>
+                      <button
+                        type="button"
+                        className="relative w-full min-w-[151px] flex items-center gap-4  cursor-default p-6 mt-4 bg-[#fff4e9] rounded-md border border-[#fff4e9]  py-2 pl-3 pr-10 text-left shadow-sm  focus:outline-none  sm:text-sm"
+                        aria-haspopup="listbox"
+                        aria-expanded="true"
+                        aria-labelledby="listbox-label"
+                      >
+                        <span className="block truncate">Plan Actions</span>
+                        <svg
+                          className="h-8"
+                          aria-hidden="true"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          ></path>
+                        </svg>
+                      </button>
+                    </DropdownComponent.Trigger>
+                    <DropdownComponent.Container className="!bg-[#fff4e9]">
+                      {[
+                        "Switch Plan",
+                        "Attach Add-On",
+                        "Cancel Subscription",
+                      ].map((key, index) => (
+                        <DropdownComponent.MenuItem
+                          className="hover:text-black whitespace-nowrap"
+                          key={index}
+                          onSelect={(e) => console.log(e)}
+                        >
+                          {key}
+                        </DropdownComponent.MenuItem>
+                      ))}
+                    </DropdownComponent.Container>
+                  </DropdownComponent>
+                </CustomerCard.Container>
+              </CustomerCard.Heading>
+            </CustomerCard>
+          ))}
+          {/* {subscriptions.map((subPlan) => (
             <Fragment key={subPlan.billing_plan.plan_id}>
               <List.Item>
                 <Card className=" bg-grey3 w-full">
@@ -348,8 +471,8 @@ const SubscriptionView: FC<Props> = ({
                 </Card>
               </List.Item>
             </Fragment>
-          ))}
-        </List>
+          ))} */}
+        </div>
 
         <DraftInvoice customer_id={customer_id} />
       </div>
