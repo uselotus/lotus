@@ -145,7 +145,7 @@ const Dashboard: FC = () => {
           </div>
         </Col>
         <Col span="24">
-          <div className="grid grid-cols-12 justify-center space-x-4">
+          <div className="grid grid-cols-12 gap-18 justify-center space-x-4">
             <div className="col-span-8">
               <MetricBarGraph range={dateRange} />
             </div>
