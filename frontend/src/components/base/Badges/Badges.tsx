@@ -12,6 +12,7 @@ const Badge = ({
   onClick,
 }: PropsWithChildren<BadgeProps>) => (
   <span
+    aria-hidden
     style={style}
     onClick={onClick}
     className={

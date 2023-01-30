@@ -2,24 +2,23 @@ import React, { FC, useEffect } from "react";
 import { Column } from "@ant-design/plots";
 import { useQueryClient, useMutation } from "react-query";
 
-import { Button, Select, Tag, Form, Input, Typography } from "antd";
+import { Select, Form, Typography } from "antd";
 import { DraftInvoiceType } from "../../types/invoice-type";
 
 import dayjs from "dayjs";
-import LoadingSpinner from "../LoadingSpinner";
 import { Customer } from "../../api/api";
 import { toast } from "react-toastify";
 
 import { CustomerType } from "../../types/customer-type";
 import { CustomerCostType } from "../../types/revenue-type";
 import { CurrencyType } from "../../types/pricing-unit-type";
-import { country_json } from "../../assets/country_codes";
 import CustomerCard from "./Card/CustomerCard";
 import { PencilSquareIcon } from "../base/PencilIcon";
 import CopyText from "../base/CopytoClipboard";
 import createShortenedText from "../../helpers/createShortenedText";
 import useMediaQuery from "../../hooks/useWindowQuery";
-
+import Divider from "../base/Divider/Divider";
+import Badge from "../base/Badges/Badges";
 interface CustomerInfoViewProps {
   data: CustomerType;
   cost_data: CustomerCostType;
@@ -194,232 +193,10 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col mb-8">
-      <div className="grid grid-cols-2 items-center justify-between mb-2 pb-4 pt-4 ">
-        <h2 className="pb-4 pt-4 font-bold text-main">Customer Details</h2>
-        <div className="">
-          {" "}
-          Date Range :{"    "}
-          <Select defaultValue={"1"} onChange={onSwitch}>
-            <Select.Option value="1">Last 30 Days</Select.Option>
-            <Select.Option value="2">Last 60 Days</Select.Option>
-            <Select.Option value="3">This Month</Select.Option>
-            <Select.Option value="4">Year to date</Select.Option>
-          </Select>
-        </div>
-      </div>
-
-      {/* <div className="grid grid-cols-2 gap-8">
-        <div className="border-2 border-solid rounded border-[#EAEAEB] py-4 px-8">
-          {!isEditing ? (
-            <div>
-              <p>
-                <b>Customer Name:</b> {data.customer_name ?? "N/A"}
-              </p>
-              <p>
-                <b>Customer ID:</b>{" "}
-                {<span className="font-menlo">{data.customer_id}</span> ??
-                  "N/A"}
-              </p>
-              <p>
-                <b>Email:</b> {data.email ?? "N/A"}
-              </p>
-              <p>
-                <b>Billing Address:</b>{" "}
-                {data.address ? (
-                  <div>
-                    {data.address.line1},{data.address.state},
-                    {data.address.country} {data.address.postal_code}
-                  </div>
-                ) : (
-                  "N/A"
-                )}
-              </p>
-              <p>
-                <b>Default Currency:</b>{" "}
-                {data ? (
-                  <Tag>
-                    {data.default_currency?.name +
-                      " " +
-                      data?.default_currency?.symbol}
-                  </Tag>
-                ) : (
-                  "N/A"
-                )}
-              </p>
-
-              <p>
-                <b>Payment Method Connected:</b>{" "}
-                {data.has_payment_method ? (
-                  <Tag color="green">True</Tag>
-                ) : (
-                  <Tag color="red">False</Tag>
-                )}
-              </p>
-              <p>
-                <b>Tax Rate:</b> {data.tax_rate ?? "0"}%
-              </p>
-              <p>
-                <b>Amount Due On Next Invoice:</b>{" "}
-                {data?.default_currency?.symbol}
-                {invoiceData?.invoices !== undefined &&
-                  invoiceData?.invoices !== null &&
-                  invoiceData?.invoices.length > 0 &&
-                  invoiceData?.invoices[0].cost_due.toFixed(2)}
-              </p>
-              {!isEditing && (
-                <Button
-                  type="primary"
-                  size="large"
-                  className="w-1/3 mb-2 float-right"
-                  onClick={makeEditable}
-                >
-                  Edit
-                </Button>
-              )}
-            </div>
-          ) : (
-            <Form form={form}>
-              <Form.Item label="Customer Name" name="customer_name">
-                <Input disabled={true} defaultValue={data.customer_name} />
-              </Form.Item>
-              <Form.Item label="Customer Currency" name="default_currency">
-                <Select
-                  onChange={setCurrentCurrency}
-                  defaultValue={currentCurrency}
-                  options={pricingUnits?.map((pc) => {
-                    return { label: `${pc.name} ${pc.symbol}`, value: pc.code };
-                  })}
-                />
-              </Form.Item>
-              <Form.Item label="Tax Rate" name="tax_rate">
-                <Input
-                  type="number"
-                  step=".01"
-                  max={999.9999}
-                  onChange={(e) =>
-                    setTaxRate(e.target.value as unknown as number)
-                  }
-                  defaultValue={data.tax_rate ?? 0}
-                />
-              </Form.Item>
-              <Form.Item name="billing_address">
-                <label className="mb-2">Billing Address: </label>
-                <div className="flex gap-4 mt-2">
-                  <Input
-                    placeholder="Address Line 1"
-                    defaultValue={line1}
-                    onChange={(e) => setLine1(e.target.value)}
-                    required
-                  />
-                  <Input
-                    placeholder="Address Line 2"
-                    defaultValue={line2}
-                    onChange={(e) => setLine2(e.target.value)}
-                  />
-                </div>
-                <div className="flex gap-4 mt-2">
-                  <Input
-                    placeholder="City"
-                    onChange={(e) => setCity(e.target.value)}
-                    defaultValue={city}
-                    required
-                  />
-                  <Select
-                    placeholder="Country"
-                    defaultValue={country}
-                    onChange={(e) => setCountry(e)}
-                  >
-                    {country_json.map((country) => (
-                      <Select.Option value={country.Code}>
-                        {country.Name}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </div>
-                <div className="flex gap-4 mt-2">
-                  <Input
-                    placeholder="State"
-                    defaultValue={state}
-                    onChange={(e) => setState(e.target.value)}
-                    required
-                  />
-                  <Input
-                    defaultValue={postalCode}
-                    placeholder="Zip Code"
-                    onChange={(e) => setPostalCode(e.target.value)}
-                    required
-                  />
-                </div>
-              </Form.Item>
-              <div className="flex gap-2 mb-2">
-                <Button
-                  type="ghost"
-                  size="large"
-                  className=" w-full"
-                  onClick={() => setIsEditing(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="primary"
-                  size="large"
-                  className=" w-full"
-                  onClick={EditCustomerHandler}
-                >
-                  Submit
-                </Button>
-              </div>
-            </Form>
-          )}
-        </div>
-        <div className="grid grid-cols-3 place-items-center gap-8 py-4">
-          <div>
-            <p className=" mb-4">Earned Revenue</p>
-            {cost_data === undefined ? (
-              <LoadingSpinner />
-            ) : (
-              <span className="text-3xl font-bold">
-                {new Intl.NumberFormat("en-US", {
-                  style: "currency",
-                  currency: "USD",
-                }).format(displayMetric(cost_data.total_revenue))}
-              </span>
-            )}
-          </div>
-
-          <div>
-            <p className=" mb-4">Total Cost</p>
-            {cost_data === undefined ? (
-              <LoadingSpinner />
-            ) : (
-              <span className="text-3xl font-bold">
-                {new Intl.NumberFormat("en-US", {
-                  style: "currency",
-                  currency: "USD",
-                }).format(displayMetric(cost_data.total_cost))}
-              </span>
-            )}
-          </div>
-          <div className="">
-            <p className=" mb-4">Profit Margin</p>
-            {cost_data.margin === undefined ? (
-              <LoadingSpinner />
-            ) : cost_data.margin < 0 ? (
-              <span className="text-3xl font-bold text-danger">
-                {displayMetric(cost_data.margin * 100).toFixed(2)}%
-              </span>
-            ) : (
-              <span className="text-3xl font-bold text-success">
-                {displayMetric(cost_data.margin * 100).toFixed(2)}%
-              </span>
-            )}
-          </div>
-        </div>
-      </div> */}
+    <div className="flex flex-col">
       <div className="grid gap-12 grid-cols-1   md:grid-cols-3">
         <div className="col-span-2">
-          <CustomerCard className="overflow-x-clip">
+          <CustomerCard className="overflow-x-clip min-h-[210px]">
             <CustomerCard.Heading>
               <div className="flex">
                 <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
@@ -429,7 +206,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   <PencilSquareIcon />
                 </div>
               </div>
-              <div className=" w-full h-[1.5px] mt-6 bg-card-divider" />
+              <Divider />
             </CustomerCard.Heading>
             {/* REMOVE THIS GAP WHEN YOU NO LONGER RENDER A MODAL */}
             <CustomerCard.Container className="grid gap-72  items-center grid-cols-1 md:grid-cols-[repeat(2,_minmax(0,_0.3fr))]">
@@ -505,16 +282,13 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                 </CustomerCard.Item>
                 <CustomerCard.Item>
                   <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
-                    Billing Address
+                    Payment Method Provided
                   </div>
                   <div className="flex gap-1">
                     {" "}
                     <div className="Inter">
-                      {data.address ? (
-                        <div>
-                          {data.address.line1},{data.address.state},
-                          {data.address.country} {data.address.postal_code}
-                        </div>
+                      {data.payment_provider ? (
+                        <div>{data.payment_provider}</div>
                       ) : (
                         "N/A"
                       )}
@@ -525,14 +299,106 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
             </CustomerCard.Container>
           </CustomerCard>
         </div>
+        <div className="col-span-1">
+          <CustomerCard>
+            <CustomerCard.Heading>
+              <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
+                Revenue Details
+              </Typography.Title>
+            </CustomerCard.Heading>
+            <Divider />
+            <CustomerCard.Container>
+              <CustomerCard.Block>
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Earned Revenue
+                  </div>
+                  <div className="Inter">
+                    {data.default_currency.symbol}
+                    {cost_data.total_revenue.toFixed(2)}
+                  </div>
+                </CustomerCard.Item>
+
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Total Cost
+                  </div>
+                  <div className="Inter">
+                    {data.default_currency.symbol}
+                    {cost_data.total_cost.toFixed(2)}
+                  </div>
+                </CustomerCard.Item>
+
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Profit Margin
+                  </div>
+                  <div
+                    className={`Inter ${
+                      cost_data.margin > 0
+                        ? "text-emerald-800"
+                        : "text-rose-700"
+                    }`}
+                  >
+                    {cost_data.margin.toFixed(2)}%
+                  </div>
+                </CustomerCard.Item>
+
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Next Invoice Due
+                  </div>
+                  <div className="Inter text-card-grey">
+                    {data.default_currency.symbol}
+                    {data.invoices[0].cost_due.toFixed(2)}
+                  </div>
+                </CustomerCard.Item>
+              </CustomerCard.Block>
+            </CustomerCard.Container>
+          </CustomerCard>
+        </div>
       </div>
       <div className="space-y-4 mt-8">
-        <div className="flex items-center space-x-8">
-          <h2 className="mb-2 pb-4 pt-4 font-bold text-main">
-            Revenue vs Cost Per Day
-          </h2>
-        </div>
-        <Column {...config} />
+        <CustomerCard>
+          <CustomerCard.Heading>
+            <div className="flex">
+              <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
+                Revenue vs Cost Per Day
+              </Typography.Title>
+              <div className="ml-auto">
+                <div className="flex gap-4 items-center">
+                  <div>
+                    <Badge className="bg-transparent">
+                      <Badge.Dot className="text-sky-800" />
+                      <Badge.Content>Cost</Badge.Content>
+                    </Badge>
+                  </div>
+                  <div>
+                    <Badge className="bg-transparent">
+                      <Badge.Dot className="text-darkgold" />
+                      <Badge.Content>Revenue</Badge.Content>
+                    </Badge>
+                  </div>
+                  <div className="">
+                    {" "}
+                    <Select defaultValue={"1"} onChange={onSwitch}>
+                      <Select.Option value="1">Last 30 Days</Select.Option>
+                      <Select.Option value="2">Last 60 Days</Select.Option>
+                      <Select.Option value="3">This Month</Select.Option>
+                      <Select.Option value="4">Year to date</Select.Option>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <Divider />
+          </CustomerCard.Heading>
+          <CustomerCard.Container>
+            <CustomerCard.Block>
+              <Column {...config} />
+            </CustomerCard.Block>
+          </CustomerCard.Container>
+        </CustomerCard>
       </div>
     </div>
   );

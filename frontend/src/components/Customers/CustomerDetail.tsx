@@ -1,6 +1,5 @@
-// @ts-ignore
 import React, { useState } from "react";
-import { Form, Tabs, Modal } from "antd";
+import { Form, Tabs, Modal, Button } from "antd";
 import { PlanType } from "../../types/plan-type";
 import {
   CreateSubscriptionType,
@@ -29,11 +28,20 @@ import dayjs from "dayjs";
 import { toast } from "react-toastify";
 import CopyText from "../base/CopytoClipboard";
 import { CurrencyType } from "../../types/pricing-unit-type";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { PageLayout } from "../base/PageLayout";
 type CustomerDetailsParams = {
   customerId: string;
 };
 function CustomerDetail() {
+  const { customerId: customer_id } = useParams<CustomerDetailsParams>();
+  const [form] = Form.useForm();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [startDate, setStartDate] = useState<string>(
+    dayjs().subtract(1, "month").format("YYYY-MM-DD")
+  );
+  const [endDate, setEndDate] = useState<string>(dayjs().format("YYYY-MM-DD"));
   const { data: plans }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
     ["plan_list"],
     () =>
@@ -41,13 +49,6 @@ function CustomerDetail() {
         return res;
       })
   );
-  const { customerId: customer_id } = useParams<CustomerDetailsParams>();
-  const [form] = Form.useForm();
-  const queryClient = useQueryClient();
-  const [startDate, setStartDate] = useState<string>(
-    dayjs().subtract(1, "month").format("YYYY-MM-DD")
-  );
-  const [endDate, setEndDate] = useState<string>(dayjs().format("YYYY-MM-DD"));
 
   const [customerSubscriptions, setCustomerSubscriptions] = useState<
     DetailPlan[]
@@ -80,7 +81,7 @@ function CustomerDetail() {
         },
       }
     );
-
+  console.log(data);
   const createSubscriptionMutation = useMutation(
     (post: CreateSubscriptionType) => Customer.createSubscription(post),
     {
@@ -186,80 +187,75 @@ function CustomerDetail() {
   };
 
   return (
-    <Modal
-      visible={true}
-      title={"Customer Detail"}
-      onCancel={() => {
-        console.log("cancel");
-      }}
-      okType="default"
-      onOk={() => {
-        console.log("cancel");
-      }}
-      footer={null}
-      width="70%"
+    <PageLayout
+      title={data?.customer_name}
+      className="text-[24px] font-alliance"
+      hasBackButton
+      aboveTitle
+      backButton={
+        <div>
+          <Button
+            onClick={() => navigate(-1)}
+            type="primary"
+            size="large"
+            key="create-custom-plan"
+            style={{
+              background: "#F5F5F5",
+              borderColor: "#F5F5F5",
+            }}
+          >
+            <div className="flex items-center justify-between text-black">
+              <div>&larr; Go back</div>
+            </div>
+          </Button>
+        </div>
+      }
     >
       {plans === undefined ? (
         <div className="min-h-[60%]">
           <LoadingSpinner />
         </div>
       ) : (
-        <div className="flex justify-between flex-col max-w mx-3">
-          <div className="text-left">
-            <h1 className="mb-4">{data?.customer_name}</h1>
-            <div className="flex flex-row items-center">
-              <div className="plansDetailLabel">ID:&nbsp; </div>
-              <div className="plansDetailValue font-menlo">
-                <CopyText showIcon textToCopy={data ? data.customer_id : ""} />
-              </div>
-            </div>
-          </div>
-          <div
-            className="flex items-center flex-col mt-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Tabs defaultActiveKey="detail" centered className="w-full">
-              <Tabs.TabPane tab="Detail" key="detail">
-                {data !== undefined &&
-                cost_analysis !== undefined &&
-                pricingUnits !== undefined ? (
-                  <CustomerInfoView
-                    data={data}
-                    cost_data={cost_analysis}
-                    refetch={refetch}
-                    pricingUnits={pricingUnits}
-                    onDateChange={refetchGraphData}
-                  />
-                ) : (
-                  <h2 className="h-192"> No Data </h2>
-                )}
-              </Tabs.TabPane>
-              <Tabs.TabPane tab="Subscriptions" key="subscriptions">
-                {data !== undefined ? (
-                  <div key={customer_id}>
-                    <SubscriptionView
-                      customer_id={customer_id as string}
-                      subscriptions={data.subscriptions}
-                      plans={plans}
-                      onCreate={createSubscription}
-                      onCancel={cancelSubscription}
-                      onPlanChange={changeSubscriptionPlan}
-                      onAutoRenewOff={turnSubscriptionAutoRenewOff}
-                    />
-                  </div>
-                ) : (
-                  <div className="h-192"></div>
-                )}
-              </Tabs.TabPane>
-              <Tabs.TabPane tab="Invoices" key="invoices">
-                <CustomerInvoiceView invoices={data?.invoices} />
-              </Tabs.TabPane>
-              <Tabs.TabPane tab="Credits" key="credits">
-                <CustomerBalancedAdjustments
-                  customerId={customer_id as string}
+        <Tabs defaultActiveKey="details" size="large">
+          <Tabs.TabPane tab="Details" key="details">
+            {data !== undefined &&
+            cost_analysis !== undefined &&
+            pricingUnits !== undefined ? (
+              <CustomerInfoView
+                data={data}
+                cost_data={cost_analysis}
+                refetch={refetch}
+                pricingUnits={pricingUnits}
+                onDateChange={refetchGraphData}
+              />
+            ) : (
+              <h2 className="h-192"> No Data </h2>
+            )}
+          </Tabs.TabPane>
+          <Tabs.TabPane tab="Subscriptions" key="subscriptions">
+            {data !== undefined ? (
+              <div key={customer_id}>
+                <SubscriptionView
+                  customer_id={customer_id as string}
+                  subscriptions={data.subscriptions}
+                  plans={plans}
+                  onCreate={createSubscription}
+                  onCancel={cancelSubscription}
+                  onPlanChange={changeSubscriptionPlan}
+                  onAutoRenewOff={turnSubscriptionAutoRenewOff}
                 />
-              </Tabs.TabPane>
-              {/*
+              </div>
+            ) : (
+              <div className="h-192"></div>
+            )}
+          </Tabs.TabPane>
+          <Tabs.TabPane tab="Invoices" key="invoices">
+            <CustomerInvoiceView invoices={data?.invoices} />
+          </Tabs.TabPane>
+          <Tabs.TabPane tab="Credits" key="credits">
+            <CustomerBalancedAdjustments customerId={customer_id as string} />
+          </Tabs.TabPane>
+          {/*
                <Tabs.TabPane tab="Integrations" key="integrations">
                 {!!data?.integrations?.length ? (
                   <CustomerIntegrations integrations={data?.integrations} />
@@ -267,11 +263,9 @@ function CustomerDetail() {
                   <h2> No Integrations </h2>
                 )}
               </Tabs.TabPane>{" "} */}
-            </Tabs>
-          </div>
-        </div>
+        </Tabs>
       )}
-    </Modal>
+    </PageLayout>
   );
 }
 
