@@ -165,7 +165,6 @@ class CostAnalysisView(APIView):
         Returns the revenue for an organization in a given time period.
         """
         organization = request.organization
-        organization = request.organization
         serializer = CostAnalysisRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         start_date, end_date, customer_id = (

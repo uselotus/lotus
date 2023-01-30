@@ -365,18 +365,19 @@ def apply_taxes(invoice, customer, organization):
             tax_rate = organization.tax_rate
         name = f"Tax - {round(tax_rate, 2)}%"
         tax_amount = current_subtotal * (tax_rate / Decimal(100))
-        InvoiceLineItem.objects.create(
-            name=name,
-            start_date=invoice.issue_date,
-            end_date=invoice.issue_date,
-            quantity=None,
-            subtotal=tax_amount,
-            billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
-            chargeable_item_type=CHARGEABLE_ITEM_TYPE.TAX,
-            invoice=invoice,
-            organization=invoice.organization,
-            associated_subscription_record_id=sr,
-        )
+        if tax_amount != 0:
+            InvoiceLineItem.objects.create(
+                name=name,
+                start_date=invoice.issue_date,
+                end_date=invoice.issue_date,
+                quantity=None,
+                subtotal=tax_amount,
+                billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+                chargeable_item_type=CHARGEABLE_ITEM_TYPE.TAX,
+                invoice=invoice,
+                organization=invoice.organization,
+                associated_subscription_record_id=sr,
+            )
 
 
 def apply_customer_balance_adjustments(invoice, customer, organization, draft):
