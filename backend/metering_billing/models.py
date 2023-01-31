@@ -752,9 +752,7 @@ class CustomerBalanceAdjustment(models.Model):
         self.save()
 
     @staticmethod
-    def draw_down_amount(customer, amount, description="", pricing_unit=None):
-        if not pricing_unit:
-            pricing_unit = customer.organization.default_currency
+    def draw_down_amount(customer, amount, pricing_unit, description=""):
         now = now_utc()
         adjs = (
             CustomerBalanceAdjustment.objects.filter(
@@ -774,10 +772,16 @@ class CustomerBalanceAdjustment(models.Model):
                 F("expires_at").asc(nulls_last=True),
                 F("cost_basis").desc(nulls_last=True),
             )
+            .annotate(
+                drawn_down_amount=Coalesce(
+                    Sum("drawdowns__amount"), 0, output_field=models.DecimalField()
+                )
+            )
+            .annotate(remaining_balance=F("amount") - F("drawn_down_amount"))
         )
         am = amount
         for adj in adjs:
-            remaining_balance = adj.get_remaining_balance()
+            remaining_balance = adj.remaining_balance
             if remaining_balance <= 0:
                 adj.status = CUSTOMER_BALANCE_ADJUSTMENT_STATUS.INACTIVE
                 adj.save()
@@ -800,21 +804,27 @@ class CustomerBalanceAdjustment(models.Model):
         return am
 
     @staticmethod
-    def get_pricing_unit_balance(customer, pricing_unit=None):
-        if not pricing_unit:
-            pricing_unit = customer.organization.default_currency
+    def get_pricing_unit_balance(customer, pricing_unit):
         now = now_utc()
-        adjs = CustomerBalanceAdjustment.objects.filter(
-            Q(expires_at__gte=now) | Q(expires_at__isnull=True),
-            organization=customer.organization,
-            customer=customer,
-            pricing_unit=pricing_unit,
-            amount__gt=0,
+        adjs = (
+            CustomerBalanceAdjustment.objects.filter(
+                Q(expires_at__gte=now) | Q(expires_at__isnull=True),
+                organization=customer.organization,
+                customer=customer,
+                pricing_unit=pricing_unit,
+                amount__gt=0,
+                status=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
+            )
+            .prefetch_related("drawdowns")
+            .annotate(
+                drawn_down_amount=Coalesce(
+                    Sum("drawdowns__amount"), 0, output_field=models.DecimalField()
+                )
+            )
+            .annotate(remaining_balance=F("amount") - F("drawn_down_amount"))
+            .aggregate(total_balance=Sum("remaining_balance"))["total_balance"]
         )
-        total_balance = 0
-        for adj in adjs:
-            remaining_balance = adj.get_remaining_balance()
-            total_balance += remaining_balance
+        total_balance = adjs or 0
         return total_balance
 
 
