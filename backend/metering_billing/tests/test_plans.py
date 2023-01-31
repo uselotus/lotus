@@ -1,9 +1,12 @@
 import json
 
 import pytest
-from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.models import Plan, PlanVersion
+from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     FLAT_FEE_BILLING_TYPE,
@@ -13,8 +16,6 @@ from metering_billing.utils.enums import (
     PLAN_VERSION_STATUS,
     REPLACE_IMMEDIATELY_TYPE,
 )
-from rest_framework import status
-from rest_framework.test import APIClient
 
 
 @pytest.fixture

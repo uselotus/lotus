@@ -9,6 +9,9 @@ import stripe
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import F, Prefetch, Q
+from rest_framework import serializers, status
+from rest_framework.response import Response
+
 from metering_billing.exceptions.exceptions import ExternalConnectionInvalid
 from metering_billing.serializers.payment_provider_serializers import (
     PaymentProviderPostResponseSerializer,
@@ -21,8 +24,6 @@ from metering_billing.utils.enums import (
     PLAN_STATUS,
     USAGE_BILLING_FREQUENCY,
 )
-from rest_framework import serializers, status
-from rest_framework.response import Response
 
 logger = logging.getLogger("django.server")
 
@@ -170,9 +171,7 @@ class StripeConnector(PaymentProvider):
             )
         try:
             stripe_customers_response = stripe.Customer.list(**stripe_cust_kwargs)
-            for i, stripe_customer in enumerate(
-                stripe_customers_response.auto_paging_iter()
-            ):
+            for stripe_customer in stripe_customers_response.auto_paging_iter():
                 stripe_id = stripe_customer.id
                 stripe_email = stripe_customer.email
                 stripe_metadata = stripe_customer.metadata

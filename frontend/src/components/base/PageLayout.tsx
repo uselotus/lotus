@@ -26,7 +26,7 @@ export const PageLayout = ({
       />
       <PageHeader />
 
-      <div className="mx-10 mt-16">
+      <div className="mx-10 mt-16 pb-20">
         <div className="flex items-center justify-between mb-6">
           {props.title ? (
             <h1 className={hasBackButton ? "font-main  mx-10" : "font-main"}>

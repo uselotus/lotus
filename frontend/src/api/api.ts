@@ -5,9 +5,7 @@ import {
   CustomerCreateType,
   CustomerSummary,
 } from "../types/customer-type";
-import {
-  AddonType, CreateAddonType
-} from "../types/addon-type";
+import { AddonType, CreateAddonType } from "../types/addon-type";
 import {
   WebhookEndpoint,
   WebhookEndpointCreate,
@@ -190,7 +188,6 @@ export const Customer = {
   ): Promise<SubscriptionType> =>
     requests.post(`app/subscriptions/update/`, post, params),
 };
-
 
 export const Addon = {
   getAddons: (): Promise<AddonType[]> => requests.get("app/addons/"),
@@ -447,6 +444,23 @@ export const Metrics = {
 export const Events = {
   getEventPreviews: (c: string): Promise<EventPages> =>
     requests.get("app/events/", { params: { c } }),
+  getEventCount: (
+    period_1_start_date: string,
+    period_1_end_date: string,
+    period_2_start_date: string,
+    period_2_end_date: string
+  ): Promise<{
+    total_events_period_1: number;
+    total_events_period_2: number;
+  }> =>
+    requests.get("app/period_events/", {
+      params: {
+        period_1_start_date,
+        period_1_end_date,
+        period_2_start_date,
+        period_2_end_date,
+      },
+    }),
 };
 
 export const APIToken = {
