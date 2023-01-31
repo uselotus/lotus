@@ -46,6 +46,10 @@ import {
   CancelSubscriptionBody,
   ChangeSubscriptionPlanType,
   TurnSubscriptionAutoRenewOffType,
+  CreateSubscriptionAddOnBody,
+  CreateSubscriptionAddOnType,
+  CancelCreateSubscriptionAddOnBody,
+  CancelCreateSubscriptionAddOnQueryParams,
 } from "../types/subscription-type";
 import { MetricUsage, MetricType } from "../types/metric-type";
 import { EventPages } from "../types/event-type";
@@ -187,6 +191,15 @@ export const Customer = {
     }
   ): Promise<SubscriptionType> =>
     requests.post(`app/subscriptions/update/`, post, params),
+  createSubscriptionAddOns: (
+    body: CreateSubscriptionAddOnBody
+  ): Promise<CreateSubscriptionAddOnType> =>
+    requests.post(`app/subscriptions/addons/add/`, body),
+  cancelCreateSubscriptionAddOns: (
+    body: CancelCreateSubscriptionAddOnBody,
+    params: CancelCreateSubscriptionAddOnQueryParams
+  ): Promise<CreateSubscriptionAddOnType[]> =>
+    requests.post(`app/subscriptions/addons/cancel/`, body, params),
 };
 
 export const Addon = {

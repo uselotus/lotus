@@ -33,6 +33,9 @@ import useMediaQuery from "../../hooks/useWindowQuery";
 import Badge from "../base/Badges/Badges";
 import DropdownComponent from "../base/Dropdown/Dropdown";
 import Select from "../base/Select/Select";
+import { DraftInvoiceType } from "../../types/invoice-type";
+import { Invoices } from "../../api/api";
+import { useQuery } from "react-query";
 interface Props {
   customer_id: string;
   subscriptions: SubscriptionType[];
@@ -90,7 +93,14 @@ const SubscriptionView: FC<Props> = ({
   const selectPlan = (plan_id: string) => {
     setSelectedPlan(plan_id);
   };
-
+  const { data: invoiceData, isLoading: invoiceLoading } =
+    useQuery<DraftInvoiceType>(
+      ["draft_invoice", customer_id],
+      () => Invoices.getDraftInvoice(customer_id),
+      {
+        refetchInterval: 10000,
+      }
+    );
   const cancelAndBill = (plan_id, subscription_filters) => {
     const query_params: CancelSubscriptionQueryParams = {
       plan_id: plan_id,
@@ -281,16 +291,34 @@ const SubscriptionView: FC<Props> = ({
       </div>
     );
   }
+  const subFilters = (index: number) =>
+    invoiceData?.invoices[index].line_items[index].subscription_filters;
   return (
     <div className="mt-auto">
       <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Active Plans</h2>
       <div className="flex flex-col justify-center">
         <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-          {subscriptions.map((subPlan) => (
+          {subscriptions.map((subPlan, index) => (
             <CustomerCard key={subPlan.end_date}>
               <CustomerCard.Heading>
                 <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
-                  {subPlan.billing_plan.plan_name}
+                  <div>
+                    <div> {subPlan.billing_plan.plan_name}</div>
+                    {subFilters(index)?.length > 0 && (
+                      <p>
+                        {subFilters(index)!.map((filter) => {
+                          {
+                            console.log(subFilters(index));
+                          }
+                          return (
+                            <span key={filter.property_name}>
+                              {filter.property_name} : {filter.value}
+                            </span>
+                          );
+                        })}
+                      </p>
+                    )}
+                  </div>
                 </Typography.Title>
                 <Divider />
                 <CustomerCard.Container>
