@@ -427,7 +427,9 @@ def apply_customer_balance_adjustments(invoice, customer, organization, draft):
                 status=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
             )
     elif subtotal > 0:
-        customer_balance = CustomerBalanceAdjustment.get_pricing_unit_balance(customer)
+        customer_balance = CustomerBalanceAdjustment.get_pricing_unit_balance(
+            customer, invoice.currency
+        )
         balance_adjustment = min(subtotal, customer_balance)
         if balance_adjustment > 0:
             if draft:
@@ -436,6 +438,7 @@ def apply_customer_balance_adjustments(invoice, customer, organization, draft):
                 leftover = CustomerBalanceAdjustment.draw_down_amount(
                     customer,
                     balance_adjustment,
+                    invoice.currency,
                     description=f"Balance decrease from invoice {invoice.invoice_number} generated on {issue_date_fmt}",
                 )
             if -balance_adjustment + leftover != 0:
