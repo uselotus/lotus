@@ -19,6 +19,7 @@ from metering_billing.exceptions import (
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Customer,
+    Event,
     Invoice,
     Metric,
     Organization,
@@ -41,6 +42,7 @@ from metering_billing.serializers.request_serializers import (
 )
 from metering_billing.serializers.response_serializers import (
     CostAnalysisSerializer,
+    PeriodEventsResponseSerializer,
     PeriodMetricRevenueResponseSerializer,
     PeriodMetricUsageResponseSerializer,
     PeriodSubscriptionsResponseSerializer,
@@ -149,6 +151,46 @@ class PeriodMetricRevenueView(APIView):
         ret = serializer.validated_data
         ret = make_all_decimals_floats(ret)
         ret = make_all_dates_times_strings(ret)
+        return Response(ret, status=status.HTTP_200_OK)
+
+
+class PeriodEventsView(APIView):
+    permission_classes = [IsAuthenticated | ValidOrganization]
+
+    @extend_schema(
+        parameters=[PeriodComparisonRequestSerializer],
+        responses={200: PeriodMetricRevenueResponseSerializer},
+    )
+    def get(self, request, format=None):
+        """
+        Returns the revenue for an organization in a given time period.
+        """
+        organization = request.organization
+        serializer = PeriodComparisonRequestSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        p1_start, p1_end, p2_start, p2_end = (
+            serializer.validated_data.get(key, None)
+            for key in [
+                "period_1_start_date",
+                "period_1_end_date",
+                "period_2_start_date",
+                "period_2_end_date",
+            ]
+        )
+        p1_start, p2_start = date_as_min_dt(p1_start), date_as_min_dt(p2_start)
+        p1_end, p2_end = date_as_max_dt(p1_end), date_as_max_dt(p2_end)
+        return_dict = {}
+        # earned
+        for start, end, num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
+            n_events = Event.objects.filter(
+                organization=organization,
+                time_created__gte=start,
+                time_created__lte=end,
+            ).count()
+            return_dict[f"total_events_period_{num}"] = n_events
+        serializer = PeriodEventsResponseSerializer(data=return_dict)
+        serializer.is_valid(raise_exception=True)
+        ret = serializer.validated_data
         return Response(ret, status=status.HTTP_200_OK)
 
 
