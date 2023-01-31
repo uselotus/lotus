@@ -1,12 +1,16 @@
 import React, { FC } from "react";
 import { useQuery } from "react-query";
-import { DraftInvoiceType, LineItem } from "../../types/invoice-type";
+import {
+  DraftInvoiceType,
+  ExternalLineItem,
+  LineItem,
+} from "../../types/invoice-type";
 import { Invoices } from "../../api/api";
 import { Table } from "antd";
 import dayjs from "dayjs";
 import type { TableColumnsType } from "antd";
 import CustomerCard from "./Card/CustomerCard";
-
+import TableComponent from "../../components/base/Table/Table";
 interface Props {
   customer_id: string;
 }
@@ -21,15 +25,15 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
       }
     );
 
-  const expandedRowRender = (invoice) => (record) => {
+  const expandedRowRender = (invoice: ExternalLineItem) => (record) => {
     const columns: TableColumnsType<LineItem> = [
       {
-        title: "Item",
+        title: "ITEM",
         dataIndex: "name",
         key: "name",
       },
       {
-        title: "Dates",
+        title: "DATES",
         dataIndex: "start_date",
         key: "date",
         render: (_, record) => {
@@ -43,7 +47,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
         },
       },
       {
-        title: "Quantity",
+        title: "QUANTITY",
         dataIndex: "quantity",
         render: (_, record) => (
           <div className="flex flex-col">
@@ -52,7 +56,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
         ),
       },
       {
-        title: "Subtotal",
+        title: "SUBTOTAL",
         dataIndex: "subtotal",
         render: (_, record) => (
           <div className="flex flex-col">
@@ -62,7 +66,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
         ),
       },
       {
-        title: "Billing Type",
+        title: "BILLING TYPE",
         dataIndex: "billing_type",
       },
     ];
@@ -70,12 +74,13 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
     return (
       <Table
         columns={columns}
+        rowClassName="bg-card"
         dataSource={record.sub_items}
         pagination={false}
       />
     );
   };
-
+  console.log(invoiceData?.invoices[0].line_items);
   return (
     <div>
       <h2 className="mb-2 mt-16 pb-4 pt-4 font-bold text-main">
@@ -130,6 +135,37 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
                 </CustomerCard.Container>
               </CustomerCard>
               <div className="col-span-2">
+                {/* <TableComponent>
+                  <TableComponent.Head grid className="bg-card">
+                    <TableComponent.TH className="text-card-offGrey p-4">
+                      Name
+                    </TableComponent.TH>
+                    <TableComponent.TH className="ml-auto text-card-offGrey p-4">
+                      Subtotal
+                    </TableComponent.TH>
+                  </TableComponent.Head>
+                  <TableComponent.Body>
+                    {invoice.line_items.map((lineItem) => (
+                      <div key={lineItem.plan_name}>
+                        <div className="grid grid-rows-1 items-center grid-flow-col">
+                          <TableComponent.TD className="p-4">
+                            {lineItem.plan_name}
+                          </TableComponent.TD>
+                          <TableComponent.TD
+                            className="ml-auto p-4"
+                            key={lineItem.plan_name}
+                          >
+                            <div className="flex flex-col gap-2">
+                              {invoice.currency.symbol}
+                              {lineItem.subtotal.toFixed(2)}
+                            </div>
+                          </TableComponent.TD>
+                        </div>
+                        
+                      </div>
+                    ))}
+                  </TableComponent.Body>
+                </TableComponent> */}
                 <Table
                   dataSource={invoice.line_items}
                   pagination={false}

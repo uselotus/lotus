@@ -81,6 +81,7 @@ module.exports = {
           divider: "#EAEAEB",
           text: "#3c3a38",
           grey: "#707070",
+          offGrey: "#6b7280"
         },
       },
     },

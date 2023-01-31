@@ -164,6 +164,9 @@ a {
 .ant-table-row.ant-table-row-level-0 td.arr:not(:first-of-type) {
   text-align: right !important;
 }
+th.ant-table-cell {
+  white-space: nowrap;
+}
 .ant-picker {
   border-radius: 100px;
   border-color: #1d1d1d;
