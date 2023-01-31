@@ -1,6 +1,7 @@
 import React, { Fragment, useEffect, useState } from "react";
 import LoadingSpinner from "../LoadingSpinner";
 import { Paper } from "../base/Paper";
+import ContentLoader from "react-content-loader";
 
 const computePercentageChange = (
   current: number | undefined,
@@ -32,6 +33,20 @@ const renderMetric = (metric: number | undefined, currency?: string) => {
   return metric;
 };
 
+const PlaceholderLoader = (props) => (
+  <ContentLoader
+    speed={2}
+    width={400}
+    viewBox="0 0 400 70"
+    backgroundColor="#f3f3f3"
+    foregroundColor="#ecebeb"
+    {...props}
+  >
+    <rect x="16" y="8" rx="3" ry="3" width="72" height="30" />
+    <rect x="16" y="48" rx="3" ry="3" width="120" height="18" />
+  </ContentLoader>
+);
+
 function NumberDisplay(props: {
   metric_1: number | undefined;
   metric_2: number | undefined;
@@ -55,7 +70,7 @@ function NumberDisplay(props: {
           </p>
           {props.isLoading ? (
             <div className="flex flex-row justify-center">
-              <LoadingSpinner />
+              <PlaceholderLoader />
             </div>
           ) : (
             <Fragment>
