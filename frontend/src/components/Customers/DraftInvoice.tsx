@@ -10,7 +10,6 @@ import { Table } from "antd";
 import dayjs from "dayjs";
 import type { TableColumnsType } from "antd";
 import CustomerCard from "./Card/CustomerCard";
-import TableComponent from "../../components/base/Table/Table";
 interface Props {
   customer_id: string;
 }
@@ -135,37 +134,6 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
                 </CustomerCard.Container>
               </CustomerCard>
               <div className="col-span-2">
-                {/* <TableComponent>
-                  <TableComponent.Head grid className="bg-card">
-                    <TableComponent.TH className="text-card-offGrey p-4">
-                      Name
-                    </TableComponent.TH>
-                    <TableComponent.TH className="ml-auto text-card-offGrey p-4">
-                      Subtotal
-                    </TableComponent.TH>
-                  </TableComponent.Head>
-                  <TableComponent.Body>
-                    {invoice.line_items.map((lineItem) => (
-                      <div key={lineItem.plan_name}>
-                        <div className="grid grid-rows-1 items-center grid-flow-col">
-                          <TableComponent.TD className="p-4">
-                            {lineItem.plan_name}
-                          </TableComponent.TD>
-                          <TableComponent.TD
-                            className="ml-auto p-4"
-                            key={lineItem.plan_name}
-                          >
-                            <div className="flex flex-col gap-2">
-                              {invoice.currency.symbol}
-                              {lineItem.subtotal.toFixed(2)}
-                            </div>
-                          </TableComponent.TD>
-                        </div>
-                        
-                      </div>
-                    ))}
-                  </TableComponent.Body>
-                </TableComponent> */}
                 <Table
                   dataSource={invoice.line_items}
                   pagination={false}
