@@ -103,6 +103,7 @@ from metering_billing.models import (
 )
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.serializer_utils import (
+    AddonUUIDField,
     BalanceAdjustmentUUIDField,
     InvoiceUUIDField,
     MetricUUIDField,
@@ -359,7 +360,10 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def get_object(self):
         string_uuid = self.kwargs[self.lookup_field]
-        uuid = PlanUUIDField().to_internal_value(string_uuid)
+        if "plan_" in string_uuid:
+            uuid = PlanUUIDField().to_internal_value(string_uuid)
+        else:
+            uuid = AddonUUIDField().to_internal_value(string_uuid)
         self.kwargs[self.lookup_field] = uuid
         return super().get_object()
 
