@@ -113,7 +113,7 @@ const SubscriptionView: FC<Props> = ({
     ["draft_invoice", customer_id],
     () => Invoices.getDraftInvoice(customer_id),
     {
-      refetchInterval: 10000,
+      refetchOnMount: "always",
     }
   );
   const { data: addOns, isLoading }: UseQueryResult<AddonType[]> = useQuery<
@@ -139,6 +139,7 @@ const SubscriptionView: FC<Props> = ({
         form.resetFields();
         queryClient.invalidateQueries(["add-ons"]);
         queryClient.invalidateQueries(["customer_detail", customer_id]);
+        queryClient.invalidateQueries(["draft_invoice", customer_id]);
       },
       onError: () => {
         toast.error("Failed to create Subscription Add-on", {
@@ -316,6 +317,7 @@ const SubscriptionView: FC<Props> = ({
     };
     console.log(body);
     mutation.mutate(body);
+    setShowModal(false);
   };
   if (subscriptions.length === 0) {
     return (
@@ -350,8 +352,21 @@ const SubscriptionView: FC<Props> = ({
       </div>
     );
   }
-  const subFilters = (index: number) =>
-    invoiceData?.invoices[index].line_items[index].subscription_filters;
+  console.log(invoiceData);
+  const subFilters = (index: number) => {
+    if (
+      invoiceData &&
+      invoiceData.invoices &&
+      invoiceData.invoices.length > 0
+    ) {
+      console.log("?");
+      console.log(index);
+      console.log(invoiceData.invoices);
+      return invoiceData?.invoices[0].line_items[index].subscription_filters;
+    } else {
+      return undefined;
+    }
+  };
   return (
     <div className="mt-auto">
       <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Active Plans</h2>
@@ -364,7 +379,7 @@ const SubscriptionView: FC<Props> = ({
                   <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
                     <div>
                       <div> {subPlan.billing_plan.plan_name}</div>
-                      {subFilters(index) && subFilters(index)!.length > 0 && (
+                      {subFilters(index)?.length > 0 && (
                         <p>
                           {subFilters(index)!.map((filter) => {
                             return (
