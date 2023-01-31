@@ -3,7 +3,7 @@ import { Button } from "antd";
 import { Addon } from "../api/api";
 import { PlusOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import { useQuery, UseQueryResult, useQueryClient } from "react-query";
+import { useQuery, UseQueryResult } from "react-query";
 import DBSVG from "../components/base/db-svg";
 import { PageLayout } from "../components/base/PageLayout";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -12,7 +12,6 @@ import { AddonType } from "../types/addon-type";
 
 const ViewAddOns: FC = () => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const { data: addOns, isLoading }: UseQueryResult<AddonType[]> = useQuery<
     AddonType[]
