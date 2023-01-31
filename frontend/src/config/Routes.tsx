@@ -53,7 +53,9 @@ const AppRoutes: FC = () => {
 
         <Layout
           style={
-            currentPath === "plans" || currentPath === "add-ons"
+            currentPath === "plans" ||
+            currentPath === "add-ons" ||
+            currentPath === "dashboard"
               ? { background: "#ffffff" }
               : { background: "#FAFAFA" }
           }
