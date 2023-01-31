@@ -5,7 +5,6 @@ from datetime import timedelta
 
 import pytest
 from dateutil.relativedelta import relativedelta
-from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
@@ -19,6 +18,7 @@ from metering_billing.models import (
     Subscription,
     SubscriptionRecord,
 )
+from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     CHARGEABLE_ITEM_TYPE,

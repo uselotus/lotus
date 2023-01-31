@@ -133,8 +133,9 @@ def generate_invoice(
 
                         break
             for subscription_record in subscription_records:
-                subscription_record.fully_billed = True
-                subscription_record.save()
+                if subscription_record.end_date <= now_utc():
+                    subscription_record.fully_billed = True
+                    subscription_record.save()
             generate_invoice_pdf_async.delay(invoice.pk)
             invoice_created_webhook(invoice, organization)
 
@@ -236,12 +237,15 @@ def charge_next_plan_flat_fee(
         name = f"{next_bp.plan.plan_name} v{next_bp.version} Flat Fee - Next Period"
     if charge_in_advance and next_bp.flat_rate > 0:
         new_start = date_as_min_dt(subscription_record.end_date + relativedelta(days=1))
+        subtotal = next_bp.flat_rate * next_subscription_record.quantity
+        qty = next_subscription_record.quantity
+        qty = qty if qty > 1 else None
         InvoiceLineItem.objects.create(
             name=name,
             start_date=new_start,
             end_date=calculate_end_date(next_bp_duration, new_start),
-            quantity=1,
-            subtotal=next_bp.flat_rate,
+            quantity=qty,
+            subtotal=subtotal,
             billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
             chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE,
             invoice=invoice,
@@ -262,6 +266,7 @@ def create_next_subscription_record(subscription_record, next_bp):
             subscription_record.end_date + relativedelta(days=1)
         ),
         "is_new": False,
+        "quantity": subscription_record.quantity,
     }
     next_subscription_record = SubscriptionRecord.objects.create(**subrec_dict)
     for f in subscription_record.filters.all():
@@ -285,26 +290,30 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice):
     billing_plan = subscription_record.billing_plan
     start = subscription_record.start_date
     end = subscription_record.end_date
+    quantity = subscription_record.quantity
+    base_fee = billing_plan.flat_rate * quantity
     if subscription_record.flat_fee_behavior == FLAT_FEE_BEHAVIOR.PRORATE:
         proration_factor = (
             end - start
         ).total_seconds() / subscription_record.unadjusted_duration_seconds
-        flat_fee_due = billing_plan.flat_rate * convert_to_decimal(proration_factor)
-    elif subscription_record.flat_fee_behavior is FLAT_FEE_BEHAVIOR.REFUND:
+        flat_fee_due = base_fee * convert_to_decimal(proration_factor)
+    elif subscription_record.flat_fee_behavior == FLAT_FEE_BEHAVIOR.REFUND:
         flat_fee_due = Decimal(0)
     else:
-        flat_fee_due = billing_plan.flat_rate
+        flat_fee_due = base_fee
     if abs(float(amt_already_billed) - float(flat_fee_due)) < 0.01:
         pass
     else:
         billing_plan_name = billing_plan.plan.plan_name
         billing_plan_version = billing_plan.version
+        qty = subscription_record.quantity
+        qty = qty if qty > 1 else None
         if flat_fee_due > 0:
             InvoiceLineItem.objects.create(
                 name=f"{billing_plan_name} v{billing_plan_version} Prorated Flat Fee",
                 start_date=convert_to_datetime(start, date_behavior="min"),
                 end_date=convert_to_datetime(end, date_behavior="max"),
-                quantity=1,
+                quantity=qty,
                 subtotal=flat_fee_due,
                 billing_type=billing_plan.flat_fee_billing_type,
                 chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE,
@@ -318,7 +327,7 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice):
                 name=f"{billing_plan_name} v{billing_plan_version} Flat Fee Already Invoiced",
                 start_date=invoice.issue_date,
                 end_date=invoice.issue_date,
-                quantity=1,
+                quantity=qty,
                 subtotal=-amt_already_billed,
                 billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
                 chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE,
@@ -365,18 +374,19 @@ def apply_taxes(invoice, customer, organization):
             tax_rate = organization.tax_rate
         name = f"Tax - {round(tax_rate, 2)}%"
         tax_amount = current_subtotal * (tax_rate / Decimal(100))
-        InvoiceLineItem.objects.create(
-            name=name,
-            start_date=invoice.issue_date,
-            end_date=invoice.issue_date,
-            quantity=None,
-            subtotal=tax_amount,
-            billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
-            chargeable_item_type=CHARGEABLE_ITEM_TYPE.TAX,
-            invoice=invoice,
-            organization=invoice.organization,
-            associated_subscription_record_id=sr,
-        )
+        if tax_amount != 0:
+            InvoiceLineItem.objects.create(
+                name=name,
+                start_date=invoice.issue_date,
+                end_date=invoice.issue_date,
+                quantity=None,
+                subtotal=tax_amount,
+                billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+                chargeable_item_type=CHARGEABLE_ITEM_TYPE.TAX,
+                invoice=invoice,
+                organization=invoice.organization,
+                associated_subscription_record_id=sr,
+            )
 
 
 def apply_customer_balance_adjustments(invoice, customer, organization, draft):
@@ -417,7 +427,9 @@ def apply_customer_balance_adjustments(invoice, customer, organization, draft):
                 status=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
             )
     elif subtotal > 0:
-        customer_balance = CustomerBalanceAdjustment.get_pricing_unit_balance(customer)
+        customer_balance = CustomerBalanceAdjustment.get_pricing_unit_balance(
+            customer, invoice.currency
+        )
         balance_adjustment = min(subtotal, customer_balance)
         if balance_adjustment > 0:
             if draft:
@@ -426,6 +438,7 @@ def apply_customer_balance_adjustments(invoice, customer, organization, draft):
                 leftover = CustomerBalanceAdjustment.draw_down_amount(
                     customer,
                     balance_adjustment,
+                    invoice.currency,
                     description=f"Balance decrease from invoice {invoice.invoice_number} generated on {issue_date_fmt}",
                 )
             if -balance_adjustment + leftover != 0:
@@ -513,5 +526,4 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
         generate_invoice_pdf_async.delay(invoice.pk)
         invoice_created_webhook(invoice, organization)
 
-    return invoice
     return invoice

@@ -1,12 +1,9 @@
 from decimal import Decimal
 
+import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
 from django.db.models import DecimalField, Q, Sum
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-
-import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -60,6 +57,8 @@ from metering_billing.utils.enums import (
     TAG_GROUP,
     WEBHOOK_TRIGGER_EVENTS,
 )
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
@@ -826,8 +825,8 @@ class PriceTierCreateSerializer(serializers.ModelSerializer):
     )
     batch_rounding_type = serializers.ChoiceField(
         choices=BATCH_ROUNDING_TYPE.choices,
+        default=BATCH_ROUNDING_TYPE.NO_ROUNDING,
         required=False,
-        allow_null=True,
     )
 
     def validate(self, data):
@@ -1057,6 +1056,7 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
             "currency_code": {"write_only": True},
         }
 
+    flat_rate = serializers.DecimalField(max_digits=20, decimal_places=10, min_value=0)
     components = PlanComponentCreateSerializer(
         many=True, allow_null=True, required=False, source="plan_components"
     )
@@ -1815,15 +1815,19 @@ class AddOnCreateSerializer(serializers.ModelSerializer):
             "recurring_flat_fee_timing",
         )
         extra_kwargs = {
-            "addon_name": {"required": True},
-            "description": {"required": True},
-            "flat_rate": {"required": True},
-            "components": {"required": True},
-            "features": {"required": True},
-            "currency_code": {"required": True, "allow_null": True},
-            "invoice_when": {"required": True},
-            "billing_frequency": {"required": True},
-            "recurring_flat_fee_timing": {"required": True, "allow_null": True},
+            "addon_name": {"write_only": True, "required": True},
+            "description": {"write_only": True, "required": True},
+            "flat_rate": {"write_only": True, "required": True},
+            "components": {"write_only": True, "required": True},
+            "features": {"write_only": True, "required": True},
+            "currency_code": {"write_only": True, "allow_null": True},
+            "invoice_when": {"write_only": True, "required": True},
+            "billing_frequency": {"write_only": True, "required": True},
+            "recurring_flat_fee_timing": {
+                "write_only": True,
+                "required": True,
+                "allow_null": True,
+            },
         }
 
     addon_name = serializers.CharField(
@@ -1836,6 +1840,7 @@ class AddOnCreateSerializer(serializers.ModelSerializer):
         help_text="The flat rate of the add-on plan.",
         decimal_places=10,
         max_digits=20,
+        min_value=0,
     )
     components = PlanComponentCreateSerializer(
         many=True, allow_null=True, required=False
@@ -1844,13 +1849,13 @@ class AddOnCreateSerializer(serializers.ModelSerializer):
         slug_field="feature_id",
         queryset=Feature.objects.all(),
         many=True,
-        allow_null=True,
         required=False,
     )
     currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code",
         queryset=PricingUnit.objects.all(),
         required=False,
+        allow_null=True,
     )
     invoice_when = serializers.ChoiceField(
         choices=AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.labels

@@ -4,6 +4,7 @@ export interface RevenueType {
   total_revenue_period_2: number;
   earned_revenue_period_1: number;
   earned_revenue_period_2: number;
+  daily_usage_revenue_period_1: number;
 }
 
 export interface RevenuePeriod {

@@ -26,6 +26,7 @@ export const AppCard = ({
       <Card
         style={{
           boxShadow: "0 2px 4px 0 #a8a8a833",
+          minHeight: "180px",
         }}
         hoverable={true}
         title={<Avatar shape="square" src={icon} />}
@@ -75,7 +76,7 @@ export const AppCard = ({
             </Link>
           </div>
         ) : (
-          <div className="flex justify-end pt-4">
+          <div className="flex justify-end ">
             <h3 className="">-</h3>
           </div>
         )}

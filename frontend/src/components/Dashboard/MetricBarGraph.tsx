@@ -73,6 +73,10 @@ function MetricBarGraph(props: { range: any }) {
     isRange: true,
     maxColumnWidth: 30,
 
+    legend: {
+      position: "bottom-left",
+    },
+
     color: ["#33658A", "#547AA5", "#C3986B", "#D9D9D9", "#171412"],
     label: {
       layout: [
@@ -98,8 +102,8 @@ function MetricBarGraph(props: { range: any }) {
   }
 
   return (
-    <Paper border={true} color="white">
-      <div className="flex flex-row items-center mb-8 space-x-4 justify-between">
+    <Paper border={true}>
+      <div className="flex flex-row items-center mb-12 space-x-4 justify-between">
         <h2>Metric Usage</h2>
         <Select
           defaultValue="Select Metric"
