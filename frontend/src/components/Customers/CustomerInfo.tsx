@@ -2,11 +2,13 @@ import React, { FC, useEffect } from "react";
 import { Column } from "@ant-design/plots";
 import { useQueryClient, useMutation } from "react-query";
 
-import { Select, Form, Typography } from "antd";
+import { Select, Form, Typography, Input } from "antd";
 import { DraftInvoiceType } from "../../types/invoice-type";
 
 import dayjs from "dayjs";
 import { Customer } from "../../api/api";
+import { country_json } from "../../assets/country_codes";
+
 import { toast } from "react-toastify";
 
 import { CustomerType } from "../../types/customer-type";
@@ -198,12 +200,31 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
         <div className="col-span-2">
           <CustomerCard className="overflow-x-clip min-h-[210px]">
             <CustomerCard.Heading>
-              <div className="flex">
+              <div className="flex items-center">
                 <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
                   Customer Details
                 </Typography.Title>
                 <div className="ml-auto">
-                  <PencilSquareIcon />
+                  {!isEditing ? (
+                    <PencilSquareIcon onClick={makeEditable} />
+                  ) : (
+                    <div className="flex items-center gap-4">
+                      <span
+                        aria-hidden
+                        className="text-card-offGrey"
+                        onClick={() => setIsEditing(false)}
+                      >
+                        Cancel
+                      </span>
+                      <span
+                        aria-hidden
+                        className="text-gold"
+                        onClick={EditCustomerHandler}
+                      >
+                        Save
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
               <Divider />
@@ -245,16 +266,74 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   </div>
                   <div className="flex gap-1">
                     {" "}
-                    <div className="Inter">
-                      {data.address ? (
-                        <div>
-                          {data.address.line1},{data.address.state},
-                          {data.address.country} {data.address.postal_code}
+                    {!isEditing ? (
+                      <div className="Inter">
+                        {data.address ? (
+                          <div>
+                            {data.address.line1},{data.address.state},
+                            {data.address.country} {data.address.postal_code}
+                          </div>
+                        ) : (
+                          "N/A"
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-4 w-full">
+                        <div className="flex gap-2">
+                          <input
+                            placeholder="Address Line 1"
+                            className="input-class focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
+                            defaultValue={line1}
+                            onChange={(e) => setLine1(e.target.value)}
+                            required
+                          />
+                          <input
+                            placeholder="Address Line 2"
+                            className="input-class focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
+                            defaultValue={line2}
+                            onChange={(e) => setLine2(e.target.value)}
+                          />
+
+                          <input
+                            placeholder="City"
+                            className="input-class-last focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
+                            onChange={(e) => setCity(e.target.value)}
+                            defaultValue={city}
+                            required
+                          />
                         </div>
-                      ) : (
-                        "N/A"
-                      )}
-                    </div>
+                        <div className="flex gap-2">
+                          <select
+                            name="Country"
+                            id="country"
+                            className=" w-1/4 bg-white border border-black rounded-sm p-2"
+                            defaultValue={country}
+                            onChange={(e) => setCountry(e.target.value)}
+                          >
+                            {country_json.map((country) => (
+                              <option key={country.Code} value={country.Code}>
+                                {country.Name}
+                              </option>
+                            ))}
+                          </select>
+
+                          <input
+                            placeholder="State"
+                            className="w-1/4 focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
+                            defaultValue={state}
+                            onChange={(e) => setState(e.target.value)}
+                            required
+                          />
+                          <input
+                            defaultValue={postalCode}
+                            className="w-1/4 focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
+                            placeholder="Zip Code"
+                            onChange={(e) => setPostalCode(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CustomerCard.Item>
               </CustomerCard.Block>
@@ -272,13 +351,30 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   <div className="font-normal text-card-text font-alliance whitespace-nowrap leading-4">
                     Default Currency
                   </div>
-                  <div className="flex gap-1 !text-card-text Inter">
-                    {" "}
-                    <div>
-                      {data.default_currency.code}-
-                      {data.default_currency.symbol}
+                  {!isEditing ? (
+                    <div className="flex gap-1 !text-card-text Inter">
+                      {" "}
+                      <div>
+                        {data.default_currency.code}-
+                        {data.default_currency.symbol}
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="min-w-[100px]">
+                      <select
+                        className="w-full bg-white border border-black p-4"
+                        name="currency"
+                        id="currency"
+                      >
+                        {pricingUnits?.map((pc) => (
+                          <option
+                            key={pc.code}
+                            value={pc.code}
+                          >{`${pc.name} ${pc.symbol}`}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </CustomerCard.Item>
                 <CustomerCard.Item>
                   <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">

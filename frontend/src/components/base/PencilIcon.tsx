@@ -1,9 +1,12 @@
 import React from "react";
-
-export function PencilSquareIcon() {
+interface PencilSquareIconProps {
+  onClick: VoidFunction;
+}
+export function PencilSquareIcon({ onClick }: PencilSquareIconProps) {
   return (
     <svg
       aria-hidden="true"
+      onClick={onClick}
       fill="none"
       stroke="#000"
       strokeWidth={1.5}

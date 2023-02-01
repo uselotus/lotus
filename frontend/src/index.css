@@ -123,6 +123,12 @@ a {
   min-width: 150%;
   margin-top: 10px;
 }
+.input-class {
+  width: 150px;
+}
+.input-class-last {
+  width: 100px;
+}
 .ant-select.w-full {
   min-width: 150%;
   margin-top: 10px;
