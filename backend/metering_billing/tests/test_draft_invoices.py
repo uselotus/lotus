@@ -5,10 +5,6 @@ from decimal import Decimal
 
 import pytest
 from django.urls import reverse
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
-
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Event,
@@ -17,12 +13,14 @@ from metering_billing.models import (
     PlanComponent,
     PriceAdjustment,
     PriceTier,
-    Subscription,
     SubscriptionRecord,
 )
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PRICE_ADJUSTMENT_TYPE
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -34,7 +32,7 @@ def draft_invoice_test_common_setup(
     add_product_to_org,
     add_plan_to_product,
     add_plan_version_to_plan,
-    add_subscription_to_org,
+    add_subscription_record_to_org,
 ):
     def do_draft_invoice_test_common_setup(*, auth_method):
         setup_dict = {}
@@ -120,10 +118,9 @@ def draft_invoice_test_common_setup(
         setup_dict["billing_plan"] = plan_version
         plan.display_version = plan_version
         plan.save()
-        subscription, subscription_record = add_subscription_to_org(
+        subscription_record = add_subscription_record_to_org(
             org, plan_version, customer, now_utc() - timedelta(days=3)
         )
-        setup_dict["subscription"] = subscription
         setup_dict["subscription_record"] = subscription_record
 
         return setup_dict
@@ -136,23 +133,12 @@ class TestGenerateInvoice:
     def test_generate_invoice(self, draft_invoice_test_common_setup):
         setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
 
-        active_subscriptions = Subscription.objects.active().filter(
-            organization=setup_dict["org"],
-            customer=setup_dict["customer"],
-        )
-        assert len(active_subscriptions) == 1
-
         prev_invoices_len = Invoice.objects.filter(
             payment_status=Invoice.PaymentStatus.DRAFT
         ).count()
         payload = {"customer_id": setup_dict["customer"].customer_id}
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
         assert response.status_code == status.HTTP_200_OK
-        after_active_subscriptions = Subscription.objects.active().filter(
-            organization=setup_dict["org"],
-            customer=setup_dict["customer"],
-        )
-        assert len(after_active_subscriptions) == len(active_subscriptions)
         new_invoices_len = Invoice.objects.filter(
             payment_status=Invoice.PaymentStatus.DRAFT
         ).count()
@@ -163,12 +149,6 @@ class TestGenerateInvoice:
         self, draft_invoice_test_common_setup
     ):
         setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
-
-        active_subscriptions = Subscription.objects.active().filter(
-            organization=setup_dict["org"],
-            customer=setup_dict["customer"],
-        )
-        assert len(active_subscriptions) == 1
 
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
@@ -227,12 +207,6 @@ class TestGenerateInvoice:
     def test_generate_invoice_with_taxes(self, draft_invoice_test_common_setup):
         setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
 
-        active_subscriptions = Subscription.objects.active().filter(
-            organization=setup_dict["org"],
-            customer=setup_dict["customer"],
-        )
-        assert len(active_subscriptions) == 1
-
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
             "include_next_period": False,
@@ -258,7 +232,6 @@ class TestGenerateInvoice:
     def test_generate_invoice_pdf(self, draft_invoice_test_common_setup):
         setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
         SubscriptionRecord.objects.all().delete()
-        Subscription.objects.all().delete()
         Event.objects.all().delete()
         setup_dict["org"].update_subscription_filter_settings(["email"])
         payload = {
@@ -299,7 +272,6 @@ class TestGenerateInvoice:
             "include_next_period": False,
         }
         result_invoices = generate_invoice(
-            Subscription.objects.all().first(),
             SubscriptionRecord.objects.all(),
             draft=False,
         )

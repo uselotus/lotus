@@ -1,16 +1,10 @@
 import logging
 from decimal import Decimal
 
+import api.views as api_views
 from django.conf import settings
 from django.db.models import Count, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
-from rest_framework import serializers, status
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
-import api.views as api_views
 from metering_billing.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
@@ -66,6 +60,11 @@ from metering_billing.utils.enums import (
     USAGE_CALC_GRANULARITY,
 )
 from metering_billing.views.model_views import CustomerViewSet
+from rest_framework import serializers, status
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -533,9 +532,9 @@ class DraftInvoiceView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         customer = serializer.validated_data.get("customer")
-        sub, sub_records = customer.get_subscription_and_records()
+        sub_records = customer.get_active_subscription_records()
         response = {"invoice": None}
-        if sub is None or sub_records is None:
+        if sub_records is None or len(sub_records) == 0:
             response = {"invoices": []}
         else:
             sub_records = sub_records.select_related("billing_plan").prefetch_related(
@@ -544,7 +543,6 @@ class DraftInvoiceView(APIView):
                 "billing_plan__plan_components__tiers",
             )
             invoices = generate_invoice(
-                sub,
                 sub_records,
                 draft=True,
                 charge_next_plan=serializer.validated_data.get(

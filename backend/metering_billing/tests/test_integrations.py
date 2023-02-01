@@ -13,7 +13,6 @@ from metering_billing.models import (
     Customer,
     ExternalPlanLink,
     Invoice,
-    Subscription,
     SubscriptionRecord,
 )
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
@@ -149,12 +148,6 @@ class TestStripeIntegration:
         new_cust = Customer.objects.get(email=stripe_customer.email)
 
         # now lets generate an invoice + for this customer
-        subscription = Subscription.objects.create(
-            organization=setup_dict["org"],
-            customer=new_cust,
-            start_date=now_utc() - timedelta(days=35),
-            end_date=now_utc() - timedelta(days=5),
-        )
         subscription_record = SubscriptionRecord.objects.create(
             organization=setup_dict["org"],
             customer=new_cust,
@@ -162,7 +155,7 @@ class TestStripeIntegration:
             start_date=now_utc() - timedelta(days=35),
             end_date=now_utc() - timedelta(days=5),
         )
-        invoice = generate_invoice(subscription, subscription_record)[0]
+        invoice = generate_invoice(subscription_record)[0]
         assert invoice.payment_status == Invoice.PaymentStatus.UNPAID
         assert invoice.external_payment_obj_type == PAYMENT_PROVIDERS.STRIPE
         try:
@@ -189,12 +182,6 @@ class TestStripeIntegration:
         new_cust = Customer.objects.get(email=stripe_customer.email)
 
         # now lets generate an invoice + for this customer
-        subscription = Subscription.objects.create(
-            organization=setup_dict["org"],
-            customer=new_cust,
-            start_date=now_utc() - timedelta(days=35),
-            end_date=now_utc() - timedelta(days=5),
-        )
         subscription_record = SubscriptionRecord.objects.create(
             organization=setup_dict["org"],
             customer=new_cust,
@@ -202,7 +189,7 @@ class TestStripeIntegration:
             start_date=now_utc() - timedelta(days=35),
             end_date=now_utc() - timedelta(days=5),
         )
-        invoice = generate_invoice(subscription, subscription_record)[0]
+        invoice = generate_invoice(subscription_record)[0]
         try:
             stripe.Invoice.retrieve(invoice.external_payment_obj_id)
         except Exception as e:

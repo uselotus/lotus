@@ -4,10 +4,6 @@ from datetime import timedelta
 
 import pytest
 from django.urls import reverse
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
-
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     Event,
@@ -21,6 +17,9 @@ from metering_billing.models import (
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.tasks import refresh_alerts_inner
 from metering_billing.utils import now_utc
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -28,7 +27,7 @@ def alerts_test_common_setup(
     generate_org_and_api_key,
     add_users_to_org,
     api_client_with_api_key_auth,
-    add_subscription_to_org,
+    add_subscription_record_to_org,
     add_customers_to_org,
     add_product_to_org,
     add_plan_to_product,
@@ -117,7 +116,7 @@ def alerts_test_common_setup(
 
         (customer,) = add_customers_to_org(org, n=1)
         if num_subscriptions > 0:
-            setup_dict["org_subscription"] = add_subscription_to_org(
+            setup_dict["org_subscription"] = add_subscription_record_to_org(
                 org, billing_plan, customer
             )
         payload = {
