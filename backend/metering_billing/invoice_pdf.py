@@ -435,7 +435,7 @@ def generate_invoice_pdf(
                 line_item_start_y = 40
 
                 doc.setFont("Times-Roman", FONT_XXS)
-                invoice_number = invoice["invoice_number"]
+                invoice_number = invoice.invoice_number
                 doc.setFillColor(HexColor("#9CA3AF"))
                 doc.drawString(25, 770, f"#{invoice_number}")
                 doc.setFillColor("black")
