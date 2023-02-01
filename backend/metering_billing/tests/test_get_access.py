@@ -3,10 +3,6 @@ import itertools
 import pytest
 from dateutil.relativedelta import relativedelta
 from django.urls import reverse
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
-
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     Event,
@@ -19,6 +15,9 @@ from metering_billing.models import (
 )
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import EVENT_TYPE, METRIC_AGGREGATION, METRIC_TYPE
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -29,7 +28,7 @@ def get_access_test_common_setup(
     add_customers_to_org,
     add_product_to_org,
     add_plan_to_product,
-    add_subscription_to_org,
+    add_subscription_record_to_org,
 ):
     def do_get_access_test_common_setup(*, auth_method):
         setup_dict = {}
@@ -160,13 +159,12 @@ def get_access_test_common_setup(
         billing_plan.features.add(*feature_set[:1])
         billing_plan.save()
         setup_dict["billing_plan"] = billing_plan
-        subscription, subscription_record = add_subscription_to_org(
+        add_subscription_record_to_org(
             organization=org,
             customer=customer,
             billing_plan=billing_plan,
             start_date=now_utc() - relativedelta(days=3),
         )
-        setup_dict["subscription"] = subscription
         return setup_dict
 
     return do_get_access_test_common_setup

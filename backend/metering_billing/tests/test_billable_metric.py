@@ -6,10 +6,6 @@ from decimal import Decimal
 import pytest
 from dateutil.relativedelta import relativedelta
 from django.urls import reverse
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
-
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     CategoricalFilter,
@@ -35,6 +31,9 @@ from metering_billing.utils.enums import (
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
 )
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -306,7 +305,7 @@ class TestArchiveMetric:
 @pytest.mark.django_db(transaction=True)
 class TestCalculateMetric:
     def test_count_unique(
-        self, billable_metric_test_common_setup, add_subscription_to_org
+        self, billable_metric_test_common_setup, add_subscription_record_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -380,7 +379,7 @@ class TestCalculateMetric:
                 return_value=now - relativedelta(days=1),
             ),
         ):
-            subscription, subscription_record = add_subscription_to_org(
+            subscription_record = add_subscription_record_to_org(
                 setup_dict["org"],
                 billing_plan,
                 customer,
@@ -392,7 +391,7 @@ class TestCalculateMetric:
         assert metric_usage == 2
 
     def test_gauge_total_granularity(
-        self, billable_metric_test_common_setup, add_subscription_to_org
+        self, billable_metric_test_common_setup, add_subscription_record_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -471,7 +470,7 @@ class TestCalculateMetric:
                 return_value=now - relativedelta(days=46),
             ),
         ):
-            subscription, subscription_record = add_subscription_to_org(
+            subscription_record = add_subscription_record_to_org(
                 setup_dict["org"],
                 billing_plan,
                 customer,
@@ -482,7 +481,7 @@ class TestCalculateMetric:
         assert usage_revenue_dict["revenue"] == Decimal(300)
 
     def test_gauge_daily_granularity(
-        self, billable_metric_test_common_setup, add_subscription_to_org
+        self, billable_metric_test_common_setup, add_subscription_record_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -558,7 +557,7 @@ class TestCalculateMetric:
                 return_value=time_created,
             ),
         ):
-            subscription, subscription_record = add_subscription_to_org(
+            subscription_record = add_subscription_record_to_org(
                 setup_dict["org"], billing_plan, customer, time_created
             )
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
@@ -570,7 +569,7 @@ class TestCalculateMetric:
         assert usage_revenue_dict["revenue"] <= Decimal(100) * Decimal(18) / Decimal(28)
 
     def test_rate_hourly_granularity(
-        self, billable_metric_test_common_setup, add_subscription_to_org
+        self, billable_metric_test_common_setup, add_subscription_record_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -671,7 +670,7 @@ class TestCalculateMetric:
                 return_value=now - relativedelta(days=31),
             ),
         ):
-            subscription, subscription_record = add_subscription_to_org(
+            subscription_record = add_subscription_record_to_org(
                 setup_dict["org"],
                 billing_plan,
                 customer,
@@ -682,7 +681,7 @@ class TestCalculateMetric:
         assert usage_revenue_dict["revenue"] == Decimal(61)
 
     def test_gauge_daily_granularity_delta_event(
-        self, billable_metric_test_common_setup, add_subscription_to_org
+        self, billable_metric_test_common_setup, add_subscription_record_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -753,7 +752,7 @@ class TestCalculateMetric:
                 return_value=time_created,
             ),
         ):
-            subscription, subscription_record = add_subscription_to_org(
+            subscription_record = add_subscription_record_to_org(
                 setup_dict["org"], billing_plan, customer, time_created
             )
 
@@ -770,7 +769,7 @@ class TestCalculateMetric:
 @pytest.mark.django_db(transaction=True)
 class TestCalculateMetricProrationForGauge:
     def test_proration_and_metric_granularity_sub_day(
-        self, billable_metric_test_common_setup, add_subscription_to_org
+        self, billable_metric_test_common_setup, add_subscription_record_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -853,7 +852,7 @@ class TestCalculateMetricProrationForGauge:
                 return_value=time_created,
             ),
         ):
-            subscription, subscription_record = add_subscription_to_org(
+            subscription_record = add_subscription_record_to_org(
                 setup_dict["org"],
                 billing_plan,
                 customer,
@@ -868,8 +867,8 @@ class TestCalculateMetricProrationForGauge:
             reverse("cost_analysis"),
             {
                 "customer_id": customer.customer_id,
-                "start_date": subscription.start_date.date(),
-                "end_date": subscription.end_date.date(),
+                "start_date": subscription_record.start_date.date(),
+                "end_date": subscription_record.end_date.date(),
             },
         )
         assert response.status_code == status.HTTP_200_OK
@@ -886,7 +885,7 @@ class TestCalculateMetricProrationForGauge:
         assert abs(data["total_revenue"] - float(calculated_amt)) < 0.01
 
     def test_metric_granularity_daily_proration_smaller_than_day(
-        self, billable_metric_test_common_setup, add_subscription_to_org
+        self, billable_metric_test_common_setup, add_subscription_record_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -964,7 +963,7 @@ class TestCalculateMetricProrationForGauge:
                 return_value=time_created,
             ),
         ):
-            subscription, subscription_record = add_subscription_to_org(
+            subscription_record = add_subscription_record_to_org(
                 setup_dict["org"],
                 billing_plan,
                 customer,
@@ -980,8 +979,8 @@ class TestCalculateMetricProrationForGauge:
             reverse("cost_analysis"),
             {
                 "customer_id": customer.customer_id,
-                "start_date": subscription.start_date.date(),
-                "end_date": subscription.end_date.date(),
+                "start_date": subscription_record.start_date.date(),
+                "end_date": subscription_record.end_date.date(),
             },
         )
         assert response.status_code == status.HTTP_200_OK
@@ -997,7 +996,7 @@ class TestCalculateMetricProrationForGauge:
         assert abs(data["total_revenue"] - float(supposed_revenue)) < 0.01
 
     def test_metric_granularity_greater_than_daily_proration_smaller_than_day(
-        self, billable_metric_test_common_setup, add_subscription_to_org
+        self, billable_metric_test_common_setup, add_subscription_record_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -1084,7 +1083,7 @@ class TestCalculateMetricProrationForGauge:
                 return_value=tc,
             ),
         ):
-            subscription, subscription_record = add_subscription_to_org(
+            subscription_record = add_subscription_record_to_org(
                 setup_dict["org"],
                 billing_plan,
                 customer,
@@ -1099,8 +1098,8 @@ class TestCalculateMetricProrationForGauge:
             reverse("cost_analysis"),
             {
                 "customer_id": customer.customer_id,
-                "start_date": subscription.start_date.date(),
-                "end_date": subscription.end_date.date(),
+                "start_date": subscription_record.start_date.date(),
+                "end_date": subscription_record.end_date.date(),
             },
         )
         assert response.status_code == status.HTTP_200_OK
@@ -1120,7 +1119,7 @@ class TestCalculateMetricProrationForGauge:
 @pytest.mark.django_db(transaction=True)
 class TestCalculateMetricWithFilters:
     def test_count_unique_with_filters(
-        self, billable_metric_test_common_setup, add_subscription_to_org
+        self, billable_metric_test_common_setup, add_subscription_record_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -1211,7 +1210,7 @@ class TestCalculateMetricWithFilters:
                 return_value=now - relativedelta(days=1),
             ),
         ):
-            subscription, subscription_record = add_subscription_to_org(
+            subscription_record = add_subscription_record_to_org(
                 setup_dict["org"],
                 billing_plan,
                 customer,
@@ -1223,7 +1222,7 @@ class TestCalculateMetricWithFilters:
         assert metric_usage == 2
 
     def test_gauge_total_granularity_with_filters(
-        self, billable_metric_test_common_setup, add_subscription_to_org
+        self, billable_metric_test_common_setup, add_subscription_record_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -1308,7 +1307,7 @@ class TestCalculateMetricWithFilters:
                 return_value=time_created,
             ),
         ):
-            subscription, subscription_record = add_subscription_to_org(
+            subscription_record = add_subscription_record_to_org(
                 setup_dict["org"], billing_plan, customer, time_created
             )
 
@@ -1316,7 +1315,7 @@ class TestCalculateMetricWithFilters:
         assert usage_revenue_dict["revenue"] == Decimal(300)
 
     def test_gauge_daily_granularity_with_filters(
-        self, billable_metric_test_common_setup, add_subscription_to_org
+        self, billable_metric_test_common_setup, add_subscription_record_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -1399,7 +1398,7 @@ class TestCalculateMetricWithFilters:
                 return_value=time_created,
             ),
         ):
-            subscription, subscription_record = add_subscription_to_org(
+            subscription_record = add_subscription_record_to_org(
                 setup_dict["org"], billing_plan, customer, time_created
             )
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
@@ -1411,7 +1410,7 @@ class TestCalculateMetricWithFilters:
         assert usage_revenue_dict["revenue"] <= Decimal(100) * Decimal(18) / Decimal(28)
 
     def test_rate_hourly_granularity_with_filters(
-        self, billable_metric_test_common_setup, add_subscription_to_org
+        self, billable_metric_test_common_setup, add_subscription_record_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -1510,7 +1509,7 @@ class TestCalculateMetricWithFilters:
             metric_units_per_batch=1,
         )
         now = now_utc()
-        subscription, subscription_record = add_subscription_to_org(
+        subscription_record = add_subscription_record_to_org(
             setup_dict["org"],
             billing_plan,
             customer,
@@ -1552,7 +1551,7 @@ class TestCustomSQLMetrics:
         self,
         get_billable_metrics_in_org,
         billable_metric_test_common_setup,
-        add_subscription_to_org,
+        add_subscription_record_to_org,
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -1635,7 +1634,7 @@ class TestCustomSQLMetrics:
                 return_value=now - relativedelta(days=1),
             ),
         ):
-            subscription, subscription_record = add_subscription_to_org(
+            subscription_record = add_subscription_record_to_org(
                 setup_dict["org"],
                 billing_plan,
                 customer,
@@ -1667,7 +1666,7 @@ class TestCustomSQLMetrics:
         self,
         get_billable_metrics_in_org,
         billable_metric_test_common_setup,
-        add_subscription_to_org,
+        add_subscription_record_to_org,
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -1750,7 +1749,7 @@ class TestCustomSQLMetrics:
                 return_value=now - relativedelta(days=1),
             ),
         ):
-            subscription, subscription_record = add_subscription_to_org(
+            subscription_record = add_subscription_record_to_org(
                 setup_dict["org"],
                 billing_plan,
                 customer,
@@ -1782,7 +1781,7 @@ class TestCustomSQLMetrics:
         self,
         get_billable_metrics_in_org,
         billable_metric_test_common_setup,
-        add_subscription_to_org,
+        add_subscription_record_to_org,
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -1865,7 +1864,7 @@ class TestCustomSQLMetrics:
                 return_value=now - relativedelta(days=1),
             ),
         ):
-            subscription, subscription_record = add_subscription_to_org(
+            subscription_record = add_subscription_record_to_org(
                 setup_dict["org"],
                 billing_plan,
                 customer,
@@ -1897,7 +1896,7 @@ class TestCustomSQLMetrics:
         self,
         get_billable_metrics_in_org,
         billable_metric_test_common_setup,
-        add_subscription_to_org,
+        add_subscription_record_to_org,
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -2002,7 +2001,7 @@ class TestCustomSQLMetrics:
                 return_value=now - relativedelta(days=1),
             ),
         ):
-            subscription, subscription_record = add_subscription_to_org(
+            subscription_record = add_subscription_record_to_org(
                 setup_dict["org"],
                 billing_plan,
                 customer,
@@ -2034,7 +2033,7 @@ class TestCustomSQLMetrics:
         self,
         get_billable_metrics_in_org,
         billable_metric_test_common_setup,
-        add_subscription_to_org,
+        add_subscription_record_to_org,
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -2215,7 +2214,7 @@ class TestCustomSQLMetrics:
                 return_value=now - relativedelta(days=1),
             ),
         ):
-            subscription, subscription_record = add_subscription_to_org(
+            subscription_record = add_subscription_record_to_org(
                 setup_dict["org"],
                 billing_plan,
                 customer,
@@ -2247,7 +2246,7 @@ class TestCustomSQLMetrics:
         self,
         get_billable_metrics_in_org,
         billable_metric_test_common_setup,
-        add_subscription_to_org,
+        add_subscription_record_to_org,
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -2305,7 +2304,7 @@ class TestCustomSQLMetrics:
 @pytest.mark.django_db(transaction=True)
 class TestRegressions:
     def test_granularity_ratio_total_fails(
-        self, billable_metric_test_common_setup, add_subscription_to_org
+        self, billable_metric_test_common_setup, add_subscription_record_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -2382,7 +2381,7 @@ class TestRegressions:
                 return_value=time_created,
             ),
         ):
-            subscription, subscription_record = add_subscription_to_org(
+            subscription_record = add_subscription_record_to_org(
                 setup_dict["org"],
                 billing_plan,
                 customer,

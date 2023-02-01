@@ -2,6 +2,8 @@ import uuid
 
 import posthog
 import pytest
+from model_bakery import baker
+
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     FLAT_FEE_BILLING_TYPE,
@@ -11,7 +13,6 @@ from metering_billing.utils.enums import (
     PRODUCT_STATUS,
     USAGE_BILLING_FREQUENCY,
 )
-from model_bakery import baker
 
 
 @pytest.fixture(autouse=True)
@@ -172,11 +173,11 @@ def get_billable_metrics_in_org():
 
 
 @pytest.fixture
-def add_subscription_to_org():
-    from metering_billing.models import Subscription, SubscriptionRecord
+def add_subscription_record_to_org():
+    from metering_billing.models import SubscriptionRecord
     from metering_billing.utils import calculate_end_date
 
-    def do_add_subscription_to_org(
+    def do_add_subscription_record_to_org(
         organization,
         billing_plan,
         customer,
@@ -205,20 +206,6 @@ def add_subscription_to_org():
                 day_anchor=day_anchor,
                 month_anchor=month_anchor,
             )
-        subscription = Subscription.objects.create(
-            organization=organization,
-            customer=customer,
-            billing_cadence=duration,
-            start_date=start_date,
-            end_date=end_date,
-        )
-        subscription.handle_attach_plan(
-            plan_day_anchor=day_anchor,
-            plan_month_anchor=month_anchor,
-            plan_start_date=start_date,
-            plan_duration=duration,
-        )
-
         subscription_record = SubscriptionRecord.objects.create(
             organization=organization,
             customer=customer,
@@ -228,9 +215,9 @@ def add_subscription_to_org():
             is_new=True,
         )
         subscription_record.save()
-        return subscription, subscription_record
+        return subscription_record
 
-    return do_add_subscription_to_org
+    return do_add_subscription_record_to_org
 
 
 @pytest.fixture
