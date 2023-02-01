@@ -73,7 +73,7 @@ def calculate_invoice():
     )
 
     # now generate invoices and new subs
-    customers = sub_records_to_bill.values_list("customer", flat=True)
+    customers = {x.customer for x in sub_records_to_bill}
     for customer in customers:
         customer_subscription_records = sub_records_to_bill.filter(customer=customer)
         # Generate the invoice
