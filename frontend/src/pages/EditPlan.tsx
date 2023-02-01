@@ -541,7 +541,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                       </Radio.Group>
                     </Form.Item>
                     <Form.Item
-                      label="When To Bill"
+                      label="When To Invoice"
                       name="align_plan"
                       rules={[
                         {
