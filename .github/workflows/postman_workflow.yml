@@ -10,8 +10,6 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    defaults:
-
     services:
       postgres:
         image: timescale/timescaledb:latest-pg14
