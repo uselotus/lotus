@@ -123,7 +123,7 @@ const Dashboard: FC = () => {
                 metric_1={subscriptionData?.period_1_total_subscriptions}
                 metric_2={subscriptionData?.period_2_total_subscriptions}
                 isLoading={subscriptionLoading}
-                title={"Subscrptions"}
+                title={"Total Subscriptions"}
               />
             </div>
             <div className="col-span-3">
