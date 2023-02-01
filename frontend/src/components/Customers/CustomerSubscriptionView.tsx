@@ -9,6 +9,7 @@ import {
   Typography,
   Select,
   Modal,
+  Input,
 } from "antd";
 import type { DefaultOptionType } from "antd/es/cascader";
 import {
@@ -399,12 +400,30 @@ const SubscriptionView: FC<Props> = ({
 
   return (
     <div className="mt-auto">
-      <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Active Plans</h2>
+      <div className="flex mb-2 pb-4 pt-4 items-center justify-center">
+        <h2 className=" font-bold text-main">Active Plans</h2>
+        <div className="ml-auto flex  gap-2 max-h-[40px]">
+          <Input placeholder="Search key-value" disabled />
+          <Button
+            onClick={() => console.log("")}
+            disabled
+            type="primary"
+            size="large"
+            key="create-plan"
+            className="hover:!bg-primary-700 "
+            style={{ background: "#C3986B", borderColor: "#C3986B" }}
+          >
+            <div className="flex items-center  justify-between text-white">
+              <div>Attach Add-on</div>
+            </div>
+          </Button>
+        </div>
+      </div>
       <div className="flex flex-col justify-center">
         <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
           {subscriptions.map((subPlan, index) => (
             <>
-              <CustomerCard key={subPlan.end_date}>
+              <CustomerCard className="shadow-none" key={subPlan.end_date}>
                 <CustomerCard.Heading>
                   <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
                     <div>
@@ -512,10 +531,10 @@ const SubscriptionView: FC<Props> = ({
                           </svg>
                         </button>
                       </DropdownComponent.Trigger>
-                      <DropdownComponent.Container className="!bg-[#fff4e9]">
+                      <DropdownComponent.Container className="!bg-[#fff4e9] ">
                         {dropDownOptions.map((key, index) => (
                           <DropdownComponent.MenuItem
-                            className="hover:text-black whitespace-nowrap"
+                            className="hover:text-black hover:bg-[#f8e8d7] whitespace-nowrap"
                             key={index}
                             onSelect={() => {
                               switch (index) {

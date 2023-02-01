@@ -27,8 +27,21 @@ const Dropdown = ({ children }: PropsWithChildren<DropdownProps>) => {
     () => ({ isOpen, openHandler, closeHandler, selected }),
     [isOpen]
   );
+  const handleClick = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.matches("#dd-container, #dd-container *")) {
+      return;
+    }
+    if (!target?.matches("#parent-node, #parent-node *")) {
+      setIsOpen(false);
+    }
+  };
+  React.useEffect(() => {
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
+  }, []);
   return (
-    <div className="group relative inline-block">
+    <div id="parent-node" className="group relative inline-block">
       <DropdownContext.Provider value={value}>
         {children}
       </DropdownContext.Provider>
@@ -53,6 +66,7 @@ const Container: React.FC<PropsWithChildren<DropdownProps>> = ({
     <>
       {isOpen && (
         <div
+          id="dd-container"
           className={
             !className
               ? "absolute right-0 z-10 mt-2  m-w-64 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none "

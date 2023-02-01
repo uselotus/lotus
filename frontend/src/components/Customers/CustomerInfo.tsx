@@ -198,7 +198,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     <div className="flex flex-col">
       <div className="grid gap-12 grid-cols-1   md:grid-cols-3">
         <div className="col-span-2">
-          <CustomerCard className="overflow-x-clip min-h-[210px]">
+          <CustomerCard className="overflow-x-clip h-[215px]">
             <CustomerCard.Heading>
               <div className="flex items-center">
                 <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
@@ -396,7 +396,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
           </CustomerCard>
         </div>
         <div className="col-span-1">
-          <CustomerCard>
+          <CustomerCard className="h-[215px]">
             <CustomerCard.Heading>
               <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
                 Revenue Details
@@ -404,7 +404,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
             </CustomerCard.Heading>
             <Divider />
             <CustomerCard.Container>
-              <CustomerCard.Block>
+              <CustomerCard.Block className="text-sm">
                 <CustomerCard.Item>
                   <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
                     Earned Revenue

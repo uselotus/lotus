@@ -79,10 +79,10 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
       />
     );
   };
-  console.log(invoiceData?.invoices[0].line_items);
+
   return (
     <div>
-      <h2 className="mb-2 mt-16 pb-4 pt-4 font-bold text-main">
+      <h2 className="mb-2 mt-16 pb-4 pt-4  font-bold text-main">
         Draft Invoice View
       </h2>
       {invoiceData?.invoices !== null &&
@@ -93,7 +93,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
               key={index}
               className="grid gap-12 grid-cols-1  md:grid-cols-3"
             >
-              <CustomerCard className="col-span-1">
+              <CustomerCard className="col-span-1 h-[200px] shadow-none">
                 <CustomerCard.Container>
                   <CustomerCard.Block>
                     <CustomerCard.Item>
