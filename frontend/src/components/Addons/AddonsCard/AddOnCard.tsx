@@ -54,7 +54,7 @@ const AddOnsCard: FC<AddOnCardProps> = ({ add_on }) => {
   const goToAddOnDetail = () => {
     navigate("/add-ons/" + add_on.addon_id);
   };
-  console.log(add_on);
+  
   return (
     <div
       className="min-h-[200px]  min-w-[246px] p-6 cursor-pointer  rounded-sm bg-card  shadow-lg hover:shadow-neutral-400"
