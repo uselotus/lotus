@@ -48,8 +48,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Copy env file
+        run: cp env/.env.dev.example env/.env.dev
+
       - name: Start Docker Compose
-        run: ls && docker-compose -f docker-compose.dev.yaml up -d
+        run: docker-compose -f docker-compose.dev.yaml --env-file env/.env.dev up -d
 
       - name: Run tests
         uses: anthonyvscode/newman-action@v1
