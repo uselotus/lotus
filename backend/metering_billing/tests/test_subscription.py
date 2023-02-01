@@ -147,7 +147,7 @@ def subscription_test_common_setup(
 @pytest.mark.django_db(transaction=True)
 class TestCreateSubscription:
     def test_api_key_can_create_subscription_empty_before(
-        self, subscription_test_common_setup, get_subscriptions_in_org
+        self, subscription_test_common_setup, get_subscription_records_in_org
     ):
         # covers num_subscriptions_before_insert = 0, has_org_api_key=true, user_in_org=true, user_org_and_api_key_org_different=false
         num_subscriptions = 0
@@ -164,12 +164,11 @@ class TestCreateSubscription:
         )
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) > 0  # check that the response is not empty
-        assert len(get_subscriptions_in_org(setup_dict["org"])) == 1
+        assert len(get_subscription_records_in_org(setup_dict["org"])) == 1
 
     def test_session_auth_can_create_subscription_nonempty_before(
         self,
         subscription_test_common_setup,
-        get_subscriptions_in_org,
         get_subscription_records_in_org,
         add_customers_to_org,
     ):
@@ -199,14 +198,17 @@ class TestCreateSubscription:
         )
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) > 0
-        assert len(get_subscriptions_in_org(setup_dict["org"])) == num_subscriptions + 1
+        assert (
+            len(get_subscription_records_in_org(setup_dict["org"]))
+            == num_subscriptions + 1
+        )
         assert (
             len(get_subscription_records_in_org(setup_dict["org"]))
             == num_subscription_records_before + 1
         )
 
     def test_reject_overlapping_subscriptions(
-        self, subscription_test_common_setup, get_subscriptions_in_org
+        self, subscription_test_common_setup, get_subscription_records_in_org
     ):
         # covers num_subscriptions_before_insert = 0, has_org_api_key=true, user_in_org=true, user_org_and_api_key_org_different=false
         num_subscriptions = 0
@@ -223,7 +225,7 @@ class TestCreateSubscription:
         )
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) > 0  # check that the response is not empty
-        assert len(get_subscriptions_in_org(setup_dict["org"])) == 1
+        assert len(get_subscription_records_in_org(setup_dict["org"])) == 1
 
         response = setup_dict["client"].post(
             reverse("subscription-add"),
@@ -232,7 +234,7 @@ class TestCreateSubscription:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert len(response.data) > 0  # check that the response is not empty
-        assert len(get_subscriptions_in_org(setup_dict["org"])) == 1
+        assert len(get_subscription_records_in_org(setup_dict["org"])) == 1
 
 
 @pytest.mark.django_db(transaction=True)
