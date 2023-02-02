@@ -8,6 +8,9 @@ import pytz
 import stripe
 from django.conf import settings
 from django.db.models import F, Prefetch, Q
+from rest_framework import serializers, status
+from rest_framework.response import Response
+
 from metering_billing.exceptions.exceptions import ExternalConnectionInvalid
 from metering_billing.serializers.payment_provider_serializers import (
     PaymentProviderPostResponseSerializer,
@@ -19,8 +22,6 @@ from metering_billing.utils.enums import (
     PAYMENT_PROVIDERS,
     PLAN_STATUS,
 )
-from rest_framework import serializers, status
-from rest_framework.response import Response
 
 logger = logging.getLogger("django.server")
 
@@ -195,16 +196,16 @@ class StripeConnector(PaymentProvider):
                     organization=organization,
                 ).first()
                 if customer:  # customer exists in system already
-                    cur_pp_dict = customer.integrations.get(
-                        PAYMENT_PROVIDERS.STRIPE, {}
-                    )
+                    integrations_dict = customer.integrations
+                    cur_pp_dict = integrations_dict.get(PAYMENT_PROVIDERS.STRIPE, {})
                     cur_pp_dict["id"] = stripe_id
                     cur_pp_dict["email"] = stripe_email
                     cur_pp_dict["metadata"] = stripe_metadata
                     cur_pp_dict["name"] = stripe_name
                     cur_pp_dict["currency"] = stripe_currency
                     cur_pp_dict["payment_methods"] = stripe_payment_methods
-                    customer.integrations[PAYMENT_PROVIDERS.STRIPE] = cur_pp_dict
+                    integrations_dict[PAYMENT_PROVIDERS.STRIPE] = cur_pp_dict
+                    customer.integrations = integrations_dict
                     customer.payment_provider = PAYMENT_PROVIDERS.STRIPE
                     customer.save()
                 else:
