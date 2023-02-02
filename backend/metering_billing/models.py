@@ -1180,15 +1180,15 @@ class UsageRevenueSummary(TypedDict):
 
 class PriceTier(models.Model):
     class PriceTierType(models.IntegerChoices):
-        FLAT = (1, _("Flat"))
-        PER_UNIT = (2, _("Per Unit"))
-        FREE = (3, _("Free"))
+        FLAT = (1, _("flat"))
+        PER_UNIT = (2, _("per_unit"))
+        FREE = (3, _("free"))
 
     class BatchRoundingType(models.IntegerChoices):
-        ROUND_UP = (1, _("Round Up"))
-        ROUND_DOWN = (2, _("Round Down"))
-        ROUND_NEAREST = (3, _("Round Nearest"))
-        NO_ROUNDING = (4, _("No Rounding"))
+        ROUND_UP = (1, _("round_up"))
+        ROUND_DOWN = (2, _("round_down"))
+        ROUND_NEAREST = (3, _("round_nearest"))
+        NO_ROUNDING = (4, _("no_rounding"))
 
     organization = models.ForeignKey(
         "Organization", on_delete=models.CASCADE, related_name="price_tiers", null=True
@@ -1389,10 +1389,10 @@ class Feature(models.Model):
 
 class Invoice(models.Model):
     class PaymentStatus(models.IntegerChoices):
-        DRAFT = (1, _("Draft"))
-        VOIDED = (2, _("Voided"))
-        PAID = (3, _("Paid"))
-        UNPAID = (4, _("Unpaid"))
+        DRAFT = (1, _("draft"))
+        VOIDED = (2, _("voided"))
+        PAID = (3, _("paid"))
+        UNPAID = (4, _("unpaid"))
 
     cost_due = models.DecimalField(
         decimal_places=10,

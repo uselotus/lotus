@@ -195,7 +195,7 @@ class WEBHOOK_TRIGGER_EVENTS(models.TextChoices):
 class FLAT_FEE_BEHAVIOR(models.TextChoices):
     REFUND = ("refund", _("Refund"))
     PRORATE = ("prorate", _("Prorate"))
-    CHARGE_FULL = ("charge_full", _("Charge Full"))
+    CHARGE_FULL = ("full", _("Charge Full"))
 
 
 class USAGE_BEHAVIOR(models.TextChoices):

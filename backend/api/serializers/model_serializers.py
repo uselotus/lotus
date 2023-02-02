@@ -1,7 +1,7 @@
 import datetime
 import re
 from decimal import Decimal
-from typing import Literal, Optional, Union
+from typing import Literal, Union
 
 from django.conf import settings
 from django.db.models import Sum
@@ -51,7 +51,6 @@ from metering_billing.serializers.serializer_utils import (
 )
 from metering_billing.utils import convert_to_date, now_utc
 from metering_billing.utils.enums import (
-    BATCH_ROUNDING_TYPE,
     CATEGORICAL_FILTER_OPERATORS,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     FLAT_FEE_BEHAVIOR,
@@ -59,7 +58,6 @@ from metering_billing.utils.enums import (
     INVOICE_STATUS_ENUM,
     INVOICING_BEHAVIOR,
     PAYMENT_PROVIDERS,
-    PRICE_TIER_TYPE,
     SUBSCRIPTION_STATUS,
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
@@ -268,7 +266,9 @@ class LightweightAddonSerializer(serializers.ModelSerializer):
             return "usage_based"
         return "flat"
 
-    def get_billing_frequency(self, obj) -> Literal["one_time", "recurring"]:
+    def get_billing_frequency(
+        self, obj
+    ) -> serializers.ChoiceField(choices=AddOnSpecification.BillingFrequency.labels):
         return obj.addon_spec.get_billing_frequency_display()
 
 
@@ -463,16 +463,8 @@ class InvoiceSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializ
 
     def get_payment_status(
         self, obj
-    ) -> Literal[INVOICE_STATUS_ENUM.PAID, INVOICE_STATUS_ENUM.UNPAID,]:
-        ps = obj.payment_status
-        if ps == Invoice.PaymentStatus.PAID:
-            return INVOICE_STATUS_ENUM.PAID
-        elif ps == Invoice.PaymentStatus.UNPAID:
-            return INVOICE_STATUS_ENUM.UNPAID
-        elif ps == Invoice.PaymentStatus.VOIDED:
-            return INVOICE_STATUS_ENUM.VOIDED
-        elif ps == Invoice.PaymentStatus.DRAFT:
-            return INVOICE_STATUS_ENUM.DRAFT
+    ) -> serializers.ChoiceField(choices=Invoice.PaymentStatus.labels):
+        return obj.get_payment_status_display()
 
     def get_start_date(self, obj) -> datetime.date:
         seq = [
@@ -856,41 +848,32 @@ class PriceTierSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerial
             },
         }
 
+    cost_per_batch = serializers.DecimalField(
+        max_digits=20, decimal_places=10, min_value=0, allow_null=True
+    )
+    metric_units_per_batch = serializers.DecimalField(
+        max_digits=20, decimal_places=10, min_value=0, allow_null=True
+    )
+    range_start = serializers.DecimalField(
+        max_digits=20, decimal_places=10, min_value=0
+    )
+    range_end = serializers.DecimalField(
+        max_digits=20, decimal_places=10, min_value=0, allow_null=True
+    )
     type = serializers.SerializerMethodField()
     batch_rounding_type = serializers.SerializerMethodField()
 
     def get_type(
         self, obj
-    ) -> Literal[PRICE_TIER_TYPE.FLAT, PRICE_TIER_TYPE.PER_UNIT, PRICE_TIER_TYPE.FREE]:
-        if obj.type == PriceTier.PriceTierType.FLAT:
-            return PRICE_TIER_TYPE.FLAT
-        elif obj.type == PriceTier.PriceTierType.PER_UNIT:
-            return PRICE_TIER_TYPE.PER_UNIT
-        elif obj.type == PriceTier.PriceTierType.FREE:
-            return PRICE_TIER_TYPE.FREE
-        else:
-            raise ValueError("Invalid price tier type")
+    ) -> serializers.ChoiceField(choices=PriceTier.PriceTierType.labels):
+        return obj.get_type_display()
 
     def get_batch_rounding_type(
         self, obj
-    ) -> Optional[
-        Literal[
-            BATCH_ROUNDING_TYPE.ROUND_UP,
-            BATCH_ROUNDING_TYPE.ROUND_DOWN,
-            BATCH_ROUNDING_TYPE.ROUND_NEAREST,
-            BATCH_ROUNDING_TYPE.NO_ROUNDING,
-        ]
-    ]:
-        if obj.batch_rounding_type == PriceTier.BatchRoundingType.ROUND_UP:
-            return BATCH_ROUNDING_TYPE.ROUND_UP
-        elif obj.batch_rounding_type == PriceTier.BatchRoundingType.ROUND_DOWN:
-            return BATCH_ROUNDING_TYPE.ROUND_DOWN
-        elif obj.batch_rounding_type == PriceTier.BatchRoundingType.ROUND_NEAREST:
-            return BATCH_ROUNDING_TYPE.ROUND_NEAREST
-        elif obj.batch_rounding_type == PriceTier.BatchRoundingType.NO_ROUNDING:
-            return BATCH_ROUNDING_TYPE.NO_ROUNDING
-        else:
-            return None
+    ) -> serializers.ChoiceField(
+        choices=PriceTier.BatchRoundingType.labels, allow_null=True
+    ):
+        return obj.get_batch_rounding_type_display()
 
 
 class PlanComponentSerializer(
@@ -956,10 +939,14 @@ class RecurringChargeSerializer(
     charge_timing = serializers.SerializerMethodField()
     charge_behavior = serializers.SerializerMethodField()
 
-    def get_charge_timing(self, obj) -> Literal["in_advance", "in_arrears"]:
+    def get_charge_timing(
+        self, obj
+    ) -> serializers.ChoiceField(choices=RecurringCharge.ChargeTimingType.labels):
         return obj.get_charge_timing_display()
 
-    def get_charge_behavior(self, obj) -> Literal["fixed", "per_unit"]:
+    def get_charge_behavior(
+        self, obj
+    ) -> serializers.ChoiceField(choices=RecurringCharge.ChargeBehaviorType.labels):
         return obj.get_charge_behavior_display()
 
 
@@ -1835,18 +1822,26 @@ class AddOnSerializer(serializers.ModelSerializer):
 
     def get_invoice_when(
         self, obj
-    ) -> Literal["invoice_on_attach", "invoice_on_subscription_end",]:
+    ) -> serializers.ChoiceField(
+        choices=AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.labels
+    ):
         return obj.addon_spec.get_flat_fee_invoicing_behavior_on_attach_display()
 
-    def get_addon_type(self, obj) -> Literal["flat", "usage_based"]:
+    def get_addon_type(self, obj) -> Literal["usage_based", "flat"]:
         if obj.display_version.plan_components.all().count() > 0:
             return "usage_based"
         return "flat"
 
-    def get_billing_frequency(self, obj) -> Literal["one_time", "recurring"]:
+    def get_billing_frequency(
+        self, obj
+    ) -> serializers.ChoiceField(choices=AddOnSpecification.BillingFrequency.labels):
         return obj.addon_spec.get_billing_frequency_display()
 
-    def get_recurring_flat_fee_timing(self, obj) -> Literal["in_advance", "in_arrears"]:
+    def get_recurring_flat_fee_timing(
+        self, obj
+    ) -> serializers.ChoiceField(
+        choices=AddOnSpecification.RecurringFlatFeeTiming.labels
+    ):
         return obj.addon_spec.get_recurring_flat_fee_timing_display()
 
     def get_active_instances(self, obj) -> int:
