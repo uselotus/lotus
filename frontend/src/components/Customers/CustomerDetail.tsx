@@ -70,7 +70,7 @@ function CustomerDetail() {
         },
       }
     );
-  console.log(data);
+
   const createSubscriptionMutation = useMutation(
     (post: CreateSubscriptionType) => Customer.createSubscription(post),
     {

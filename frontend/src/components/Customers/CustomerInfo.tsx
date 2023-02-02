@@ -194,8 +194,8 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col">
-      <div className="grid gap-12 grid-cols-1   md:grid-cols-3">
+    <div className="flex mx-10 flex-col">
+      <div className="grid gap-16 grid-cols-1   md:grid-cols-3">
         <div className="col-span-2">
           <CustomerCard
             className={`overflow-x-clip ${
@@ -232,7 +232,6 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
               </div>
               <Divider />
             </CustomerCard.Heading>
-            {/* REMOVE THIS GAP WHEN YOU NO LONGER RENDER A MODAL */}
             <CustomerCard.Container className="grid gap-72  items-center grid-cols-1 md:grid-cols-2">
               <CustomerCard.Block className="text-sm justify-between w-full">
                 <CustomerCard.Item>

@@ -7,7 +7,6 @@ import {
   Typography,
   Select,
   Modal,
-  Radio,
   Input,
 } from "antd";
 import type { DefaultOptionType } from "antd/es/cascader";
@@ -81,7 +80,11 @@ interface ChangeOption {
   label: string;
   disabled?: boolean;
 }
-
+const dropDownOptions = ["Switch Plan", "Attach Add-On", "Cancel Subscription"];
+const subscriptionCancellationOptions = [
+  { name: "Cancel and Bill  Now", type: "bill_now" },
+  { name: "Cancel Renewal", type: "remove_renewal" },
+];
 const SubscriptionView: FC<Props> = ({
   customer_id,
   subscriptions,
@@ -115,15 +118,7 @@ const SubscriptionView: FC<Props> = ({
   const [idtoPlan, setIDtoPlan] = useState<{ [key: string]: PlanType }>({});
   const [planList, setPlanList] =
     useState<{ label: string; value: string }[]>();
-  const dropDownOptions = [
-    "Switch Plan",
-    "Attach Add-On",
-    "Cancel Subscription",
-  ];
-  const subscriptionCancellationOptions = [
-    { name: "Cancel and Bill  Now", type: "bill_now" },
-    { name: "Cancel Renewal", type: "remove_renewal" },
-  ];
+
   const queryClient = useQueryClient();
 
   const selectPlan = (plan_id: string) => {
@@ -161,19 +156,6 @@ const SubscriptionView: FC<Props> = ({
       },
     }
   );
-  const cancelAndBill = (plan_id, subscription_filters) => {
-    const query_params: CancelSubscriptionQueryParams = {
-      plan_id,
-      subscription_filters,
-      customer_id,
-    };
-    const body: CancelSubscriptionBody = {
-      usage_behavior: "bill_full",
-      flat_fee_behavior: "prorate",
-      invoicing_behavior: "invoice_now",
-    };
-    onCancel(body, query_params);
-  };
 
   const cancelAndDontBill = (plan_id, subscription_filters) => {
     const query_params: CancelSubscriptionQueryParams = {
@@ -187,6 +169,7 @@ const SubscriptionView: FC<Props> = ({
       invoicing_behavior: "invoice_now",
     };
     onCancel(body, query_params);
+    setShowModal(false);
   };
 
   const turnAutoRenewOff = (plan_id, subscription_filters) => {
@@ -200,6 +183,7 @@ const SubscriptionView: FC<Props> = ({
         turn_off_auto_renew: true,
       }
     );
+    setShowModal(false);
   };
 
   useEffect(() => {
@@ -237,13 +221,14 @@ const SubscriptionView: FC<Props> = ({
             key={options.type}
             className="flex items-center justify-center gap-2"
           >
-            <Radio
+            <input
               id={options.type}
-              name="subscription cancel"
-              type="button"
+              name="subscription_cancel"
+              type="radio"
               onChange={(e) =>
                 setCancelSubType(e.target.value as typeof cancelSubType)
               }
+              value={options.type}
               defaultChecked={options.type === "bill_now"}
               className="h-8 w-8 border-gray-300 text-indigo-600 focus:ring-indigo-500"
             />
@@ -418,9 +403,9 @@ const SubscriptionView: FC<Props> = ({
   };
 
   return (
-    <div className="mt-auto">
+    <div className="mt-auto mx-10">
       <div className="flex mb-2 pb-4 pt-4 items-center justify-center">
-        <h2 className=" font-bold text-main mx-10">Active Plans</h2>
+        <h2 className="font-bold text-main mx-10">Active Plans</h2>
         <div className="ml-auto flex gap-2 max-h-[40px]">
           <Input
             placeholder="Search"
