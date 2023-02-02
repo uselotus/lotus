@@ -2,8 +2,6 @@ import uuid
 
 import posthog
 import pytest
-from model_bakery import baker
-
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     FLAT_FEE_BILLING_TYPE,
@@ -13,6 +11,7 @@ from metering_billing.utils.enums import (
     PRODUCT_STATUS,
     USAGE_BILLING_FREQUENCY,
 )
+from model_bakery import baker
 
 
 @pytest.fixture(autouse=True)
@@ -39,12 +38,12 @@ def use_dummy_cache_backend(settings):
 def turn_off_stripe_connection():
     from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 
-    sk = PAYMENT_PROVIDER_MAP["stripe"].secret_key
-    PAYMENT_PROVIDER_MAP["stripe"].secret_key = None
+    sk = PAYMENT_PROVIDER_MAP["stripe"].test_secret_key
+    PAYMENT_PROVIDER_MAP["stripe"].test_secret_key = None
 
     yield
 
-    PAYMENT_PROVIDER_MAP["stripe"].secret_key = sk
+    PAYMENT_PROVIDER_MAP["stripe"].test_secret_key = sk
 
 
 @pytest.fixture

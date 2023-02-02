@@ -63,7 +63,10 @@ SELF_HOSTED = config("SELF_HOSTED", default=False, cast=bool)
 PRODUCT_ANALYTICS_OPT_IN = config("PRODUCT_ANALYTICS_OPT_IN", default=True, cast=bool)
 PRODUCT_ANALYTICS_OPT_IN = True if not SELF_HOSTED else PRODUCT_ANALYTICS_OPT_IN
 # Stripe required
-STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
+STRIPE_LIVE_SECRET_KEY = config("STRIPE_LIVE_SECRET_KEY", default=None)
+if STRIPE_LIVE_SECRET_KEY is None:
+    STRIPE_LIVE_SECRET_KEY = config("STRIPE_SECRET_KEY", default=None)
+STRIPE_TEST_SECRET_KEY = config("STRIPE_TEST_SECRET_KEY", default=None)
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="whsec_")
 # Webhooks for Svix
 SVIX_API_KEY = config("SVIX_API_KEY", default="")
