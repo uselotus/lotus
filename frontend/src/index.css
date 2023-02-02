@@ -96,7 +96,9 @@ a {
   font-size: 26px;
   line-height: 100%;
 }
-
+.ant-modal.font-alliance > .ant-modal-content > .ant-modal-header > .ant-modal-title{
+font-size: 24px;
+}
 .ant-descriptions-header {
   margin-bottom: 0;
 }

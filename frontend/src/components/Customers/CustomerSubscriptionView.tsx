@@ -228,7 +228,10 @@ const SubscriptionView: FC<Props> = ({
       </p>
       <div className="flex items-center justify-center gap-4">
         {subscriptionCancellationOptions.map((options) => (
-          <div key={options.type} className="flex items-center justify-center gap-2">
+          <div
+            key={options.type}
+            className="flex items-center justify-center gap-2"
+          >
             <Radio
               id={options.type}
               name="subscription cancel"
@@ -581,6 +584,7 @@ const SubscriptionView: FC<Props> = ({
                 </CustomerCard.Heading>
               </CustomerCard>
               <Modal
+                className="font-alliance"
                 title={title}
                 visible={showModal}
                 cancelButtonProps={{ hidden: true }}
