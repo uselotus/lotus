@@ -72,10 +72,10 @@ def calculate_invoice():
 
     # now generate invoices and new subs
     cust_info = sub_records_to_bill.values_list("customer", "organization").distinct()
-    for cust_dict in cust_info:
-        customer = cust_dict["customer"]
-        organization = cust_dict["organization"]
-        customer_subscription_records = sub_records_to_bill.filter(customer=customer)
+    for customer_id, organization_id in cust_info:
+        customer_subscription_records = sub_records_to_bill.filter(
+            customer_id=customer_id
+        )
         # Generate the invoice
         try:
             generate_invoice(
@@ -95,8 +95,8 @@ def calculate_invoice():
         Invoice.objects.filter(
             issue_date__lt=now,
             payment_status=Invoice.PaymentStatus.DRAFT,
-            customer=customer,
-            organization=organization,
+            customer_id=customer_id,
+            organization_id=organization_id,
         ).delete()
 
 
