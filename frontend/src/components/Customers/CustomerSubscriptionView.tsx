@@ -403,7 +403,7 @@ const SubscriptionView: FC<Props> = ({
       <div className="flex mb-2 pb-4 pt-4 items-center justify-center">
         <h2 className=" font-bold text-main">Active Plans</h2>
         <div className="ml-auto flex  gap-2 max-h-[40px]">
-          <Input placeholder="Search key-value" disabled />
+          <Input placeholder="Search" disabled />
           <Button
             onClick={() => console.log("")}
             disabled
@@ -428,17 +428,19 @@ const SubscriptionView: FC<Props> = ({
                   <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
                     <div>
                       <div> {subPlan.billing_plan.plan_name}</div>
-                      {subFilters(index)?.length > 0 && (
-                        <p>
-                          {subFilters(index)!.map((filter) => {
-                            return (
-                              <span key={filter.property_name}>
-                                {filter.property_name} : {filter.value}
-                              </span>
-                            );
-                          })}
-                        </p>
-                      )}
+                      {subFilters(index) ? (
+                        subFilters(index)!.length > 0 ? (
+                          <p>
+                            {subFilters(index)!.map((filter) => {
+                              return (
+                                <span key={filter.property_name}>
+                                  {filter.property_name}: {filter.value}
+                                </span>
+                              );
+                            })}
+                          </p>
+                        ) : null
+                      ) : null}
                     </div>
                   </Typography.Title>
                   <Divider />

@@ -426,7 +426,7 @@ def generate_invoice_pdf(
                 else line_item["quantity"],
                 line_item["subtotal"].normalize(),
                 currency.symbol,
-                line_item["billing_type"],
+                line_item["billing_type"] or "",
                 line_item_start_y,
             )
 

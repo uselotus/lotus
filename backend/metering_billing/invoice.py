@@ -6,7 +6,6 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from django.db.models.query import QuerySet
-
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
@@ -138,10 +137,7 @@ def calculate_subscription_record_usage_fees(subscription_record, invoice):
 
     billing_plan = subscription_record.billing_plan
     # only calculate this for parent plans! addons should never calculate
-    if (
-        subscription_record.invoice_usage_charges
-        and billing_plan.plan.addon_spec is None
-    ):
+    if subscription_record.invoice_usage_charges:
         for plan_component in billing_plan.plan_components.all():
             usg_rev = plan_component.calculate_total_revenue(subscription_record)
             qty = usg_rev["usage_qty"]
@@ -280,7 +276,7 @@ def check_subscription_record_renews(subscription_record, issue_date):
 
 
 def calculate_subscription_record_flat_fees(subscription_record, invoice):
-    from metering_billing.models import InvoiceLineItem
+    from metering_billing.models import AddOnSpecification, InvoiceLineItem
 
     amt_already_billed = subscription_record.amount_already_invoiced()
     billing_plan = subscription_record.billing_plan
@@ -307,6 +303,22 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice):
     else:
         billing_plan_name = billing_plan.plan.plan_name
         billing_plan_version = billing_plan.version
+        if billing_plan.plan.addon_spec:
+            if (
+                billing_plan.plan.addon_spec.billing_frequency
+                == AddOnSpecification.BillingFrequency.ONE_TIME
+            ):
+                billing_type = INVOICE_CHARGE_TIMING_TYPE.ONE_TIME
+            else:
+                if (
+                    billing_plan.plan.addon_spec.recurring_flat_fee_timing
+                    == AddOnSpecification.RecurringFlatFeeTiming.IN_ADVANCE
+                ):
+                    billing_type = FLAT_FEE_BILLING_TYPE.IN_ADVANCE
+                else:
+                    billing_type = FLAT_FEE_BILLING_TYPE.IN_ARREARS
+        else:
+            billing_type = billing_plan.flat_fee_billing_type
         qty = subscription_record.quantity
         qty = qty if qty > 1 else None
         if flat_fee_due > 0:
@@ -316,7 +328,7 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice):
                 end_date=convert_to_datetime(end, date_behavior="max"),
                 quantity=qty,
                 subtotal=flat_fee_due,
-                billing_type=billing_plan.flat_fee_billing_type,
+                billing_type=billing_type,
                 chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE,
                 invoice=invoice,
                 associated_subscription_record=subscription_record,

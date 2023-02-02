@@ -243,7 +243,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                 </CustomerCard.Item>
                 <CustomerCard.Item>
                   <div className="font-normal text-card-text font-alliance whitespace-nowrap leading-4">
-                    Add-On ID
+                    Customer ID
                   </div>
                   <div className="flex gap-1 !text-card-grey font-menlo">
                     {" "}
