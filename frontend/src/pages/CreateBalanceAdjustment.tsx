@@ -128,7 +128,7 @@ function CreateCredit({ customerId, visible, onCancel, onSubmit }: Params) {
         >
           <div className=" grid grid-cols-2 gap-4 p-4">
             <Form.Item
-              label="Amount"
+              label="Amount Granted"
               name="amount"
               rules={[
                 {

@@ -215,7 +215,8 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
         </div>
         <Button
           type="primary"
-          className="mr-4"
+          className="hover:!bg-primary-700"
+          style={{ background: "#C3986B", borderColor: "#C3986B" }}
           size="large"
           disabled={false}
           onClick={() => setShowCreateCredit(true)}
@@ -260,7 +261,14 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
           }}
         />
       ) : (
-        <p>No Credit Items Found</p>
+        <div className="flex flex-col items-center p-4 justify-center bg-card">
+          <div className="text-lg mt-2 mb-2 font-alliance">
+            No credits have been created for this customer.
+          </div>
+          <div className="text-base Inter mt-2 mb-2">
+            Credits are used to adjust a customer's balance.
+          </div>
+        </div>
       )}
     </div>
   );
