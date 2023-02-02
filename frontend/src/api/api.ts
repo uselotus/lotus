@@ -159,7 +159,6 @@ export const Customer = {
     post: CreateSubscriptionType
   ): Promise<SubscriptionType> => requests.post("app/subscriptions/add/", post),
   updateSubscription: (
-    subscription_id: string,
     post: UpdateSubscriptionType,
     params?: {
       customer_id?: string;

@@ -231,7 +231,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
             </CustomerCard.Heading>
             {/* REMOVE THIS GAP WHEN YOU NO LONGER RENDER A MODAL */}
             <CustomerCard.Container className="grid gap-72  items-center grid-cols-1 md:grid-cols-2">
-              <CustomerCard.Block className="w-[240px] text-sm">
+              <CustomerCard.Block className="text-sm justify-between w-full">
                 <CustomerCard.Item>
                   <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
                     Name
@@ -337,7 +337,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   </div>
                 </CustomerCard.Item>
               </CustomerCard.Block>
-              <CustomerCard.Block className="w-[254px] ml-auto text-sm">
+              <CustomerCard.Block className="w-full ml-auto text-sm justify-between">
                 <CustomerCard.Item>
                   <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
                     Email

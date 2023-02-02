@@ -1,21 +1,26 @@
-import { Button, Form, Input, InputNumber , DatePicker } from "antd";
-// @ts-ignore
+import { Button, Form, Input, InputNumber, DatePicker, Modal } from "antd";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient, UseQueryResult , useQuery } from "react-query";
+import {
+  useMutation,
+  useQueryClient,
+  UseQueryResult,
+  useQuery,
+} from "react-query";
 import { toast } from "react-toastify";
 import { Credits, PricingUnits } from "../api/api";
 import { CreateCreditType } from "../types/balance-adjustment";
 import { CurrencyType } from "../types/pricing-unit-type";
 import PricingUnitDropDown from "../components/PricingUnitDropDown";
-// @ts-ignore
 import dayjs from "dayjs";
 
 type Params = {
   customerId: string;
+  onSubmit: () => void;
+  visible: boolean;
 };
 
-const CreateCredit = ({ customerId, onSubmit }) => {
+const CreateCredit = ({ customerId, onSubmit, visible }) => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
@@ -98,119 +103,126 @@ const CreateCredit = ({ customerId, onSubmit }) => {
 
   return (
     <div className=" w-8/12 my-4">
-      <Form.Provider>
-        <Form
-          form={form}
-          name="create_credit"
-          initialValues={{
-            amount: null,
-            description: "",
-            pricing_unit_code: null,
-            effective_at: dayjs(Date.now()),
-            expires_at: null,
-          }}
-          onFinish={submit}
-          autoComplete="off"
-          labelCol={{ span: 8 }}
-          wrapperCol={{ span: 16 }}
-          labelAlign="left"
-        >
-          <div className=" grid grid-cols-2 gap-4 p-4 border-2">
-            <Form.Item
-              label="Amount"
-              name="amount"
-              rules={[
-                {
-                  required: true,
-                  message: "Please enter an amount",
-                },
-              ]}
-            >
-              <InputNumber defaultValue={0} precision={2} />
-            </Form.Item>
-            <Form.Item
-              rules={[{ required: true, message: "Please Select a currency" }]}
-              name="pricing_unit_code"
-              label="Currency"
-            >
-              <PricingUnitDropDown
-                setCurrentCurrency={(value) =>
-                  form.setFieldValue("pricing_unit_code", value)
-                }
-                setCurrentSymbol={() => null}
-              />
-            </Form.Item>
-            <Form.Item name="amount_paid" label="Amount Paid">
-              <InputNumber precision={2} onChange={handleAmountPaidChange} />
-            </Form.Item>
-            <Form.Item
-              name="amount_paid_currency"
-              label="Currency"
-              rules={[validateAmountPaidCurrency]}
-            >
-              <PricingUnitDropDown
-                setCurrentCurrency={(value) => {
-                  form.setFieldValue("amount_paid_currency", value);
-                  handleAmountPaidCurrencyChange(value);
-                }}
-                setCurrentSymbol={() => null}
-              />
-            </Form.Item>
-            <Form.Item
-              valuePropName="date"
-              rules={[{ required: true, message: "Please Select a date" }]}
-              name="effective_at"
-              label="Effective At"
-            >
-              <DatePicker
-                defaultValue={dayjs(Date.now())}
-                disabledDate={disabledDate}
-                onChange={(data) =>
-                  form.setFieldValue("effective_at", dayjs(data))
-                }
-              />
-            </Form.Item>
-            <Form.Item
-              valuePropName="date"
-              name="expires_at"
-              label="Expires At"
-            >
-              <DatePicker
-                disabledDate={disabledDate}
-                onChange={(data) =>
-                  form.setFieldValue("expires_at", dayjs(data))
-                }
-              />
-            </Form.Item>
-            <Form.Item
-              label="Description"
-              name="description"
-              className="col-span-2"
-            >
-              <Input type="textarea" placeholder="Description for adjustment" />
-            </Form.Item>
-            <div>
-              {amount_paid > 0 && amount_paid !== null ? (
-                <div className="warning-text mb-2 text-darkgold">
-                  Warning: An invoice will be generated for the amount paid of{" "}
-                  {amount_paid} {amount_paid_currency}.
-                </div>
-              ) : null}
-
-              <Form.Item>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  className="mr-4"
-                  loading={mutation.isLoading}
-                >
-                  Submit
-                </Button>
+      <Modal title="Create Credit" visible={true}>
+        <Form.Provider>
+          <Form
+            form={form}
+            name="create_credit"
+            initialValues={{
+              amount: null,
+              description: "",
+              pricing_unit_code: null,
+              effective_at: dayjs(Date.now()),
+              expires_at: null,
+            }}
+            onFinish={submit}
+            autoComplete="off"
+            labelCol={{ span: 8 }}
+            wrapperCol={{ span: 16 }}
+            labelAlign="left"
+          >
+            <div className=" grid grid-cols-2 gap-4 p-4 border-2">
+              <Form.Item
+                label="Amount"
+                name="amount"
+                rules={[
+                  {
+                    required: true,
+                    message: "Please enter an amount",
+                  },
+                ]}
+              >
+                <InputNumber defaultValue={0} precision={2} />
               </Form.Item>
+              <Form.Item
+                rules={[
+                  { required: true, message: "Please Select a currency" },
+                ]}
+                name="pricing_unit_code"
+                label="Currency"
+              >
+                <PricingUnitDropDown
+                  setCurrentCurrency={(value) =>
+                    form.setFieldValue("pricing_unit_code", value)
+                  }
+                  setCurrentSymbol={() => null}
+                />
+              </Form.Item>
+              <Form.Item name="amount_paid" label="Amount Paid">
+                <InputNumber precision={2} onChange={handleAmountPaidChange} />
+              </Form.Item>
+              <Form.Item
+                name="amount_paid_currency"
+                label="Currency"
+                rules={[validateAmountPaidCurrency]}
+              >
+                <PricingUnitDropDown
+                  setCurrentCurrency={(value) => {
+                    form.setFieldValue("amount_paid_currency", value);
+                    handleAmountPaidCurrencyChange(value);
+                  }}
+                  setCurrentSymbol={() => null}
+                />
+              </Form.Item>
+              <Form.Item
+                valuePropName="date"
+                rules={[{ required: true, message: "Please Select a date" }]}
+                name="effective_at"
+                label="Effective At"
+              >
+                <DatePicker
+                  defaultValue={dayjs(Date.now())}
+                  disabledDate={disabledDate}
+                  onChange={(data) =>
+                    form.setFieldValue("effective_at", dayjs(data))
+                  }
+                />
+              </Form.Item>
+              <Form.Item
+                valuePropName="date"
+                name="expires_at"
+                label="Expires At"
+              >
+                <DatePicker
+                  disabledDate={disabledDate}
+                  onChange={(data) =>
+                    form.setFieldValue("expires_at", dayjs(data))
+                  }
+                />
+              </Form.Item>
+              <Form.Item
+                label="Description"
+                name="description"
+                className="col-span-2"
+              >
+                <Input
+                  type="textarea"
+                  placeholder="Description for adjustment"
+                />
+              </Form.Item>
+              <div>
+                {amount_paid > 0 && amount_paid !== null ? (
+                  <div className="warning-text mb-2 text-darkgold">
+                    Warning: An invoice will be generated for the amount paid of{" "}
+                    {amount_paid} {amount_paid_currency}.
+                  </div>
+                ) : null}
+
+                <Form.Item>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    className="mr-4"
+                    loading={mutation.isLoading}
+                  >
+                    Submit
+                  </Button>
+                </Form.Item>
+              </div>
             </div>
-          </div>
-        </Form>
-      </Form.Provider>
+          </Form>
+        </Form.Provider>
+      </Modal>
     </div>
   );
 };

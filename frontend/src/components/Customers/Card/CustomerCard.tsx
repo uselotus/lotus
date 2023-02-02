@@ -10,7 +10,7 @@ const CustomerCard = ({
   onClick,
 }: PropsWithChildren<CardProps>) => (
   <div
-    className={`min-h-[200px]  min-w-[246px] p-6 cursor-pointer  rounded-sm bg-card  shadow-lg ${
+    className={`min-h-[200px]  min-w-[246px] p-6 cursor-pointer  rounded-sm bg-card  ${
       className && className
     }`}
     onClick={onClick}

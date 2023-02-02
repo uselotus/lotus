@@ -3,12 +3,12 @@ import { PlanType } from "../../types/plan-type";
 import {
   Form,
   Button,
-  Menu,
   InputNumber,
   Cascader,
   Typography,
   Select,
   Modal,
+  Radio,
   Input,
 } from "antd";
 import type { DefaultOptionType } from "antd/es/cascader";
@@ -226,10 +226,10 @@ const SubscriptionView: FC<Props> = ({
     <div className="flex gap-4">
       {subscriptionCancellationOptions.map((options) => (
         <div key={options.type} className="flex items-center gap-2">
-          <input
+          <Radio
             id={options.type}
             name="subscription cancel"
-            type="radio"
+            type="button"
             onChange={(e) =>
               setCancelSubType(e.target.value as typeof cancelSubType)
             }
@@ -292,8 +292,7 @@ const SubscriptionView: FC<Props> = ({
     }, [] as PlanOption[]);
 
   const onChange = (
-    value: any,
-    selectedOptions: PlanOption[],
+    value: string,
     plan_id: string,
     subscription_filters: object[]
   ) => {
@@ -304,7 +303,7 @@ const SubscriptionView: FC<Props> = ({
         subscription_filters: subscription_filters,
       },
       {
-        replace_plan_id: selectedOptions[0].value as string,
+        replace_plan_id: value as string,
       }
     );
   };
@@ -312,14 +311,16 @@ const SubscriptionView: FC<Props> = ({
   const switchMenu = (plan_id: string, subscription_filters: object[]) => (
     <Cascader
       options={plansWithSwitchOptions(plan_id)}
-      onChange={(value, selectedOptions) =>
-        onChange(value, selectedOptions, plan_id, subscription_filters)
+      onChange={
+        (value) => console.log(value[0])
+        // onChange(value[0], plan_id, subscription_filters)
       }
       expandTrigger="hover"
       placeholder="Please select"
       showSearch={{ filter }}
       displayRender={displayRender}
       changeOnSelect
+      style={{ width: "80%" }}
     />
   );
 
@@ -402,7 +403,7 @@ const SubscriptionView: FC<Props> = ({
     <div className="mt-auto">
       <div className="flex mb-2 pb-4 pt-4 items-center justify-center">
         <h2 className=" font-bold text-main">Active Plans</h2>
-        <div className="ml-auto flex  gap-2 max-h-[40px]">
+        <div className="ml-auto flex gap-2 max-h-[40px]">
           <Input placeholder="Search" disabled />
           <Button
             onClick={() => console.log("")}
@@ -584,6 +585,18 @@ const SubscriptionView: FC<Props> = ({
                         <Button key="back" onClick={() => setShowModal(false)}>
                           Cancel
                         </Button>,
+                        <Button
+                          key="back"
+                          type="primary"
+                          className="hover:!bg-primary-700 "
+                          style={{
+                            background: "#C3986B",
+                            borderColor: "#C3986B",
+                          }}
+                          onClick={() => false}
+                        >
+                          Switch Plan
+                        </Button>,
                       ]
                     : indexRef.current === 1
                     ? [
@@ -607,7 +620,7 @@ const SubscriptionView: FC<Props> = ({
                       ]
                     : [
                         <Button key="back" onClick={() => setShowModal(false)}>
-                          Exit
+                          Back
                         </Button>,
                         <Button
                           key="submit"
@@ -625,7 +638,7 @@ const SubscriptionView: FC<Props> = ({
                                 );
                           }}
                         >
-                          Cancel
+                          Cancel Plan
                         </Button>,
                       ]
                 }

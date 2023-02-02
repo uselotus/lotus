@@ -129,9 +129,7 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
                 overlay={
                   <Menu>
                     <Menu.Item key="1" onClick={() => getPdfUrl(record)}>
-                      <div className="archiveLabel">
-                        Download Invoice Information
-                      </div>
+                      <div className="archiveLabel">Download Invoice PDF</div>
                     </Menu.Item>
                     <Menu.Item
                       key="2"
