@@ -1,8 +1,8 @@
 import React, { FC, useRef } from "react";
 import { Typography } from "antd";
 import { useMutation, useQueryClient } from "react-query";
-import { Plan } from "../../../api/api";
 import { useNavigate } from "react-router-dom";
+import { Plan } from "../../../api/api";
 import CopyText from "../../base/CopytoClipboard";
 import createShortenedText from "../../../helpers/createShortenedText";
 import capitalize from "../../../helpers/capitalize";
@@ -52,9 +52,9 @@ const AddOnsCard: FC<AddOnCardProps> = ({ add_on }) => {
   //   );
 
   const goToAddOnDetail = () => {
-    navigate("/add-ons/" + add_on.addon_id);
+    navigate(`/add-ons/${  add_on.addon_id}`);
   };
-  
+
   return (
     <div
       className="min-h-[200px]  min-w-[246px] p-6 cursor-pointer  rounded-sm bg-card  shadow-lg hover:shadow-neutral-400"

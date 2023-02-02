@@ -12,9 +12,9 @@ import {
 // @ts-ignore
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import UsageComponentForm from "../components/Plans/UsageComponentForm";
 import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
+import UsageComponentForm from "../components/Plans/UsageComponentForm";
 
 import {
   CreateComponent,
@@ -46,7 +46,7 @@ const durationConversion = {
   yearly: "Year",
 };
 
-const CreatePlan = () => {
+function CreatePlan() {
   const [componentVisible, setcomponentVisible] = useState<boolean>();
   const [allPlans, setAllPlans] = useState<PlanType[]>([]);
   const [allCurrencies, setAllCurrencies] = useState<CurrencyType[]>([]);
@@ -246,7 +246,7 @@ const CreatePlan = () => {
               Math.abs(values.price_adjustment_amount) * -1;
           }
 
-          initialPlanVersion["price_adjustment"] = {
+          initialPlanVersion.price_adjustment = {
             price_adjustment_type: values.price_adjustment_type,
             price_adjustment_amount: values.price_adjustment_amount,
           };
@@ -254,15 +254,15 @@ const CreatePlan = () => {
 
         if (values.align_plan == "calendar_aligned") {
           if (values.plan_duration === "yearly") {
-            initialPlanVersion["day_anchor"] = 1;
-            initialPlanVersion["month_anchor"] = 1;
+            initialPlanVersion.day_anchor = 1;
+            initialPlanVersion.month_anchor = 1;
           }
           if (values.plan_duration === "monthly") {
-            initialPlanVersion["day_anchor"] = 1;
+            initialPlanVersion.day_anchor = 1;
           }
           if (values.plan_duration === "quarterly") {
-            initialPlanVersion["day_anchor"] = 1;
-            initialPlanVersion["month_anchor"] = 1;
+            initialPlanVersion.day_anchor = 1;
+            initialPlanVersion.month_anchor = 1;
           }
         }
         const plan: CreatePlanType = {
@@ -671,6 +671,6 @@ const CreatePlan = () => {
       </Form.Provider>
     </PageLayout>
   );
-};
+}
 
 export default CreatePlan;

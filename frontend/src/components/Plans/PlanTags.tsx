@@ -6,7 +6,7 @@ interface PlanTagsProps {
   tags: PlanType["tags"];
 }
 
-const PlansTags = ({ tags }: PlanTagsProps) => {
+function PlansTags({ tags }: PlanTagsProps) {
   return (
     <>
       {!tags.length ? (
@@ -21,7 +21,7 @@ const PlansTags = ({ tags }: PlanTagsProps) => {
                 {tags.slice(0, 2).map((tag) => (
                   <span className="flex gap-2" key={tag.tag_name}>
                     <Badge
-                      className={`text-[12px] px-[5px] py-0.5 bg-white text-black whitespace-nowrap`}
+                      className="text-[12px] px-[5px] py-0.5 bg-white text-black whitespace-nowrap"
                     >
                       <div className="flex gap-2 items-center">
                         <Badge.Dot className={`text-${tag.tag_hex}`} />
@@ -41,7 +41,7 @@ const PlansTags = ({ tags }: PlanTagsProps) => {
                 <span className="flex gap-2">
                   <span className="flex gap-2" key={tag.tag_name}>
                     <Badge
-                      className={`text-[12px] px-[5px] py-2 bg-white text-black whitespace-nowrap`}
+                      className="text-[12px] px-[5px] py-2 bg-white text-black whitespace-nowrap"
                     >
                       <div className="flex gap-2 items-center">
                         <Badge.Dot fill={tag.tag_hex} />
@@ -62,5 +62,5 @@ const PlansTags = ({ tags }: PlanTagsProps) => {
       )}
     </>
   );
-};
+}
 export default PlansTags;

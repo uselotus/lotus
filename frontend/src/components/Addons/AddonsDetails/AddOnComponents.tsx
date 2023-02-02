@@ -8,6 +8,7 @@ import { AlertType, CreateAlertType } from "../../../types/alert-type";
 import { Component, Tier } from "../../../types/plan-type";
 import Select from "../../base/Select/Select";
 import { CurrencyType } from "../../../types/pricing-unit-type";
+
 interface AddOnsComponentsProps {
   components?: Component[];
   plan: AddonType;
@@ -22,9 +23,7 @@ const findAlertForComponent = (
   if (alerts === undefined) {
     return undefined;
   }
-  return alerts.find((alert) => {
-    return alert.metric.metric_id === component.billable_metric.metric_id;
-  });
+  return alerts.find((alert) => alert.metric.metric_id === component.billable_metric.metric_id);
 };
 
 const renderCost = (record: Tier, pricing_unit: CurrencyType) => {
@@ -46,7 +45,7 @@ const renderCost = (record: Tier, pricing_unit: CurrencyType) => {
       );
 
     case "free":
-      return <span>{"Free"}</span>;
+      return <span>Free</span>;
   }
 };
 const AddOnComponents: FC<AddOnsComponentsProps> = ({
@@ -92,7 +91,7 @@ const AddOnComponents: FC<AddOnsComponentsProps> = ({
 
   const deleteAlert = (usage_alert_id: string) => {
     deleteAlertMutation.mutate({
-      usage_alert_id: usage_alert_id,
+      usage_alert_id,
     });
   };
 
@@ -114,18 +113,18 @@ const AddOnComponents: FC<AddOnsComponentsProps> = ({
     }
     if (isCreateAlert) {
       createAlertMutation.mutate({
-        plan_version_id: plan_version_id,
+        plan_version_id,
         metric_id: component.billable_metric.metric_id,
         threshold: alertThreshold,
       });
     } else {
       if (usage_alert_id !== undefined) {
         deleteAlertMutation.mutate({
-          usage_alert_id: usage_alert_id,
+          usage_alert_id,
         });
       }
       createAlertMutation.mutate({
-        plan_version_id: plan_version_id,
+        plan_version_id,
         metric_id: component.billable_metric.metric_id,
         threshold: alertThreshold,
       });
@@ -290,7 +289,7 @@ const AddOnComponents: FC<AddOnsComponentsProps> = ({
               <div className="flex flex-col justify-center items-center gap-4">
                 {currentComponent?.billable_metric.metric_name} reaches:{"  "}
                 <InputNumber
-                  type={"number"}
+                  type="number"
                   pattern="[0-9]+"
                   onChange={(value) => {
                     if (value && typeof value === "number") {

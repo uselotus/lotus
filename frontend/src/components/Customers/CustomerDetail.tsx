@@ -1,5 +1,14 @@
 import React, { useState } from "react";
 import { Form, Tabs, Modal, Button } from "antd";
+import {
+  useMutation,
+  useQueryClient,
+  useQuery,
+  UseQueryResult,
+} from "react-query";
+import dayjs from "dayjs";
+import { toast } from "react-toastify";
+import { useNavigate, useParams } from "react-router-dom";
 import { PlanType } from "../../types/plan-type";
 import {
   CreateSubscriptionType,
@@ -11,12 +20,6 @@ import {
 import LoadingSpinner from "../LoadingSpinner";
 import { Customer, Plan, PricingUnits } from "../../api/api";
 import SubscriptionView from "./CustomerSubscriptionView";
-import {
-  useMutation,
-  useQueryClient,
-  useQuery,
-  UseQueryResult,
-} from "react-query";
 import { CustomerType, DetailPlan } from "../../types/customer-type";
 import "./CustomerDetail.css";
 import CustomerInvoiceView from "./CustomerInvoices";
@@ -24,12 +27,10 @@ import CustomerBalancedAdjustments from "./CustomerBalancedAdjustments";
 import { CustomerCostType } from "../../types/revenue-type";
 import CustomerInfoView from "./CustomerInfo";
 
-import dayjs from "dayjs";
-import { toast } from "react-toastify";
 import CopyText from "../base/CopytoClipboard";
 import { CurrencyType } from "../../types/pricing-unit-type";
-import { useNavigate, useParams } from "react-router-dom";
 import { PageLayout } from "../base/PageLayout";
+
 type CustomerDetailsParams = {
   customerId: string;
 };
@@ -44,10 +45,7 @@ function CustomerDetail() {
   const [endDate, setEndDate] = useState<string>(dayjs().format("YYYY-MM-DD"));
   const { data: plans }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
     ["plan_list"],
-    () =>
-      Plan.getPlans().then((res) => {
-        return res;
-      })
+    () => Plan.getPlans().then((res) => res)
   );
 
   const [customerSubscriptions, setCustomerSubscriptions] = useState<
@@ -55,16 +53,10 @@ function CustomerDetail() {
   >([]);
   const { data: pricingUnits }: UseQueryResult<CurrencyType[]> = useQuery<
     CurrencyType[]
-  >(["pricing_unit_list"], () =>
-    PricingUnits.list().then((res) => {
-      return res;
-    })
-  );
+  >(["pricing_unit_list"], () => PricingUnits.list().then((res) => res));
   const { data, isLoading, refetch }: UseQueryResult<CustomerType> =
     useQuery<CustomerType>(["customer_detail", customer_id], () =>
-      Customer.getCustomerDetail(customer_id as string).then((res) => {
-        return res;
-      })
+      Customer.getCustomerDetail(customer_id as string).then((res) => res)
     );
 
   const { data: cost_analysis, isLoading: cost_analysis_loading } =
@@ -152,7 +144,7 @@ function CustomerDetail() {
   ) => {
     cancelSubscriptionMutation.mutate({
       post: props,
-      params: params,
+      params,
     });
   };
 
@@ -161,7 +153,7 @@ function CustomerDetail() {
     props: ChangeSubscriptionPlanType
   ) => {
     changeSubscriptionPlanMutation.mutate({
-      params: params,
+      params,
       post: props,
     });
   };
@@ -171,7 +163,7 @@ function CustomerDetail() {
     props: TurnSubscriptionAutoRenewOffType
   ) => {
     turnSubscriptionAutoRenewOffMutation.mutate({
-      params: params,
+      params,
       post: props,
     });
   };
@@ -229,7 +221,9 @@ function CustomerDetail() {
                 onDateChange={refetchGraphData}
               />
             ) : (
-              <h2 className="h-192"> No Data </h2>
+              <div className="min-h-[60%]">
+                <LoadingSpinner />
+              </div>
             )}
           </Tabs.TabPane>
           <Tabs.TabPane tab="Subscriptions" key="subscriptions">
@@ -246,7 +240,7 @@ function CustomerDetail() {
                 />
               </div>
             ) : (
-              <div className="h-192"></div>
+              <div className="h-192" />
             )}
           </Tabs.TabPane>
           <Tabs.TabPane tab="Invoices" key="invoices">

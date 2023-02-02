@@ -1,19 +1,19 @@
 import { Table, Button, Select, Dropdown, Menu, Tag } from "antd";
 import React, { FC, useState, useEffect } from "react";
-import { CreditType, DrawdownType } from "../../types/balance-adjustment";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
-import PricingUnitDropDown from "../PricingUnitDropDown";
 import {
   useMutation,
   useQuery,
   useQueryClient,
   UseQueryResult,
 } from "react-query";
-import { Credits } from "../../api/api";
 import { MoreOutlined } from "@ant-design/icons";
 import { toast } from "react-toastify";
 import { ColumnsType } from "antd/es/table";
+import { Credits } from "../../api/api";
+import PricingUnitDropDown from "../PricingUnitDropDown";
+import { CreditType, DrawdownType } from "../../types/balance-adjustment";
 import CreateCredit from "../../pages/CreateBalanceAdjustment";
 
 interface Props {
@@ -47,15 +47,12 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
   >(["balance_adjustments", customerId], () =>
     Credits.getCreditsByCustomer({
       customer_id: customerId,
-    }).then((res) => {
-      return res;
-    })
+    }).then((res) => res)
   );
 
   const deleteCredit = useMutation(
-    (adjustment_id: string) => {
-      return Credits.deleteCredit(adjustment_id).then((v) => refetch());
-    },
+    (adjustment_id: string) =>
+      Credits.deleteCredit(adjustment_id).then((v) => refetch()),
     {
       onSuccess: () => {
         toast.success("Successfully voided Credit", {
@@ -156,9 +153,10 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
   useEffect(() => {
     if (data) {
       if (selectedView === views[0]) {
-        const newData = data.map((credit) => {
-          return { ...credit, children: credit.drawdowns };
-        });
+        const newData = data.map((credit) => ({
+          ...credit,
+          children: credit.drawdowns,
+        }));
         setTransformedData(newData);
       } else {
         setTransformedData(data);
@@ -211,40 +209,31 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
               size="small"
               defaultValue={defaultView}
               onChange={setSelectedView}
-              options={views.map((view) => {
-                return { label: view, value: view };
-              })}
+              options={views.map((view) => ({ label: view, value: view }))}
             />
           </div>
         </div>
-        {!showCreateCredit ? (
-          <Button
-            type="primary"
-            className="mr-4"
-            size="large"
-            disabled={false}
-            onClick={() => setShowCreateCredit(true)}
-          >
-            Create Credit
-          </Button>
-        ) : (
-          <Button
-            type="default"
-            className="mr-4"
-            size="large"
-            disabled={false}
-            onClick={() => setShowCreateCredit(false)}
-          >
-            Close Create Credit
-          </Button>
-        )}
+        <Button
+          type="primary"
+          className="mr-4"
+          size="large"
+          disabled={false}
+          onClick={() => setShowCreateCredit(true)}
+        >
+          Create Credit
+        </Button>
       </div>
       {showCreateCredit && (
         <CreateCredit
           customerId={customerId}
-          onSubmit={() => {
+          onCancel={() => {
             setShowCreateCredit(false);
           }}
+          onSubmit={() => {
+            setShowCreateCredit(false);
+            queryClient.invalidateQueries("credits");
+          }}
+          visible={showCreateCredit}
         />
       )}
       {selectedCurrency !== "All" && (

@@ -1,4 +1,5 @@
 import React, { PropsWithChildren, ReactElement, useEffect } from "react";
+
 type TSelected = React.ReactNode | string;
 interface DropdownProps {
   className?: string;
@@ -12,7 +13,7 @@ interface DropdownContextState {
 }
 const DropdownContext = React.createContext({} as DropdownContextState);
 
-const Dropdown = ({ children }: PropsWithChildren<DropdownProps>) => {
+function Dropdown({ children }: PropsWithChildren<DropdownProps>) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [selected, setSelected] = React.useState<TSelected>("");
   const openHandler = React.useCallback(() => setIsOpen(true), []);
@@ -47,7 +48,7 @@ const Dropdown = ({ children }: PropsWithChildren<DropdownProps>) => {
       </DropdownContext.Provider>
     </div>
   );
-};
+}
 const useDropdownContext = () => {
   const context = React.useContext(DropdownContext);
   if (!context) {

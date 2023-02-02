@@ -4,12 +4,12 @@ interface CardProps {
   className?: string;
   onClick?: VoidFunction;
 }
-const CustomerCard = ({
+function CustomerCard({
   className,
   children,
   onClick,
-}: PropsWithChildren<CardProps>) => (
-  <div
+}: PropsWithChildren<CardProps>) {
+  return <div
     className={`min-h-[200px]  min-w-[246px] p-6 cursor-pointer  rounded-sm bg-card  ${
       className && className
     }`}
@@ -18,30 +18,32 @@ const CustomerCard = ({
   >
     {children}
   </div>
-);
+}
 
-const CardHeading = ({ children }: PropsWithChildren) => <>{children}</>;
+function CardHeading({ children }: PropsWithChildren) {
+  return <>{children}</>
+}
 
-const CardContainer = ({
+function CardContainer({
   className,
   children,
-}: PropsWithChildren<CardProps>) => (
-  <div className={`mt-2 ${className && className}`}>{children}</div>
-);
+}: PropsWithChildren<CardProps>) {
+  return <div className={`mt-2 ${className && className}`}>{children}</div>
+}
 
-const CardBlock = ({ className, children }: PropsWithChildren<CardProps>) => (
-  <div className={`mt-2 ${className && className}`}>{children}</div>
-);
+function CardBlock({ className, children }: PropsWithChildren<CardProps>) {
+  return <div className={`mt-2 ${className && className}`}>{children}</div>
+}
 
-const CardItem = ({ className, children }: PropsWithChildren<CardProps>) => (
-  <div
+function CardItem({ className, children }: PropsWithChildren<CardProps>) {
+  return <div
     className={`flex items-center text-card-text justify-between gap-2 mt-6 ${
       className && className
     }`}
   >
     {children}
   </div>
-);
+}
 
 CustomerCard.Heading = CardHeading;
 CustomerCard.Container = CardContainer;

@@ -1,8 +1,6 @@
 import React, { FC, useCallback, useEffect, useState } from "react";
 import { Button, Tabs } from "antd";
-import { Plan } from "../api/api";
 import { ArrowRightOutlined, PlusOutlined } from "@ant-design/icons";
-import { PlanType } from "../types/plan-type";
 import { useNavigate } from "react-router-dom";
 import {
   useQuery,
@@ -10,6 +8,8 @@ import {
   useMutation,
   useQueryClient,
 } from "react-query";
+import { PlanType } from "../types/plan-type";
+import { Plan } from "../api/api";
 import { PageLayout } from "../components/base/PageLayout";
 import PlanCard from "../components/Plans/PlanCard/PlanCard";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -78,7 +78,7 @@ const ViewPlans: FC = () => {
                 (plan) => plan.plan_duration === "quarterly" && plan.parent_plan
               )
             );
-            return;
+
         }
       } else {
         const yearlystandard = data.filter(
@@ -139,9 +139,7 @@ const ViewPlans: FC = () => {
   >(
     ["plan_list"],
     () =>
-      Plan.getPlans().then((res) => {
-        return res;
-      }),
+      Plan.getPlans().then((res) => res),
     {
       onSuccess: (data) => {
         setPlans(data);

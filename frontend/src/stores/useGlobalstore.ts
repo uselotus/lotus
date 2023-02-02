@@ -2,6 +2,7 @@ import create from "zustand";
 import { OrganizationType } from "../types/account-type";
 import { PlanType } from "../types/plan-type";
 import { CurrencyType } from "../types/pricing-unit-type";
+
 type GlobalStoreState = {
   username: string;
   org: IOrgStoreType;

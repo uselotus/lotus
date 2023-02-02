@@ -1,10 +1,11 @@
 import React from "react";
-import capitalize from "../../../helpers/capitalize";
 import { Typography } from "antd";
+import capitalize from "../../../helpers/capitalize";
 import { AddonType } from "../../../types/addon-type";
 import createShortenedText from "../../../helpers/createShortenedText";
 import CopyText from "../../base/CopytoClipboard";
 import useMediaQuery from "../../../hooks/useWindowQuery";
+
 interface AddOnInfoProps {
   addOnInfo: AddonType;
 }
@@ -14,11 +15,11 @@ export const constructBillType = (str: string) => {
       .split("_")
       .map((el) => capitalize(el))
       .join(" ");
-  } else {
-    return str;
   }
+    return str;
+
 };
-const AddOnInfo = ({ addOnInfo }: AddOnInfoProps) => {
+function AddOnInfo({ addOnInfo }: AddOnInfoProps) {
   const windowWidth = useMediaQuery();
 
   return (
@@ -86,5 +87,5 @@ const AddOnInfo = ({ addOnInfo }: AddOnInfoProps) => {
       </div>
     </div>
   );
-};
+}
 export default AddOnInfo;

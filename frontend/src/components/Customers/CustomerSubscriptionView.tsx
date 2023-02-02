@@ -1,5 +1,4 @@
 import React, { FC, useEffect, useRef, useState } from "react";
-import { PlanType } from "../../types/plan-type";
 import {
   Form,
   Button,
@@ -13,6 +12,14 @@ import {
 } from "antd";
 import type { DefaultOptionType } from "antd/es/cascader";
 import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  UseQueryResult,
+} from "react-query";
+import { toast } from "react-toastify";
+import { PlanType } from "../../types/plan-type";
+import {
   CreateSubscriptionType,
   TurnSubscriptionAutoRenewOffType,
   ChangeSubscriptionPlanType,
@@ -21,7 +28,7 @@ import {
   SubscriptionType,
   CreateSubscriptionAddOnBody,
 } from "../../types/subscription-type";
-//import the Customer type from the api.ts file
+// import the Customer type from the api.ts file
 
 import DraftInvoice from "./DraftInvoice";
 import CustomerCard from "./Card/CustomerCard";
@@ -33,14 +40,8 @@ import Badge from "../base/Badges/Badges";
 import DropdownComponent from "../base/Dropdown/Dropdown";
 import { DraftInvoiceType } from "../../types/invoice-type";
 import { Addon, Customer, Invoices } from "../../api/api";
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-  UseQueryResult,
-} from "react-query";
 import { AddonType } from "../../types/addon-type";
-import { toast } from "react-toastify";
+
 interface Props {
   customer_id: string;
   subscriptions: SubscriptionType[];
@@ -131,9 +132,7 @@ const SubscriptionView: FC<Props> = ({
   >(
     ["add-ons"],
     () =>
-      Addon.getAddons().then((res) => {
-        return res;
-      }),
+      Addon.getAddons().then((res) => res),
     {
       refetchOnMount: "always",
     }
@@ -160,9 +159,9 @@ const SubscriptionView: FC<Props> = ({
   );
   const cancelAndBill = (plan_id, subscription_filters) => {
     const query_params: CancelSubscriptionQueryParams = {
-      plan_id: plan_id,
-      subscription_filters: subscription_filters,
-      customer_id: customer_id,
+      plan_id,
+      subscription_filters,
+      customer_id,
     };
     const body: CancelSubscriptionBody = {
       usage_behavior: "bill_full",
@@ -174,9 +173,9 @@ const SubscriptionView: FC<Props> = ({
 
   const cancelAndDontBill = (plan_id, subscription_filters) => {
     const query_params: CancelSubscriptionQueryParams = {
-      plan_id: plan_id,
-      subscription_filters: subscription_filters,
-      customer_id: customer_id,
+      plan_id,
+      subscription_filters,
+      customer_id,
     };
     const body: CancelSubscriptionBody = {
       usage_behavior: "bill_none",
@@ -189,9 +188,9 @@ const SubscriptionView: FC<Props> = ({
   const turnAutoRenewOff = (plan_id, subscription_filters) => {
     onAutoRenewOff(
       {
-        plan_id: plan_id,
-        subscription_filters: subscription_filters,
-        customer_id: customer_id,
+        plan_id,
+        subscription_filters,
+        customer_id,
       },
       {
         turn_off_auto_renew: true,
@@ -298,9 +297,9 @@ const SubscriptionView: FC<Props> = ({
   ) => {
     onPlanChange(
       {
-        plan_id: plan_id,
-        customer_id: customer_id,
-        subscription_filters: subscription_filters,
+        plan_id,
+        customer_id,
+        subscription_filters,
       },
       {
         replace_plan_id: value as string,
@@ -328,7 +327,7 @@ const SubscriptionView: FC<Props> = ({
     if (selectedPlan) {
       const plan = idtoPlan[selectedPlan];
       const props: CreateSubscriptionType = {
-        customer_id: customer_id,
+        customer_id,
         plan_id: plan.plan_id,
         start_date: new Date().toISOString(),
         auto_renew: true,
@@ -343,9 +342,7 @@ const SubscriptionView: FC<Props> = ({
     const body = {
       attach_to_customer_id: customer_id,
       attach_to_plan_id: attachToPlanId,
-      attach_to_subscription_filters: attachToSubscriptionFilters
-        ? attachToSubscriptionFilters
-        : [],
+      attach_to_subscription_filters: attachToSubscriptionFilters || [],
       addon_id: addOnId,
       quantity,
     };
@@ -394,9 +391,9 @@ const SubscriptionView: FC<Props> = ({
       invoiceData.invoices.length > 0
     ) {
       return invoiceData?.invoices[0].line_items[index].subscription_filters;
-    } else {
-      return undefined;
     }
+      return undefined;
+
   };
 
   return (
@@ -432,13 +429,11 @@ const SubscriptionView: FC<Props> = ({
                       {subFilters(index) ? (
                         subFilters(index)!.length > 0 ? (
                           <p>
-                            {subFilters(index)!.map((filter) => {
-                              return (
+                            {subFilters(index)!.map((filter) => (
                                 <span key={filter.property_name}>
                                   {filter.property_name}: {filter.value}
                                 </span>
-                              );
-                            })}
+                              ))}
                           </p>
                         ) : null
                       ) : null}
@@ -490,7 +485,7 @@ const SubscriptionView: FC<Props> = ({
                         </div>
                         <div className="flex gap-1">
                           {" "}
-                          <div className={`Inter`}>
+                          <div className="Inter">
                             <Badge
                               className={` ${
                                 !subPlan.auto_renew
@@ -530,7 +525,7 @@ const SubscriptionView: FC<Props> = ({
                               d="M19.5 8.25l-7.5 7.5-7.5-7.5"
                               strokeLinecap="round"
                               strokeLinejoin="round"
-                            ></path>
+                             />
                           </svg>
                         </button>
                       </DropdownComponent.Trigger>

@@ -9,9 +9,9 @@ import {
 import { PlanType, UpdatePlanType } from "../../../types/plan-type";
 import "./PlanCard.css";
 import { useMutation, useQueryClient } from "react-query";
-import { Plan } from "../../../api/api";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { Plan } from "../../../api/api";
 import CopyText from "../../base/CopytoClipboard";
 import DropdownComponent from "../../base/Dropdown/Dropdown";
 import createShortenedText from "../../../helpers/createShortenedText";
@@ -73,15 +73,15 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
   );
 
   const gotoPlanDetail = () => {
-    navigate("/plans/" + plan.plan_id);
+    navigate(`/plans/${  plan.plan_id}`);
   };
 
   const customerNameOrID = (target_customer: any | undefined) => {
     if (target_customer.customer_name) {
       return target_customer.customer_name;
-    } else {
-      return target_customer.customer_id;
     }
+      return target_customer.customer_id;
+
   };
 
   return (

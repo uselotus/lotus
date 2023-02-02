@@ -1,15 +1,16 @@
 import React, { FC } from "react";
 import { useQuery } from "react-query";
+import { Table } from "antd";
+import dayjs from "dayjs";
+import type { TableColumnsType } from "antd";
+import { Invoices } from "../../api/api";
 import {
   DraftInvoiceType,
   ExternalLineItem,
   LineItem,
 } from "../../types/invoice-type";
-import { Invoices } from "../../api/api";
-import { Table } from "antd";
-import dayjs from "dayjs";
-import type { TableColumnsType } from "antd";
 import CustomerCard from "./Card/CustomerCard";
+
 interface Props {
   customer_id: string;
 }
@@ -24,7 +25,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
       }
     );
 
-  const expandedRowRender = (invoice: ExternalLineItem) => (record) => {
+  const expandedRowRender = (invoice: ExternalLineItem) => function(record) {
     const columns: TableColumnsType<LineItem> = [
       {
         title: "ITEM",
@@ -35,15 +36,13 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
         title: "DATES",
         dataIndex: "start_date",
         key: "date",
-        render: (_, record) => {
-          return (
+        render: (_, record) => (
             <div>
-              {dayjs(record.start_date).format("MM/DD/YYYY") +
-                " - " +
-                dayjs(record.end_date).format("MM/DD/YYYY")}
+              {`${dayjs(record.start_date).format("MM/DD/YYYY")
+                } - ${
+                dayjs(record.end_date).format("MM/DD/YYYY")}`}
             </div>
-          );
-        },
+          ),
       },
       {
         title: "QUANTITY",
@@ -87,8 +86,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
       </h2>
       {invoiceData?.invoices !== null &&
         invoiceData?.invoices !== undefined &&
-        invoiceData.invoices.map((invoice, index) => {
-          return (
+        invoiceData.invoices.map((invoice, index) => (
             <div
               key={index}
               className="grid gap-12 grid-cols-1  md:grid-cols-3"
@@ -148,13 +146,11 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
                           <p>{record.plan_name}</p>
                           {record.subscription_filters && (
                             <p>
-                              {record.subscription_filters.map((filter) => {
-                                return (
+                              {record.subscription_filters.map((filter) => (
                                   <span key={filter.property_name}>
                                     {filter.property_name} : {filter.value}
                                   </span>
-                                );
-                              })}
+                                ))}
                             </p>
                           )}
                         </div>
@@ -174,8 +170,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
                 />
               </div>
             </div>
-          );
-        })}
+          ))}
     </div>
   );
 };

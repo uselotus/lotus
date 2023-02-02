@@ -1,4 +1,5 @@
 import React, { forwardRef, PropsWithChildren } from "react";
+
 export type SelectRef = HTMLSelectElement;
 interface SelectProps {
   className?: string;
@@ -7,14 +8,14 @@ interface SelectProps {
   disabled?: boolean;
   onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
 }
-const Select = ({ children }: PropsWithChildren) => {
+function Select({ children }: PropsWithChildren) {
   return <div>{children}</div>;
-};
-const SelectLabel = ({
+}
+function SelectLabel({
   children,
   className,
-}: PropsWithChildren<SelectProps>) => (
-  <label
+}: PropsWithChildren<SelectProps>) {
+  return <label
     className={
       !className
         ? "block text-sm font-medium text-gray-700"
@@ -23,7 +24,7 @@ const SelectLabel = ({
   >
     {children}
   </label>
-);
+}
 const SelectElement = forwardRef<SelectRef, PropsWithChildren<SelectProps>>(
   ({ children, className, onChange, disabled }, ref) => (
     <select
@@ -44,8 +45,9 @@ const SelectElement = forwardRef<SelectRef, PropsWithChildren<SelectProps>>(
   )
 );
 
-const SelectOption = ({ children, selected }: PropsWithChildren<SelectProps>) =>
-  selected ? <option selected>{children}</option> : <option>{children}</option>;
+function SelectOption({ children, selected }: PropsWithChildren<SelectProps>) {
+  return selected ? <option selected>{children}</option> : <option>{children}</option>
+}
 
 Select.Label = SelectLabel;
 Select.Option = SelectOption;

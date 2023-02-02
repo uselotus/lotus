@@ -1,20 +1,24 @@
 import React, { FC } from "react";
 import { Col, Row } from "antd";
-import MetricBarGraph from "./MetricBarGraph";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import dayjsGenerateConfig from "rc-picker/lib/generate/dayjs";
 import generatePicker from "antd/es/date-picker/generatePicker";
 import { useQuery, UseQueryResult } from "react-query";
-import { RevenueType } from "../../types/revenue-type";
-import { Events, GetRevenue, GetSubscriptions } from "../../api/api";
 import advancedFormat from "dayjs/plugin/advancedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import localeData from "dayjs/plugin/localeData";
 import weekday from "dayjs/plugin/weekday";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import weekYear from "dayjs/plugin/weekYear";
+import { Events, GetRevenue, GetSubscriptions } from "../../api/api";
+import { RevenueType } from "../../types/revenue-type";
+import MetricBarGraph from "./MetricBarGraph";
 import { SubscriptionTotals } from "../../types/subscription-type";
+
+import { PageLayout } from "../base/PageLayout";
+import { CustomerByPlanPie } from "./CustomerByPlanPie";
+import NumberDisplay from "./NumberDisplay";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(advancedFormat);
@@ -22,10 +26,6 @@ dayjs.extend(weekday);
 dayjs.extend(localeData);
 dayjs.extend(weekOfYear);
 dayjs.extend(weekYear);
-
-import { PageLayout } from "../base/PageLayout";
-import { CustomerByPlanPie } from "./CustomerByPlanPie";
-import NumberDisplay from "./NumberDisplay";
 
 dayjs.extend(duration);
 
@@ -47,9 +47,7 @@ const Dashboard: FC = () => {
           .subtract(dayjs.duration(dateRange[1].diff(dateRange[0])))
           .format("YYYY-MM-DD"),
         dateRange[1].subtract(1, "month").format("YYYY-MM-DD")
-      ).then((res) => {
-        return res;
-      })
+      ).then((res) => res)
     );
 
   const { data: subscriptionData, isLoading: subscriptionLoading } =
@@ -61,9 +59,7 @@ const Dashboard: FC = () => {
           .subtract(dayjs.duration(dateRange[1].diff(dateRange[0])))
           .format("YYYY-MM-DD"),
         dateRange[1].subtract(1, "month").format("YYYY-MM-DD")
-      ).then((res) => {
-        return res;
-      })
+      ).then((res) => res)
     );
 
   const { data: eventData, isLoading: eventLoading } = useQuery(
@@ -76,14 +72,12 @@ const Dashboard: FC = () => {
           .subtract(dayjs.duration(dateRange[1].diff(dateRange[0])))
           .format("YYYY-MM-DD"),
         dateRange[1].subtract(1, "month").format("YYYY-MM-DD")
-      ).then((res) => {
-        return res;
-      })
+      ).then((res) => res)
   );
 
   return (
     <PageLayout
-      title={"Dashboard"}
+      title="Dashboard"
       className="text-[24px]"
       extra={[
         <RangePicker
@@ -114,8 +108,8 @@ const Dashboard: FC = () => {
                 metric_1={data?.earned_revenue_period_1}
                 metric_2={data?.earned_revenue_period_2}
                 isLoading={isLoading}
-                title={"Earned Revenue"}
-                currency={"USD"}
+                title="Earned Revenue"
+                currency="USD"
               />
             </div>
             <div className="col-span-3">
@@ -123,7 +117,7 @@ const Dashboard: FC = () => {
                 metric_1={subscriptionData?.period_1_total_subscriptions}
                 metric_2={subscriptionData?.period_2_total_subscriptions}
                 isLoading={subscriptionLoading}
-                title={"Total Subscriptions"}
+                title="Total Subscriptions"
               />
             </div>
             <div className="col-span-3">
@@ -131,7 +125,7 @@ const Dashboard: FC = () => {
                 metric_1={eventData?.total_events_period_1}
                 metric_2={eventData?.total_events_period_2}
                 isLoading={false}
-                title={"Events Tracked"}
+                title="Events Tracked"
               />{" "}
             </div>
             <div className="col-span-3">
@@ -139,7 +133,7 @@ const Dashboard: FC = () => {
                 metric_1={subscriptionData?.period_1_new_subscriptions}
                 metric_2={subscriptionData?.period_2_new_subscriptions}
                 isLoading={subscriptionLoading}
-                title={"New Subscriptions"}
+                title="New Subscriptions"
               />{" "}
             </div>
           </div>

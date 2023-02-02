@@ -2,18 +2,18 @@
 import React, { FC, useState, useEffect } from "react";
 import type { ProColumns } from "@ant-design/pro-components";
 import { ProTable } from "@ant-design/pro-components";
+import { Button, Input, Tag } from "antd";
+import { useQuery, UseQueryResult, useQueryClient } from "react-query";
+import { useNavigate } from "react-router-dom";
 import {
   CustomerSummary,
   CustomerTableItem,
   CustomerTotal,
 } from "../../types/customer-type";
-import { Button, Input, Tag } from "antd";
 import { CreateCustomerState } from "./CreateCustomerForm";
-import { useQuery, UseQueryResult, useQueryClient } from "react-query";
 import { Plan } from "../../api/api";
 import { PlanType } from "../../types/plan-type";
 import CustomerDetail from "./CustomerDetail";
-import { useNavigate } from "react-router-dom";
 
 function getHighlightedText(text: string, highlight: string) {
   // Split text on highlight term, include term itself into parts, ignore case
@@ -89,9 +89,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
   const { data, isLoading }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
     ["plan_list"],
     () =>
-      Plan.getPlans().then((res) => {
-        return res;
-      })
+      Plan.getPlans().then((res) => res)
   );
 
   const columns: ProColumns<CustomerTableItem>[] = [
@@ -132,8 +130,8 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
         <div>
           {record.subscriptions.map((sub) => (
             <div>
-              <Tag color={"default"}>{sub.billing_plan_name}</Tag>
-              <Tag color={"default"}>v{sub.plan_version}</Tag>{" "}
+              <Tag color="default">{sub.billing_plan_name}</Tag>
+              <Tag color="default">v{sub.plan_version}</Tag>{" "}
             </div>
           ))}
         </div>
@@ -163,9 +161,9 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
         <div>
           {record.subscriptions[0] !== undefined &&
             (record.subscriptions[0].auto_renew ? (
-              <Tag color={"green"}>Renews</Tag>
+              <Tag color="green">Renews</Tag>
             ) : (
-              <Tag color={"red"}>Ends</Tag>
+              <Tag color="red">Ends</Tag>
             ))}
         </div>
       ),
@@ -214,11 +212,9 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
           columns={columns}
           dataSource={getFilteredTableData(tableData)}
           rowKey="customer_id"
-          onRow={(record) => {
-            return {
-              onClick: () => navigate("/customers/" + record.customer_id), // click row
-            };
-          }}
+          onRow={(record) => ({
+              onClick: () => navigate(`/customers/${  record.customer_id}`), // click row
+            })}
           toolBarRender={false}
           search={false}
           pagination={{

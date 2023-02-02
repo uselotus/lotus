@@ -1,9 +1,9 @@
 import React, { FC } from "react";
 import { Button } from "antd";
-import { Addon } from "../api/api";
 import { PlusOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useQuery, UseQueryResult } from "react-query";
+import { Addon } from "../api/api";
 import DBSVG from "../components/base/db-svg";
 import { PageLayout } from "../components/base/PageLayout";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -18,9 +18,7 @@ const ViewAddOns: FC = () => {
   >(
     ["add-ons"],
     () =>
-      Addon.getAddons().then((res) => {
-        return res;
-      }),
+      Addon.getAddons().then((res) => res),
     {
       refetchOnMount: "always",
     }

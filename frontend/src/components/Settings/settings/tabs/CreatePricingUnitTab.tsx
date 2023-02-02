@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 import { PricingUnits } from "../../../../api/api";
 import { CurrencyType } from "../../../../types/pricing-unit-type";
 
-const CreatePricingUnit = () => {
+function CreatePricingUnit() {
   const [form] = Form.useForm();
   const mutation = useMutation(
     (post: CurrencyType) => PricingUnits.create(post),
@@ -93,6 +93,6 @@ const CreatePricingUnit = () => {
       </Form.Provider>
     </div>
   );
-};
+}
 
 export default CreatePricingUnit;

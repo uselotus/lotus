@@ -1,9 +1,9 @@
 import { Button, Card, Form, Input, InputNumber, Select } from "antd";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import UsageComponentForm from "../components/Plans/UsageComponentForm";
 import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
+import UsageComponentForm from "../components/Plans/UsageComponentForm";
 
 import { CreateComponent, PlanType } from "../types/plan-type";
 import { Plan, Organization, Addon } from "../api/api";
@@ -30,7 +30,7 @@ const durationConversion = {
   yearly: "Year",
 };
 
-const CreateAddOns = () => {
+function CreateAddOns() {
   const [componentVisible, setcomponentVisible] = useState<boolean>();
   const [allPlans, setAllPlans] = useState<PlanType[]>([]);
   const [allCurrencies, setAllCurrencies] = useState<CurrencyType[]>([]);
@@ -213,9 +213,7 @@ const CreateAddOns = () => {
       components: usagecomponentslist.length ? usagecomponentslist : [],
       features: featureIdList.length ? featureIdList : [],
       invoice_when,
-      recurring_flat_fee_timing: recurring_flat_fee_timing
-        ? recurring_flat_fee_timing
-        : null,
+      recurring_flat_fee_timing: recurring_flat_fee_timing || null,
       currency_code: selectedCurrency.code,
     };
     mutation.mutate(addons);
@@ -497,6 +495,6 @@ const CreateAddOns = () => {
       </Form.Provider>
     </PageLayout>
   );
-};
+}
 
 export default CreateAddOns;

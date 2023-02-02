@@ -3,13 +3,12 @@ import { Column } from "@ant-design/plots";
 import { useQueryClient, useMutation } from "react-query";
 
 import { Select, Form, Typography, Input } from "antd";
+import dayjs from "dayjs";
+import { toast } from "react-toastify";
 import { DraftInvoiceType } from "../../types/invoice-type";
 
-import dayjs from "dayjs";
 import { Customer } from "../../api/api";
 import { country_json } from "../../assets/country_codes";
-
-import { toast } from "react-toastify";
 
 import { CustomerType } from "../../types/customer-type";
 import { CustomerCostType } from "../../types/revenue-type";
@@ -21,6 +20,7 @@ import createShortenedText from "../../helpers/createShortenedText";
 import useMediaQuery from "../../hooks/useWindowQuery";
 import Divider from "../base/Divider/Divider";
 import Badge from "../base/Badges/Badges";
+
 interface CustomerInfoViewProps {
   data: CustomerType;
   cost_data: CustomerCostType;
@@ -140,14 +140,12 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
   };
   useEffect(() => {
     const newgraphdata = cost_data.per_day.map((day: any) => {
-      const result_list = day.cost_data.map((metric: any) => {
-        return {
-          date: day.date,
-          amount: metric.cost,
-          metric: metric.metric.billable_metric_name,
-          type: "cost",
-        };
-      });
+      const result_list = day.cost_data.map((metric: any) => ({
+        date: day.date,
+        amount: metric.cost,
+        metric: metric.metric.billable_metric_name,
+        type: "cost",
+      }));
 
       result_list.push({
         date: day.date,
@@ -190,6 +188,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     isStack: true,
     seriesField: "metric",
     groupField: "type",
+    legend: false,
     colorField: "type", // or seriesField in some cases
     color: ["#33658A", "#C3986B", "#D9D9D9", "#171412", "#547AA5"],
   };
@@ -477,7 +476,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   </div>
                   <div className="">
                     {" "}
-                    <Select defaultValue={"1"} onChange={onSwitch}>
+                    <Select defaultValue="1" onChange={onSwitch}>
                       <Select.Option value="1">Last 30 Days</Select.Option>
                       <Select.Option value="2">Last 60 Days</Select.Option>
                       <Select.Option value="3">This Month</Select.Option>

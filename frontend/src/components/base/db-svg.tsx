@@ -1,6 +1,7 @@
 import React from "react";
-const DBSVG = () => (
-  <svg
+
+function DBSVG() {
+  return <svg
     fill="#000000"
     height="50px"
     width="50px"
@@ -70,6 +71,6 @@ const DBSVG = () => (
         C9.049,40.786,16.582,43,27.5,43c10.872,0,18.386-2.196,22.169-5.028c0.302-0.22,0.574-0.447,0.83-0.678l0.001-0.001V45.703z"
     />
   </svg>
-);
+}
 
 export default DBSVG;

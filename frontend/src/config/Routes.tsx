@@ -1,12 +1,12 @@
 import React, { FC, useState, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Layout } from "antd";
 import Dashboard from "../components/Dashboard/Dashboard";
 import ViewPlans from "../pages/ViewPlans";
 import ViewCustomers from "../pages/ViewCustomers";
 import SettingsPage from "../pages/SettingsPage";
 import StripeRedirect from "../integrations/PaymentProcessorIntegrations";
 import SideBar from "../components/SideBar";
-import { Layout } from "antd";
 import CreatePlan from "../pages/CreatePlan";
 import ViewMetrics from "../pages/ViewMetrics";
 import ViewExperiments from "../pages/ViewExperiments";
@@ -23,11 +23,11 @@ import CustomerDetail from "../components/Customers/CustomerDetail";
 
 const { Sider } = Layout;
 
-const getSettingsTab = (component) => {
+const getSettingsTab = (component) =>
   // @ts-ignore
   // return import.meta.env.VITE_IS_DEMO ? <Navigate replace to={"/"} /> :component
-  return component;
-};
+   component
+;
 
 const AppRoutes: FC = () => {
   const [collapse, setCollapse] = useState(false);

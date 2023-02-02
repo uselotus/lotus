@@ -5,8 +5,8 @@ import { Card, Input, Button, Form } from "antd";
 import "./Login.css";
 import { useQueryClient, useMutation } from "react-query";
 import { toast } from "react-toastify";
-import LoadingSpinner from "../components/LoadingSpinner";
 import Cookies from "universal-cookie";
+import LoadingSpinner from "../components/LoadingSpinner";
 import { QueryErrors } from "../types/error-response-types";
 
 const cookies = new Cookies();
@@ -47,7 +47,7 @@ const SetNewPassword: FC = () => {
       onSuccess: (response) => {
         const { token, detail } = response;
         cookies.set("Token", token);
-        instance.defaults.headers.common["Authorization"] = `Token ${token}`;
+        instance.defaults.headers.common.Authorization = `Token ${token}`;
         setIsAuthenticated(true);
         queryClient.refetchQueries("session");
         redirectDashboard();
@@ -66,8 +66,7 @@ const SetNewPassword: FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <>
-        <div className="grid h-screen place-items-center">
+      <div className="grid h-screen place-items-center">
           <div className=" space-y-4">
             <Card
               title="Login"
@@ -106,7 +105,6 @@ const SetNewPassword: FC = () => {
           </div>
           {mutation.isLoading && <LoadingSpinner />}
         </div>
-      </>
     );
   }
 

@@ -1,11 +1,11 @@
 // @ts-ignore
 import React, { FC } from "react";
 import { Tabs } from "antd";
+import { useNavigate , useParams } from "react-router-dom";
 import IntegrationsTab from "../components/Settings/settings/tabs/IntegrationsTab";
 import { DeveloperTab } from "../components/Settings/settings/tabs/DeveloperTab";
 import TeamTab from "../components/Settings/settings/tabs/TeamTab";
 import { PageLayout } from "../components/base/PageLayout";
-import { useNavigate , useParams } from "react-router-dom";
 import GeneralTab from "../components/Settings/settings/tabs/GeneralTab";
 import CreatePricingUnit from "../components/Settings/settings/tabs/CreatePricingUnitTab";
 
@@ -76,7 +76,7 @@ const SettingsPage: FC = () => {
       <Tabs
         size="large"
         onChange={(key) => changeRoute(key)}
-        activeKey={tab ? tab : "general"}
+        activeKey={tab || "general"}
         defaultActiveKey="general"
       >
         {tabItems.map((item) => (

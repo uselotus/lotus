@@ -1,8 +1,8 @@
 import { Column } from "@ant-design/plots";
 import React, { useState, useEffect } from "react";
-import LoadingSpinner from "../LoadingSpinner";
 import { Select } from "antd";
 import { useQuery, UseQueryResult } from "react-query";
+import LoadingSpinner from "../LoadingSpinner";
 import { MetricUsage } from "../../types/metric-type";
 import { Metrics } from "../../api/api";
 import { Paper } from "../base/Paper";
@@ -15,7 +15,7 @@ interface ChartDataType {
   type: string;
 }
 
-//Generate more defaultData for the month of august
+// Generate more defaultData for the month of august
 
 function MetricBarGraph(props: { range: any }) {
   const [selectedMetric, setSelectedMetric] = useState<string>();
@@ -28,9 +28,7 @@ function MetricBarGraph(props: { range: any }) {
         props.range[0].format("YYYY-MM-DD"),
         props.range[1].format("YYYY-MM-DD"),
         10
-      ).then((res) => {
-        return res;
-      })
+      ).then((res) => res)
     );
   const changeMetric = (value: string) => {
     const compressedArray: ChartDataType[] = [];
@@ -40,10 +38,10 @@ function MetricBarGraph(props: { range: any }) {
       const daily_data = data?.metrics[value].data;
 
       for (let i = 0; i < daily_data.length; i++) {
-        const date = daily_data[i].date;
+        const {date} = daily_data[i];
         for (const k in daily_data[i].customer_usages) {
           compressedArray.push({
-            date: date,
+            date,
             metric_amount: daily_data[i].customer_usages[k],
             type: k,
           });
@@ -102,7 +100,7 @@ function MetricBarGraph(props: { range: any }) {
   }
 
   return (
-    <Paper border={true}>
+    <Paper border>
       <div className="flex flex-row items-center mb-12 space-x-4 justify-between">
         <h2>Metric Usage</h2>
         <Select
