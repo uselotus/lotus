@@ -12,6 +12,8 @@ from rest_framework.decorators import (
 from rest_framework.response import Response
 
 STRIPE_WEBHOOK_SECRET = settings.STRIPE_WEBHOOK_SECRET
+STRIPE_SECRET_KEY = settings.STRIPE_SECRET_KEY
+stripe.api_key = STRIPE_SECRET_KEY
 
 
 def _invoice_paid_handler(event):
