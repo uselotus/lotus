@@ -197,7 +197,11 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     <div className="flex flex-col">
       <div className="grid gap-12 grid-cols-1   md:grid-cols-3">
         <div className="col-span-2">
-          <CustomerCard className="overflow-x-clip h-[215px]">
+          <CustomerCard
+            className={`overflow-x-clip ${
+              !isEditing ? "h-[215px]" : "min-h-[230px]"
+            }  `}
+          >
             <CustomerCard.Heading>
               <div className="flex items-center">
                 <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
@@ -242,7 +246,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                 </CustomerCard.Item>
                 <CustomerCard.Item>
                   <div className="font-normal text-card-text font-alliance whitespace-nowrap leading-4">
-                    Customer ID
+                    ID
                   </div>
                   <div className="flex gap-1 !text-card-grey font-menlo">
                     {" "}
@@ -292,20 +296,12 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                             defaultValue={line2}
                             onChange={(e) => setLine2(e.target.value)}
                           />
-
-                          <input
-                            placeholder="City"
-                            className="input-class-last focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
-                            onChange={(e) => setCity(e.target.value)}
-                            defaultValue={city}
-                            required
-                          />
                         </div>
                         <div className="flex gap-2">
                           <select
                             name="Country"
                             id="country"
-                            className=" w-1/4 bg-white border border-black rounded-sm p-2"
+                            className=" w-1/2 bg-white border border-black rounded-sm p-2"
                             defaultValue={country}
                             onChange={(e) => setCountry(e.target.value)}
                           >
@@ -315,17 +311,25 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                               </option>
                             ))}
                           </select>
-
+                          <input
+                            placeholder="City"
+                            className="input-class-last focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
+                            onChange={(e) => setCity(e.target.value)}
+                            defaultValue={city}
+                            required
+                          />
+                        </div>
+                        <div className="flex gap-2">
                           <input
                             placeholder="State"
-                            className="w-1/4 focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
+                            className="w-1/2 focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
                             defaultValue={state}
                             onChange={(e) => setState(e.target.value)}
                             required
                           />
                           <input
                             defaultValue={postalCode}
-                            className="w-1/4 focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
+                            className="w-1/2 focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
                             placeholder="Zip Code"
                             onChange={(e) => setPostalCode(e.target.value)}
                             required
@@ -343,7 +347,13 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   </div>
                   <div className="flex gap-1">
                     {" "}
-                    <div className="Inter">{data.email}</div>
+                    <div
+                      className={`Inter ${
+                        data.email.length > 36 ? "break-all text-[10px]" : ""
+                      } `}
+                    >
+                      {data.email}
+                    </div>
                   </div>
                 </CustomerCard.Item>
                 <CustomerCard.Item>
@@ -377,13 +387,17 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                 </CustomerCard.Item>
                 <CustomerCard.Item>
                   <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
-                    Payment Method Provided
+                    Payment Method Connected
                   </div>
                   <div className="flex gap-1">
                     {" "}
                     <div className="Inter">
-                      {data.payment_provider ? (
-                        <div>{data.payment_provider}</div>
+                      {!data.payment_provider ? (
+                        <img
+                          width={25}
+                          src="https://cdn.neverbounce.com/images/integrations/square/stripe-square.png"
+                          alt="stripe logo"
+                        />
                       ) : (
                         "N/A"
                       )}
@@ -430,12 +444,12 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   </div>
                   <div
                     className={`Inter ${
-                      cost_data.margin > 0
+                      cost_data.margin * 100 > 50
                         ? "text-emerald-800"
                         : "text-rose-700"
                     }`}
                   >
-                    {cost_data.margin.toFixed(2)}%
+                    {((cost_data.margin as number) * 100).toFixed(2)}%
                   </div>
                 </CustomerCard.Item>
 

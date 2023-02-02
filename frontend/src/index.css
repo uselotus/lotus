@@ -127,7 +127,7 @@ a {
   width: 150px;
 }
 .input-class-last {
-  width: 100px;
+  min-width: 100px;
 }
 .ant-select.w-full {
   min-width: 150%;

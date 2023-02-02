@@ -1,4 +1,4 @@
-import React, { FC, useEffect, useRef, useState } from "react";
+import React, { FC, useCallback, useEffect, useRef, useState } from "react";
 import {
   Form,
   Button,
@@ -19,6 +19,7 @@ import {
 } from "react-query";
 import { toast } from "react-toastify";
 import { PlanType } from "../../types/plan-type";
+import dayjs from "dayjs";
 import {
   CreateSubscriptionType,
   TurnSubscriptionAutoRenewOffType,
@@ -41,6 +42,7 @@ import DropdownComponent from "../base/Dropdown/Dropdown";
 import { DraftInvoiceType } from "../../types/invoice-type";
 import { Addon, Customer, Invoices } from "../../api/api";
 import { AddonType } from "../../types/addon-type";
+import { useNavigate } from "react-router-dom";
 
 interface Props {
   customer_id: string;
@@ -91,12 +93,14 @@ const SubscriptionView: FC<Props> = ({
 }) => {
   const [selectedPlan, setSelectedPlan] = useState<string>();
   const [form] = Form.useForm();
+  const navigate = useNavigate();
   const [addOnId, setAddOnId] = useState("");
   const [attachToPlanId, setAttachToPlanId] = useState("");
   const [attachToSubscriptionFilters, setAttachToSubscriptionFilters] =
     useState<SubscriptionType["subscription_filters"] | undefined>();
   const [quantity, setQuantity] = useState(1);
   const [showModal, setShowModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [title, setTitle] = useState("");
   const [cancelSubType, setCancelSubType] = useState<
     "bill_now" | "remove_renewal"
@@ -129,14 +133,9 @@ const SubscriptionView: FC<Props> = ({
   );
   const { data: addOns, isLoading }: UseQueryResult<AddonType[]> = useQuery<
     AddonType[]
-  >(
-    ["add-ons"],
-    () =>
-      Addon.getAddons().then((res) => res),
-    {
-      refetchOnMount: "always",
-    }
-  );
+  >(["add-ons"], () => Addon.getAddons().then((res) => res), {
+    refetchOnMount: "always",
+  });
   const mutation = useMutation(
     (add_on: CreateSubscriptionAddOnBody) =>
       Customer.createSubscriptionAddOns(add_on),
@@ -222,63 +221,35 @@ const SubscriptionView: FC<Props> = ({
   }, [plans]);
 
   const cancelMenu = (plan_id: string, subscription_filters?: object[]) => (
-    <div className="flex gap-4">
-      {subscriptionCancellationOptions.map((options) => (
-        <div key={options.type} className="flex items-center gap-2">
-          <Radio
-            id={options.type}
-            name="subscription cancel"
-            type="button"
-            onChange={(e) =>
-              setCancelSubType(e.target.value as typeof cancelSubType)
-            }
-            defaultChecked={options.type === "bill_now"}
-            className="h-8 w-8 border-gray-300 text-indigo-600 focus:ring-indigo-500"
-          />
-          <label
-            htmlFor={options.type}
-            className="ml-3 block text-sm font-medium text-gray-700"
-          >
-            {options.name}
-          </label>
-        </div>
-      ))}
+    <div>
+      <p className="text-base Inter">
+        If you cancel a plan the customer will lose it permanently, and you
+        won&apos;t be able to recover it. Do you want to continue?
+      </p>
+      <div className="flex items-center justify-center gap-4">
+        {subscriptionCancellationOptions.map((options) => (
+          <div key={options.type} className="flex items-center justify-center gap-2">
+            <Radio
+              id={options.type}
+              name="subscription cancel"
+              type="button"
+              onChange={(e) =>
+                setCancelSubType(e.target.value as typeof cancelSubType)
+              }
+              defaultChecked={options.type === "bill_now"}
+              className="h-8 w-8 border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <label
+              htmlFor={options.type}
+              className="ml-3 block text-sm font-medium mt-2 text-gray-700"
+            >
+              {options.name}
+            </label>
+          </div>
+        ))}
+      </div>
     </div>
   );
-  // <Menu
-  //   items={[
-  //     {
-  //       label: (
-  //         <div onClick={() => cancelAndBill(plan_id, subscription_filters)}>
-  //           Cancel and Bill Now
-  //         </div>
-  //       ),
-  //       key: "0",
-  //     },
-  //     // {
-  //     //   label: (
-  //     //     <div
-  //     //       onClick={() => cancelAndDontBill(plan_id, subscription_filters)}
-  //     //     >
-  //     //       Cancel Without Billing & Refund
-  //     //     </div>
-  //     //   ),
-  //     //   key: "1",
-  //     // },
-  //     {
-  //       label: (
-  //         <div
-  //           aria-hidden
-  //           onClick={() => turnAutoRenewOff(plan_id, subscription_filters)}
-  //         >
-  //           Cancel Renewal
-  //         </div>
-  //       ),
-  //       key: "2",
-  //     },
-  //   ]}
-  // />
-
   const plansWithSwitchOptions = (plan_id: string) =>
     planList?.reduce((acc, plan) => {
       if (plan.value !== plan_id) {
@@ -308,19 +279,41 @@ const SubscriptionView: FC<Props> = ({
   };
 
   const switchMenu = (plan_id: string, subscription_filters: object[]) => (
-    <Cascader
-      options={plansWithSwitchOptions(plan_id)}
-      onChange={
-        (value) => console.log(value[0])
-        // onChange(value[0], plan_id, subscription_filters)
-      }
-      expandTrigger="hover"
-      placeholder="Please select"
-      showSearch={{ filter }}
-      displayRender={displayRender}
-      changeOnSelect
-      style={{ width: "80%" }}
-    />
+    <div>
+      <Form.Item>
+        <label htmlFor="addon_id" className="mb-4 required">
+          Current Plan
+        </label>
+        <Input
+          className="!mt-2"
+          placeholder={
+            subscriptions.filter((el) => el.billing_plan.plan_id === plan_id)[0]
+              .billing_plan.plan_name
+          }
+          disabled
+        />
+      </Form.Item>
+      <Form.Item>
+        <label htmlFor="addon_id" className="mb-4 required">
+          New Plan
+        </label>
+        <div>
+          <Cascader
+            className="!w-[332px] !mt-2"
+            options={plansWithSwitchOptions(plan_id)}
+            onChange={(value) =>
+              onChange(value[0] as string, plan_id, subscription_filters)
+            }
+            expandTrigger="hover"
+            placeholder="Please select"
+            showSearch={{ filter }}
+            displayRender={displayRender}
+            changeOnSelect
+            style={{ width: "80%" }}
+          />
+        </div>
+      </Form.Item>
+    </div>
   );
 
   const handleAttachPlanSubmit = () => {
@@ -333,6 +326,7 @@ const SubscriptionView: FC<Props> = ({
         auto_renew: true,
         is_new: true,
         subscription_filters: [],
+        addons: [],
       };
       onCreate(props);
     }
@@ -383,7 +377,20 @@ const SubscriptionView: FC<Props> = ({
       </div>
     );
   }
-
+  const getFilteredSubscriptions = useCallback(() => {
+    if (!searchQuery) {
+      return subscriptions;
+    }
+    return subscriptions.filter(
+      (subscription) =>
+        subscription.billing_plan.plan_id
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+        subscription.billing_plan.plan_name
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase())
+    );
+  }, [subscriptions]);
   const subFilters = (index: number) => {
     if (
       invoiceData &&
@@ -392,34 +399,24 @@ const SubscriptionView: FC<Props> = ({
     ) {
       return invoiceData?.invoices[0].line_items[index].subscription_filters;
     }
-      return undefined;
-
+    return undefined;
   };
 
   return (
     <div className="mt-auto">
       <div className="flex mb-2 pb-4 pt-4 items-center justify-center">
-        <h2 className=" font-bold text-main">Active Plans</h2>
+        <h2 className=" font-bold text-main mx-10">Active Plans</h2>
         <div className="ml-auto flex gap-2 max-h-[40px]">
-          <Input placeholder="Search" disabled />
-          <Button
-            onClick={() => console.log("")}
-            disabled
-            type="primary"
-            size="large"
-            key="create-plan"
-            className="hover:!bg-primary-700 "
-            style={{ background: "#C3986B", borderColor: "#C3986B" }}
-          >
-            <div className="flex items-center  justify-between text-white">
-              <div>Attach Add-on</div>
-            </div>
-          </Button>
+          <Input
+            placeholder="Search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
       </div>
       <div className="flex flex-col justify-center">
         <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-          {subscriptions.map((subPlan, index) => (
+          {getFilteredSubscriptions().map((subPlan, index) => (
             <>
               <CustomerCard className="shadow-none" key={subPlan.end_date}>
                 <CustomerCard.Heading>
@@ -430,10 +427,10 @@ const SubscriptionView: FC<Props> = ({
                         subFilters(index)!.length > 0 ? (
                           <p>
                             {subFilters(index)!.map((filter) => (
-                                <span key={filter.property_name}>
-                                  {filter.property_name}: {filter.value}
-                                </span>
-                              ))}
+                              <span key={filter.property_name}>
+                                {filter.property_name}: {filter.value}
+                              </span>
+                            ))}
                           </p>
                         ) : null
                       ) : null}
@@ -467,7 +464,9 @@ const SubscriptionView: FC<Props> = ({
                         </div>
                         <div className="flex gap-1">
                           {" "}
-                          <div className="Inter">{subPlan.start_date}</div>
+                          <div className="Inter">
+                            {dayjs(subPlan.start_date).format("YYYY/MM/DD")}
+                          </div>
                         </div>
                       </CustomerCard.Item>
                       <CustomerCard.Item>
@@ -476,7 +475,9 @@ const SubscriptionView: FC<Props> = ({
                         </div>
                         <div className="flex gap-1">
                           {" "}
-                          <div className="Inter">{subPlan.end_date}</div>
+                          <div className="Inter">
+                            {dayjs(subPlan.end_date).format("YYYY/MM/DD")}
+                          </div>
                         </div>
                       </CustomerCard.Item>
                       <CustomerCard.Item>
@@ -502,67 +503,80 @@ const SubscriptionView: FC<Props> = ({
                       </CustomerCard.Item>
                     </CustomerCard.Block>
                     <Divider />
-                    <DropdownComponent>
-                      <DropdownComponent.Trigger>
-                        <button
-                          type="button"
-                          className="relative w-full min-w-[151px] flex items-center gap-4  cursor-default p-6 mt-4 bg-[#fff4e9] rounded-md border border-[#fff4e9]  py-2 pl-3 pr-10 text-left shadow-sm  focus:outline-none  sm:text-sm"
-                          aria-haspopup="listbox"
-                          aria-expanded="true"
-                          aria-labelledby="listbox-label"
-                        >
-                          <span className="block truncate">Plan Actions</span>
-                          <svg
-                            className="h-8"
-                            aria-hidden="true"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg"
+                    <div className="flex gap-4 items-center">
+                      <DropdownComponent>
+                        <DropdownComponent.Trigger>
+                          <button
+                            type="button"
+                            className="relative w-full min-w-[151px] flex items-center gap-4  cursor-default p-6 mt-4 bg-[#fff4e9] rounded-md border border-[#fff4e9]  py-2 pl-3 pr-10 text-left shadow-sm  focus:outline-none  sm:text-sm"
+                            aria-haspopup="listbox"
+                            aria-expanded="true"
+                            aria-labelledby="listbox-label"
                           >
-                            <path
-                              d="M19.5 8.25l-7.5 7.5-7.5-7.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                             />
-                          </svg>
-                        </button>
-                      </DropdownComponent.Trigger>
-                      <DropdownComponent.Container className="!bg-[#fff4e9] ">
-                        {dropDownOptions.map((key, index) => (
-                          <DropdownComponent.MenuItem
-                            className="hover:text-black hover:bg-[#f8e8d7] whitespace-nowrap"
-                            key={index}
-                            onSelect={() => {
-                              switch (index) {
-                                case 0:
-                                  indexRef.current = index;
-                                  setTitle("Switch Plan");
+                            <span className="block truncate">Plan Actions</span>
+                            <svg
+                              className="h-8"
+                              aria-hidden="true"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              viewBox="0 0 24 24"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                        </DropdownComponent.Trigger>
+                        <DropdownComponent.Container className="!bg-[#fff4e9] ">
+                          {dropDownOptions.map((key, index) => (
+                            <DropdownComponent.MenuItem
+                              className="hover:text-black hover:bg-[#f8e8d7] whitespace-nowrap"
+                              key={index}
+                              onSelect={() => {
+                                switch (index) {
+                                  case 0:
+                                    indexRef.current = index;
+                                    setTitle("Switch Plan");
 
-                                  setShowModal(true);
-                                  break;
-                                case 1:
-                                  indexRef.current = index;
-                                  setTitle(
-                                    `Attach Add-On to ${subPlan.billing_plan.plan_name}`
-                                  );
+                                    setShowModal(true);
+                                    break;
+                                  case 1:
+                                    indexRef.current = index;
+                                    setTitle(
+                                      `Attach Add-On to ${subPlan.billing_plan.plan_name}`
+                                    );
 
-                                  setShowModal(true);
-                                  break;
-                                default:
-                                  indexRef.current = index;
-                                  setTitle("Cancel Subscription");
+                                    setShowModal(true);
+                                    break;
+                                  default:
+                                    indexRef.current = index;
+                                    setTitle("Are you sure?");
 
-                                  setShowModal(true);
-                              }
-                            }}
-                          >
-                            {key}
-                          </DropdownComponent.MenuItem>
-                        ))}
-                      </DropdownComponent.Container>
-                    </DropdownComponent>
+                                    setShowModal(true);
+                                }
+                              }}
+                            >
+                              {key}
+                            </DropdownComponent.MenuItem>
+                          ))}
+                        </DropdownComponent.Container>
+                      </DropdownComponent>
+                      <div
+                        onClick={() => navigate("/add-ons")}
+                        className="Inter text-sm mt-2 text-card-grey border-inherit border-b-2"
+                      >
+                        {subPlan.addons.length}
+                        {subPlan.addons.length === 0
+                          ? " Add-ons"
+                          : subPlan.addons.length > 1
+                          ? " Add-ons"
+                          : " Add-on"}
+                      </div>
+                    </div>
                   </CustomerCard.Container>
                 </CustomerCard.Heading>
               </CustomerCard>
@@ -590,7 +604,7 @@ const SubscriptionView: FC<Props> = ({
                           }}
                           onClick={() => false}
                         >
-                          Switch Plan
+                          Switch
                         </Button>,
                       ]
                     : indexRef.current === 1
@@ -706,78 +720,7 @@ const SubscriptionView: FC<Props> = ({
               </Modal>
             </>
           ))}
-          {/* {subscriptions.map((subPlan) => (
-            <Fragment key={subPlan.billing_plan.plan_id}>
-              <List.Item>
-                <Card className=" bg-grey3 w-full">
-                  <div className="grid grid-cols-2 items-stretch">
-                    <div>
-                      <Link to={"../plans/" + subPlan.billing_plan.plan_id}>
-                        {" "}
-                        <h2 className="font-main font-bold hover:underline">
-                          {subPlan.billing_plan.plan_name}
-                        </h2>
-                      </Link>
-                      <b>Subscription Filters: </b>{" "}
-                      {subPlan.subscription_filters &&
-                      subPlan.subscription_filters.length > 0
-                        ? subPlan.subscription_filters?.map((filter) => (
-                            <div>
-                              {filter["property_name"]}: {filter["value"]}
-                            </div>
-                          ))
-                        : "None"}
-                    </div>
-
-                    <div className="grid grid-cols-2 justify-center space-y-3">
-                      <p className=""></p>
-                      <p>
-                        <b>Start Date:</b>{" "}
-                        {dayjs(subPlan.start_date).format("YYYY/MM/DD HH:mm")}{" "}
-                      </p>
-
-                      <p>
-                        <b>Renews:</b>{" "}
-                        {subPlan.auto_renew ? (
-                          <Tag color="green">Yes</Tag>
-                        ) : (
-                          <Tag color="red">No</Tag>
-                        )}
-                      </p>
-                      <p>
-                        <b>End Date:</b>{" "}
-                        {dayjs(subPlan.end_date).format("YYYY/MM/DD HH:mm")}{" "}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 w-full space-x-5 mt-12">
-                    <Dropdown
-                      overlay={switchMenu(
-                        subPlan.billing_plan.plan_id,
-                        subPlan.subscription_filters
-                      )}
-                      trigger={["click"]}
-                      className="w-6/12 justify-self-center"
-                    >
-                      <Button>Switch Plan</Button>
-                    </Dropdown>
-                    <Dropdown
-                      overlay={cancelMenu(
-                        subPlan.billing_plan.plan_id,
-                        subPlan.subscription_filters
-                      )}
-                      trigger={["click"]}
-                      className="w-6/12 justify-self-center"
-                    >
-                      <Button>Cancel Subscriptions</Button>
-                    </Dropdown>
-                  </div>
-                </Card>
-              </List.Item>
-            </Fragment>
-          ))} */}
         </div>
-
         <DraftInvoice customer_id={customer_id} />
       </div>
     </div>

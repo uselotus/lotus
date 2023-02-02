@@ -48,9 +48,6 @@ function CustomerDetail() {
     () => Plan.getPlans().then((res) => res)
   );
 
-  const [customerSubscriptions, setCustomerSubscriptions] = useState<
-    DetailPlan[]
-  >([]);
   const { data: pricingUnits }: UseQueryResult<CurrencyType[]> = useQuery<
     CurrencyType[]
   >(["pricing_unit_list"], () => PricingUnits.list().then((res) => res));
@@ -79,11 +76,9 @@ function CustomerDetail() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
-        queryClient.invalidateQueries([
-          "balance_adjustments",
-          props.customer_id,
-        ]);
-        queryClient.invalidateQueries(["draft_invoice", props.customer_id]);
+        queryClient.invalidateQueries(["customer_detail", customer_id]);
+        queryClient.invalidateQueries(["balance_adjustments", customer_id]);
+        queryClient.invalidateQueries(["draft_invoice", customer_id]);
         refetch();
         toast.success("Subscription created successfully");
       },
@@ -181,7 +176,7 @@ function CustomerDetail() {
   return (
     <PageLayout
       title={data?.customer_name}
-      className="text-[24px] font-alliance"
+      className="text-[24px] font-alliance "
       hasBackButton
       aboveTitle
       backButton={

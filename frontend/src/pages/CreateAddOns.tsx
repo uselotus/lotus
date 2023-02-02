@@ -52,7 +52,7 @@ function CreateAddOns() {
     null
   );
   const [addon_type, setAddonType] = useState<AddonTypeOption>("flat_fee");
-  const [base_cost, setBaseCost] = useState<number | null>(0.0);
+  const [base_cost, setBaseCost] = useState<number | null>(null);
   const [recurring_flat_fee_timing, setRecurringFlatFeeTiming] = useState("");
   const [invoice_when, setInvoiceWhen] = useState<string>("invoice_on_attach");
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>([]);
@@ -266,6 +266,7 @@ function CreateAddOns() {
           onClick={() => form.submit()}
           size="large"
           type="primary"
+          disabled={!addon_name || !billing_frequency || !base_cost}
         >
           Preview & publish
         </Button>,
