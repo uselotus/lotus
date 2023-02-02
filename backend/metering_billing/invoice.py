@@ -146,7 +146,7 @@ def calculate_subscription_record_usage_fees(subscription_record, invoice):
             usg_rev = plan_component.calculate_total_revenue(subscription_record)
             qty = usg_rev["usage_qty"]
             rev = usg_rev["revenue"]
-            logger.error(
+            logger.info(
                 f"plan_component: {plan_component.billable_metric.billable_metric_name} usage_qty: {qty} revenue: {rev}",
             )
             InvoiceLineItem.objects.create(
@@ -290,14 +290,16 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice):
     base_fee = billing_plan.flat_rate * quantity
     if subscription_record.flat_fee_behavior == FLAT_FEE_BEHAVIOR.PRORATE:
         proration_factor = (
-            end - start
-        ).total_seconds() / subscription_record.unadjusted_duration_seconds
+            (end - start).total_seconds()
+            * 10**6
+            / subscription_record.unadjusted_duration_microseconds
+        )
         flat_fee_due = base_fee * convert_to_decimal(proration_factor)
     elif subscription_record.flat_fee_behavior == FLAT_FEE_BEHAVIOR.REFUND:
         flat_fee_due = Decimal(0)
     else:
         flat_fee_due = base_fee
-    logger.error(
+    logger.info(
         f"amt_already_billed: {amt_already_billed}, flat_fee_due: {flat_fee_due}"
     )
     if abs(float(amt_already_billed) - float(flat_fee_due)) < 0.01:
