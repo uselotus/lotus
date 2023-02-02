@@ -618,13 +618,14 @@ const SubscriptionView: FC<Props> = ({
                             background: "#C3986B",
                             borderColor: "#C3986B",
                           }}
-                          onClick={() =>
+                          onClick={() => {
                             onChange(
                               cascaderOptions?.value as string,
                               cascaderOptions?.plan_id as string,
                               cascaderOptions!.subscriptionFilters
-                            )
-                          }
+                            );
+                            setShowModal(false);
+                          }}
                         >
                           Switch
                         </Button>,
