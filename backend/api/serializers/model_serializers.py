@@ -1962,7 +1962,7 @@ class AddOnSubscriptionRecordCreateSerializer(serializers.ModelSerializer):
             end_date=attach_to_sr.end_date,
             next_billing_date=attach_to_sr.next_billing_date,
             last_billing_date=attach_to_sr.last_billing_date,
-            unadjusted_duration_seconds=attach_to_sr.unadjusted_duration_seconds,
+            unadjusted_duration_microseconds=attach_to_sr.unadjusted_duration_microseconds,
             auto_renew=is_recurring,
             flat_fee_behavior=FLAT_FEE_BEHAVIOR.PRORATE
             if is_recurring

@@ -2067,7 +2067,11 @@ class SubscriptionRecord(models.Model):
     end_date = models.DateTimeField(
         help_text="The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time."
     )
-    unadjusted_duration_seconds = models.PositiveIntegerField(null=True, blank=True)
+    unadjusted_duration_microseconds = models.PositiveBigIntegerField(
+        null=True,
+        blank=True,
+        help_text="The duration of the subscription in microseconds without any anchoring.",
+    )
     auto_renew = models.BooleanField(
         default=True,
         help_text="Whether the subscription automatically renews. Defaults to true.",
@@ -2133,14 +2137,14 @@ class SubscriptionRecord(models.Model):
                 day_anchor=day_anchor,
                 month_anchor=month_anchor,
             )
-        if not self.unadjusted_duration_seconds:
+        if not self.unadjusted_duration_microseconds:
             scheduled_end_date = calculate_end_date(
                 self.billing_plan.plan.plan_duration,
                 self.start_date,
             )
-            self.unadjusted_duration_seconds = (
+            self.unadjusted_duration_microseconds = (
                 scheduled_end_date - self.start_date
-            ).total_seconds()
+            ).total_seconds() * 10**6
         if not self.next_billing_date or self.next_billing_date < now:
             if self.billing_plan.usage_billing_frequency in [
                 USAGE_BILLING_FREQUENCY.END_OF_PERIOD,
@@ -2273,7 +2277,7 @@ class SubscriptionRecord(models.Model):
             start_date=now,
             end_date=self.end_date,
             auto_renew=self.auto_renew,
-            unadjusted_duration_seconds=self.unadjusted_duration_seconds,
+            unadjusted_duration_microseconds=self.unadjusted_duration_microseconds,
         )
         self.end_date = now
         self.auto_renew = False
@@ -2288,7 +2292,7 @@ class SubscriptionRecord(models.Model):
             return_dict[period] = Decimal(0)
             return_dict[period] += convert_to_decimal(
                 self.billing_plan.flat_rate
-                / self.unadjusted_duration_seconds
+                / self.unadjusted_duration_microseconds
                 * 60
                 * 60
                 * 24
