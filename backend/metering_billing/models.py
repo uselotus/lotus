@@ -51,7 +51,6 @@ from metering_billing.utils.enums import (
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     EVENT_TYPE,
     FLAT_FEE_BEHAVIOR,
-    FLAT_FEE_BILLING_TYPE,
     INVOICE_CHARGE_TIMING_TYPE,
     INVOICING_BEHAVIOR,
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
@@ -1443,6 +1442,12 @@ class Invoice(models.Model):
             models.Index(fields=["organization", "external_payment_obj_id"]),
             models.Index(fields=["organization", "-issue_date"]),
         ]
+        constraints = [
+            models.CheckConstraint(
+                check=Q(currency__custom=False),
+                name="invoice_currency_must_be_standard_pricing_unit",
+            )
+        ]
 
     def __str__(self):
         return str(self.invoice_number)
@@ -1565,17 +1570,69 @@ class TeamInviteToken(models.Model):
     expire_at = models.DateTimeField(default=now_plus_day, null=False, blank=False)
 
 
+class RecurringCharge(models.Model):
+    class ChargeTimingType(models.IntegerChoices):
+        IN_ADVANCE = (1, "in_advance")
+        IN_ARREARS = (2, "in_arrears")
+
+    class ChargeBehaviorType(models.IntegerChoices):
+        PRORATE = (1, "prorate")
+        CHARGE_FULL = (2, "full")
+
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="recurring_charges",
+    )
+    name = models.TextField()
+    plan_version = models.ForeignKey(
+        "PlanVersion",
+        on_delete=models.CASCADE,
+        related_name="recurring_charges",
+    )
+    plan_component = models.ForeignKey(
+        "PlanComponent",
+        on_delete=models.CASCADE,
+        related_name="recurring_charges",
+        null=True,
+    )
+    charge_timing = models.PositiveSmallIntegerField(
+        choices=ChargeTimingType.choices, default=ChargeTimingType.IN_ADVANCE
+    )
+    charge_behavior = models.PositiveSmallIntegerField(
+        choices=ChargeBehaviorType.choices, default=ChargeBehaviorType.PRORATE
+    )
+    amount = models.DecimalField(
+        decimal_places=10,
+        max_digits=20,
+        default=Decimal(0.0),
+        validators=[MinValueValidator(0)],
+    )
+    pricing_unit = models.ForeignKey(
+        "PricingUnit",
+        on_delete=models.SET_NULL,
+        related_name="recurring_charges",
+        null=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "plan_version", "name"],
+                name="unique_recurring_charge_name_in_plan_version",
+            )
+        ]
+
+
 class PlanVersion(models.Model):
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
         related_name="plan_versions",
     )
+    version_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     description = models.TextField(null=True, blank=True)
     version = models.PositiveSmallIntegerField()
-    flat_fee_billing_type = models.CharField(
-        max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices, null=True, blank=True
-    )
     usage_billing_frequency = models.CharField(
         max_length=40, choices=USAGE_BILLING_FREQUENCY.choices, null=True, blank=True
     )
@@ -1590,12 +1647,6 @@ class PlanVersion(models.Model):
         null=True,
         blank=True,
         related_name="transition_from",
-    )
-    flat_rate = models.DecimalField(
-        decimal_places=10,
-        max_digits=20,
-        default=Decimal(0),
-        validators=[MinValueValidator(0)],
     )
     features = models.ManyToManyField(Feature, blank=True)
     price_adjustment = models.ForeignKey(
@@ -1619,7 +1670,6 @@ class PlanVersion(models.Model):
         null=True,
         blank=True,
     )
-    version_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     pricing_unit = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
@@ -1633,6 +1683,10 @@ class PlanVersion(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["plan", "version"], name="unique_plan_version"
+            ),
+            models.CheckConstraint(
+                check=Q(pricing_unit__custom=False),
+                name="pricing_unit_is_not_custom",
             ),
         ]
         indexes = [
@@ -1845,7 +1899,7 @@ class Plan(models.Model):
                 check=(Q(parent_plan__isnull=True) & Q(target_customer__isnull=True))
                 | Q(parent_plan__isnull=False) & Q(target_customer__isnull=False),
                 name="both_null_or_both_not_null",
-            )
+            ),
         ]
         indexes = [
             models.Index(fields=["organization", "status"]),

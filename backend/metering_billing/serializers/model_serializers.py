@@ -1025,8 +1025,8 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
         fields = (
             "description",
             "plan_id",
-            "flat_fee_billing_type",
-            "flat_rate",
+            # "flat_fee_billing_type",
+            # "flat_rate",
             "components",
             "features",
             "price_adjustment",
@@ -1042,8 +1042,8 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "description": {"write_only": True},
             "plan_id": {"write_only": True},
-            "flat_fee_billing_type": {"write_only": True},
-            "flat_rate": {"write_only": True},
+            # "flat_fee_billing_type": {"write_only": True},
+            # "flat_rate": {"write_only": True},
             "components": {"write_only": True},
             "features": {"write_only": True},
             "price_adjustment": {"write_only": True},
@@ -1057,7 +1057,7 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
             "currency_code": {"write_only": True},
         }
 
-    flat_rate = serializers.DecimalField(max_digits=20, decimal_places=10, min_value=0)
+    # flat_rate = serializers.DecimalField(max_digits=20, decimal_places=10, min_value=0)
     components = PlanComponentCreateSerializer(
         many=True, allow_null=True, required=False, source="plan_components"
     )

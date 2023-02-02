@@ -5,6 +5,7 @@ from typing import Literal, Optional, Union
 
 from django.conf import settings
 from django.db.models import Sum
+from drf_spectacular.utils import extend_schema_serializer
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
@@ -31,6 +32,7 @@ from metering_billing.models import (
     PriceAdjustment,
     PriceTier,
     PricingUnit,
+    RecurringCharge,
     SubscriptionRecord,
     Tag,
     UsageAlert,
@@ -931,6 +933,37 @@ class PriceAdjustmentSerializer(
         }
 
 
+class RecurringChargeSerializer(
+    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+):
+    class Meta:
+        model = RecurringCharge
+        fields = (
+            "name",
+            "charge_timing",
+            "charge_behavior",
+            "amount",
+            "pricing_unit",
+        )
+        extra_kwargs = {
+            "name": {"required": True},
+            "charge_timing": {"required": True},
+            "amount": {"required": True},
+            "pricing_unit": {"required": True},
+        }
+
+    pricing_unit = PricingUnitSerializer()
+    charge_timing = serializers.SerializerMethodField()
+    charge_behavior = serializers.SerializerMethodField()
+
+    def get_charge_timing(self, obj) -> Literal["in_advance", "in_arrears"]:
+        return obj.get_charge_timing_display()
+
+    def get_charge_behavior(self, obj) -> Literal["fixed", "per_unit"]:
+        return obj.get_charge_behavior_display()
+
+
+@extend_schema_serializer(deprecate_fields=["flat_fee_billing_type", "flat_rate"])
 class PlanVersionSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer):
     class Meta:
         model = PlanVersion
@@ -938,6 +971,7 @@ class PlanVersionSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeri
             "description",
             "flat_fee_billing_type",
             "flat_rate",
+            "recurring_charges",
             "components",
             "features",
             "price_adjustment",
@@ -952,6 +986,7 @@ class PlanVersionSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeri
             "flat_fee_billing_type": {"required": True, "read_only": True},
             "flat_rate": {"required": True, "read_only": True},
             "components": {"required": True, "read_only": True},
+            "recurring_charges": {"required": True, "read_only": True},
             "features": {"required": True, "read_only": True},
             "price_adjustment": {
                 "required": True,
@@ -964,13 +999,25 @@ class PlanVersionSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeri
             "plan_name": {"required": True, "read_only": True},
         }
 
-    flat_rate = serializers.DecimalField(max_digits=20, decimal_places=10, min_value=0)
+    flat_rate = serializers.SerializerMethodField()
+    flat_fee_billing_type = serializers.SerializerMethodField()
     components = PlanComponentSerializer(many=True, source="plan_components")
     features = FeatureSerializer(many=True)
+    recurring_charges = RecurringChargeSerializer(many=True)
     price_adjustment = PriceAdjustmentSerializer(allow_null=True)
 
     plan_name = serializers.CharField(source="plan.plan_name")
     currency = PricingUnitSerializer(source="pricing_unit")
+
+    def get_flat_fee_billing_type(
+        self, obj
+    ) -> serializers.ChoiceField(choices=RecurringCharge.ChargeTimingType.labels):
+        return obj.recurring_charges.first().get_charge_timing_display()
+
+    def get_flat_rate(
+        self, obj
+    ) -> serializers.DecimalField(max_digits=20, decimal_places=10, min_value=0):
+        return sum(x.amount for x in obj.recurring_charges)
 
     def get_created_by(self, obj) -> str:
         if obj.created_by is not None:
