@@ -17,20 +17,25 @@ from django.db.models import Count, F, FloatField, Q, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+
 from metering_billing.exceptions.exceptions import (
-    AlignmentEngineFailure,
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
     NotEditable,
     OverlappingPlans,
-    ServerError,
 )
 from metering_billing.utils import (
     calculate_end_date,
     convert_to_date,
     convert_to_decimal,
     customer_uuid,
-    date_as_min_dt,
     dates_bwn_two_dts,
     event_uuid,
     now_plus_day,
@@ -72,13 +77,6 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -525,24 +523,15 @@ class Customer(models.Model):
             customer__isnull=True,
         ).update(customer=self)
 
-    def get_subscription_and_records(self):
-        now_utc()
-        active_subscription = self.subscriptions.active().first()
-        if active_subscription:
-            active_subscription_records = self.subscription_records.filter(
-                next_billing_date__range=(
-                    active_subscription.start_date,
-                    active_subscription.end_date,
-                ),
-                fully_billed=False,
-            )
-        else:
-            active_subscription_records = None
-        return active_subscription, active_subscription_records
+    def get_active_subscription_records(self):
+        active_subscription_records = self.subscription_records.active().filter(
+            fully_billed=False,
+        )
+        return active_subscription_records
 
     def get_usage_and_revenue(self):
         customer_subscriptions = (
-            Subscription.objects.active()
+            SubscriptionRecord.objects.active()
             .filter(
                 customer=self,
                 organization=self.organization,
@@ -565,10 +554,9 @@ class Customer(models.Model):
         from metering_billing.invoice import generate_invoice
 
         total = 0
-        sub, sub_records = self.get_subscription_and_records()
-        if sub is not None and sub_records is not None:
+        sub_records = self.get_active_subscription_records()
+        if sub_records is not None and len(sub_records) > 0:
             invs = generate_invoice(
-                sub,
                 sub_records,
                 draft=True,
                 charge_next_plan=True,
@@ -1441,11 +1429,8 @@ class Invoice(models.Model):
     customer = models.ForeignKey(
         Customer, on_delete=models.CASCADE, null=True, related_name="invoices"
     )
-    subscription = models.ForeignKey(
-        "Subscription",
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name="invoices",
+    subscription_records = models.ManyToManyField(
+        "SubscriptionRecord", related_name="invoices"
     )
     history = HistoricalRecords()
 
@@ -1456,7 +1441,7 @@ class Invoice(models.Model):
             models.Index(fields=["organization", "invoice_number"]),
             models.Index(fields=["organization", "invoice_id"]),
             models.Index(fields=["organization", "external_payment_obj_id"]),
-            models.Index(fields=["organization", "subscription", "-issue_date"]),
+            models.Index(fields=["organization", "-issue_date"]),
         ]
 
     def __str__(self):
@@ -1468,22 +1453,22 @@ class Invoice(models.Model):
 
         ### Generate invoice number
         if not self.pk and self.payment_status != Invoice.PaymentStatus.DRAFT:
-            today = now_utc().date()
-            today_string = today.strftime("%y%m%d")
+            issue_date = self.issue_date.date()
+            issue_date_string = issue_date.strftime("%y%m%d")
             next_invoice_number = "000001"
             last_invoice = (
                 Invoice.objects.filter(
-                    invoice_number__startswith=today_string,
+                    invoice_number__startswith=issue_date_string,
                     organization=self.organization,
                 )
-                .order_by("invoice_number")
-                .last()
+                .order_by("-invoice_number")
+                .first()
             )
             if last_invoice:
                 last_invoice_number = int(last_invoice.invoice_number[7:])
                 next_invoice_number = "{0:06d}".format(last_invoice_number + 1)
 
-            self.invoice_number = today_string + "-" + next_invoice_number
+            self.invoice_number = issue_date_string + "-" + next_invoice_number
             # if not self.due_date:
             #     self.due_date = self.issue_date + datetime.timedelta(days=1)
         paid_before = self.payment_status == Invoice.PaymentStatus.PAID
@@ -1977,13 +1962,14 @@ class Plan(models.Model):
                             bill_usage=bill_usage,
                             flat_fee_behavior=FLAT_FEE_BEHAVIOR.PRORATE,
                         )
-                        Subscription.objects.create(
+                        SubscriptionRecord.objects.create(
                             billing_plan=new_version,
                             organization=self.organization,
                             customer=sub.customer,
                             start_date=sub.end_date,
                             auto_renew=True,
                             is_new=False,
+                            quantity=sub.quantity,
                         )
 
 
@@ -2009,213 +1995,6 @@ class ExternalPlanLink(models.Model):
                 name="unique_external_plan_link",
             )
         ]
-
-
-class SubscriptionManager(models.Manager):
-    def active(self, time=None):
-        if time is None:
-            time = now_utc()
-        return self.filter(
-            Q(start_date__lte=time)
-            & ((Q(end_date__gte=time) | Q(end_date__isnull=True)))
-        )
-
-    def ended(self, time=None):
-        if time is None:
-            time = now_utc()
-        return self.filter(end_date__lte=time)
-
-    def not_started(self, time=None):
-        if time is None:
-            time = now_utc()
-        return self.filter(start_date__gt=time)
-
-
-class Subscription(models.Model):
-    organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="subscriptions", null=True
-    )
-    day_anchor = models.SmallIntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(31)],
-        null=True,
-        blank=True,
-    )
-    month_anchor = models.SmallIntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(12)],
-        null=True,
-        blank=True,
-    )
-    customer = models.ForeignKey(
-        Customer,
-        on_delete=models.CASCADE,
-        null=False,
-        related_name="subscriptions",
-    )
-    billing_cadence = models.CharField(
-        choices=PLAN_DURATION.choices,
-        max_length=20,
-    )
-    start_date = models.DateTimeField()
-    end_date = models.DateTimeField()
-    subscription_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    objects = SubscriptionManager()
-
-    class Meta:
-        constraints = [
-            models.CheckConstraint(
-                check=Q(start_date__lte=F("end_date")),
-                name="start_date_less_than_end_date",
-            ),
-            models.UniqueConstraint(
-                fields=["customer", "start_date", "end_date"],
-                name="unique_customer_start_end_date",
-            ),
-        ]
-        indexes = [
-            models.Index(fields=["-end_date"]),
-            models.Index(fields=["organization", "customer", "start_date", "end_date"]),
-        ]
-
-    def __str__(self):
-        return f"{self.customer.id} [{self.start_date}, {self.end_date}] - {self.subscription_id}"
-
-    def save(self, *args, **kwargs):
-        if not self.pk:
-            overlapping_subscriptions = Subscription.objects.filter(
-                Q(start_date__range=(self.start_date, self.end_date))
-                | Q(end_date__range=(self.start_date, self.end_date)),
-                organization=self.organization,
-                customer=self.customer,
-            )
-            if overlapping_subscriptions.exists():
-                logger.error(
-                    "Overlapping subscriptions found. Subscription that was trying to be created had start date of %s and end date of %s, customer id %s, and organization id %s. Overlapping subscriptions: %s",
-                    self.start_date,
-                    self.end_date,
-                    self.customer.id,
-                    self.organization.id,
-                    overlapping_subscriptions,
-                )
-                raise AlignmentEngineFailure(
-                    "An unexpected error in the alignment engine has occurred. Please contact support."
-                )
-        super(Subscription, self).save(*args, **kwargs)
-
-    def get_anchors(self):
-        return self.day_anchor, self.month_anchor
-
-    def handle_attach_plan(
-        self,
-        plan_day_anchor=None,
-        plan_month_anchor=None,
-        plan_start_date=None,
-        plan_duration=None,
-        plan_billing_frequency=None,
-    ):
-        if self.day_anchor is None:
-            if plan_day_anchor is not None:
-                self.day_anchor = plan_day_anchor
-            else:
-                self.day_anchor = plan_start_date.day
-        if self.month_anchor is None:
-            if plan_month_anchor is not None:
-                self.month_anchor = plan_month_anchor
-            elif plan_duration in [
-                PLAN_DURATION.YEARLY,
-                PLAN_DURATION.QUARTERLY,
-            ]:
-                self.month_anchor = plan_start_date.month
-        if plan_billing_frequency in [USAGE_BILLING_FREQUENCY.END_OF_PERIOD, None]:
-            if self.billing_cadence is None or self.billing_cadence == "":
-                self.billing_cadence = plan_duration
-            elif self.billing_cadence == PLAN_DURATION.QUARTERLY:
-                if plan_duration == PLAN_DURATION.MONTHLY:
-                    self.billing_cadence = PLAN_DURATION.MONTHLY
-            elif self.billing_cadence == PLAN_DURATION.YEARLY:
-                if plan_duration in [PLAN_DURATION.MONTHLY, PLAN_DURATION.QUARTERLY]:
-                    self.billing_cadence = plan_duration
-        else:
-            if plan_billing_frequency == USAGE_BILLING_FREQUENCY.MONTHLY:
-                self.billing_cadence = PLAN_DURATION.MONTHLY
-            elif plan_billing_frequency == USAGE_BILLING_FREQUENCY.QUARTERLY:
-                if self.billing_cadence in [PLAN_DURATION.YEARLY, None, ""]:
-                    self.billing_cadence = PLAN_DURATION.QUARTERLY
-        new_end_date = calculate_end_date(
-            self.billing_cadence,
-            self.start_date,
-            day_anchor=self.day_anchor,
-            month_anchor=self.month_anchor,
-        )
-        self.end_date = new_end_date
-        self.save()
-
-    def handle_remove_plan(self):
-        active_sub_records = self.customer.subscription_records.active()
-
-        active_subs_with_yearly_quarterly = active_sub_records.filter(
-            billing_plan__plan__plan_duration__in=[
-                PLAN_DURATION.YEARLY,
-                PLAN_DURATION.QUARTERLY,
-            ]
-        )
-        if active_sub_records.count() == 0:
-            self.day_anchor = None
-            self.month_anchor = None
-            self.end_date = now_utc()
-            self.save()
-            return
-        if active_subs_with_yearly_quarterly.count() == 0:
-            self.month_anchor = None
-        remaining_durations = active_sub_records.values_list(
-            "billing_plan__plan__plan_duration", flat=True
-        ).distinct()
-        remaining_usage_billing_freqs = active_sub_records.values_list(
-            "billing_plan__usage_billing_frequency", flat=True
-        ).distinct()
-        if (
-            PLAN_DURATION.MONTHLY in remaining_durations
-            or USAGE_BILLING_FREQUENCY.MONTHLY in remaining_usage_billing_freqs
-        ):
-            self.billing_cadence = PLAN_DURATION.MONTHLY
-        elif (
-            PLAN_DURATION.QUARTERLY in remaining_durations
-            or USAGE_BILLING_FREQUENCY.QUARTERLY in remaining_usage_billing_freqs
-        ):
-            self.billing_cadence = PLAN_DURATION.QUARTERLY
-        else:
-            self.billing_cadence = PLAN_DURATION.YEARLY
-        new_end_date = calculate_end_date(
-            self.billing_cadence,
-            self.start_date,
-            day_anchor=self.day_anchor,
-            month_anchor=self.month_anchor,
-        )
-        num_before = active_sub_records.filter(
-            next_billing_date__lt=new_end_date
-        ).count()
-        if num_before == 0:
-            self.end_date = new_end_date
-        self.save()
-
-    def get_subscription_records(self):
-        return self.customer.subscription_records.active().filter(
-            Q(last_billing_date__range=(self.start_date, self.end_date))
-            | Q(end_date__range=(self.start_date, self.end_date))
-            | Q(start_date__lte=self.start_date, end_date__gte=self.end_date),
-        )
-
-    def get_subscription_records_to_bill(self):
-        return self.customer.subscription_records.filter(
-            Q(last_billing_date__range=(self.start_date, self.end_date))
-            | Q(end_date__range=(self.start_date, self.end_date)),
-            fully_billed=False,
-        )
-
-    def get_new_sub_end_date(self):
-        new_date = date_as_min_dt(self.end_date + relativedelta(days=1))
-        return calculate_end_date(
-            self.billing_cadence, new_date, self.day_anchor, self.month_anchor
-        )
 
 
 class SubscriptionRecordManager(models.Manager):
@@ -2288,7 +2067,11 @@ class SubscriptionRecord(models.Model):
     end_date = models.DateTimeField(
         help_text="The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time."
     )
-    unadjusted_duration_seconds = models.PositiveIntegerField(null=True, blank=True)
+    unadjusted_duration_microseconds = models.PositiveBigIntegerField(
+        null=True,
+        blank=True,
+        help_text="The duration of the subscription in microseconds without any anchoring.",
+    )
     auto_renew = models.BooleanField(
         default=True,
         help_text="Whether the subscription automatically renews. Defaults to true.",
@@ -2343,27 +2126,25 @@ class SubscriptionRecord(models.Model):
     def save(self, *args, **kwargs):
         new_filters = kwargs.pop("subscription_filters", [])
         now = now_utc()
-        subscription = self.customer.subscriptions.active(self.start_date).first()
-        if not subscription:
-            raise ServerError(
-                "Unexpected error: subscription date alignment engine failed."
-            )
         if not self.end_date:
-            day_anchor, month_anchor = subscription.get_anchors()
+            day_anchor, month_anchor = (
+                self.billing_plan.day_anchor,
+                self.billing_plan.month_anchor,
+            )
             self.end_date = calculate_end_date(
                 self.billing_plan.plan.plan_duration,
                 self.start_date,
                 day_anchor=day_anchor,
                 month_anchor=month_anchor,
             )
-        if not self.unadjusted_duration_seconds:
+        if not self.unadjusted_duration_microseconds:
             scheduled_end_date = calculate_end_date(
                 self.billing_plan.plan.plan_duration,
                 self.start_date,
             )
-            self.unadjusted_duration_seconds = (
+            self.unadjusted_duration_microseconds = (
                 scheduled_end_date - self.start_date
-            ).total_seconds()
+            ).total_seconds() * 10**6
         if not self.next_billing_date or self.next_billing_date < now:
             if self.billing_plan.usage_billing_frequency in [
                 USAGE_BILLING_FREQUENCY.END_OF_PERIOD,
@@ -2496,7 +2277,7 @@ class SubscriptionRecord(models.Model):
             start_date=now,
             end_date=self.end_date,
             auto_renew=self.auto_renew,
-            unadjusted_duration_seconds=self.unadjusted_duration_seconds,
+            unadjusted_duration_microseconds=self.unadjusted_duration_microseconds,
         )
         self.end_date = now
         self.auto_renew = False
@@ -2511,7 +2292,7 @@ class SubscriptionRecord(models.Model):
             return_dict[period] = Decimal(0)
             return_dict[period] += convert_to_decimal(
                 self.billing_plan.flat_rate
-                / self.unadjusted_duration_seconds
+                / self.unadjusted_duration_microseconds
                 * 60
                 * 60
                 * 24

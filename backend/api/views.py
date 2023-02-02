@@ -98,7 +98,6 @@ from metering_billing.models import (
     Plan,
     PlanComponent,
     PriceTier,
-    Subscription,
     SubscriptionRecord,
 )
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
@@ -174,7 +173,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         qs = qs.select_related("default_currency")
         qs = qs.prefetch_related(
             Prefetch(
-                "subscriptions",
+                "subscription_records",
                 queryset=SubscriptionRecord.objects.active(now)
                 .filter(
                     organization=organization,
@@ -193,7 +192,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                     ],
                 )
                 .order_by("-issue_date")
-                .select_related("currency", "subscription", "organization")
+                .select_related("currency", "organization")
                 .prefetch_related("line_items"),
                 to_attr="active_invoices",
             ),
@@ -734,36 +733,19 @@ class SubscriptionViewSet(
                     "Invalid subscription filter. Please check your subscription filters setting."
                 )
         # check to see if subscription exists
-        subscription = (
-            Subscription.objects.active(now)
-            .filter(
-                organization=organization,
-                customer=serializer.validated_data["customer"],
-            )
-            .first()
-        )
         duration = serializer.validated_data["billing_plan"].plan.plan_duration
         billing_freq = serializer.validated_data["billing_plan"].usage_billing_frequency
         start_date = convert_to_datetime(
             serializer.validated_data["start_date"], date_behavior="min"
         )
-        plan_day_anchor = serializer.validated_data["billing_plan"].day_anchor
-        plan_month_anchor = serializer.validated_data["billing_plan"].month_anchor
-        if subscription is None:
-            subscription = Subscription.objects.create(
-                organization=organization,
-                customer=serializer.validated_data["customer"],
-                start_date=start_date,
-                end_date=start_date,
-            )
-        subscription.handle_attach_plan(
-            plan_day_anchor=plan_day_anchor,
-            plan_month_anchor=plan_month_anchor,
-            plan_start_date=start_date,
-            plan_duration=duration,
-            plan_billing_frequency=billing_freq,
+        day_anchor = (
+            serializer.validated_data["billing_plan"].day_anchor
+            or start_date.date().day
         )
-        day_anchor, month_anchor = subscription.get_anchors()
+        month_anchor = (
+            serializer.validated_data["billing_plan"].month_anchor
+            or start_date.date().month
+        )
         end_date = calculate_end_date(
             duration,
             start_date,
@@ -843,16 +825,7 @@ class SubscriptionViewSet(
         )
         if invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
             for customer in customer_set:
-                subscription = (
-                    Subscription.objects.active()
-                    .filter(
-                        organization=customer.organization,
-                        customer=customer,
-                    )
-                    .first()
-                )
-                generate_invoice(subscription, qs.filter(customer=customer))
-                subscription.handle_remove_plan()
+                generate_invoice(qs.filter(customer=customer))
 
         return_qs = SubscriptionRecord.base_objects.filter(
             pk__in=original_qs, organization=organization
@@ -923,7 +896,7 @@ class SubscriptionViewSet(
                     else subscription_record.usage_start_date,
                     auto_renew=subscription_record.auto_renew,
                     fully_billed=False,
-                    unadjusted_duration_seconds=subscription_record.unadjusted_duration_seconds,
+                    unadjusted_duration_microseconds=subscription_record.unadjusted_duration_microseconds,
                 )
                 for filter in subscription_record.filters.all():
                     sr.filters.add(filter)
@@ -935,20 +908,11 @@ class SubscriptionViewSet(
                     billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW
                 )
                 subscription_record.save()
-            customer = list(qs)[0].customer
-            subscription = (
-                Subscription.objects.active()
-                .filter(
-                    organization=customer.organization,
-                    customer=customer,
-                )
-                .first()
-            )
             new_qs = SubscriptionRecord.objects.filter(
                 pk__in=original_qs, organization=organization
             )
             if billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
-                generate_invoice(subscription, new_qs)
+                generate_invoice(new_qs)
         else:
             update_dict = {}
             if turn_off_auto_renew:
@@ -1007,20 +971,11 @@ class SubscriptionViewSet(
             billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW
             and "quantity" in update_dict
         ):
-            customer = qs.first().customer
-            subscription = (
-                Subscription.objects.active()
-                .filter(
-                    organization=customer.organization,
-                    customer=customer,
-                )
-                .first()
-            )
             new_qs = SubscriptionRecord.addon_objects.filter(
                 pk__in=original_qs, organization=organization
             )
             if billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
-                generate_invoice(subscription, new_qs)
+                generate_invoice(new_qs)
 
         return_qs = SubscriptionRecord.addon_objects.filter(
             pk__in=original_qs, organization=organization
@@ -1062,16 +1017,7 @@ class SubscriptionViewSet(
         )
         if invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
             for customer in customer_set:
-                subscription = (
-                    Subscription.objects.active()
-                    .filter(
-                        organization=customer.organization,
-                        customer=customer,
-                    )
-                    .first()
-                )
-                generate_invoice(subscription, qs.filter(customer=customer))
-                subscription.handle_remove_plan()
+                generate_invoice(qs.filter(customer=customer))
 
         return_qs = SubscriptionRecord.addon_objects.filter(
             pk__in=original_qs, organization=organization

@@ -6,7 +6,6 @@ from urllib.parse import urlencode
 
 import pytz
 import stripe
-from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import F, Prefetch, Q
 from rest_framework import serializers, status
@@ -16,13 +15,12 @@ from metering_billing.exceptions.exceptions import ExternalConnectionInvalid
 from metering_billing.serializers.payment_provider_serializers import (
     PaymentProviderPostResponseSerializer,
 )
-from metering_billing.utils import calculate_end_date, date_as_max_dt, now_utc
+from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
     PAYMENT_PROVIDERS,
     PLAN_STATUS,
-    USAGE_BILLING_FREQUENCY,
 )
 
 logger = logging.getLogger("django.server")
@@ -198,16 +196,16 @@ class StripeConnector(PaymentProvider):
                     organization=organization,
                 ).first()
                 if customer:  # customer exists in system already
-                    cur_pp_dict = customer.integrations.get(
-                        PAYMENT_PROVIDERS.STRIPE, {}
-                    )
+                    integrations_dict = customer.integrations
+                    cur_pp_dict = integrations_dict.get(PAYMENT_PROVIDERS.STRIPE, {})
                     cur_pp_dict["id"] = stripe_id
                     cur_pp_dict["email"] = stripe_email
                     cur_pp_dict["metadata"] = stripe_metadata
                     cur_pp_dict["name"] = stripe_name
                     cur_pp_dict["currency"] = stripe_currency
                     cur_pp_dict["payment_methods"] = stripe_payment_methods
-                    customer.integrations[PAYMENT_PROVIDERS.STRIPE] = cur_pp_dict
+                    integrations_dict[PAYMENT_PROVIDERS.STRIPE] = cur_pp_dict
+                    customer.integrations = integrations_dict
                     customer.payment_provider = PAYMENT_PROVIDERS.STRIPE
                     customer.save()
                 else:
@@ -269,7 +267,6 @@ class StripeConnector(PaymentProvider):
                 "external_payment_obj_id": stripe_invoice.id,
                 "external_payment_obj_type": PAYMENT_PROVIDERS.STRIPE,
                 "organization": customer.organization,
-                "subscription": None,
             }
             lotus_invoice = Invoice.objects.create(**invoice_kwargs)
             lotus_invoices.append(lotus_invoice)
@@ -430,7 +427,6 @@ class StripeConnector(PaymentProvider):
             Customer,
             ExternalPlanLink,
             Plan,
-            Subscription,
             SubscriptionRecord,
         )
 
@@ -497,7 +493,6 @@ class StripeConnector(PaymentProvider):
             # great, in this case we transfer the subscription
             elif len(matching_plans) == 1:
                 billing_plan = Plan.objects.get(id=matching_plans[0][0])
-                subscription
                 # check to see if subscription exists
                 validated_data = {
                     "organization": organization,
@@ -522,69 +517,6 @@ class StripeConnector(PaymentProvider):
                         cancel_at_period_end=True,
                     )
                 ret_subs.append(sub)
-                subscription = (
-                    Subscription.objects.active()
-                    .filter(
-                        organization=organization,
-                        customer=validated_data["customer"],
-                    )
-                    .first()
-                )
-                duration = validated_data["billing_plan"].plan.plan_duration
-                billing_freq = validated_data["billing_plan"].usage_billing_frequency
-                start_date = validated_data["start_date"]
-                plan_day_anchor = validated_data["billing_plan"].day_anchor
-                plan_month_anchor = validated_data["billing_plan"].month_anchor
-                if subscription is None:
-                    subscription = Subscription.objects.create(
-                        organization=organization,
-                        customer=validated_data["customer"],
-                        start_date=start_date,
-                        end_date=start_date,
-                    )
-                subscription.handle_attach_plan(
-                    plan_day_anchor=plan_day_anchor,
-                    plan_month_anchor=plan_month_anchor,
-                    plan_start_date=start_date,
-                    plan_duration=duration,
-                    plan_billing_frequency=billing_freq,
-                )
-                day_anchor, month_anchor = subscription.get_anchors()
-                end_date = calculate_end_date(
-                    duration,
-                    start_date,
-                    day_anchor=day_anchor,
-                    month_anchor=month_anchor,
-                )
-                end_date = validated_data.get("end_date", end_date)
-                if billing_freq in [
-                    USAGE_BILLING_FREQUENCY.MONTHLY,
-                    USAGE_BILLING_FREQUENCY.QUARTERLY,
-                ]:
-                    found = False
-                    i = 0
-                    num_months = (
-                        1 if billing_freq == USAGE_BILLING_FREQUENCY.MONTHLY else 3
-                    )
-                    while not found:
-                        tentative_nbd = date_as_max_dt(
-                            start_date
-                            + relativedelta(months=i, day=day_anchor, days=-1)
-                        )
-                        if tentative_nbd <= start_date:
-                            i += 1
-                            continue
-                        elif tentative_nbd > end_date:
-                            tentative_nbd = end_date
-                            break
-                        months_btwn = relativedelta(end_date, tentative_nbd).months
-                        if months_btwn % num_months == 0:
-                            found = True
-                        else:
-                            i += 1
-                    validated_data[
-                        "next_billing_date"
-                    ] = tentative_nbd  # end_date - i * relativedelta(months=num_months)
                 SubscriptionRecord.objects.create(**validated_data)
             else:  # error if multiple plans match
                 err_msg = "Multiple Lotus plans match Stripe subscription {}.".format(

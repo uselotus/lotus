@@ -261,7 +261,6 @@ def generate_invoice_pdf(
 
     customer = invoice.customer
     organization = invoice.organization
-    subscription = invoice.subscription
     currency = invoice.currency
     line_items = invoice.line_items.all()
     write_invoice_title(doc)
@@ -334,14 +333,14 @@ def generate_invoice_pdf(
 
     # draw_big_hr(doc, 200)
 
-    if subscription:
-        {
-            write_summary_header(
-                doc,
-                transform_date(subscription.start_date),
-                transform_date(subscription.end_date),
-            )
-        }
+    # if subscription:
+    #     {
+    #         write_summary_header(
+    #             doc,
+    #             transform_date(subscription.start_date), #start_date
+    #             transform_date(subscription.end_date),
+    #         )
+    #     }
 
     grouped_line_items = {}
     for line_item in line_items:
@@ -436,7 +435,7 @@ def generate_invoice_pdf(
                 line_item_start_y = 40
 
                 doc.setFont("Times-Roman", FONT_XXS)
-                invoice_number = invoice["invoice_number"]
+                invoice_number = invoice.invoice_number
                 doc.setFillColor(HexColor("#9CA3AF"))
                 doc.drawString(25, 770, f"#{invoice_number}")
                 doc.setFillColor("black")

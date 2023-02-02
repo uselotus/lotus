@@ -31,7 +31,6 @@ from metering_billing.models import (
     PriceAdjustment,
     PriceTier,
     PricingUnit,
-    Subscription,
     SubscriptionRecord,
     Tag,
     UsageAlert,
@@ -46,7 +45,6 @@ from metering_billing.serializers.serializer_utils import (
     PlanUUIDField,
     PlanVersionUUIDField,
     SlugRelatedFieldWithOrganization,
-    SubscriptionUUIDField,
     UsageAlertUUIDField,
 )
 from metering_billing.utils import convert_to_date, now_utc
@@ -706,10 +704,10 @@ class CustomerCreateSerializer(
             }
         customer = Customer.objects.create(**validated_data)
         if pp_id:
-            customer_properties = customer.properties
-            customer_properties[validated_data["payment_provider"]] = {}
-            customer_properties[validated_data["payment_provider"]]["id"] = pp_id
-            customer.properties = customer_properties
+            customer_integrations = customer.integrations
+            customer_integrations[validated_data["payment_provider"]] = {}
+            customer_integrations[validated_data["payment_provider"]]["id"] = pp_id
+            customer.integrations = customer_integrations
             customer.save()
         else:
             if "payment_provider" in validated_data:
@@ -1229,16 +1227,12 @@ class SubscriptionRecordCreateSerializer(
             sub_record.billing_plan.flat_fee_billing_type
             == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
         ):
-            (
-                sub,
-                sub_records,
-            ) = sub_record.customer.get_subscription_and_records()
+            sub_records = sub_record.customer.get_active_subscription_records()
             sub_records.filter(pk=sub_record.pk).update(
                 flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
                 invoice_usage_charges=False,
             )
             generate_invoice(
-                sub,
                 sub_records.filter(pk=sub_record.pk),
             )
             sub_record.invoice_usage_charges = True
@@ -1260,38 +1254,6 @@ class LightweightSubscriptionRecordSerializer(SubscriptionRecordSerializer):
     subscription_filters = SubscriptionCategoricalFilterSerializer(
         source="filters", many=True, read_only=True
     )
-
-
-class SubscriptionSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
-):
-    class Meta:
-        model = Subscription
-        fields = (
-            "subscription_id",
-            "day_anchor",
-            "month_anchor",
-            "customer",
-            "billing_cadence",
-            "start_date",
-            "end_date",
-            "plans",
-        )
-
-    subscription_id = SubscriptionUUIDField(read_only=True)
-    customer = LightweightCustomerSerializer(read_only=True)
-    plans = serializers.SerializerMethodField()
-
-    def get_plans(self, obj) -> LightweightSubscriptionRecordSerializer(many=True):
-        sub_records = obj.get_subscription_records().prefetch_related(
-            "billing_plan",
-            "filters",
-            "billing_plan__plan",
-            "billing_plan__pricing_unit",
-        )
-
-        data = LightweightSubscriptionRecordSerializer(sub_records, many=True).data
-        return data
 
 
 class SubscriptionInvoiceSerializer(SubscriptionRecordSerializer):
@@ -2000,7 +1962,7 @@ class AddOnSubscriptionRecordCreateSerializer(serializers.ModelSerializer):
             end_date=attach_to_sr.end_date,
             next_billing_date=attach_to_sr.next_billing_date,
             last_billing_date=attach_to_sr.last_billing_date,
-            unadjusted_duration_seconds=attach_to_sr.unadjusted_duration_seconds,
+            unadjusted_duration_microseconds=attach_to_sr.unadjusted_duration_microseconds,
             auto_renew=is_recurring,
             flat_fee_behavior=FLAT_FEE_BEHAVIOR.PRORATE
             if is_recurring
@@ -2012,6 +1974,5 @@ class AddOnSubscriptionRecordCreateSerializer(serializers.ModelSerializer):
         for sf in attach_to_sr.filters.all():
             sr.filters.add(sf)
         if invoice_now:
-            sub, _ = customer.get_subscription_and_records()
-            generate_invoice(sub, sr)
+            generate_invoice(sr)
         return sr

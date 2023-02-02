@@ -7,6 +7,10 @@ from decimal import Decimal
 import pytest
 from dateutil import parser
 from django.urls import reverse
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
@@ -19,15 +23,11 @@ from metering_billing.models import (
     PlanComponent,
     PlanVersion,
     PriceTier,
-    Subscription,
     SubscriptionRecord,
 )
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import FLAT_FEE_BILLING_TYPE, PLAN_VERSION_STATUS
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def addon_test_common_setup(
     generate_org_and_api_key,
     add_users_to_org,
     api_client_with_api_key_auth,
-    add_subscription_to_org,
+    add_subscription_record_to_org,
     add_customers_to_org,
     add_product_to_org,
     add_plan_to_product,
@@ -129,7 +129,7 @@ def addon_test_common_setup(
 
         (customer,) = add_customers_to_org(org, n=1)
         if num_subscriptions > 0:
-            setup_dict["org_subscription"] = add_subscription_to_org(
+            setup_dict["org_subscription"] = add_subscription_record_to_org(
                 org, billing_plan, customer
             )
         # one time flat charge addon
@@ -330,9 +330,7 @@ class TestAttachAddon:
         assert data["start_date"] != start_date
         assert data["end_date"] == end_date
         assert invoice_before == invoice_after
-        invoices = generate_invoice(
-            Subscription.objects.all().first(), SubscriptionRecord.objects.all()
-        )
+        invoices = generate_invoice(SubscriptionRecord.objects.all())
         assert Decimal("10.00") - invoices[0].cost_due < Decimal("0.01")
 
     def test_flat_addon_invoice_later_and_recurring_prorates_current_charge_and_charges_full_next(
@@ -399,7 +397,6 @@ class TestAttachAddon:
         assert data["end_date"] == end_date
         assert invoice_before == invoice_after
         invoices = generate_invoice(
-            Subscription.objects.all().first(),
             SubscriptionRecord.objects.all(),
             charge_next_plan=True,
         )
@@ -710,7 +707,6 @@ class TestAttachAddon:
         assert invoice_before == invoice_after
 
         invoices = generate_invoice(
-            Subscription.objects.all().first(),
             SubscriptionRecord.objects.all(),
             charge_next_plan=True,
         )
@@ -929,9 +925,7 @@ class TestUpdateAddon:
         assert response.status_code == status.HTTP_200_OK
         data = response.json()[0]
 
-        invoices = generate_invoice(
-            Subscription.objects.all().first(), SubscriptionRecord.objects.all()
-        )
+        invoices = generate_invoice(SubscriptionRecord.objects.all())
         assert Decimal("20.00") - invoices[0].cost_due < Decimal("0.01")
 
     def test_update_quantity_on_invoice_invoice_now(
@@ -1010,9 +1004,7 @@ class TestUpdateAddon:
         assert response.status_code == status.HTTP_200_OK
         data = response.json()[0]
 
-        invoices = generate_invoice(
-            Subscription.objects.all().first(), SubscriptionRecord.objects.all()
-        )
+        invoices = generate_invoice(SubscriptionRecord.objects.all())
         # already charged so should be 0
         assert Decimal("0") - invoices[0].cost_due < Decimal("0.01")
 
@@ -1091,9 +1083,7 @@ class TestUpdateAddon:
         baladj = CustomerBalanceAdjustment.objects.all().last()
         assert baladj.amount == Decimal("30.00")  # reduced from 5 to 2
 
-        invoices = generate_invoice(
-            Subscription.objects.all().first(), SubscriptionRecord.objects.all()
-        )
+        invoices = generate_invoice(SubscriptionRecord.objects.all())
         # already charged so should be 0
         assert Decimal("0") - invoices[0].cost_due < Decimal("0.01")
 
@@ -1253,8 +1243,6 @@ class TestCancelAddon:
         assert response.status_code == status.HTTP_200_OK
         assert parser.parse(data["end_date"]) < now_utc()
         assert data["auto_renew"] is False
-        generate_invoice(
-            Subscription.objects.all().first(), SubscriptionRecord.objects.all()
-        )
+        generate_invoice(SubscriptionRecord.objects.all())
         baladj_after = len(CustomerBalanceAdjustment.objects.all())
         assert baladj_before == baladj_after - 1

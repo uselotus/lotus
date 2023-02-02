@@ -2,9 +2,6 @@ import json
 
 import pytest
 from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIClient
-
 from metering_billing.models import Plan, PlanVersion
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
@@ -16,6 +13,8 @@ from metering_billing.utils.enums import (
     PLAN_VERSION_STATUS,
     REPLACE_IMMEDIATELY_TYPE,
 )
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -177,7 +176,7 @@ class TestCreatePlanVersion:
     def test_create_new_version_as_active_with_existing_subscriptions_grandfathering(
         self,
         plan_test_common_setup,
-        add_subscription_to_org,
+        add_subscription_record_to_org,
     ):
         setup_dict = plan_test_common_setup()
         # add in the plan, along with initial version
@@ -188,7 +187,7 @@ class TestCreatePlanVersion:
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
-        add_subscription_to_org(
+        add_subscription_record_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
         # now add in the plan ID to the payload, and send a post request for the new version
@@ -213,7 +212,7 @@ class TestCreatePlanVersion:
     def test_create_new_version_as_active_with_existing_subscriptions_replace_on_renewal(
         self,
         plan_test_common_setup,
-        add_subscription_to_org,
+        add_subscription_record_to_org,
     ):
         setup_dict = plan_test_common_setup()
 
@@ -225,7 +224,7 @@ class TestCreatePlanVersion:
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
-        add_subscription_to_org(
+        add_subscription_record_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
 
@@ -251,7 +250,9 @@ class TestCreatePlanVersion:
 
 @pytest.mark.django_db(transaction=True)
 class TestUpdatePlan:
-    def test_change_plan_name(self, plan_test_common_setup, add_subscription_to_org):
+    def test_change_plan_name(
+        self, plan_test_common_setup, add_subscription_record_to_org
+    ):
         setup_dict = plan_test_common_setup()
         response = setup_dict["client"].post(
             reverse("plan-list"),
@@ -303,7 +304,7 @@ class TestUpdatePlan:
         assert plans_inactive_before + 1 == plans_inactive_after
 
     def test_change_plan_to_inactive_plan_has_active_subs_fails(
-        self, plan_test_common_setup, add_subscription_to_org
+        self, plan_test_common_setup, add_subscription_record_to_org
     ):
         setup_dict = plan_test_common_setup()
 
@@ -315,7 +316,7 @@ class TestUpdatePlan:
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
-        add_subscription_to_org(
+        add_subscription_record_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
         plan_before = Plan.objects.all().count()
@@ -336,7 +337,7 @@ class TestUpdatePlan:
         assert plans_inactive_before == plans_inactive_after
 
     def test_plan_no_tags_before_add_tags(
-        self, plan_test_common_setup, add_subscription_to_org
+        self, plan_test_common_setup, add_subscription_record_to_org
     ):
         setup_dict = plan_test_common_setup()
 
@@ -348,7 +349,7 @@ class TestUpdatePlan:
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
-        add_subscription_to_org(
+        add_subscription_record_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
         plan_obj_before = Plan.objects.all()[0]
@@ -374,7 +375,7 @@ class TestUpdatePlan:
         assert len(tags_after) == 2
 
     def test_plantags_before_remove_tags(
-        self, plan_test_common_setup, add_subscription_to_org
+        self, plan_test_common_setup, add_subscription_record_to_org
     ):
         setup_dict = plan_test_common_setup()
 
@@ -386,7 +387,7 @@ class TestUpdatePlan:
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
-        add_subscription_to_org(
+        add_subscription_record_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
         plan_obj_before = Plan.objects.all()[0]
@@ -430,7 +431,7 @@ class TestUpdatePlan:
         assert "test_tag3" == tags_after_remove[0].tag_name
 
     def test_add_tags_with_different_capitalization_dont_add_new(
-        self, plan_test_common_setup, add_subscription_to_org
+        self, plan_test_common_setup, add_subscription_record_to_org
     ):
         setup_dict = plan_test_common_setup()
 
@@ -442,7 +443,7 @@ class TestUpdatePlan:
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
-        add_subscription_to_org(
+        add_subscription_record_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
         plan_obj_before = Plan.objects.all()[0]
@@ -492,7 +493,7 @@ class TestUpdatePlan:
 @pytest.mark.django_db(transaction=True)
 class TestUpdatePlanVersion:
     def test_change_plan_version_description(
-        self, plan_test_common_setup, add_subscription_to_org
+        self, plan_test_common_setup, add_subscription_record_to_org
     ):
         setup_dict = plan_test_common_setup()
         response = setup_dict["client"].post(
@@ -521,7 +522,7 @@ class TestUpdatePlanVersion:
         assert plan_test_plan_before + 1 == plan_test_plan_after
 
     def test_change_plan_version_archived_works(
-        self, plan_test_common_setup, add_subscription_to_org
+        self, plan_test_common_setup, add_subscription_record_to_org
     ):
         setup_dict = plan_test_common_setup()
         response = setup_dict["client"].post(
@@ -557,7 +558,7 @@ class TestUpdatePlanVersion:
     def test_change_plan_version_to_archived_has_active_subs_fails(
         self,
         plan_test_common_setup,
-        add_subscription_to_org,
+        add_subscription_record_to_org,
     ):
         setup_dict = plan_test_common_setup()
 
@@ -569,7 +570,7 @@ class TestUpdatePlanVersion:
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
-        add_subscription_to_org(
+        add_subscription_record_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
         plan_before = Plan.objects.all().count()
@@ -598,7 +599,7 @@ class TestUpdatePlanVersion:
         assert plan_versions_archived_before == plan_versions_archived_after
 
     def test_change_plan_version_to_active_works(
-        self, plan_test_common_setup, add_subscription_to_org
+        self, plan_test_common_setup, add_subscription_record_to_org
     ):
         setup_dict = plan_test_common_setup()
 
@@ -610,7 +611,7 @@ class TestUpdatePlanVersion:
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         first_plan_version = plan.display_version
-        add_subscription_to_org(
+        add_subscription_record_to_org(
             setup_dict["org"], first_plan_version, setup_dict["customer"], now_utc()
         )
 
