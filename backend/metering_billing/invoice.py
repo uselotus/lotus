@@ -6,6 +6,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from django.db.models.query import QuerySet
+
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
@@ -47,7 +48,7 @@ def generate_invoice(
     """
     Generate an invoice for a subscription.
     """
-    from metering_billing.models import Invoice, OrganizationSetting
+    from metering_billing.models import Invoice
     from metering_billing.tasks import generate_invoice_pdf_async
 
     if not issue_date:
@@ -65,6 +66,7 @@ def generate_invoice(
     assert all(
         sr.organization == organization for sr in subscription_records
     ), "All subscription records must belong to the same organization when invoicing."
+    due_date = calculate_due_date(issue_date, organization)
 
     distinct_currencies = set(
         [sr.billing_plan.pricing_unit for sr in subscription_records]
@@ -80,18 +82,8 @@ def generate_invoice(
             if draft
             else Invoice.PaymentStatus.UNPAID,
             "currency": currency,
+            "due_date": due_date,
         }
-        due_date = issue_date
-        grace_period_setting = OrganizationSetting.objects.filter(
-            organization=organization,
-            setting_name=ORGANIZATION_SETTING_NAMES.PAYMENT_GRACE_PERIOD,
-            setting_group=ORGANIZATION_SETTING_GROUPS.BILLING,
-        ).first()
-        if grace_period_setting:
-            due_date += relativedelta(
-                days=int(grace_period_setting.setting_values["value"])
-            )
-        invoice_kwargs["due_date"] = due_date
         # Create the invoice
         invoice = Invoice.objects.create(**invoice_kwargs)
         invoices[currency] = invoice
@@ -123,26 +115,14 @@ def generate_invoice(
         apply_plan_discounts(invoice)
         apply_taxes(invoice, customer, organization)
         apply_customer_balance_adjustments(invoice, customer, organization, draft)
-
+        finalize_cost_due(invoice, draft)
         invoice.cost_due = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
         if abs(invoice.cost_due) < 0.01 and not draft:
             invoice.payment_status = Invoice.PaymentStatus.PAID
         invoice.save()
 
         if not draft:
-            for pp in customer.integrations.keys():
-                if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
-                    pp_connector = PAYMENT_PROVIDER_MAP[pp]
-                    customer_conn = pp_connector.customer_connected(customer)
-                    org_conn = pp_connector.organization_connected(organization)
-                    if customer_conn and org_conn:
-                        invoice.external_payment_obj_id = (
-                            pp_connector.create_payment_object(invoice)
-                        )
-                        invoice.external_payment_obj_type = pp
-                        invoice.save()
-
-                        break
+            generate_external_payment_obj(invoice)
             for subscription_record in subscription_records:
                 if subscription_record.end_date <= now_utc():
                     subscription_record.fully_billed = True
@@ -478,12 +458,13 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
     """
     Generate an invoice for a subscription.
     """
-    from metering_billing.models import Invoice, InvoiceLineItem, OrganizationSetting
+    from metering_billing.models import Invoice, InvoiceLineItem
     from metering_billing.tasks import generate_invoice_pdf_async
 
     issue_date = balance_adjustment.created
     customer = balance_adjustment.customer
     organization = balance_adjustment.organization
+    due_date = calculate_due_date(issue_date, organization)
     # create kwargs for invoice
     invoice_kwargs = {
         "issue_date": issue_date,
@@ -493,18 +474,8 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
         if draft
         else Invoice.PaymentStatus.UNPAID,
         "currency": balance_adjustment.amount_paid_currency,
+        "due_date": due_date,
     }
-    due_date = issue_date
-    grace_period_setting = OrganizationSetting.objects.filter(
-        organization=organization,
-        setting_name=ORGANIZATION_SETTING_NAMES.PAYMENT_GRACE_PERIOD,
-        setting_group=ORGANIZATION_SETTING_GROUPS.BILLING,
-    ).first()
-    if grace_period_setting:
-        due_date += relativedelta(
-            days=int(grace_period_setting.setting_values["value"])
-        )
-    invoice_kwargs["due_date"] = due_date
     # Create the invoice
     invoice = Invoice.objects.create(**invoice_kwargs)
 
@@ -522,27 +493,55 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
     )
 
     apply_taxes(invoice, customer, organization)
+    finalize_cost_due(invoice, draft)
+
+    if not draft:
+        generate_external_payment_obj(invoice)
+        generate_invoice_pdf_async.delay(invoice.pk)
+        invoice_created_webhook(invoice, organization)
+
+    return invoice
+
+
+### GENERAL UTILITY FUNCTIONS ###
+
+
+def generate_external_payment_obj(invoice):
+    customer = invoice.customer
+    for pp in customer.integrations.keys():
+        if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
+            pp_connector = PAYMENT_PROVIDER_MAP[pp]
+            customer_conn = pp_connector.customer_connected(customer)
+            org_conn = pp_connector.organization_connected(invoice.organization)
+            if customer_conn and org_conn:
+                invoice.external_payment_obj_id = pp_connector.create_payment_object(
+                    invoice
+                )
+                invoice.external_payment_obj_type = pp
+                invoice.save()
+
+                break
+
+
+def calculate_due_date(issue_date, organization):
+    from metering_billing.models import OrganizationSetting
+
+    due_date = issue_date
+    grace_period_setting = OrganizationSetting.objects.filter(
+        organization=organization,
+        setting_name=ORGANIZATION_SETTING_NAMES.PAYMENT_GRACE_PERIOD,
+        setting_group=ORGANIZATION_SETTING_GROUPS.BILLING,
+    ).first()
+    if grace_period_setting:
+        due_date += relativedelta(
+            days=int(grace_period_setting.setting_values["value"])
+        )
+
+
+def finalize_cost_due(invoice, draft):
+    from metering_billing.models import Invoice
 
     invoice.cost_due = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
     if abs(invoice.cost_due) < 0.01 and not draft:
         invoice.payment_status = Invoice.PaymentStatus.PAID
     invoice.save()
-
-    if not draft:
-        for pp in customer.integrations.keys():
-            if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
-                pp_connector = PAYMENT_PROVIDER_MAP[pp]
-                customer_conn = pp_connector.customer_connected(customer)
-                org_conn = pp_connector.organization_connected(organization)
-                if customer_conn and org_conn:
-                    invoice.external_payment_obj_id = (
-                        pp_connector.create_payment_object(invoice)
-                    )
-                    invoice.external_payment_obj_type = pp
-                    invoice.save()
-
-                    break
-        generate_invoice_pdf_async.delay(invoice.pk)
-        invoice_created_webhook(invoice, organization)
-
-    return invoice

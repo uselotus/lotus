@@ -5,6 +5,9 @@ from typing import Literal, Optional, Union
 
 from django.conf import settings
 from django.db.models import Sum
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
 from metering_billing.invoice import (
     generate_balance_adjustment_invoice,
     generate_invoice,
@@ -59,8 +62,6 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
@@ -703,10 +704,10 @@ class CustomerCreateSerializer(
             }
         customer = Customer.objects.create(**validated_data)
         if pp_id:
-            customer_properties = customer.properties
-            customer_properties[validated_data["payment_provider"]] = {}
-            customer_properties[validated_data["payment_provider"]]["id"] = pp_id
-            customer.properties = customer_properties
+            customer_integrations = customer.integrations
+            customer_integrations[validated_data["payment_provider"]] = {}
+            customer_integrations[validated_data["payment_provider"]]["id"] = pp_id
+            customer.integrations = customer_integrations
             customer.save()
         else:
             if "payment_provider" in validated_data:
