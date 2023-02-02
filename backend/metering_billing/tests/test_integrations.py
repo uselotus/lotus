@@ -19,8 +19,8 @@ from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PAYMENT_PROVIDERS
 
-STRIPE_SECRET_KEY = settings.STRIPE_SECRET_KEY
-stripe.api_key = STRIPE_SECRET_KEY
+STRIPE_TEST_SECRET_KEY = settings.STRIPE_TEST_SECRET_KEY
+stripe.api_key = STRIPE_TEST_SECRET_KEY
 
 
 @pytest.fixture
@@ -197,7 +197,7 @@ class TestStripeIntegration:
 
         # update the status of the invoice
         new_status = stripe_connector.update_payment_object_status(
-            invoice.external_payment_obj_id
+            setup_dict["org"], invoice.external_payment_obj_id
         )
         assert new_status == Invoice.PaymentStatus.UNPAID
         # now add payment method
@@ -206,7 +206,7 @@ class TestStripeIntegration:
             paid_out_of_band=True,
         )
         new_status = stripe_connector.update_payment_object_status(
-            invoice.external_payment_obj_id
+            setup_dict["org"], invoice.external_payment_obj_id
         )
         assert new_status == Invoice.PaymentStatus.PAID
 

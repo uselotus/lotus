@@ -6,7 +6,6 @@ from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
-
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
@@ -143,8 +142,9 @@ def update_invoice_status():
     for incomplete_invoice in incomplete_invoices:
         pp = incomplete_invoice.external_payment_obj_type
         if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
+            organization = incomplete_invoice.organization
             status = PAYMENT_PROVIDER_MAP[pp].update_payment_object_status(
-                incomplete_invoice.external_payment_obj_id
+                organization, incomplete_invoice.external_payment_obj_id
             )
             if status == Invoice.PaymentStatus.PAID:
                 incomplete_invoice.payment_status = Invoice.PaymentStatus.PAID

@@ -1,8 +1,6 @@
 import stripe
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
-from metering_billing.models import Customer, Invoice
-from metering_billing.utils.enums import PAYMENT_PROVIDERS
 from rest_framework import status
 from rest_framework.decorators import (
     api_view,
@@ -11,9 +9,13 @@ from rest_framework.decorators import (
 )
 from rest_framework.response import Response
 
+from metering_billing.models import Customer, Invoice
+from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from metering_billing.utils.enums import PAYMENT_PROVIDERS
+
 STRIPE_WEBHOOK_SECRET = settings.STRIPE_WEBHOOK_SECRET
-STRIPE_SECRET_KEY = settings.STRIPE_SECRET_KEY
-stripe.api_key = STRIPE_SECRET_KEY
+STRIPE_TEST_SECRET_KEY = settings.STRIPE_TEST_SECRET_KEY
+STRIPE_LIVE_SECRET_KEY = settings.STRIPE_LIVE_SECRET_KEY
 
 
 def _invoice_paid_handler(event):
@@ -32,9 +34,22 @@ def _payment_method_refresh_handler(stripe_customer_id):
         integrations__stripe__id=stripe_customer_id
     ).first()
     if matching_customer:
+        organization = matching_customer.organization
+        if organization.OrganizationType == organization.OrganizationType.PRODUCTION:
+            stripe.api_key = STRIPE_LIVE_SECRET_KEY
+        else:
+            stripe.api_key = STRIPE_TEST_SECRET_KEY
         integrations_dict = matching_customer.integrations
         stripe_payment_methods = []
-        payment_methods = stripe.Customer.list_payment_methods(stripe_customer_id)
+        if PAYMENT_PROVIDER_MAP[PAYMENT_PROVIDERS.STRIPE].self_hosted:
+            payment_methods = stripe.Customer.list_payment_methods(stripe_customer_id)
+        else:
+            payment_methods = stripe.Customer.list_payment_methods(
+                customer=stripe_customer_id,
+                stripe_account=organization.payment_provider_ids.get(
+                    PAYMENT_PROVIDERS.STRIPE
+                ),
+            )
         for payment_method in payment_methods.auto_paging_iter():
             pm_dict = {
                 "id": payment_method.id,
