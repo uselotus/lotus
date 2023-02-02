@@ -244,14 +244,6 @@ function CustomerDetail() {
           <Tabs.TabPane tab="Credits" key="credits">
             <CustomerBalancedAdjustments customerId={customer_id as string} />
           </Tabs.TabPane>
-          {/*
-               <Tabs.TabPane tab="Integrations" key="integrations">
-                {!!data?.integrations?.length ? (
-                  <CustomerIntegrations integrations={data?.integrations} />
-                ) : (
-                  <h2> No Integrations </h2>
-                )}
-              </Tabs.TabPane>{" "} */}
         </Tabs>
       )}
     </PageLayout>
