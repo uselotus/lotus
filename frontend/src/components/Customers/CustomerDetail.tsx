@@ -93,11 +93,8 @@ function CustomerDetail() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
-        queryClient.invalidateQueries([
-          "balance_adjustments",
-          props.customer_id,
-        ]);
-        queryClient.invalidateQueries(["draft_invoice", props.customer_id]);
+        queryClient.invalidateQueries(["balance_adjustments", customer_id]);
+        queryClient.invalidateQueries(["draft_invoice", customer_id]);
         refetch();
         toast.success("Subscription cancelled successfully");
       },
@@ -110,11 +107,9 @@ function CustomerDetail() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
-        queryClient.invalidateQueries([
-          "balance_adjustments",
-          props.customer_id,
-        ]);
-        queryClient.invalidateQueries(["draft_invoice", props.customer_id]);
+        queryClient.invalidateQueries(["customer_detail", customer_id]);
+        queryClient.invalidateQueries(["balance_adjustments", customer_id]);
+        queryClient.invalidateQueries(["draft_invoice", customer_id]);
         refetch();
         toast.success("Subscription switched successfully");
       },

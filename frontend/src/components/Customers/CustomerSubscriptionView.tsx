@@ -102,6 +102,11 @@ const SubscriptionView: FC<Props> = ({
   const [showModal, setShowModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [title, setTitle] = useState("");
+  const [cascaderOptions, setCascaderOptions] = useState<{
+    value: string;
+    plan_id: string;
+    subscriptionFilters: SubscriptionType["subscription_filters"];
+  }>();
   const [cancelSubType, setCancelSubType] = useState<
     "bill_now" | "remove_renewal"
   >("bill_now");
@@ -220,7 +225,7 @@ const SubscriptionView: FC<Props> = ({
     }
   }, [plans]);
 
-  const cancelMenu = (plan_id: string, subscription_filters?: object[]) => (
+  const cancelMenu = () => (
     <div>
       <p className="text-base Inter">
         If you cancel a plan the customer will lose it permanently, and you
@@ -281,7 +286,10 @@ const SubscriptionView: FC<Props> = ({
     );
   };
 
-  const switchMenu = (plan_id: string, subscription_filters: object[]) => (
+  const switchMenu = (
+    plan_id: string,
+    subscription_filters: SubscriptionType["subscription_filters"]
+  ) => (
     <div>
       <Form.Item>
         <label htmlFor="addon_id" className="mb-4 required">
@@ -305,7 +313,11 @@ const SubscriptionView: FC<Props> = ({
             className="!w-[332px] !mt-2"
             options={plansWithSwitchOptions(plan_id)}
             onChange={(value) =>
-              onChange(value[0] as string, plan_id, subscription_filters)
+              setCascaderOptions({
+                value: value[0] as string,
+                plan_id,
+                subscriptionFilters: subscription_filters,
+              })
             }
             expandTrigger="hover"
             placeholder="Please select"
@@ -606,7 +618,13 @@ const SubscriptionView: FC<Props> = ({
                             background: "#C3986B",
                             borderColor: "#C3986B",
                           }}
-                          onClick={() => false}
+                          onClick={() =>
+                            onChange(
+                              cascaderOptions?.value as string,
+                              cascaderOptions?.plan_id as string,
+                              cascaderOptions!.subscriptionFilters
+                            )
+                          }
                         >
                           Switch
                         </Button>,
@@ -663,10 +681,7 @@ const SubscriptionView: FC<Props> = ({
                       subPlan.subscription_filters
                     )
                   ) : indexRef.current === 2 ? (
-                    cancelMenu(
-                      subPlan.billing_plan.plan_id,
-                      subPlan.subscription_filters
-                    )
+                    cancelMenu()
                   ) : (
                     <Form.Provider>
                       <Form form={form} name="create_subscriptions_addons">
