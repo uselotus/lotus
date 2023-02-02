@@ -121,14 +121,14 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
           >
             {record.payment_status.toUpperCase()}
           </Tag>
-          {!record.external_payment_obj_type && (
-            <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
-              <Dropdown
-                overlay={
-                  <Menu>
-                    <Menu.Item key="1" onClick={() => getPdfUrl(record)}>
-                      <div className="archiveLabel">Download Invoice PDF</div>
-                    </Menu.Item>
+          <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
+            <Dropdown
+              overlay={
+                <Menu>
+                  <Menu.Item key="1" onClick={() => getPdfUrl(record)}>
+                    <div className="archiveLabel">Download Invoice PDF</div>
+                  </Menu.Item>
+                  {!record.external_payment_obj_type && (
                     <Menu.Item
                       key="2"
                       onClick={() => {
@@ -151,20 +151,20 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
                           : "Mark As Unpaid"}
                       </div>
                     </Menu.Item>
-                  </Menu>
-                }
-                trigger={["click"]}
+                  )}
+                </Menu>
+              }
+              trigger={["click"]}
+            >
+              <Button
+                type="text"
+                size="small"
+                onClick={(e) => e.preventDefault()}
               >
-                <Button
-                  type="text"
-                  size="small"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  <MoreOutlined />
-                </Button>
-              </Dropdown>
-            </div>
-          )}
+                <MoreOutlined />
+              </Button>
+            </Dropdown>
+          </div>
         </div>
       ),
     },
