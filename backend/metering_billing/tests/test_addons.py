@@ -7,10 +7,6 @@ from decimal import Decimal
 import pytest
 from dateutil import parser
 from django.urls import reverse
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
-
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
@@ -29,6 +25,9 @@ from metering_billing.models import (
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PLAN_VERSION_STATUS
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -794,7 +793,10 @@ class TestAttachAddon:
         assert data["end_date"] == end_date
         assert invoice_before + 1 == invoice_after
         recent_inv = Invoice.objects.all().order_by("-issue_date").first()
-        assert recent_inv.cost_due == setup_dict["flat_fee_addon_version"].flat_rate
+        assert (
+            recent_inv.cost_due
+            == setup_dict["flat_fee_addon_version"].recurring_charges.first().amount
+        )
 
 
 @pytest.mark.django_db(transaction=True)
