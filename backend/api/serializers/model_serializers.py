@@ -6,9 +6,6 @@ from typing import Literal, Union
 from django.conf import settings
 from django.db.models import Sum
 from drf_spectacular.utils import extend_schema_serializer
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-
 from metering_billing.invoice import (
     generate_balance_adjustment_invoice,
     generate_invoice,
@@ -54,7 +51,6 @@ from metering_billing.utils.enums import (
     CATEGORICAL_FILTER_OPERATORS,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     FLAT_FEE_BEHAVIOR,
-    FLAT_FEE_BILLING_TYPE,
     INVOICE_STATUS_ENUM,
     INVOICING_BEHAVIOR,
     PAYMENT_PROVIDERS,
@@ -62,6 +58,8 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
@@ -1004,7 +1002,7 @@ class PlanVersionSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeri
     def get_flat_rate(
         self, obj
     ) -> serializers.DecimalField(max_digits=20, decimal_places=10, min_value=0):
-        return sum(x.amount for x in obj.recurring_charges)
+        return sum(x.amount for x in obj.recurring_charges.all())
 
     def get_created_by(self, obj) -> str:
         if obj.created_by is not None:
@@ -1257,20 +1255,14 @@ class SubscriptionRecordCreateSerializer(
             **validated_data, subscription_filters=subscription_filters
         )
         # new subscription means we need to create an invoice if its pay in advance
-        if (
-            sub_record.billing_plan.flat_fee_billing_type
-            == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
+        if any(
+            x.charge_timing == RecurringCharge.ChargeTimingType.IN_ADVANCE
+            for x in sub_record.billing_plan.recurring_charges.all()
         ):
-            sub_records = sub_record.customer.get_active_subscription_records()
-            sub_records.filter(pk=sub_record.pk).update(
-                flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
-                invoice_usage_charges=False,
-            )
-            generate_invoice(
-                sub_records.filter(pk=sub_record.pk),
-            )
+            sub_record.invoice_usage_charges = False
+            sub_record.save()
+            generate_invoice(sub_record)
             sub_record.invoice_usage_charges = True
-            sub_record.flat_fee_behavior = FLAT_FEE_BEHAVIOR.PRORATE
             sub_record.save()
         return sub_record
 
@@ -1321,7 +1313,7 @@ class SubscriptionRecordUpdateSerializer(
         queryset=Plan.objects.all(),
         write_only=True,
         required=False,
-        help_text="The plan to replace the current plan with",
+        help_text="If provided, will replace the current subscription's plan with this plan. If this is provided,turn_off_auto_renew and end_date will be ignored. The provided plan must have the same duration as the current plan.",
     )
     invoicing_behavior = serializers.ChoiceField(
         choices=INVOICING_BEHAVIOR.choices,
@@ -1420,8 +1412,10 @@ class SubscriptionRecordFilterSerializerDelete(SubscriptionRecordFilterSerialize
 class SubscriptionRecordCancelSerializer(serializers.Serializer):
     flat_fee_behavior = serializers.ChoiceField(
         choices=FLAT_FEE_BEHAVIOR.choices,
-        default=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
-        help_text="Can either charge the full amount of the flat fee, regardless of how long the customer has been on the plan, prorate the flat fee, or charge nothing for the flat fee. If the flat fee has already been invoiced (e.g. in advance payment on last subscription), and the resulting charge is less than the amount already invoiced, the difference will be refunded as a credit. Defaults to charge full amount.",
+        allow_null=True,
+        required=False,
+        default=None,
+        help_text="When canceling a subscription, the behavior used to calculate the flat fee. If null or not provided, the charge's default behavior will be used according to the subscription's start and end dates. If charge_full, the full flat fee will be charged, regardless of the duration of teh subscription. If refund, the flat fee will not be charged. If charge_prorated, the prorated flat fee will be charged.",
     )
     usage_behavior = serializers.ChoiceField(
         choices=USAGE_BILLING_BEHAVIOR.choices,
@@ -1767,7 +1761,6 @@ class AddOnSerializer(serializers.ModelSerializer):
             "active_instances",
             "invoice_when",
             "billing_frequency",
-            "recurring_flat_fee_timing",
             "addon_type",
         )
         extra_kwargs = {
@@ -1781,7 +1774,6 @@ class AddOnSerializer(serializers.ModelSerializer):
             "active_instances": {"required": True},
             "invoice_when": {"required": True},
             "billing_frequency": {"required": True},
-            "recurring_flat_fee_timing": {"required": True, "allow_null": True},
             "addon_type": {"required": True},
         }
 
@@ -1797,13 +1789,7 @@ class AddOnSerializer(serializers.ModelSerializer):
         source="display_version.description",
         help_text="The description of the add-on plan.",
     )
-    flat_rate = serializers.DecimalField(
-        source="display_version.flat_rate",
-        help_text="The flat rate of the add-on plan.",
-        decimal_places=10,
-        max_digits=20,
-        min_value=0,
-    )
+    flat_rate = serializers.SerializerMethodField()
     components = PlanComponentSerializer(
         many=True, source="display_version.plan_components"
     )
@@ -1817,8 +1803,12 @@ class AddOnSerializer(serializers.ModelSerializer):
     )
     invoice_when = serializers.SerializerMethodField()
     billing_frequency = serializers.SerializerMethodField()
-    recurring_flat_fee_timing = serializers.SerializerMethodField()
     addon_type = serializers.SerializerMethodField()
+
+    def get_flat_rate(
+        self, obj
+    ) -> serializers.DecimalField(decimal_places=10, max_digits=20, min_value=0,):
+        return sum(x.amount for x in obj.display_version.recurring_charges.all())
 
     def get_invoice_when(
         self, obj
@@ -1836,13 +1826,6 @@ class AddOnSerializer(serializers.ModelSerializer):
         self, obj
     ) -> serializers.ChoiceField(choices=AddOnSpecification.BillingFrequency.labels):
         return obj.addon_spec.get_billing_frequency_display()
-
-    def get_recurring_flat_fee_timing(
-        self, obj
-    ) -> serializers.ChoiceField(
-        choices=AddOnSpecification.RecurringFlatFeeTiming.labels
-    ):
-        return obj.addon_spec.get_recurring_flat_fee_timing_display()
 
     def get_active_instances(self, obj) -> int:
         return sum(x.active_subscriptions for x in obj.active_subs_by_version())
@@ -2006,7 +1989,7 @@ class AddOnSubscriptionRecordCreateSerializer(serializers.ModelSerializer):
             last_billing_date=attach_to_sr.last_billing_date,
             unadjusted_duration_microseconds=attach_to_sr.unadjusted_duration_microseconds,
             auto_renew=is_recurring,
-            flat_fee_behavior=FLAT_FEE_BEHAVIOR.PRORATE
+            flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_PRORATED
             if is_recurring
             else FLAT_FEE_BEHAVIOR.CHARGE_FULL,
             parent=attach_to_sr,

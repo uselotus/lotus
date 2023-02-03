@@ -16,7 +16,7 @@ lotus.cancel_subscription(
             "value": "active",
         },
     ],
-    flat_fee_behavior='prorate',
+    flat_fee_behavior='charge_prorated',
     bill_usage=True,
     invoicing_behavior='add_to_next_invoice',
 )
@@ -29,7 +29,7 @@ lotus.cancel_subscription(
             "value": "2020-08-15",
         },
     ],
-    flat_fee_behavior='full',
+    flat_fee_behavior='charge_full',
     bill_usage=False,
     invoicing_behavior='invoice_now',
 )

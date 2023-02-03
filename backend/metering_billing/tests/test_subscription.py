@@ -5,10 +5,6 @@ from datetime import timedelta
 
 import pytest
 from django.urls import reverse
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
-
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     Event,
@@ -31,6 +27,9 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_FREQUENCY,
 )
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -95,7 +94,6 @@ def subscription_test_common_setup(
             PlanVersion,
             organization=org,
             description="test_plan for testing",
-            flat_rate=30.0,
             plan=plan,
         )
         plan.display_version = billing_plan
@@ -319,7 +317,6 @@ class TestUpdateSub:
             plan=plan,
             version=1,
             description="new plan",
-            flat_rate=60,
         )
         plan.make_version_active(pv)
 
@@ -441,7 +438,6 @@ class TestUpdateSub:
             PlanVersion,
             organization=setup_dict["org"],
             description="test_plan for testing",
-            flat_rate=30.0,
             plan=new_plan,
             usage_billing_frequency=USAGE_BILLING_FREQUENCY.MONTHLY,
         )
@@ -515,7 +511,6 @@ class TestUpdateSub:
             PlanVersion,
             organization=setup_dict["org"],
             description="test_plan for testing",
-            flat_rate=30.0,
             plan=new_plan,
             usage_billing_frequency=USAGE_BILLING_FREQUENCY.END_OF_PERIOD,
         )
@@ -597,7 +592,6 @@ class TestUpdateSub:
             PlanVersion,
             organization=setup_dict["org"],
             description="test_plan for testing",
-            flat_rate=30.0,
             plan=new_plan,
             usage_billing_frequency=USAGE_BILLING_FREQUENCY.END_OF_PERIOD,
         )

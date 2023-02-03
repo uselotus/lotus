@@ -30,6 +30,7 @@ import { PageLayout } from "../components/base/PageLayout";
 import { ComponentDisplay } from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import { CurrencyType } from "../types/pricing-unit-type";
+import { CreateRecurringCharge } from "../types/plan-type";
 
 interface ComponentDisplay {
   metric: string;
@@ -220,15 +221,21 @@ const CreatePlan = () => {
             featureIdList.push(features[i].feature_id);
           }
         }
+        const recurring_charges: CreateRecurringCharge[] = [];
+        recurring_charges.push({
+          amount: values.flat_rate,
+          charge_behavior: "prorate",
+          charge_timing: values.flat_fee_billing_type,
+          name: "Flat Fee",
+        });
 
         if (values.usage_billing_frequency === "yearly") {
           values.usage_billing_frequency = "end_of_period";
         }
         const initialPlanVersion: CreateInitialVersionType = {
           description: values.description,
-          flat_fee_billing_type: values.flat_fee_billing_type,
+          recurring_charges: recurring_charges,
           transition_to_plan_id: values.transition_to_plan_id,
-          flat_rate: values.flat_rate,
           components: usagecomponentslist,
           features: featureIdList,
           usage_billing_frequency: values.usage_billing_frequency,
