@@ -73,7 +73,7 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
         elif isinstance(obj, Plan) and obj.addon_spec is None:
             return PlanUUIDField().to_representation(obj.plan_id)
         elif isinstance(obj, Plan) and obj.addon_spec is not None:
-            return AddonUUIDField().to_representation(obj.version_id)
+            return AddonUUIDField().to_representation(obj.plan_id)
         elif isinstance(obj, PlanVersion):
             return PlanVersionUUIDField().to_representation(obj.version_id)
         elif isinstance(obj, Feature):
