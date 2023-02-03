@@ -41,7 +41,7 @@ import Badge from "../base/Badges/Badges";
 import DropdownComponent from "../base/Dropdown/Dropdown";
 import { DraftInvoiceType } from "../../types/invoice-type";
 import { Addon, Customer, Invoices } from "../../api/api";
-import { AddonType } from "../../types/addon-type";
+import { AddonType, AddonSubscriptionType } from "../../types/addon-type";
 import { useNavigate } from "react-router-dom";
 import ChevronDown from "../base/ChevronDown";
 
@@ -416,7 +416,7 @@ const SubscriptionView: FC<Props> = ({
   return (
     <div className="mt-auto mx-10">
       <div className="flex mb-2 pb-4 pt-4 items-center justify-center">
-        <h2 className="font-bold text-main mx-10">Active Plans</h2>
+        <h2 className="font-bold text-main">Active Plans</h2>
         <div className="ml-auto flex gap-2 max-h-[40px]">
           <Input
             placeholder="Search"
@@ -519,7 +519,7 @@ const SubscriptionView: FC<Props> = ({
                         <DropdownComponent.Trigger>
                           <button
                             type="button"
-                            className="relative w-full min-w-[151px] flex items-center gap-4  cursor-default p-6 mt-4 bg-[#fff4e9] rounded-md border border-[#fff4e9]  py-2 pl-3 pr-10 text-left shadow-sm  focus:outline-none  sm:text-sm"
+                            className="relative w-full min-w-[151px] flex items-center gap-4  cursor-default p-6 mt-4 bg-[#fff4e9] rounded-md border border-[#fff4e9]  py-2 pl-3 pr-10 text-left shadow-sm  focus:outline-none  sm:text-sm hover:text-black hover:bg-[#f8e8d7]"
                             aria-haspopup="listbox"
                             aria-expanded="true"
                             aria-labelledby="listbox-label"
@@ -562,17 +562,20 @@ const SubscriptionView: FC<Props> = ({
                           ))}
                         </DropdownComponent.Container>
                       </DropdownComponent>
-                      <div
-                        onClick={() => navigate("/add-ons")}
-                        className="Inter text-sm mt-2 text-card-grey border-inherit border-b-2"
-                      >
-                        {subPlan.addons.length}
-                        {subPlan.addons.length === 0
-                          ? " Add-ons"
-                          : subPlan.addons.length > 1
-                          ? " Add-ons"
-                          : " Add-on"}
+                      <div className=" flex-row flex font-alliance  items-center border-inherit w-full">
+                        {subPlan.addons.map((addon) => (
+                          <div
+                            onClick={() => {
+                              navigate("/add-ons/" + addon.addon.addon_id);
+                            }}
+                            key={addon.addon.addon_id}
+                            className="flex gap-2 items-center bg-dark rounded-md border text-white border-[#fff4e9] py-2 pl-3 pr-10 text-left shadow-sm  focus:outline-none "
+                          >
+                            {addon.addon.addon_name}
+                          </div>
+                        ))}
                       </div>
+                      <div></div>
                     </div>
                   </CustomerCard.Container>
                 </CustomerCard.Heading>
