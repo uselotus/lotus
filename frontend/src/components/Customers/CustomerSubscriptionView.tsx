@@ -43,6 +43,7 @@ import { DraftInvoiceType } from "../../types/invoice-type";
 import { Addon, Customer, Invoices } from "../../api/api";
 import { AddonType } from "../../types/addon-type";
 import { useNavigate } from "react-router-dom";
+import ChevronDown from "../base/ChevronDown";
 
 interface Props {
   customer_id: string;
@@ -354,6 +355,31 @@ const SubscriptionView: FC<Props> = ({
     mutation.mutate(body);
     setShowModal(false);
   };
+
+  const getFilteredSubscriptions = useCallback(() => {
+    if (!searchQuery) {
+      return subscriptions;
+    }
+    return subscriptions.filter(
+      (subscription) =>
+        subscription.billing_plan.plan_id
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+        subscription.billing_plan.plan_name
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase())
+    );
+  }, [subscriptions, searchQuery]);
+  const subFilters = (index: number) => {
+    if (
+      invoiceData &&
+      invoiceData.invoices &&
+      invoiceData.invoices.length > 0
+    ) {
+      return invoiceData?.invoices[0].line_items[index].subscription_filters;
+    }
+    return undefined;
+  };
   if (subscriptions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center">
@@ -387,31 +413,6 @@ const SubscriptionView: FC<Props> = ({
       </div>
     );
   }
-  const getFilteredSubscriptions = useCallback(() => {
-    if (!searchQuery) {
-      return subscriptions;
-    }
-    return subscriptions.filter(
-      (subscription) =>
-        subscription.billing_plan.plan_id
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        subscription.billing_plan.plan_name
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase())
-    );
-  }, [subscriptions]);
-  const subFilters = (index: number) => {
-    if (
-      invoiceData &&
-      invoiceData.invoices &&
-      invoiceData.invoices.length > 0
-    ) {
-      return invoiceData?.invoices[0].line_items[index].subscription_filters;
-    }
-    return undefined;
-  };
-
   return (
     <div className="mt-auto mx-10">
       <div className="flex mb-2 pb-4 pt-4 items-center justify-center">
@@ -524,21 +525,7 @@ const SubscriptionView: FC<Props> = ({
                             aria-labelledby="listbox-label"
                           >
                             <span className="block truncate">Plan Actions</span>
-                            <svg
-                              className="h-8"
-                              aria-hidden="true"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.5"
-                              viewBox="0 0 24 24"
-                              xmlns="http://www.w3.org/2000/svg"
-                            >
-                              <path
-                                d="M19.5 8.25l-7.5 7.5-7.5-7.5"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
+                            <ChevronDown />
                           </button>
                         </DropdownComponent.Trigger>
                         <DropdownComponent.Container className="!bg-[#fff4e9] ">

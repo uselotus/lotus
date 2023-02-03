@@ -309,7 +309,6 @@ function CreatePlan() {
             align_plan: "calendar_aligned",
             usage_billing_frequency: "monthly",
           }}
-          onValuesChange={(e) => console.log(e)}
           onFinish={submitPricingPlan}
           onFinishFailed={onFinishFailed}
           autoComplete="off"

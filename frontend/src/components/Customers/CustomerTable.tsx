@@ -88,8 +88,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
 
   const { data, isLoading }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
     ["plan_list"],
-    () =>
-      Plan.getPlans().then((res) => res)
+    () => Plan.getPlans().then((res) => res)
   );
 
   const columns: ProColumns<CustomerTableItem>[] = [
@@ -138,7 +137,11 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
       ),
     },
     {
-      title: "Outstanding Revenue",
+      title: (
+        <div>
+          Oustanding <br /> Revenue
+        </div>
+      ),
       width: 60,
       sorter: (a, b) => a.total_amount_due - b.total_amount_due,
 
@@ -155,7 +158,11 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
       dataIndex: "total_amount_due",
     },
     {
-      title: "Subscription Renews",
+      title: (
+        <div>
+          Subscription <br /> Renews
+        </div>
+      ),
       width: 60,
       render: (_, record) => (
         <div>
@@ -213,8 +220,8 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
           dataSource={getFilteredTableData(tableData)}
           rowKey="customer_id"
           onRow={(record) => ({
-              onClick: () => navigate(`/customers/${  record.customer_id}`), // click row
-            })}
+            onClick: () => navigate(`/customers/${record.customer_id}`), // click row
+          })}
           toolBarRender={false}
           search={false}
           pagination={{
