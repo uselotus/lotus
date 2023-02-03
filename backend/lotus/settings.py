@@ -63,7 +63,10 @@ SELF_HOSTED = config("SELF_HOSTED", default=False, cast=bool)
 PRODUCT_ANALYTICS_OPT_IN = config("PRODUCT_ANALYTICS_OPT_IN", default=True, cast=bool)
 PRODUCT_ANALYTICS_OPT_IN = True if not SELF_HOSTED else PRODUCT_ANALYTICS_OPT_IN
 # Stripe required
-STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
+STRIPE_LIVE_SECRET_KEY = config("STRIPE_LIVE_SECRET_KEY", default=None)
+if STRIPE_LIVE_SECRET_KEY is None:
+    STRIPE_LIVE_SECRET_KEY = config("STRIPE_SECRET_KEY", default=None)
+STRIPE_TEST_SECRET_KEY = config("STRIPE_TEST_SECRET_KEY", default=None)
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="whsec_")
 # Webhooks for Svix
 SVIX_API_KEY = config("SVIX_API_KEY", default="")
@@ -554,7 +557,6 @@ SPECTACULAR_SETTINGS = {
         "BacktestStatusEnum": "metering_billing.utils.enums.BACKTEST_STATUS.choices",
         "BacktestKPIEnum": "metering_billing.utils.enums.BACKTEST_KPI.choices",
         "PaymentProvidersEnum": "metering_billing.utils.enums.PAYMENT_PROVIDERS.choices",
-        "FlatFeeBillingTypeEnum": "metering_billing.utils.enums.FLAT_FEE_BILLING_TYPE.choices",
         "MetricAggregationEnum": "metering_billing.utils.enums.METRIC_AGGREGATION.choices",
         "MetricGranularityEnum": "metering_billing.utils.enums.METRIC_GRANULARITY.choices",
         "PlanVersionStatusEnum": "metering_billing.utils.enums.PLAN_VERSION_STATUS.choices",

@@ -6,7 +6,6 @@ from model_bakery import baker
 
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
-    FLAT_FEE_BILLING_TYPE,
     PLAN_DURATION,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
@@ -39,12 +38,12 @@ def use_dummy_cache_backend(settings):
 def turn_off_stripe_connection():
     from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 
-    sk = PAYMENT_PROVIDER_MAP["stripe"].secret_key
-    PAYMENT_PROVIDER_MAP["stripe"].secret_key = None
+    sk = PAYMENT_PROVIDER_MAP["stripe"].test_secret_key
+    PAYMENT_PROVIDER_MAP["stripe"].test_secret_key = None
 
     yield
 
-    PAYMENT_PROVIDER_MAP["stripe"].secret_key = sk
+    PAYMENT_PROVIDER_MAP["stripe"].test_secret_key = sk
 
 
 @pytest.fixture
@@ -268,7 +267,7 @@ def add_plan_to_product():
 
 @pytest.fixture
 def add_plan_version_to_plan():
-    from metering_billing.models import PlanVersion
+    from metering_billing.models import PlanVersion, RecurringCharge
 
     def do_add_planversion_to_plan(plan):
         (plan_version,) = baker.make(
@@ -276,12 +275,18 @@ def add_plan_version_to_plan():
             organization=plan.organization,
             description="test-plan-version-description",
             version=1,
-            flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
             usage_billing_frequency=USAGE_BILLING_FREQUENCY.MONTHLY,
             plan=plan,
             status=PLAN_VERSION_STATUS.ACTIVE,
-            flat_rate=30,
             _quantity=1,
+        )
+        RecurringCharge.objects.create(
+            organization=plan.organization,
+            plan_version=plan_version,
+            charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+            charge_behavior=RecurringCharge.ChargeBehaviorType.PRORATE,
+            amount=30,
+            pricing_unit=plan_version.pricing_unit,
         )
         return plan_version
 

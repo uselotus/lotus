@@ -63,7 +63,7 @@ const Dashboard: FC = () => {
     );
 
   const { data: eventData, isLoading: eventLoading } = useQuery(
-    ["event_count"],
+    ["event_count", dateRange],
     () =>
       Events.getEventCount(
         dateRange[0].format("YYYY-MM-DD"),

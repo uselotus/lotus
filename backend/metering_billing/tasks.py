@@ -6,7 +6,6 @@ from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
-
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
@@ -71,9 +70,11 @@ def calculate_invoice():
     )
 
     # now generate invoices and new subs
-    customers = {x.customer for x in sub_records_to_bill}
-    for customer in customers:
-        customer_subscription_records = sub_records_to_bill.filter(customer=customer)
+    cust_info = sub_records_to_bill.values_list("customer", "organization").distinct()
+    for customer_id, organization_id in cust_info:
+        customer_subscription_records = sub_records_to_bill.filter(
+            customer_id=customer_id
+        )
         # Generate the invoice
         try:
             generate_invoice(
@@ -93,8 +94,8 @@ def calculate_invoice():
         Invoice.objects.filter(
             issue_date__lt=now,
             payment_status=Invoice.PaymentStatus.DRAFT,
-            customer=customer,
-            organization=customer.organization,
+            customer_id=customer_id,
+            organization_id=organization_id,
         ).delete()
 
 
@@ -141,8 +142,9 @@ def update_invoice_status():
     for incomplete_invoice in incomplete_invoices:
         pp = incomplete_invoice.external_payment_obj_type
         if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
+            organization = incomplete_invoice.organization
             status = PAYMENT_PROVIDER_MAP[pp].update_payment_object_status(
-                incomplete_invoice.external_payment_obj_id
+                organization, incomplete_invoice.external_payment_obj_id
             )
             if status == Invoice.PaymentStatus.PAID:
                 incomplete_invoice.payment_status = Invoice.PaymentStatus.PAID

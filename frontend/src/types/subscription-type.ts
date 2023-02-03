@@ -48,7 +48,7 @@ export interface CancelSubscriptionQueryParams {
 
 export interface CancelSubscriptionBody {
   usage_behavior: "bill_full" | "bill_none";
-  flat_fee_behavior: "refund" | "prorate" | "charge_full";
+  flat_fee_behavior: "refund" | "charge_prorated" | "charge_full";
   invoicing_behavior: "add_to_next_invoice" | "invoice_now";
 }
 

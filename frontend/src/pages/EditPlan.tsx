@@ -34,6 +34,7 @@ import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import TargetCustomerForm from "../components/Plans/TargetCustomerForm";
 import VersionActiveForm from "../components/Plans/VersionActiveForm";
 import { CurrencyType } from "../types/pricing-unit-type";
+import { CreateRecurringCharge } from "../types/plan-type";
 
 interface CustomizedState {
   plan: PlanType;
@@ -310,11 +311,18 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           values.usage_billing_frequency = "end_of_period";
         }
 
+        const recurring_charges: CreateRecurringCharge[] = [];
+        recurring_charges.push({
+          amount: values.flat_rate,
+          charge_behavior: "prorate",
+          charge_timing: values.flat_fee_billing_type,
+          name: "Flat Fee",
+        });
+
         const initialPlanVersion: CreateInitialVersionType = {
           description: values.description,
-          flat_fee_billing_type: values.flat_fee_billing_type,
+          recurring_charges: recurring_charges,
           transition_to_plan_id: values.transition_to_plan_id,
-          flat_rate: values.flat_rate,
           components: usagecomponentslist,
           features: featureIdList,
           usage_billing_frequency: values.usage_billing_frequency,
@@ -362,9 +370,8 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           const newVersion: CreatePlanVersionType = {
             plan_id: plan.plan_id,
             description: values.description,
-            flat_fee_billing_type: values.flat_fee_billing_type,
+            recurring_charges: recurring_charges,
             transition_to_plan_id: values.transition_to_plan_id,
-            flat_rate: values.flat_rate,
             components: usagecomponentslist,
             features: featureIdList,
             usage_billing_frequency: values.usage_billing_frequency,

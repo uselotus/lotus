@@ -119,7 +119,6 @@ def get_access_test_common_setup(
             organization=org,
             description="test_plan for testing",
             plan=plan,
-            flat_rate=30.0,
         )
         metric_set = (
             deny_limit_metric_set + allow_limit_metric_set + allow_free_metric_set
@@ -295,7 +294,6 @@ class TestGetAccess:
             organization=setup_dict["org"],
             description="test_plan for testing",
             plan=plan,
-            flat_rate=30.0,
         )
         metric = Metric.objects.create(
             organization=setup_dict["org"],
@@ -486,7 +484,6 @@ class TestGetAccessOld:
             organization=setup_dict["org"],
             description="test_plan for testing",
             plan=plan,
-            flat_rate=30.0,
         )
         metric = Metric.objects.create(
             organization=setup_dict["org"],
@@ -656,7 +653,6 @@ class TestGetAccessWithMetricIDOld:
             organization=setup_dict["org"],
             description="test_plan for testing",
             plan=plan,
-            flat_rate=30.0,
         )
         metric = Metric.objects.create(
             organization=setup_dict["org"],

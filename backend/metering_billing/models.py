@@ -43,7 +43,6 @@ from metering_billing.utils.enums import (
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     EVENT_TYPE,
     FLAT_FEE_BEHAVIOR,
-    FLAT_FEE_BILLING_TYPE,
     INVOICE_CHARGE_TIMING_TYPE,
     INVOICING_BEHAVIOR,
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
@@ -1181,15 +1180,15 @@ class UsageRevenueSummary(TypedDict):
 
 class PriceTier(models.Model):
     class PriceTierType(models.IntegerChoices):
-        FLAT = (1, _("Flat"))
-        PER_UNIT = (2, _("Per Unit"))
-        FREE = (3, _("Free"))
+        FLAT = (1, _("flat"))
+        PER_UNIT = (2, _("per_unit"))
+        FREE = (3, _("free"))
 
     class BatchRoundingType(models.IntegerChoices):
-        ROUND_UP = (1, _("Round Up"))
-        ROUND_DOWN = (2, _("Round Down"))
-        ROUND_NEAREST = (3, _("Round Nearest"))
-        NO_ROUNDING = (4, _("No Rounding"))
+        ROUND_UP = (1, _("round_up"))
+        ROUND_DOWN = (2, _("round_down"))
+        ROUND_NEAREST = (3, _("round_nearest"))
+        NO_ROUNDING = (4, _("no_rounding"))
 
     organization = models.ForeignKey(
         "Organization", on_delete=models.CASCADE, related_name="price_tiers", null=True
@@ -1390,10 +1389,10 @@ class Feature(models.Model):
 
 class Invoice(models.Model):
     class PaymentStatus(models.IntegerChoices):
-        DRAFT = (1, _("Draft"))
-        VOIDED = (2, _("Voided"))
-        PAID = (3, _("Paid"))
-        UNPAID = (4, _("Unpaid"))
+        DRAFT = (1, _("draft"))
+        VOIDED = (2, _("voided"))
+        PAID = (3, _("paid"))
+        UNPAID = (4, _("unpaid"))
 
     cost_due = models.DecimalField(
         decimal_places=10,
@@ -1528,6 +1527,18 @@ class InvoiceLineItem(models.Model):
         null=True,
         related_name="line_items",
     )
+    associated_recurring_charge = models.ForeignKey(
+        "RecurringCharge",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="line_items",
+    )
+    associated_plan_component = models.ForeignKey(
+        "PlanComponent",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="line_items",
+    )
     metadata = models.JSONField(default=dict, blank=True, null=True)
 
     def __str__(self):
@@ -1564,17 +1575,108 @@ class TeamInviteToken(models.Model):
     expire_at = models.DateTimeField(default=now_plus_day, null=False, blank=False)
 
 
+class RecurringCharge(models.Model):
+    class ChargeTimingType(models.IntegerChoices):
+        IN_ADVANCE = (1, "in_advance")
+        IN_ARREARS = (2, "in_arrears")
+
+    class ChargeBehaviorType(models.IntegerChoices):
+        PRORATE = (1, "prorate")
+        CHARGE_FULL = (2, "full")
+
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="recurring_charges",
+    )
+    name = models.TextField()
+    plan_version = models.ForeignKey(
+        "PlanVersion",
+        on_delete=models.CASCADE,
+        related_name="recurring_charges",
+    )
+    plan_component = models.ForeignKey(
+        "PlanComponent",
+        on_delete=models.CASCADE,
+        related_name="recurring_charges",
+        null=True,
+    )
+    charge_timing = models.PositiveSmallIntegerField(
+        choices=ChargeTimingType.choices, default=ChargeTimingType.IN_ADVANCE
+    )
+    charge_behavior = models.PositiveSmallIntegerField(
+        choices=ChargeBehaviorType.choices, default=ChargeBehaviorType.PRORATE
+    )
+    amount = models.DecimalField(
+        decimal_places=10,
+        max_digits=20,
+        default=Decimal(0.0),
+        validators=[MinValueValidator(0)],
+    )
+    pricing_unit = models.ForeignKey(
+        "PricingUnit",
+        on_delete=models.SET_NULL,
+        related_name="recurring_charges",
+        null=True,
+    )
+
+    def __str__(self):
+        return self.name + " [" + str(self.plan_version) + "]"
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "plan_version", "name"],
+                name="unique_recurring_charge_name_in_plan_version",
+            )
+        ]
+
+    def calculate_amount_due(self, subscription_record):
+        # first thing to consider is Timing... in advance vs in arrears
+        refunded_amount = Decimal(0.0)
+        proration_factor = (
+            (
+                subscription_record.end_date - subscription_record.start_date
+            ).total_seconds()
+            * 10**6
+            / subscription_record.unadjusted_duration_microseconds
+        )
+        prorated_amount = (
+            self.amount
+            * subscription_record.quantity
+            * convert_to_decimal(proration_factor)
+        )
+        full_amount = self.amount * subscription_record.quantity
+        if (
+            subscription_record.flat_fee_behavior is not None
+        ):  # this overrides other behavior
+            if subscription_record.flat_fee_behavior == FLAT_FEE_BEHAVIOR.REFUND:
+                return refunded_amount
+            elif subscription_record.flat_fee_behavior == FLAT_FEE_BEHAVIOR.CHARGE_FULL:
+                return full_amount
+            else:
+                return prorated_amount
+        else:  # dont worry about invoice timing here, thats the problem of the invoice
+            if self.charge_behavior == RecurringCharge.ChargeBehaviorType.PRORATE:
+                return prorated_amount
+            else:
+                return full_amount
+
+    def amount_already_invoiced(self, subscription_record):
+        return subscription_record.line_items.filter(
+            associated_recurring_charge=self
+        ).aggregate(Sum("subtotal"))["subtotal__sum"] or Decimal(0.0)
+
+
 class PlanVersion(models.Model):
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
         related_name="plan_versions",
     )
+    version_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     description = models.TextField(null=True, blank=True)
     version = models.PositiveSmallIntegerField()
-    flat_fee_billing_type = models.CharField(
-        max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices, null=True, blank=True
-    )
     usage_billing_frequency = models.CharField(
         max_length=40, choices=USAGE_BILLING_FREQUENCY.choices, null=True, blank=True
     )
@@ -1589,12 +1691,6 @@ class PlanVersion(models.Model):
         null=True,
         blank=True,
         related_name="transition_from",
-    )
-    flat_rate = models.DecimalField(
-        decimal_places=10,
-        max_digits=20,
-        default=Decimal(0),
-        validators=[MinValueValidator(0)],
     )
     features = models.ManyToManyField(Feature, blank=True)
     price_adjustment = models.ForeignKey(
@@ -1618,7 +1714,6 @@ class PlanVersion(models.Model):
         null=True,
         blank=True,
     )
-    version_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     pricing_unit = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
@@ -1711,25 +1806,14 @@ class AddOnPlanManager(models.Manager):
         return super().get_queryset().filter(addon_spec__isnull=False)
 
 
-class BillingFrequency(models.IntegerChoices):
-    ONE_TIME = (1, _("one_time"))
-    RECURRING = (2, _("recurring"))
-
-
-class FlatFeeInvoicingBehaviorOnAttach(models.IntegerChoices):
-    INVOICE_ON_ATTACH = (1, _("invoice_on_attach"))
-    INVOICE_ON_SUBSCRIPTION_END = (2, _("invoice_on_subscription_end"))
-
-
-class RecurringFlatFeeTiming(models.IntegerChoices):
-    IN_ADVANCE = (1, _("in_advance"))
-    IN_ARREARS = (2, _("in_arrears"))
-
-
 class AddOnSpecification(models.Model):
-    BillingFrequency = BillingFrequency
-    FlatFeeInvoicingBehaviorOnAttach = FlatFeeInvoicingBehaviorOnAttach
-    RecurringFlatFeeTiming = RecurringFlatFeeTiming
+    class BillingFrequency(models.IntegerChoices):
+        ONE_TIME = (1, _("one_time"))
+        RECURRING = (2, _("recurring"))
+
+    class FlatFeeInvoicingBehaviorOnAttach(models.IntegerChoices):
+        INVOICE_ON_ATTACH = (1, _("invoice_on_attach"))
+        INVOICE_ON_SUBSCRIPTION_END = (2, _("invoice_on_subscription_end"))
 
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="+"
@@ -1741,26 +1825,6 @@ class AddOnSpecification(models.Model):
         choices=FlatFeeInvoicingBehaviorOnAttach.choices,
         default=FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_ATTACH,
     )
-    recurring_flat_fee_timing = models.PositiveSmallIntegerField(
-        choices=RecurringFlatFeeTiming.choices,
-        null=True,
-        blank=True,
-    )
-
-    class Meta:
-        constraints = [
-            models.CheckConstraint(
-                check=Q(
-                    recurring_flat_fee_timing__isnull=True,
-                    billing_frequency=BillingFrequency.ONE_TIME,
-                )
-                | Q(
-                    recurring_flat_fee_timing__isnull=False,
-                    billing_frequency=BillingFrequency.RECURRING,
-                ),
-                name="billing_frequency_one_time_recurring_flat_fee_timing_isnull",
-            ),
-        ]
 
 
 class Plan(models.Model):
@@ -1844,7 +1908,7 @@ class Plan(models.Model):
                 check=(Q(parent_plan__isnull=True) & Q(target_customer__isnull=True))
                 | Q(parent_plan__isnull=False) & Q(target_customer__isnull=False),
                 name="both_null_or_both_not_null",
-            )
+            ),
         ]
         indexes = [
             models.Index(fields=["organization", "status"]),
@@ -1959,7 +2023,7 @@ class Plan(models.Model):
                         )
                         sub.end_subscription_now(
                             bill_usage=bill_usage,
-                            flat_fee_behavior=FLAT_FEE_BEHAVIOR.PRORATE,
+                            flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_PRORATED,
                         )
                         SubscriptionRecord.objects.create(
                             billing_plan=new_version,
@@ -2089,9 +2153,7 @@ class SubscriptionRecord(models.Model):
     )
     invoice_usage_charges = models.BooleanField(default=True)
     flat_fee_behavior = models.CharField(
-        choices=FLAT_FEE_BEHAVIOR.choices,
-        max_length=20,
-        default=FLAT_FEE_BEHAVIOR.PRORATE,
+        choices=FLAT_FEE_BEHAVIOR.choices, max_length=20, null=True, default=None
     )
     fully_billed = models.BooleanField(
         default=False,
@@ -2240,7 +2302,9 @@ class SubscriptionRecord(models.Model):
         sub_dict["usage_amount_due"] = Decimal(0)
         for component_pk, component_dict in sub_dict["components"]:
             sub_dict["usage_amount_due"] += component_dict["revenue"]
-        sub_dict["flat_amount_due"] = plan.flat_rate
+        sub_dict["flat_amount_due"] = sum(
+            x.amount for x in plan.recurring_charges.all()
+        )
         sub_dict["total_amount_due"] = (
             sub_dict["flat_amount_due"] + sub_dict["usage_amount_due"]
         )
@@ -2289,13 +2353,30 @@ class SubscriptionRecord(models.Model):
         ):
             period = convert_to_date(period)
             return_dict[period] = Decimal(0)
-            return_dict[period] += convert_to_decimal(
-                self.billing_plan.flat_rate
-                / self.unadjusted_duration_microseconds
-                * 60
-                * 60
-                * 24
-            )
+            duration_microseconds = self.unadjusted_duration_microseconds
+            for recurring_charge in self.billing_plan.recurring_charges.all():
+                if period == self.start_date.date():
+                    start_of_day = datetime.datetime.combine(
+                        period, datetime.time.min
+                    ).replace(tzinfo=self.start_date.tzinfo)
+                    duration_microseconds = convert_to_decimal(
+                        (self.start_date - start_of_day).total_seconds() * 10**6
+                    )
+                elif period == self.end_date.date():
+                    start_of_day = datetime.datetime.combine(
+                        period, datetime.time.min
+                    ).replace(tzinfo=self.end_date.tzinfo)
+                    duration_microseconds = convert_to_decimal(
+                        (self.end_date - start_of_day).total_seconds() * 10**6
+                    )
+                else:
+                    duration_microseconds = 10**6 * 60 * 60 * 24
+                return_dict[period] += convert_to_decimal(
+                    recurring_charge.amount
+                    * self.quantity
+                    / self.unadjusted_duration_microseconds
+                    * duration_microseconds
+                )
         for component in self.billing_plan.plan_components.all():
             rev_per_day = component.calculate_revenue_per_day(self)
             for period, d in rev_per_day.items():

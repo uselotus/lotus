@@ -1,9 +1,12 @@
 from decimal import Decimal
 
-import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
 from django.db.models import DecimalField, Q, Sum
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
+import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -23,6 +26,7 @@ from metering_billing.models import (
     PriceTier,
     PricingUnit,
     Product,
+    RecurringCharge,
     SubscriptionRecord,
     Tag,
     TeamInviteToken,
@@ -57,8 +61,6 @@ from metering_billing.utils.enums import (
     TAG_GROUP,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
@@ -1019,14 +1021,83 @@ class FeatureCreateSerializer(serializers.ModelSerializer):
         fields = ("feature_name", "feature_description")
 
 
+class RecurringChargeCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RecurringCharge
+        fields = (
+            "name",
+            "charge_timing",
+            "charge_behavior",
+            "amount",
+            "pricing_unit_code",
+        )
+        extra_kwargs = {
+            "name": {"required": True},
+            "charge_timing": {"required": True},
+            "charge_behavior": {"required": False},
+            "amount": {"required": True},
+            "pricing_unit_code": {"required": False},
+        }
+
+    charge_timing = serializers.ChoiceField(
+        choices=RecurringCharge.ChargeTimingType.labels, required=True
+    )
+    charge_behavior = serializers.ChoiceField(
+        choices=RecurringCharge.ChargeBehaviorType.labels,
+        default=RecurringCharge.ChargeBehaviorType.PRORATE.label,
+    )
+    pricing_unit_code = SlugRelatedFieldWithOrganization(
+        slug_field="code",
+        queryset=PricingUnit.objects.all(),
+        required=False,
+    )
+    name = serializers.CharField(required=True)
+    amount = serializers.DecimalField(
+        max_digits=20, decimal_places=10, min_value=0, required=True
+    )
+
+    def validate(self, attrs):
+        if (
+            attrs.get("charge_timing")
+            == RecurringCharge.ChargeTimingType.IN_ADVANCE.label
+        ):
+            attrs["charge_timing"] = RecurringCharge.ChargeTimingType.IN_ADVANCE
+        elif (
+            attrs.get("charge_timing")
+            == RecurringCharge.ChargeTimingType.IN_ARREARS.label
+        ):
+            attrs["charge_timing"] = RecurringCharge.ChargeTimingType.IN_ARREARS
+        else:
+            raise serializers.ValidationError(
+                f"Invalid charge_timing: {attrs.get('charge_timing')}"
+            )
+        if (
+            attrs.get("charge_behavior")
+            == RecurringCharge.ChargeBehaviorType.PRORATE.label
+        ):
+            attrs["charge_behavior"] = RecurringCharge.ChargeBehaviorType.PRORATE
+        elif (
+            attrs.get("charge_behavior")
+            == RecurringCharge.ChargeBehaviorType.CHARGE_FULL.label
+        ):
+            attrs["charge_behavior"] = RecurringCharge.ChargeBehaviorType.CHARGE_FULL
+        else:
+            raise serializers.ValidationError(
+                f"Invalid charge_behavior: {attrs.get('charge_behavior')}"
+            )
+        return attrs
+
+    def create(self, validated_data):
+        return super().create(validated_data)
+
+
 class PlanVersionCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlanVersion
         fields = (
             "description",
             "plan_id",
-            "flat_fee_billing_type",
-            "flat_rate",
+            "recurring_charges",
             "components",
             "features",
             "price_adjustment",
@@ -1042,8 +1113,7 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "description": {"write_only": True},
             "plan_id": {"write_only": True},
-            "flat_fee_billing_type": {"write_only": True},
-            "flat_rate": {"write_only": True},
+            "recurring_charges": {"write_only": True},
             "components": {"write_only": True},
             "features": {"write_only": True},
             "price_adjustment": {"write_only": True},
@@ -1057,9 +1127,12 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
             "currency_code": {"write_only": True},
         }
 
-    flat_rate = serializers.DecimalField(max_digits=20, decimal_places=10, min_value=0)
+    # flat_rate = serializers.DecimalField(max_digits=20, decimal_places=10, min_value=0)
     components = PlanComponentCreateSerializer(
         many=True, allow_null=True, required=False, source="plan_components"
+    )
+    recurring_charges = RecurringChargeCreateSerializer(
+        many=True, allow_null=True, required=False
     )
     features = SlugRelatedFieldWithOrganization(
         slug_field="feature_id",
@@ -1124,12 +1197,34 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         pricing_unit = validated_data.pop("currency_code", None)
         components_data = validated_data.pop("plan_components", [])
+        recurring_charge_data = validated_data.pop("recurring_charges", [])
+        features_data = validated_data.pop("features", [])
+        price_adjustment_data = validated_data.pop("price_adjustment", None)
+        make_active = validated_data.pop("make_active", False)
+        make_active_type = validated_data.pop("make_active_type", None)
+        replace_immediately_type = validated_data.pop("replace_immediately_type", None)
+        transition_to_plan = validated_data.pop("transition_to_plan_id", None)
+
+        validated_data["version"] = validated_data["plan"].versions.all().count() + 1
+        if "status" not in validated_data:
+            validated_data["status"] = (
+                PLAN_VERSION_STATUS.ACTIVE
+                if make_active
+                else PLAN_VERSION_STATUS.INACTIVE
+            )
+        billing_plan = PlanVersion.objects.create(
+            **validated_data, pricing_unit=pricing_unit
+        )
+        if transition_to_plan:
+            billing_plan.transition_to = transition_to_plan
+        org = billing_plan.organization
         if len(components_data) > 0:
             components_data = [
                 {
                     **component_data,
                     "pricing_unit": pricing_unit,
-                    "organization": self.context["organization"],
+                    "organization": org,
+                    "plan_version": billing_plan,
                 }
                 for component_data in components_data
             ]
@@ -1137,43 +1232,21 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
                 many=True, context=self.context
             ).create(components_data)
             assert type(components[0]) is PlanComponent
-        else:
-            components = []
-        features_data = validated_data.pop("features", [])
-        price_adjustment_data = validated_data.pop("price_adjustment", None)
-        make_active = validated_data.pop("make_active", False)
-        make_active_type = validated_data.pop("make_active_type", None)
-        replace_immediately_type = validated_data.pop("replace_immediately_type", None)
-        transition_to_plan = validated_data.get("transition_to_plan_id", None)
-
-        validated_data["version"] = len(validated_data["plan"].versions.all()) + 1
-        if "status" not in validated_data:
-            validated_data["status"] = (
-                PLAN_VERSION_STATUS.ACTIVE
-                if make_active
-                else PLAN_VERSION_STATUS.INACTIVE
-            )
-        if transition_to_plan:
-            validated_data.pop("transition_to_plan_id")
-        billing_plan = PlanVersion.objects.create(
-            **validated_data, pricing_unit=pricing_unit
-        )
-        if transition_to_plan:
-            billing_plan.transition_to = transition_to_plan
-        org = billing_plan.organization
-        for component in components:
-            component.plan_version = billing_plan
-            component.save()
+        if len(recurring_charge_data) > 0:
+            charges_data = [
+                {
+                    **recurring_charge,
+                    "pricing_unit": pricing_unit,
+                    "organization": org,
+                    "plan_version": billing_plan,
+                }
+                for recurring_charge in recurring_charge_data
+            ]
+            charges = RecurringChargeCreateSerializer(
+                many=True, context=self.context
+            ).create(charges_data)
+            assert type(charges[0]) is RecurringCharge
         for f in features_data:
-            # feature_data["organization"] = org
-            # description = feature_data.pop("description", None)
-            # try:
-            #     f, created = Feature.objects.get_or_create(**feature_data)
-            #     if created and description:
-            #         f.description = description
-            #         f.save()
-            # except Feature.MultipleObjectsReturned:
-            # f = Feature.objects.filter(**feature_data).first()
             assert type(f) is Feature
             billing_plan.features.add(f)
         if price_adjustment_data:
@@ -1802,28 +1875,22 @@ class AddOnCreateSerializer(serializers.ModelSerializer):
         fields = (
             "addon_name",
             "description",
-            "flat_rate",
+            "recurring_charges",
             "components",
             "features",
             "currency_code",
             "invoice_when",
             "billing_frequency",
-            "recurring_flat_fee_timing",
         )
         extra_kwargs = {
             "addon_name": {"write_only": True, "required": True},
             "description": {"write_only": True, "required": True, "allow_null": True},
-            "flat_rate": {"write_only": True, "required": True},
+            "recurring_charges": {"write_only": True, "required": True},
             "components": {"write_only": True, "required": True},
             "features": {"write_only": True, "required": True},
             "currency_code": {"write_only": True, "allow_null": True},
             "invoice_when": {"write_only": True, "required": True},
             "billing_frequency": {"write_only": True, "required": True},
-            "recurring_flat_fee_timing": {
-                "write_only": True,
-                "required": True,
-                "allow_null": True,
-            },
         }
 
     addon_name = serializers.CharField(
@@ -1833,13 +1900,10 @@ class AddOnCreateSerializer(serializers.ModelSerializer):
         help_text="The description of the add-on plan.",
         allow_null=True,
     )
-    flat_rate = serializers.DecimalField(
-        help_text="The flat rate of the add-on plan.",
-        decimal_places=10,
-        max_digits=20,
-        min_value=0,
-    )
     components = PlanComponentCreateSerializer(
+        many=True, allow_null=True, required=False
+    )
+    recurring_charges = RecurringChargeCreateSerializer(
         many=True, allow_null=True, required=False
     )
     features = SlugRelatedFieldWithOrganization(
@@ -1859,11 +1923,6 @@ class AddOnCreateSerializer(serializers.ModelSerializer):
     )
     billing_frequency = serializers.ChoiceField(
         choices=AddOnSpecification.BillingFrequency.labels
-    )
-    recurring_flat_fee_timing = serializers.ChoiceField(
-        choices=AddOnSpecification.RecurringFlatFeeTiming.labels,
-        required=False,
-        allow_null=True,
     )
 
     def validate(self, data):
@@ -1923,40 +1982,16 @@ class AddOnCreateSerializer(serializers.ModelSerializer):
                 AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_SUBSCRIPTION_END
             )
 
-        if (
-            data.get("recurring_flat_fee_timing")
-            == AddOnSpecification.RecurringFlatFeeTiming.IN_ADVANCE.label
-        ):
-            data[
-                "recurring_flat_fee_timing"
-            ] = AddOnSpecification.RecurringFlatFeeTiming.IN_ADVANCE
-        elif (
-            data.get("recurring_flat_fee_timing")
-            == AddOnSpecification.RecurringFlatFeeTiming.IN_ARREARS.label
-        ):
-            data[
-                "recurring_flat_fee_timing"
-            ] = AddOnSpecification.RecurringFlatFeeTiming.IN_ARREARS
-        # if the billing frequenct us recurring, then the recurring flat fee timing must be set
-        if (
-            data.get("billing_frequency")
-            == AddOnSpecification.BillingFrequency.RECURRING
-            and data.get("recurring_flat_fee_timing") is None
-        ):
-            raise serializers.ValidationError(
-                "Recurring flat fee timing must be set for recurring add-ons."
-            )
         return data
 
     def create(self, validated_data):
         now = now_utc()
         org = validated_data["organization"]
-        # invoice_when, billing_frequency, recurring_flat_fee_timing
+        # invoice_when, billing_frequency
         addon_spec_data = {
             "organization": org,
             "billing_frequency": validated_data["billing_frequency"],
             "flat_fee_invoicing_behavior_on_attach": validated_data["invoice_when"],
-            "recurring_flat_fee_timing": validated_data["recurring_flat_fee_timing"],
         }
         addon_spec = AddOnSpecification.objects.create(**addon_spec_data)
         # start off by cretaing the plan
@@ -1976,35 +2011,54 @@ class AddOnCreateSerializer(serializers.ModelSerializer):
             "plan": plan,
             "description": validated_data["description"],
             "status": PLAN_VERSION_STATUS.ACTIVE,
-            "flat_rate": validated_data["flat_rate"],
             "created_by": validated_data["created_by"],
             "created_on": now,
             "version": 1,
         }
         pricing_unit = validated_data.pop("currency_code", None)
+        billing_plan = PlanVersion.objects.create(
+            **plan_version_data, pricing_unit=pricing_unit
+        )
+        # create components
         components_data = validated_data.pop("components", [])
         if len(components_data) > 0:
             if pricing_unit is not None:
                 data = [
-                    {**component_data, "pricing_unit": pricing_unit}
+                    {
+                        **component_data,
+                        "pricing_unit": pricing_unit,
+                        "plan_version": billing_plan,
+                        "organization": org,
+                    }
                     for component_data in components_data
                 ]
             else:
                 data = components_data
-            components = PlanComponentCreateSerializer(
+            PlanComponentCreateSerializer(
                 many=True, context={**self.context, "organization": org}
             ).create(data)
         else:
-            components = []
+            pass
+        # create features
         features_data = validated_data.pop("features", [])
-        billing_plan = PlanVersion.objects.create(
-            **plan_version_data, pricing_unit=pricing_unit
-        )
-        for component in components:
-            component.plan_version = billing_plan
-            component.save()
         for f in features_data:
             billing_plan.features.add(f)
+        # create the flat rates
+        recurring_charges = validated_data.pop("recurring_charges", [])
+        if len(recurring_charges) > 0:
+            charges_data = [
+                {
+                    **recurring_charge,
+                    "pricing_unit": pricing_unit,
+                    "organization": org,
+                    "plan_version": billing_plan,
+                }
+                for recurring_charge in recurring_charges
+            ]
+            charges = RecurringChargeCreateSerializer(
+                many=True, context=self.context
+            ).create(charges_data)
+            assert type(charges[0]) is RecurringCharge
         plan.display_version = billing_plan
         plan.save()
         return plan

@@ -3,9 +3,11 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
-import UsageComponentForm from "../components/Plans/UsageComponentForm";
-
-import { CreateComponent, PlanType } from "../types/plan-type";
+import {
+  CreateComponent,
+  CreateRecurringCharge,
+  PlanType,
+} from "../types/plan-type";
 import { Plan, Organization, Addon } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
@@ -14,6 +16,7 @@ import { ComponentDisplay } from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import { CurrencyType } from "../types/pricing-unit-type";
 import { AddonTypeOption, CreateAddonType } from "../types/addon-type";
+import UsageComponentForm from "../components/Plans/UsageComponentForm";
 
 interface ComponentDisplay {
   metric: string;
@@ -52,8 +55,10 @@ function CreateAddOns() {
     null
   );
   const [addon_type, setAddonType] = useState<AddonTypeOption>("flat_fee");
-  const [base_cost, setBaseCost] = useState<number | null>(null);
-  const [recurring_flat_fee_timing, setRecurringFlatFeeTiming] = useState("");
+  const [base_cost, setBaseCost] = useState<number | null>(0.0);
+  const [recurring_flat_fee_timing, setRecurringFlatFeeTiming] = useState<
+    "in_advance" | "in_arrears"
+  >("in_advance");
   const [invoice_when, setInvoiceWhen] = useState<string>("invoice_on_attach");
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>([]);
   const [editComponentItem, setEditComponentsItem] =
@@ -204,16 +209,24 @@ function CreateAddOns() {
         featureIdList.push(features[i].feature_id);
       }
     }
-    const addons = {
-      addon_name,
-      description,
-      addon_type,
-      billing_frequency,
-      flat_rate: base_cost!,
+
+    const recurring_charges: CreateRecurringCharge[] = [];
+    recurring_charges.push({
+      name: "Flat Rate",
+      amount: base_cost || 0,
+      charge_timing: recurring_flat_fee_timing,
+      charge_behavior: "prorate",
+    });
+
+    const addons: CreateAddonType = {
+      addon_name: addon_name,
+      description: description,
+      addon_type: addon_type,
+      billing_frequency: billing_frequency,
+      recurring_charges: recurring_charges,
       components: usagecomponentslist.length ? usagecomponentslist : [],
       features: featureIdList.length ? featureIdList : [],
-      invoice_when,
-      recurring_flat_fee_timing: recurring_flat_fee_timing || null,
+      invoice_when: invoice_when,
       currency_code: selectedCurrency.code,
     };
     mutation.mutate(addons);
