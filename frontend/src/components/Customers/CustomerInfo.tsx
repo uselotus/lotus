@@ -391,7 +391,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   <div className="flex gap-1">
                     {" "}
                     <div className="Inter">
-                      {!data.payment_provider ? (
+                      {data.payment_provider ? (
                         <img
                           width={25}
                           src="https://cdn.neverbounce.com/images/integrations/square/stripe-square.png"

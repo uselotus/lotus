@@ -8,6 +8,7 @@ import {
   Select,
   Modal,
   Input,
+  Radio,
 } from "antd";
 import type { DefaultOptionType } from "antd/es/cascader";
 import {
@@ -172,6 +173,21 @@ const SubscriptionView: FC<Props> = ({
     setShowModal(false);
   };
 
+  const cancelAndBill = (plan_id, subscription_filters) => {
+    const query_params: CancelSubscriptionQueryParams = {
+      plan_id,
+      subscription_filters,
+      customer_id,
+    };
+    const body: CancelSubscriptionBody = {
+      usage_behavior: "bill_full",
+      flat_fee_behavior: "prorate",
+      invoicing_behavior: "invoice_now",
+    };
+    onCancel(body, query_params);
+    setShowModal(false);
+  };
+
   const turnAutoRenewOff = (plan_id, subscription_filters) => {
     onAutoRenewOff(
       {
@@ -215,32 +231,26 @@ const SubscriptionView: FC<Props> = ({
         If you cancel a plan the customer will lose it permanently, and you
         won&apos;t be able to recover it. Do you want to continue?
       </p>
-      <div className="flex items-center justify-center gap-4">
-        {subscriptionCancellationOptions.map((options) => (
-          <div
-            key={options.type}
-            className="flex items-center justify-center gap-2"
-          >
-            <input
-              id={options.type}
-              name="subscription_cancel"
-              type="radio"
-              onChange={(e) =>
-                setCancelSubType(e.target.value as typeof cancelSubType)
-              }
-              value={options.type}
-              defaultChecked={options.type === "bill_now"}
-              className="h-8 w-8 border-gray-300 text-indigo-600 focus:ring-indigo-500"
-            />
-            <label
-              htmlFor={options.type}
-              className="ml-3 block text-sm font-medium mt-2 text-gray-700"
+      <Radio.Group
+        onChange={(e) => setCancelSubType(e.target.value)}
+        buttonStyle="solid"
+      >
+        <div className="flex flex-row items-center justify-center gap-4">
+          {subscriptionCancellationOptions.map((options) => (
+            <div
+              key={options.type}
+              className="flex items-center justify-center gap-2"
             >
-              {options.name}
-            </label>
-          </div>
-        ))}
-      </div>
+              <Radio.Button
+                value={options.type}
+                defaultChecked={options.type === "bill_now"}
+              >
+                {options.name}
+              </Radio.Button>
+            </div>
+          ))}
+        </div>
+      </Radio.Group>
     </div>
   );
   const plansWithSwitchOptions = (plan_id: string) =>
@@ -645,7 +655,7 @@ const SubscriptionView: FC<Props> = ({
                           className="!bg-rose-600 border !border-rose-600"
                           onClick={() => {
                             cancelSubType === "bill_now"
-                              ? cancelAndDontBill(
+                              ? cancelAndBill(
                                   subPlan.billing_plan.plan_id,
                                   subPlan.subscription_filters
                                 )
