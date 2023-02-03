@@ -896,7 +896,7 @@ class SubscriptionViewSet(
                 )
                 for filter in subscription_record.filters.all():
                     sr.filters.add(filter)
-                subscription_record.flat_fee_behavior = FLAT_FEE_BEHAVIOR.PRORATE
+                subscription_record.flat_fee_behavior = FLAT_FEE_BEHAVIOR.CHARGE_PRORATED
                 subscription_record.invoice_usage_charges = keep_separate
                 subscription_record.auto_renew = False
                 subscription_record.end_date = now
@@ -1758,18 +1758,6 @@ def track_event(request):
             status=status.HTTP_201_CREATED,
         )
     else:
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
 
 

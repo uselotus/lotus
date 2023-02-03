@@ -1,13 +1,11 @@
 import datetime
 import re
 from decimal import Decimal
-from typing import Literal, Optional, Union
+from typing import Literal, Union
 
 from django.conf import settings
 from django.db.models import Sum
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-
+from drf_spectacular.utils import extend_schema_serializer
 from metering_billing.invoice import (
     generate_balance_adjustment_invoice,
     generate_invoice,
@@ -31,6 +29,7 @@ from metering_billing.models import (
     PriceAdjustment,
     PriceTier,
     PricingUnit,
+    RecurringCharge,
     SubscriptionRecord,
     Tag,
     UsageAlert,
@@ -49,19 +48,18 @@ from metering_billing.serializers.serializer_utils import (
 )
 from metering_billing.utils import convert_to_date, now_utc
 from metering_billing.utils.enums import (
-    BATCH_ROUNDING_TYPE,
     CATEGORICAL_FILTER_OPERATORS,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     FLAT_FEE_BEHAVIOR,
-    FLAT_FEE_BILLING_TYPE,
     INVOICE_STATUS_ENUM,
     INVOICING_BEHAVIOR,
     PAYMENT_PROVIDERS,
-    PRICE_TIER_TYPE,
     SUBSCRIPTION_STATUS,
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
@@ -266,7 +264,9 @@ class LightweightAddonSerializer(serializers.ModelSerializer):
             return "usage_based"
         return "flat"
 
-    def get_billing_frequency(self, obj) -> Literal["one_time", "recurring"]:
+    def get_billing_frequency(
+        self, obj
+    ) -> serializers.ChoiceField(choices=AddOnSpecification.BillingFrequency.labels):
         return obj.addon_spec.get_billing_frequency_display()
 
 
@@ -461,16 +461,8 @@ class InvoiceSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializ
 
     def get_payment_status(
         self, obj
-    ) -> Literal[INVOICE_STATUS_ENUM.PAID, INVOICE_STATUS_ENUM.UNPAID,]:
-        ps = obj.payment_status
-        if ps == Invoice.PaymentStatus.PAID:
-            return INVOICE_STATUS_ENUM.PAID
-        elif ps == Invoice.PaymentStatus.UNPAID:
-            return INVOICE_STATUS_ENUM.UNPAID
-        elif ps == Invoice.PaymentStatus.VOIDED:
-            return INVOICE_STATUS_ENUM.VOIDED
-        elif ps == Invoice.PaymentStatus.DRAFT:
-            return INVOICE_STATUS_ENUM.DRAFT
+    ) -> serializers.ChoiceField(choices=Invoice.PaymentStatus.labels):
+        return obj.get_payment_status_display()
 
     def get_start_date(self, obj) -> datetime.date:
         seq = [
@@ -854,41 +846,32 @@ class PriceTierSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerial
             },
         }
 
+    cost_per_batch = serializers.DecimalField(
+        max_digits=20, decimal_places=10, min_value=0, allow_null=True
+    )
+    metric_units_per_batch = serializers.DecimalField(
+        max_digits=20, decimal_places=10, min_value=0, allow_null=True
+    )
+    range_start = serializers.DecimalField(
+        max_digits=20, decimal_places=10, min_value=0
+    )
+    range_end = serializers.DecimalField(
+        max_digits=20, decimal_places=10, min_value=0, allow_null=True
+    )
     type = serializers.SerializerMethodField()
     batch_rounding_type = serializers.SerializerMethodField()
 
     def get_type(
         self, obj
-    ) -> Literal[PRICE_TIER_TYPE.FLAT, PRICE_TIER_TYPE.PER_UNIT, PRICE_TIER_TYPE.FREE]:
-        if obj.type == PriceTier.PriceTierType.FLAT:
-            return PRICE_TIER_TYPE.FLAT
-        elif obj.type == PriceTier.PriceTierType.PER_UNIT:
-            return PRICE_TIER_TYPE.PER_UNIT
-        elif obj.type == PriceTier.PriceTierType.FREE:
-            return PRICE_TIER_TYPE.FREE
-        else:
-            raise ValueError("Invalid price tier type")
+    ) -> serializers.ChoiceField(choices=PriceTier.PriceTierType.labels):
+        return obj.get_type_display()
 
     def get_batch_rounding_type(
         self, obj
-    ) -> Optional[
-        Literal[
-            BATCH_ROUNDING_TYPE.ROUND_UP,
-            BATCH_ROUNDING_TYPE.ROUND_DOWN,
-            BATCH_ROUNDING_TYPE.ROUND_NEAREST,
-            BATCH_ROUNDING_TYPE.NO_ROUNDING,
-        ]
-    ]:
-        if obj.batch_rounding_type == PriceTier.BatchRoundingType.ROUND_UP:
-            return BATCH_ROUNDING_TYPE.ROUND_UP
-        elif obj.batch_rounding_type == PriceTier.BatchRoundingType.ROUND_DOWN:
-            return BATCH_ROUNDING_TYPE.ROUND_DOWN
-        elif obj.batch_rounding_type == PriceTier.BatchRoundingType.ROUND_NEAREST:
-            return BATCH_ROUNDING_TYPE.ROUND_NEAREST
-        elif obj.batch_rounding_type == PriceTier.BatchRoundingType.NO_ROUNDING:
-            return BATCH_ROUNDING_TYPE.NO_ROUNDING
-        else:
-            return None
+    ) -> serializers.ChoiceField(
+        choices=PriceTier.BatchRoundingType.labels, allow_null=True
+    ):
+        return obj.get_batch_rounding_type_display()
 
 
 class PlanComponentSerializer(
@@ -931,6 +914,41 @@ class PriceAdjustmentSerializer(
         }
 
 
+class RecurringChargeSerializer(
+    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+):
+    class Meta:
+        model = RecurringCharge
+        fields = (
+            "name",
+            "charge_timing",
+            "charge_behavior",
+            "amount",
+            "pricing_unit",
+        )
+        extra_kwargs = {
+            "name": {"required": True},
+            "charge_timing": {"required": True},
+            "amount": {"required": True},
+            "pricing_unit": {"required": True},
+        }
+
+    pricing_unit = PricingUnitSerializer()
+    charge_timing = serializers.SerializerMethodField()
+    charge_behavior = serializers.SerializerMethodField()
+
+    def get_charge_timing(
+        self, obj
+    ) -> serializers.ChoiceField(choices=RecurringCharge.ChargeTimingType.labels):
+        return obj.get_charge_timing_display()
+
+    def get_charge_behavior(
+        self, obj
+    ) -> serializers.ChoiceField(choices=RecurringCharge.ChargeBehaviorType.labels):
+        return obj.get_charge_behavior_display()
+
+
+@extend_schema_serializer(deprecate_fields=["flat_fee_billing_type", "flat_rate"])
 class PlanVersionSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer):
     class Meta:
         model = PlanVersion
@@ -938,6 +956,7 @@ class PlanVersionSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeri
             "description",
             "flat_fee_billing_type",
             "flat_rate",
+            "recurring_charges",
             "components",
             "features",
             "price_adjustment",
@@ -952,6 +971,7 @@ class PlanVersionSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeri
             "flat_fee_billing_type": {"required": True, "read_only": True},
             "flat_rate": {"required": True, "read_only": True},
             "components": {"required": True, "read_only": True},
+            "recurring_charges": {"required": True, "read_only": True},
             "features": {"required": True, "read_only": True},
             "price_adjustment": {
                 "required": True,
@@ -964,13 +984,25 @@ class PlanVersionSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeri
             "plan_name": {"required": True, "read_only": True},
         }
 
-    flat_rate = serializers.DecimalField(max_digits=20, decimal_places=10, min_value=0)
+    flat_rate = serializers.SerializerMethodField()
+    flat_fee_billing_type = serializers.SerializerMethodField()
     components = PlanComponentSerializer(many=True, source="plan_components")
     features = FeatureSerializer(many=True)
+    recurring_charges = RecurringChargeSerializer(many=True)
     price_adjustment = PriceAdjustmentSerializer(allow_null=True)
 
     plan_name = serializers.CharField(source="plan.plan_name")
     currency = PricingUnitSerializer(source="pricing_unit")
+
+    def get_flat_fee_billing_type(
+        self, obj
+    ) -> serializers.ChoiceField(choices=RecurringCharge.ChargeTimingType.labels):
+        return obj.recurring_charges.first().get_charge_timing_display()
+
+    def get_flat_rate(
+        self, obj
+    ) -> serializers.DecimalField(max_digits=20, decimal_places=10, min_value=0):
+        return sum(x.amount for x in obj.recurring_charges.all())
 
     def get_created_by(self, obj) -> str:
         if obj.created_by is not None:
@@ -1223,20 +1255,14 @@ class SubscriptionRecordCreateSerializer(
             **validated_data, subscription_filters=subscription_filters
         )
         # new subscription means we need to create an invoice if its pay in advance
-        if (
-            sub_record.billing_plan.flat_fee_billing_type
-            == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
+        if any(
+            x.charge_timing == RecurringCharge.ChargeTimingType.IN_ADVANCE
+            for x in sub_record.billing_plan.recurring_charges.all()
         ):
-            sub_records = sub_record.customer.get_active_subscription_records()
-            sub_records.filter(pk=sub_record.pk).update(
-                flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
-                invoice_usage_charges=False,
-            )
-            generate_invoice(
-                sub_records.filter(pk=sub_record.pk),
-            )
+            sub_record.invoice_usage_charges = False
+            sub_record.save()
+            generate_invoice(sub_record)
             sub_record.invoice_usage_charges = True
-            sub_record.flat_fee_behavior = FLAT_FEE_BEHAVIOR.PRORATE
             sub_record.save()
         return sub_record
 
@@ -1287,7 +1313,7 @@ class SubscriptionRecordUpdateSerializer(
         queryset=Plan.objects.all(),
         write_only=True,
         required=False,
-        help_text="The plan to replace the current plan with",
+        help_text="If provided, will replace the current subscription's plan with this plan. If this is provided,turn_off_auto_renew and end_date will be ignored. The provided plan must have the same duration as the current plan.",
     )
     invoicing_behavior = serializers.ChoiceField(
         choices=INVOICING_BEHAVIOR.choices,
@@ -1386,8 +1412,10 @@ class SubscriptionRecordFilterSerializerDelete(SubscriptionRecordFilterSerialize
 class SubscriptionRecordCancelSerializer(serializers.Serializer):
     flat_fee_behavior = serializers.ChoiceField(
         choices=FLAT_FEE_BEHAVIOR.choices,
-        default=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
-        help_text="Can either charge the full amount of the flat fee, regardless of how long the customer has been on the plan, prorate the flat fee, or charge nothing for the flat fee. If the flat fee has already been invoiced (e.g. in advance payment on last subscription), and the resulting charge is less than the amount already invoiced, the difference will be refunded as a credit. Defaults to charge full amount.",
+        allow_null=True,
+        required=False,
+        default=None,
+        help_text="When canceling a subscription, the behavior used to calculate the flat fee. If null or not provided, the charge's default behavior will be used according to the subscription's start and end dates. If charge_full, the full flat fee will be charged, regardless of the duration of teh subscription. If refund, the flat fee will not be charged. If charge_prorated, the prorated flat fee will be charged.",
     )
     usage_behavior = serializers.ChoiceField(
         choices=USAGE_BILLING_BEHAVIOR.choices,
@@ -1733,7 +1761,6 @@ class AddOnSerializer(serializers.ModelSerializer):
             "active_instances",
             "invoice_when",
             "billing_frequency",
-            "recurring_flat_fee_timing",
             "addon_type",
         )
         extra_kwargs = {
@@ -1747,7 +1774,6 @@ class AddOnSerializer(serializers.ModelSerializer):
             "active_instances": {"required": True},
             "invoice_when": {"required": True},
             "billing_frequency": {"required": True},
-            "recurring_flat_fee_timing": {"required": True, "allow_null": True},
             "addon_type": {"required": True},
         }
 
@@ -1763,13 +1789,7 @@ class AddOnSerializer(serializers.ModelSerializer):
         source="display_version.description",
         help_text="The description of the add-on plan.",
     )
-    flat_rate = serializers.DecimalField(
-        source="display_version.flat_rate",
-        help_text="The flat rate of the add-on plan.",
-        decimal_places=10,
-        max_digits=20,
-        min_value=0,
-    )
+    flat_rate = serializers.SerializerMethodField()
     components = PlanComponentSerializer(
         many=True, source="display_version.plan_components"
     )
@@ -1783,24 +1803,29 @@ class AddOnSerializer(serializers.ModelSerializer):
     )
     invoice_when = serializers.SerializerMethodField()
     billing_frequency = serializers.SerializerMethodField()
-    recurring_flat_fee_timing = serializers.SerializerMethodField()
     addon_type = serializers.SerializerMethodField()
+
+    def get_flat_rate(
+        self, obj
+    ) -> serializers.DecimalField(decimal_places=10, max_digits=20, min_value=0,):
+        return sum(x.amount for x in obj.display_version.recurring_charges.all())
 
     def get_invoice_when(
         self, obj
-    ) -> Literal["invoice_on_attach", "invoice_on_subscription_end",]:
+    ) -> serializers.ChoiceField(
+        choices=AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.labels
+    ):
         return obj.addon_spec.get_flat_fee_invoicing_behavior_on_attach_display()
 
-    def get_addon_type(self, obj) -> Literal["flat", "usage_based"]:
+    def get_addon_type(self, obj) -> Literal["usage_based", "flat"]:
         if obj.display_version.plan_components.all().count() > 0:
             return "usage_based"
         return "flat"
 
-    def get_billing_frequency(self, obj) -> Literal["one_time", "recurring"]:
+    def get_billing_frequency(
+        self, obj
+    ) -> serializers.ChoiceField(choices=AddOnSpecification.BillingFrequency.labels):
         return obj.addon_spec.get_billing_frequency_display()
-
-    def get_recurring_flat_fee_timing(self, obj) -> Literal["in_advance", "in_arrears"]:
-        return obj.addon_spec.get_recurring_flat_fee_timing_display()
 
     def get_active_instances(self, obj) -> int:
         return sum(x.active_subscriptions for x in obj.active_subs_by_version())
@@ -1964,7 +1989,7 @@ class AddOnSubscriptionRecordCreateSerializer(serializers.ModelSerializer):
             last_billing_date=attach_to_sr.last_billing_date,
             unadjusted_duration_microseconds=attach_to_sr.unadjusted_duration_microseconds,
             auto_renew=is_recurring,
-            flat_fee_behavior=FLAT_FEE_BEHAVIOR.PRORATE
+            flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_PRORATED
             if is_recurring
             else FLAT_FEE_BEHAVIOR.CHARGE_FULL,
             parent=attach_to_sr,

@@ -92,7 +92,7 @@ const SubscriptionView: FC<Props> = ({
     };
     const body: CancelSubscriptionBody = {
       usage_behavior: "bill_full",
-      flat_fee_behavior: "prorate",
+      flat_fee_behavior: "charge_prorated",
       invoicing_behavior: "invoice_now",
     };
     onCancel(body, query_params);
@@ -106,7 +106,7 @@ const SubscriptionView: FC<Props> = ({
     };
     const body: CancelSubscriptionBody = {
       usage_behavior: "bill_none",
-      flat_fee_behavior: "prorate",
+      flat_fee_behavior: "charge_prorated",
       invoicing_behavior: "invoice_now",
     };
     onCancel(body, query_params);

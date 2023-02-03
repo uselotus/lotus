@@ -4,8 +4,13 @@ import { useNavigate } from "react-router-dom";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
 import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
-
-import { CreateComponent, PlanType } from "../types/plan-type";
+import {
+  Component,
+  CreateComponent,
+  CreateRecurringCharge,
+  RecurringCharge,
+  PlanType,
+} from "../types/plan-type";
 import { Plan, Organization, Addon } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
@@ -53,7 +58,9 @@ const CreateAddOns = () => {
   );
   const [addon_type, setAddonType] = useState<AddonTypeOption>("flat_fee");
   const [base_cost, setBaseCost] = useState<number | null>(0.0);
-  const [recurring_flat_fee_timing, setRecurringFlatFeeTiming] = useState("");
+  const [recurring_flat_fee_timing, setRecurringFlatFeeTiming] = useState<
+    "in_advance" | "in_arrears"
+  >("in_advance");
   const [invoice_when, setInvoiceWhen] = useState<string>("invoice_on_attach");
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>([]);
   const [editComponentItem, setEditComponentsItem] =
@@ -204,18 +211,24 @@ const CreateAddOns = () => {
         featureIdList.push(features[i].feature_id);
       }
     }
-    const addons = {
-      addon_name,
-      description,
-      addon_type,
-      billing_frequency,
-      flat_rate: base_cost!,
+
+    const recurring_charges: CreateRecurringCharge[] = [];
+    recurring_charges.push({
+      name: "Flat Rate",
+      amount: base_cost || 0,
+      charge_timing: recurring_flat_fee_timing,
+      charge_behavior: "prorate",
+    });
+
+    const addons: CreateAddonType = {
+      addon_name: addon_name,
+      description: description,
+      addon_type: addon_type,
+      billing_frequency: billing_frequency,
+      recurring_charges: recurring_charges,
       components: usagecomponentslist.length ? usagecomponentslist : [],
       features: featureIdList.length ? featureIdList : [],
-      invoice_when,
-      recurring_flat_fee_timing: recurring_flat_fee_timing
-        ? recurring_flat_fee_timing
-        : null,
+      invoice_when: invoice_when,
       currency_code: selectedCurrency.code,
     };
     mutation.mutate(addons);

@@ -2,19 +2,19 @@ import json
 
 import pytest
 from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.models import Plan, PlanVersion
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
-    FLAT_FEE_BILLING_TYPE,
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
     PLAN_DURATION,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
     REPLACE_IMMEDIATELY_TYPE,
 )
-from rest_framework import status
-from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -41,9 +41,15 @@ def plan_test_common_setup(
             "plan_duration": PLAN_DURATION.MONTHLY,
             "product_id": setup_dict["product"].product_id,
             "initial_version": {
-                "flat_fee_billing_type": FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
                 "status": PLAN_VERSION_STATUS.ACTIVE,
-                "flat_rate": 1000,
+                "recurring_charges": [
+                    {
+                        "name": "test_recurring_charge",
+                        "charge_timing": "in_advance",
+                        "amount": 1000,
+                        "charge_behavior": "prorate",
+                    }
+                ],
             },
         }
         setup_dict["plan_update_payload"] = {
@@ -51,9 +57,15 @@ def plan_test_common_setup(
         }
         setup_dict["plan_version_payload"] = {
             "description": "test_plan_version_description",
-            "flat_fee_billing_type": FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
             "make_active": True,
-            "flat_rate": 100,
+            "recurring_charges": [
+                {
+                    "name": "test_recurring_charge",
+                    "charge_timing": "in_advance",
+                    "amount": 100,
+                    "charge_behavior": "prorate",
+                }
+            ],
         }
         setup_dict["plan_version_update_payload"] = {
             "description": "changed",
