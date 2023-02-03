@@ -354,6 +354,31 @@ const SubscriptionView: FC<Props> = ({
     mutation.mutate(body);
     setShowModal(false);
   };
+
+  const getFilteredSubscriptions = useCallback(() => {
+    if (!searchQuery) {
+      return subscriptions;
+    }
+    return subscriptions.filter(
+      (subscription) =>
+        subscription.billing_plan.plan_id
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+        subscription.billing_plan.plan_name
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase())
+    );
+  }, [subscriptions]);
+  const subFilters = (index: number) => {
+    if (
+      invoiceData &&
+      invoiceData.invoices &&
+      invoiceData.invoices.length > 0
+    ) {
+      return invoiceData?.invoices[0].line_items[index].subscription_filters;
+    }
+    return undefined;
+  };
   if (subscriptions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center">
@@ -387,31 +412,6 @@ const SubscriptionView: FC<Props> = ({
       </div>
     );
   }
-  const getFilteredSubscriptions = useCallback(() => {
-    if (!searchQuery) {
-      return subscriptions;
-    }
-    return subscriptions.filter(
-      (subscription) =>
-        subscription.billing_plan.plan_id
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        subscription.billing_plan.plan_name
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase())
-    );
-  }, [subscriptions]);
-  const subFilters = (index: number) => {
-    if (
-      invoiceData &&
-      invoiceData.invoices &&
-      invoiceData.invoices.length > 0
-    ) {
-      return invoiceData?.invoices[0].line_items[index].subscription_filters;
-    }
-    return undefined;
-  };
-
   return (
     <div className="mt-auto mx-10">
       <div className="flex mb-2 pb-4 pt-4 items-center justify-center">

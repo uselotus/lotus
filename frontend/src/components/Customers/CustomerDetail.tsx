@@ -93,6 +93,7 @@ function CustomerDetail() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
+        queryClient.invalidateQueries(["customer_detail", customer_id]);
         queryClient.invalidateQueries(["balance_adjustments", customer_id]);
         queryClient.invalidateQueries(["draft_invoice", customer_id]);
         refetch();
