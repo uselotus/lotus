@@ -31,6 +31,7 @@ const ViewPlans: FC = () => {
   const [allCustom, setAllCustom] = useState<PlanType[]>([]);
 
   const [activeKey, setActiveKey] = useState("0");
+  const [focus, setFocus] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [tagSearchQuery, setTagSearchQuery] = useState<string[]>([]);
   const [plansWithTagsFilter, setPlansWithTagsFilter] = useState<Plan[]>([]);
@@ -156,16 +157,47 @@ const ViewPlans: FC = () => {
     }
   );
 
-  const getFilteredAllPlans = useCallback(() => {
-    if (!searchQuery) {
-      return allPlans;
+  const getFilteredPlans = useCallback(() => {
+    switch (activeKey) {
+      case "0":
+        if (!searchQuery) {
+          return allPlans;
+        }
+        return allPlans.filter(
+          (plan) =>
+            plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+      case "1":
+        if (!searchQuery) {
+          return monthlyPlans;
+        }
+        return monthlyPlans.filter(
+          (plan) =>
+            plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      case "2":
+        if (!searchQuery) {
+          return quarterlyPlans;
+        }
+        return quarterlyPlans.filter(
+          (plan) =>
+            plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      default:
+        if (!searchQuery) {
+          return yearlyPlans;
+        }
+        return yearlyPlans.filter(
+          (plan) =>
+            plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
     }
-    return allPlans.filter(
-      (plan) =>
-        plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [allPlans, data, searchQuery]);
+  }, [allPlans, data, searchQuery, activeKey]);
   const getFilteredTagsAllPlans = useCallback(
     (tagName: string) => {
       const r = allPlans
@@ -194,21 +226,59 @@ const ViewPlans: FC = () => {
     }
   }, [data, setPlans]);
   useEffect(() => {
-    if (!tagSearchQuery.length && allPlans) {
-      const p = allPlans.map((el) => ({ ...el, from: false }));
+    switch (activeKey) {
+      case "0":
+        console.log(activeKey);
+        if (!tagSearchQuery.length && allPlans) {
+          const p = allPlans.map((el) => ({ ...el, from: false }));
 
-      setPlansWithTagsFilter(p);
-      return;
-    } else if (!tagSearchQuery.length) {
-      const p = allPlans.map((el) => ({ ...el, from: false }));
-      setPlansWithTagsFilter(p);
-      return;
+          setPlansWithTagsFilter(p);
+          return;
+        } else if (!tagSearchQuery.length) {
+          const p = allPlans.map((el) => ({ ...el, from: false }));
+          setPlansWithTagsFilter(p);
+          return;
+        }
+        break;
+      case "1":
+        console.log(activeKey);
+        if (!tagSearchQuery.length && monthlyPlans) {
+          const p = monthlyPlans.map((el) => ({ ...el, from: false }));
+
+          setPlansWithTagsFilter(p);
+          return;
+        } else if (!tagSearchQuery.length) {
+          const p = monthlyPlans.map((el) => ({ ...el, from: false }));
+          setPlansWithTagsFilter(p);
+          return;
+        }
+        break;
+      case "2":
+        console.log(activeKey);
+        if (!tagSearchQuery.length && quarterlyPlans) {
+          const p = quarterlyPlans.map((el) => ({ ...el, from: false }));
+
+          setPlansWithTagsFilter(p);
+          return;
+        } else if (!tagSearchQuery.length) {
+          const p = quarterlyPlans.map((el) => ({ ...el, from: false }));
+          setPlansWithTagsFilter(p);
+          return;
+        }
+        break;
+      default:
+        if (!tagSearchQuery.length && yearlyPlans) {
+          const p = yearlyPlans.map((el) => ({ ...el, from: false }));
+
+          setPlansWithTagsFilter(p);
+          return;
+        } else if (!tagSearchQuery.length) {
+          const p = yearlyPlans.map((el) => ({ ...el, from: false }));
+          setPlansWithTagsFilter(p);
+          return;
+        }
     }
-    // const result = getFilteredTagsAllPlans();
-    // setPlansWithTagsFilter((prev) =>
-    //   prev.filter((prev) => prev.from === true).concat(result as Plan)
-    // );
-  }, [tagSearchQuery, allPlans, activeKey]);
+  }, [tagSearchQuery, activeKey]);
 
   return (
     <PageLayout
@@ -244,6 +314,7 @@ const ViewPlans: FC = () => {
             <ViewPlansFilter
               value={searchQuery}
               tags={plan_tags}
+              onFocusHandler={(focus) => setFocus(focus)}
               onChangeHandler={(e) => setSearchQuery(e.target.value)}
               onSelectHandler={(tag, remove) => {
                 if (remove) {
@@ -283,14 +354,23 @@ const ViewPlans: FC = () => {
             />
             {data ? (
               <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-                {plansWithTagsFilter?.map((item, key) => (
-                  <PlanCard
-                    pane="All"
-                    createTagMutation={createTag.mutate}
-                    plan={item}
-                    key={key}
-                  />
-                ))}
+                {focus
+                  ? getFilteredPlans().map((item, key) => (
+                      <PlanCard
+                        pane="All"
+                        createTagMutation={createTag.mutate}
+                        plan={item}
+                        key={key}
+                      />
+                    ))
+                  : plansWithTagsFilter?.map((item, key) => (
+                      <PlanCard
+                        pane="All"
+                        createTagMutation={createTag.mutate}
+                        plan={item}
+                        key={key}
+                      />
+                    ))}
               </div>
             ) : (
               <div className="flex items-center justify-center">
@@ -319,16 +399,66 @@ const ViewPlans: FC = () => {
 
         <Tabs.TabPane tab="Monthly" key="1">
           <div className="flex flex-col">
+            <ViewPlansFilter
+              value={searchQuery}
+              tags={plan_tags}
+              onFocusHandler={(focus) => setFocus(focus)}
+              onChangeHandler={(e) => setSearchQuery(e.target.value)}
+              onSelectHandler={(tag, remove) => {
+                if (remove) {
+                  const filter = tagSearchQuery.filter(
+                    (t) => t !== tag.tag_name.toLowerCase()
+                  )[0];
+                  if (!filter) {
+                    setTagSearchQuery([]);
+                    setPlansWithTagsFilter([]);
+                    return;
+                  }
+
+                  const result = getFilteredTagsAllPlans(filter);
+
+                  setPlansWithTagsFilter(
+                    plansWithTagsFilter.filter(
+                      (plan) => plan.plan_name === result?.plan_name
+                    )
+                  );
+                  setTagSearchQuery((prev) =>
+                    prev.filter((t) => t !== tag.tag_name.toLowerCase())
+                  );
+                } else {
+                  const result = getFilteredTagsAllPlans(
+                    tag.tag_name.toLowerCase()
+                  );
+                  setPlansWithTagsFilter((prev) =>
+                    prev
+                      .filter((prev) => prev.from === true)
+                      .concat(result as Plan)
+                  );
+                  setTagSearchQuery((prev) =>
+                    prev.concat(tag.tag_name.toLowerCase())
+                  );
+                }
+              }}
+            />
             {data ? (
               <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-                {monthlyPlans?.map((item, key) => (
-                  <PlanCard
-                    pane="Monthly"
-                    createTagMutation={createTag.mutate}
-                    plan={item}
-                    key={key}
-                  />
-                ))}
+                {focus
+                  ? getFilteredPlans()?.map((item, key) => (
+                      <PlanCard
+                        pane="Monthly"
+                        createTagMutation={createTag.mutate}
+                        plan={item}
+                        key={key}
+                      />
+                    ))
+                  : plansWithTagsFilter.map((item, key) => (
+                      <PlanCard
+                        pane="Monthly"
+                        createTagMutation={createTag.mutate}
+                        plan={item}
+                        key={key}
+                      />
+                    ))}
               </div>
             ) : (
               <div className="flex items-center justify-center">
@@ -356,17 +486,67 @@ const ViewPlans: FC = () => {
         </Tabs.TabPane>
 
         <Tabs.TabPane tab="Quarterly" key="2">
+          <ViewPlansFilter
+            value={searchQuery}
+            tags={plan_tags}
+            onFocusHandler={(focus) => setFocus(focus)}
+            onChangeHandler={(e) => setSearchQuery(e.target.value)}
+            onSelectHandler={(tag, remove) => {
+              if (remove) {
+                const filter = tagSearchQuery.filter(
+                  (t) => t !== tag.tag_name.toLowerCase()
+                )[0];
+                if (!filter) {
+                  setTagSearchQuery([]);
+                  setPlansWithTagsFilter([]);
+                  return;
+                }
+
+                const result = getFilteredTagsAllPlans(filter);
+
+                setPlansWithTagsFilter(
+                  plansWithTagsFilter.filter(
+                    (plan) => plan.plan_name === result?.plan_name
+                  )
+                );
+                setTagSearchQuery((prev) =>
+                  prev.filter((t) => t !== tag.tag_name.toLowerCase())
+                );
+              } else {
+                const result = getFilteredTagsAllPlans(
+                  tag.tag_name.toLowerCase()
+                );
+                setPlansWithTagsFilter((prev) =>
+                  prev
+                    .filter((prev) => prev.from === true)
+                    .concat(result as Plan)
+                );
+                setTagSearchQuery((prev) =>
+                  prev.concat(tag.tag_name.toLowerCase())
+                );
+              }
+            }}
+          />
           <div className="flex flex-col">
             {data ? (
               <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-                {quarterlyPlans?.map((item, key) => (
-                  <PlanCard
-                    pane="Quarterly"
-                    createTagMutation={createTag.mutate}
-                    plan={item}
-                    key={key}
-                  />
-                ))}
+                {focus
+                  ? getFilteredPlans()?.map((item, key) => (
+                      <PlanCard
+                        pane="Quarterly"
+                        createTagMutation={createTag.mutate}
+                        plan={item}
+                        key={key}
+                      />
+                    ))
+                  : plansWithTagsFilter.map((item, key) => (
+                      <PlanCard
+                        pane="Quarterly"
+                        createTagMutation={createTag.mutate}
+                        plan={item}
+                        key={key}
+                      />
+                    ))}
               </div>
             ) : (
               <div className="flex items-center justify-center">
@@ -392,17 +572,67 @@ const ViewPlans: FC = () => {
           </div>
         </Tabs.TabPane>
         <Tabs.TabPane tab="Yearly" key="3">
+          <ViewPlansFilter
+            value={searchQuery}
+            tags={plan_tags}
+            onFocusHandler={(focus) => setFocus(focus)}
+            onChangeHandler={(e) => setSearchQuery(e.target.value)}
+            onSelectHandler={(tag, remove) => {
+              if (remove) {
+                const filter = tagSearchQuery.filter(
+                  (t) => t !== tag.tag_name.toLowerCase()
+                )[0];
+                if (!filter) {
+                  setTagSearchQuery([]);
+                  setPlansWithTagsFilter([]);
+                  return;
+                }
+
+                const result = getFilteredTagsAllPlans(filter);
+
+                setPlansWithTagsFilter(
+                  plansWithTagsFilter.filter(
+                    (plan) => plan.plan_name === result?.plan_name
+                  )
+                );
+                setTagSearchQuery((prev) =>
+                  prev.filter((t) => t !== tag.tag_name.toLowerCase())
+                );
+              } else {
+                const result = getFilteredTagsAllPlans(
+                  tag.tag_name.toLowerCase()
+                );
+                setPlansWithTagsFilter((prev) =>
+                  prev
+                    .filter((prev) => prev.from === true)
+                    .concat(result as Plan)
+                );
+                setTagSearchQuery((prev) =>
+                  prev.concat(tag.tag_name.toLowerCase())
+                );
+              }
+            }}
+          />
           <div className="flex flex-col">
             {data ? (
               <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-                {yearlyPlans?.map((item, key) => (
-                  <PlanCard
-                    pane="Yearly"
-                    createTagMutation={createTag.mutate}
-                    plan={item}
-                    key={key}
-                  />
-                ))}
+                {focus
+                  ? getFilteredPlans()?.map((item, key) => (
+                      <PlanCard
+                        pane="Yearly"
+                        createTagMutation={createTag.mutate}
+                        plan={item}
+                        key={key}
+                      />
+                    ))
+                  : plansWithTagsFilter.map((item, key) => (
+                      <PlanCard
+                        pane="Yearly"
+                        createTagMutation={createTag.mutate}
+                        plan={item}
+                        key={key}
+                      />
+                    ))}
               </div>
             ) : (
               <div className="flex items-center justify-center">

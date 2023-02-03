@@ -10,6 +10,7 @@ import PlansTags from "../components/Plans/PlanTags";
 interface ViewPlansFilterProps {
   onChangeHandler: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSelectHandler: (tag: PlanType["tags"][0], remove: boolean) => void;
+  onFocusHandler: (focus: boolean) => void;
   value: string;
   tags: PlanType["tags"];
 }
@@ -18,12 +19,14 @@ const ViewPlansFilter = ({
   value,
   onChangeHandler,
   onSelectHandler,
+  onFocusHandler,
   tags,
 }: ViewPlansFilterProps) => {
   const [internalTags, setInternalTags] = useState<PlanType["tags"]>([]);
   return (
     <div className="flex items-center gap-8 mb-10">
       <Input
+        onFocus={() => onFocusHandler(true)}
         placeholder="Search plans..."
         className="!w-1/4 !bg-[#f8f8f8] border !border-[#f8f8f8]"
         value={value}
@@ -54,12 +57,13 @@ const ViewPlansFilter = ({
             tags.map((tag, index) => (
               <DropdownComponent.MenuItem
                 onSelect={() => {
+                  onFocusHandler(false);
                   if (tag.from) {
                     tag.from = false;
                     setInternalTags((prevTags) =>
                       prevTags.filter((t) => t.tag_name !== tag.tag_name)
                     );
-                     onSelectHandler(tag, true);
+                    onSelectHandler(tag, true);
                   } else {
                     tag.from = true;
                     setInternalTags((prevTags) => prevTags.concat(tag));
