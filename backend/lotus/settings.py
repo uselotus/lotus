@@ -312,11 +312,20 @@ if KAFKA_HOST:
     KAFKA_CERTIFICATE = config("KAFKA_CLIENT_CERT", default=None)
     KAFKA_KEY = config("KAFKA_CLIENT_CERT_KEY", default=None)
     KAFKA_CA = config("KAFKA_TRUSTED_CERT", default=None)
+    KAFKA_SASL_USERNAME = config("KAFKA_SASL_USERNAME", default=None)
+    KAFKA_SASL_PASSWORD = config("KAFKA_SASL_PASSWORD", default=None)
+
     if KAFKA_CERTIFICATE and KAFKA_KEY and KAFKA_CA:
         ssl_context = kafka_helper.get_kafka_ssl_context()
         for cfg in [producer_config, consumer_config, admin_client_config]:
             cfg["security_protocol"] = "SSL"
             cfg["ssl_context"] = ssl_context
+    elif KAFKA_SASL_USERNAME and KAFKA_SASL_PASSWORD:
+        for cfg in [producer_config, consumer_config, admin_client_config]:
+            cfg["security_protocol"] = "SASL_SSL"
+            cfg["sasl_mechanism"] = "SCRAM-SHA-256"
+            cfg["sasl_plain_username"] = KAFKA_SASL_USERNAME
+            cfg["sasl_plain_password"] = KAFKA_SASL_PASSWORD
 
     PRODUCER_CONFIG = producer_config
     CONSUMER = KafkaConsumer(KAFKA_EVENTS_TOPIC, **consumer_config)
