@@ -997,7 +997,11 @@ class PlanVersionSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeri
     def get_flat_fee_billing_type(
         self, obj
     ) -> serializers.ChoiceField(choices=RecurringCharge.ChargeTimingType.labels):
-        return obj.recurring_charges.first().get_charge_timing_display()
+        recurring_charge = obj.recurring_charges.first()
+        if recurring_charge is not None:
+            return recurring_charge.get_charge_timing_display()
+        else:
+            return RecurringCharge.ChargeTimingType.IN_ADVANCE.label
 
     def get_flat_rate(
         self, obj
