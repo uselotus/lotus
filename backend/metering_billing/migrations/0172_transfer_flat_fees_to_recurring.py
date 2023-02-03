@@ -7,7 +7,7 @@ def transfer_flat_fees_to_recurring(apps, schema_editor):
     PlanVersion = apps.get_model("metering_billing", "PlanVersion")
     RecurringCharge = apps.get_model("metering_billing", "RecurringCharge")
     for plan_version in PlanVersion.objects.all():
-        if plan_version.flat_fee is not None and plan_version.flat_fee > 0:
+        if plan_version.flat_rate is not None and plan_version.flat_rate > 0:
             if plan_version.flat_fee_billing_type == "in_advance":
                 charge_timing = 1  # IN_ADVANCE = (1, "in_advance")
             elif plan_version.flat_fee_billing_type == "in_arrears":
@@ -18,7 +18,7 @@ def transfer_flat_fees_to_recurring(apps, schema_editor):
                 plan_version=plan_version,
                 charge_timing=charge_timing,
                 charge_behavior=1,  # PRORATE = (1, "prorate")
-                amount=plan_version.flat_fee,
+                amount=plan_version.flat_rate,
                 pricing_unit=plan_version.pricing_unit,
             )
 
