@@ -160,7 +160,7 @@ const ViewPlans: FC = () => {
   const getFilteredPlans = useCallback(() => {
     switch (activeKey) {
       case "0":
-        if (!searchQuery) {
+        if (!searchQuery && allPlans) {
           return allPlans;
         }
         return allPlans.filter(
@@ -197,7 +197,7 @@ const ViewPlans: FC = () => {
             plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
         );
     }
-  }, [allPlans, data, searchQuery, activeKey]);
+  }, [data, searchQuery, activeKey]);
   const getFilteredTagsAllPlans = useCallback(
     (tagName: string) => {
       const r = allPlans
@@ -217,7 +217,15 @@ const ViewPlans: FC = () => {
 
       return p;
     },
-    [allPlans, data, tagSearchQuery]
+    [
+      allPlans,
+      data,
+      activeKey,
+      monthlyPlans,
+      quarterlyPlans,
+      yearlyPlans,
+      tagSearchQuery,
+    ]
   );
 
   useEffect(() => {
@@ -228,7 +236,6 @@ const ViewPlans: FC = () => {
   useEffect(() => {
     switch (activeKey) {
       case "0":
-        console.log(activeKey);
         if (!tagSearchQuery.length && allPlans) {
           const p = allPlans.map((el) => ({ ...el, from: false }));
 
@@ -241,7 +248,6 @@ const ViewPlans: FC = () => {
         }
         break;
       case "1":
-        console.log(activeKey);
         if (!tagSearchQuery.length && monthlyPlans) {
           const p = monthlyPlans.map((el) => ({ ...el, from: false }));
 
@@ -254,7 +260,6 @@ const ViewPlans: FC = () => {
         }
         break;
       case "2":
-        console.log(activeKey);
         if (!tagSearchQuery.length && quarterlyPlans) {
           const p = quarterlyPlans.map((el) => ({ ...el, from: false }));
 
@@ -278,7 +283,14 @@ const ViewPlans: FC = () => {
           return;
         }
     }
-  }, [tagSearchQuery, activeKey]);
+  }, [
+    tagSearchQuery,
+    allPlans,
+    monthlyPlans,
+    quarterlyPlans,
+    yearlyPlans,
+    activeKey,
+  ]);
 
   return (
     <PageLayout
