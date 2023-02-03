@@ -43,6 +43,7 @@ import { DraftInvoiceType } from "../../types/invoice-type";
 import { Addon, Customer, Invoices } from "../../api/api";
 import { AddonType } from "../../types/addon-type";
 import { useNavigate } from "react-router-dom";
+import ChevronDown from "../base/ChevronDown";
 
 interface Props {
   customer_id: string;
@@ -368,7 +369,7 @@ const SubscriptionView: FC<Props> = ({
           .toLowerCase()
           .includes(searchQuery.toLowerCase())
     );
-  }, [subscriptions]);
+  }, [subscriptions, searchQuery]);
   const subFilters = (index: number) => {
     if (
       invoiceData &&
@@ -524,21 +525,7 @@ const SubscriptionView: FC<Props> = ({
                             aria-labelledby="listbox-label"
                           >
                             <span className="block truncate">Plan Actions</span>
-                            <svg
-                              className="h-8"
-                              aria-hidden="true"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.5"
-                              viewBox="0 0 24 24"
-                              xmlns="http://www.w3.org/2000/svg"
-                            >
-                              <path
-                                d="M19.5 8.25l-7.5 7.5-7.5-7.5"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
+                            <ChevronDown />
                           </button>
                         </DropdownComponent.Trigger>
                         <DropdownComponent.Container className="!bg-[#fff4e9] ">
