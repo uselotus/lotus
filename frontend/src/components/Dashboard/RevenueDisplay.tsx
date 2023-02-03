@@ -34,7 +34,7 @@ function RevenueDisplay(props: {
     );
   }, [props.earned_revenue_1, props.earned_revenue_2]);
   return (
-    <Paper color="white" border={true}>
+    <Paper color="white" border>
       <div className="grid grid-flow-col auto-cols-auto  justify-between">
         <div>
           <p className="text-sm mb-4 leading-[18px] font-normal">
@@ -45,7 +45,7 @@ function RevenueDisplay(props: {
               <LoadingSpinner />
             </div>
           ) : (
-            <Fragment>
+            <>
               <span className="text-2xl font-bold mb-4">
                 {new Intl.NumberFormat("en-US", {
                   style: "currency",
@@ -64,7 +64,7 @@ function RevenueDisplay(props: {
                   </span>
                 )}
               </p>
-            </Fragment>
+            </>
           )}
         </div>
 

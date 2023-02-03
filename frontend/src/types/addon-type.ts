@@ -18,6 +18,7 @@ const AddonTypeOptions: ["flat_fee", "usage"] = ["flat_fee", "usage"];
 export type AddonTypeOption = (typeof AddonTypeOptions)[number];
 
 export interface AddonType {
+  addon;
   addon_name: string | null;
   addon_id: string | null;
   description: string | null;
@@ -30,6 +31,18 @@ export interface AddonType {
   invoice_when: InvoiceWhen | null;
   billing_frequency: AddonBillingFrequency | null;
   addon_type: AddonTypeOption;
+}
+
+export interface AddonSubscriptionType {
+  end_date: Date;
+  start_date: Date;
+  fully_billed: boolean;
+  addon: {
+    addon_id: string;
+    addon_name: string;
+    addon_type: AddonTypeOption;
+    billing_frequency: AddonBillingFrequency;
+  };
 }
 
 export interface CreateAddonType

@@ -40,7 +40,10 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
         elif self.queryset.model is Metric:
             data = MetricUUIDField().to_internal_value(data)
         elif self.queryset.model is Plan:
-            data = PlanUUIDField().to_internal_value(data)
+            try:
+                data = PlanUUIDField().to_internal_value(data)
+            except ValidationError:
+                data = AddonUUIDField().to_internal_value(data)
         elif self.queryset.model is PlanVersion:
             data = PlanVersionUUIDField().to_internal_value(data)
         elif self.queryset.model is Feature:
@@ -67,8 +70,10 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             return BalanceAdjustmentUUIDField().to_representation(obj.adjustment_id)
         elif isinstance(obj, Metric):
             return MetricUUIDField().to_representation(obj.metric_id)
-        elif isinstance(obj, Plan):
+        elif isinstance(obj, Plan) and obj.addon_spec is None:
             return PlanUUIDField().to_representation(obj.plan_id)
+        elif isinstance(obj, Plan) and obj.addon_spec is not None:
+            return AddonUUIDField().to_representation(obj.plan_id)
         elif isinstance(obj, PlanVersion):
             return PlanVersionUUIDField().to_representation(obj.version_id)
         elif isinstance(obj, Feature):
@@ -213,8 +218,4 @@ class WebhookSecretUUIDField(UUIDPrefixField):
 @extend_schema_field(serializers.RegexField(regex=r"addon_[0-9a-f]{32}"))
 class AddonUUIDField(UUIDPrefixField):
     def __init__(self, *args, **kwargs):
-        super().__init__("addon_", *args, **kwargs)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__("addon_", *args, **kwargs)
         super().__init__("addon_", *args, **kwargs)

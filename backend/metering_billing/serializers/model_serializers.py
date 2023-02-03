@@ -1,9 +1,12 @@
 from decimal import Decimal
 
-import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
 from django.db.models import DecimalField, Q, Sum
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
+import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -58,8 +61,6 @@ from metering_billing.utils.enums import (
     TAG_GROUP,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
@@ -1883,7 +1884,7 @@ class AddOnCreateSerializer(serializers.ModelSerializer):
         )
         extra_kwargs = {
             "addon_name": {"write_only": True, "required": True},
-            "description": {"write_only": True, "required": True},
+            "description": {"write_only": True, "required": True, "allow_null": True},
             "recurring_charges": {"write_only": True, "required": True},
             "components": {"write_only": True, "required": True},
             "features": {"write_only": True, "required": True},
@@ -1897,6 +1898,7 @@ class AddOnCreateSerializer(serializers.ModelSerializer):
     )
     description = serializers.CharField(
         help_text="The description of the add-on plan.",
+        allow_null=True,
     )
     components = PlanComponentCreateSerializer(
         many=True, allow_null=True, required=False

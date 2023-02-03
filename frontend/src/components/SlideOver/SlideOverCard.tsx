@@ -2,6 +2,7 @@ import React from "react";
 import { CheckCircleOutlined } from "@ant-design/icons";
 import useGlobalStore from "../../stores/useGlobalstore";
 import Badge from "../base/Badges/Badges";
+
 interface SlideOverCardProps {
   switchOrg: (org_id: string) => void;
 }

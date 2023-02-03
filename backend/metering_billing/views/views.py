@@ -474,7 +474,7 @@ class CustomersSummaryView(APIView):
         customers = Customer.objects.filter(organization=organization).prefetch_related(
             Prefetch(
                 "subscription_records",
-                queryset=SubscriptionRecord.objects.filter(
+                queryset=SubscriptionRecord.base_objects.filter(
                     organization=organization,
                     end_date__gte=now,
                     start_date__lte=now,
@@ -532,7 +532,10 @@ class DraftInvoiceView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         customer = serializer.validated_data.get("customer")
-        sub_records = customer.get_active_subscription_records()
+        sub_records = SubscriptionRecord.objects.active().filter(
+            organization=organization,
+            customer=customer,
+        )
         response = {"invoice": None}
         if sub_records is None or len(sub_records) == 0:
             response = {"invoices": []}

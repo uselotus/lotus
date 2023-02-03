@@ -1,7 +1,7 @@
 import React, { FC } from "react";
 import { Button, Row, Col, Descriptions, Table } from "antd";
-import { Paper } from "../base/Paper";
 import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Paper } from "../base/Paper";
 import { CreateComponent, Tier } from "../../types/plan-type";
 import "./ComponentDisplay.css";
 import { CurrencyType } from "../../types/pricing-unit-type";
@@ -45,10 +45,10 @@ const renderCost = (record: Tier, pricing_unit: CurrencyType) => {
       );
 
     case "free":
-      return <span>{"Free"}</span>;
+      return <span>Free</span>;
   }
 };
-//standard react component FC with props {componentsData}
+// standard react component FC with props {componentsData}
 export const ComponentDisplay: FC<{
   componentsData: CreateComponent[];
   handleComponentEdit: (any) => void;
@@ -59,12 +59,11 @@ export const ComponentDisplay: FC<{
   handleComponentEdit,
   deleteComponent,
   pricing_unit,
-}) => {
-  return (
+}) => (
     <Row gutter={[12, 12]} className="overflow-y-auto max-h-[400px]">
       {componentsData.map((component: any, index: number) => (
         <Col span="24" key={index}>
-          <Paper border={true} className="items-stretch">
+          <Paper border className="items-stretch">
             <Descriptions
               title={component?.metric}
               className="text-[20px]"
@@ -86,7 +85,7 @@ export const ComponentDisplay: FC<{
                   onClick={() => deleteComponent(component.id)}
                 />,
               ]}
-            ></Descriptions>
+             />
             <Table
               dataSource={component.tiers}
               pagination={false}
@@ -125,6 +124,5 @@ export const ComponentDisplay: FC<{
       ))}
     </Row>
   );
-};
 
 export default ComponentDisplay;

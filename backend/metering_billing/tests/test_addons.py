@@ -7,10 +7,6 @@ from decimal import Decimal
 import pytest
 from dateutil import parser
 from django.urls import reverse
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
-
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
@@ -29,6 +25,9 @@ from metering_billing.models import (
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PLAN_VERSION_STATUS
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -743,6 +742,61 @@ class TestAttachAddon:
         # were gonna charge the 30 from the base plan, 3*10 for new plan, and 3*~8.21-8.38 for the addon
         assert invoices[0].cost_due - Decimal("60") >= min_value
         assert invoices[0].cost_due - Decimal("60") <= max_value
+
+    def test_can_attach_flat_addon_with_full_name(
+        self,
+        addon_test_common_setup,
+    ):
+        num_subscriptions = 0
+        setup_dict = addon_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+
+        response = setup_dict["client"].post(
+            reverse("subscription-add"),
+            data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        start_date = data["start_date"]
+        end_date = data["end_date"]
+        auto_renew = data["auto_renew"]
+        subscription_filters = data["subscription_filters"]
+        billing_plan_id = data["billing_plan"]["plan_id"]
+        fully_billed = data["fully_billed"]
+        customer_id = data["customer"]["customer_id"]
+        assert auto_renew is True
+        assert len(subscription_filters) == 0
+        assert setup_dict["billing_plan"].plan.plan_id.hex in billing_plan_id
+        assert fully_billed is False
+
+        invoice_before = len(Invoice.objects.all())
+        addon_payload = {
+            "attach_to_customer_id": customer_id,
+            "attach_to_plan_id": billing_plan_id,
+            "attach_to_subscription_filters": subscription_filters,
+            "addon_id": "addon_" + setup_dict["flat_fee_addon"].plan_id.hex,
+            "quantity": 1,
+        }
+        response = setup_dict["client"].post(
+            reverse("subscription-attach-addon"),
+            data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        invoice_after = len(Invoice.objects.all())
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        assert data["start_date"] != start_date
+        assert data["end_date"] == end_date
+        assert invoice_before + 1 == invoice_after
+        recent_inv = Invoice.objects.all().order_by("-issue_date").first()
+        assert (
+            recent_inv.cost_due
+            == setup_dict["flat_fee_addon_version"].recurring_charges.first().amount
+        )
 
 
 @pytest.mark.django_db(transaction=True)

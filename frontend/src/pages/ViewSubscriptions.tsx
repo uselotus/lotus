@@ -4,7 +4,7 @@ import { CustomerTableItem } from "../types/customer-type";
 const ViewSubscriptions: FC = () => {
   const [customers, setCustomers] = useState<CustomerTableItem[]>([]);
 
-  return <div></div>;
+  return <div />;
 };
 
 export default ViewSubscriptions;

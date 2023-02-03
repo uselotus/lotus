@@ -21,7 +21,7 @@ type SignupProps = {
   hasInvite?: boolean;
 };
 
-const SignUp = (props: SignupProps) => {
+function SignUp(props: SignupProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
@@ -85,6 +85,6 @@ const SignUp = (props: SignupProps) => {
       </Card>
     </div>
   );
-};
+}
 
 export default SignUp;

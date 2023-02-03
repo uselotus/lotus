@@ -1,10 +1,10 @@
 import { Modal, Form, Input, Select } from "antd";
 // @ts-ignore
 import React from "react";
+import { useQuery } from "react-query";
 import PricingUnitDropDown from "../PricingUnitDropDown";
 import { PaymentProcessorIntegration } from "../../api/api";
 import { PaymentProcessorStatusType } from "../../types/payment-processor-type";
-import { useQuery } from "react-query";
 
 export interface CreateCustomerState {
   name: string;
@@ -18,11 +18,11 @@ export interface CreateCustomerState {
   default_currency_code?: string;
 }
 
-const CreateCustomerForm = (props: {
+function CreateCustomerForm(props: {
   visible: boolean;
   onSave: (state: CreateCustomerState) => void;
   onCancel: () => void;
-}) => {
+}) {
   const [form] = Form.useForm();
   const [paymentProviders, setPaymentProviders] = React.useState<string[]>([]);
 
@@ -31,7 +31,7 @@ const CreateCustomerForm = (props: {
     () => PaymentProcessorIntegration.getPaymentProcessorConnectionStatus(),
     {
       onSuccess: (data) => {
-        //set payment provider name in paymentproviders list if connected is true
+        // set payment provider name in paymentproviders list if connected is true
         const connectedProviders = data
           .filter((item) => item.connected)
           .map((item) => item.payment_provider_name);
@@ -129,6 +129,6 @@ const CreateCustomerForm = (props: {
       </Form>
     </Modal>
   );
-};
+}
 
 export default CreateCustomerForm;

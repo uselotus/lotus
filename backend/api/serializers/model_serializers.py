@@ -511,6 +511,7 @@ class CustomerSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeriali
             "integrations",
             "default_currency",
             "payment_provider",
+            "payment_provider_id",
             "has_payment_method",
             "address",
             "tax_rate",
@@ -525,6 +526,12 @@ class CustomerSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeriali
             "integrations": {"required": True, "read_only": True},
             "default_currency": {"required": True, "read_only": True},
             "payment_provider": {"required": True, "read_only": True},
+            "payment_provider_id": {
+                "required": True,
+                "read_only": True,
+                "allow_null": True,
+                "allow_blank": True,
+            },
             "has_payment_method": {"required": True, "read_only": True},
             "address": {"required": True, "read_only": True},
             "tax_rate": {"required": True, "read_only": True},
@@ -546,8 +553,17 @@ class CustomerSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeriali
         required=True,
         allow_blank=False,
     )
+    payment_provider_id = serializers.SerializerMethodField()
     has_payment_method = serializers.SerializerMethodField()
     address = serializers.SerializerMethodField()
+
+    def get_payment_provider_id(self, obj) -> str:
+        d = self.get_integrations(obj)
+        if obj.payment_provider == PAYMENT_PROVIDERS.STRIPE:
+            stripe_dict = d.get(PAYMENT_PROVIDERS.STRIPE)
+            if stripe_dict:
+                return stripe_dict["stripe_id"]
+        return None
 
     def get_address(self, obj) -> AddressSerializer(allow_null=True, required=True):
         d = obj.properties.get("address", {})

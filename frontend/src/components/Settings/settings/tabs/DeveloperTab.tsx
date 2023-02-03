@@ -12,9 +12,9 @@ import {
 import dayjs from "dayjs";
 import React, { useState } from "react";
 import { useQuery, useMutation, QueryClient } from "react-query";
-import { Webhook, APIKey } from "../../../../api/api";
 import { MoreOutlined } from "@ant-design/icons";
 import { toast } from "react-toastify";
+import { Webhook, APIKey } from "../../../../api/api";
 import {
   WebhookEndpoint,
   WebhookEndpointCreate,
@@ -35,7 +35,7 @@ function isValidHttpUrl(string) {
   }
   return url.protocol === "https:";
 }
-export const DeveloperTab = () => {
+export function DeveloperTab() {
   const [visible, setVisible] = useState<boolean>(false);
   const [visibleWebhook, setVisibleWebhook] = useState<boolean>(false);
   const [visibleAPIKey, setVisibleAPIKey] = useState<boolean>(false);
@@ -193,7 +193,7 @@ export const DeveloperTab = () => {
     };
     // if expiry date is a datetime parseable string, include it in endpointPost
     if (apiKeyExpire !== undefined && apiKeyExpire !== "") {
-      endpointPost["expiry_date"] = apiKeyExpire;
+      endpointPost.expiry_date = apiKeyExpire;
     }
 
     createAPIKeyMutation.mutate(endpointPost);
@@ -277,9 +277,7 @@ export const DeveloperTab = () => {
               title: "Key",
               dataIndex: "prefix",
               key: "prefix",
-              render: (prefix: string) => {
-                return <div className="font-menlo">{prefix}•••</div>;
-              },
+              render: (prefix: string) => <div className="font-menlo">{prefix}•••</div>,
             },
             {
               title: "Expiry Date",
@@ -290,9 +288,7 @@ export const DeveloperTab = () => {
               title: "Created At",
               dataIndex: "created",
               key: "created",
-              render: (created: string) => {
-                return <div>{dayjs(created).format("DD MMM YYYY, hh:mm")}</div>;
-              },
+              render: (created: string) => <div>{dayjs(created).format("DD MMM YYYY, hh:mm")}</div>,
             },
             {
               key: "action",
@@ -360,19 +356,15 @@ export const DeveloperTab = () => {
               title: "Triggers",
               dataIndex: "triggers",
               key: "triggers",
-              render: (triggers: object[]) => {
-                return (
+              render: (triggers: object[]) => (
                   <div>
-                    {triggers.map((trigger) => {
-                      return (
+                    {triggers.map((trigger) => (
                         <div>
-                          {"["} {trigger["trigger_name"]} {"]"}
+                          [ {trigger.trigger_name} ]
                         </div>
-                      );
-                    })}
+                      ))}
                   </div>
-                );
-              },
+                ),
             },
             {
               key: "action",
@@ -416,13 +408,13 @@ export const DeveloperTab = () => {
           <Input
             value={webhookName}
             onChange={(e) => setWebhookName(e.target.value)}
-          ></Input>
+           />
           <p className="text-lg font-main">Endpoint URL:</p>
           <Input
             addonBefore="https://"
             value={webhookUrl}
             onChange={(e) => setWebhookUrl(e.target.value)}
-          ></Input>
+           />
           <p className="text-lg font-main">Events Subscribed To:</p>
           <div className="grid grid-cols-2">
             <Checkbox
@@ -469,7 +461,7 @@ export const DeveloperTab = () => {
             value={apiKeyName}
             className="mt-0"
             onChange={(e) => setAPIKeyName(e.target.value)}
-          ></Input>
+           />
         </div>
         <div className="flex flex-col mt-10 space-y-8">
           <span className="text-lg font-main">Expiry Date + Time:</span>
@@ -492,7 +484,7 @@ export const DeveloperTab = () => {
         }
       >
         <div className="flex flex-col">
-          <p className="text-2xl font-main"></p>
+          <p className="text-2xl font-main" />
           <p className="text-lg font-main">
             Your new key is:{" "}
             {apiKey ? <Input value={apiKey} readOnly /> : "Loading..."}
@@ -502,4 +494,4 @@ export const DeveloperTab = () => {
       </Modal>
     </div>
   );
-};
+}

@@ -1,18 +1,18 @@
+import { useQuery } from "react-query";
+import { ToastContainer } from "react-toastify";
+import { useNavigate, useLocation } from "react-router-dom";
+import posthog from "posthog-js";
+import React, { useEffect } from "react";
 import AppRoutes from "./config/Routes";
 import { Authentication, Organization } from "./api/api";
-import { useQuery } from "react-query";
 import ExternalRoutes from "./config/ExternalRoutes";
-import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "@tremor/react/dist/esm/tremor.css";
 import LoadingSpinner from "./components/LoadingSpinner";
-import React, { useEffect } from "react";
 import { PlanProvider } from "./context/PlanContext";
-import { useNavigate, useLocation } from "react-router-dom";
-import posthog from "posthog-js";
 import useGlobalStore, { IOrgStoreType } from "./stores/useGlobalstore";
 
-//telemetry for cloud version only
+// telemetry for cloud version only
 if (import.meta.env.VITE_API_URL === "https://api.uselotus.io/") {
   posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
     api_host: "https://app.posthog.com",
@@ -33,9 +33,7 @@ function App() {
   const { refetch } = useQuery(
     ["organization"],
     () =>
-      Organization.get().then((res) => {
-        return res[0];
-      }),
+      Organization.get().then((res) => res[0]),
     {
       onSuccess: (data) => {
         const storeOrgObject: IOrgStoreType = {
@@ -57,9 +55,7 @@ function App() {
   );
   const fetchSessionInfo = async (): Promise<{ isAuthenticated: boolean }> =>
     Authentication.getSession()
-      .then((res) => {
-        return res;
-      })
+      .then((res) => res)
       .catch((error) => {
         if (
           error?.response &&
@@ -93,7 +89,7 @@ function App() {
         </div>
       </div>
     );
-  } else {
+  }
     if (isAuthenticated) {
       return (
         <div>
@@ -107,7 +103,7 @@ function App() {
           </PlanProvider>
         </div>
       );
-    } else {
+    }
       return (
         <div>
           <ToastContainer
@@ -118,8 +114,8 @@ function App() {
           <ExternalRoutes />
         </div>
       );
-    }
-  }
+
+
 }
 
 export default App;

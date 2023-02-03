@@ -10,10 +10,10 @@ import {
 } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import "./UsageComponentForm.css";
-import { Metrics } from "../../api/api";
-import { MetricType } from "../../types/metric-type";
 import type { InputRef } from "antd";
 import type { FormInstance } from "antd/es/form";
+import { Metrics } from "../../api/api";
+import { MetricType } from "../../types/metric-type";
 import { Tier } from "../../types/plan-type";
 import { CurrencyType } from "../../types/pricing-unit-type";
 
@@ -43,7 +43,7 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
 
       if (!["flat", "free", "per_unit"].includes(tier.type)) {
         return { isValid: false, message: "Tiers are not valid" };
-      } else if (tier.type === "per_unit") {
+      } if (tier.type === "per_unit") {
         return typeof tier.batch_rounding_type === "string" &&
           typeof tier.cost_per_batch === "number" &&
           typeof tier.metric_units_per_batch === "number" &&
@@ -51,7 +51,7 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
           tier.cost_per_batch >= 0 === true
           ? { isValid: true, message: "" }
           : { isValid: false, message: "Unit is not valid." };
-      } else if (tier.type === "flat") {
+      } if (tier.type === "flat") {
         return {
           isValid:
             typeof tier.cost_per_batch === "number" && tier.cost_per_batch >= 0,
@@ -59,7 +59,7 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
         };
       }
 
-      //check if types are correct
+      // check if types are correct
     } else {
       if (
         currentEnd === undefined ||
@@ -70,20 +70,20 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
           tier.range_start >= tier.range_end)
       ) {
         return { isValid: false, message: "Range is not valid." };
-      } else {
+      }
         currentStart = tier.range_start;
         currentEnd = tier.range_end;
 
         if (!["flat", "free", "per_unit"].includes(tier.type)) {
           return { isValid: false, message: "Tiers are not valid" };
-        } else if (tier.type === "per_unit") {
+        } if (tier.type === "per_unit") {
           return typeof tier.cost_per_batch === "number" &&
             typeof tier.metric_units_per_batch === "number" &&
             tier.metric_units_per_batch > 0 &&
             tier.cost_per_batch >= 0 === true
             ? { isValid: true, message: "" }
             : { isValid: false, message: "Unit is not valid." };
-        } else if (tier.type === "flat") {
+        } if (tier.type === "flat") {
           return {
             isValid:
               typeof tier.cost_per_batch === "number" &&
@@ -91,7 +91,7 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
             message: "",
           };
         }
-      }
+
     }
     return { isValid: true, message: "" };
   });
@@ -354,7 +354,7 @@ function UsageComponentForm({
   }, []);
 
   const handleAdd = () => {
-    //if range_end isn't null
+    // if range_end isn't null
     if (rangeEnd !== undefined && rangeEnd !== null) {
       const newTierDefault: Tier = {
         range_start: rangeEnd,
@@ -423,9 +423,9 @@ function UsageComponentForm({
       render: (text: any, record: Tier) => {
         if (record.range_end === undefined || record.range_end === null) {
           return "∞";
-        } else {
-          return record.range_end;
         }
+          return record.range_end;
+
       },
     },
     {
@@ -451,9 +451,9 @@ function UsageComponentForm({
       render: (text: any, record: Tier) => {
         if (record.type === "flat" || record.type === "free") {
           return "-";
-        } else {
-          return record.metric_units_per_batch;
         }
+          return record.metric_units_per_batch;
+
       },
     },
     {
@@ -465,9 +465,9 @@ function UsageComponentForm({
       render: (text: any, record: Tier) => {
         if (record.type === "flat" || record.type === "free") {
           return "-";
-        } else {
-          return <div>{record.batch_rounding_type}</div>;
         }
+          return <div>{record.batch_rounding_type}</div>;
+
       },
     },
 
