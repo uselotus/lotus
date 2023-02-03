@@ -41,6 +41,8 @@ const ViewPlans: FC = () => {
     navigate("/create-plan");
   };
   const changeTab = (activeKey: string) => {
+    // setTagSearchQuery([]);
+    // setSearchQuery("");
     setActiveKey(activeKey);
   };
   const setPlans = useCallback(
@@ -200,32 +202,79 @@ const ViewPlans: FC = () => {
   }, [data, searchQuery, activeKey]);
   const getFilteredTagsAllPlans = useCallback(
     (tagName: string) => {
-      const r = allPlans
-        .map((el, index) => ({ ...el, index }))
-        .filter((plan) => plan.tags.length);
-      let p: Plan | undefined = undefined;
-      for (let index = 0; index < r.length; index++) {
-        const element = r[index];
-        const idx = element.index;
-        for (let j = 0; j < element.tags.length; j++) {
-          if (element.tags[j].tag_name.toLowerCase().includes(tagName)) {
-            p = allPlans[idx] as Plan;
+      switch (activeKey) {
+        case "0":
+          const r = allPlans
+            .map((el, index) => ({ ...el, index }))
+            .filter((plan) => plan.tags.length);
+          let p2: Plan | undefined = undefined;
+          for (let index = 0; index < r.length; index++) {
+            const element = r[index];
+            const idx = element.index;
+            for (let j = 0; j < element.tags.length; j++) {
+              if (element.tags[j].tag_name.toLowerCase().includes(tagName)) {
+                p2 = allPlans[idx] as Plan;
+              }
+            }
           }
-        }
-      }
-      p!.from = true;
+          p2!.from = true;
 
-      return p;
+          return p2;
+
+        case "1":
+          const rs = monthlyPlans
+            .map((el, index) => ({ ...el, index }))
+            .filter((plan) => plan.tags.length);
+          let p: Plan | undefined = undefined;
+          for (let index = 0; index < rs.length; index++) {
+            const element = rs[index];
+            const idx = element.index;
+            for (let j = 0; j < element.tags.length; j++) {
+              if (element.tags[j].tag_name.toLowerCase().includes(tagName)) {
+                p = allPlans[idx] as Plan;
+              }
+            }
+          }
+          p!.from = true;
+
+          return p;
+        case "2":
+          const r3 = monthlyPlans
+            .map((el, index) => ({ ...el, index }))
+            .filter((plan) => plan.tags.length);
+          let p3: Plan | undefined = undefined;
+          for (let index = 0; index < r3.length; index++) {
+            const element = r3[index];
+            const idx = element.index;
+            for (let j = 0; j < element.tags.length; j++) {
+              if (element.tags[j].tag_name.toLowerCase().includes(tagName)) {
+                p3 = allPlans[idx] as Plan;
+              }
+            }
+          }
+          p3!.from = true;
+
+          return p3;
+        default:
+          const r4 = monthlyPlans
+            .map((el, index) => ({ ...el, index }))
+            .filter((plan) => plan.tags.length);
+          let p4: Plan | undefined = undefined;
+          for (let index = 0; index < r4.length; index++) {
+            const element = r4[index];
+            const idx = element.index;
+            for (let j = 0; j < element.tags.length; j++) {
+              if (element.tags[j].tag_name.toLowerCase().includes(tagName)) {
+                p4 = allPlans[idx] as Plan;
+              }
+            }
+          }
+          p4!.from = true;
+
+          return p4;
+      }
     },
-    [
-      allPlans,
-      data,
-      activeKey,
-      monthlyPlans,
-      quarterlyPlans,
-      yearlyPlans,
-      tagSearchQuery,
-    ]
+    [data, tagSearchQuery]
   );
 
   useEffect(() => {
