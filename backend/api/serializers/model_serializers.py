@@ -1940,7 +1940,7 @@ class AddOnSubscriptionRecordCreateSerializer(serializers.ModelSerializer):
         )
         valid = []
         new_filter_set = set()
-        for sf in data["attach_to_subscription_filters"]:
+        for sf in data.get("attach_to_subscription_filters", []):
             new_filter_set.add((sf["property_name"], sf["value"]))
         if len(new_filter_set) > 0:
             for sr in to_attach_sr:
