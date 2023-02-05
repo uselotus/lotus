@@ -1,4 +1,5 @@
 import { MetricType } from "./metric-type";
+
 export interface RevenueType {
   total_revenue_period_1: number;
   total_revenue_period_2: number;

@@ -229,7 +229,6 @@ class TestArchiveMetric:
             PlanVersion,
             organization=org,
             description="test_plan for testing",
-            flat_rate=30.0,
             plan=plan,
             status=PLAN_VERSION_STATUS.ACTIVE,
         )
@@ -347,7 +346,6 @@ class TestCalculateMetric:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
@@ -437,7 +435,6 @@ class TestCalculateMetric:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
@@ -529,7 +526,6 @@ class TestCalculateMetric:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
@@ -638,7 +634,6 @@ class TestCalculateMetric:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
@@ -724,7 +719,6 @@ class TestCalculateMetric:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
@@ -822,7 +816,6 @@ class TestCalculateMetricProrationForGauge:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
@@ -934,7 +927,6 @@ class TestCalculateMetricProrationForGauge:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
@@ -1053,7 +1045,6 @@ class TestCalculateMetricProrationForGauge:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
@@ -1178,7 +1169,6 @@ class TestCalculateMetricWithFilters:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
@@ -1277,7 +1267,6 @@ class TestCalculateMetricWithFilters:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
@@ -1367,7 +1356,6 @@ class TestCalculateMetricWithFilters:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
@@ -1487,7 +1475,6 @@ class TestCalculateMetricWithFilters:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
@@ -1600,7 +1587,6 @@ class TestCustomSQLMetrics:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
@@ -1715,7 +1701,6 @@ class TestCustomSQLMetrics:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
@@ -1830,7 +1815,6 @@ class TestCustomSQLMetrics:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
@@ -1967,7 +1951,6 @@ class TestCustomSQLMetrics:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
@@ -2180,7 +2163,6 @@ class TestCustomSQLMetrics:
         )  # this one also shouldnt as it doesn't have the volume on one of the days in the query
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
@@ -2357,7 +2339,6 @@ class TestRegressions:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )

@@ -1,14 +1,14 @@
 import { Modal, Tag, Button } from "antd";
-import { MetricType } from "../../types/metric-type";
 import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
-import { Metrics } from "../../api/api";
 import React, { FC } from "react";
+import { format } from "sql-formatter";
+import { MetricType } from "../../types/metric-type";
+import { Metrics } from "../../api/api";
 import { colorMap } from "./MetricTable";
 import createShortenedText from "../../helpers/createShortenedText";
 import CopyText from "../base/CopytoClipboard";
 import useMediaQuery from "../../hooks/useWindowQuery";
-import { format } from "sql-formatter";
 
 interface MetricDetailsProps {
   metric: MetricType;
@@ -155,10 +155,10 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
                 {metric.numeric_filters?.map((filter, index) => (
                   <Tag color="" key={filter.property_name}>
                     {<b>{filter.property_name}</b>}{" "}
-                    {operatorDisplayMap.get(filter.operator)} {'"'}
-                    {'"'}
+                    {operatorDisplayMap.get(filter.operator)} "
+                    "
                     {filter.comparison_value}
-                    {'"'}
+                    "
                   </Tag>
                 ))}
               </div>
@@ -167,9 +167,9 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
                 {metric.categorical_filters?.map((filter, index) => (
                   <Tag color="" key={filter.property_name}>
                     {<b>{filter.property_name}</b>}{" "}
-                    {operatorDisplayMap.get(filter.operator)} {'"'}
+                    {operatorDisplayMap.get(filter.operator)} "
                     {filter.comparison_value}
-                    {'"'}
+                    "
                   </Tag>
                 ))}
               </div>

@@ -1,7 +1,7 @@
 import { Select } from "antd";
 // @ts-ignore
 import React from "react";
-import { UseQueryResult , useQuery } from "react-query";
+import { UseQueryResult, useQuery } from "react-query";
 import { PricingUnits } from "../api/api";
 import { CurrencyType } from "../types/pricing-unit-type";
 
@@ -10,6 +10,7 @@ interface PricingUnitDropDownProps {
   setCurrentCurrency: (currency: string) => void;
   setCurrentSymbol?: (symbol: string) => void;
   shouldShowAllOption?: boolean;
+  disabled?: boolean;
 }
 
 const PricingUnitDropDown: React.FC<PricingUnitDropDownProps> = ({
@@ -17,14 +18,11 @@ const PricingUnitDropDown: React.FC<PricingUnitDropDownProps> = ({
   setCurrentCurrency,
   setCurrentSymbol,
   shouldShowAllOption,
+  disabled = false,
 }) => {
   const { data, isLoading }: UseQueryResult<CurrencyType[]> = useQuery<
     CurrencyType[]
-  >(["pricing_unit_list"], () =>
-    PricingUnits.list().then((res) => {
-      return res;
-    })
-  );
+  >(["pricing_unit_list"], () => PricingUnits.list().then((res) => res));
 
   const getCurrencies = () => {
     const items = data || [];
@@ -44,6 +42,7 @@ const PricingUnitDropDown: React.FC<PricingUnitDropDownProps> = ({
   return (
     <Select
       size="small"
+      disabled={disabled}
       defaultValue={defaultValue}
       onChange={(currency: string) => {
         setCurrentCurrency(currency);
@@ -54,9 +53,10 @@ const PricingUnitDropDown: React.FC<PricingUnitDropDownProps> = ({
           setCurrentSymbol(selectedPricingUnit.symbol);
         }
       }}
-      options={getCurrencies()?.map((pc) => {
-        return { label: `${pc.name} ${pc.symbol}`, value: pc.code };
-      })}
+      options={getCurrencies()?.map((pc) => ({
+        label: `${pc.name} ${pc.symbol}`,
+        value: pc.code,
+      }))}
     />
   );
 };

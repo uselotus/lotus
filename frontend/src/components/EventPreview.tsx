@@ -2,11 +2,11 @@
 import React, { FC, useState, useEffect, Fragment } from "react";
 import { useQuery, UseQueryResult, useQueryClient } from "react-query";
 import { Button, Collapse, Divider } from "antd";
+import dayjs from "dayjs";
 import { EventPages } from "../types/event-type";
 import { Events } from "../api/api";
 import LoadingSpinner from "./LoadingSpinner";
 // @ts-ignore
-import dayjs from "dayjs";
 import "./EventPreview.css";
 import CustomPagination from "./CustomPagination/CustomPagination";
 import CopyText from "./base/CopytoClipboard";
@@ -72,12 +72,12 @@ const EventPreview: FC = () => {
         setCursor("");
         setCurrentPage(1);
         queryClient.invalidateQueries(["preview_events", null]);
-        return;
+
     }
   };
 
   return (
-    <Fragment>
+    <>
       <div className="flex justify-between mb-4">
         <h1 className="text-2xl font-main mb-5">
           Event Stream (recent events first)
@@ -182,7 +182,7 @@ const EventPreview: FC = () => {
           />
         </div>
       )}
-    </Fragment>
+    </>
   );
 };
 

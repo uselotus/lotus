@@ -17,15 +17,15 @@ import {
   Select,
   Tag,
 } from "antd";
+import { toast } from "react-toastify";
+import { PlusOutlined } from "@ant-design/icons";
 import { Organization, PricingUnits } from "../../../../api/api";
 import { CurrencyType } from "../../../../types/pricing-unit-type";
-import { toast } from "react-toastify";
 import LoadingSpinner from "../../../LoadingSpinner";
 import useGlobalStore from "../../../../stores/useGlobalstore";
 import { QueryErrors } from "../../../../types/error-response-types";
 import { OrganizationType } from "../../../../types/account-type";
 import { country_json } from "../../../../assets/country_codes";
-import { PlusOutlined } from "@ant-design/icons";
 
 interface InviteWithEmailForm extends HTMLFormControlsCollection {
   email: string;
@@ -65,18 +65,12 @@ const GeneralTab: FC = () => {
     isLoading: pricingUnitsLoading,
   }: UseQueryResult<CurrencyType[]> = useQuery<CurrencyType[]>(
     ["pricing_unit_list"],
-    () =>
-      PricingUnits.list().then((res) => {
-        return res;
-      })
+    () => PricingUnits.list().then((res) => res)
   );
 
   const { data: orgData, isLoading } = useQuery(
     ["organization"],
-    () =>
-      Organization.get().then((res) => {
-        return res[0];
-      }),
+    () => Organization.get().then((res) => res[0]),
     {}
   );
 
@@ -190,7 +184,7 @@ const GeneralTab: FC = () => {
   return (
     <div>
       <div className="flex justify-between w-6/12">
-        <Typography.Title level={2}>Organization Settings</Typography.Title>
+        <Typography.Title level={2}>Environment Settings</Typography.Title>
         <Button onClick={() => setIsEdit(true)} className="justify-self-end">
           Edit
         </Button>
@@ -213,9 +207,7 @@ const GeneralTab: FC = () => {
             {org.default_currency !== undefined &&
             org.default_currency !== null ? (
               <Tag>
-                {org.default_currency?.name +
-                  " " +
-                  org.default_currency?.symbol}
+                {`${org.default_currency?.name} ${org.default_currency?.symbol}`}
               </Tag>
             ) : (
               "N/A"
@@ -244,12 +236,12 @@ const GeneralTab: FC = () => {
           )}
           <p className="text-[16px]">
             <b>Subscription Filters:</b>{" "}
-            {orgData?.subscription_filter_keys.map((filter) => {
-              return <Tag key={filter}>{filter}</Tag>;
-            })}
+            {orgData?.subscription_filter_keys.map((filter) => (
+              <Tag key={filter}>{filter}</Tag>
+            ))}
           </p>
 
-          <div className=" flex justify-end"></div>
+          <div className=" flex justify-end" />
         </div>
       )}
       <Modal
@@ -307,7 +299,7 @@ const GeneralTab: FC = () => {
                 },
               ]}
             >
-              <Input disabled={true} />
+              <Input disabled />
             </Form.Item>
             <Form.Item
               label="Default Organization Currency"
@@ -315,9 +307,10 @@ const GeneralTab: FC = () => {
             >
               <Select
                 onChange={setCurrentCurrency}
-                options={pricingUnits?.map((pc) => {
-                  return { label: `${pc.name} ${pc.symbol}`, value: pc.code };
-                })}
+                options={pricingUnits?.map((pc) => ({
+                  label: `${pc.name} ${pc.symbol}`,
+                  value: pc.code,
+                }))}
               />
             </Form.Item>
             <Form.Item label="Tax Rate" name="tax_rate">
@@ -395,9 +388,10 @@ const GeneralTab: FC = () => {
                 placeholder="Select subscription filters"
                 onChange={(e) => setSubscriptionFilters(e)}
                 optionLabelProp="label"
-                options={formSubscriptionFilters.map((filter) => {
-                  return { label: filter, value: filter };
-                })}
+                options={formSubscriptionFilters.map((filter) => ({
+                  label: filter,
+                  value: filter,
+                }))}
               />
             </Form.Item>
 
@@ -405,7 +399,7 @@ const GeneralTab: FC = () => {
               value={newSubscriptionFilter}
               placeholder="Enter New Subscription Filter"
               onChange={(e) => setNewSubscriptionFilter(e.target.value)}
-            ></Input>
+            />
             <Button
               onClick={() => {
                 if (newSubscriptionFilter.length !== 0) {

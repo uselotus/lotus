@@ -1,7 +1,7 @@
 import React, { Fragment, useEffect, useState } from "react";
+import ContentLoader from "react-content-loader";
 import LoadingSpinner from "../LoadingSpinner";
 import { Paper } from "../base/Paper";
-import ContentLoader from "react-content-loader";
 
 const computePercentageChange = (
   current: number | undefined,
@@ -33,8 +33,8 @@ const renderMetric = (metric: number | undefined, currency?: string) => {
   return metric;
 };
 
-const PlaceholderLoader = (props) => (
-  <ContentLoader
+function PlaceholderLoader(props) {
+  return <ContentLoader
     speed={2}
     width={400}
     viewBox="0 0 400 70"
@@ -45,7 +45,7 @@ const PlaceholderLoader = (props) => (
     <rect x="16" y="8" rx="3" ry="3" width="72" height="30" />
     <rect x="16" y="48" rx="3" ry="3" width="120" height="18" />
   </ContentLoader>
-);
+}
 
 function NumberDisplay(props: {
   metric_1: number | undefined;
@@ -62,7 +62,7 @@ function NumberDisplay(props: {
     );
   }, [props.metric_1, props.metric_2]);
   return (
-    <Paper border={true}>
+    <Paper border>
       <div className="grid grid-flow-col auto-cols-auto  justify-between">
         <div>
           <p className="text-sm mb-4 leading-[18px] font-normal">
@@ -73,7 +73,7 @@ function NumberDisplay(props: {
               <PlaceholderLoader />
             </div>
           ) : (
-            <Fragment>
+            <>
               <span className="text-3xl font-bold mb-4">
                 {renderMetric(displayMetric(props.metric_1), props.currency)}
               </span>
@@ -89,7 +89,7 @@ function NumberDisplay(props: {
                   </span>
                 )}
               </p>
-            </Fragment>
+            </>
           )}
         </div>
       </div>

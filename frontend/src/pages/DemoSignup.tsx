@@ -1,12 +1,12 @@
 import { Button, Card, Form, Input } from "antd";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Organizaton } from "../components/Registration/CreateOrganization";
-import { Authentication , instance } from "../api/api";
 import { useMutation, useQueryClient } from "react-query";
-import LoadingSpinner from "../components/LoadingSpinner";
 import Cookies from "universal-cookie";
 import { toast } from "react-toastify";
+import { Organizaton } from "../components/Registration/CreateOrganization";
+import { Authentication , instance } from "../api/api";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 const cookies = new Cookies();
 
@@ -34,7 +34,7 @@ const DemoSignup: React.FC = () => {
   const [isDesktop, setIsDesktop] = useState(true);
 
   useEffect(() => {
-    const userAgent = navigator.userAgent;
+    const {userAgent} = navigator;
 
     if (/iPad|iPhone|iPod|Android/.test(userAgent)) {
       setIsDesktop(false);
@@ -62,7 +62,7 @@ const DemoSignup: React.FC = () => {
       onSuccess: (response) => {
         const { token, detail } = response;
         cookies.set("Token", token);
-        instance.defaults.headers.common["Authorization"] = `Token ${token}`;
+        instance.defaults.headers.common.Authorization = `Token ${token}`;
         queryClient.invalidateQueries("session");
       },
       onError: (error: any) => {
@@ -91,9 +91,9 @@ const DemoSignup: React.FC = () => {
     form.validateFields().then(() => {
       const register_object: DemoSignupProps = {
         organization_name: organization.organization_name,
-        email: email,
-        password: password,
-        username: username,
+        email,
+        password,
+        username,
       };
 
       mutation.mutate(register_object);
@@ -124,7 +124,7 @@ const DemoSignup: React.FC = () => {
               <div className="">
                 <div>
                   <Card
-                    title={"Create Lotus Demo Account"}
+                    title="Create Lotus Demo Account"
                     className="flex flex-col"
                     style={{
                       borderRadius: "0.5rem",

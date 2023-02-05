@@ -11,9 +11,10 @@ import {
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import UsageComponentForm from "../components/Plans/UsageComponentForm";
 import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
+import { ArrowLeftOutlined } from "@ant-design/icons";
+import UsageComponentForm from "../components/Plans/UsageComponentForm";
 
 import {
   CreatePlanType,
@@ -26,7 +27,6 @@ import {
 import { Organization, Plan } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
-import { ArrowLeftOutlined } from "@ant-design/icons";
 import { usePlanUpdater } from "../context/PlanContext";
 import { PageLayout } from "../components/base/PageLayout";
 import ComponentDisplay from "../components/Plans/ComponentDisplay";
@@ -34,6 +34,7 @@ import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import TargetCustomerForm from "../components/Plans/TargetCustomerForm";
 import VersionActiveForm from "../components/Plans/VersionActiveForm";
 import { CurrencyType } from "../types/pricing-unit-type";
+import { CreateRecurringCharge } from "../types/plan-type";
 
 interface CustomizedState {
   plan: PlanType;
@@ -50,7 +51,7 @@ interface Props {
   versionIndex: number;
 }
 
-const EditPlan = ({ type, plan, versionIndex }: Props) => {
+function EditPlan({ type, plan, versionIndex }: Props) {
   const [componentVisible, setcomponentVisible] = useState<boolean>();
   const [featureVisible, setFeatureVisible] = useState<boolean>(false);
   const [targetCustomerFormVisible, setTargetCustomerFormVisible] =
@@ -100,16 +101,14 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
 
   useEffect(() => {
     const initialComponents: any[] = plan.versions[versionIndex].components.map(
-      (component) => {
-        return {
+      (component) => ({
           metric: component.billable_metric.metric_name,
           tiers: component.tiers,
           proration_granularity: component.proration_granularity,
           id: component.billable_metric.metric_id,
           metric_id: component.billable_metric.metric_id,
           pricing_unit: component.pricing_unit,
-        };
-      }
+        })
     );
     setComponentsData(initialComponents);
   }, [plan.versions[versionIndex].components]);
@@ -133,7 +132,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           position: toast.POSITION.TOP_CENTER,
         });
         queryClient.invalidateQueries(["plan_list"]);
-        navigate("/plans/" + plan.plan_id);
+        navigate(`/plans/${  plan.plan_id}`);
       },
       onError: () => {
         toast.error("Failed to create version", {
@@ -312,11 +311,18 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           values.usage_billing_frequency = "end_of_period";
         }
 
+        const recurring_charges: CreateRecurringCharge[] = [];
+        recurring_charges.push({
+          amount: values.flat_rate,
+          charge_behavior: "prorate",
+          charge_timing: values.flat_fee_billing_type,
+          name: "Flat Fee",
+        });
+
         const initialPlanVersion: CreateInitialVersionType = {
           description: values.description,
-          flat_fee_billing_type: values.flat_fee_billing_type,
+          recurring_charges: recurring_charges,
           transition_to_plan_id: values.transition_to_plan_id,
-          flat_rate: values.flat_rate,
           components: usagecomponentslist,
           features: featureIdList,
           usage_billing_frequency: values.usage_billing_frequency,
@@ -324,15 +330,15 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
         };
         if (values.align_plan == "calendar_aligned") {
           if (values.plan_duration === "yearly") {
-            initialPlanVersion["day_anchor"] = 1;
-            initialPlanVersion["month_anchor"] = 1;
+            initialPlanVersion.day_anchor = 1;
+            initialPlanVersion.month_anchor = 1;
           }
           if (values.plan_duration === "monthly") {
-            initialPlanVersion["day_anchor"] = 1;
+            initialPlanVersion.day_anchor = 1;
           }
           if (values.plan_duration === "quarterly") {
-            initialPlanVersion["day_anchor"] = 1;
-            initialPlanVersion["month_anchor"] = 1;
+            initialPlanVersion.day_anchor = 1;
+            initialPlanVersion.month_anchor = 1;
           }
         }
         if (
@@ -346,7 +352,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             values.price_adjustment_amount =
               Math.abs(values.price_adjustment_amount) * -1;
           }
-          initialPlanVersion["price_adjustment"] = {
+          initialPlanVersion.price_adjustment = {
             price_adjustment_type: values.price_adjustment_type,
             price_adjustment_amount: values.price_adjustment_amount,
           };
@@ -358,15 +364,14 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           initial_version: initialPlanVersion,
         };
         if (type === "backtest") {
-          newPlan["status"] = "experimental";
+          newPlan.status = "experimental";
           createPlanMutation.mutate(newPlan);
         } else if (type === "version") {
           const newVersion: CreatePlanVersionType = {
             plan_id: plan.plan_id,
             description: values.description,
-            flat_fee_billing_type: values.flat_fee_billing_type,
+            recurring_charges: recurring_charges,
             transition_to_plan_id: values.transition_to_plan_id,
-            flat_rate: values.flat_rate,
             components: usagecomponentslist,
             features: featureIdList,
             usage_billing_frequency: values.usage_billing_frequency,
@@ -376,22 +381,22 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           };
           if (values.align_plan == "calendar_aligned") {
             if (values.plan_duration === "yearly") {
-              newVersion["day_anchor"] = 1;
-              newVersion["month_anchor"] = 1;
+              newVersion.day_anchor = 1;
+              newVersion.month_anchor = 1;
             }
             if (values.plan_duration === "monthly") {
-              newVersion["day_anchor"] = 1;
+              newVersion.day_anchor = 1;
             }
             if (values.plan_duration === "quarterly") {
-              newVersion["day_anchor"] = 1;
-              newVersion["month_anchor"] = 1;
+              newVersion.day_anchor = 1;
+              newVersion.month_anchor = 1;
             }
           }
           if (
             values.price_adjustment_type !== undefined &&
             values.price_adjustment_type !== "none"
           ) {
-            newVersion["price_adjustment"] = {
+            newVersion.price_adjustment = {
               price_adjustment_type: values.price_adjustment_type,
               price_adjustment_amount: values.price_adjustment_amount,
             };
@@ -401,8 +406,8 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
         } else if (type === "custom") {
           // target_id = await targetCustomerFormVisible(true);
 
-          newPlan["parent_plan_id"] = plan.plan_id;
-          newPlan["target_customer_id"] = targetCustomerId;
+          newPlan.parent_plan_id = plan.plan_id;
+          newPlan.target_customer_id = targetCustomerId;
           createPlanMutation.mutate(newPlan);
         }
       })
@@ -412,21 +417,21 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
   function returnPageTitle(): string {
     if (type === "backtest") {
       return "Backtest Plan";
-    } else if (type === "version") {
-      return "Create New Version:" + " " + plan.plan_name;
-    } else {
-      return "Create Custom Plan:" + " " + plan.plan_name;
+    } if (type === "version") {
+      return `Create New Version:` + ` ${  plan.plan_name}`;
     }
+      return `Create Custom Plan:` + ` ${  plan.plan_name}`;
+
   }
 
   function returnSubmitButtonText(): string {
     if (type === "backtest") {
       return "Create new Plan";
-    } else if (type === "version") {
+    } if (type === "version") {
       return "Publish version";
-    } else {
-      return "Create custom plan";
     }
+      return "Create custom plan";
+
   }
 
   return (
@@ -434,7 +439,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
       title={returnPageTitle()}
       extra={[
         <Button
-          key={"back"}
+          key="back"
           onClick={goBackPage}
           icon={<ArrowLeftOutlined />}
           type="default"
@@ -495,19 +500,19 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                     <Form.Item label="Plan Name" name="name">
                       <Input
                         placeholder="Ex: Starter Plan"
-                        disabled={type === "version" ? true : false}
+                        disabled={type === "version"}
                       />
                     </Form.Item>
                     <Form.Item label="Description" name="description">
                       <Input
-                        disabled={type === "version" ? true : false}
+                        disabled={type === "version"}
                         type="textarea"
                         placeholder="Ex: Cheapest plan for small scale businesses"
                       />
                     </Form.Item>
                     <Form.Item label="Plan Duration" name="plan_duration">
                       <Radio.Group
-                        disabled={type === "version" ? true : false}
+                        disabled={type === "version"}
                         onChange={(e) => {
                           if (e.target.value === "monthly") {
                             setAvailableBillingTypes([
@@ -606,7 +611,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                     </Form.Item>
                     <Form.Item name="plan_currency" label="Plan Currency">
                       <Select
-                        disabled={type === "version" ? true : false}
+                        disabled={type === "version"}
                         onChange={(value) => {
                           const selectedCurrency = allCurrencies.find(
                             (currency) => currency.code === value
@@ -823,6 +828,6 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
       )}
     </PageLayout>
   );
-};
+}
 
 export default EditPlan;

@@ -1,4 +1,5 @@
 import axios, { AxiosResponse } from "axios";
+import Cookies from "universal-cookie";
 import {
   CustomerType,
   CustomerTotal,
@@ -46,6 +47,10 @@ import {
   CancelSubscriptionBody,
   ChangeSubscriptionPlanType,
   TurnSubscriptionAutoRenewOffType,
+  CreateSubscriptionAddOnBody,
+  CreateSubscriptionAddOnType,
+  CancelCreateSubscriptionAddOnBody,
+  CancelCreateSubscriptionAddOnQueryParams,
 } from "../types/subscription-type";
 import { MetricUsage, MetricType } from "../types/metric-type";
 import { EventPages } from "../types/event-type";
@@ -56,7 +61,6 @@ import {
   PaginatedActionsType,
 } from "../types/account-type";
 import { FeatureType, CreateFeatureType } from "../types/feature-type";
-import Cookies from "universal-cookie";
 import {
   CreateBacktestType,
   BacktestType,
@@ -80,7 +84,7 @@ import { AlertType, CreateAlertType } from "../types/alert-type";
 
 const cookies = new Cookies();
 
-axios.defaults.headers.common["Authorization"] = `Token ${cookies.get(
+axios.defaults.headers.common.Authorization = `Token ${cookies.get(
   "Token"
 )}`;
 
@@ -100,7 +104,7 @@ export const instance = axios.create({
 
 const responseBody = (response: AxiosResponse) => response.data;
 
-//make a function that takes an object as input and if it finds a key with the name subscription_filters, it json encodes it, and then returns the whole object
+// make a function that takes an object as input and if it finds a key with the name subscription_filters, it json encodes it, and then returns the whole object
 const encodeSubscriptionFilters = (obj: any) => {
   if (obj.subscription_filters) {
     obj.subscription_filters = JSON.stringify(obj.subscription_filters);
@@ -112,11 +116,11 @@ const requests = {
   get: (url: string, params?: {}) =>
     instance.get(url, params).then(responseBody),
   post: (url: string, body: {}, params?: {}) =>
-    instance.post(url, body, { params: params }).then(responseBody),
+    instance.post(url, body, { params }).then(responseBody),
   patch: (url: string, body: {}, params?: {}) =>
-    instance.patch(url, body, { params: params }).then(responseBody),
+    instance.patch(url, body, { params }).then(responseBody),
   delete: (url: string, params?: {}) =>
-    instance.delete(url, { params: params }).then(responseBody),
+    instance.delete(url, { params }).then(responseBody),
 };
 
 export const Customer = {
@@ -141,7 +145,7 @@ export const Customer = {
     }),
   // getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
   //   requests.get(`app/customer_detail/`, { params: { customer_id } }),
-  //Subscription handling
+  // Subscription handling
   getCost(
     customer_id: string,
     start_date: string,
@@ -155,7 +159,6 @@ export const Customer = {
     post: CreateSubscriptionType
   ): Promise<SubscriptionType> => requests.post("app/subscriptions/add/", post),
   updateSubscription: (
-    subscription_id: string,
     post: UpdateSubscriptionType,
     params?: {
       customer_id?: string;
@@ -187,6 +190,15 @@ export const Customer = {
     }
   ): Promise<SubscriptionType> =>
     requests.post(`app/subscriptions/update/`, post, params),
+  createSubscriptionAddOns: (
+    body: CreateSubscriptionAddOnBody
+  ): Promise<CreateSubscriptionAddOnType> =>
+    requests.post(`app/subscriptions/addons/add/`, body),
+  cancelCreateSubscriptionAddOns: (
+    body: CancelCreateSubscriptionAddOnBody,
+    params: CancelCreateSubscriptionAddOnQueryParams
+  ): Promise<CreateSubscriptionAddOnType[]> =>
+    requests.post(`app/subscriptions/addons/cancel/`, body, params),
 };
 
 export const Addon = {
@@ -198,33 +210,33 @@ export const Addon = {
 };
 
 export const Plan = {
-  //get methods
+  // get methods
   getPlans: (): Promise<PlanType[]> => requests.get("app/plans/"),
   getPlan: (plan_id: string): Promise<PlanDetailType> =>
     requests.get(`app/plans/${plan_id}/`),
-  //create plan
+  // create plan
   createPlan: (post: CreatePlanType): Promise<PlanType> =>
     requests.post("app/plans/", post),
-  //create plan version
+  // create plan version
   createVersion: (post: CreatePlanVersionType): Promise<PlanVersionType> =>
     requests.post("app/plan_versions/", post),
-  //create plan external links
+  // create plan external links
   createExternalLinks: (
     post: CreatePlanExternalLinkType
   ): Promise<InitialExternalLinks> =>
     requests.post("app/external_plan_links/", post),
-  //delete plan external links
+  // delete plan external links
   deleteExternalLinks: (post: InitialExternalLinks): Promise<any> =>
     requests.delete(
       `app/external_plan_links/${post.external_plan_id}/?source=${post.source}`
     ),
 
-  //update plans methods
+  // update plans methods
   updatePlan: (
     plan_id: string,
     post: UpdatePlanType
   ): Promise<UpdatePlanType> => requests.patch(`app/plans/${plan_id}/`, post),
-  //update plan versions methods
+  // update plan versions methods
   updatePlanVersionDescription: (
     version_id: string,
     post: PlanVersionUpdateDescriptionType
@@ -370,7 +382,7 @@ export const Organization = {
     subscription_filter_keys: string[]
   ): Promise<OrganizationType> =>
     requests.patch(`app/organizations/${org_id}/`, {
-      default_currency_code: default_currency_code,
+      default_currency_code,
       tax_rate,
       payment_grace_period,
       address,
@@ -477,25 +489,25 @@ export const Backtests = {
 };
 
 export const Stripe = {
-  //Import Customers
+  // Import Customers
   importCustomers: (post: Source): Promise<StripeImportCustomerResponse> =>
     requests.post("app/import_customers/", post),
 
-  //Import Payments
+  // Import Payments
   importPayments: (post: Source): Promise<StripeImportCustomerResponse> =>
     requests.post("app/import_payment_objects/", post),
 
-  //transfer Subscription
+  // transfer Subscription
   transferSubscriptions: (
     post: TransferSub
   ): Promise<StripeImportCustomerResponse> =>
     requests.post("app/transfer_subscriptions/", post),
 
-  //Get Stripe Setting
+  // Get Stripe Setting
   getStripeSettings: (data: StripeSettingsParams): Promise<StripeSetting[]> =>
     requests.get("app/organization_settings/", { params: data }),
 
-  //Update Stripe Setting
+  // Update Stripe Setting
   updateStripeSetting: (
     data: UpdateStripeSettingParams
   ): Promise<StripeSetting> =>
@@ -515,17 +527,11 @@ export const PaymentProcessorIntegration = {
 };
 
 export const Invoices = {
-  changeStatus: (data: MarkPaymentStatusAsPaid): Promise<any> => {
-    return requests.patch(`app/invoices/${data.invoice_id}/`, {
+  changeStatus: (data: MarkPaymentStatusAsPaid): Promise<any> => requests.patch(`app/invoices/${data.invoice_id}/`, {
       payment_status: data.payment_status,
-    });
-  },
-  getDraftInvoice: (customer_id: string): Promise<DraftInvoiceType> => {
-    return requests.get("app/draft_invoice/", { params: { customer_id } });
-  },
-  getInvoiceUrl: (invoice_id: string): Promise<{ url: string }> => {
-    return requests.get(`app/invoice_url/`, { params: { invoice_id } });
-  },
+    }),
+  getDraftInvoice: (customer_id: string): Promise<DraftInvoiceType> => requests.get("app/draft_invoice/", { params: { customer_id } }),
+  getInvoiceUrl: (invoice_id: string): Promise<{ url: string }> => requests.get(`app/invoice_url/`, { params: { invoice_id } }),
 };
 
 export const Credits = {

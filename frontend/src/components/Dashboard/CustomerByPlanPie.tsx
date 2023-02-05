@@ -1,17 +1,15 @@
 import React from "react";
 import { Pie } from "@ant-design/plots";
-import { Paper } from "../base/Paper";
 import { useQuery, UseQueryResult } from "react-query";
+import { Paper } from "../base/Paper";
 import { PlansByCustomer } from "../../api/api";
 import LoadingSpinner from "../LoadingSpinner";
 
-export const CustomerByPlanPie = (props: any) => {
+export function CustomerByPlanPie(props: any) {
   const { data, isLoading }: UseQueryResult<any> = useQuery<any>(
     ["customer_by_plan_pie"],
     () =>
-      PlansByCustomer.getPlansByCustomer().then((res) => {
-        return res;
-      })
+      PlansByCustomer.getPlansByCustomer().then((res) => res)
   );
 
   const config = {
@@ -56,7 +54,7 @@ export const CustomerByPlanPie = (props: any) => {
     },
   };
   return (
-    <Paper className="h-full" border={true}>
+    <Paper className="h-full" border>
       {isLoading ? (
         <LoadingSpinner />
       ) : (
@@ -69,4 +67,4 @@ export const CustomerByPlanPie = (props: any) => {
       )}
     </Paper>
   );
-};
+}
