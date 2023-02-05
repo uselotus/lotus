@@ -369,7 +369,7 @@ def apply_taxes(invoice, customer, organization):
             tax_rate = organization.tax_rate
         name = f"Tax - {round(tax_rate, 2)}%"
         tax_amount = current_subtotal * (tax_rate / Decimal(100))
-        if tax_amount != 0:
+        if tax_amount > 0:
             InvoiceLineItem.objects.create(
                 name=name,
                 start_date=invoice.issue_date,
@@ -401,7 +401,7 @@ def apply_customer_balance_adjustments(invoice, customer, organization, draft):
     subtotal = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
     if subtotal < 0:
         InvoiceLineItem.objects.create(
-            name=f"Credit Grant: {invoice.currency.symbol}{subtotal}",
+            name="Granted Credit",
             start_date=invoice.issue_date,
             end_date=invoice.issue_date,
             quantity=None,
@@ -438,7 +438,7 @@ def apply_customer_balance_adjustments(invoice, customer, organization, draft):
                 )
             if -balance_adjustment + leftover != 0:
                 InvoiceLineItem.objects.create(
-                    name="Balance Adjustment [DEBIT]",
+                    name="Applied Credit",
                     start_date=issue_date,
                     end_date=issue_date,
                     quantity=None,

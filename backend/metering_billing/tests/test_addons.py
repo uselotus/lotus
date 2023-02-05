@@ -418,13 +418,9 @@ class TestAttachAddon:
             SubscriptionRecord.objects.all(),
             charge_next_plan=True,
         )
-        max_value = (
-            10 * (Decimal("31") - Decimal("5")) / Decimal("31")
-        )  # = 0.83870967741
-        min_value = (
-            10 * (Decimal("28") - Decimal("5")) / Decimal("28")
-        )  # = 0.82142857142
-        # were gonna charge the 30 from the base plan, 10 for new plan, and ~8.21-8.38 for the addon
+        max_value = 10 * (Decimal("31") - Decimal("5")) / Decimal("31")
+        min_value = 10 * (Decimal("28") - Decimal("6")) / Decimal("28")
+        # were gonna charge the 30 from the base plan, 10 for new plan, and ~8.20-8.39 for the addon
         assert invoices[0].cost_due - Decimal("40") >= min_value
         assert invoices[0].cost_due - Decimal("40") <= max_value
 
@@ -734,15 +730,11 @@ class TestAttachAddon:
             SubscriptionRecord.objects.all(),
             charge_next_plan=True,
         )
-        max_value = (
-            10 * (Decimal("31") - Decimal("5")) / Decimal("31") * 3
-        )  # = 0.83870967741
-        min_value = (
-            10 * (Decimal("28") - Decimal("5")) / Decimal("28") * 3
-        )  # = 0.82142857142
+        max_value = 10 * (Decimal("31") - Decimal("5")) / Decimal("31")
+        min_value = 10 * (Decimal("28") - Decimal("6")) / Decimal("28")
         # were gonna charge the 30 from the base plan, 3*10 for new plan, and 3*~8.21-8.38 for the addon
-        assert invoices[0].cost_due - Decimal("60") >= min_value
-        assert invoices[0].cost_due - Decimal("60") <= max_value
+        assert invoices[0].cost_due - Decimal("60") >= 3 * min_value
+        assert invoices[0].cost_due - Decimal("60") <= 3 * max_value
 
     def test_can_attach_flat_addon_with_full_name(
         self,

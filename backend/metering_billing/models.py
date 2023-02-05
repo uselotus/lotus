@@ -17,15 +17,6 @@ from django.db.models import Count, F, FloatField, Q, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
-
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
@@ -77,6 +68,14 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -131,9 +130,7 @@ class Organization(models.Model):
         help_text="Tax rate as percentage. For example, 10.5 for 10.5%",
         null=True,
     )
-    timezone = TimeZoneField(
-        default="UTC", use_pytz=True
-    )
+    timezone = TimeZoneField(default="UTC", use_pytz=True)
     __original_timezone = None
     __original_organization_type = None
     history = HistoricalRecords()
@@ -493,9 +490,7 @@ class Customer(models.Model):
         help_text="Tax rate as percentage. For example, 10.5 for 10.5%",
         null=True,
     )
-    timezone = TimeZoneField(
-        default="UTC", use_pytz=True
-    )
+    timezone = TimeZoneField(default="UTC", use_pytz=True)
     timezone_set = models.BooleanField(default=False)
     history = HistoricalRecords()
 
@@ -1681,7 +1676,8 @@ class RecurringCharge(models.Model):
 
     def amount_already_invoiced(self, subscription_record):
         return subscription_record.line_items.filter(
-            associated_recurring_charge=self
+            Q(chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE),
+            associated_recurring_charge=self,
         ).aggregate(Sum("subtotal"))["subtotal__sum"] or Decimal(0.0)
 
 
