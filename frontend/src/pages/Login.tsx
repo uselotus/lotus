@@ -5,9 +5,9 @@ import { Card, Input, Button, Form } from "antd";
 import "./Login.css";
 import { useQueryClient, useMutation } from "react-query";
 import { toast } from "react-toastify";
-import LoadingSpinner from "../components/LoadingSpinner";
 import Cookies from "universal-cookie";
 import posthog from "posthog-js";
+import LoadingSpinner from "../components/LoadingSpinner";
 import { QueryErrors } from "../types/error-response-types";
 import useGlobalStore from "../stores/useGlobalstore";
 import Tooltip from "../components/base/Tooltip/Tooltip";
@@ -72,7 +72,7 @@ const Login: FC = () => {
         }
 
         cookies.set("Token", token);
-        instance.defaults.headers.common["Authorization"] = `Token ${token}`;
+        instance.defaults.headers.common.Authorization = `Token ${token}`;
         queryClient.refetchQueries("session");
         redirectDashboard();
       },
@@ -91,13 +91,12 @@ const Login: FC = () => {
   const handleLogin = (event: React.FormEvent<FormElements>) => {
     // const pwBitArray = sjcl.hash.sha256.hash(password);
     // const hashedPassword = sjcl.codec.hex.fromBits(pwBitArray);
-    mutation.mutate({ username, password: password });
+    mutation.mutate({ username, password });
   };
 
   if (!isAuthenticated) {
     return (
-      <>
-        <div className="grid h-screen place-items-center">
+      <div className="grid h-screen place-items-center">
           <div className="space-y-4">
             <Card
               title="Login"
@@ -161,7 +160,6 @@ const Login: FC = () => {
           </div>
           {mutation.isLoading && <LoadingSpinner />}
         </div>
-      </>
     );
   }
 

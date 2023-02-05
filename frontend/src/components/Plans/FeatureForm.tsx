@@ -1,16 +1,16 @@
 import React, { useState } from "react";
-import { FeatureType, CreateFeatureType } from "../../types/feature-type";
 import { Button, Divider, Modal, Select, Input, message } from "antd";
-import { Features } from "../../api/api";
 import { UseQueryResult, useQuery , useMutation, useQueryClient } from "react-query";
+import { FeatureType, CreateFeatureType } from "../../types/feature-type";
+import { Features } from "../../api/api";
 
 const { Option } = Select;
 
-const FeatureForm = (props: {
+function FeatureForm(props: {
   visible: boolean;
   onCancel: () => void;
   onAddFeatures: (features: FeatureType[]) => void;
-}) => {
+}) {
   const [newFeatures, setNewFeatures] = useState<FeatureType[]>([]);
   const [createdFeatureName, setCreatedFeatureName] = useState<string>("");
   const [createdFeatureDescription, setCreatedFeatureDescription] =
@@ -23,9 +23,7 @@ const FeatureForm = (props: {
   }: UseQueryResult<FeatureType[]> = useQuery<FeatureType[]>(
     ["feature_list"],
     () =>
-      Features.getFeatures().then((res) => {
-        return res;
-      })
+      Features.getFeatures().then((res) => res)
   );
 
   const addExistingFeatureToList = (feature_add_list: string[]) => {
@@ -66,7 +64,7 @@ const FeatureForm = (props: {
   return (
     <Modal
       visible={props.visible}
-      title={"Add Features"}
+      title="Add Features"
       okText="Add"
       okType="default"
       cancelText="Cancel"
@@ -98,21 +96,21 @@ const FeatureForm = (props: {
         <div className="flex flex-col space-y-3">
           <h3>Create new feature</h3>
           <Input
-            placeholder={"Feature Name"}
+            placeholder="Feature Name"
             value={createdFeatureName}
             onChange={(e) => setCreatedFeatureName(e.target.value)}
-          ></Input>
+           />
           <Input
-            placeholder={"Feature Description"}
+            placeholder="Feature Description"
             value={createdFeatureDescription}
             onChange={(e) => setCreatedFeatureDescription(e.target.value)}
-          ></Input>
+           />
 
           <Button onClick={addnewFeatureToList}> Create</Button>
         </div>
       </div>
     </Modal>
   );
-};
+}
 
 export default FeatureForm;

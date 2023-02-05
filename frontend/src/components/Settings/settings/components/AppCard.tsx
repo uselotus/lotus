@@ -12,7 +12,7 @@ type Props = {
   isNew?: boolean;
   selfHosted?: boolean;
 };
-export const AppCard = ({
+export function AppCard({
   title,
   handleClick,
   description,
@@ -20,7 +20,7 @@ export const AppCard = ({
   icon,
   isNew,
   selfHosted,
-}: Props) => {
+}: Props) {
   return (
     <div>
       <Card
@@ -28,7 +28,7 @@ export const AppCard = ({
           boxShadow: "0 2px 4px 0 #a8a8a833",
           minHeight: "180px",
         }}
-        hoverable={true}
+        hoverable
         title={<Avatar shape="square" src={icon} />}
         size="small"
         extra={
@@ -83,4 +83,4 @@ export const AppCard = ({
       </Card>
     </div>
   );
-};
+}

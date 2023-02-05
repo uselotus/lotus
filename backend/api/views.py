@@ -102,6 +102,7 @@ from metering_billing.models import (
 )
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.serializer_utils import (
+    AddonUUIDField,
     BalanceAdjustmentUUIDField,
     InvoiceUUIDField,
     MetricUUIDField,
@@ -173,12 +174,12 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         qs = qs.prefetch_related(
             Prefetch(
                 "subscription_records",
-                queryset=SubscriptionRecord.objects.active(now)
+                queryset=SubscriptionRecord.base_objects.active(now)
                 .filter(
                     organization=organization,
                 )
                 .select_related("customer", "billing_plan")
-                .prefetch_related("filters"),
+                .prefetch_related("filters", "addon_subscription_records"),
                 to_attr="active_subscription_records",
             ),
             Prefetch(
@@ -357,8 +358,11 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     )
 
     def get_object(self):
-        string_uuid = self.kwargs[self.lookup_field]
-        uuid = PlanUUIDField().to_internal_value(string_uuid)
+        string_uuid = str(self.kwargs[self.lookup_field])
+        if "plan_" in string_uuid:
+            uuid = PlanUUIDField().to_internal_value(string_uuid)
+        else:
+            uuid = AddonUUIDField().to_internal_value(string_uuid)
         self.kwargs[self.lookup_field] = uuid
         return super().get_object()
 
@@ -896,7 +900,7 @@ class SubscriptionViewSet(
                 )
                 for filter in subscription_record.filters.all():
                     sr.filters.add(filter)
-                subscription_record.flat_fee_behavior = FLAT_FEE_BEHAVIOR.PRORATE
+                subscription_record.flat_fee_behavior = FLAT_FEE_BEHAVIOR.CHARGE_PRORATED
                 subscription_record.invoice_usage_charges = keep_separate
                 subscription_record.auto_renew = False
                 subscription_record.end_date = now
@@ -1758,18 +1762,6 @@ def track_event(request):
             status=status.HTTP_201_CREATED,
         )
     else:
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
 
 

@@ -1,12 +1,12 @@
 import React, { FC, useEffect, useState } from "react";
+import { useSearchParams , useNavigate } from "react-router-dom";
+import { Button } from "antd";
 import { PaymentProcessorIntegration } from "../api/api";
 import {
   PaymentProcessorConnectionRequestType,
   PaymentProcessorConnectionResponseType,
   StripeConnectionRequestType,
 } from "../types/payment-processor-type";
-import { useSearchParams , useNavigate } from "react-router-dom";
-import { Button } from "antd";
 
 const StripeRedirect: FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();

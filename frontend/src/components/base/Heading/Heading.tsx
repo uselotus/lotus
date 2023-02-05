@@ -5,6 +5,7 @@ import Avatar from "../Avatar/Avatar";
 import Badge from "../Badges/Badges";
 import useGlobalStore from "../../../stores/useGlobalstore";
 import useToggleSlideOver from "../../../stores/useToggleSlideOver";
+
 interface HeadingProps {
   hasBackButton?: boolean;
   backButton?: React.ReactNode;

@@ -1,5 +1,4 @@
 import React, { FC, useEffect } from "react";
-import { SpecificResults } from "../../types/experiment-type";
 import {
   ColGrid,
   Text,
@@ -10,6 +9,8 @@ import {
   ListItem,
 } from "@tremor/react";
 import { Pie } from "@ant-design/plots";
+import { SpecificResults } from "../../types/experiment-type";
+
 const arrowURL = new URL("../arrow.svg", import.meta.url).href;
 
 interface Props {
@@ -24,7 +25,7 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
   const [revenuePerMetric, setRevenuePerMetric] = React.useState<any>([]);
   const categories = [
     substitution.original_plan.plan_name,
-    "[new]" + substitution.new_plan.plan_name,
+    `[new]${  substitution.new_plan.plan_name}`,
   ];
 
   const pieConfigNew = {
@@ -113,20 +114,20 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
       const newRevLineGraph = substitution.results.cumulative_revenue;
       for (let i = 0; i < newRevLineGraph.length; i++) {
         newRevLineGraph[i][categories[0]] =
-          newRevLineGraph[i]["original_plan_revenue"];
+          newRevLineGraph[i].original_plan_revenue;
         newRevLineGraph[i][categories[1]] =
-          newRevLineGraph[i]["new_plan_revenue"];
+          newRevLineGraph[i].new_plan_revenue;
       }
       setRevenueLineGraph(newRevLineGraph);
 
       const newRevPerMetric = substitution.results.revenue_by_metric;
 
       for (let j = 0; j < newRevPerMetric.length; j++) {
-        newRevPerMetric[j]["original_plan_revenue"] = dataFormatterNumber(
-          newRevPerMetric[j]["original_plan_revenue"]
+        newRevPerMetric[j].original_plan_revenue = dataFormatterNumber(
+          newRevPerMetric[j].original_plan_revenue
         );
-        newRevPerMetric[j]["new_plan_revenue"] = dataFormatterNumber(
-          newRevPerMetric[j]["new_plan_revenue"]
+        newRevPerMetric[j].new_plan_revenue = dataFormatterNumber(
+          newRevPerMetric[j].new_plan_revenue
         );
       }
 
@@ -145,13 +146,13 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
           colors={["gray", "amber"]}
           valueFormatter={dataFormatter}
           startEndOnly={false}
-          showXAxis={true}
-          showYAxis={true}
+          showXAxis
+          showYAxis
           yAxisWidth="w-20"
-          showTooltip={true}
-          showLegend={true}
-          showGridLines={true}
-          showAnimation={true}
+          showTooltip
+          showLegend
+          showGridLines
+          showAnimation
           height="h-80"
           marginTop="mt-0"
         />

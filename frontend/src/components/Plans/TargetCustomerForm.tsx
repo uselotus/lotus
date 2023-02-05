@@ -6,24 +6,22 @@ import { CustomerPlus } from "../../types/customer-type";
 
 const { Option } = Select;
 
-const TargetCustomerForm = (props: {
+function TargetCustomerForm(props: {
   visible: boolean;
   onCancel: () => void;
   onAddTargetCustomer: (target_customer_id: string) => void;
-}) => {
-  const [targetCustomer, setTargetCustomer] = useState<string>(""); //id of the target customer
+}) {
+  const [targetCustomer, setTargetCustomer] = useState<string>(""); // id of the target customer
 
   const { data: customers, isLoading }: UseQueryResult<CustomerPlus[]> =
     useQuery<CustomerPlus[]>(["customer_list"], () =>
-      Customer.getCustomers().then((res) => {
-        return res;
-      })
+      Customer.getCustomers().then((res) => res)
     );
 
   return (
     <Modal
       visible={props.visible}
-      title={"Choose Target Customer For Plan"}
+      title="Choose Target Customer For Plan"
       okText="Confirm and Create Plan"
       okType="default"
       okButtonProps={{
@@ -41,7 +39,7 @@ const TargetCustomerForm = (props: {
             showSearch
             onChange={(value) => {
               setTargetCustomer(value);
-            }} //id of the target customer)}
+            }} // id of the target customer)}
           >
             {customers?.map((customer) => (
               <Option value={customer.customer_id}>
@@ -53,6 +51,6 @@ const TargetCustomerForm = (props: {
       </div>
     </Modal>
   );
-};
+}
 
 export default TargetCustomerForm;

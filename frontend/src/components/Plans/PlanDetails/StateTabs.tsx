@@ -102,7 +102,7 @@ const StateTabs: FC<StateTabsProps> = ({
         onCancel={() => {
           setVisible(false);
         }}
-        title={"Are you sure you want to make v" + version + " active?"}
+        title={`Are you sure you want to make v${  version  } active?`}
       >
         <div className="space-y-4 ">
           <div className="grid grid-row-3 items-center my-5">
@@ -134,7 +134,7 @@ const StateTabs: FC<StateTabsProps> = ({
             <h3>Active</h3>
           </div>
           {activeVersion && (
-            <Fragment>
+            <>
               <h3 className="mb-8 font-bold">
                 Current Active Version: v{activeVersion}
               </h3>
@@ -147,7 +147,7 @@ const StateTabs: FC<StateTabsProps> = ({
                     : "Grandfathered"}
                 </h3>
               </div>
-            </Fragment>
+            </>
           )}
         </div>
       </Modal>

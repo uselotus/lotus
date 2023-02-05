@@ -46,7 +46,7 @@ export interface LineItem {
   quantity: number;
   subtotal: number;
   billing_type: string;
-  plan: string; //TODO::: fix
+  plan: string; // TODO::: fix
   metadata: object;
   subscription_filters: { property_name: string; value: string }[];
 }

@@ -1,14 +1,14 @@
 import { Button, Dropdown, Menu, Table, Tag, Tooltip } from "antd";
 import React, { FC, useEffect } from "react";
-import { InvoiceType, MarkPaymentStatusAsPaid } from "../../types/invoice-type";
 import dayjs from "dayjs";
 import { useMutation, useQuery } from "react-query";
-import { Invoices } from "../../api/api";
 import { toast } from "react-toastify";
 import { MoreOutlined } from "@ant-design/icons";
+import axios from "axios";
 import { integrationsMap } from "../../types/payment-processor-type";
 
-import axios from "axios";
+import { Invoices } from "../../api/api";
+import { InvoiceType, MarkPaymentStatusAsPaid } from "../../types/invoice-type";
 
 const downloadFile = async (s3link) => {
   if (!s3link) {
@@ -72,21 +72,19 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
       key: "source",
       render: (_, record) => (
         <div className="flex">
-          {
-            <Tooltip
-              title={record.external_payment_obj_type ? "Stripe" : "Lotus"}
-            >
-              <img
-                className="sourceIcon"
-                src={
-                  record.external_payment_obj_type
-                    ? integrationsMap.stripe.icon
-                    : lotusUrl
-                }
-                alt="Source icon"
-              />
-            </Tooltip>
-          }
+          <Tooltip
+            title={record.external_payment_obj_type ? "Stripe" : "Lotus"}
+          >
+            <img
+              className="sourceIcon"
+              src={
+                record.external_payment_obj_type
+                  ? integrationsMap.stripe.icon
+                  : lotusUrl
+              }
+              alt="Source icon"
+            />
+          </Tooltip>
         </div>
       ),
     },
@@ -123,16 +121,14 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
           >
             {record.payment_status.toUpperCase()}
           </Tag>
-          {!record.external_payment_obj_type && (
-            <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
-              <Dropdown
-                overlay={
-                  <Menu>
-                    <Menu.Item key="1" onClick={() => getPdfUrl(record)}>
-                      <div className="archiveLabel">
-                        Download Invoice Information
-                      </div>
-                    </Menu.Item>
+          <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
+            <Dropdown
+              overlay={
+                <Menu>
+                  <Menu.Item key="1" onClick={() => getPdfUrl(record)}>
+                    <div className="archiveLabel">Download Invoice PDF</div>
+                  </Menu.Item>
+                  {!record.external_payment_obj_type && (
                     <Menu.Item
                       key="2"
                       onClick={() => {
@@ -155,20 +151,20 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
                           : "Mark As Unpaid"}
                       </div>
                     </Menu.Item>
-                  </Menu>
-                }
-                trigger={["click"]}
+                  )}
+                </Menu>
+              }
+              trigger={["click"]}
+            >
+              <Button
+                type="text"
+                size="small"
+                onClick={(e) => e.preventDefault()}
               >
-                <Button
-                  type="text"
-                  size="small"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  <MoreOutlined />
-                </Button>
-              </Dropdown>
-            </div>
-          )}
+                <MoreOutlined />
+              </Button>
+            </Dropdown>
+          </div>
         </div>
       ),
     },
@@ -176,7 +172,7 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
 
   return (
     <div>
-      <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Invoices</h2>
+      <h2 className="mb-2 pb-4 pt-4 font-bold text-main mx-10">Invoices</h2>
       {invoices !== undefined ? (
         <Table
           columns={columns}
@@ -185,7 +181,7 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
             showTotal: (total, range) => (
               <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
             ),
-            pageSize: 6,
+            pageSize: 8,
           }}
           showSorterTooltip={false}
         />

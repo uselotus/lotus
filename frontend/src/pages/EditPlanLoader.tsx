@@ -2,11 +2,11 @@
 import React, { Fragment, useEffect } from "react";
 import { useParams , useNavigate } from "react-router-dom";
 import { useQuery } from "react-query";
+import { Button } from "antd";
 import { Plan } from "../api/api";
 import { PlanDetailType } from "../types/plan-type";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { usePlanState } from "../context/PlanContext";
-import { Button } from "antd";
 import EditPlan from "./EditPlan";
 
 type PlanDetailParams = {
@@ -17,7 +17,7 @@ interface EditPlanLoaderProps {
   type: "backtest" | "version" | "custom";
 }
 
-const EditPlanLoader = ({ type }: EditPlanLoaderProps) => {
+function EditPlanLoader({ type }: EditPlanLoaderProps) {
   const navigate = useNavigate();
   const { planId } = useParams<PlanDetailParams>();
   const [versionIndex, setVersionIndex] = React.useState<number>();
@@ -30,9 +30,7 @@ const EditPlanLoader = ({ type }: EditPlanLoaderProps) => {
   } = useQuery<PlanDetailType>(
     ["plan_detail", planId],
     () =>
-      Plan.getPlan(planId).then((res) => {
-        return res;
-      }),
+      Plan.getPlan(planId).then((res) => res),
 
     {
       onSuccess: (data) => {},
@@ -54,7 +52,7 @@ const EditPlanLoader = ({ type }: EditPlanLoaderProps) => {
   }, [plan]);
 
   return (
-    <Fragment>
+    <>
       {isLoading && (
         <div className="flex justify-center">
           <LoadingSpinner />{" "}
@@ -71,7 +69,7 @@ const EditPlanLoader = ({ type }: EditPlanLoaderProps) => {
       {plan !== undefined && versionIndex !== undefined && (
         <EditPlan type={type} plan={plan} versionIndex={versionIndex} />
       )}
-    </Fragment>
+    </>
   );
-};
+}
 export default EditPlanLoader;

@@ -7,6 +7,6 @@ type Props = {
   level?: 1 | 2 | 3 | 4;
   children: any;
 };
-export const Title = ({ level = 1, children }: Props) => {
+export function Title({ level = 1, children }: Props) {
   return <Typography.Title level={level}>{children}</Typography.Title>;
-};
+}

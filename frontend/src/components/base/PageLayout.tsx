@@ -8,13 +8,13 @@ interface PageLayoutProps extends PageHeaderProps {
   backButton?: React.ReactNode;
   aboveTitle?: boolean;
 }
-export const PageLayout = ({
+export function PageLayout({
   children,
   hasBackButton,
   backButton,
   aboveTitle = true,
   ...props
-}: PageLayoutProps) => {
+}: PageLayoutProps) {
   return (
     <div>
       <SlideOver />
@@ -44,4 +44,4 @@ export const PageLayout = ({
       </div>
     </div>
   );
-};
+}
