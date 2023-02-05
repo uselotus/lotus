@@ -1,12 +1,9 @@
 from decimal import Decimal
 
+import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
 from django.db.models import DecimalField, Q, Sum
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-
-import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -41,6 +38,8 @@ from metering_billing.serializers.serializer_utils import (
     PlanUUIDField,
     PlanVersionUUIDField,
     SlugRelatedFieldWithOrganization,
+    TimezoneFieldMixin,
+    TimeZoneSerializerField,
     WebhookEndpointUUIDField,
     WebhookSecretUUIDField,
 )
@@ -61,6 +60,8 @@ from metering_billing.utils.enums import (
     TAG_GROUP,
     WEBHOOK_TRIGGER_EVENTS,
 )
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
@@ -69,7 +70,7 @@ class TagSerializer(api_serializers.TagSerializer):
     pass
 
 
-class OrganizationUserSerializer(serializers.ModelSerializer):
+class OrganizationUserSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("username", "email", "role", "status")
@@ -83,7 +84,9 @@ class OrganizationUserSerializer(serializers.ModelSerializer):
         return "Admin"
 
 
-class OrganizationInvitedUserSerializer(serializers.ModelSerializer):
+class OrganizationInvitedUserSerializer(
+    TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = User
         fields = ("email", "role")
@@ -112,7 +115,9 @@ class PricingUnitSerializer(api_serializers.PricingUnitSerializer):
         return PricingUnit.objects.create(**validated_data)
 
 
-class LightweightOrganizationSerializer(serializers.ModelSerializer):
+class LightweightOrganizationSerializer(
+    TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = Organization
         fields = (
@@ -143,13 +148,13 @@ class LightweightOrganizationSerializer(serializers.ModelSerializer):
         return obj == self.context.get("organization")
 
 
-class LightweightUserSerializer(serializers.ModelSerializer):
+class LightweightUserSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("username", "email")
 
 
-class OrganizationSettingSerializer(serializers.ModelSerializer):
+class OrganizationSettingSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = OrganizationSetting
         fields = ("setting_id", "setting_name", "setting_values", "setting_group")
@@ -169,7 +174,7 @@ class OrganizationSettingSerializer(serializers.ModelSerializer):
     )
 
 
-class OrganizationSerializer(serializers.ModelSerializer):
+class OrganizationSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = (
@@ -187,6 +192,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "address",
             "team_name",
             "subscription_filter_keys",
+            "timezone",
         )
 
     organization_id = OrganizationUUIDField()
@@ -200,6 +206,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
     address = serializers.SerializerMethodField(required=False, allow_null=True)
     team_name = serializers.SerializerMethodField()
     subscription_filter_keys = serializers.SerializerMethodField()
+    timezone = TimeZoneSerializerField(use_pytz=True)
 
     def get_subscription_filter_keys(
         self, obj
@@ -284,7 +291,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         return data
 
 
-class OrganizationCreateSerializer(serializers.ModelSerializer):
+class OrganizationCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = ("organization_name", "default_currency_code", "organization_type")
@@ -326,7 +333,7 @@ class OrganizationCreateSerializer(serializers.ModelSerializer):
         return organization
 
 
-class APITokenSerializer(serializers.ModelSerializer):
+class APITokenSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = APIToken
         fields = ("name", "prefix", "expiry_date", "created")
@@ -350,7 +357,7 @@ class APITokenSerializer(serializers.ModelSerializer):
         return api_key, key
 
 
-class OrganizationUpdateSerializer(serializers.ModelSerializer):
+class OrganizationUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = (
@@ -360,6 +367,7 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
             "payment_grace_period",
             "plan_tags",
             "subscription_filter_keys",
+            "timezone",
         )
 
     default_currency_code = SlugRelatedFieldWithOrganization(
@@ -373,6 +381,7 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
     subscription_filter_keys = serializers.ListField(
         child=serializers.CharField(), required=False
     )
+    timezone = TimeZoneSerializerField(use_pytz=True)
 
     def update(self, instance, validated_data):
         from metering_billing.tasks import update_subscription_filter_settings_task
@@ -384,6 +393,7 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
         instance.default_currency = validated_data.get(
             "default_currency", instance.default_currency
         )
+        instance.timezone = validated_data.get("timezone", instance.timezone)
         address = validated_data.pop("address", None)
         if address:
             cur_properties = instance.properties or {}
@@ -450,15 +460,16 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
         return instance
 
 
-class CustomerUpdateSerializer(serializers.ModelSerializer):
+class CustomerUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = ("default_currency_code", "address", "tax_rate")
+        fields = ("default_currency_code", "address", "tax_rate", "timezone")
 
     default_currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code", queryset=PricingUnit.objects.all(), source="default_currency"
     )
     address = api_serializers.AddressSerializer(required=False, allow_null=True)
+    timezone = TimeZoneSerializerField(use_pytz=True)
 
     def update(self, instance, validated_data):
         assert (
@@ -469,6 +480,10 @@ class CustomerUpdateSerializer(serializers.ModelSerializer):
             "default_currency", instance.default_currency
         )
         instance.tax_rate = validated_data.get("tax_rate", instance.tax_rate)
+        tz = validated_data.get("timezone", None)
+        if tz:
+            instance.timezone = tz
+            instance.timezone_set = True
         address = validated_data.pop("address", None)
         if address:
             cur_properties = instance.properties or {}
@@ -483,7 +498,7 @@ class EventSerializer(api_serializers.EventSerializer):
         fields = api_serializers.EventSerializer.Meta.fields
 
 
-class WebhookTriggerSerializer(serializers.ModelSerializer):
+class WebhookTriggerSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = WebhookTrigger
         fields = [
@@ -491,7 +506,7 @@ class WebhookTriggerSerializer(serializers.ModelSerializer):
         ]
 
 
-class WebhookEndpointSerializer(serializers.ModelSerializer):
+class WebhookEndpointSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = WebhookEndpoint
         fields = (
@@ -563,7 +578,7 @@ class WebhookEndpointSerializer(serializers.ModelSerializer):
 
 
 # USER
-class UserSerializer(serializers.ModelSerializer):
+class UserSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("username", "email", "organization_name", "organization_id")
@@ -587,7 +602,7 @@ class SubscriptionCustomerDetailSerializer(
         fields = api_serializers.SubscriptionCustomerDetailSerializer.Meta.fields
 
 
-class CustomerWithRevenueSerializer(serializers.ModelSerializer):
+class CustomerWithRevenueSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = (
@@ -659,7 +674,7 @@ class NumericFilterSerializer(api_serializers.NumericFilterSerializer):
         fields = api_serializers.NumericFilterSerializer.Meta.fields
 
 
-class MetricUpdateSerializer(serializers.ModelSerializer):
+class MetricUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Metric
         fields = (
@@ -709,7 +724,7 @@ class MetricSerializer(api_serializers.MetricSerializer):
         )
 
 
-class MetricCreateSerializer(serializers.ModelSerializer):
+class MetricCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Metric
         fields = (
@@ -769,7 +784,7 @@ class MetricCreateSerializer(serializers.ModelSerializer):
         return metric
 
 
-class ExternalPlanLinkSerializer(serializers.ModelSerializer):
+class ExternalPlanLinkSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = ExternalPlanLink
         fields = ("plan_id", "source", "external_plan_id")
@@ -809,7 +824,7 @@ class FeatureSerializer(api_serializers.FeatureSerializer):
         fields = api_serializers.FeatureSerializer.Meta.fields
 
 
-class PriceTierCreateSerializer(serializers.ModelSerializer):
+class PriceTierCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = PriceTier
         fields = (
@@ -928,13 +943,13 @@ class PlanComponentCreateSerializer(api_serializers.PlanComponentSerializer):
         return pc
 
 
-class ProductSerializer(serializers.ModelSerializer):
+class ProductSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ("name", "description", "product_id", "status")
 
 
-class PlanVersionUpdateSerializer(serializers.ModelSerializer):
+class PlanVersionUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = PlanVersion
         fields = (
@@ -1002,7 +1017,7 @@ class PlanVersionUpdateSerializer(serializers.ModelSerializer):
         return instance
 
 
-class PriceAdjustmentSerializer(serializers.ModelSerializer):
+class PriceAdjustmentSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = PriceAdjustment
         fields = (
@@ -1015,13 +1030,13 @@ class PriceAdjustmentSerializer(serializers.ModelSerializer):
     price_adjustment_name = serializers.CharField(default="")
 
 
-class FeatureCreateSerializer(serializers.ModelSerializer):
+class FeatureCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Feature
         fields = ("feature_name", "feature_description")
 
 
-class RecurringChargeCreateSerializer(serializers.ModelSerializer):
+class RecurringChargeCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = RecurringCharge
         fields = (
@@ -1091,7 +1106,7 @@ class RecurringChargeCreateSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-class PlanVersionCreateSerializer(serializers.ModelSerializer):
+class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = PlanVersion
         fields = (
@@ -1127,7 +1142,6 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
             "currency_code": {"write_only": True},
         }
 
-    # flat_rate = serializers.DecimalField(max_digits=20, decimal_places=10, min_value=0)
     components = PlanComponentCreateSerializer(
         many=True, allow_null=True, required=False, source="plan_components"
     )
@@ -1333,7 +1347,7 @@ class PlanDetailSerializer(api_serializers.PlanSerializer):
         ).data
 
 
-class PlanCreateSerializer(serializers.ModelSerializer):
+class PlanCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Plan
         fields = (
@@ -1466,7 +1480,7 @@ class PlanCreateSerializer(serializers.ModelSerializer):
             raise ServerError(e)
 
 
-class PlanUpdateSerializer(serializers.ModelSerializer):
+class PlanUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Plan
         fields = (
@@ -1659,7 +1673,7 @@ class MetricActionSerializer(MetricSerializer):
         return "Metric"
 
 
-class CustomerSummarySerializer(serializers.ModelSerializer):
+class CustomerSummarySerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = (
@@ -1717,7 +1731,7 @@ class ActivityGenericRelatedField(serializers.Field):
         )
 
 
-class ActionSerializer(serializers.ModelSerializer):
+class ActionSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     """
     DRF serializer for :class:`~activity.models.Action`.
     """
@@ -1740,7 +1754,9 @@ class ActionSerializer(serializers.ModelSerializer):
         )
 
 
-class OrganizationSettingUpdateSerializer(serializers.ModelSerializer):
+class OrganizationSettingUpdateSerializer(
+    TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = OrganizationSetting
         fields = ("setting_values",)
@@ -1869,7 +1885,7 @@ class AddOnSerializer(api_serializers.AddOnSerializer):
     pass
 
 
-class AddOnCreateSerializer(serializers.ModelSerializer):
+class AddOnCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Plan
         fields = (
@@ -2064,7 +2080,7 @@ class AddOnCreateSerializer(serializers.ModelSerializer):
         return plan
 
 
-class UsageAlertCreateSerializer(serializers.ModelSerializer):
+class UsageAlertCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = UsageAlert
         fields = (

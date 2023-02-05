@@ -6,7 +6,6 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from django.db.models.query import QuerySet
-
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
@@ -240,12 +239,13 @@ def check_subscription_record_renews(subscription_record, issue_date):
 def create_next_subscription_record(subscription_record, next_bp):
     from metering_billing.models import SubscriptionRecord
 
+    timezone = subscription_record.customer.timezone
     subrec_dict = {
         "organization": subscription_record.organization,
         "customer": subscription_record.customer,
         "billing_plan": next_bp,
         "start_date": date_as_min_dt(
-            subscription_record.end_date + relativedelta(days=1)
+            subscription_record.end_date + relativedelta(days=1), timezone
         ),
         "is_new": False,
         "quantity": subscription_record.quantity,
@@ -260,7 +260,7 @@ def charge_next_plan_flat_fee(
     subscription_record, next_subscription_record, next_bp, invoice
 ):
     from metering_billing.models import InvoiceLineItem, RecurringCharge
-
+    timezone = subscription_record.customer.timezone
     for recurring_charge in next_bp.recurring_charges.all():
         charge_in_advance = (
             recurring_charge.charge_timing
@@ -276,7 +276,7 @@ def charge_next_plan_flat_fee(
             name = f"{next_bp.plan.plan_name} v{next_bp.version} ({recurring_charge.name}) - Next Period"
         if charge_in_advance and recurring_charge.amount > 0:
             new_start = date_as_min_dt(
-                subscription_record.end_date + relativedelta(days=1)
+                subscription_record.end_date + relativedelta(days=1), timezone
             )
             subtotal = recurring_charge.amount * next_subscription_record.quantity
             qty = next_subscription_record.quantity
@@ -284,7 +284,7 @@ def charge_next_plan_flat_fee(
             InvoiceLineItem.objects.create(
                 name=name,
                 start_date=new_start,
-                end_date=calculate_end_date(next_bp_duration, new_start),
+                end_date=calculate_end_date(next_bp_duration, new_start, timezone),
                 quantity=qty,
                 subtotal=subtotal,
                 billing_type=INVOICE_CHARGE_TIMING_TYPE.IN_ADVANCE,

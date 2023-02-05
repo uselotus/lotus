@@ -6,7 +6,10 @@ import time
 import uuid
 
 import numpy as np
+import pytz
 from dateutil.relativedelta import relativedelta
+from model_bakery import baker
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     APIToken,
@@ -51,7 +54,6 @@ from metering_billing.utils.enums import (
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
 )
-from model_bakery import baker
 
 logger = logging.getLogger("django.server")
 
@@ -1533,9 +1535,9 @@ def create_pc_and_tiers(
 def random_date(start, end, n):
     """Generate a random datetime between `start` and `end`"""
     if type(start) is datetime.date:
-        start = date_as_min_dt(start)
+        start = date_as_min_dt(start, timezone=pytz.UTC)
     if type(end) is datetime.date:
-        end = date_as_max_dt(end)
+        end = date_as_max_dt(end, timezone=pytz.UTC)
     for _ in range(n):
         dt = start + relativedelta(
             # Get a random amount of seconds between `start` and `end`

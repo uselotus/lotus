@@ -199,9 +199,11 @@ def add_subscription_record_to_org():
         )
         end_date = end_date
         if not end_date:
+            timezone = customer.timezone
             end_date = calculate_end_date(
                 duration,
                 start_date,
+                timezone,
                 day_anchor=day_anchor,
                 month_anchor=month_anchor,
             )
