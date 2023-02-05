@@ -44,7 +44,7 @@ def generate_invoice_pdf(invoice: Invoice, buffer):
     organization = invoice.organization
 
     # If the organization is not an external demo organization
-    if True and organization.organization_type != 3:
+    if not settings.DEBUG and organization.organization_type != 3:
         try:
             # Upload the file to s3
             invoice_number = invoice.invoice_number
@@ -95,7 +95,7 @@ def get_invoice_presigned_url(invoice: Invoice):
 
     customer_id = invoice.customer.customer_id
 
-    if False:
+    if settings.DEBUG:
         bucket_name = "dev-" + team_id
         return {"exists": False, "url": ""}
 
