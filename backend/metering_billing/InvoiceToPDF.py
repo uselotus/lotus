@@ -114,7 +114,7 @@ class InvoicePDF:
 
         # save the pdf
 
-        # self.PDF.save()
+        self.PDF.save()
         return self.PDF
 
     def add_summary_header(self):
@@ -373,9 +373,7 @@ class InvoicePDF:
 
         if total_credits > 0:
             self.PDF.drawString(80, offset + 24, "Credits")
-            self.PDF.drawString(
-                475, offset + 24, "-" + f"{currency_symbol}{total_credits}"
-            )
+            self.PDF.drawString(475, offset + 24, f"{currency_symbol}{total_credits}")
 
         self.fontSize(FONT_M, bold=True)
         self.PDF.drawString(80, offset + 60, "Total")
@@ -402,6 +400,7 @@ class InvoicePDF:
                 for line_item in grouped_line_items[group]
                 if line_item.chargeable_item_type != CHARGEABLE_ITEM_TYPE.TAX
             )
+            print(group)
             pt1 = group[2]
             pt2 = group[0]
             if pt2 is not None:
@@ -434,6 +433,7 @@ class InvoicePDF:
                 ):
                     consumed_credits.append(line_item_model)
                     continue
+                print(line_item_model)
                 line_item_count += 1
                 line_item = model_to_dict(line_item_model)
                 line_item_start_y = self.write_line_item(
@@ -452,9 +452,8 @@ class InvoicePDF:
                 if line_item_start_y > 655:
                     self.PDF.showPage()
                     line_item_start_y = 40
-
                     self.PDF.setFont("Times-Roman", FONT_XXS)
-                    invoice_number = self.invoice["invoice_number"]
+                    invoice_number = self.invoice.invoice_number
                     self.PDF.setFillColor(HexColor("#9CA3AF"))
                     self.PDF.drawString(25, 770, f"#{invoice_number}")
                     self.PDF.setFillColor("black")
@@ -492,15 +491,15 @@ class InvoicePDF:
             #     doc.drawString(470, 770, "Thank you for your buisness.")
             total_tax += line_item["subtotal"]
 
-        total_credits = 0.0
+        total_credits = Decimal(0)
         for credit_line_item in consumed_credits:
             line_item = model_to_dict(credit_line_item)
-            total_credits += float(line_item["subtotal"])
+            total_credits += line_item["subtotal"]
 
         self.write_total(
             self.invoice.currency.symbol,
             round(self.invoice.cost_due, 2),
             line_item_start_y,
             total_tax.quantize(Decimal("0.00")),
-            total_credits,
+            total_credits.quantize(Decimal("0.00")),
         )
