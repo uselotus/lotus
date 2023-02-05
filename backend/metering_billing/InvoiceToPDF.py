@@ -1,4 +1,3 @@
-from datetime import datetime
 from decimal import Decimal
 from reportlab.lib.colors import Color, HexColor
 from reportlab.lib.pagesizes import letter
@@ -8,9 +7,8 @@ from reportlab.rl_config import TTFSearchPath
 from reportlab.pdfbase.ttfonts import TTFont
 from metering_billing.serializers.serializer_utils import PlanUUIDField
 from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
+from django.forms.models import model_to_dict
 import os
-
-
 
 
 # hard coded values for font sizes, colors
@@ -26,23 +24,17 @@ FONT_XXS = 9
 black01 = Color(0, 0, 0, alpha=0.1)
 
 
-
-
-
-
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 TTFSearchPath.append(str(BASE_DIR))
 
-LOGO = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logo.png')
+LOGO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logo.png")
 
-pdfmetrics.registerFont(TTFont('Alliance', 'alliance.ttf'))
+pdfmetrics.registerFont(TTFont("Alliance", "alliance.ttf"))
 pdfmetrics.registerFont(TTFont("Alliance Bold", "alliance-bold.ttf"))
 
 FONT_FAMILY = "Alliance"
 FONT_FAMILY_BOLD = "Alliance Bold"
-
-
 
 
 # generate a PDF invoice based on customers
@@ -50,454 +42,465 @@ FONT_FAMILY_BOLD = "Alliance Bold"
 
 
 def transform_date(date):
-	"""Transforms a datetime date into the correct format"""
-	if type(date) == str:
-		return date
-		
-	formatted_string = date.strftime("%d/%m/%Y")
-
-	return formatted_string
-
-
-class CHARGEABLE_ITEM_TYPE:
-	TAX = "tax"
-	CUSTOMER_ADJUSTMENT = "customer adjustment"
-
-
-class InvoicePDF():
-	def __init__(self, invoice, buffer=None):
-		"""Takes an invoice and buffer (ie. name for output file)"""
-		self.invoice = invoice
-		self.buffer = buffer
-
-
-		
-	def fontSize(self, size, bold=False):
-		"""Helper Function: Change the font size"""
-
-		if not bold:
-			self.PDF.setFont(FONT_FAMILY, size)
-		else:
-			self.PDF.setFont(FONT_FAMILY_BOLD, size)
-
-
-
-	def shortenStrings(self, string, length):
-		"""Shorten a string"""
-
-		if not string: return ""
-
-		if len(string) > length:
-			return string[:length] + "..."
-
-		return string
-
-
-
-	def floor_string(self, string):
-		"""Like floor() in math, but for strings... sorta"""
-
-		if string:
-			return string
-
-		return ""
-
-
-
-	def draw_image(self):
-		"""Draws the logo image to the PDF"""
-		self.PDF.saveState()
-		self.PDF.scale(1,-1)
-		self.PDF.drawImage(LOGO, 490, -78, width=80, preserveAspectRatio=True, mask='auto')
-		self.PDF.restoreState()
-
-	
-
-	def build(self):
-		"""Runs the functions to build the PDF and saves the result"""
-
-		# init PDF
-		
-		self.PDF = canvas.Canvas(self.buffer, pagesize=letter, bottomup=0)
-
-
-		# run funcs
-		
-		self.add_title()
-		self.draw_image()
-		self.add_org_details()
-		self.add_customer_details()
-		self.draw_line(225)
-		self.add_due_date()
-		self.add_subscription()
-		
-
-		# save the pdf
-		
-		self.PDF.save()
-
-
-		
-	def add_summary_header(self):
-		"""Add's the summery header"""
-		self.fontSize(22, bold=True)
-		self.PDF.setFillColor("black")
-		self.PDF.drawString(75, 260, "Summary")
-		self.fontSize(FONT_XXS)
-		self.PDF.setFillColor(HexColor("#9CA3AF"))
-		self.PDF.drawString(185, 260, f"{self.invoice.subscription.start_date} - {self.invoice.subscription.end_date}")
-		self.PDF.setFillColor("black")
-		self.fontSize(FONT_XS)
-		self.PDF.setFillColor(HexColor("#9CA3AF"))
-		self.PDF.drawString(75, 290, "Services")
-		self.PDF.drawString(475, 290, "Amount")
-		self.PDF.setFillColor("black")
-		self.draw_line(305)
-
-
-
-
-
-	def write_line_item_group(self, name, amount, currency, line_item_start):
-		"""Draw a line item group"""
-		self.fontSize(FONT_S)
-		title_offset = line_item_start + 20
-		self.PDF.drawString(75, title_offset, name)
-		self.PDF.drawString(475, title_offset, f'{currency}{"{:g}".format(float(amount))}')
-		return line_item_start + 45
-
-
-
-
-	def write_line_item(self, name, start_date, end_date, quantity, subtotal, currency_symbol, billing_type, line_item_start):
-		"""Draw a line item"""
-		self.PDF.setFillColor("black")
-		offset = line_item_start + 12
-		self.fontSize(FONT_XXS)
-		
-		# simple text wrap
-		words = name.split()
-		line = ""
-		for word in words:
-			w = self.PDF.stringWidth(line + " " + word)
-			if w > 100:
-				self.PDF.drawString(100, offset, line)
-				offset += 11
-				line = " " + word
-			else:
-				line += " " + word
-		self.PDF.drawString(100, offset, line)
-		
-		if start_date == end_date:
-			start_date = transform_date(start_date)
-			date_string = str(start_date.replace("-", "/"))
-		else:
-			start_date = transform_date(start_date)
-			end_date = transform_date(end_date)
-			date_string = f'{start_date.replace("-", "/")} - {end_date.replace("-", "/")}'
-		self.PDF.drawString(225, offset, date_string)
-		
-		if quantity is not None:
-			new_quantity = "{:g}".format(float(quantity))
-			self.PDF.drawString(350, offset, str(new_quantity))
-		else:
-			self.PDF.drawString(350, offset, "")
-		if subtotal:
-			new_subtotal = "{:g}".format(float(subtotal))
-			self.PDF.drawString(412.5, offset, f"{currency_symbol}{str(new_subtotal)}")
-		else:
-			self.PDF.drawString(412.5, offset, f"{currency_symbol}{str(subtotal)}")
-		
-		self.PDF.drawString(475, offset, billing_type)
-		
-		self.PDF.setStrokeColor(black01)
-		self.PDF.setLineWidth(1)
-		self.PDF.line(90, line_item_start-22, 90, (line_item_start-22)+35)
-		self.PDF.setStrokeColor("black")
-
-		return line_item_start + 35
-
-
-
-	def write_line_item_headers(self, line_item_start):
-		"""Draw the headers for line items"""
-		offset = line_item_start + 5
-		self.fontSize(FONT_XXS)
-		
-		self.PDF.setFillColor(HexColor("#9CA3AF"))
-		self.PDF.drawString(100, offset, "Item")
-		self.PDF.drawString(225, offset, "Dates")
-		self.PDF.drawString(350, offset, "Quantity")
-		self.PDF.drawString(412.5, offset, "Subtotal")
-		self.PDF.drawString(475, offset, "Billing Type")
-		return line_item_start + 20
-
-
-
-	def draw_line(self, x):
-		"""Draws a line at a certain x cord"""
-		self.PDF.setStrokeColor(black01)
-		self.PDF.setLineWidth(1)
-		self.PDF.line(75, x, 550, x)
-		self.PDF.setStrokeColor("black")
-
-
-
-	def add_title(self):
-		"""Add a title to the PDF"""
-		self.fontSize(FONT_L, bold=True)
-		self.PDF.drawString(25, 50, "Invoice")
-		self.fontSize(FONT_XXS)
-		self.PDF.drawString(470, 770, "Thank you for your buisness.")
-
-		self.PDF.saveState()
-		self.PDF.scale(1, -1)
-		self.PDF.drawImage(LOGO, 470, 30, mask="auto")
-		self.PDF.restoreState()
-
-
-
-	def add_org_details(self):
-		"""Add the Organization/Seller Details"""
-
-		org = self.invoice.organization
-		addr = org.properties.get("address")
-
-		self.fontSize(FONT_S, bold=True)
-		self.PDF.drawString(75, 127, self.shortenStrings(self.floor_string(org.organization_name), 18))
-
-		self.fontSize(FONT_XXS)
-
-		x = 160
-
-		if addr:
-			self.PDF.drawString(75, 145, self.floor_string(addr["line1"]))
-
-			if addr["city"] and addr["state"] and addr["postal_code"]:
-				self.PDF.drawString(75, x, f'{addr["city"]}, {addr["state"]}, {addr["postal_code"]}')
-				x += 15
-
-			if addr["country"]:
-				self.PDF.drawString(75, x, self.shortenStrings(addr["country"], 18))
-				x += 15
-
-			
-		self.PDF.drawString(75, x, self.shortenStrings(self.floor_string(org.email), 18))
-
-
-
-	def add_customer_details(self):
-		"""Add the customers details"""
-
-		customer = self.invoice.customer
-		addr = customer.properties.get("address")
-
-		self.fontSize(FONT_S, bold=True)
-		self.PDF.drawString(250, 127, "Billed To")
-
-		self.fontSize(FONT_XXS)
-		self.PDF.drawString(250, 145, self.shortenStrings(self.floor_string(customer.customer_name), 18))
-
-		x = 175
-
-		if addr:
-
-			self.PDF.drawString(250, 160, self.floor_string(addr["line1"]))
-
-			if addr["city"] and addr["state"] and addr["postal_code"]:
-				self.PDF.drawString(250, x, f'{addr["city"]}, {addr["state"]}, {addr["postal_code"]}')
-				x += 15
-
-			if addr["country"]:
-				self.PDF.drawString(250, x, self.shortenStrings(addr["country"], 18))
-				x += 15
-
-		self.PDF.drawString(250, x, self.shortenStrings(self.floor_string(customer.email), 18))
-
-
-
-	def add_due_date(self):
-		"""Add Due Date"""
-
-		self.fontSize(FONT_S, bold=True)
-		self.PDF.drawString(400, 127, "Invoice Details")
-		
-		self.fontSize(FONT_XXS)
-		self.PDF.drawString(400, 145, "Invoice No.")
-		self.PDF.drawString(465, 145, f"{self.invoice.invoice_number}")
-		
-		self.PDF.drawString(400, 160, "Date Issued")
-		self.PDF.drawString(465, 160, f'{self.invoice.issue_date.replace("-", "/")}')
-		
-		self.PDF.drawString(400, 175, "Due Date")
-		self.PDF.drawString(465, 175, f'{self.floor_string(self.invoice.due_date.replace("-", "/"))}')
-		
-		self.PDF.setFillColor(HexColor("#9CA3AF"))
-		self.PDF.drawString(25, 770, f"#{self.invoice.invoice_number}")
-
-
-
-	def get_grouped_line_items(self):
-		"""Get grouped line items"""
-
-		grouped_line_items = {}
-		for line_item in self.invoice.line_items.all():
-			sub_record = line_item.associated_subscription_record
-			if sub_record != None:
-				plan_name = sub_record.billing_plan.plan.plan_name
-				plan_id = PlanUUIDField().to_representation(sub_record.billing_plan.plan.plan_id)
-				sub_filters = list(sub_record.get_filters_dictionary().items())
-
-				sub_filters = sub_filters if sub_filters else None
-
-
-			else:
-				plan_id, sub_filters, plan_name = None, None, None
-
-			key = (sub_filters, plan_id, plan_name)
-
-			if key not in grouped_line_items:
-				grouped_line_items[key] = []
-
-			grouped_line_items[key].append(line_item)
-
-		return grouped_line_items
-		
-
-
-	def write_total(self, currency_symbol, total, current_y, total_tax, total_credits):
-
-		offset = current_y + 75
-		self.fontSize(FONT_XS)
-		self.PDF.drawString(80, offset, "TAX")
-		self.PDF.drawString(475, offset, f"{currency_symbol}{total_tax}")
-		
-		if total_credits > 0:
-			self.PDF.drawString(80, offset + 24, "Credits")
-			self.PDF.drawString(475, offset + 24, "-" + f"{currency_symbol}{total_credits}")
-		
-		self.fontSize(FONT_M, bold=True)
-		self.PDF.drawString(80, offset + 60, "Total")
-		self.PDF.drawString(475, offset + 60, f"{currency_symbol}{total}")
-		self.draw_line(offset + 80)
-
-	
-
-	def add_subscription(self):
-		"""Add Subscription data"""
-
-
-		subscription = self.invoice.subscription
-
-
-		if subscription:
-			self.add_summary_header()
-			pass
-
-		grouped_line_items = self.get_grouped_line_items()
-		
-	
-		line_item_start_y = 312
-		taxes = []
-		consumed_credits = []
-		for group in grouped_line_items:
-			amount = sum(
-				model_to_dict(line_item)["subtotal"]
-				for line_item in grouped_line_items[group]
-			)
-			pt1 = group[2]
-			pt2 = group[0]
-			if pt2 is not None:
-				pt2 = pt2[0]
-			pt3 = group[0]
-			if pt3 is not None:
-				pt3 = pt3[1]
-			if not pt2 and not pt3 and pt1:
-				subscription_title = pt1
-			elif not pt1:
-				subscription_title = "Credit"
-			else:
-				subscription_title = f"{pt1} - {pt2} - {pt3}"
-			line_item_start_y = self.write_line_item_group(
-				subscription_title,
-				amount.normalize(),
-				self.invoice.currency.symbol,
-				line_item_start_y,
-			)
-			line_item_start_y = self.write_line_item_headers(line_item_start_y)
-	
-			line_item_count = 0
-			for line_item_model in grouped_line_items[group]:
-				if line_item_model.chargeable_item_type == CHARGEABLE_ITEM_TYPE.TAX:
-					taxes.append(line_item_model)
-					continue
-				if (
-					line_item_model.chargeable_item_type
-					== CHARGEABLE_ITEM_TYPE.CUSTOMER_ADJUSTMENT
-				):
-					consumed_credits.append(line_item_model)
-					continue
-				line_item_count += 1
-				line_item = model_to_dict(line_item_model)
-				line_item_start_y = self.write_line_item(
-					line_item["name"],
-					line_item["start_date"],
-					line_item["end_date"],
-					line_item["quantity"].normalize()
-					if isinstance(line_item["quantity"], Decimal)
-					else line_item["quantity"],
-					line_item["subtotal"].normalize(),
-					self.invoice.currency.symbol,
-					line_item["billing_type"],
-					line_item_start_y,
-				)
-	
-				if line_item_start_y > 655:
-					self.PDF.showPage()
-					line_item_start_y = 40
-	
-					self.PDF.setFont("Times-Roman", FONT_XXS)
-					invoice_number = invoice["invoice_number"]
-					self.PDF.setFillColor(HexColor("#9CA3AF"))
-					self.PDF.drawString(25, 770, f"#{invoice_number}")
-					self.PDF.setFillColor("black")
-					self.PDF.drawString(470, 770, "Thank you for your buisness.")
-	
-			self.PDF.setStrokeColor(black01)
-			self.PDF.setLineWidth(1)
-			self.PDF.line(90, line_item_start_y-22, 90, (line_item_start_y-22)+5)
-			self.PDF.setStrokeColor("black")
-			self.draw_line(line_item_start_y)
-	
-		total_tax = 0.0
-		for tax_line_item in taxes:
-			line_item = model_to_dict(tax_line_item)
-			# line_item_start_y = write_line_item(
-			#     doc,
-			#     line_item["name"],
-			#     transform_date(line_item["start_date"]),
-			#     transform_date(line_item["end_date"]),
-			#     line_item["quantity"],
-			#     line_item["subtotal"],
-			#     currency.symbol,
-			#     line_item["billing_type"],
-			#     line_item_start_y,
-			# )
-			# if line_item_start_y > 655:
-			#     doc.showPage()
-			#     line_item_start_y = 40
-	
-			#     doc.setFont("Times-Roman", FONT_XXS)
-			#     invoice_number = invoice["invoice_number"]
-			#     doc.setFillColor(HexColor("#9CA3AF"))
-			#     doc.drawString(25, 770, f"#{invoice_number}")
-			#     doc.setFillColor("black")
-			#     doc.drawString(470, 770, "Thank you for your buisness.")
-			total_tax += float(line_item["subtotal"])
-	
-		total_credits = 0.0
-		for credit_line_item in consumed_credits:
-			line_item = model_to_dict(credit_line_item)
-			total_credits += float(line_item["subtotal"])
-		
-		self.write_total(self.invoice.currency.symbol, round(self.invoice.cost_due, 2), line_item_start_y, total_tax, total_credits)
+    """Transforms a datetime date into the correct format"""
+    if type(date) == str:
+        return date
+
+    formatted_string = date.strftime("%d/%m/%Y")
+
+    return formatted_string
+
+
+class InvoicePDF:
+    def __init__(self, invoice, buffer=None):
+        """Takes an invoice and buffer (ie. name for output file)"""
+        self.invoice = invoice
+        self.buffer = buffer
+
+    def fontSize(self, size, bold=False):
+        """Helper Function: Change the font size"""
+
+        if not bold:
+            self.PDF.setFont(FONT_FAMILY, size)
+        else:
+            self.PDF.setFont(FONT_FAMILY_BOLD, size)
+
+    def shortenStrings(self, string, length):
+        """Shorten a string"""
+
+        if not string:
+            return ""
+
+        if len(string) > length:
+            return string[:length] + "..."
+
+        return string
+
+    def floor_string(self, string):
+        """Like floor() in math, but for strings... sorta"""
+
+        if string:
+            return string
+
+        return ""
+
+    def draw_image(self):
+        """Draws the logo image to the PDF"""
+        self.PDF.saveState()
+        self.PDF.scale(1, -1)
+        # self.PDF.drawImage(
+        #     LOGO, 490, -78, width=80, preserveAspectRatio=True, mask="auto"
+        # )
+        self.PDF.restoreState()
+
+    def build(self, buffer=None) -> any:
+        """Runs the functions to build the PDF and saves the result"""
+
+        # init PDF
+        if buffer:
+            self.PDF = canvas.Canvas(buffer, pagesize=letter, bottomup=0)
+        else:
+            self.PDF = canvas.Canvas(self.buffer, pagesize=letter, bottomup=0)
+
+        # run funcs
+
+        self.add_title()
+        self.draw_image()
+        self.add_org_details()
+        self.add_customer_details()
+        self.draw_line(225)
+        self.add_due_date()
+        self.add_subscription()
+
+        # save the pdf
+
+        # self.PDF.save()
+        return self.PDF
+
+    def add_summary_header(self):
+        """Add's the summery header"""
+        self.fontSize(22, bold=True)
+        self.PDF.setFillColor("black")
+        self.PDF.drawString(75, 260, "Summary")
+        self.fontSize(FONT_XXS)
+        self.PDF.setFillColor(HexColor("#9CA3AF"))
+        # self.PDF.drawString(
+        #     185,
+        #     260,
+        #     f"{self.invoice.subscription.start_date} - {self.invoice.subscription.end_date}",
+        # )
+        self.PDF.setFillColor("black")
+        self.fontSize(FONT_XS)
+        self.PDF.setFillColor(HexColor("#9CA3AF"))
+        self.PDF.drawString(75, 290, "Services")
+        self.PDF.drawString(475, 290, "Amount")
+        self.PDF.setFillColor("black")
+        self.draw_line(305)
+
+    def write_line_item_group(self, name, amount, currency, line_item_start):
+        """Draw a line item group"""
+        self.fontSize(FONT_S)
+        title_offset = line_item_start + 20
+        self.PDF.drawString(75, title_offset, name)
+        self.PDF.drawString(
+            475, title_offset, f'{currency}{"{:g}".format(float(amount))}'
+        )
+        return line_item_start + 45
+
+    def write_line_item(
+        self,
+        name,
+        start_date,
+        end_date,
+        quantity,
+        subtotal,
+        currency_symbol,
+        billing_type,
+        line_item_start,
+    ):
+        """Draw a line item"""
+        self.PDF.setFillColor("black")
+        offset = line_item_start + 12
+        self.fontSize(FONT_XXS)
+
+        # simple text wrap
+        words = name.split()
+        line = ""
+        for word in words:
+            w = self.PDF.stringWidth(line + " " + word)
+            if w > 100:
+                self.PDF.drawString(100, offset, line)
+                offset += 11
+                line = " " + word
+            else:
+                line += " " + word
+        self.PDF.drawString(100, offset, line)
+
+        if start_date == end_date:
+            start_date = transform_date(start_date)
+            date_string = str(start_date.replace("-", "/"))
+        else:
+            start_date = transform_date(start_date)
+            end_date = transform_date(end_date)
+            date_string = (
+                f'{start_date.replace("-", "/")} - {end_date.replace("-", "/")}'
+            )
+        self.PDF.drawString(225, offset, date_string)
+
+        if quantity is not None:
+            new_quantity = "{:g}".format(float(quantity))
+            self.PDF.drawString(350, offset, str(new_quantity))
+        else:
+            self.PDF.drawString(350, offset, "")
+        if subtotal:
+            new_subtotal = "{:g}".format(float(subtotal))
+            self.PDF.drawString(412.5, offset, f"{currency_symbol}{str(new_subtotal)}")
+        else:
+            self.PDF.drawString(412.5, offset, f"{currency_symbol}{str(subtotal)}")
+
+        self.PDF.drawString(475, offset, billing_type)
+
+        self.PDF.setStrokeColor(black01)
+        self.PDF.setLineWidth(1)
+        self.PDF.line(90, line_item_start - 22, 90, (line_item_start - 22) + 35)
+        self.PDF.setStrokeColor("black")
+
+        return line_item_start + 35
+
+    def write_line_item_headers(self, line_item_start):
+        """Draw the headers for line items"""
+        offset = line_item_start + 5
+        self.fontSize(FONT_XXS)
+
+        self.PDF.setFillColor(HexColor("#9CA3AF"))
+        self.PDF.drawString(100, offset, "Item")
+        self.PDF.drawString(225, offset, "Dates")
+        self.PDF.drawString(350, offset, "Quantity")
+        self.PDF.drawString(412.5, offset, "Subtotal")
+        self.PDF.drawString(475, offset, "Billing Type")
+        return line_item_start + 20
+
+    def draw_line(self, x):
+        """Draws a line at a certain x cord"""
+        self.PDF.setStrokeColor(black01)
+        self.PDF.setLineWidth(1)
+        self.PDF.line(75, x, 550, x)
+        self.PDF.setStrokeColor("black")
+
+    def add_title(self):
+        """Add a title to the PDF"""
+        self.fontSize(FONT_L, bold=True)
+        self.PDF.drawString(25, 50, "Invoice")
+        self.fontSize(FONT_XXS)
+        self.PDF.drawString(470, 770, "Thank you for your buisness.")
+
+        self.PDF.saveState()
+        self.PDF.scale(1, -1)
+        # self.PDF.drawImage(LOGO, 470, 30, mask="auto")
+        self.PDF.restoreState()
+
+    def add_org_details(self):
+        """Add the Organization/Seller Details"""
+
+        org = self.invoice.organization
+        print(org.properties)
+        addr = org.properties.get("address")
+
+        self.fontSize(FONT_S, bold=True)
+        self.PDF.drawString(
+            75, 127, self.shortenStrings(self.floor_string(org.organization_name), 18)
+        )
+
+        self.fontSize(FONT_XXS)
+
+        x = 160
+
+        if addr:
+            self.PDF.drawString(75, 145, self.floor_string(addr["line1"]))
+
+            if addr["city"] and addr["state"] and addr["postal_code"]:
+                self.PDF.drawString(
+                    75, x, f'{addr["city"]}, {addr["state"]}, {addr["postal_code"]}'
+                )
+                x += 15
+
+            if addr["country"]:
+                self.PDF.drawString(75, x, self.shortenStrings(addr["country"], 18))
+                x += 15
+
+        self.PDF.drawString(
+            75, x, self.shortenStrings(self.floor_string(org.email), 18)
+        )
+
+    def add_customer_details(self):
+        """Add the customers details"""
+
+        customer = self.invoice.customer
+        addr = customer.properties.get("address")
+
+        self.fontSize(FONT_S, bold=True)
+        self.PDF.drawString(250, 127, "Billed To")
+
+        self.fontSize(FONT_XXS)
+        self.PDF.drawString(
+            250, 145, self.shortenStrings(self.floor_string(customer.customer_name), 18)
+        )
+
+        x = 175
+
+        if addr:
+
+            self.PDF.drawString(250, 160, self.floor_string(addr["line1"]))
+
+            if addr["city"] and addr["state"] and addr["postal_code"]:
+                self.PDF.drawString(
+                    250, x, f'{addr["city"]}, {addr["state"]}, {addr["postal_code"]}'
+                )
+                x += 15
+
+            if addr["country"]:
+                self.PDF.drawString(250, x, self.shortenStrings(addr["country"], 18))
+                x += 15
+
+        self.PDF.drawString(
+            250, x, self.shortenStrings(self.floor_string(customer.email), 18)
+        )
+
+    def add_due_date(self):
+        """Add Due Date"""
+
+        self.fontSize(FONT_S, bold=True)
+        self.PDF.drawString(400, 127, "Invoice Details")
+
+        self.fontSize(FONT_XXS)
+        self.PDF.drawString(400, 145, "Invoice No.")
+        self.PDF.drawString(465, 145, f"{self.invoice.invoice_number}")
+
+        self.PDF.drawString(400, 160, "Date Issued")
+        self.PDF.drawString(465, 160, f'{self.invoice.issue_date.strftime("%m/%d/%Y")}')
+
+        self.PDF.drawString(400, 175, "Due Date")
+        if self.invoice.due_date:
+
+            self.PDF.drawString(
+                465,
+                175,
+                f'{self.floor_string(self.invoice.date_due.strftime("%m/%d/%Y"))}',
+            )
+        else:
+            self.PDF.drawString(
+                465,
+                175,
+                "N/A",
+            )
+
+        self.PDF.setFillColor(HexColor("#9CA3AF"))
+        self.PDF.drawString(25, 770, f"#{self.invoice.invoice_number}")
+
+    def get_grouped_line_items(self):
+        """Get grouped line items"""
+
+        grouped_line_items = {}
+        for line_item in self.invoice.line_items.all():
+            sub_record = line_item.associated_subscription_record
+            if sub_record is not None:
+                plan_name = sub_record.billing_plan.plan.plan_name
+                plan_id = PlanUUIDField().to_representation(
+                    sub_record.billing_plan.plan.plan_id
+                )
+                sub_filters = list(sub_record.get_filters_dictionary().items())
+
+                sub_filters = sub_filters if sub_filters else None
+
+            else:
+                plan_id, sub_filters, plan_name = None, None, None
+
+            key = (sub_filters, plan_id, plan_name)
+
+            if key not in grouped_line_items:
+                grouped_line_items[key] = []
+
+            grouped_line_items[key].append(line_item)
+
+        return grouped_line_items
+
+    def write_total(self, currency_symbol, total, current_y, total_tax, total_credits):
+
+        offset = current_y + 75
+        self.fontSize(FONT_XS)
+        self.PDF.drawString(80, offset, "TAX")
+        self.PDF.drawString(475, offset, f"{currency_symbol}{total_tax}")
+
+        if total_credits > 0:
+            self.PDF.drawString(80, offset + 24, "Credits")
+            self.PDF.drawString(
+                475, offset + 24, "-" + f"{currency_symbol}{total_credits}"
+            )
+
+        self.fontSize(FONT_M, bold=True)
+        self.PDF.drawString(80, offset + 60, "Total")
+        self.PDF.drawString(475, offset + 60, f"{currency_symbol}{total}")
+        self.draw_line(offset + 80)
+
+    def add_subscription(self):
+        """Add Subscription data"""
+
+        subscription_records = self.invoice.subscription_records
+
+        if subscription_records:
+            self.add_summary_header()
+            pass
+
+        grouped_line_items = self.get_grouped_line_items()
+
+        line_item_start_y = 312
+        taxes = []
+        consumed_credits = []
+        for group in grouped_line_items:
+            amount = sum(
+                model_to_dict(line_item)["subtotal"]
+                for line_item in grouped_line_items[group]
+                if line_item.chargeable_item_type != CHARGEABLE_ITEM_TYPE.TAX
+            )
+            pt1 = group[2]
+            pt2 = group[0]
+            if pt2 is not None:
+                pt2 = pt2[0]
+            pt3 = group[0]
+            if pt3 is not None:
+                pt3 = pt3[1]
+            if not pt2 and not pt3 and pt1:
+                subscription_title = pt1
+            elif not pt1:
+                subscription_title = "Credit"
+            else:
+                subscription_title = f"{pt1} - {pt2} - {pt3}"
+            line_item_start_y = self.write_line_item_group(
+                subscription_title,
+                amount.quantize(Decimal("0.00")),
+                self.invoice.currency.symbol,
+                line_item_start_y,
+            )
+            line_item_start_y = self.write_line_item_headers(line_item_start_y)
+
+            line_item_count = 0
+            for line_item_model in grouped_line_items[group]:
+                if line_item_model.chargeable_item_type == CHARGEABLE_ITEM_TYPE.TAX:
+                    taxes.append(line_item_model)
+                    continue
+                if (
+                    line_item_model.chargeable_item_type
+                    == CHARGEABLE_ITEM_TYPE.CUSTOMER_ADJUSTMENT
+                ):
+                    consumed_credits.append(line_item_model)
+                    continue
+                line_item_count += 1
+                line_item = model_to_dict(line_item_model)
+                line_item_start_y = self.write_line_item(
+                    line_item["name"],
+                    line_item["start_date"],
+                    line_item["end_date"],
+                    line_item["quantity"].normalize()
+                    if isinstance(line_item["quantity"], Decimal)
+                    else line_item["quantity"],
+                    line_item["subtotal"].normalize(),
+                    self.invoice.currency.symbol,
+                    line_item["billing_type"],
+                    line_item_start_y,
+                )
+
+                if line_item_start_y > 655:
+                    self.PDF.showPage()
+                    line_item_start_y = 40
+
+                    self.PDF.setFont("Times-Roman", FONT_XXS)
+                    invoice_number = self.invoice["invoice_number"]
+                    self.PDF.setFillColor(HexColor("#9CA3AF"))
+                    self.PDF.drawString(25, 770, f"#{invoice_number}")
+                    self.PDF.setFillColor("black")
+                    self.PDF.drawString(470, 770, "Thank you for your buisness.")
+
+            self.PDF.setStrokeColor(black01)
+            self.PDF.setLineWidth(1)
+            self.PDF.line(90, line_item_start_y - 22, 90, (line_item_start_y - 22) + 5)
+            self.PDF.setStrokeColor("black")
+            self.draw_line(line_item_start_y)
+
+        total_tax = Decimal(0)
+        for tax_line_item in taxes:
+            line_item = model_to_dict(tax_line_item)
+            # line_item_start_y = write_line_item(
+            #     doc,
+            #     line_item["name"],
+            #     transform_date(line_item["start_date"]),
+            #     transform_date(line_item["end_date"]),
+            #     line_item["quantity"],
+            #     line_item["subtotal"],
+            #     currency.symbol,
+            #     line_item["billing_type"],
+            #     line_item_start_y,
+            # )
+            # if line_item_start_y > 655:
+            #     doc.showPage()
+            #     line_item_start_y = 40
+
+            #     doc.setFont("Times-Roman", FONT_XXS)
+            #     invoice_number = invoice["invoice_number"]
+            #     doc.setFillColor(HexColor("#9CA3AF"))
+            #     doc.drawString(25, 770, f"#{invoice_number}")
+            #     doc.setFillColor("black")
+            #     doc.drawString(470, 770, "Thank you for your buisness.")
+            total_tax += line_item["subtotal"]
+
+        total_credits = 0.0
+        for credit_line_item in consumed_credits:
+            line_item = model_to_dict(credit_line_item)
+            total_credits += float(line_item["subtotal"])
+
+        self.write_total(
+            self.invoice.currency.symbol,
+            round(self.invoice.cost_due, 2),
+            line_item_start_y,
+            total_tax.quantize(Decimal("0.00")),
+            total_credits,
+        )

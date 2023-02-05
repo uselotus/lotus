@@ -1,15 +1,10 @@
 import logging
-from datetime import datetime
-from decimal import Decimal
 from io import BytesIO
 
 import boto3
 from botocore.exceptions import ClientError
 from django.conf import settings
-from django.forms.models import model_to_dict
 from metering_billing.models import Invoice
-from metering_billing.serializers.serializer_utils import PlanUUIDField
-from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
 
 from metering_billing.InvoiceToPDF import InvoicePDF
 
@@ -36,19 +31,20 @@ def s3_bucket_exists(bucket_name) -> bool:
         return False
 
 
-
 def generate_invoice_pdf(invoice: Invoice, buffer):
 
     # init class
-    inv = InvoicePDF(Invoice, buffer)
+    inv = InvoicePDF(invoice, buffer)
+    print("InvoicePDF", invoice)
 
     # build invoice (calls pdf.save())
-    inv.build()
+    _ = inv.build(buffer)
 
     customer = invoice.customer
     organization = invoice.organization
 
-    if not settings.DEBUG:
+    # If the organization is not an external demo organization
+    if not settings.DEBUG and organization.organization_type != 3:
         try:
             # Upload the file to s3
             invoice_number = invoice.invoice_number
@@ -104,7 +100,9 @@ def get_invoice_presigned_url(invoice: Invoice):
         return {"exists": False, "url": ""}
 
     else:
-        bucket_name = "lotus-" + team_id
+        bucket_name = "dev-" + team_id
+
+        # bucket_name = "lotus-" + team_id
         key = f"{organization_id}/{customer_id}/invoice_pdf_{invoice_number}.pdf"
 
         if not s3_file_exists(bucket_name=bucket_name, key=key):
@@ -117,5 +115,4 @@ def get_invoice_presigned_url(invoice: Invoice):
             Params={"Bucket": bucket_name, "Key": key},
             ExpiresIn=3600,  # URL will expire in 1 hour
         )
-    return {"exists": True, "url": url}
     return {"exists": True, "url": url}
