@@ -2,8 +2,6 @@ import uuid
 
 import posthog
 import pytest
-from model_bakery import baker
-
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     PLAN_DURATION,
@@ -12,6 +10,7 @@ from metering_billing.utils.enums import (
     PRODUCT_STATUS,
     USAGE_BILLING_FREQUENCY,
 )
+from model_bakery import baker
 
 
 @pytest.fixture(autouse=True)
@@ -199,9 +198,11 @@ def add_subscription_record_to_org():
         )
         end_date = end_date
         if not end_date:
+            timezone = customer.timezone
             end_date = calculate_end_date(
                 duration,
                 start_date,
+                timezone,
                 day_anchor=day_anchor,
                 month_anchor=month_anchor,
             )
@@ -223,7 +224,7 @@ def add_subscription_record_to_org():
 def get_subscription_records_in_org():
     from metering_billing.models import SubscriptionRecord
 
-    def do_get_subscription_records_in_org(organization):
+    def do_get_subscription_records_in_org(organization) -> list[SubscriptionRecord]:
         return SubscriptionRecord.objects.filter(organization=organization)
 
     return do_get_subscription_records_in_org

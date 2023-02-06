@@ -1,10 +1,15 @@
 from django.db.models import Q
+from rest_framework import serializers
+
 from metering_billing.models import Backtest, BacktestSubstitution, PlanVersion
 from metering_billing.serializers.model_serializers import PlanVersionDetailSerializer
 from metering_billing.utils.enums import BACKTEST_KPI, PLAN_VERSION_STATUS
-from rest_framework import serializers
 
-from .serializer_utils import BacktestUUIDField, SlugRelatedFieldWithOrganization
+from .serializer_utils import (
+    BacktestUUIDField,
+    SlugRelatedFieldWithOrganization,
+    TimezoneFieldMixin,
+)
 
 
 class BacktestSubstitutionMultiSerializer(serializers.Serializer):
@@ -22,7 +27,7 @@ class BacktestSubstitutionMultiSerializer(serializers.Serializer):
     )
 
 
-class BacktestCreateSerializer(serializers.ModelSerializer):
+class BacktestCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Backtest
         fields = ("start_date", "end_date", "substitutions", "kpis", "backtest_name")
@@ -53,7 +58,7 @@ class BacktestCreateSerializer(serializers.ModelSerializer):
         return backtest_obj
 
 
-class BacktestSummarySerializer(serializers.ModelSerializer):
+class BacktestSummarySerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Backtest
         fields = (
@@ -69,7 +74,7 @@ class BacktestSummarySerializer(serializers.ModelSerializer):
     backtest_id = BacktestUUIDField()
 
 
-class BacktestSubstitutionSerializer(serializers.ModelSerializer):
+class BacktestSubstitutionSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = BacktestSubstitution
         fields = ("new_plan", "original_plan")
@@ -138,6 +143,9 @@ class BacktestDetailSerializer(BacktestSummarySerializer):
             set(BacktestSummarySerializer.Meta.fields)
             | {"backtest_substitutions", "backtest_results"}
         )
+
+    backtest_results = AllSubstitutionResultsSerializer()
+    backtest_substitutions = BacktestSubstitutionSerializer(many=True)
 
     backtest_results = AllSubstitutionResultsSerializer()
     backtest_substitutions = BacktestSubstitutionSerializer(many=True)

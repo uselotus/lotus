@@ -24,6 +24,7 @@ from svix.internal.openapi_client.models.http_error import HttpError
 from svix.internal.openapi_client.models.http_validation_error import (
     HTTPValidationError,
 )
+from timezone_field import TimeZoneField
 
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
@@ -130,7 +131,15 @@ class Organization(models.Model):
         help_text="Tax rate as percentage. For example, 10.5 for 10.5%",
         null=True,
     )
+    timezone = TimeZoneField(default="UTC", use_pytz=True)
+    __original_timezone = None
+    __original_organization_type = None
     history = HistoricalRecords()
+
+    def __init__(self, *args, **kwargs):
+        super(Organization, self).__init__(*args, **kwargs)
+        self.__original_timezone = self.timezone
+        self.__original_organization_type = self.organization_type
 
     class Meta:
         indexes = [
@@ -150,19 +159,20 @@ class Organization(models.Model):
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
                 )
         new = self.pk is None
-        (
-            prev_organization_type,
-            new_organization_type,
-        ) = self.organization_type, kwargs.get(
-            "organization_type", self.organization_type
-        )
-        if prev_organization_type != new_organization_type and self.pk:
+        if (
+            self.organization_type != self.__original_organization_type
+            and self.__original_organization_type is not None
+            and self.pk
+        ):
             raise NotEditable(
                 "Organization type cannot be changed once an organization is created."
             )
+        if self.timezone != self.__original_timezone and self.pk:
+            self.customers.filter(timezone_set=False).update(timezone=self.timezone)
         if self.team is None:
             self.team = Team.objects.create(name=self.organization_name)
         super(Organization, self).save(*args, **kwargs)
+        self.__original_timezone = self.timezone
         if new:
             self.provision_currencies()
         if not self.default_currency:
@@ -481,6 +491,8 @@ class Customer(models.Model):
         help_text="Tax rate as percentage. For example, 10.5 for 10.5%",
         null=True,
     )
+    timezone = TimeZoneField(default="UTC", use_pytz=True)
+    timezone_set = models.BooleanField(default=False)
     history = HistoricalRecords()
 
     class Meta:
@@ -2189,6 +2201,7 @@ class SubscriptionRecord(models.Model):
     def save(self, *args, **kwargs):
         new_filters = kwargs.pop("subscription_filters", [])
         now = now_utc()
+        timezone = self.customer.timezone
         if not self.end_date:
             day_anchor, month_anchor = (
                 self.billing_plan.day_anchor,
@@ -2197,13 +2210,13 @@ class SubscriptionRecord(models.Model):
             self.end_date = calculate_end_date(
                 self.billing_plan.plan.plan_duration,
                 self.start_date,
+                timezone,
                 day_anchor=day_anchor,
                 month_anchor=month_anchor,
             )
         if not self.unadjusted_duration_microseconds:
             scheduled_end_date = calculate_end_date(
-                self.billing_plan.plan.plan_duration,
-                self.start_date,
+                self.billing_plan.plan.plan_duration, self.start_date, timezone
             )
             self.unadjusted_duration_microseconds = (
                 scheduled_end_date - self.start_date
@@ -2676,5 +2689,6 @@ class UsageAlertResult(models.Model):
             self.triggered_count = self.triggered_count + 1
         self.last_run_value = new_value
         self.last_run_timestamp = now
+        self.save()
         self.save()
         self.save()

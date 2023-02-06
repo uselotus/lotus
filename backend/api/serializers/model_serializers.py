@@ -6,9 +6,6 @@ from typing import Literal, Union
 from django.conf import settings
 from django.db.models import Sum
 from drf_spectacular.utils import extend_schema_serializer
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-
 from metering_billing.invoice import (
     generate_balance_adjustment_invoice,
     generate_invoice,
@@ -41,12 +38,15 @@ from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.serializer_utils import (
     AddonUUIDField,
     BalanceAdjustmentUUIDField,
+    ConvertEmptyStringToNullMixin,
     FeatureUUIDField,
     InvoiceUUIDField,
     MetricUUIDField,
     PlanUUIDField,
     PlanVersionUUIDField,
     SlugRelatedFieldWithOrganization,
+    TimezoneFieldMixin,
+    TimeZoneSerializerField,
     UsageAlertUUIDField,
 )
 from metering_billing.utils import convert_to_date, now_utc
@@ -61,11 +61,13 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
 
-class TagSerializer(serializers.ModelSerializer):
+class TagSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Tag
         fields = ("tag_name", "tag_hex", "tag_color")
@@ -77,28 +79,16 @@ class TagSerializer(serializers.ModelSerializer):
         return data
 
 
-class ConvertEmptyStringToNullMixin:
-    def recursive_convert_empty_string_to_none(self, data: dict):
-        for key, value in data.items():
-            if isinstance(value, dict):
-                self.recursive_convert_empty_string_to_none(value)
-            elif value == "":
-                data[key] = None
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        self.recursive_convert_empty_string_to_none(data)
-        return data
-
-
-class PricingUnitSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer):
+class PricingUnitSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = PricingUnit
         fields = ("code", "name", "symbol")
 
 
 class LightweightCustomerSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = Customer
@@ -160,7 +150,7 @@ class LightweightCustomerSerializerForInvoice(LightweightCustomerSerializer):
 
 
 class LightweightPlanVersionSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = PlanVersion
@@ -178,7 +168,7 @@ class LightweightPlanVersionSerializer(
 
 
 class CategoricalFilterSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = CategoricalFilter
@@ -188,7 +178,7 @@ class CategoricalFilterSerializer(
 
 
 class SubscriptionCategoricalFilterSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = CategoricalFilter
@@ -222,7 +212,7 @@ class SubscriptionCategoricalFilterSerializer(
 
 
 class SubscriptionCustomerSummarySerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = SubscriptionRecord
@@ -238,7 +228,7 @@ class SubscriptionCustomerDetailSerializer(SubscriptionCustomerSummarySerializer
         fields = SubscriptionCustomerSummarySerializer.Meta.fields + ("start_date",)
 
 
-class LightweightAddonSerializer(serializers.ModelSerializer):
+class LightweightAddonSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Plan
         fields = ("addon_name", "addon_id", "addon_type", "billing_frequency")
@@ -272,7 +262,7 @@ class LightweightAddonSerializer(serializers.ModelSerializer):
 
 
 class LightweightAddonSubscriptionRecordSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = SubscriptionRecord
@@ -293,7 +283,7 @@ class LightweightAddonSubscriptionRecordSerializer(
 
 
 class SubscriptionRecordSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = SubscriptionRecord
@@ -330,7 +320,7 @@ class SubscriptionRecordSerializer(
 
 
 class InvoiceLineItemSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = InvoiceLineItem
@@ -383,7 +373,9 @@ class LightweightInvoiceLineItemSerializer(InvoiceLineItemSerializer):
         extra_kwargs = {**InvoiceLineItemSerializer.Meta.extra_kwargs}
 
 
-class SellerSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer):
+class SellerSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = Organization
         fields = ("name", "address", "phone", "email")
@@ -400,7 +392,9 @@ class SellerSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerialize
         return data
 
 
-class InvoiceSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer):
+class InvoiceSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = Invoice
         fields = (
@@ -499,7 +493,9 @@ class CustomerIntegrationsSerializer(serializers.Serializer):
     stripe = CustomerStripeIntegrationSerializer(required=False, allow_null=True)
 
 
-class CustomerSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer):
+class CustomerSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = Customer
         fields = (
@@ -516,6 +512,7 @@ class CustomerSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeriali
             "has_payment_method",
             "address",
             "tax_rate",
+            "timezone",
         )
         extra_kwargs = {
             "customer_id": {"required": True, "read_only": True},
@@ -536,6 +533,7 @@ class CustomerSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeriali
             "has_payment_method": {"required": True, "read_only": True},
             "address": {"required": True, "read_only": True},
             "tax_rate": {"required": True, "read_only": True},
+            "timezone": {"required": True, "read_only": True},
         }
 
     customer_id = serializers.CharField()
@@ -557,6 +555,7 @@ class CustomerSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeriali
     payment_provider_id = serializers.SerializerMethodField()
     has_payment_method = serializers.SerializerMethodField()
     address = serializers.SerializerMethodField()
+    timezone = TimeZoneSerializerField(use_pytz=True)
 
     def get_payment_provider_id(
         self, obj
@@ -638,7 +637,7 @@ class CustomerSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeriali
 
 
 class CustomerCreateSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = Customer
@@ -729,7 +728,7 @@ class CustomerCreateSerializer(
 
 
 class NumericFilterSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = NumericFilter
@@ -737,7 +736,7 @@ class NumericFilterSerializer(
 
 
 class LightweightMetricSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = Metric
@@ -756,7 +755,9 @@ class LightweightMetricSerializer(
     metric_name = serializers.CharField(source="billable_metric_name")
 
 
-class MetricSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer):
+class MetricSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = Metric
         fields = (
@@ -816,7 +817,9 @@ class MetricSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerialize
     aggregation_type = serializers.CharField(source="usage_aggregation_type")
 
 
-class FeatureSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer):
+class FeatureSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = Feature
         fields = (
@@ -836,7 +839,9 @@ class FeatureSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializ
     feature_id = FeatureUUIDField()
 
 
-class PriceTierSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer):
+class PriceTierSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = PriceTier
         fields = (
@@ -894,7 +899,7 @@ class PriceTierSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerial
 
 
 class PlanComponentSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = PlanComponent
@@ -915,7 +920,7 @@ class PlanComponentSerializer(
 
 
 class PriceAdjustmentSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = PriceAdjustment
@@ -934,7 +939,7 @@ class PriceAdjustmentSerializer(
 
 
 class RecurringChargeSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = RecurringCharge
@@ -968,7 +973,9 @@ class RecurringChargeSerializer(
 
 
 @extend_schema_serializer(deprecate_fields=["flat_fee_billing_type", "flat_rate"])
-class PlanVersionSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer):
+class PlanVersionSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = PlanVersion
         fields = (
@@ -1047,7 +1054,7 @@ class PlanVersionSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeri
 
 
 class PlanNameAndIDSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = Plan
@@ -1064,7 +1071,7 @@ class PlanNameAndIDSerializer(
 
 
 class InvoiceUpdateSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = Invoice
@@ -1100,14 +1107,16 @@ class InvoiceUpdateSerializer(
 
 
 class InitialExternalPlanLinkSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = ExternalPlanLink
         fields = ("source", "external_plan_id")
 
 
-class PlanSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer):
+class PlanSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = Plan
         fields = (
@@ -1171,7 +1180,7 @@ class PlanSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer)
         return data
 
 
-class EventSerializer(serializers.ModelSerializer):
+class EventSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Event
         fields = (
@@ -1193,7 +1202,7 @@ class EventSerializer(serializers.ModelSerializer):
 
 
 class SubscriptionRecordCreateSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = SubscriptionRecord
@@ -1317,7 +1326,7 @@ class SubscriptionInvoiceSerializer(SubscriptionRecordSerializer):
 
 
 class SubscriptionRecordUpdateSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = SubscriptionRecord
@@ -1365,7 +1374,7 @@ class SubscriptionRecordUpdateSerializer(
 
 
 class AddonSubscriptionRecordUpdateSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = SubscriptionRecord
@@ -1533,7 +1542,7 @@ class InvoiceListFilterSerializer(serializers.Serializer):
         return data
 
 
-class CreditDrawdownSerializer(serializers.ModelSerializer):
+class CreditDrawdownSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = CustomerBalanceAdjustment
         fields = (
@@ -1556,7 +1565,7 @@ class CreditDrawdownSerializer(serializers.ModelSerializer):
 
 
 class CustomerBalanceAdjustmentSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = CustomerBalanceAdjustment
@@ -1611,7 +1620,7 @@ class CustomerBalanceAdjustmentSerializer(
 
 
 class CustomerBalanceAdjustmentCreateSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = CustomerBalanceAdjustment
@@ -1676,7 +1685,9 @@ class CustomerBalanceAdjustmentCreateSerializer(
         return balance_adjustment
 
 
-class CustomerBalanceAdjustmentUpdateSerializer(serializers.ModelSerializer):
+class CustomerBalanceAdjustmentUpdateSerializer(
+    TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = CustomerBalanceAdjustment
         fields = (
@@ -1751,7 +1762,7 @@ class CustomerBalanceAdjustmentFilterSerializer(serializers.Serializer):
     )
 
 
-class UsageAlertSerializer(serializers.ModelSerializer):
+class UsageAlertSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = UsageAlert
         fields = (
@@ -1770,7 +1781,7 @@ class UsageAlertSerializer(serializers.ModelSerializer):
     plan_version = LightweightPlanVersionSerializer()
 
 
-class AddOnSerializer(serializers.ModelSerializer):
+class AddOnSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Plan
         fields = (
@@ -1854,7 +1865,9 @@ class AddOnSerializer(serializers.ModelSerializer):
         return sum(x.active_subscriptions for x in obj.active_subs_by_version())
 
 
-class AddOnSubscriptionRecordSerializer(serializers.ModelSerializer):
+class AddOnSubscriptionRecordSerializer(
+    TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = SubscriptionRecord
         fields = (
@@ -1881,7 +1894,9 @@ class AddOnSubscriptionRecordSerializer(serializers.ModelSerializer):
     parent = LightweightSubscriptionRecordSerializer()
 
 
-class AddOnSubscriptionRecordCreateSerializer(serializers.ModelSerializer):
+class AddOnSubscriptionRecordCreateSerializer(
+    TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = SubscriptionRecord
         fields = (
@@ -2023,4 +2038,5 @@ class AddOnSubscriptionRecordCreateSerializer(serializers.ModelSerializer):
             sr.filters.add(sf)
         if invoice_now:
             generate_invoice(sr)
+        return sr
         return sr

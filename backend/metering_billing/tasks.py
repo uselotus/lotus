@@ -2,10 +2,12 @@ import logging
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
 
+import pytz
 from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
+
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
@@ -160,8 +162,8 @@ def run_backtest(backtest_id):
         backtest_substitutions = backtest.backtest_substitutions.all()
         queries = [Q(billing_plan=x.original_plan) for x in backtest_substitutions]
         query = queries.pop()
-        start_date = date_as_min_dt(backtest.start_date)
-        end_date = date_as_max_dt(backtest.end_date)
+        start_date = date_as_min_dt(backtest.start_date, timezone=pytz.UTC)
+        end_date = date_as_max_dt(backtest.end_date, timezone=pytz.UTC)
         for item in queries:
             query |= item
         all_subs_time_period = (
@@ -450,4 +452,5 @@ def run_generate_invoice(subscription_record_pk_set, **kwargs):
     subscription_record_set = SubscriptionRecord.objects.filter(
         pk__in=subscription_record_pk_set
     )
+    generate_invoice(subscription_record_set, **kwargs)
     generate_invoice(subscription_record_set, **kwargs)

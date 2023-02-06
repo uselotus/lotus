@@ -1,10 +1,16 @@
 import logging
 from decimal import Decimal
 
-import api.views as api_views
 from django.conf import settings
 from django.db.models import Count, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+import api.views as api_views
 from metering_billing.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
@@ -60,11 +66,6 @@ from metering_billing.utils.enums import (
     USAGE_CALC_GRANULARITY,
 )
 from metering_billing.views.model_views import CustomerViewSet
-from rest_framework import serializers, status
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -83,6 +84,7 @@ class PeriodMetricRevenueView(APIView):
         Returns the revenue for an organization in a given time period.
         """
         organization = request.organization
+        timezone = organization.timezone
         serializer = PeriodComparisonRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         p1_start, p1_end, p2_start, p2_end = (
@@ -94,8 +96,12 @@ class PeriodMetricRevenueView(APIView):
                 "period_2_end_date",
             ]
         )
-        p1_start, p2_start = date_as_min_dt(p1_start), date_as_min_dt(p2_start)
-        p1_end, p2_end = date_as_max_dt(p1_end), date_as_max_dt(p2_end)
+        p1_start, p2_start = date_as_min_dt(p1_start, timezone), date_as_min_dt(
+            p2_start, timezone
+        )
+        p1_end, p2_end = date_as_max_dt(p1_end, timezone), date_as_max_dt(
+            p2_end, timezone
+        )
         return_dict = {}
         # collected
         p1_collected = Invoice.objects.filter(
@@ -165,6 +171,7 @@ class PeriodEventsView(APIView):
         Returns the revenue for an organization in a given time period.
         """
         organization = request.organization
+        timezone = organization.timezone
         serializer = PeriodComparisonRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         p1_start, p1_end, p2_start, p2_end = (
@@ -176,8 +183,12 @@ class PeriodEventsView(APIView):
                 "period_2_end_date",
             ]
         )
-        p1_start, p2_start = date_as_min_dt(p1_start), date_as_min_dt(p2_start)
-        p1_end, p2_end = date_as_max_dt(p1_end), date_as_max_dt(p2_end)
+        p1_start, p2_start = date_as_min_dt(
+            p1_start, timezone=timezone
+        ), date_as_min_dt(p2_start, timezone=timezone)
+        p1_end, p2_end = date_as_max_dt(p1_end, timezone=timezone), date_as_max_dt(
+            p2_end, timezone=timezone
+        )
         return_dict = {}
         # earned
         for start, end, num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
@@ -313,6 +324,7 @@ class PeriodSubscriptionsView(APIView):
     )
     def get(self, request, format=None):
         organization = request.organization
+        timezone = organization.timezone
         serializer = PeriodComparisonRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         p1_start, p1_end, p2_start, p2_end = (
@@ -324,8 +336,12 @@ class PeriodSubscriptionsView(APIView):
                 "period_2_end_date",
             ]
         )
-        p1_start, p2_start = date_as_min_dt(p1_start), date_as_min_dt(p2_start)
-        p1_end, p2_end = date_as_max_dt(p1_end), date_as_max_dt(p2_end)
+        p1_start, p2_start = date_as_min_dt(
+            p1_start, timezone=timezone
+        ), date_as_min_dt(p2_start, timezone=timezone)
+        p1_end, p2_end = date_as_max_dt(p1_end, timezone=timezone), date_as_max_dt(
+            p2_end, timezone=timezone
+        )
 
         return_dict = {}
         for i, (p_start, p_end) in enumerate([[p1_start, p1_end], [p2_start, p2_end]]):
