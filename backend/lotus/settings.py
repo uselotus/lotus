@@ -13,7 +13,6 @@ import datetime
 import logging
 import os
 import re
-import ssl
 from datetime import timedelta, timezone
 from json import loads
 from pathlib import Path
@@ -380,8 +379,6 @@ if REDIS_URL is not None:
             "LOCATION": f"{REDIS_URL}/0",
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
-                "REDIS_CLIENT_KWARGS": {"ssl_cert_reqs": ssl.CERT_NONE},
-                "CONNECTION_POOL_KWARGS": {"ssl_cert_reqs": None},
             },
         }
     }
