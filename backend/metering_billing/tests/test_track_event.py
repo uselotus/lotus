@@ -121,7 +121,7 @@ class TestTrackEvent:
                     "cust_id": setup_dict["customer"].customer_id,
                 }
             )
-        write_batch_events_to_db(events_list, setup_dict["org"].pk)
+        write_batch_events_to_db({setup_dict["org"].pk: events_list})
         customer_org_events = get_events_with_org_customer_id(
             setup_dict["org"], setup_dict["customer_id"]
         )
@@ -169,7 +169,7 @@ class TestTrackEvent:
                     "organization": setup_dict["org"],
                 }
             )
-        write_batch_events_to_db(events_list, setup_dict["org"].pk)
+        write_batch_events_to_db({setup_dict["org"].pk: events_list})
         customer_org_events = get_events_with_org_customer_id(
             setup_dict["org"], setup_dict["customer_id"]
         )

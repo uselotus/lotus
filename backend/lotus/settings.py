@@ -47,7 +47,6 @@ VITE_API_URL = config("VITE_API_URL", default="http://localhost:8000")
 EVENT_CACHE_FLUSH_SECONDS = config("EVENT_CACHE_FLUSH_SECONDS", default=180, cast=int)
 EVENT_CACHE_FLUSH_COUNT = config("EVENT_CACHE_FLUSH_COUNT", default=1000, cast=int)
 DOCKERIZED = config("DOCKERIZED", default=False, cast=bool)
-ON_HEROKU = config("ON_HEROKU", default=False, cast=bool)
 DEBUG = config("DEBUG", default=False, cast=bool)
 PROFILER_ENABLED = config("PROFILER_ENABLED", default=False, cast=bool)
 SECRET_KEY = config("SECRET_KEY", default="")
@@ -157,7 +156,7 @@ ANYMAIL = {
     "MAILGUN_SMTP_SERVER": os.environ.get("MAILGUN_SMTP_SERVER"),
 }
 
-if ON_HEROKU:
+if not SELF_HOSTED:
     EMAIL_BACKEND = "anymail.backends.mailgun.EmailBackend"
     APP_URL = "https://app.uselotus.io"
 else:
@@ -300,6 +299,7 @@ if KAFKA_HOST:
     producer_config = {
         "bootstrap_servers": KAFKA_HOST,
         "api_version": (2, 5, 0),
+        "linger_ms": 10,
     }
     consumer_config = {
         "bootstrap_servers": KAFKA_HOST,
@@ -363,7 +363,7 @@ if os.environ.get("REDIS_URL"):
 elif DOCKERIZED:
     REDIS_URL = "redis://redis:6379"
 else:
-    REDIS_URL = "redis://localhost:6379"
+    REDIS_URL = None
 
 # Celery Settings
 CELERY_BROKER_URL = f"{REDIS_URL}/0"
@@ -371,9 +371,9 @@ CELERY_RESULT_BACKEND = f"{REDIS_URL}/0"
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
-CELERY_TIMEZONE = "America/New_York"
+CELERY_TIMEZONE = "UTC"
 
-if ON_HEROKU:
+if REDIS_URL is not None:
     CACHES = {
         "default": {
             "BACKEND": "django_redis.cache.RedisCache",
@@ -382,16 +382,6 @@ if ON_HEROKU:
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
                 "REDIS_CLIENT_KWARGS": {"ssl_cert_reqs": ssl.CERT_NONE},
                 "CONNECTION_POOL_KWARGS": {"ssl_cert_reqs": None},
-            },
-        }
-    }
-elif DOCKERIZED:
-    CACHES = {
-        "default": {
-            "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": f"{REDIS_URL}/3",
-            "OPTIONS": {
-                "CLIENT_CLASS": "django_redis.client.DefaultClient",
             },
         }
     }

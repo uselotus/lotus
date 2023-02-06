@@ -901,7 +901,9 @@ class SubscriptionViewSet(
                 )
                 for filter in subscription_record.filters.all():
                     sr.filters.add(filter)
-                subscription_record.flat_fee_behavior = FLAT_FEE_BEHAVIOR.CHARGE_PRORATED
+                subscription_record.flat_fee_behavior = (
+                    FLAT_FEE_BEHAVIOR.CHARGE_PRORATED
+                )
                 subscription_record.invoice_usage_charges = keep_separate
                 subscription_record.auto_renew = False
                 subscription_record.end_date = now
@@ -1705,52 +1707,46 @@ def track_event(request):
         return HttpResponseBadRequest(f"Invalid event data: {e}")
     if not event_list:
         return HttpResponseBadRequest("No data provided")
-    if type(event_list) != list:
+    if not isinstance(event_list, list):
         if "batch" in event_list:
             event_list = event_list["batch"]
         else:
             event_list = [event_list]
 
     bad_events = {}
-    events_to_insert = set()
-    events_by_customer = {}
     now = now_utc()
     for data in event_list:
         customer_id = data.get("customer_id")
-        idempotency_id = data.get("idempotency_id", None)
-        time_created = data.get("time_created", None)
-        if not customer_id or not idempotency_id:
-            if not idempotency_id:
-                bad_events["no_idempotency_id"] = "No idempotency_id provided"
-            else:
-                bad_events[idempotency_id] = "No customer_id provided"
+        idempotency_id = data.get("idempotency_id")
+        time_created = data.get("time_created")
+        if not idempotency_id:
+            bad_events["no_idempotency_id"] = "No idempotency_id provided"
             continue
-        if idempotency_id in events_to_insert:
-            bad_events[idempotency_id] = "Duplicate event idempotency in request"
+        if not customer_id:
+            bad_events[idempotency_id] = "No customer_id provided"
             continue
         if not time_created:
             bad_events[idempotency_id] = "Invalid time_created"
             continue
-        if parser.parse(time_created) < now - relativedelta(days=30):
+        if not (
+            now - relativedelta(days=30)
+            <= parser.parse(time_created)
+            <= now + relativedelta(days=1)
+        ):
             bad_events[
                 idempotency_id
-            ] = "Time created too far in the past. Events must be within 30 days of current time."
+            ] = "Time created too far in the past or future. Events must be within 30 days before or 1 day ahead of current time."
             continue
         try:
             transformed_event = ingest_event(data, customer_id, organization_pk)
-            events_to_insert.add(idempotency_id)
-            if customer_id not in events_by_customer:
-                events_by_customer[customer_id] = [transformed_event]
-            else:
-                events_by_customer[customer_id].append(transformed_event)
+            stream_events = {
+                "events": [transformed_event],
+                "organization_id": organization_pk,
+            }
+            kafka_producer.produce(customer_id, stream_events)
         except Exception as e:
             bad_events[idempotency_id] = str(e)
             continue
-
-    ## Sent to Redpanda Topic
-    for customer_id, events in events_by_customer.items():
-        stream_events = {"events": events, "organization_id": organization_pk}
-        kafka_producer.produce(customer_id, stream_events)
 
     if len(bad_events) == len(event_list):
         return Response(
