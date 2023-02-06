@@ -8,9 +8,6 @@ import pytz
 import stripe
 from django.conf import settings
 from django.db.models import F, Prefetch, Q
-from rest_framework import serializers, status
-from rest_framework.response import Response
-
 from metering_billing.exceptions.exceptions import ExternalConnectionInvalid
 from metering_billing.serializers.payment_provider_serializers import (
     PaymentProviderPostResponseSerializer,
@@ -22,13 +19,16 @@ from metering_billing.utils.enums import (
     PAYMENT_PROVIDERS,
     PLAN_STATUS,
 )
+from rest_framework import serializers, status
+from rest_framework.response import Response
 
 logger = logging.getLogger("django.server")
 
 SELF_HOSTED = settings.SELF_HOSTED
 STRIPE_LIVE_SECRET_KEY = settings.STRIPE_LIVE_SECRET_KEY
 STRIPE_TEST_SECRET_KEY = settings.STRIPE_TEST_SECRET_KEY
-VITE_STRIPE_CLIENT = settings.VITE_STRIPE_CLIENT
+STRIPE_TEST_CLIENT = settings.STRIPE_TEST_CLIENT
+STRIPE_LIVE_CLIENT = settings.STRIPE_LIVE_CLIENT
 VITE_API_URL = settings.VITE_API_URL
 
 
@@ -97,7 +97,7 @@ class PaymentProvider(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_redirect_url(self) -> str:
+    def get_redirect_url(self, organization) -> str:
         """The link returned by this method will be called when a user clicks on the connect button for a payment processor. It should return a link that the user will be redirected to in order to connect their account to the payment processor."""
         pass
 
@@ -112,17 +112,30 @@ class StripeConnector(PaymentProvider):
         self.live_secret_key = STRIPE_LIVE_SECRET_KEY
         self.test_secret_key = STRIPE_TEST_SECRET_KEY
         self.self_hosted = SELF_HOSTED
-        redirect_dict = {
+        live_redirect_dict = {
             "response_type": "code",
             "scope": "read_write",
-            "client_id": VITE_STRIPE_CLIENT,
+            "client_id": STRIPE_LIVE_CLIENT,
             "redirect_uri": VITE_API_URL + "redirectstripe",
         }
-        qstr = urlencode(redirect_dict)
+        live_qstr = urlencode(live_redirect_dict)
+        test_redirect_dict = {
+            "response_type": "code",
+            "scope": "read_write",
+            "client_id": STRIPE_TEST_CLIENT,
+            "redirect_uri": VITE_API_URL + "redirectstripe",
+        }
+        test_qstr = urlencode(test_redirect_dict)
         if not self.self_hosted:
-            self.redirect_url = "https://connect.stripe.com/oauth/authorize?" + qstr
+            self.live_redirect_url = (
+                "https://connect.stripe.com/oauth/authorize?" + live_qstr
+            )
+            self.test_redirect_url = (
+                "https://connect.stripe.com/oauth/authorize?" + test_qstr
+            )
         else:
-            self.redirect_url = ""
+            self.live_redirect_url = None
+            self.test_redirect_url = None
 
     def working(self) -> bool:
         return self.live_secret_key is not None or self.test_secret_key is not None
@@ -458,8 +471,13 @@ class StripeConnector(PaymentProvider):
         validated_data = serializer.validated_data
         return Response(validated_data, status=status.HTTP_200_OK)
 
-    def get_redirect_url(self) -> str:
-        return self.redirect_url
+    def get_redirect_url(self, organization) -> str:
+        from metering_billing.models import Organization
+
+        if organization.organization_type == Organization.OrganizationType.PRODUCTION:
+            return self.live_redirect_url
+        else:
+            return self.test_redirect_url
 
     def transfer_subscriptions(
         self, organization, end_now=False

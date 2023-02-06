@@ -44,7 +44,6 @@ except Exception:
     pass
 
 VITE_API_URL = config("VITE_API_URL", default="http://localhost:8000")
-VITE_STRIPE_CLIENT = config("VITE_STRIPE_CLIENT", default="")
 EVENT_CACHE_FLUSH_SECONDS = config("EVENT_CACHE_FLUSH_SECONDS", default=180, cast=int)
 EVENT_CACHE_FLUSH_COUNT = config("EVENT_CACHE_FLUSH_COUNT", default=1000, cast=int)
 DOCKERIZED = config("DOCKERIZED", default=False, cast=bool)
@@ -66,8 +65,13 @@ PRODUCT_ANALYTICS_OPT_IN = True if not SELF_HOSTED else PRODUCT_ANALYTICS_OPT_IN
 STRIPE_LIVE_SECRET_KEY = config("STRIPE_LIVE_SECRET_KEY", default=None)
 if STRIPE_LIVE_SECRET_KEY is None:
     STRIPE_LIVE_SECRET_KEY = config("STRIPE_SECRET_KEY", default=None)
+STRIPE_LIVE_CLIENT = config("STRIPE_LIVE_CLIENT", default=None)
+if STRIPE_LIVE_CLIENT is None:
+    STRIPE_LIVE_CLIENT = config("VITE_STRIPE_CLIENT", default=None)
 STRIPE_TEST_SECRET_KEY = config("STRIPE_TEST_SECRET_KEY", default=None)
+STRIPE_TEST_CLIENT = config("STRIPE_TEST_CLIENT", default="")
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="whsec_")
+
 # Webhooks for Svix
 SVIX_API_KEY = config("SVIX_API_KEY", default="")
 SVIX_JWT_SECRET = config("SVIX_JWT_SECRET", default="")
