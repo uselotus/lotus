@@ -20,6 +20,7 @@ import createShortenedText from "../../helpers/createShortenedText";
 import useMediaQuery from "../../hooks/useWindowQuery";
 import Divider from "../base/Divider/Divider";
 import Badge from "../base/Badges/Badges";
+import { fourDP } from "../../helpers/fourDP";
 
 interface CustomerInfoViewProps {
   data: CustomerType;
@@ -44,25 +45,13 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
   const [currentCurrency, setCurrentCurrency] = React.useState<string>(
     data.default_currency.code ? data.default_currency.code : ""
   );
-  const [taxRate, setTaxRate] = React.useState(
-    data.tax_rate ? data.tax_rate : 0
-  );
-  const [line1, setLine1] = React.useState(
-    data.address ? data.address.line1 : ""
-  );
-  const [line2, setLine2] = React.useState(
-    data.address && data.address.line2 ? data.address.line2 : ""
-  );
-  const [city, setCity] = React.useState(data.address ? data.address.city : "");
-  const [state, setState] = React.useState(
-    data.address ? data.address.state : ""
-  );
-  const [country, setCountry] = React.useState(
-    data.address ? data.address.country : ""
-  );
-  const [postalCode, setPostalCode] = React.useState(
-    data.address ? data.address.postal_code : ""
-  );
+  const [taxRate, setTaxRate] = React.useState(0);
+  const [line1, setLine1] = React.useState("");
+  const [line2, setLine2] = React.useState("");
+  const [city, setCity] = React.useState("");
+  const [state, setState] = React.useState("");
+  const [country, setCountry] = React.useState("");
+  const [postalCode, setPostalCode] = React.useState("");
   const [isEditing, setIsEditing] = React.useState(false);
   const queryClient = useQueryClient();
 
@@ -126,7 +115,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
       customer_id: data.customer_id,
       address: submittedAddress,
       default_currency_code: currentCurrency,
-      tax_rate: taxRate,
+      tax_rate: fourDP(taxRate),
     });
 
     refetch();
@@ -188,14 +177,13 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     isStack: true,
     seriesField: "metric",
     groupField: "type",
-    legend: false,
     colorField: "type", // or seriesField in some cases
     color: ["#33658A", "#C3986B", "#D9D9D9", "#171412", "#547AA5"],
   };
 
   return (
-    <div className="flex mx-10 flex-col">
-      <div className="grid gap-16 grid-cols-1   md:grid-cols-3">
+    <div className="flex  flex-col">
+      <div className="grid grid-cols-1   md:grid-cols-3">
         <div className="col-span-2">
           <CustomerCard
             className={`overflow-x-clip w-[716px] ${
@@ -233,7 +221,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
               <Divider className="mt-[3.53px]" />
             </CustomerCard.Heading>
             <CustomerCard.Container className="grid gap-72  items-center grid-cols-1 md:grid-cols-2">
-              <CustomerCard.Block className="text-sm justify-between w-full">
+              <CustomerCard.Block className="text-[13px] justify-between w-full">
                 <CustomerCard.Item>
                   <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
                     Name
@@ -285,14 +273,20 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                           <input
                             placeholder="Address Line 1"
                             className="input-class focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
-                            defaultValue={line1}
+                            defaultValue={
+                              data.address ? data.address.line1 : line1
+                            }
                             onChange={(e) => setLine1(e.target.value)}
                             required
                           />
                           <input
                             placeholder="Address Line 2"
                             className="input-class focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
-                            defaultValue={line2}
+                            defaultValue={
+                              data.address && data.address.line2
+                                ? data.address.line2
+                                : line2
+                            }
                             onChange={(e) => setLine2(e.target.value)}
                           />
                         </div>
@@ -314,7 +308,9 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                             placeholder="City"
                             className="input-class-last focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
                             onChange={(e) => setCity(e.target.value)}
-                            defaultValue={city}
+                            defaultValue={
+                              data.address ? data.address.city : city
+                            }
                             required
                           />
                         </div>
@@ -322,12 +318,18 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                           <input
                             placeholder="State"
                             className="w-1/2 focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
-                            defaultValue={state}
+                            defaultValue={
+                              data.address ? data.address.state : state
+                            }
                             onChange={(e) => setState(e.target.value)}
                             required
                           />
                           <input
-                            defaultValue={postalCode}
+                            defaultValue={
+                              data.address
+                                ? data.address.postal_code
+                                : postalCode
+                            }
                             className="w-1/2 focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
                             placeholder="Zip Code"
                             onChange={(e) => setPostalCode(e.target.value)}
@@ -339,7 +341,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   </div>
                 </CustomerCard.Item>
               </CustomerCard.Block>
-              <CustomerCard.Block className="w-full ml-auto text-sm justify-between">
+              <CustomerCard.Block className="w-full ml-auto text-[13px] justify-between">
                 <CustomerCard.Item>
                   <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
                     Email
@@ -386,6 +388,32 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                 </CustomerCard.Item>
                 <CustomerCard.Item>
                   <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Tax Rate
+                  </div>
+                  <div className="flex gap-1">
+                    {" "}
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        placeholder="Tax Rate"
+                        className="input-class focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
+                        defaultValue={data.tax_rate ? data.tax_rate : taxRate}
+                        step=".01"
+                        max={999.9999}
+                        onChange={(e) =>
+                          setTaxRate(e.target.value as unknown as number)
+                        }
+                        required
+                      />
+                    ) : (
+                      <div className="Inter">
+                        {data.tax_rate ? <span>{data.tax_rate}%</span> : "0%"}
+                      </div>
+                    )}
+                  </div>
+                </CustomerCard.Item>
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
                     Payment Method Connected
                   </div>
                   <div className="flex gap-1">
@@ -407,7 +435,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
             </CustomerCard.Container>
           </CustomerCard>
         </div>
-        <div className="col-span-1">
+        <div className="col-span-1 mr-8">
           <CustomerCard className="h-[215px]">
             <CustomerCard.Heading>
               <Typography.Title className="pt-4 flex font-alliance !text-[18px]">

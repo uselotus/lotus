@@ -189,7 +189,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
   };
 
   return (
-    <div className="mx-10">
+    <div>
       <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Credits</h2>
 
       <div className="flex items-center justify-between pb-4">

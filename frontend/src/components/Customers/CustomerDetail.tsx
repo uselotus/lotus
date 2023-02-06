@@ -168,13 +168,14 @@ function CustomerDetail() {
   const createSubscription = (props: CreateSubscriptionType) => {
     createSubscriptionMutation.mutate(props);
   };
-
+  console.log(data);
   return (
     <PageLayout
       title={data?.customer_name}
       className="text-[24px] font-alliance "
       hasBackButton
       aboveTitle
+      mx={false}
       backButton={
         <div>
           <Button

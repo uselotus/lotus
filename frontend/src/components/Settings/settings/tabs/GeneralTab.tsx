@@ -26,6 +26,7 @@ import useGlobalStore from "../../../../stores/useGlobalstore";
 import { QueryErrors } from "../../../../types/error-response-types";
 import { OrganizationType } from "../../../../types/account-type";
 import { country_json } from "../../../../assets/country_codes";
+import { fourDP } from "../../../../helpers/fourDP";
 
 interface InviteWithEmailForm extends HTMLFormControlsCollection {
   email: string;
@@ -179,8 +180,7 @@ const GeneralTab: FC = () => {
   const handleSendInviteEmail = (event: React.FormEvent<FormElements>) => {
     mutation.mutate({ email });
   };
-  const fourDP = (taxRate: number) =>
-    parseFloat(parseFloat(String(taxRate)).toFixed(4));
+
   return (
     <div>
       <div className="flex justify-between w-6/12">

@@ -171,7 +171,7 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
   ];
 
   return (
-    <div className="mx-10">
+    <div>
       <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Invoices</h2>
       {invoices !== undefined ? (
         <Table

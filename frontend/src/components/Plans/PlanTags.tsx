@@ -23,7 +23,7 @@ function PlansTags({ tags, showAddTagButton }: PlanTagsProps) {
                   <span className="flex gap-2" key={tag.tag_name}>
                     <Badge className="text-[12px] px-[5px] py-0.5 bg-white text-black whitespace-nowrap">
                       <div className="flex gap-2 items-center">
-                        <Badge.Dot className={`text-${tag.tag_hex}`} />
+                        <Badge.Dot fill={tag.tag_hex} />
                         <Badge.Content>{tag.tag_name}</Badge.Content>
                       </div>
                     </Badge>
