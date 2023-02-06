@@ -56,7 +56,7 @@
   "navigation": [
     {
       "group": "Overview",
-      "pages": ["overview/why-lotus", "overview/self-hosting", "contributing"]
+      "pages": ["overview/why-lotus", "overview/getting-started","overview/self-hosting", "contributing"]
     },
     {
       "group": "Metering",
