@@ -51,6 +51,7 @@ from metering_billing.serializers.model_serializers import (
     AddOnCreateSerializer,
     AddOnSerializer,
     APITokenSerializer,
+    CustomerSerializer,
     CustomerUpdateSerializer,
     EventSerializer,
     ExternalPlanLinkSerializer,
@@ -437,6 +438,22 @@ class CustomerViewSet(api_views.CustomerViewSet):
         if self.action == "partial_update":
             return CustomerUpdateSerializer
         return sc
+
+    @extend_schema(responses=PlanVersionDetailSerializer)
+    def update(self, request, *args, **kwargs):
+        customer = self.get_object()
+        serializer = self.get_serializer(customer, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        if getattr(customer, "_prefetched_objects_cache", None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            customer._prefetched_objects_cache = {}
+
+        return Response(
+            CustomerSerializer(customer, context=self.get_serializer_context()).data,
+            status=status.HTTP_200_OK,
+        )
 
 
 class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -1104,7 +1121,6 @@ class OrganizationViewSet(
             # If 'prefetch_related' has been applied to a queryset, we need to
             # forcibly invalidate the prefetch cache on the instance.
             org._prefetched_objects_cache = {}
-
         return Response(
             OrganizationSerializer(org, context=self.get_serializer_context()).data,
             status=status.HTTP_200_OK,

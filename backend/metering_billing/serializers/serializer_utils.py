@@ -3,9 +3,7 @@ import uuid
 
 import pytz
 from dateutil.parser import parse
-from django.core.cache import cache
 from django.core.serializers.json import DjangoJSONEncoder
-from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
@@ -32,68 +30,28 @@ class ConvertEmptyStringToNullMixin:
 
 
 class TimezoneFieldMixin:
-    def recursive_convert_datetime_to_utc(self, data):
-        for field_name, value in data.items():
-            field = self.fields.get(field_name)
-            if isinstance(field, serializers.DateTimeField) and value is not None:
-                data[field_name] = timezone.make_aware(value, timezone.utc)
-            if isinstance(field, serializers.ListSerializer):
-                print("found list serializer", field_name, self.fields)
-                data[field_name] = [
-                    self.child.to_internal_value(item) for item in value
-                ]
-            if isinstance(field, serializers.Serializer):
-                data[field_name] = field.to_internal_value(value)
-
-    def to_internal_value(self, data):
-        self.recursive_convert_datetime_to_utc(data)
-        return super().to_internal_value(data)
-
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         customer = getattr(instance, "customer", None)
-        organization = getattr(instance, "organization", None)
-        timezone = self.get_timezone(customer, organization)
-        if timezone is not None:
-            self.convert_datetime_to_timezone(representation, timezone)
-        return representation
-
-    def get_timezone(self, customer, organization):
         timezone_field = "timezone"
         if customer is not None:
-            customer_pk = customer.pk
-            timezone = cache.get(f"customer_{customer_pk}_timezone")
-            if timezone is None:
-                timezone = getattr(customer, timezone_field, None)
-                cache.set(f"customer_{customer_pk}_timezone", timezone, None)
-        elif organization is not None:
-            organization_pk = organization.pk
-            timezone = cache.get(f"organization_{organization_pk}_timezone")
-            if timezone is None:
-                timezone = getattr(organization, timezone_field, None)
-                cache.set(f"organization_{organization_pk}_timezone", timezone, None)
+            timezone = getattr(customer, timezone_field, None)
         else:
-            timezone = pytz.timezone("UTC")
-        return timezone
-
-    def convert_datetime_to_timezone(self, representation, timezone):
-        for field_name, value in representation.items():
-            field = self.fields.get(field_name)
-            if isinstance(field, serializers.DateTimeField) and value is not None:
-                if isinstance(value, str):
-                    value = parse(value)
-                repr = value.astimezone(timezone).isoformat()
-                if repr.endswith("+00:00"):
-                    repr = repr[:-6] + "Z"
-                representation[field_name] = repr
-            if isinstance(field, serializers.ListSerializer):
-                representation[field_name] = [
-                    self.convert_datetime_to_timezone(item, timezone) for item in value
-                ]
-            if isinstance(field, serializers.Serializer):
-                representation[field_name] = self.convert_datetime_to_timezone(
-                    value, timezone
-                )
+            organization = getattr(instance, "organization", None)
+            timezone = (
+                getattr(organization, timezone_field, None)
+                if organization is not None
+                else None
+            )
+        if timezone is not None:
+            for field_name, value in representation.items():
+                if value is None:
+                    representation[field_name] = None
+                field = self.fields.get(field_name)
+                if isinstance(field, serializers.DateTimeField) and value is not None:
+                    if isinstance(value, str):
+                        value = parse(value)
+                    representation[field_name] = value.astimezone(timezone).isoformat()
         return representation
 
 
@@ -308,5 +266,4 @@ class WebhookSecretUUIDField(UUIDPrefixField):
 @extend_schema_field(serializers.RegexField(regex=r"addon_[0-9a-f]{32}"))
 class AddonUUIDField(UUIDPrefixField):
     def __init__(self, *args, **kwargs):
-        super().__init__("addon_", *args, **kwargs)
         super().__init__("addon_", *args, **kwargs)
