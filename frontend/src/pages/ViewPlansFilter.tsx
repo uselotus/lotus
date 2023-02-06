@@ -3,16 +3,20 @@ import { Input } from "antd";
 import { CheckCircleOutlined } from "@ant-design/icons";
 import ChevronDown from "../components/base/ChevronDown";
 import DropdownComponent from "../components/base/Dropdown/Dropdown";
-import createPlanTagsList from "../components/Plans/helpers/createPlanTagsList";
 import { PlanType } from "../types/plan-type";
 import Badge from "../components/base/Badges/Badges";
 import PlansTags from "../components/Plans/PlanTags";
 interface ViewPlansFilterProps {
   onChangeHandler: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onSelectHandler: (tag: PlanType["tags"][0], remove: boolean) => void;
+  onSelectHandler: (tag: tag, remove: boolean) => void;
   onFocusHandler: (focus: boolean) => void;
   value: string;
   tags: PlanType["tags"];
+}
+type T = PlanType["tags"][0];
+
+interface tag extends T {
+  from?: boolean;
 }
 
 const ViewPlansFilter = ({
@@ -22,7 +26,7 @@ const ViewPlansFilter = ({
   onFocusHandler,
   tags,
 }: ViewPlansFilterProps) => {
-  const [internalTags, setInternalTags] = useState<PlanType["tags"]>([]);
+  const [internalTags, setInternalTags] = useState<tag[]>([]);
   return (
     <div className="flex items-center gap-8 mb-10">
       <Input
@@ -54,7 +58,7 @@ const ViewPlansFilter = ({
         </DropdownComponent.Trigger>
         <DropdownComponent.Container>
           {tags &&
-            tags.map((tag, index) => (
+            tags.map((tag: tag, index) => (
               <DropdownComponent.MenuItem
                 onSelect={() => {
                   onFocusHandler(false);
@@ -71,7 +75,10 @@ const ViewPlansFilter = ({
                   }
                 }}
               >
-                <span key={index} className="flex gap-2 justify-between">
+                <span
+                  key={index}
+                  className="flex gap-2 items-center justify-between"
+                >
                   <span className="flex gap-2 items-center">
                     <Badge.Dot fill={tag.tag_hex} />
                     <span className="text-black">{tag.tag_name}</span>

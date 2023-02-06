@@ -466,6 +466,7 @@ const ViewPlans: FC = () => {
               onFocusHandler={(focus) => setFocus(focus)}
               onChangeHandler={(e) => setSearchQuery(e.target.value)}
               onSelectHandler={(tag, remove) => {
+                delete tag.from;
                 if (remove) {
                   const filter = tagSearchQuery.filter(
                     (t) => t !== tag.tag_name.toLowerCase()
@@ -553,6 +554,7 @@ const ViewPlans: FC = () => {
             onFocusHandler={(focus) => setFocus(focus)}
             onChangeHandler={(e) => setSearchQuery(e.target.value)}
             onSelectHandler={(tag, remove) => {
+              delete tag.from;
               if (remove) {
                 const filter = tagSearchQuery.filter(
                   (t) => t !== tag.tag_name.toLowerCase()
@@ -639,6 +641,7 @@ const ViewPlans: FC = () => {
             onFocusHandler={(focus) => setFocus(focus)}
             onChangeHandler={(e) => setSearchQuery(e.target.value)}
             onSelectHandler={(tag, remove) => {
+              delete tag.from;
               if (remove) {
                 const filter = tagSearchQuery.filter(
                   (t) => t !== tag.tag_name.toLowerCase()

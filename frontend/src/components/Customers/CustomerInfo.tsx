@@ -198,7 +198,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
       <div className="grid gap-16 grid-cols-1   md:grid-cols-3">
         <div className="col-span-2">
           <CustomerCard
-            className={`overflow-x-clip ${
+            className={`overflow-x-clip w-[716px] ${
               !isEditing ? "h-[215px]" : "min-h-[230px]"
             }  `}
           >
@@ -230,7 +230,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   )}
                 </div>
               </div>
-              <Divider />
+              <Divider className="mt-[3.53px]" />
             </CustomerCard.Heading>
             <CustomerCard.Container className="grid gap-72  items-center grid-cols-1 md:grid-cols-2">
               <CustomerCard.Block className="text-sm justify-between w-full">

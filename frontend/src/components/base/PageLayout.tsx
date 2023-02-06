@@ -24,7 +24,7 @@ export function PageLayout({
         aboveTitle={aboveTitle}
         backButton={backButton}
       />
-      <PageHeader />
+      <PageHeader className="!-mt-[26px]" />
 
       <div className="mx-10 mt-16 pb-20">
         <div className="flex items-center justify-between mb-6">
