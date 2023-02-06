@@ -443,7 +443,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   </div>
                   <div
                     className={`Inter ${
-                      cost_data.margin * 100 > 50
+                      cost_data.margin * 100 > 0
                         ? "text-emerald-800"
                         : "text-rose-700"
                     }`}
