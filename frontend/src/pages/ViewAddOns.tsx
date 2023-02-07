@@ -1,14 +1,9 @@
-import React, { FC, useState } from "react";
+import React, { FC } from "react";
 import { Button } from "antd";
-import { Addon, Plan } from "../api/api";
-import { ArrowRightOutlined, PlusOutlined } from "@ant-design/icons";
+import { PlusOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import {
-  useQuery,
-  UseQueryResult,
-  useMutation,
-  useQueryClient,
-} from "react-query";
+import { useQuery, UseQueryResult } from "react-query";
+import { Addon } from "../api/api";
 import DBSVG from "../components/base/db-svg";
 import { PageLayout } from "../components/base/PageLayout";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -17,16 +12,13 @@ import { AddonType } from "../types/addon-type";
 
 const ViewAddOns: FC = () => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const { data: addOns, isLoading }: UseQueryResult<AddonType[]> = useQuery<
     AddonType[]
   >(
     ["add-ons"],
     () =>
-      Addon.getAddons().then((res) => {
-        return res;
-      }),
+      Addon.getAddons().then((res) => res),
     {
       refetchOnMount: "always",
     }

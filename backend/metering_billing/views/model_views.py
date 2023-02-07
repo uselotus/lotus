@@ -1,22 +1,16 @@
 # import lotus_python
+import api.views as api_views
 import posthog
 from actstream.models import Action
-from django.conf import settings
-from django.core.cache import cache
-from django.db.utils import IntegrityError
-from drf_spectacular.utils import OpenApiCallback, extend_schema, inline_serializer
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import action
-from rest_framework.pagination import CursorPagination
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-
-import api.views as api_views
 from api.serializers.webhook_serializers import (
     InvoiceCreatedSerializer,
     InvoicePaidSerializer,
     UsageAlertTriggeredSerializer,
 )
+from django.conf import settings
+from django.core.cache import cache
+from django.db.utils import IntegrityError
+from drf_spectacular.utils import OpenApiCallback, extend_schema, inline_serializer
 from metering_billing.exceptions import (
     DuplicateMetric,
     DuplicateWebhookEndpoint,
@@ -51,6 +45,7 @@ from metering_billing.serializers.model_serializers import (
     AddOnCreateSerializer,
     AddOnSerializer,
     APITokenSerializer,
+    CustomerSerializer,
     CustomerUpdateSerializer,
     EventSerializer,
     ExternalPlanLinkSerializer,
@@ -97,6 +92,11 @@ from metering_billing.utils.enums import (
     PAYMENT_PROVIDERS,
     WEBHOOK_TRIGGER_EVENTS,
 )
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.pagination import CursorPagination
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -438,6 +438,22 @@ class CustomerViewSet(api_views.CustomerViewSet):
             return CustomerUpdateSerializer
         return sc
 
+    @extend_schema(responses=PlanVersionDetailSerializer)
+    def update(self, request, *args, **kwargs):
+        customer = self.get_object()
+        serializer = self.get_serializer(customer, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        if getattr(customer, "_prefetched_objects_cache", None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            customer._prefetched_objects_cache = {}
+
+        return Response(
+            CustomerSerializer(customer, context=self.get_serializer_context()).data,
+            status=status.HTTP_200_OK,
+        )
+
 
 class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     http_method_names = ["get", "post", "head", "patch"]
@@ -704,7 +720,10 @@ class PlanViewSet(api_views.PlanViewSet):
 
     def get_object(self):
         string_uuid = self.kwargs[self.lookup_field]
-        uuid = PlanUUIDField().to_internal_value(string_uuid)
+        if "plan_" in string_uuid:
+            uuid = PlanUUIDField().to_internal_value(string_uuid)
+        else:
+            uuid = AddonUUIDField().to_internal_value(string_uuid)
         self.kwargs[self.lookup_field] = uuid
         return super().get_object()
 
@@ -1029,7 +1048,9 @@ class PricingUnitViewSet(
 
     def get_queryset(self):
         organization = self.request.organization
-        return PricingUnit.objects.filter(organization=organization)
+        return PricingUnit.objects.filter(organization=organization).prefetch_related(
+            "organization"
+        )
 
     def perform_create(self, serializer):
         serializer.save(organization=self.request.organization)
@@ -1101,7 +1122,6 @@ class OrganizationViewSet(
             # If 'prefetch_related' has been applied to a queryset, we need to
             # forcibly invalidate the prefetch cache on the instance.
             org._prefetched_objects_cache = {}
-
         return Response(
             OrganizationSerializer(org, context=self.get_serializer_context()).data,
             status=status.HTTP_200_OK,

@@ -1,8 +1,8 @@
 import React, { Fragment, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "react-query";
 import dayjs from "dayjs";
-import { Paper } from "../../../base/Paper";
 import { Typography } from "antd";
+import { Paper } from "../../../base/Paper";
 import { Organization } from "../../../../api/api";
 import LoadingSpinner from "../../../LoadingSpinner";
 import CustomPagination from "../../../CustomPagination/CustomPagination";
@@ -41,10 +41,10 @@ export default function ActivityStream() {
 
   if ((isLoading || !activityItems) && !cursor) {
     return (
-      <Fragment>
+      <>
         <Typography.Title level={2}>Activity Stream</Typography.Title>
         <LoadingSpinner />.
-      </Fragment>
+      </>
     );
   }
   if (
@@ -52,13 +52,13 @@ export default function ActivityStream() {
     activityItems?.results.length === 0
   ) {
     return (
-      <Fragment>
+      <>
         <Typography.Title level={2}>Activity Stream</Typography.Title>
         <div className="align-center">
           <h3 className="text-xl font-main align-center">No Activities</h3>
           <div className="separator mb-6 mt-6" />
         </div>
-      </Fragment>
+      </>
     );
   }
 
@@ -79,15 +79,15 @@ export default function ActivityStream() {
         setCursor(null);
         setCurrentPage(1);
         queryClient.invalidateQueries(["preview_events", null]);
-        return;
+
     }
   };
 
   return (
-    <Fragment>
+    <>
       <Typography.Title level={2}>Activity Stream</Typography.Title>
       <div className="w-1/2 justify-center">
-        <Paper border={true}>
+        <Paper border>
           <ul role="list" className="divide-y divide-gray-200">
             {activityItems?.map((activityItem) => (
               <li key={activityItem.id} className="py-4">
@@ -139,6 +139,6 @@ export default function ActivityStream() {
           handleMovements={handleMovements}
         />
       </div>
-    </Fragment>
+    </>
   );
 }

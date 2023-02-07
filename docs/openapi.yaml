@@ -69,8 +69,8 @@ paths:
             - inactive
             type: string
           default:
-          - inactive
           - active
+          - inactive
         description: Filter to a specific set of adjustment statuses. Defaults to
           both active and inactive.
       tags:
@@ -640,6 +640,17 @@ paths:
           - active
         description: Filter to a specific set of subscription statuses. Defaults to
           active.
+      - in: query
+        name: subscription_filters
+        schema:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilterRequest'
+        description: Filter to a specific set of subscription filters. If your billing
+          model only allows for one subscription per customer, you very likely do
+          not need this field. Must be formatted as a JSON-encoded + stringified list
+          of dictionaries, where each dictionary has a key of 'property_name' and
+          a key of 'value'.
       tags:
       - api
       security:
@@ -683,9 +694,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/SubscriptionRecord'
           description: ''
-  /api/subscriptions/attach_addon/:
+  /api/subscriptions/addons/add/:
     post:
-      operationId: api_subscriptions_attach_addon_create
+      operationId: api_subscriptions_addons_add_create
       tags:
       - api
       requestBody:
@@ -700,6 +711,128 @@ paths:
             schema:
               $ref: '#/components/schemas/AddOnSubscriptionRecordCreateRequest'
         required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddOnSubscriptionRecord'
+          description: ''
+  /api/subscriptions/addons/cancel/:
+    post:
+      operationId: api_subscriptions_addons_cancel_create
+      parameters:
+      - in: query
+        name: addon_id
+        schema:
+          type: string
+          format: uuid
+        description: Filter to a specific addon.
+        required: true
+      - in: query
+        name: attached_customer_id
+        schema:
+          type: string
+          minLength: 1
+        description: Filter to a specific customer.
+        required: true
+      - in: query
+        name: attached_plan_id
+        schema:
+          type: string
+          format: uuid
+        description: Filter to a specific plan.
+        required: true
+      - in: query
+        name: attached_subscription_filters
+        schema:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilterRequest'
+        description: Filter to a specific set of subscription filters. If your billing
+          model only allows for one subscription per customer, you very likely do
+          not need this field. Must be formatted as a JSON-encoded + stringified list
+          of dictionaries, where each dictionary has a key of 'property_name' and
+          a key of 'value'.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRecordCancelRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRecordCancelRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRecordCancelRequest'
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AddOnSubscriptionRecord'
+          description: ''
+  /api/subscriptions/addons/update/:
+    post:
+      operationId: api_subscriptions_addons_update_create
+      parameters:
+      - in: query
+        name: addon_id
+        schema:
+          type: string
+          format: uuid
+        description: Filter to a specific addon.
+        required: true
+      - in: query
+        name: attached_customer_id
+        schema:
+          type: string
+          minLength: 1
+        description: Filter to a specific customer.
+        required: true
+      - in: query
+        name: attached_plan_id
+        schema:
+          type: string
+          format: uuid
+        description: Filter to a specific plan.
+        required: true
+      - in: query
+        name: attached_subscription_filters
+        schema:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilterRequest'
+        description: Filter to a specific set of subscription filters. If your billing
+          model only allows for one subscription per customer, you very likely do
+          not need this field. Must be formatted as a JSON-encoded + stringified list
+          of dictionaries, where each dictionary has a key of 'property_name' and
+          a key of 'value'.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddonSubscriptionRecordUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AddonSubscriptionRecordUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AddonSubscriptionRecordUpdateRequest'
       security:
       - knoxTokenAuth: []
       - OrganizationApiKeyAuth: []
@@ -1026,10 +1159,9 @@ components:
           type: number
           format: double
           maximum: 10000000000
-          minimum: -10000000000
+          minimum: 0
           exclusiveMaximum: true
-          exclusiveMinimum: true
-          description: The flat rate of the add-on plan.
+          readOnly: true
         components:
           type: array
           items:
@@ -1051,24 +1183,16 @@ components:
           enum:
           - invoice_on_attach
           - invoice_on_subscription_end
-          type: string
           readOnly: true
         billing_frequency:
           enum:
           - one_time
           - recurring
-          type: string
-          readOnly: true
-        recurring_flat_fee_timing:
-          enum:
-          - in_advance
-          - in_arrears
-          type: string
           readOnly: true
         addon_type:
           enum:
-          - flat
           - usage_based
+          - flat
           type: string
           readOnly: true
       required:
@@ -1083,7 +1207,6 @@ components:
       - features
       - flat_rate
       - invoice_when
-      - recurring_flat_fee_timing
     AddOnCreateRequest:
       type: object
       properties:
@@ -1093,16 +1216,14 @@ components:
           description: The name of the add-on plan.
         description:
           type: string
+          nullable: true
           minLength: 1
           description: The description of the add-on plan.
-        flat_rate:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-          description: The flat rate of the add-on plan.
+        recurring_charges:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecurringChargeCreateRequest'
+          nullable: true
         components:
           type: array
           items:
@@ -1113,10 +1234,10 @@ components:
           items:
             type: string
             format: uuid
-            nullable: true
         currency_code:
           type: string
           minLength: 1
+          nullable: true
         invoice_when:
           enum:
           - invoice_on_attach
@@ -1125,17 +1246,10 @@ components:
           enum:
           - one_time
           - recurring
-        recurring_flat_fee_timing:
-          enum:
-          - in_advance
-          - in_arrears
-          - 
-          nullable: true
       required:
       - addon_name
       - billing_frequency
       - description
-      - flat_rate
       - invoice_when
     AddOnSubscriptionRecord:
       type: object
@@ -1162,8 +1276,14 @@ components:
           type: boolean
           readOnly: true
           description: Whether the subscription has been fully billed and finalized.
+        auto_renew:
+          type: boolean
+          readOnly: true
+          description: Whether the subscription automatically renews. Defaults to
+            true.
       required:
       - addon
+      - auto_renew
       - customer
       - end_date
       - fully_billed
@@ -1194,11 +1314,37 @@ components:
           description: The add-on to be applied to the subscription.
         quantity:
           type: integer
+          minimum: 1
           default: 1
+          description: The quantity of the add-on to be applied to the subscription.
+            Flat fees of add-ons will be multiplied by this quantity. Usage-based
+            components of add-ons will be unaffected by the quantity.
       required:
       - addon_id
       - attach_to_customer_id
       - attach_to_plan_id
+    AddonSubscriptionRecordUpdateRequest:
+      type: object
+      properties:
+        invoicing_behavior:
+          enum:
+          - add_to_next_invoice
+          - invoice_now
+          type: string
+          default: invoice_now
+          description: The invoicing behavior to use when changing the quantity. Invoice
+            now will recalculate the amount due immediately, whereas add_to_next_invoice
+            will wait until the end of the subscription to do the calculation.
+        turn_off_auto_renew:
+          type: boolean
+          description: Turn off auto renew for the addon
+        end_date:
+          type: string
+          format: date-time
+          description: Change the end date for the addon.
+        quantity:
+          type: integer
+          description: Change the quantity of the susbcription to be this number.
     Address:
       type: object
       properties:
@@ -1339,19 +1485,21 @@ components:
         kpis:
           type: object
           additionalProperties: {}
+        backtest_id:
+          type: string
+        backtest_name:
+          type: string
+          maxLength: 100
         backtest_substitutions:
           type: array
           items:
             $ref: '#/components/schemas/BacktestSubstitution'
-        time_created:
-          type: string
-          format: date-time
-        backtest_name:
-          type: string
-          maxLength: 100
         end_date:
           type: string
           format: date
+        time_created:
+          type: string
+          format: date-time
         start_date:
           type: string
           format: date
@@ -1363,8 +1511,6 @@ components:
           type: string
         backtest_results:
           $ref: '#/components/schemas/AllSubstitutionResults'
-        backtest_id:
-          type: string
       required:
       - backtest_id
       - backtest_name
@@ -1679,6 +1825,10 @@ components:
           - 
           type: string
           nullable: true
+        payment_provider_id:
+          type: string
+          nullable: true
+          readOnly: true
         has_payment_method:
           type: boolean
           readOnly: true
@@ -1697,6 +1847,443 @@ components:
           readOnly: true
           nullable: true
           description: Tax rate as percentage. For example, 10.5 for 10.5%
+        timezone:
+          enum:
+          - Africa/Abidjan
+          - Africa/Accra
+          - Africa/Addis_Ababa
+          - Africa/Algiers
+          - Africa/Asmara
+          - Africa/Bamako
+          - Africa/Bangui
+          - Africa/Banjul
+          - Africa/Bissau
+          - Africa/Blantyre
+          - Africa/Brazzaville
+          - Africa/Bujumbura
+          - Africa/Cairo
+          - Africa/Casablanca
+          - Africa/Ceuta
+          - Africa/Conakry
+          - Africa/Dakar
+          - Africa/Dar_es_Salaam
+          - Africa/Djibouti
+          - Africa/Douala
+          - Africa/El_Aaiun
+          - Africa/Freetown
+          - Africa/Gaborone
+          - Africa/Harare
+          - Africa/Johannesburg
+          - Africa/Juba
+          - Africa/Kampala
+          - Africa/Khartoum
+          - Africa/Kigali
+          - Africa/Kinshasa
+          - Africa/Lagos
+          - Africa/Libreville
+          - Africa/Lome
+          - Africa/Luanda
+          - Africa/Lubumbashi
+          - Africa/Lusaka
+          - Africa/Malabo
+          - Africa/Maputo
+          - Africa/Maseru
+          - Africa/Mbabane
+          - Africa/Mogadishu
+          - Africa/Monrovia
+          - Africa/Nairobi
+          - Africa/Ndjamena
+          - Africa/Niamey
+          - Africa/Nouakchott
+          - Africa/Ouagadougou
+          - Africa/Porto-Novo
+          - Africa/Sao_Tome
+          - Africa/Tripoli
+          - Africa/Tunis
+          - Africa/Windhoek
+          - America/Adak
+          - America/Anchorage
+          - America/Anguilla
+          - America/Antigua
+          - America/Araguaina
+          - America/Argentina/Buenos_Aires
+          - America/Argentina/Catamarca
+          - America/Argentina/Cordoba
+          - America/Argentina/Jujuy
+          - America/Argentina/La_Rioja
+          - America/Argentina/Mendoza
+          - America/Argentina/Rio_Gallegos
+          - America/Argentina/Salta
+          - America/Argentina/San_Juan
+          - America/Argentina/San_Luis
+          - America/Argentina/Tucuman
+          - America/Argentina/Ushuaia
+          - America/Aruba
+          - America/Asuncion
+          - America/Atikokan
+          - America/Bahia
+          - America/Bahia_Banderas
+          - America/Barbados
+          - America/Belem
+          - America/Belize
+          - America/Blanc-Sablon
+          - America/Boa_Vista
+          - America/Bogota
+          - America/Boise
+          - America/Cambridge_Bay
+          - America/Campo_Grande
+          - America/Cancun
+          - America/Caracas
+          - America/Cayenne
+          - America/Cayman
+          - America/Chicago
+          - America/Chihuahua
+          - America/Ciudad_Juarez
+          - America/Costa_Rica
+          - America/Creston
+          - America/Cuiaba
+          - America/Curacao
+          - America/Danmarkshavn
+          - America/Dawson
+          - America/Dawson_Creek
+          - America/Denver
+          - America/Detroit
+          - America/Dominica
+          - America/Edmonton
+          - America/Eirunepe
+          - America/El_Salvador
+          - America/Fort_Nelson
+          - America/Fortaleza
+          - America/Glace_Bay
+          - America/Goose_Bay
+          - America/Grand_Turk
+          - America/Grenada
+          - America/Guadeloupe
+          - America/Guatemala
+          - America/Guayaquil
+          - America/Guyana
+          - America/Halifax
+          - America/Havana
+          - America/Hermosillo
+          - America/Indiana/Indianapolis
+          - America/Indiana/Knox
+          - America/Indiana/Marengo
+          - America/Indiana/Petersburg
+          - America/Indiana/Tell_City
+          - America/Indiana/Vevay
+          - America/Indiana/Vincennes
+          - America/Indiana/Winamac
+          - America/Inuvik
+          - America/Iqaluit
+          - America/Jamaica
+          - America/Juneau
+          - America/Kentucky/Louisville
+          - America/Kentucky/Monticello
+          - America/Kralendijk
+          - America/La_Paz
+          - America/Lima
+          - America/Los_Angeles
+          - America/Lower_Princes
+          - America/Maceio
+          - America/Managua
+          - America/Manaus
+          - America/Marigot
+          - America/Martinique
+          - America/Matamoros
+          - America/Mazatlan
+          - America/Menominee
+          - America/Merida
+          - America/Metlakatla
+          - America/Mexico_City
+          - America/Miquelon
+          - America/Moncton
+          - America/Monterrey
+          - America/Montevideo
+          - America/Montserrat
+          - America/Nassau
+          - America/New_York
+          - America/Nome
+          - America/Noronha
+          - America/North_Dakota/Beulah
+          - America/North_Dakota/Center
+          - America/North_Dakota/New_Salem
+          - America/Nuuk
+          - America/Ojinaga
+          - America/Panama
+          - America/Paramaribo
+          - America/Phoenix
+          - America/Port-au-Prince
+          - America/Port_of_Spain
+          - America/Porto_Velho
+          - America/Puerto_Rico
+          - America/Punta_Arenas
+          - America/Rankin_Inlet
+          - America/Recife
+          - America/Regina
+          - America/Resolute
+          - America/Rio_Branco
+          - America/Santarem
+          - America/Santiago
+          - America/Santo_Domingo
+          - America/Sao_Paulo
+          - America/Scoresbysund
+          - America/Sitka
+          - America/St_Barthelemy
+          - America/St_Johns
+          - America/St_Kitts
+          - America/St_Lucia
+          - America/St_Thomas
+          - America/St_Vincent
+          - America/Swift_Current
+          - America/Tegucigalpa
+          - America/Thule
+          - America/Tijuana
+          - America/Toronto
+          - America/Tortola
+          - America/Vancouver
+          - America/Whitehorse
+          - America/Winnipeg
+          - America/Yakutat
+          - America/Yellowknife
+          - Antarctica/Casey
+          - Antarctica/Davis
+          - Antarctica/DumontDUrville
+          - Antarctica/Macquarie
+          - Antarctica/Mawson
+          - Antarctica/McMurdo
+          - Antarctica/Palmer
+          - Antarctica/Rothera
+          - Antarctica/Syowa
+          - Antarctica/Troll
+          - Antarctica/Vostok
+          - Arctic/Longyearbyen
+          - Asia/Aden
+          - Asia/Almaty
+          - Asia/Amman
+          - Asia/Anadyr
+          - Asia/Aqtau
+          - Asia/Aqtobe
+          - Asia/Ashgabat
+          - Asia/Atyrau
+          - Asia/Baghdad
+          - Asia/Bahrain
+          - Asia/Baku
+          - Asia/Bangkok
+          - Asia/Barnaul
+          - Asia/Beirut
+          - Asia/Bishkek
+          - Asia/Brunei
+          - Asia/Chita
+          - Asia/Choibalsan
+          - Asia/Colombo
+          - Asia/Damascus
+          - Asia/Dhaka
+          - Asia/Dili
+          - Asia/Dubai
+          - Asia/Dushanbe
+          - Asia/Famagusta
+          - Asia/Gaza
+          - Asia/Hebron
+          - Asia/Ho_Chi_Minh
+          - Asia/Hong_Kong
+          - Asia/Hovd
+          - Asia/Irkutsk
+          - Asia/Jakarta
+          - Asia/Jayapura
+          - Asia/Jerusalem
+          - Asia/Kabul
+          - Asia/Kamchatka
+          - Asia/Karachi
+          - Asia/Kathmandu
+          - Asia/Khandyga
+          - Asia/Kolkata
+          - Asia/Krasnoyarsk
+          - Asia/Kuala_Lumpur
+          - Asia/Kuching
+          - Asia/Kuwait
+          - Asia/Macau
+          - Asia/Magadan
+          - Asia/Makassar
+          - Asia/Manila
+          - Asia/Muscat
+          - Asia/Nicosia
+          - Asia/Novokuznetsk
+          - Asia/Novosibirsk
+          - Asia/Omsk
+          - Asia/Oral
+          - Asia/Phnom_Penh
+          - Asia/Pontianak
+          - Asia/Pyongyang
+          - Asia/Qatar
+          - Asia/Qostanay
+          - Asia/Qyzylorda
+          - Asia/Riyadh
+          - Asia/Sakhalin
+          - Asia/Samarkand
+          - Asia/Seoul
+          - Asia/Shanghai
+          - Asia/Singapore
+          - Asia/Srednekolymsk
+          - Asia/Taipei
+          - Asia/Tashkent
+          - Asia/Tbilisi
+          - Asia/Tehran
+          - Asia/Thimphu
+          - Asia/Tokyo
+          - Asia/Tomsk
+          - Asia/Ulaanbaatar
+          - Asia/Urumqi
+          - Asia/Ust-Nera
+          - Asia/Vientiane
+          - Asia/Vladivostok
+          - Asia/Yakutsk
+          - Asia/Yangon
+          - Asia/Yekaterinburg
+          - Asia/Yerevan
+          - Atlantic/Azores
+          - Atlantic/Bermuda
+          - Atlantic/Canary
+          - Atlantic/Cape_Verde
+          - Atlantic/Faroe
+          - Atlantic/Madeira
+          - Atlantic/Reykjavik
+          - Atlantic/South_Georgia
+          - Atlantic/St_Helena
+          - Atlantic/Stanley
+          - Australia/Adelaide
+          - Australia/Brisbane
+          - Australia/Broken_Hill
+          - Australia/Darwin
+          - Australia/Eucla
+          - Australia/Hobart
+          - Australia/Lindeman
+          - Australia/Lord_Howe
+          - Australia/Melbourne
+          - Australia/Perth
+          - Australia/Sydney
+          - Canada/Atlantic
+          - Canada/Central
+          - Canada/Eastern
+          - Canada/Mountain
+          - Canada/Newfoundland
+          - Canada/Pacific
+          - Europe/Amsterdam
+          - Europe/Andorra
+          - Europe/Astrakhan
+          - Europe/Athens
+          - Europe/Belgrade
+          - Europe/Berlin
+          - Europe/Bratislava
+          - Europe/Brussels
+          - Europe/Bucharest
+          - Europe/Budapest
+          - Europe/Busingen
+          - Europe/Chisinau
+          - Europe/Copenhagen
+          - Europe/Dublin
+          - Europe/Gibraltar
+          - Europe/Guernsey
+          - Europe/Helsinki
+          - Europe/Isle_of_Man
+          - Europe/Istanbul
+          - Europe/Jersey
+          - Europe/Kaliningrad
+          - Europe/Kirov
+          - Europe/Kyiv
+          - Europe/Lisbon
+          - Europe/Ljubljana
+          - Europe/London
+          - Europe/Luxembourg
+          - Europe/Madrid
+          - Europe/Malta
+          - Europe/Mariehamn
+          - Europe/Minsk
+          - Europe/Monaco
+          - Europe/Moscow
+          - Europe/Oslo
+          - Europe/Paris
+          - Europe/Podgorica
+          - Europe/Prague
+          - Europe/Riga
+          - Europe/Rome
+          - Europe/Samara
+          - Europe/San_Marino
+          - Europe/Sarajevo
+          - Europe/Saratov
+          - Europe/Simferopol
+          - Europe/Skopje
+          - Europe/Sofia
+          - Europe/Stockholm
+          - Europe/Tallinn
+          - Europe/Tirane
+          - Europe/Ulyanovsk
+          - Europe/Vaduz
+          - Europe/Vatican
+          - Europe/Vienna
+          - Europe/Vilnius
+          - Europe/Volgograd
+          - Europe/Warsaw
+          - Europe/Zagreb
+          - Europe/Zurich
+          - GMT
+          - Indian/Antananarivo
+          - Indian/Chagos
+          - Indian/Christmas
+          - Indian/Cocos
+          - Indian/Comoro
+          - Indian/Kerguelen
+          - Indian/Mahe
+          - Indian/Maldives
+          - Indian/Mauritius
+          - Indian/Mayotte
+          - Indian/Reunion
+          - Pacific/Apia
+          - Pacific/Auckland
+          - Pacific/Bougainville
+          - Pacific/Chatham
+          - Pacific/Chuuk
+          - Pacific/Easter
+          - Pacific/Efate
+          - Pacific/Fakaofo
+          - Pacific/Fiji
+          - Pacific/Funafuti
+          - Pacific/Galapagos
+          - Pacific/Gambier
+          - Pacific/Guadalcanal
+          - Pacific/Guam
+          - Pacific/Honolulu
+          - Pacific/Kanton
+          - Pacific/Kiritimati
+          - Pacific/Kosrae
+          - Pacific/Kwajalein
+          - Pacific/Majuro
+          - Pacific/Marquesas
+          - Pacific/Midway
+          - Pacific/Nauru
+          - Pacific/Niue
+          - Pacific/Norfolk
+          - Pacific/Noumea
+          - Pacific/Pago_Pago
+          - Pacific/Palau
+          - Pacific/Pitcairn
+          - Pacific/Pohnpei
+          - Pacific/Port_Moresby
+          - Pacific/Rarotonga
+          - Pacific/Saipan
+          - Pacific/Tahiti
+          - Pacific/Tarawa
+          - Pacific/Tongatapu
+          - Pacific/Wake
+          - Pacific/Wallis
+          - US/Alaska
+          - US/Arizona
+          - US/Central
+          - US/Eastern
+          - US/Hawaii
+          - US/Mountain
+          - US/Pacific
+          - UTC
+          type: string
       required:
       - customer_id
       - customer_name
@@ -1706,8 +2293,10 @@ components:
       - integrations
       - invoices
       - payment_provider
+      - payment_provider_id
       - subscriptions
       - tax_rate
+      - timezone
       - total_amount_due
     CustomerBalanceAdjustment:
       type: object
@@ -1950,8 +2539,446 @@ components:
           minimum: 0
           nullable: true
           description: Tax rate as percentage. For example, 10.5 for 10.5%
+        timezone:
+          enum:
+          - Africa/Abidjan
+          - Africa/Accra
+          - Africa/Addis_Ababa
+          - Africa/Algiers
+          - Africa/Asmara
+          - Africa/Bamako
+          - Africa/Bangui
+          - Africa/Banjul
+          - Africa/Bissau
+          - Africa/Blantyre
+          - Africa/Brazzaville
+          - Africa/Bujumbura
+          - Africa/Cairo
+          - Africa/Casablanca
+          - Africa/Ceuta
+          - Africa/Conakry
+          - Africa/Dakar
+          - Africa/Dar_es_Salaam
+          - Africa/Djibouti
+          - Africa/Douala
+          - Africa/El_Aaiun
+          - Africa/Freetown
+          - Africa/Gaborone
+          - Africa/Harare
+          - Africa/Johannesburg
+          - Africa/Juba
+          - Africa/Kampala
+          - Africa/Khartoum
+          - Africa/Kigali
+          - Africa/Kinshasa
+          - Africa/Lagos
+          - Africa/Libreville
+          - Africa/Lome
+          - Africa/Luanda
+          - Africa/Lubumbashi
+          - Africa/Lusaka
+          - Africa/Malabo
+          - Africa/Maputo
+          - Africa/Maseru
+          - Africa/Mbabane
+          - Africa/Mogadishu
+          - Africa/Monrovia
+          - Africa/Nairobi
+          - Africa/Ndjamena
+          - Africa/Niamey
+          - Africa/Nouakchott
+          - Africa/Ouagadougou
+          - Africa/Porto-Novo
+          - Africa/Sao_Tome
+          - Africa/Tripoli
+          - Africa/Tunis
+          - Africa/Windhoek
+          - America/Adak
+          - America/Anchorage
+          - America/Anguilla
+          - America/Antigua
+          - America/Araguaina
+          - America/Argentina/Buenos_Aires
+          - America/Argentina/Catamarca
+          - America/Argentina/Cordoba
+          - America/Argentina/Jujuy
+          - America/Argentina/La_Rioja
+          - America/Argentina/Mendoza
+          - America/Argentina/Rio_Gallegos
+          - America/Argentina/Salta
+          - America/Argentina/San_Juan
+          - America/Argentina/San_Luis
+          - America/Argentina/Tucuman
+          - America/Argentina/Ushuaia
+          - America/Aruba
+          - America/Asuncion
+          - America/Atikokan
+          - America/Bahia
+          - America/Bahia_Banderas
+          - America/Barbados
+          - America/Belem
+          - America/Belize
+          - America/Blanc-Sablon
+          - America/Boa_Vista
+          - America/Bogota
+          - America/Boise
+          - America/Cambridge_Bay
+          - America/Campo_Grande
+          - America/Cancun
+          - America/Caracas
+          - America/Cayenne
+          - America/Cayman
+          - America/Chicago
+          - America/Chihuahua
+          - America/Ciudad_Juarez
+          - America/Costa_Rica
+          - America/Creston
+          - America/Cuiaba
+          - America/Curacao
+          - America/Danmarkshavn
+          - America/Dawson
+          - America/Dawson_Creek
+          - America/Denver
+          - America/Detroit
+          - America/Dominica
+          - America/Edmonton
+          - America/Eirunepe
+          - America/El_Salvador
+          - America/Fort_Nelson
+          - America/Fortaleza
+          - America/Glace_Bay
+          - America/Goose_Bay
+          - America/Grand_Turk
+          - America/Grenada
+          - America/Guadeloupe
+          - America/Guatemala
+          - America/Guayaquil
+          - America/Guyana
+          - America/Halifax
+          - America/Havana
+          - America/Hermosillo
+          - America/Indiana/Indianapolis
+          - America/Indiana/Knox
+          - America/Indiana/Marengo
+          - America/Indiana/Petersburg
+          - America/Indiana/Tell_City
+          - America/Indiana/Vevay
+          - America/Indiana/Vincennes
+          - America/Indiana/Winamac
+          - America/Inuvik
+          - America/Iqaluit
+          - America/Jamaica
+          - America/Juneau
+          - America/Kentucky/Louisville
+          - America/Kentucky/Monticello
+          - America/Kralendijk
+          - America/La_Paz
+          - America/Lima
+          - America/Los_Angeles
+          - America/Lower_Princes
+          - America/Maceio
+          - America/Managua
+          - America/Manaus
+          - America/Marigot
+          - America/Martinique
+          - America/Matamoros
+          - America/Mazatlan
+          - America/Menominee
+          - America/Merida
+          - America/Metlakatla
+          - America/Mexico_City
+          - America/Miquelon
+          - America/Moncton
+          - America/Monterrey
+          - America/Montevideo
+          - America/Montserrat
+          - America/Nassau
+          - America/New_York
+          - America/Nome
+          - America/Noronha
+          - America/North_Dakota/Beulah
+          - America/North_Dakota/Center
+          - America/North_Dakota/New_Salem
+          - America/Nuuk
+          - America/Ojinaga
+          - America/Panama
+          - America/Paramaribo
+          - America/Phoenix
+          - America/Port-au-Prince
+          - America/Port_of_Spain
+          - America/Porto_Velho
+          - America/Puerto_Rico
+          - America/Punta_Arenas
+          - America/Rankin_Inlet
+          - America/Recife
+          - America/Regina
+          - America/Resolute
+          - America/Rio_Branco
+          - America/Santarem
+          - America/Santiago
+          - America/Santo_Domingo
+          - America/Sao_Paulo
+          - America/Scoresbysund
+          - America/Sitka
+          - America/St_Barthelemy
+          - America/St_Johns
+          - America/St_Kitts
+          - America/St_Lucia
+          - America/St_Thomas
+          - America/St_Vincent
+          - America/Swift_Current
+          - America/Tegucigalpa
+          - America/Thule
+          - America/Tijuana
+          - America/Toronto
+          - America/Tortola
+          - America/Vancouver
+          - America/Whitehorse
+          - America/Winnipeg
+          - America/Yakutat
+          - America/Yellowknife
+          - Antarctica/Casey
+          - Antarctica/Davis
+          - Antarctica/DumontDUrville
+          - Antarctica/Macquarie
+          - Antarctica/Mawson
+          - Antarctica/McMurdo
+          - Antarctica/Palmer
+          - Antarctica/Rothera
+          - Antarctica/Syowa
+          - Antarctica/Troll
+          - Antarctica/Vostok
+          - Arctic/Longyearbyen
+          - Asia/Aden
+          - Asia/Almaty
+          - Asia/Amman
+          - Asia/Anadyr
+          - Asia/Aqtau
+          - Asia/Aqtobe
+          - Asia/Ashgabat
+          - Asia/Atyrau
+          - Asia/Baghdad
+          - Asia/Bahrain
+          - Asia/Baku
+          - Asia/Bangkok
+          - Asia/Barnaul
+          - Asia/Beirut
+          - Asia/Bishkek
+          - Asia/Brunei
+          - Asia/Chita
+          - Asia/Choibalsan
+          - Asia/Colombo
+          - Asia/Damascus
+          - Asia/Dhaka
+          - Asia/Dili
+          - Asia/Dubai
+          - Asia/Dushanbe
+          - Asia/Famagusta
+          - Asia/Gaza
+          - Asia/Hebron
+          - Asia/Ho_Chi_Minh
+          - Asia/Hong_Kong
+          - Asia/Hovd
+          - Asia/Irkutsk
+          - Asia/Jakarta
+          - Asia/Jayapura
+          - Asia/Jerusalem
+          - Asia/Kabul
+          - Asia/Kamchatka
+          - Asia/Karachi
+          - Asia/Kathmandu
+          - Asia/Khandyga
+          - Asia/Kolkata
+          - Asia/Krasnoyarsk
+          - Asia/Kuala_Lumpur
+          - Asia/Kuching
+          - Asia/Kuwait
+          - Asia/Macau
+          - Asia/Magadan
+          - Asia/Makassar
+          - Asia/Manila
+          - Asia/Muscat
+          - Asia/Nicosia
+          - Asia/Novokuznetsk
+          - Asia/Novosibirsk
+          - Asia/Omsk
+          - Asia/Oral
+          - Asia/Phnom_Penh
+          - Asia/Pontianak
+          - Asia/Pyongyang
+          - Asia/Qatar
+          - Asia/Qostanay
+          - Asia/Qyzylorda
+          - Asia/Riyadh
+          - Asia/Sakhalin
+          - Asia/Samarkand
+          - Asia/Seoul
+          - Asia/Shanghai
+          - Asia/Singapore
+          - Asia/Srednekolymsk
+          - Asia/Taipei
+          - Asia/Tashkent
+          - Asia/Tbilisi
+          - Asia/Tehran
+          - Asia/Thimphu
+          - Asia/Tokyo
+          - Asia/Tomsk
+          - Asia/Ulaanbaatar
+          - Asia/Urumqi
+          - Asia/Ust-Nera
+          - Asia/Vientiane
+          - Asia/Vladivostok
+          - Asia/Yakutsk
+          - Asia/Yangon
+          - Asia/Yekaterinburg
+          - Asia/Yerevan
+          - Atlantic/Azores
+          - Atlantic/Bermuda
+          - Atlantic/Canary
+          - Atlantic/Cape_Verde
+          - Atlantic/Faroe
+          - Atlantic/Madeira
+          - Atlantic/Reykjavik
+          - Atlantic/South_Georgia
+          - Atlantic/St_Helena
+          - Atlantic/Stanley
+          - Australia/Adelaide
+          - Australia/Brisbane
+          - Australia/Broken_Hill
+          - Australia/Darwin
+          - Australia/Eucla
+          - Australia/Hobart
+          - Australia/Lindeman
+          - Australia/Lord_Howe
+          - Australia/Melbourne
+          - Australia/Perth
+          - Australia/Sydney
+          - Canada/Atlantic
+          - Canada/Central
+          - Canada/Eastern
+          - Canada/Mountain
+          - Canada/Newfoundland
+          - Canada/Pacific
+          - Europe/Amsterdam
+          - Europe/Andorra
+          - Europe/Astrakhan
+          - Europe/Athens
+          - Europe/Belgrade
+          - Europe/Berlin
+          - Europe/Bratislava
+          - Europe/Brussels
+          - Europe/Bucharest
+          - Europe/Budapest
+          - Europe/Busingen
+          - Europe/Chisinau
+          - Europe/Copenhagen
+          - Europe/Dublin
+          - Europe/Gibraltar
+          - Europe/Guernsey
+          - Europe/Helsinki
+          - Europe/Isle_of_Man
+          - Europe/Istanbul
+          - Europe/Jersey
+          - Europe/Kaliningrad
+          - Europe/Kirov
+          - Europe/Kyiv
+          - Europe/Lisbon
+          - Europe/Ljubljana
+          - Europe/London
+          - Europe/Luxembourg
+          - Europe/Madrid
+          - Europe/Malta
+          - Europe/Mariehamn
+          - Europe/Minsk
+          - Europe/Monaco
+          - Europe/Moscow
+          - Europe/Oslo
+          - Europe/Paris
+          - Europe/Podgorica
+          - Europe/Prague
+          - Europe/Riga
+          - Europe/Rome
+          - Europe/Samara
+          - Europe/San_Marino
+          - Europe/Sarajevo
+          - Europe/Saratov
+          - Europe/Simferopol
+          - Europe/Skopje
+          - Europe/Sofia
+          - Europe/Stockholm
+          - Europe/Tallinn
+          - Europe/Tirane
+          - Europe/Ulyanovsk
+          - Europe/Vaduz
+          - Europe/Vatican
+          - Europe/Vienna
+          - Europe/Vilnius
+          - Europe/Volgograd
+          - Europe/Warsaw
+          - Europe/Zagreb
+          - Europe/Zurich
+          - GMT
+          - Indian/Antananarivo
+          - Indian/Chagos
+          - Indian/Christmas
+          - Indian/Cocos
+          - Indian/Comoro
+          - Indian/Kerguelen
+          - Indian/Mahe
+          - Indian/Maldives
+          - Indian/Mauritius
+          - Indian/Mayotte
+          - Indian/Reunion
+          - Pacific/Apia
+          - Pacific/Auckland
+          - Pacific/Bougainville
+          - Pacific/Chatham
+          - Pacific/Chuuk
+          - Pacific/Easter
+          - Pacific/Efate
+          - Pacific/Fakaofo
+          - Pacific/Fiji
+          - Pacific/Funafuti
+          - Pacific/Galapagos
+          - Pacific/Gambier
+          - Pacific/Guadalcanal
+          - Pacific/Guam
+          - Pacific/Honolulu
+          - Pacific/Kanton
+          - Pacific/Kiritimati
+          - Pacific/Kosrae
+          - Pacific/Kwajalein
+          - Pacific/Majuro
+          - Pacific/Marquesas
+          - Pacific/Midway
+          - Pacific/Nauru
+          - Pacific/Niue
+          - Pacific/Norfolk
+          - Pacific/Noumea
+          - Pacific/Pago_Pago
+          - Pacific/Palau
+          - Pacific/Pitcairn
+          - Pacific/Pohnpei
+          - Pacific/Port_Moresby
+          - Pacific/Rarotonga
+          - Pacific/Saipan
+          - Pacific/Tahiti
+          - Pacific/Tarawa
+          - Pacific/Tongatapu
+          - Pacific/Wake
+          - Pacific/Wallis
+          - US/Alaska
+          - US/Arizona
+          - US/Central
+          - US/Eastern
+          - US/Hawaii
+          - US/Mountain
+          - US/Pacific
+          - UTC
+          type: string
       required:
       - default_currency_code
+      - timezone
     CustomerWithRevenue:
       type: object
       properties:
@@ -2068,12 +3095,23 @@ components:
           format: date-time
           readOnly: true
           nullable: true
-        issue_date:
-          type: string
-          format: date-time
+        cost_due:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          readOnly: true
+        line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroupedLineItem'
           readOnly: true
         invoice_id:
           type: string
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
         end_date:
           type: string
           format: date
@@ -2082,20 +3120,9 @@ components:
           type: string
           format: date
           readOnly: true
-        line_items:
-          type: array
-          items:
-            $ref: '#/components/schemas/GroupedLineItem'
-          readOnly: true
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
-        cost_due:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
+        issue_date:
+          type: string
+          format: date-time
           readOnly: true
       required:
       - cost_due
@@ -2486,29 +3513,29 @@ components:
     InitialPlanVersionRequest:
       type: object
       properties:
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustmentRequest'
+        features:
+          type: array
+          items:
+            type: string
+            format: uuid
+            nullable: true
         day_anchor:
           type: integer
           maximum: 31
           minimum: 1
           writeOnly: true
           nullable: true
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustmentRequest'
-        flat_rate:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: 0
-          exclusiveMaximum: true
-          writeOnly: true
-        flat_fee_billing_type:
-          enum:
-          - in_arrears
-          - in_advance
-          - ''
-          - 
-          type: string
-          writeOnly: true
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponentCreateRequest'
+          nullable: true
+        recurring_charges:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecurringChargeCreateRequest'
           nullable: true
         usage_billing_frequency:
           enum:
@@ -2520,23 +3547,9 @@ components:
           type: string
           writeOnly: true
           nullable: true
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponentCreateRequest'
-          nullable: true
-        month_anchor:
-          type: integer
-          maximum: 12
-          minimum: 1
-          writeOnly: true
-          nullable: true
-        features:
-          type: array
-          items:
-            type: string
-            format: uuid
-            nullable: true
+        transition_to_plan_id:
+          type: string
+          format: uuid
         description:
           type: string
           writeOnly: true
@@ -2544,9 +3557,12 @@ components:
         currency_code:
           type: string
           minLength: 1
-        transition_to_plan_id:
-          type: string
-          format: uuid
+        month_anchor:
+          type: integer
+          maximum: 12
+          minimum: 1
+          writeOnly: true
+          nullable: true
     InviteRequestRequest:
       type: object
       properties:
@@ -2588,9 +3604,10 @@ components:
           readOnly: true
         payment_status:
           enum:
+          - draft
+          - voided
           - paid
           - unpaid
-          type: string
           readOnly: true
         external_payment_obj_id:
           type: string
@@ -2819,7 +3836,6 @@ components:
           enum:
           - one_time
           - recurring
-          type: string
           readOnly: true
       required:
       - addon_id
@@ -2944,53 +3960,11 @@ components:
     LightweightInvoice:
       type: object
       properties:
-        external_payment_obj_id:
-          type: string
-          readOnly: true
-          nullable: true
-        external_payment_obj_type:
-          enum:
-          - stripe
-          - 
-          type: string
-          nullable: true
         due_date:
           type: string
           format: date-time
           readOnly: true
           nullable: true
-        issue_date:
-          type: string
-          format: date-time
-          readOnly: true
-        invoice_id:
-          type: string
-        seller:
-          $ref: '#/components/schemas/Seller'
-        invoice_pdf:
-          type: string
-          format: uri
-          readOnly: true
-          nullable: true
-        end_date:
-          type: string
-          format: date
-          readOnly: true
-        start_date:
-          type: string
-          format: date
-          readOnly: true
-        payment_status:
-          enum:
-          - paid
-          - unpaid
-          type: string
-          readOnly: true
-        invoice_number:
-          type: string
-          readOnly: true
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
         cost_due:
           type: number
           format: double
@@ -2999,6 +3973,49 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           readOnly: true
+        invoice_id:
+          type: string
+        external_payment_obj_type:
+          enum:
+          - stripe
+          - 
+          type: string
+          nullable: true
+        invoice_number:
+          type: string
+          readOnly: true
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
+        end_date:
+          type: string
+          format: date
+          readOnly: true
+        seller:
+          $ref: '#/components/schemas/Seller'
+        start_date:
+          type: string
+          format: date
+          readOnly: true
+        issue_date:
+          type: string
+          format: date-time
+          readOnly: true
+        payment_status:
+          enum:
+          - draft
+          - voided
+          - paid
+          - unpaid
+          readOnly: true
+        invoice_pdf:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        external_payment_obj_id:
+          type: string
+          readOnly: true
+          nullable: true
       required:
       - cost_due
       - currency
@@ -3016,22 +4033,6 @@ components:
     LightweightInvoiceLineItem:
       type: object
       properties:
-        name:
-          type: string
-          maxLength: 100
-        subscription_filters:
-          type: array
-          items:
-            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
-          nullable: true
-          readOnly: true
-        quantity:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: 0
-          exclusiveMaximum: true
-          nullable: true
         billing_type:
           enum:
           - in_arrears
@@ -3040,9 +4041,32 @@ components:
           - 
           type: string
           nullable: true
+        subtotal:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        name:
+          type: string
+          maxLength: 100
+        quantity:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
+          nullable: true
         end_date:
           type: string
           format: date-time
+        subscription_filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
+          nullable: true
+          readOnly: true
         start_date:
           type: string
           format: date-time
@@ -3051,13 +4075,6 @@ components:
           - $ref: '#/components/schemas/LightweightPlanVersion'
           nullable: true
           readOnly: true
-        subtotal:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
       required:
       - billing_type
       - end_date
@@ -3139,44 +4156,44 @@ components:
     LightweightSubscriptionRecord:
       type: object
       properties:
+        is_new:
+          type: boolean
+          description: Whether this subscription came from a renewal or from a first-time.
+            Defaults to true on creation.
+        fully_billed:
+          type: boolean
+          description: Whether the subscription has been fully billed and finalized.
+        customer:
+          $ref: '#/components/schemas/LightweightCustomer'
         auto_renew:
           type: boolean
           description: Whether the subscription automatically renews. Defaults to
             true.
-        fully_billed:
-          type: boolean
-          description: Whether the subscription has been fully billed and finalized.
-        addons:
-          type: array
-          items:
-            $ref: '#/components/schemas/LightweightAddonSubscriptionRecord'
-        subscription_filters:
-          type: array
-          items:
-            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
-          readOnly: true
         end_date:
           type: string
           format: date-time
           description: The time the subscription starts. This will be a string in
             yyyy-mm-dd HH:mm:ss format in UTC time.
+        subscription_filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
+          readOnly: true
+        addons:
+          type: array
+          items:
+            $ref: '#/components/schemas/LightweightAddonSubscriptionRecord'
+        plan_detail:
+          allOf:
+          - $ref: '#/components/schemas/LightweightPlanVersion'
+          readOnly: true
         start_date:
           type: string
           format: date-time
           description: The time the subscription starts. This will be a string in
             yyyy-mm-dd HH:mm:ss format in UTC time.
-        plan_detail:
-          allOf:
-          - $ref: '#/components/schemas/LightweightPlanVersion'
-          readOnly: true
-        customer:
-          $ref: '#/components/schemas/LightweightCustomer'
         billing_plan:
           $ref: '#/components/schemas/LightweightPlanVersion'
-        is_new:
-          type: boolean
-          description: Whether this subscription came from a renewal or from a first-time.
-            Defaults to true on creation.
       required:
       - addons
       - auto_renew
@@ -3191,22 +4208,26 @@ components:
     LightweightSubscriptionRecordRequest:
       type: object
       properties:
+        is_new:
+          type: boolean
+          description: Whether this subscription came from a renewal or from a first-time.
+            Defaults to true on creation.
+        fully_billed:
+          type: boolean
+          description: Whether the subscription has been fully billed and finalized.
         auto_renew:
           type: boolean
           description: Whether the subscription automatically renews. Defaults to
             true.
-        fully_billed:
-          type: boolean
-          description: Whether the subscription has been fully billed and finalized.
-        addons:
-          type: array
-          items:
-            $ref: '#/components/schemas/LightweightAddonSubscriptionRecordRequest'
         end_date:
           type: string
           format: date-time
           description: The time the subscription starts. This will be a string in
             yyyy-mm-dd HH:mm:ss format in UTC time.
+        addons:
+          type: array
+          items:
+            $ref: '#/components/schemas/LightweightAddonSubscriptionRecordRequest'
         start_date:
           type: string
           format: date-time
@@ -3214,10 +4235,6 @@ components:
             yyyy-mm-dd HH:mm:ss format in UTC time.
         billing_plan:
           $ref: '#/components/schemas/LightweightPlanVersionRequest'
-        is_new:
-          type: boolean
-          description: Whether this subscription came from a renewal or from a first-time.
-            Defaults to true on creation.
       required:
       - addons
       - auto_renew
@@ -3748,6 +4765,443 @@ components:
           items:
             type: string
           readOnly: true
+        timezone:
+          enum:
+          - Africa/Abidjan
+          - Africa/Accra
+          - Africa/Addis_Ababa
+          - Africa/Algiers
+          - Africa/Asmara
+          - Africa/Bamako
+          - Africa/Bangui
+          - Africa/Banjul
+          - Africa/Bissau
+          - Africa/Blantyre
+          - Africa/Brazzaville
+          - Africa/Bujumbura
+          - Africa/Cairo
+          - Africa/Casablanca
+          - Africa/Ceuta
+          - Africa/Conakry
+          - Africa/Dakar
+          - Africa/Dar_es_Salaam
+          - Africa/Djibouti
+          - Africa/Douala
+          - Africa/El_Aaiun
+          - Africa/Freetown
+          - Africa/Gaborone
+          - Africa/Harare
+          - Africa/Johannesburg
+          - Africa/Juba
+          - Africa/Kampala
+          - Africa/Khartoum
+          - Africa/Kigali
+          - Africa/Kinshasa
+          - Africa/Lagos
+          - Africa/Libreville
+          - Africa/Lome
+          - Africa/Luanda
+          - Africa/Lubumbashi
+          - Africa/Lusaka
+          - Africa/Malabo
+          - Africa/Maputo
+          - Africa/Maseru
+          - Africa/Mbabane
+          - Africa/Mogadishu
+          - Africa/Monrovia
+          - Africa/Nairobi
+          - Africa/Ndjamena
+          - Africa/Niamey
+          - Africa/Nouakchott
+          - Africa/Ouagadougou
+          - Africa/Porto-Novo
+          - Africa/Sao_Tome
+          - Africa/Tripoli
+          - Africa/Tunis
+          - Africa/Windhoek
+          - America/Adak
+          - America/Anchorage
+          - America/Anguilla
+          - America/Antigua
+          - America/Araguaina
+          - America/Argentina/Buenos_Aires
+          - America/Argentina/Catamarca
+          - America/Argentina/Cordoba
+          - America/Argentina/Jujuy
+          - America/Argentina/La_Rioja
+          - America/Argentina/Mendoza
+          - America/Argentina/Rio_Gallegos
+          - America/Argentina/Salta
+          - America/Argentina/San_Juan
+          - America/Argentina/San_Luis
+          - America/Argentina/Tucuman
+          - America/Argentina/Ushuaia
+          - America/Aruba
+          - America/Asuncion
+          - America/Atikokan
+          - America/Bahia
+          - America/Bahia_Banderas
+          - America/Barbados
+          - America/Belem
+          - America/Belize
+          - America/Blanc-Sablon
+          - America/Boa_Vista
+          - America/Bogota
+          - America/Boise
+          - America/Cambridge_Bay
+          - America/Campo_Grande
+          - America/Cancun
+          - America/Caracas
+          - America/Cayenne
+          - America/Cayman
+          - America/Chicago
+          - America/Chihuahua
+          - America/Ciudad_Juarez
+          - America/Costa_Rica
+          - America/Creston
+          - America/Cuiaba
+          - America/Curacao
+          - America/Danmarkshavn
+          - America/Dawson
+          - America/Dawson_Creek
+          - America/Denver
+          - America/Detroit
+          - America/Dominica
+          - America/Edmonton
+          - America/Eirunepe
+          - America/El_Salvador
+          - America/Fort_Nelson
+          - America/Fortaleza
+          - America/Glace_Bay
+          - America/Goose_Bay
+          - America/Grand_Turk
+          - America/Grenada
+          - America/Guadeloupe
+          - America/Guatemala
+          - America/Guayaquil
+          - America/Guyana
+          - America/Halifax
+          - America/Havana
+          - America/Hermosillo
+          - America/Indiana/Indianapolis
+          - America/Indiana/Knox
+          - America/Indiana/Marengo
+          - America/Indiana/Petersburg
+          - America/Indiana/Tell_City
+          - America/Indiana/Vevay
+          - America/Indiana/Vincennes
+          - America/Indiana/Winamac
+          - America/Inuvik
+          - America/Iqaluit
+          - America/Jamaica
+          - America/Juneau
+          - America/Kentucky/Louisville
+          - America/Kentucky/Monticello
+          - America/Kralendijk
+          - America/La_Paz
+          - America/Lima
+          - America/Los_Angeles
+          - America/Lower_Princes
+          - America/Maceio
+          - America/Managua
+          - America/Manaus
+          - America/Marigot
+          - America/Martinique
+          - America/Matamoros
+          - America/Mazatlan
+          - America/Menominee
+          - America/Merida
+          - America/Metlakatla
+          - America/Mexico_City
+          - America/Miquelon
+          - America/Moncton
+          - America/Monterrey
+          - America/Montevideo
+          - America/Montserrat
+          - America/Nassau
+          - America/New_York
+          - America/Nome
+          - America/Noronha
+          - America/North_Dakota/Beulah
+          - America/North_Dakota/Center
+          - America/North_Dakota/New_Salem
+          - America/Nuuk
+          - America/Ojinaga
+          - America/Panama
+          - America/Paramaribo
+          - America/Phoenix
+          - America/Port-au-Prince
+          - America/Port_of_Spain
+          - America/Porto_Velho
+          - America/Puerto_Rico
+          - America/Punta_Arenas
+          - America/Rankin_Inlet
+          - America/Recife
+          - America/Regina
+          - America/Resolute
+          - America/Rio_Branco
+          - America/Santarem
+          - America/Santiago
+          - America/Santo_Domingo
+          - America/Sao_Paulo
+          - America/Scoresbysund
+          - America/Sitka
+          - America/St_Barthelemy
+          - America/St_Johns
+          - America/St_Kitts
+          - America/St_Lucia
+          - America/St_Thomas
+          - America/St_Vincent
+          - America/Swift_Current
+          - America/Tegucigalpa
+          - America/Thule
+          - America/Tijuana
+          - America/Toronto
+          - America/Tortola
+          - America/Vancouver
+          - America/Whitehorse
+          - America/Winnipeg
+          - America/Yakutat
+          - America/Yellowknife
+          - Antarctica/Casey
+          - Antarctica/Davis
+          - Antarctica/DumontDUrville
+          - Antarctica/Macquarie
+          - Antarctica/Mawson
+          - Antarctica/McMurdo
+          - Antarctica/Palmer
+          - Antarctica/Rothera
+          - Antarctica/Syowa
+          - Antarctica/Troll
+          - Antarctica/Vostok
+          - Arctic/Longyearbyen
+          - Asia/Aden
+          - Asia/Almaty
+          - Asia/Amman
+          - Asia/Anadyr
+          - Asia/Aqtau
+          - Asia/Aqtobe
+          - Asia/Ashgabat
+          - Asia/Atyrau
+          - Asia/Baghdad
+          - Asia/Bahrain
+          - Asia/Baku
+          - Asia/Bangkok
+          - Asia/Barnaul
+          - Asia/Beirut
+          - Asia/Bishkek
+          - Asia/Brunei
+          - Asia/Chita
+          - Asia/Choibalsan
+          - Asia/Colombo
+          - Asia/Damascus
+          - Asia/Dhaka
+          - Asia/Dili
+          - Asia/Dubai
+          - Asia/Dushanbe
+          - Asia/Famagusta
+          - Asia/Gaza
+          - Asia/Hebron
+          - Asia/Ho_Chi_Minh
+          - Asia/Hong_Kong
+          - Asia/Hovd
+          - Asia/Irkutsk
+          - Asia/Jakarta
+          - Asia/Jayapura
+          - Asia/Jerusalem
+          - Asia/Kabul
+          - Asia/Kamchatka
+          - Asia/Karachi
+          - Asia/Kathmandu
+          - Asia/Khandyga
+          - Asia/Kolkata
+          - Asia/Krasnoyarsk
+          - Asia/Kuala_Lumpur
+          - Asia/Kuching
+          - Asia/Kuwait
+          - Asia/Macau
+          - Asia/Magadan
+          - Asia/Makassar
+          - Asia/Manila
+          - Asia/Muscat
+          - Asia/Nicosia
+          - Asia/Novokuznetsk
+          - Asia/Novosibirsk
+          - Asia/Omsk
+          - Asia/Oral
+          - Asia/Phnom_Penh
+          - Asia/Pontianak
+          - Asia/Pyongyang
+          - Asia/Qatar
+          - Asia/Qostanay
+          - Asia/Qyzylorda
+          - Asia/Riyadh
+          - Asia/Sakhalin
+          - Asia/Samarkand
+          - Asia/Seoul
+          - Asia/Shanghai
+          - Asia/Singapore
+          - Asia/Srednekolymsk
+          - Asia/Taipei
+          - Asia/Tashkent
+          - Asia/Tbilisi
+          - Asia/Tehran
+          - Asia/Thimphu
+          - Asia/Tokyo
+          - Asia/Tomsk
+          - Asia/Ulaanbaatar
+          - Asia/Urumqi
+          - Asia/Ust-Nera
+          - Asia/Vientiane
+          - Asia/Vladivostok
+          - Asia/Yakutsk
+          - Asia/Yangon
+          - Asia/Yekaterinburg
+          - Asia/Yerevan
+          - Atlantic/Azores
+          - Atlantic/Bermuda
+          - Atlantic/Canary
+          - Atlantic/Cape_Verde
+          - Atlantic/Faroe
+          - Atlantic/Madeira
+          - Atlantic/Reykjavik
+          - Atlantic/South_Georgia
+          - Atlantic/St_Helena
+          - Atlantic/Stanley
+          - Australia/Adelaide
+          - Australia/Brisbane
+          - Australia/Broken_Hill
+          - Australia/Darwin
+          - Australia/Eucla
+          - Australia/Hobart
+          - Australia/Lindeman
+          - Australia/Lord_Howe
+          - Australia/Melbourne
+          - Australia/Perth
+          - Australia/Sydney
+          - Canada/Atlantic
+          - Canada/Central
+          - Canada/Eastern
+          - Canada/Mountain
+          - Canada/Newfoundland
+          - Canada/Pacific
+          - Europe/Amsterdam
+          - Europe/Andorra
+          - Europe/Astrakhan
+          - Europe/Athens
+          - Europe/Belgrade
+          - Europe/Berlin
+          - Europe/Bratislava
+          - Europe/Brussels
+          - Europe/Bucharest
+          - Europe/Budapest
+          - Europe/Busingen
+          - Europe/Chisinau
+          - Europe/Copenhagen
+          - Europe/Dublin
+          - Europe/Gibraltar
+          - Europe/Guernsey
+          - Europe/Helsinki
+          - Europe/Isle_of_Man
+          - Europe/Istanbul
+          - Europe/Jersey
+          - Europe/Kaliningrad
+          - Europe/Kirov
+          - Europe/Kyiv
+          - Europe/Lisbon
+          - Europe/Ljubljana
+          - Europe/London
+          - Europe/Luxembourg
+          - Europe/Madrid
+          - Europe/Malta
+          - Europe/Mariehamn
+          - Europe/Minsk
+          - Europe/Monaco
+          - Europe/Moscow
+          - Europe/Oslo
+          - Europe/Paris
+          - Europe/Podgorica
+          - Europe/Prague
+          - Europe/Riga
+          - Europe/Rome
+          - Europe/Samara
+          - Europe/San_Marino
+          - Europe/Sarajevo
+          - Europe/Saratov
+          - Europe/Simferopol
+          - Europe/Skopje
+          - Europe/Sofia
+          - Europe/Stockholm
+          - Europe/Tallinn
+          - Europe/Tirane
+          - Europe/Ulyanovsk
+          - Europe/Vaduz
+          - Europe/Vatican
+          - Europe/Vienna
+          - Europe/Vilnius
+          - Europe/Volgograd
+          - Europe/Warsaw
+          - Europe/Zagreb
+          - Europe/Zurich
+          - GMT
+          - Indian/Antananarivo
+          - Indian/Chagos
+          - Indian/Christmas
+          - Indian/Cocos
+          - Indian/Comoro
+          - Indian/Kerguelen
+          - Indian/Mahe
+          - Indian/Maldives
+          - Indian/Mauritius
+          - Indian/Mayotte
+          - Indian/Reunion
+          - Pacific/Apia
+          - Pacific/Auckland
+          - Pacific/Bougainville
+          - Pacific/Chatham
+          - Pacific/Chuuk
+          - Pacific/Easter
+          - Pacific/Efate
+          - Pacific/Fakaofo
+          - Pacific/Fiji
+          - Pacific/Funafuti
+          - Pacific/Galapagos
+          - Pacific/Gambier
+          - Pacific/Guadalcanal
+          - Pacific/Guam
+          - Pacific/Honolulu
+          - Pacific/Kanton
+          - Pacific/Kiritimati
+          - Pacific/Kosrae
+          - Pacific/Kwajalein
+          - Pacific/Majuro
+          - Pacific/Marquesas
+          - Pacific/Midway
+          - Pacific/Nauru
+          - Pacific/Niue
+          - Pacific/Norfolk
+          - Pacific/Noumea
+          - Pacific/Pago_Pago
+          - Pacific/Palau
+          - Pacific/Pitcairn
+          - Pacific/Pohnpei
+          - Pacific/Port_Moresby
+          - Pacific/Rarotonga
+          - Pacific/Saipan
+          - Pacific/Tahiti
+          - Pacific/Tarawa
+          - Pacific/Tongatapu
+          - Pacific/Wake
+          - Pacific/Wallis
+          - US/Alaska
+          - US/Arizona
+          - US/Central
+          - US/Eastern
+          - US/Hawaii
+          - US/Mountain
+          - US/Pacific
+          - UTC
+          type: string
       required:
       - address
       - available_currencies
@@ -3760,6 +5214,7 @@ components:
       - plan_tags
       - subscription_filter_keys
       - team_name
+      - timezone
       - users
     OrganizationCreateRequest:
       type: object
@@ -3877,6 +5332,443 @@ components:
           minimum: 0
           nullable: true
           description: Tax rate as percentage. For example, 10.5 for 10.5%
+        timezone:
+          enum:
+          - Africa/Abidjan
+          - Africa/Accra
+          - Africa/Addis_Ababa
+          - Africa/Algiers
+          - Africa/Asmara
+          - Africa/Bamako
+          - Africa/Bangui
+          - Africa/Banjul
+          - Africa/Bissau
+          - Africa/Blantyre
+          - Africa/Brazzaville
+          - Africa/Bujumbura
+          - Africa/Cairo
+          - Africa/Casablanca
+          - Africa/Ceuta
+          - Africa/Conakry
+          - Africa/Dakar
+          - Africa/Dar_es_Salaam
+          - Africa/Djibouti
+          - Africa/Douala
+          - Africa/El_Aaiun
+          - Africa/Freetown
+          - Africa/Gaborone
+          - Africa/Harare
+          - Africa/Johannesburg
+          - Africa/Juba
+          - Africa/Kampala
+          - Africa/Khartoum
+          - Africa/Kigali
+          - Africa/Kinshasa
+          - Africa/Lagos
+          - Africa/Libreville
+          - Africa/Lome
+          - Africa/Luanda
+          - Africa/Lubumbashi
+          - Africa/Lusaka
+          - Africa/Malabo
+          - Africa/Maputo
+          - Africa/Maseru
+          - Africa/Mbabane
+          - Africa/Mogadishu
+          - Africa/Monrovia
+          - Africa/Nairobi
+          - Africa/Ndjamena
+          - Africa/Niamey
+          - Africa/Nouakchott
+          - Africa/Ouagadougou
+          - Africa/Porto-Novo
+          - Africa/Sao_Tome
+          - Africa/Tripoli
+          - Africa/Tunis
+          - Africa/Windhoek
+          - America/Adak
+          - America/Anchorage
+          - America/Anguilla
+          - America/Antigua
+          - America/Araguaina
+          - America/Argentina/Buenos_Aires
+          - America/Argentina/Catamarca
+          - America/Argentina/Cordoba
+          - America/Argentina/Jujuy
+          - America/Argentina/La_Rioja
+          - America/Argentina/Mendoza
+          - America/Argentina/Rio_Gallegos
+          - America/Argentina/Salta
+          - America/Argentina/San_Juan
+          - America/Argentina/San_Luis
+          - America/Argentina/Tucuman
+          - America/Argentina/Ushuaia
+          - America/Aruba
+          - America/Asuncion
+          - America/Atikokan
+          - America/Bahia
+          - America/Bahia_Banderas
+          - America/Barbados
+          - America/Belem
+          - America/Belize
+          - America/Blanc-Sablon
+          - America/Boa_Vista
+          - America/Bogota
+          - America/Boise
+          - America/Cambridge_Bay
+          - America/Campo_Grande
+          - America/Cancun
+          - America/Caracas
+          - America/Cayenne
+          - America/Cayman
+          - America/Chicago
+          - America/Chihuahua
+          - America/Ciudad_Juarez
+          - America/Costa_Rica
+          - America/Creston
+          - America/Cuiaba
+          - America/Curacao
+          - America/Danmarkshavn
+          - America/Dawson
+          - America/Dawson_Creek
+          - America/Denver
+          - America/Detroit
+          - America/Dominica
+          - America/Edmonton
+          - America/Eirunepe
+          - America/El_Salvador
+          - America/Fort_Nelson
+          - America/Fortaleza
+          - America/Glace_Bay
+          - America/Goose_Bay
+          - America/Grand_Turk
+          - America/Grenada
+          - America/Guadeloupe
+          - America/Guatemala
+          - America/Guayaquil
+          - America/Guyana
+          - America/Halifax
+          - America/Havana
+          - America/Hermosillo
+          - America/Indiana/Indianapolis
+          - America/Indiana/Knox
+          - America/Indiana/Marengo
+          - America/Indiana/Petersburg
+          - America/Indiana/Tell_City
+          - America/Indiana/Vevay
+          - America/Indiana/Vincennes
+          - America/Indiana/Winamac
+          - America/Inuvik
+          - America/Iqaluit
+          - America/Jamaica
+          - America/Juneau
+          - America/Kentucky/Louisville
+          - America/Kentucky/Monticello
+          - America/Kralendijk
+          - America/La_Paz
+          - America/Lima
+          - America/Los_Angeles
+          - America/Lower_Princes
+          - America/Maceio
+          - America/Managua
+          - America/Manaus
+          - America/Marigot
+          - America/Martinique
+          - America/Matamoros
+          - America/Mazatlan
+          - America/Menominee
+          - America/Merida
+          - America/Metlakatla
+          - America/Mexico_City
+          - America/Miquelon
+          - America/Moncton
+          - America/Monterrey
+          - America/Montevideo
+          - America/Montserrat
+          - America/Nassau
+          - America/New_York
+          - America/Nome
+          - America/Noronha
+          - America/North_Dakota/Beulah
+          - America/North_Dakota/Center
+          - America/North_Dakota/New_Salem
+          - America/Nuuk
+          - America/Ojinaga
+          - America/Panama
+          - America/Paramaribo
+          - America/Phoenix
+          - America/Port-au-Prince
+          - America/Port_of_Spain
+          - America/Porto_Velho
+          - America/Puerto_Rico
+          - America/Punta_Arenas
+          - America/Rankin_Inlet
+          - America/Recife
+          - America/Regina
+          - America/Resolute
+          - America/Rio_Branco
+          - America/Santarem
+          - America/Santiago
+          - America/Santo_Domingo
+          - America/Sao_Paulo
+          - America/Scoresbysund
+          - America/Sitka
+          - America/St_Barthelemy
+          - America/St_Johns
+          - America/St_Kitts
+          - America/St_Lucia
+          - America/St_Thomas
+          - America/St_Vincent
+          - America/Swift_Current
+          - America/Tegucigalpa
+          - America/Thule
+          - America/Tijuana
+          - America/Toronto
+          - America/Tortola
+          - America/Vancouver
+          - America/Whitehorse
+          - America/Winnipeg
+          - America/Yakutat
+          - America/Yellowknife
+          - Antarctica/Casey
+          - Antarctica/Davis
+          - Antarctica/DumontDUrville
+          - Antarctica/Macquarie
+          - Antarctica/Mawson
+          - Antarctica/McMurdo
+          - Antarctica/Palmer
+          - Antarctica/Rothera
+          - Antarctica/Syowa
+          - Antarctica/Troll
+          - Antarctica/Vostok
+          - Arctic/Longyearbyen
+          - Asia/Aden
+          - Asia/Almaty
+          - Asia/Amman
+          - Asia/Anadyr
+          - Asia/Aqtau
+          - Asia/Aqtobe
+          - Asia/Ashgabat
+          - Asia/Atyrau
+          - Asia/Baghdad
+          - Asia/Bahrain
+          - Asia/Baku
+          - Asia/Bangkok
+          - Asia/Barnaul
+          - Asia/Beirut
+          - Asia/Bishkek
+          - Asia/Brunei
+          - Asia/Chita
+          - Asia/Choibalsan
+          - Asia/Colombo
+          - Asia/Damascus
+          - Asia/Dhaka
+          - Asia/Dili
+          - Asia/Dubai
+          - Asia/Dushanbe
+          - Asia/Famagusta
+          - Asia/Gaza
+          - Asia/Hebron
+          - Asia/Ho_Chi_Minh
+          - Asia/Hong_Kong
+          - Asia/Hovd
+          - Asia/Irkutsk
+          - Asia/Jakarta
+          - Asia/Jayapura
+          - Asia/Jerusalem
+          - Asia/Kabul
+          - Asia/Kamchatka
+          - Asia/Karachi
+          - Asia/Kathmandu
+          - Asia/Khandyga
+          - Asia/Kolkata
+          - Asia/Krasnoyarsk
+          - Asia/Kuala_Lumpur
+          - Asia/Kuching
+          - Asia/Kuwait
+          - Asia/Macau
+          - Asia/Magadan
+          - Asia/Makassar
+          - Asia/Manila
+          - Asia/Muscat
+          - Asia/Nicosia
+          - Asia/Novokuznetsk
+          - Asia/Novosibirsk
+          - Asia/Omsk
+          - Asia/Oral
+          - Asia/Phnom_Penh
+          - Asia/Pontianak
+          - Asia/Pyongyang
+          - Asia/Qatar
+          - Asia/Qostanay
+          - Asia/Qyzylorda
+          - Asia/Riyadh
+          - Asia/Sakhalin
+          - Asia/Samarkand
+          - Asia/Seoul
+          - Asia/Shanghai
+          - Asia/Singapore
+          - Asia/Srednekolymsk
+          - Asia/Taipei
+          - Asia/Tashkent
+          - Asia/Tbilisi
+          - Asia/Tehran
+          - Asia/Thimphu
+          - Asia/Tokyo
+          - Asia/Tomsk
+          - Asia/Ulaanbaatar
+          - Asia/Urumqi
+          - Asia/Ust-Nera
+          - Asia/Vientiane
+          - Asia/Vladivostok
+          - Asia/Yakutsk
+          - Asia/Yangon
+          - Asia/Yekaterinburg
+          - Asia/Yerevan
+          - Atlantic/Azores
+          - Atlantic/Bermuda
+          - Atlantic/Canary
+          - Atlantic/Cape_Verde
+          - Atlantic/Faroe
+          - Atlantic/Madeira
+          - Atlantic/Reykjavik
+          - Atlantic/South_Georgia
+          - Atlantic/St_Helena
+          - Atlantic/Stanley
+          - Australia/Adelaide
+          - Australia/Brisbane
+          - Australia/Broken_Hill
+          - Australia/Darwin
+          - Australia/Eucla
+          - Australia/Hobart
+          - Australia/Lindeman
+          - Australia/Lord_Howe
+          - Australia/Melbourne
+          - Australia/Perth
+          - Australia/Sydney
+          - Canada/Atlantic
+          - Canada/Central
+          - Canada/Eastern
+          - Canada/Mountain
+          - Canada/Newfoundland
+          - Canada/Pacific
+          - Europe/Amsterdam
+          - Europe/Andorra
+          - Europe/Astrakhan
+          - Europe/Athens
+          - Europe/Belgrade
+          - Europe/Berlin
+          - Europe/Bratislava
+          - Europe/Brussels
+          - Europe/Bucharest
+          - Europe/Budapest
+          - Europe/Busingen
+          - Europe/Chisinau
+          - Europe/Copenhagen
+          - Europe/Dublin
+          - Europe/Gibraltar
+          - Europe/Guernsey
+          - Europe/Helsinki
+          - Europe/Isle_of_Man
+          - Europe/Istanbul
+          - Europe/Jersey
+          - Europe/Kaliningrad
+          - Europe/Kirov
+          - Europe/Kyiv
+          - Europe/Lisbon
+          - Europe/Ljubljana
+          - Europe/London
+          - Europe/Luxembourg
+          - Europe/Madrid
+          - Europe/Malta
+          - Europe/Mariehamn
+          - Europe/Minsk
+          - Europe/Monaco
+          - Europe/Moscow
+          - Europe/Oslo
+          - Europe/Paris
+          - Europe/Podgorica
+          - Europe/Prague
+          - Europe/Riga
+          - Europe/Rome
+          - Europe/Samara
+          - Europe/San_Marino
+          - Europe/Sarajevo
+          - Europe/Saratov
+          - Europe/Simferopol
+          - Europe/Skopje
+          - Europe/Sofia
+          - Europe/Stockholm
+          - Europe/Tallinn
+          - Europe/Tirane
+          - Europe/Ulyanovsk
+          - Europe/Vaduz
+          - Europe/Vatican
+          - Europe/Vienna
+          - Europe/Vilnius
+          - Europe/Volgograd
+          - Europe/Warsaw
+          - Europe/Zagreb
+          - Europe/Zurich
+          - GMT
+          - Indian/Antananarivo
+          - Indian/Chagos
+          - Indian/Christmas
+          - Indian/Cocos
+          - Indian/Comoro
+          - Indian/Kerguelen
+          - Indian/Mahe
+          - Indian/Maldives
+          - Indian/Mauritius
+          - Indian/Mayotte
+          - Indian/Reunion
+          - Pacific/Apia
+          - Pacific/Auckland
+          - Pacific/Bougainville
+          - Pacific/Chatham
+          - Pacific/Chuuk
+          - Pacific/Easter
+          - Pacific/Efate
+          - Pacific/Fakaofo
+          - Pacific/Fiji
+          - Pacific/Funafuti
+          - Pacific/Galapagos
+          - Pacific/Gambier
+          - Pacific/Guadalcanal
+          - Pacific/Guam
+          - Pacific/Honolulu
+          - Pacific/Kanton
+          - Pacific/Kiritimati
+          - Pacific/Kosrae
+          - Pacific/Kwajalein
+          - Pacific/Majuro
+          - Pacific/Marquesas
+          - Pacific/Midway
+          - Pacific/Nauru
+          - Pacific/Niue
+          - Pacific/Norfolk
+          - Pacific/Noumea
+          - Pacific/Pago_Pago
+          - Pacific/Palau
+          - Pacific/Pitcairn
+          - Pacific/Pohnpei
+          - Pacific/Port_Moresby
+          - Pacific/Rarotonga
+          - Pacific/Saipan
+          - Pacific/Tahiti
+          - Pacific/Tarawa
+          - Pacific/Tongatapu
+          - Pacific/Wake
+          - Pacific/Wallis
+          - US/Alaska
+          - US/Arizona
+          - US/Central
+          - US/Eastern
+          - US/Hawaii
+          - US/Mountain
+          - US/Pacific
+          - UTC
+          type: string
     PatchedInvoiceUpdateRequest:
       type: object
       properties:
@@ -3934,6 +5826,443 @@ components:
           items:
             type: string
             minLength: 1
+        timezone:
+          enum:
+          - Africa/Abidjan
+          - Africa/Accra
+          - Africa/Addis_Ababa
+          - Africa/Algiers
+          - Africa/Asmara
+          - Africa/Bamako
+          - Africa/Bangui
+          - Africa/Banjul
+          - Africa/Bissau
+          - Africa/Blantyre
+          - Africa/Brazzaville
+          - Africa/Bujumbura
+          - Africa/Cairo
+          - Africa/Casablanca
+          - Africa/Ceuta
+          - Africa/Conakry
+          - Africa/Dakar
+          - Africa/Dar_es_Salaam
+          - Africa/Djibouti
+          - Africa/Douala
+          - Africa/El_Aaiun
+          - Africa/Freetown
+          - Africa/Gaborone
+          - Africa/Harare
+          - Africa/Johannesburg
+          - Africa/Juba
+          - Africa/Kampala
+          - Africa/Khartoum
+          - Africa/Kigali
+          - Africa/Kinshasa
+          - Africa/Lagos
+          - Africa/Libreville
+          - Africa/Lome
+          - Africa/Luanda
+          - Africa/Lubumbashi
+          - Africa/Lusaka
+          - Africa/Malabo
+          - Africa/Maputo
+          - Africa/Maseru
+          - Africa/Mbabane
+          - Africa/Mogadishu
+          - Africa/Monrovia
+          - Africa/Nairobi
+          - Africa/Ndjamena
+          - Africa/Niamey
+          - Africa/Nouakchott
+          - Africa/Ouagadougou
+          - Africa/Porto-Novo
+          - Africa/Sao_Tome
+          - Africa/Tripoli
+          - Africa/Tunis
+          - Africa/Windhoek
+          - America/Adak
+          - America/Anchorage
+          - America/Anguilla
+          - America/Antigua
+          - America/Araguaina
+          - America/Argentina/Buenos_Aires
+          - America/Argentina/Catamarca
+          - America/Argentina/Cordoba
+          - America/Argentina/Jujuy
+          - America/Argentina/La_Rioja
+          - America/Argentina/Mendoza
+          - America/Argentina/Rio_Gallegos
+          - America/Argentina/Salta
+          - America/Argentina/San_Juan
+          - America/Argentina/San_Luis
+          - America/Argentina/Tucuman
+          - America/Argentina/Ushuaia
+          - America/Aruba
+          - America/Asuncion
+          - America/Atikokan
+          - America/Bahia
+          - America/Bahia_Banderas
+          - America/Barbados
+          - America/Belem
+          - America/Belize
+          - America/Blanc-Sablon
+          - America/Boa_Vista
+          - America/Bogota
+          - America/Boise
+          - America/Cambridge_Bay
+          - America/Campo_Grande
+          - America/Cancun
+          - America/Caracas
+          - America/Cayenne
+          - America/Cayman
+          - America/Chicago
+          - America/Chihuahua
+          - America/Ciudad_Juarez
+          - America/Costa_Rica
+          - America/Creston
+          - America/Cuiaba
+          - America/Curacao
+          - America/Danmarkshavn
+          - America/Dawson
+          - America/Dawson_Creek
+          - America/Denver
+          - America/Detroit
+          - America/Dominica
+          - America/Edmonton
+          - America/Eirunepe
+          - America/El_Salvador
+          - America/Fort_Nelson
+          - America/Fortaleza
+          - America/Glace_Bay
+          - America/Goose_Bay
+          - America/Grand_Turk
+          - America/Grenada
+          - America/Guadeloupe
+          - America/Guatemala
+          - America/Guayaquil
+          - America/Guyana
+          - America/Halifax
+          - America/Havana
+          - America/Hermosillo
+          - America/Indiana/Indianapolis
+          - America/Indiana/Knox
+          - America/Indiana/Marengo
+          - America/Indiana/Petersburg
+          - America/Indiana/Tell_City
+          - America/Indiana/Vevay
+          - America/Indiana/Vincennes
+          - America/Indiana/Winamac
+          - America/Inuvik
+          - America/Iqaluit
+          - America/Jamaica
+          - America/Juneau
+          - America/Kentucky/Louisville
+          - America/Kentucky/Monticello
+          - America/Kralendijk
+          - America/La_Paz
+          - America/Lima
+          - America/Los_Angeles
+          - America/Lower_Princes
+          - America/Maceio
+          - America/Managua
+          - America/Manaus
+          - America/Marigot
+          - America/Martinique
+          - America/Matamoros
+          - America/Mazatlan
+          - America/Menominee
+          - America/Merida
+          - America/Metlakatla
+          - America/Mexico_City
+          - America/Miquelon
+          - America/Moncton
+          - America/Monterrey
+          - America/Montevideo
+          - America/Montserrat
+          - America/Nassau
+          - America/New_York
+          - America/Nome
+          - America/Noronha
+          - America/North_Dakota/Beulah
+          - America/North_Dakota/Center
+          - America/North_Dakota/New_Salem
+          - America/Nuuk
+          - America/Ojinaga
+          - America/Panama
+          - America/Paramaribo
+          - America/Phoenix
+          - America/Port-au-Prince
+          - America/Port_of_Spain
+          - America/Porto_Velho
+          - America/Puerto_Rico
+          - America/Punta_Arenas
+          - America/Rankin_Inlet
+          - America/Recife
+          - America/Regina
+          - America/Resolute
+          - America/Rio_Branco
+          - America/Santarem
+          - America/Santiago
+          - America/Santo_Domingo
+          - America/Sao_Paulo
+          - America/Scoresbysund
+          - America/Sitka
+          - America/St_Barthelemy
+          - America/St_Johns
+          - America/St_Kitts
+          - America/St_Lucia
+          - America/St_Thomas
+          - America/St_Vincent
+          - America/Swift_Current
+          - America/Tegucigalpa
+          - America/Thule
+          - America/Tijuana
+          - America/Toronto
+          - America/Tortola
+          - America/Vancouver
+          - America/Whitehorse
+          - America/Winnipeg
+          - America/Yakutat
+          - America/Yellowknife
+          - Antarctica/Casey
+          - Antarctica/Davis
+          - Antarctica/DumontDUrville
+          - Antarctica/Macquarie
+          - Antarctica/Mawson
+          - Antarctica/McMurdo
+          - Antarctica/Palmer
+          - Antarctica/Rothera
+          - Antarctica/Syowa
+          - Antarctica/Troll
+          - Antarctica/Vostok
+          - Arctic/Longyearbyen
+          - Asia/Aden
+          - Asia/Almaty
+          - Asia/Amman
+          - Asia/Anadyr
+          - Asia/Aqtau
+          - Asia/Aqtobe
+          - Asia/Ashgabat
+          - Asia/Atyrau
+          - Asia/Baghdad
+          - Asia/Bahrain
+          - Asia/Baku
+          - Asia/Bangkok
+          - Asia/Barnaul
+          - Asia/Beirut
+          - Asia/Bishkek
+          - Asia/Brunei
+          - Asia/Chita
+          - Asia/Choibalsan
+          - Asia/Colombo
+          - Asia/Damascus
+          - Asia/Dhaka
+          - Asia/Dili
+          - Asia/Dubai
+          - Asia/Dushanbe
+          - Asia/Famagusta
+          - Asia/Gaza
+          - Asia/Hebron
+          - Asia/Ho_Chi_Minh
+          - Asia/Hong_Kong
+          - Asia/Hovd
+          - Asia/Irkutsk
+          - Asia/Jakarta
+          - Asia/Jayapura
+          - Asia/Jerusalem
+          - Asia/Kabul
+          - Asia/Kamchatka
+          - Asia/Karachi
+          - Asia/Kathmandu
+          - Asia/Khandyga
+          - Asia/Kolkata
+          - Asia/Krasnoyarsk
+          - Asia/Kuala_Lumpur
+          - Asia/Kuching
+          - Asia/Kuwait
+          - Asia/Macau
+          - Asia/Magadan
+          - Asia/Makassar
+          - Asia/Manila
+          - Asia/Muscat
+          - Asia/Nicosia
+          - Asia/Novokuznetsk
+          - Asia/Novosibirsk
+          - Asia/Omsk
+          - Asia/Oral
+          - Asia/Phnom_Penh
+          - Asia/Pontianak
+          - Asia/Pyongyang
+          - Asia/Qatar
+          - Asia/Qostanay
+          - Asia/Qyzylorda
+          - Asia/Riyadh
+          - Asia/Sakhalin
+          - Asia/Samarkand
+          - Asia/Seoul
+          - Asia/Shanghai
+          - Asia/Singapore
+          - Asia/Srednekolymsk
+          - Asia/Taipei
+          - Asia/Tashkent
+          - Asia/Tbilisi
+          - Asia/Tehran
+          - Asia/Thimphu
+          - Asia/Tokyo
+          - Asia/Tomsk
+          - Asia/Ulaanbaatar
+          - Asia/Urumqi
+          - Asia/Ust-Nera
+          - Asia/Vientiane
+          - Asia/Vladivostok
+          - Asia/Yakutsk
+          - Asia/Yangon
+          - Asia/Yekaterinburg
+          - Asia/Yerevan
+          - Atlantic/Azores
+          - Atlantic/Bermuda
+          - Atlantic/Canary
+          - Atlantic/Cape_Verde
+          - Atlantic/Faroe
+          - Atlantic/Madeira
+          - Atlantic/Reykjavik
+          - Atlantic/South_Georgia
+          - Atlantic/St_Helena
+          - Atlantic/Stanley
+          - Australia/Adelaide
+          - Australia/Brisbane
+          - Australia/Broken_Hill
+          - Australia/Darwin
+          - Australia/Eucla
+          - Australia/Hobart
+          - Australia/Lindeman
+          - Australia/Lord_Howe
+          - Australia/Melbourne
+          - Australia/Perth
+          - Australia/Sydney
+          - Canada/Atlantic
+          - Canada/Central
+          - Canada/Eastern
+          - Canada/Mountain
+          - Canada/Newfoundland
+          - Canada/Pacific
+          - Europe/Amsterdam
+          - Europe/Andorra
+          - Europe/Astrakhan
+          - Europe/Athens
+          - Europe/Belgrade
+          - Europe/Berlin
+          - Europe/Bratislava
+          - Europe/Brussels
+          - Europe/Bucharest
+          - Europe/Budapest
+          - Europe/Busingen
+          - Europe/Chisinau
+          - Europe/Copenhagen
+          - Europe/Dublin
+          - Europe/Gibraltar
+          - Europe/Guernsey
+          - Europe/Helsinki
+          - Europe/Isle_of_Man
+          - Europe/Istanbul
+          - Europe/Jersey
+          - Europe/Kaliningrad
+          - Europe/Kirov
+          - Europe/Kyiv
+          - Europe/Lisbon
+          - Europe/Ljubljana
+          - Europe/London
+          - Europe/Luxembourg
+          - Europe/Madrid
+          - Europe/Malta
+          - Europe/Mariehamn
+          - Europe/Minsk
+          - Europe/Monaco
+          - Europe/Moscow
+          - Europe/Oslo
+          - Europe/Paris
+          - Europe/Podgorica
+          - Europe/Prague
+          - Europe/Riga
+          - Europe/Rome
+          - Europe/Samara
+          - Europe/San_Marino
+          - Europe/Sarajevo
+          - Europe/Saratov
+          - Europe/Simferopol
+          - Europe/Skopje
+          - Europe/Sofia
+          - Europe/Stockholm
+          - Europe/Tallinn
+          - Europe/Tirane
+          - Europe/Ulyanovsk
+          - Europe/Vaduz
+          - Europe/Vatican
+          - Europe/Vienna
+          - Europe/Vilnius
+          - Europe/Volgograd
+          - Europe/Warsaw
+          - Europe/Zagreb
+          - Europe/Zurich
+          - GMT
+          - Indian/Antananarivo
+          - Indian/Chagos
+          - Indian/Christmas
+          - Indian/Cocos
+          - Indian/Comoro
+          - Indian/Kerguelen
+          - Indian/Mahe
+          - Indian/Maldives
+          - Indian/Mauritius
+          - Indian/Mayotte
+          - Indian/Reunion
+          - Pacific/Apia
+          - Pacific/Auckland
+          - Pacific/Bougainville
+          - Pacific/Chatham
+          - Pacific/Chuuk
+          - Pacific/Easter
+          - Pacific/Efate
+          - Pacific/Fakaofo
+          - Pacific/Fiji
+          - Pacific/Funafuti
+          - Pacific/Galapagos
+          - Pacific/Gambier
+          - Pacific/Guadalcanal
+          - Pacific/Guam
+          - Pacific/Honolulu
+          - Pacific/Kanton
+          - Pacific/Kiritimati
+          - Pacific/Kosrae
+          - Pacific/Kwajalein
+          - Pacific/Majuro
+          - Pacific/Marquesas
+          - Pacific/Midway
+          - Pacific/Nauru
+          - Pacific/Niue
+          - Pacific/Norfolk
+          - Pacific/Noumea
+          - Pacific/Pago_Pago
+          - Pacific/Palau
+          - Pacific/Pitcairn
+          - Pacific/Pohnpei
+          - Pacific/Port_Moresby
+          - Pacific/Rarotonga
+          - Pacific/Saipan
+          - Pacific/Tahiti
+          - Pacific/Tarawa
+          - Pacific/Tongatapu
+          - Pacific/Wake
+          - Pacific/Wallis
+          - US/Alaska
+          - US/Arizona
+          - US/Central
+          - US/Eastern
+          - US/Hawaii
+          - US/Mountain
+          - US/Pacific
+          - UTC
+          type: string
     PatchedPlanUpdateRequest:
       type: object
       properties:
@@ -4347,20 +6676,23 @@ components:
           nullable: true
         flat_fee_billing_type:
           enum:
-          - in_arrears
           - in_advance
-          - 
+          - in_arrears
           type: string
           readOnly: true
-          nullable: true
+          deprecated: true
         flat_rate:
           type: number
           format: double
           maximum: 10000000000
-          minimum: -10000000000
+          minimum: 0
           exclusiveMaximum: true
-          exclusiveMinimum: true
           readOnly: true
+          deprecated: true
+        recurring_charges:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecurringCharge'
         components:
           type: array
           items:
@@ -4407,6 +6739,7 @@ components:
       - flat_rate
       - plan_name
       - price_adjustment
+      - recurring_charges
       - status
       - usage_billing_frequency
       - version
@@ -4420,22 +6753,11 @@ components:
         plan_id:
           type: string
           format: uuid
-        flat_fee_billing_type:
-          enum:
-          - in_arrears
-          - in_advance
-          - ''
-          - 
-          type: string
-          writeOnly: true
+        recurring_charges:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecurringChargeCreateRequest'
           nullable: true
-        flat_rate:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: 0
-          exclusiveMaximum: true
-          writeOnly: true
         components:
           type: array
           items:
@@ -4502,20 +6824,23 @@ components:
           nullable: true
         flat_fee_billing_type:
           enum:
-          - in_arrears
           - in_advance
-          - 
+          - in_arrears
           type: string
           readOnly: true
-          nullable: true
+          deprecated: true
         flat_rate:
           type: number
           format: double
           maximum: 10000000000
-          minimum: -10000000000
+          minimum: 0
           exclusiveMaximum: true
-          exclusiveMinimum: true
           readOnly: true
+          deprecated: true
+        recurring_charges:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecurringCharge'
         components:
           type: array
           items:
@@ -4575,6 +6900,7 @@ components:
       - plan_id
       - plan_name
       - price_adjustment
+      - recurring_charges
       - status
       - usage_billing_frequency
       - version
@@ -4677,42 +7003,33 @@ components:
           - flat
           - per_unit
           - free
-          type: string
           readOnly: true
         range_start:
           type: number
           format: double
           maximum: 10000000000
-          minimum: -10000000000
+          minimum: 0
           exclusiveMaximum: true
-          exclusiveMinimum: true
-          readOnly: true
         range_end:
           type: number
           format: double
           maximum: 10000000000
-          minimum: -10000000000
+          minimum: 0
           exclusiveMaximum: true
-          exclusiveMinimum: true
-          readOnly: true
           nullable: true
         cost_per_batch:
           type: number
           format: double
           maximum: 10000000000
-          minimum: -10000000000
+          minimum: 0
           exclusiveMaximum: true
-          exclusiveMinimum: true
-          readOnly: true
           nullable: true
         metric_units_per_batch:
           type: number
           format: double
           maximum: 10000000000
-          minimum: -10000000000
+          minimum: 0
           exclusiveMaximum: true
-          exclusiveMinimum: true
-          readOnly: true
           nullable: true
         batch_rounding_type:
           enum:
@@ -4720,7 +7037,7 @@ components:
           - round_down
           - round_nearest
           - no_rounding
-          type: string
+          - 
           nullable: true
           readOnly: true
       required:
@@ -4775,6 +7092,7 @@ components:
           - 
           type: string
           nullable: true
+          default: no_rounding
       required:
       - range_start
       - type
@@ -4857,6 +7175,67 @@ components:
       required:
       - name
       - status
+    RecurringCharge:
+      type: object
+      properties:
+        name:
+          type: string
+        charge_timing:
+          enum:
+          - in_advance
+          - in_arrears
+          type: string
+          readOnly: true
+        charge_behavior:
+          enum:
+          - prorate
+          - full
+          type: string
+          readOnly: true
+        amount:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
+        pricing_unit:
+          $ref: '#/components/schemas/PricingUnit'
+      required:
+      - amount
+      - charge_behavior
+      - charge_timing
+      - name
+      - pricing_unit
+    RecurringChargeCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        charge_timing:
+          enum:
+          - in_advance
+          - in_arrears
+          type: string
+        charge_behavior:
+          enum:
+          - prorate
+          - full
+          type: string
+          default: prorate
+        amount:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
+        pricing_unit_code:
+          type: string
+          minLength: 1
+      required:
+      - amount
+      - charge_timing
+      - name
     RegistrationDetailRequest:
       type: object
       properties:
@@ -5205,16 +7584,17 @@ components:
         flat_fee_behavior:
           enum:
           - refund
-          - prorate
+          - charge_prorated
           - charge_full
+          - 
           type: string
-          default: charge_full
-          description: Can either charge the full amount of the flat fee, regardless
-            of how long the customer has been on the plan, prorate the fflat fee,
-            or charge nothing for the flat fee. If the flat fee has already been invoiced
-            (e.g. in advance payment on last subscription), and the reuslting charge
-            is less than the amount already invoiced, the difference will be refunded
-            as a credit. Defaults to charge full amount.
+          nullable: true
+          description: When canceling a subscription, the behavior used to calculate
+            the flat fee. If null or not provided, the charge's default behavior will
+            be used according to the subscription's start and end dates. If charge_full,
+            the full flat fee will be charged, regardless of the duration of teh subscription.
+            If refund, the flat fee will not be charged. If charge_prorated, the prorated
+            flat fee will be charged.
         usage_behavior:
           enum:
           - bill_full
@@ -5323,7 +7703,10 @@ components:
           type: string
           format: uuid
           writeOnly: true
-          description: The plan to replace the current plan with
+          description: If provided, will replace the current subscription's plan with
+            this plan. If this is provided,turn_off_auto_renew and end_date will be
+            ignored. The provided plan must have the same duration as the current
+            plan.
         invoicing_behavior:
           enum:
           - add_to_next_invoice

@@ -6,7 +6,10 @@ import time
 import uuid
 
 import numpy as np
+import pytz
 from dateutil.relativedelta import relativedelta
+from model_bakery import baker
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     APIToken,
@@ -31,7 +34,7 @@ from metering_billing.models import (
     PriceTier,
     PricingUnit,
     Product,
-    Subscription,
+    RecurringCharge,
     SubscriptionRecord,
     TeamInviteToken,
     User,
@@ -39,16 +42,10 @@ from metering_billing.models import (
     WebhookTrigger,
 )
 from metering_billing.tasks import run_backtest, run_generate_invoice
-from metering_billing.utils import (
-    calculate_end_date,
-    date_as_max_dt,
-    date_as_min_dt,
-    now_utc,
-)
+from metering_billing.utils import date_as_max_dt, date_as_min_dt, now_utc
 from metering_billing.utils.enums import (
     BACKTEST_KPI,
     EVENT_TYPE,
-    FLAT_FEE_BILLING_TYPE,
     METRIC_AGGREGATION,
     METRIC_GRANULARITY,
     METRIC_TYPE,
@@ -57,7 +54,6 @@ from metering_billing.utils.enums import (
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
 )
-from model_bakery import baker
 
 logger = logging.getLogger("django.server")
 
@@ -101,7 +97,6 @@ def setup_demo3(
         user = organization.users.all().first()
         WebhookEndpoint.objects.filter(organization=organization).delete()
         WebhookTrigger.objects.filter(organization=organization).delete()
-        Subscription.objects.filter(organization=organization).delete()
         PlanVersion.objects.filter(organization=organization).delete()
         Plan.objects.filter(organization=organization).delete()
         Customer.objects.filter(organization=organization).delete()
@@ -217,10 +212,16 @@ def setup_demo3(
         organization=organization,
         description="The free tier",
         version=1,
-        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
-        flat_rate=0,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=free_bp,
+        amount=0,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=free_bp.pricing_unit,
     )
     create_pc_and_tiers(
         organization, plan_version=free_bp, billable_metric=sum_words, free_units=2_000
@@ -240,10 +241,16 @@ def setup_demo3(
         organization=organization,
         description="10K Words Plan",
         version=1,
-        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
-        flat_rate=49,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=bp_10_og,
+        amount=49,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=bp_10_og.pricing_unit,
     )
     create_pc_and_tiers(
         organization,
@@ -266,10 +273,16 @@ def setup_demo3(
         organization=organization,
         description="25K words per month",
         version=1,
-        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
-        flat_rate=99,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=bp_25_og,
+        amount=99,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=bp_25_og.pricing_unit,
     )
     create_pc_and_tiers(
         organization,
@@ -292,10 +305,16 @@ def setup_demo3(
         organization=organization,
         description="50K words per month",
         version=1,
-        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
-        flat_rate=279,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=bp_50_og,
+        amount=279,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=bp_50_og.pricing_unit,
     )
     create_pc_and_tiers(
         organization,
@@ -318,10 +337,16 @@ def setup_demo3(
         organization=organization,
         description="10K words per month + usage based pricing on Compute Time and Seats",
         version=1,
-        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
-        flat_rate=19,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=bp_10_compute_seats,
+        amount=19,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=bp_10_compute_seats.pricing_unit,
     )
     create_pc_and_tiers(
         organization,
@@ -357,10 +382,16 @@ def setup_demo3(
         organization=organization,
         description="25K words per month + usage based pricing on Compute Time and Seats",
         version=1,
-        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
-        flat_rate=59,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=bp_25_compute_seats,
+        amount=59,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=bp_25_compute_seats.pricing_unit,
     )
     create_pc_and_tiers(
         organization,
@@ -396,10 +427,16 @@ def setup_demo3(
         organization=organization,
         description="50K words per month + usage based pricing on Compute Time and Seats",
         version=1,
-        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
-        flat_rate=179,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=bp_50_compute_seats,
+        amount=179,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=bp_50_compute_seats.pricing_unit,
     )
     create_pc_and_tiers(
         organization,
@@ -498,7 +535,7 @@ def setup_demo3(
                     )
                     ct_mean, ct_sd = 0.065, 0.01
 
-                sub, sr = make_subscription_and_subscription_record(
+                sr = make_subscription_record(
                     organization=organization,
                     customer=customer,
                     plan=plan,
@@ -525,7 +562,7 @@ def setup_demo3(
                         1 if plan == free_bp else np.random.exponential(scale=scale)
                     )
                     subsection = str(subsection // 1)
-                    for tc in random_date(sub.start_date, sub.end_date, 1):
+                    for tc in random_date(sr.start_date, sr.end_date, 1):
                         tc = tc
                     Event.objects.create(
                         organization=organization,
@@ -566,7 +603,7 @@ def setup_demo3(
                     customer=customer,
                     event_name="log_num_seats",
                     properties=gaussian_users(n, users_mean, users_sd, max_users),
-                    time_created=random_date(sub.start_date, sub.end_date, n),
+                    time_created=random_date(sr.start_date, sr.end_date, n),
                     idempotency_id=itertools.cycle(
                         [str(uuid.uuid4().hex) for _ in range(n)]
                     ),
@@ -583,16 +620,15 @@ def setup_demo3(
                 )
                 if months == 0:
                     run_generate_invoice.delay(
-                        sub.pk,
                         [sr.pk],
-                        issue_date=sub.start_date,
+                        issue_date=sr.start_date,
                     )
                 if months != 5:
                     cur_replace_with = sr.billing_plan.replace_with
                     sr.billing_plan.replace_with = next_plan
                     sr.save()
                     run_generate_invoice.delay(
-                        sub.pk, [sr.pk], issue_date=sub.end_date, charge_next_plan=True
+                        [sr.pk], issue_date=sr.end_date, charge_next_plan=True
                     )
                     sr.billing_plan.replace_with = cur_replace_with
                     sr.save()
@@ -650,7 +686,6 @@ def setup_demo4(
         user = organization.users.all().first()
         WebhookEndpoint.objects.filter(organization=organization).delete()
         WebhookTrigger.objects.filter(organization=organization).delete()
-        Subscription.objects.filter(organization=organization).delete()
         PlanVersion.objects.filter(organization=organization).delete()
         Plan.objects.filter(organization=organization).delete()
         Customer.objects.filter(organization=organization).delete()
@@ -783,10 +818,16 @@ def setup_demo4(
         organization=organization,
         description="The free tier",
         version=1,
-        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
-        flat_rate=0,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=free_bp,
+        amount=0,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=free_bp.pricing_unit,
     )
     create_pc_and_tiers(
         organization, plan_version=free_bp, billable_metric=calls, free_units=50
@@ -810,10 +851,16 @@ def setup_demo4(
         organization=organization,
         description="Basic plan, with access to only analytics events. $29/month flat fee + 20 cents per_usage",
         version=1,
-        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
-        flat_rate=29,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=bp_basic_events,
+        amount=29,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=bp_basic_events.pricing_unit,
     )
     create_pc_and_tiers(
         organization,
@@ -842,10 +889,16 @@ def setup_demo4(
         organization=organization,
         description="Pro plan, with access to only analytics events. $69/month flat fee + 25 cents charge for events",
         version=1,
-        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
-        flat_rate=69,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=bp_pro_events,
+        amount=69,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=bp_pro_events.pricing_unit,
     )
     create_pc_and_tiers(
         organization,
@@ -874,10 +927,16 @@ def setup_demo4(
         organization=organization,
         description="Basic plan, with access to analytics events + session recordings. $59/month flat fee + 20 cent per_usage charge for events + $0.35 per session recording",
         version=1,
-        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
-        flat_rate=59,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=bp_basic_both,
+        amount=59,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=bp_basic_both.pricing_unit,
     )
     create_pc_and_tiers(
         organization,
@@ -913,10 +972,16 @@ def setup_demo4(
         organization=organization,
         description="Pro plan, with access to analytics events + session recordings. $119/month flat fee + 25 cent per_usage charge + $0.35 per session recording",
         version=1,
-        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
-        flat_rate=119,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=bp_pro_both,
+        amount=119,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=bp_pro_both.pricing_unit,
     )
     create_pc_and_tiers(
         organization,
@@ -952,10 +1017,16 @@ def setup_demo4(
         organization=organization,
         description="Experimental Plan for charging based on Recording Time instead of number of recordings",
         version=1,
-        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
-        flat_rate=89,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=bp_experimental,
+        amount=89,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=bp_experimental.pricing_unit,
     )
     create_pc_and_tiers(
         organization,
@@ -1052,7 +1123,7 @@ def setup_demo4(
                     n_cust = 10
                     users_mean, users_sd = 1.5, 0.5
 
-                sub, sr = make_subscription_and_subscription_record(
+                sr = make_subscription_record(
                     organization=organization,
                     customer=customer,
                     plan=plan,
@@ -1062,9 +1133,7 @@ def setup_demo4(
                 if n_analytics != 0:
                     events = []
                     for i in range(n_analytics):
-                        dts = list(
-                            random_date(sub.start_date, sub.end_date, n_analytics)
-                        )
+                        dts = list(random_date(sr.start_date, sr.end_date, n_analytics))
                         user_ids = np.random.randint(1, n_cust, n_analytics)
                         buttons_clicked = np.random.randint(1, 10, n_analytics)
                         page = np.random.randint(1, 100, n_analytics)
@@ -1087,7 +1156,7 @@ def setup_demo4(
                     events = []
                     for i in range(n_recordings):
                         dts = list(
-                            random_date(sub.start_date, sub.end_date, n_recordings)
+                            random_date(sr.start_date, sr.end_date, n_recordings)
                         )
                         user_ids = np.random.randint(1, n_cust, n_recordings)
                         recording_lengths = np.random.randint(1, 3600, n_recordings)
@@ -1120,7 +1189,7 @@ def setup_demo4(
                             for i in range(n_cost)
                         ]
                     ),
-                    time_created=random_date(sub.start_date, sub.end_date, n_cost),
+                    time_created=random_date(sr.start_date, sr.end_date, n_cost),
                     idempotency_id=itertools.cycle(
                         [uuid.uuid4().hex for _ in range(n_cost)]
                     ),
@@ -1140,7 +1209,7 @@ def setup_demo4(
                     customer=customer,
                     event_name="log_num_seats",
                     properties=gaussian_users(n, users_mean, users_sd, max_users),
-                    time_created=random_date(sub.start_date, sub.end_date, n),
+                    time_created=random_date(sr.start_date, sr.end_date, n),
                     idempotency_id=itertools.cycle(
                         [str(uuid.uuid4().hex) for _ in range(n)]
                     ),
@@ -1151,16 +1220,15 @@ def setup_demo4(
                 next_plan = plan_dict[cust_set_name].get(months + 1, plan)
                 if months == 0:
                     run_generate_invoice.delay(
-                        sub.pk,
                         [sr.pk],
-                        issue_date=sub.start_date,
+                        issue_date=sr.start_date,
                     )
                 if months != 5:
                     cur_replace_with = sr.billing_plan.replace_with
                     sr.billing_plan.replace_with = next_plan
                     sr.save()
                     run_generate_invoice.delay(
-                        sub.pk, [sr.pk], issue_date=sub.end_date, charge_next_plan=True
+                        [sr.pk], issue_date=sr.end_date, charge_next_plan=True
                     )
                     sr.fully_billed = True
                     sr.billing_plan.replace_with = cur_replace_with
@@ -1305,10 +1373,16 @@ def setup_paas_demo(
         organization=organization,
         description="Basic Plan with access to testnet",
         version=1,
-        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
-        flat_rate=125,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=basic_plan,
+        amount=125,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=basic_plan.pricing_unit,
     )
     create_pc_and_tiers(
         organization,
@@ -1337,10 +1411,16 @@ def setup_paas_demo(
         organization=organization,
         description="Customizable Professional Pla",
         version=1,
-        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
-        flat_rate=0,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=professional_plan,
+        amount=0,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=professional_plan.pricing_unit,
     )
     create_pc_and_tiers(
         organization,
@@ -1455,9 +1535,9 @@ def create_pc_and_tiers(
 def random_date(start, end, n):
     """Generate a random datetime between `start` and `end`"""
     if type(start) is datetime.date:
-        start = date_as_min_dt(start)
+        start = date_as_min_dt(start, timezone=pytz.UTC)
     if type(end) is datetime.date:
-        end = date_as_max_dt(end)
+        end = date_as_max_dt(end, timezone=pytz.UTC)
     for _ in range(n):
         dt = start + relativedelta(
             # Get a random amount of seconds between `start` and `end`
@@ -1487,34 +1567,17 @@ def gaussian_users(n, mean=3, sd=1, mx=None):
         }
 
 
-def make_subscription_and_subscription_record(
+def make_subscription_record(
     organization,
     customer,
     plan,
     start_date,
     is_new,
 ):
-    end_date = calculate_end_date(
-        plan.plan.plan_duration,
-        start_date,
-    )
-    sub = Subscription.objects.create(
-        organization=organization,
-        customer=customer,
-        start_date=start_date,
-        end_date=end_date,
-    )
-    sub.handle_attach_plan(
-        plan_day_anchor=plan.day_anchor,
-        plan_month_anchor=plan.month_anchor,
-        plan_start_date=start_date,
-        plan_duration=plan.plan.plan_duration,
-    )
     sr = SubscriptionRecord.objects.create(
         organization=organization,
         customer=customer,
         billing_plan=plan,
         start_date=start_date,
     )
-    sub.save()
-    return sub, sr
+    return sr

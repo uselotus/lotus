@@ -18,19 +18,16 @@ from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
 from metering_billing.exceptions.exceptions import (
-    AlignmentEngineFailure,
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
     NotEditable,
     OverlappingPlans,
-    ServerError,
 )
 from metering_billing.utils import (
     calculate_end_date,
     convert_to_date,
     convert_to_decimal,
     customer_uuid,
-    date_as_min_dt,
     dates_bwn_two_dts,
     event_uuid,
     now_plus_day,
@@ -46,7 +43,6 @@ from metering_billing.utils.enums import (
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     EVENT_TYPE,
     FLAT_FEE_BEHAVIOR,
-    FLAT_FEE_BILLING_TYPE,
     INVOICE_CHARGE_TIMING_TYPE,
     INVOICING_BEHAVIOR,
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
@@ -79,6 +75,7 @@ from svix.internal.openapi_client.models.http_error import HttpError
 from svix.internal.openapi_client.models.http_validation_error import (
     HTTPValidationError,
 )
+from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -133,7 +130,13 @@ class Organization(models.Model):
         help_text="Tax rate as percentage. For example, 10.5 for 10.5%",
         null=True,
     )
+    timezone = TimeZoneField(default="UTC", use_pytz=True)
+    __original_timezone = None
     history = HistoricalRecords()
+
+    def __init__(self, *args, **kwargs):
+        super(Organization, self).__init__(*args, **kwargs)
+        self.__original_timezone = self.timezone
 
     class Meta:
         indexes = [
@@ -153,25 +156,19 @@ class Organization(models.Model):
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
                 )
         new = self.pk is None
-        (
-            prev_organization_type,
-            new_organization_type,
-        ) = self.organization_type, kwargs.get(
-            "organization_type", self.organization_type
-        )
-        if prev_organization_type != new_organization_type and self.pk:
-            raise NotEditable(
-                "Organization type cannot be changed once an organization is created."
-            )
+        if self.timezone != self.__original_timezone and self.pk:
+            self.customers.filter(timezone_set=False).update(timezone=self.timezone)
         if self.team is None:
             self.team = Team.objects.create(name=self.organization_name)
         super(Organization, self).save(*args, **kwargs)
+        self.__original_timezone = self.timezone
         if new:
             self.provision_currencies()
         if not self.default_currency:
             self.default_currency = PricingUnit.objects.get(
                 organization=self, code="USD"
             )
+            self.save()
         self.provision_subscription_filter_settings()
 
     def provision_subscription_filter_settings(self):
@@ -483,6 +480,8 @@ class Customer(models.Model):
         help_text="Tax rate as percentage. For example, 10.5 for 10.5%",
         null=True,
     )
+    timezone = TimeZoneField(default="UTC", use_pytz=True)
+    timezone_set = models.BooleanField(default=False)
     history = HistoricalRecords()
 
     class Meta:
@@ -524,24 +523,15 @@ class Customer(models.Model):
             customer__isnull=True,
         ).update(customer=self)
 
-    def get_subscription_and_records(self):
-        now_utc()
-        active_subscription = self.subscriptions.active().first()
-        if active_subscription:
-            active_subscription_records = self.subscription_records.filter(
-                next_billing_date__range=(
-                    active_subscription.start_date,
-                    active_subscription.end_date,
-                ),
-                fully_billed=False,
-            )
-        else:
-            active_subscription_records = None
-        return active_subscription, active_subscription_records
+    def get_active_subscription_records(self):
+        active_subscription_records = self.subscription_records.active().filter(
+            fully_billed=False,
+        )
+        return active_subscription_records
 
     def get_usage_and_revenue(self):
         customer_subscriptions = (
-            Subscription.objects.active()
+            SubscriptionRecord.objects.active()
             .filter(
                 customer=self,
                 organization=self.organization,
@@ -564,10 +554,9 @@ class Customer(models.Model):
         from metering_billing.invoice import generate_invoice
 
         total = 0
-        sub, sub_records = self.get_subscription_and_records()
-        if sub is not None and sub_records is not None:
+        sub_records = self.get_active_subscription_records()
+        if sub_records is not None and len(sub_records) > 0:
             invs = generate_invoice(
-                sub,
                 sub_records,
                 draft=True,
                 charge_next_plan=True,
@@ -751,9 +740,7 @@ class CustomerBalanceAdjustment(models.Model):
         self.save()
 
     @staticmethod
-    def draw_down_amount(customer, amount, description="", pricing_unit=None):
-        if not pricing_unit:
-            pricing_unit = customer.organization.default_currency
+    def draw_down_amount(customer, amount, pricing_unit, description=""):
         now = now_utc()
         adjs = (
             CustomerBalanceAdjustment.objects.filter(
@@ -773,10 +760,16 @@ class CustomerBalanceAdjustment(models.Model):
                 F("expires_at").asc(nulls_last=True),
                 F("cost_basis").desc(nulls_last=True),
             )
+            .annotate(
+                drawn_down_amount=Coalesce(
+                    Sum("drawdowns__amount"), 0, output_field=models.DecimalField()
+                )
+            )
+            .annotate(remaining_balance=F("amount") - F("drawn_down_amount"))
         )
         am = amount
         for adj in adjs:
-            remaining_balance = adj.get_remaining_balance()
+            remaining_balance = adj.remaining_balance
             if remaining_balance <= 0:
                 adj.status = CUSTOMER_BALANCE_ADJUSTMENT_STATUS.INACTIVE
                 adj.save()
@@ -799,21 +792,27 @@ class CustomerBalanceAdjustment(models.Model):
         return am
 
     @staticmethod
-    def get_pricing_unit_balance(customer, pricing_unit=None):
-        if not pricing_unit:
-            pricing_unit = customer.organization.default_currency
+    def get_pricing_unit_balance(customer, pricing_unit):
         now = now_utc()
-        adjs = CustomerBalanceAdjustment.objects.filter(
-            Q(expires_at__gte=now) | Q(expires_at__isnull=True),
-            organization=customer.organization,
-            customer=customer,
-            pricing_unit=pricing_unit,
-            amount__gt=0,
+        adjs = (
+            CustomerBalanceAdjustment.objects.filter(
+                Q(expires_at__gte=now) | Q(expires_at__isnull=True),
+                organization=customer.organization,
+                customer=customer,
+                pricing_unit=pricing_unit,
+                amount__gt=0,
+                status=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
+            )
+            .prefetch_related("drawdowns")
+            .annotate(
+                drawn_down_amount=Coalesce(
+                    Sum("drawdowns__amount"), 0, output_field=models.DecimalField()
+                )
+            )
+            .annotate(remaining_balance=F("amount") - F("drawn_down_amount"))
+            .aggregate(total_balance=Sum("remaining_balance"))["total_balance"]
         )
-        total_balance = 0
-        for adj in adjs:
-            remaining_balance = adj.get_remaining_balance()
-            total_balance += remaining_balance
+        total_balance = adjs or 0
         return total_balance
 
 
@@ -848,7 +847,12 @@ class Event(models.Model):
     class Meta:
         managed = False
         db_table = "metering_billing_usageevent"
-        unique_together = ("idempotency_id", "time_created")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "idempotency_id"],
+                name="unique_idempotency_id_per_org",
+            )
+        ]
         indexes = [
             models.Index(
                 fields=["organization", "event_name", "customer", "time_created"]
@@ -1183,15 +1187,15 @@ class UsageRevenueSummary(TypedDict):
 
 class PriceTier(models.Model):
     class PriceTierType(models.IntegerChoices):
-        FLAT = (1, _("Flat"))
-        PER_UNIT = (2, _("Per Unit"))
-        FREE = (3, _("Free"))
+        FLAT = (1, _("flat"))
+        PER_UNIT = (2, _("per_unit"))
+        FREE = (3, _("free"))
 
     class BatchRoundingType(models.IntegerChoices):
-        ROUND_UP = (1, _("Round Up"))
-        ROUND_DOWN = (2, _("Round Down"))
-        ROUND_NEAREST = (3, _("Round Nearest"))
-        NO_ROUNDING = (4, _("No Rounding"))
+        ROUND_UP = (1, _("round_up"))
+        ROUND_DOWN = (2, _("round_down"))
+        ROUND_NEAREST = (3, _("round_nearest"))
+        NO_ROUNDING = (4, _("no_rounding"))
 
     organization = models.ForeignKey(
         "Organization", on_delete=models.CASCADE, related_name="price_tiers", null=True
@@ -1392,10 +1396,10 @@ class Feature(models.Model):
 
 class Invoice(models.Model):
     class PaymentStatus(models.IntegerChoices):
-        DRAFT = (1, _("Draft"))
-        VOIDED = (2, _("Voided"))
-        PAID = (3, _("Paid"))
-        UNPAID = (4, _("Unpaid"))
+        DRAFT = (1, _("draft"))
+        VOIDED = (2, _("voided"))
+        PAID = (3, _("paid"))
+        UNPAID = (4, _("unpaid"))
 
     cost_due = models.DecimalField(
         decimal_places=10,
@@ -1430,11 +1434,8 @@ class Invoice(models.Model):
     customer = models.ForeignKey(
         Customer, on_delete=models.CASCADE, null=True, related_name="invoices"
     )
-    subscription = models.ForeignKey(
-        "Subscription",
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name="invoices",
+    subscription_records = models.ManyToManyField(
+        "SubscriptionRecord", related_name="invoices"
     )
     history = HistoricalRecords()
 
@@ -1445,7 +1446,7 @@ class Invoice(models.Model):
             models.Index(fields=["organization", "invoice_number"]),
             models.Index(fields=["organization", "invoice_id"]),
             models.Index(fields=["organization", "external_payment_obj_id"]),
-            models.Index(fields=["organization", "subscription", "-issue_date"]),
+            models.Index(fields=["organization", "-issue_date"]),
         ]
 
     def __str__(self):
@@ -1457,22 +1458,22 @@ class Invoice(models.Model):
 
         ### Generate invoice number
         if not self.pk and self.payment_status != Invoice.PaymentStatus.DRAFT:
-            today = now_utc().date()
-            today_string = today.strftime("%y%m%d")
+            issue_date = self.issue_date.date()
+            issue_date_string = issue_date.strftime("%y%m%d")
             next_invoice_number = "000001"
             last_invoice = (
                 Invoice.objects.filter(
-                    invoice_number__startswith=today_string,
+                    invoice_number__startswith=issue_date_string,
                     organization=self.organization,
                 )
-                .order_by("invoice_number")
-                .last()
+                .order_by("-invoice_number")
+                .first()
             )
             if last_invoice:
                 last_invoice_number = int(last_invoice.invoice_number[7:])
                 next_invoice_number = "{0:06d}".format(last_invoice_number + 1)
 
-            self.invoice_number = today_string + "-" + next_invoice_number
+            self.invoice_number = issue_date_string + "-" + next_invoice_number
             # if not self.due_date:
             #     self.due_date = self.issue_date + datetime.timedelta(days=1)
         paid_before = self.payment_status == Invoice.PaymentStatus.PAID
@@ -1533,6 +1534,18 @@ class InvoiceLineItem(models.Model):
         null=True,
         related_name="line_items",
     )
+    associated_recurring_charge = models.ForeignKey(
+        "RecurringCharge",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="line_items",
+    )
+    associated_plan_component = models.ForeignKey(
+        "PlanComponent",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="line_items",
+    )
     metadata = models.JSONField(default=dict, blank=True, null=True)
 
     def __str__(self):
@@ -1569,17 +1582,109 @@ class TeamInviteToken(models.Model):
     expire_at = models.DateTimeField(default=now_plus_day, null=False, blank=False)
 
 
+class RecurringCharge(models.Model):
+    class ChargeTimingType(models.IntegerChoices):
+        IN_ADVANCE = (1, "in_advance")
+        IN_ARREARS = (2, "in_arrears")
+
+    class ChargeBehaviorType(models.IntegerChoices):
+        PRORATE = (1, "prorate")
+        CHARGE_FULL = (2, "full")
+
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="recurring_charges",
+    )
+    name = models.TextField()
+    plan_version = models.ForeignKey(
+        "PlanVersion",
+        on_delete=models.CASCADE,
+        related_name="recurring_charges",
+    )
+    plan_component = models.ForeignKey(
+        "PlanComponent",
+        on_delete=models.CASCADE,
+        related_name="recurring_charges",
+        null=True,
+    )
+    charge_timing = models.PositiveSmallIntegerField(
+        choices=ChargeTimingType.choices, default=ChargeTimingType.IN_ADVANCE
+    )
+    charge_behavior = models.PositiveSmallIntegerField(
+        choices=ChargeBehaviorType.choices, default=ChargeBehaviorType.PRORATE
+    )
+    amount = models.DecimalField(
+        decimal_places=10,
+        max_digits=20,
+        default=Decimal(0.0),
+        validators=[MinValueValidator(0)],
+    )
+    pricing_unit = models.ForeignKey(
+        "PricingUnit",
+        on_delete=models.SET_NULL,
+        related_name="recurring_charges",
+        null=True,
+    )
+
+    def __str__(self):
+        return self.name + " [" + str(self.plan_version) + "]"
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "plan_version", "name"],
+                name="unique_recurring_charge_name_in_plan_version",
+            )
+        ]
+
+    def calculate_amount_due(self, subscription_record):
+        # first thing to consider is Timing... in advance vs in arrears
+        refunded_amount = Decimal(0.0)
+        proration_factor = (
+            (
+                subscription_record.end_date - subscription_record.start_date
+            ).total_seconds()
+            * 10**6
+            / subscription_record.unadjusted_duration_microseconds
+        )
+        prorated_amount = (
+            self.amount
+            * subscription_record.quantity
+            * convert_to_decimal(proration_factor)
+        )
+        full_amount = self.amount * subscription_record.quantity
+        if (
+            subscription_record.flat_fee_behavior is not None
+        ):  # this overrides other behavior
+            if subscription_record.flat_fee_behavior == FLAT_FEE_BEHAVIOR.REFUND:
+                return refunded_amount
+            elif subscription_record.flat_fee_behavior == FLAT_FEE_BEHAVIOR.CHARGE_FULL:
+                return full_amount
+            else:
+                return prorated_amount
+        else:  # dont worry about invoice timing here, thats the problem of the invoice
+            if self.charge_behavior == RecurringCharge.ChargeBehaviorType.PRORATE:
+                return prorated_amount
+            else:
+                return full_amount
+
+    def amount_already_invoiced(self, subscription_record):
+        return subscription_record.line_items.filter(
+            Q(chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE),
+            associated_recurring_charge=self,
+        ).aggregate(Sum("subtotal"))["subtotal__sum"] or Decimal(0.0)
+
+
 class PlanVersion(models.Model):
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
         related_name="plan_versions",
     )
+    version_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     description = models.TextField(null=True, blank=True)
     version = models.PositiveSmallIntegerField()
-    flat_fee_billing_type = models.CharField(
-        max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices, null=True, blank=True
-    )
     usage_billing_frequency = models.CharField(
         max_length=40, choices=USAGE_BILLING_FREQUENCY.choices, null=True, blank=True
     )
@@ -1594,12 +1699,6 @@ class PlanVersion(models.Model):
         null=True,
         blank=True,
         related_name="transition_from",
-    )
-    flat_rate = models.DecimalField(
-        decimal_places=10,
-        max_digits=20,
-        default=Decimal(0),
-        validators=[MinValueValidator(0)],
     )
     features = models.ManyToManyField(Feature, blank=True)
     price_adjustment = models.ForeignKey(
@@ -1623,7 +1722,6 @@ class PlanVersion(models.Model):
         null=True,
         blank=True,
     )
-    version_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     pricing_unit = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
@@ -1716,25 +1814,14 @@ class AddOnPlanManager(models.Manager):
         return super().get_queryset().filter(addon_spec__isnull=False)
 
 
-class BillingFrequency(models.IntegerChoices):
-    ONE_TIME = (1, _("one_time"))
-    RECURRING = (2, _("recurring"))
-
-
-class FlatFeeInvoicingBehaviorOnAttach(models.IntegerChoices):
-    INVOICE_ON_ATTACH = (1, _("invoice_on_attach"))
-    INVOICE_ON_SUBSCRIPTION_END = (2, _("invoice_on_subscription_end"))
-
-
-class RecurringFlatFeeTiming(models.IntegerChoices):
-    IN_ADVANCE = (1, _("in_advance"))
-    IN_ARREARS = (2, _("in_arrears"))
-
-
 class AddOnSpecification(models.Model):
-    BillingFrequency = BillingFrequency
-    FlatFeeInvoicingBehaviorOnAttach = FlatFeeInvoicingBehaviorOnAttach
-    RecurringFlatFeeTiming = RecurringFlatFeeTiming
+    class BillingFrequency(models.IntegerChoices):
+        ONE_TIME = (1, _("one_time"))
+        RECURRING = (2, _("recurring"))
+
+    class FlatFeeInvoicingBehaviorOnAttach(models.IntegerChoices):
+        INVOICE_ON_ATTACH = (1, _("invoice_on_attach"))
+        INVOICE_ON_SUBSCRIPTION_END = (2, _("invoice_on_subscription_end"))
 
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="+"
@@ -1746,26 +1833,6 @@ class AddOnSpecification(models.Model):
         choices=FlatFeeInvoicingBehaviorOnAttach.choices,
         default=FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_ATTACH,
     )
-    recurring_flat_fee_timing = models.PositiveSmallIntegerField(
-        choices=RecurringFlatFeeTiming.choices,
-        null=True,
-        blank=True,
-    )
-
-    class Meta:
-        constraints = [
-            models.CheckConstraint(
-                check=Q(
-                    recurring_flat_fee_timing__isnull=True,
-                    billing_frequency=BillingFrequency.ONE_TIME,
-                )
-                | Q(
-                    recurring_flat_fee_timing__isnull=False,
-                    billing_frequency=BillingFrequency.RECURRING,
-                ),
-                name="billing_frequency_one_time_recurring_flat_fee_timing_isnull",
-            ),
-        ]
 
 
 class Plan(models.Model):
@@ -1849,7 +1916,7 @@ class Plan(models.Model):
                 check=(Q(parent_plan__isnull=True) & Q(target_customer__isnull=True))
                 | Q(parent_plan__isnull=False) & Q(target_customer__isnull=False),
                 name="both_null_or_both_not_null",
-            )
+            ),
         ]
         indexes = [
             models.Index(fields=["organization", "status"]),
@@ -1964,15 +2031,16 @@ class Plan(models.Model):
                         )
                         sub.end_subscription_now(
                             bill_usage=bill_usage,
-                            flat_fee_behavior=FLAT_FEE_BEHAVIOR.PRORATE,
+                            flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_PRORATED,
                         )
-                        Subscription.objects.create(
+                        SubscriptionRecord.objects.create(
                             billing_plan=new_version,
                             organization=self.organization,
                             customer=sub.customer,
                             start_date=sub.end_date,
                             auto_renew=True,
                             is_new=False,
+                            quantity=sub.quantity,
                         )
 
 
@@ -1998,213 +2066,6 @@ class ExternalPlanLink(models.Model):
                 name="unique_external_plan_link",
             )
         ]
-
-
-class SubscriptionManager(models.Manager):
-    def active(self, time=None):
-        if time is None:
-            time = now_utc()
-        return self.filter(
-            Q(start_date__lte=time)
-            & ((Q(end_date__gte=time) | Q(end_date__isnull=True)))
-        )
-
-    def ended(self, time=None):
-        if time is None:
-            time = now_utc()
-        return self.filter(end_date__lte=time)
-
-    def not_started(self, time=None):
-        if time is None:
-            time = now_utc()
-        return self.filter(start_date__gt=time)
-
-
-class Subscription(models.Model):
-    organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="subscriptions", null=True
-    )
-    day_anchor = models.SmallIntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(31)],
-        null=True,
-        blank=True,
-    )
-    month_anchor = models.SmallIntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(12)],
-        null=True,
-        blank=True,
-    )
-    customer = models.ForeignKey(
-        Customer,
-        on_delete=models.CASCADE,
-        null=False,
-        related_name="subscriptions",
-    )
-    billing_cadence = models.CharField(
-        choices=PLAN_DURATION.choices,
-        max_length=20,
-    )
-    start_date = models.DateTimeField()
-    end_date = models.DateTimeField()
-    subscription_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    objects = SubscriptionManager()
-
-    class Meta:
-        constraints = [
-            models.CheckConstraint(
-                check=Q(start_date__lte=F("end_date")),
-                name="start_date_less_than_end_date",
-            ),
-            models.UniqueConstraint(
-                fields=["customer", "start_date", "end_date"],
-                name="unique_customer_start_end_date",
-            ),
-        ]
-        indexes = [
-            models.Index(fields=["-end_date"]),
-            models.Index(fields=["organization", "customer", "start_date", "end_date"]),
-        ]
-
-    def __str__(self):
-        return f"{self.customer.id} [{self.start_date}, {self.end_date}] - {self.subscription_id}"
-
-    def save(self, *args, **kwargs):
-        if not self.pk:
-            overlapping_subscriptions = Subscription.objects.filter(
-                Q(start_date__range=(self.start_date, self.end_date))
-                | Q(end_date__range=(self.start_date, self.end_date)),
-                organization=self.organization,
-                customer=self.customer,
-            )
-            if overlapping_subscriptions.exists():
-                logger.error(
-                    "Overlapping subscriptions found. Subscription that was trying to be created had start date of %s and end date of %s, customer id %s, and organization id %s. Overlapping subscriptions: %s",
-                    self.start_date,
-                    self.end_date,
-                    self.customer.id,
-                    self.organization.id,
-                    overlapping_subscriptions,
-                )
-                raise AlignmentEngineFailure(
-                    "An unexpected error in the alignment engine has occurred. Please contact support."
-                )
-        super(Subscription, self).save(*args, **kwargs)
-
-    def get_anchors(self):
-        return self.day_anchor, self.month_anchor
-
-    def handle_attach_plan(
-        self,
-        plan_day_anchor=None,
-        plan_month_anchor=None,
-        plan_start_date=None,
-        plan_duration=None,
-        plan_billing_frequency=None,
-    ):
-        if self.day_anchor is None:
-            if plan_day_anchor is not None:
-                self.day_anchor = plan_day_anchor
-            else:
-                self.day_anchor = plan_start_date.day
-        if self.month_anchor is None:
-            if plan_month_anchor is not None:
-                self.month_anchor = plan_month_anchor
-            elif plan_duration in [
-                PLAN_DURATION.YEARLY,
-                PLAN_DURATION.QUARTERLY,
-            ]:
-                self.month_anchor = plan_start_date.month
-        if plan_billing_frequency in [USAGE_BILLING_FREQUENCY.END_OF_PERIOD, None]:
-            if self.billing_cadence is None or self.billing_cadence == "":
-                self.billing_cadence = plan_duration
-            elif self.billing_cadence == PLAN_DURATION.QUARTERLY:
-                if plan_duration == PLAN_DURATION.MONTHLY:
-                    self.billing_cadence = PLAN_DURATION.MONTHLY
-            elif self.billing_cadence == PLAN_DURATION.YEARLY:
-                if plan_duration in [PLAN_DURATION.MONTHLY, PLAN_DURATION.QUARTERLY]:
-                    self.billing_cadence = plan_duration
-        else:
-            if plan_billing_frequency == USAGE_BILLING_FREQUENCY.MONTHLY:
-                self.billing_cadence = PLAN_DURATION.MONTHLY
-            elif plan_billing_frequency == USAGE_BILLING_FREQUENCY.QUARTERLY:
-                if self.billing_cadence in [PLAN_DURATION.YEARLY, None, ""]:
-                    self.billing_cadence = PLAN_DURATION.QUARTERLY
-        new_end_date = calculate_end_date(
-            self.billing_cadence,
-            self.start_date,
-            day_anchor=self.day_anchor,
-            month_anchor=self.month_anchor,
-        )
-        self.end_date = new_end_date
-        self.save()
-
-    def handle_remove_plan(self):
-        active_sub_records = self.customer.subscription_records.active()
-
-        active_subs_with_yearly_quarterly = active_sub_records.filter(
-            billing_plan__plan__plan_duration__in=[
-                PLAN_DURATION.YEARLY,
-                PLAN_DURATION.QUARTERLY,
-            ]
-        )
-        if active_sub_records.count() == 0:
-            self.day_anchor = None
-            self.month_anchor = None
-            self.end_date = now_utc()
-            self.save()
-            return
-        if active_subs_with_yearly_quarterly.count() == 0:
-            self.month_anchor = None
-        remaining_durations = active_sub_records.values_list(
-            "billing_plan__plan__plan_duration", flat=True
-        ).distinct()
-        remaining_usage_billing_freqs = active_sub_records.values_list(
-            "billing_plan__usage_billing_frequency", flat=True
-        ).distinct()
-        if (
-            PLAN_DURATION.MONTHLY in remaining_durations
-            or USAGE_BILLING_FREQUENCY.MONTHLY in remaining_usage_billing_freqs
-        ):
-            self.billing_cadence = PLAN_DURATION.MONTHLY
-        elif (
-            PLAN_DURATION.QUARTERLY in remaining_durations
-            or USAGE_BILLING_FREQUENCY.QUARTERLY in remaining_usage_billing_freqs
-        ):
-            self.billing_cadence = PLAN_DURATION.QUARTERLY
-        else:
-            self.billing_cadence = PLAN_DURATION.YEARLY
-        new_end_date = calculate_end_date(
-            self.billing_cadence,
-            self.start_date,
-            day_anchor=self.day_anchor,
-            month_anchor=self.month_anchor,
-        )
-        num_before = active_sub_records.filter(
-            next_billing_date__lt=new_end_date
-        ).count()
-        if num_before == 0:
-            self.end_date = new_end_date
-        self.save()
-
-    def get_subscription_records(self):
-        return self.customer.subscription_records.active().filter(
-            Q(last_billing_date__range=(self.start_date, self.end_date))
-            | Q(end_date__range=(self.start_date, self.end_date))
-            | Q(start_date__lte=self.start_date, end_date__gte=self.end_date),
-        )
-
-    def get_subscription_records_to_bill(self):
-        return self.customer.subscription_records.filter(
-            Q(last_billing_date__range=(self.start_date, self.end_date))
-            | Q(end_date__range=(self.start_date, self.end_date)),
-            fully_billed=False,
-        )
-
-    def get_new_sub_end_date(self):
-        new_date = date_as_min_dt(self.end_date + relativedelta(days=1))
-        return calculate_end_date(
-            self.billing_cadence, new_date, self.day_anchor, self.month_anchor
-        )
 
 
 class SubscriptionRecordManager(models.Manager):
@@ -2277,7 +2138,11 @@ class SubscriptionRecord(models.Model):
     end_date = models.DateTimeField(
         help_text="The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time."
     )
-    unadjusted_duration_seconds = models.PositiveIntegerField(null=True, blank=True)
+    unadjusted_duration_microseconds = models.PositiveBigIntegerField(
+        null=True,
+        blank=True,
+        help_text="The duration of the subscription in microseconds without any anchoring.",
+    )
     auto_renew = models.BooleanField(
         default=True,
         help_text="Whether the subscription automatically renews. Defaults to true.",
@@ -2296,9 +2161,7 @@ class SubscriptionRecord(models.Model):
     )
     invoice_usage_charges = models.BooleanField(default=True)
     flat_fee_behavior = models.CharField(
-        choices=FLAT_FEE_BEHAVIOR.choices,
-        max_length=20,
-        default=FLAT_FEE_BEHAVIOR.PRORATE,
+        choices=FLAT_FEE_BEHAVIOR.choices, max_length=20, null=True, default=None
     )
     fully_billed = models.BooleanField(
         default=False,
@@ -2312,6 +2175,7 @@ class SubscriptionRecord(models.Model):
         related_name="addon_subscription_records",
         help_text="The parent subscription record.",
     )
+    quantity = models.PositiveIntegerField(default=1)
     objects = SubscriptionRecordManager()
     addon_objects = AddOnSubscriptionRecordManager()
     base_objects = BaseSubscriptionRecordManager()
@@ -2325,32 +2189,32 @@ class SubscriptionRecord(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.customer.customer_name}  {self.billing_plan.plan.plan_name} : {self.start_date.date()} to {self.end_date.date()}"
+        addon = "[ADDON] " if self.billing_plan.plan.addon_spec else ""
+        return f"{addon}{self.customer.customer_name}  {self.billing_plan.plan.plan_name} : {self.start_date.date()} to {self.end_date.date()}"
 
     def save(self, *args, **kwargs):
         new_filters = kwargs.pop("subscription_filters", [])
         now = now_utc()
-        subscription = self.customer.subscriptions.active(self.start_date).first()
-        if not subscription:
-            raise ServerError(
-                "Unexpected error: subscription date alignment engine failed."
-            )
+        timezone = self.customer.timezone
         if not self.end_date:
-            day_anchor, month_anchor = subscription.get_anchors()
+            day_anchor, month_anchor = (
+                self.billing_plan.day_anchor,
+                self.billing_plan.month_anchor,
+            )
             self.end_date = calculate_end_date(
                 self.billing_plan.plan.plan_duration,
                 self.start_date,
+                timezone,
                 day_anchor=day_anchor,
                 month_anchor=month_anchor,
             )
-        if not self.unadjusted_duration_seconds:
+        if not self.unadjusted_duration_microseconds:
             scheduled_end_date = calculate_end_date(
-                self.billing_plan.plan.plan_duration,
-                self.start_date,
+                self.billing_plan.plan.plan_duration, self.start_date, timezone
             )
-            self.unadjusted_duration_seconds = (
+            self.unadjusted_duration_microseconds = (
                 scheduled_end_date - self.start_date
-            ).total_seconds()
+            ).total_seconds() * 10**6
         if not self.next_billing_date or self.next_billing_date < now:
             if self.billing_plan.usage_billing_frequency in [
                 USAGE_BILLING_FREQUENCY.END_OF_PERIOD,
@@ -2447,7 +2311,9 @@ class SubscriptionRecord(models.Model):
         sub_dict["usage_amount_due"] = Decimal(0)
         for component_pk, component_dict in sub_dict["components"]:
             sub_dict["usage_amount_due"] += component_dict["revenue"]
-        sub_dict["flat_amount_due"] = plan.flat_rate
+        sub_dict["flat_amount_due"] = sum(
+            x.amount for x in plan.recurring_charges.all()
+        )
         sub_dict["total_amount_due"] = (
             sub_dict["flat_amount_due"] + sub_dict["usage_amount_due"]
         )
@@ -2483,7 +2349,7 @@ class SubscriptionRecord(models.Model):
             start_date=now,
             end_date=self.end_date,
             auto_renew=self.auto_renew,
-            unadjusted_duration_seconds=self.unadjusted_duration_seconds,
+            unadjusted_duration_microseconds=self.unadjusted_duration_microseconds,
         )
         self.end_date = now
         self.auto_renew = False
@@ -2496,13 +2362,30 @@ class SubscriptionRecord(models.Model):
         ):
             period = convert_to_date(period)
             return_dict[period] = Decimal(0)
-            return_dict[period] += convert_to_decimal(
-                self.billing_plan.flat_rate
-                / self.unadjusted_duration_seconds
-                * 60
-                * 60
-                * 24
-            )
+            duration_microseconds = self.unadjusted_duration_microseconds
+            for recurring_charge in self.billing_plan.recurring_charges.all():
+                if period == self.start_date.date():
+                    start_of_day = datetime.datetime.combine(
+                        period, datetime.time.min
+                    ).replace(tzinfo=self.start_date.tzinfo)
+                    duration_microseconds = convert_to_decimal(
+                        (self.start_date - start_of_day).total_seconds() * 10**6
+                    )
+                elif period == self.end_date.date():
+                    start_of_day = datetime.datetime.combine(
+                        period, datetime.time.min
+                    ).replace(tzinfo=self.end_date.tzinfo)
+                    duration_microseconds = convert_to_decimal(
+                        (self.end_date - start_of_day).total_seconds() * 10**6
+                    )
+                else:
+                    duration_microseconds = 10**6 * 60 * 60 * 24
+                return_dict[period] += convert_to_decimal(
+                    recurring_charge.amount
+                    * self.quantity
+                    / self.unadjusted_duration_microseconds
+                    * duration_microseconds
+                )
         for component in self.billing_plan.plan_components.all():
             rev_per_day = component.calculate_revenue_per_day(self)
             for period, d in rev_per_day.items():
@@ -2800,5 +2683,6 @@ class UsageAlertResult(models.Model):
             self.triggered_count = self.triggered_count + 1
         self.last_run_value = new_value
         self.last_run_timestamp = now
+        self.save()
         self.save()
         self.save()

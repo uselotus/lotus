@@ -13,7 +13,6 @@ import datetime
 import logging
 import os
 import re
-import ssl
 from datetime import timedelta, timezone
 from json import loads
 from pathlib import Path
@@ -44,11 +43,9 @@ except Exception:
     pass
 
 VITE_API_URL = config("VITE_API_URL", default="http://localhost:8000")
-VITE_STRIPE_CLIENT = config("VITE_STRIPE_CLIENT", default="")
 EVENT_CACHE_FLUSH_SECONDS = config("EVENT_CACHE_FLUSH_SECONDS", default=180, cast=int)
 EVENT_CACHE_FLUSH_COUNT = config("EVENT_CACHE_FLUSH_COUNT", default=1000, cast=int)
 DOCKERIZED = config("DOCKERIZED", default=False, cast=bool)
-ON_HEROKU = config("ON_HEROKU", default=False, cast=bool)
 DEBUG = config("DEBUG", default=False, cast=bool)
 PROFILER_ENABLED = config("PROFILER_ENABLED", default=False, cast=bool)
 SECRET_KEY = config("SECRET_KEY", default="")
@@ -63,7 +60,14 @@ SELF_HOSTED = config("SELF_HOSTED", default=False, cast=bool)
 PRODUCT_ANALYTICS_OPT_IN = config("PRODUCT_ANALYTICS_OPT_IN", default=True, cast=bool)
 PRODUCT_ANALYTICS_OPT_IN = True if not SELF_HOSTED else PRODUCT_ANALYTICS_OPT_IN
 # Stripe required
-STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
+STRIPE_LIVE_SECRET_KEY = config("STRIPE_LIVE_SECRET_KEY", default=None)
+if STRIPE_LIVE_SECRET_KEY is None:
+    STRIPE_LIVE_SECRET_KEY = config("STRIPE_SECRET_KEY", default=None)
+STRIPE_LIVE_CLIENT = config("STRIPE_LIVE_CLIENT", default=None)
+if STRIPE_LIVE_CLIENT is None:
+    STRIPE_LIVE_CLIENT = config("VITE_STRIPE_CLIENT", default=None)
+STRIPE_TEST_SECRET_KEY = config("STRIPE_TEST_SECRET_KEY", default=None)
+STRIPE_TEST_CLIENT = config("STRIPE_TEST_CLIENT", default="")
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="whsec_")
 # Braintree
 BRAINTREE_SECRET_KEY = config("BRAINTREE_SECRET_KEY", default="")
@@ -152,7 +156,7 @@ ANYMAIL = {
     "MAILGUN_SMTP_SERVER": os.environ.get("MAILGUN_SMTP_SERVER"),
 }
 
-if ON_HEROKU:
+if not SELF_HOSTED:
     EMAIL_BACKEND = "anymail.backends.mailgun.EmailBackend"
     APP_URL = "https://app.uselotus.io"
 else:
@@ -295,6 +299,7 @@ if KAFKA_HOST:
     producer_config = {
         "bootstrap_servers": KAFKA_HOST,
         "api_version": (2, 5, 0),
+        "linger_ms": 10,
     }
     consumer_config = {
         "bootstrap_servers": KAFKA_HOST,
@@ -311,11 +316,20 @@ if KAFKA_HOST:
     KAFKA_CERTIFICATE = config("KAFKA_CLIENT_CERT", default=None)
     KAFKA_KEY = config("KAFKA_CLIENT_CERT_KEY", default=None)
     KAFKA_CA = config("KAFKA_TRUSTED_CERT", default=None)
+    KAFKA_SASL_USERNAME = config("KAFKA_SASL_USERNAME", default=None)
+    KAFKA_SASL_PASSWORD = config("KAFKA_SASL_PASSWORD", default=None)
+
     if KAFKA_CERTIFICATE and KAFKA_KEY and KAFKA_CA:
         ssl_context = kafka_helper.get_kafka_ssl_context()
         for cfg in [producer_config, consumer_config, admin_client_config]:
             cfg["security_protocol"] = "SSL"
             cfg["ssl_context"] = ssl_context
+    elif KAFKA_SASL_USERNAME and KAFKA_SASL_PASSWORD:
+        for cfg in [producer_config, consumer_config, admin_client_config]:
+            cfg["security_protocol"] = "SASL_SSL"
+            cfg["sasl_mechanism"] = "SCRAM-SHA-256"
+            cfg["sasl_plain_username"] = KAFKA_SASL_USERNAME
+            cfg["sasl_plain_password"] = KAFKA_SASL_PASSWORD
 
     PRODUCER_CONFIG = producer_config
     CONSUMER = KafkaConsumer(KAFKA_EVENTS_TOPIC, **consumer_config)
@@ -349,7 +363,7 @@ if os.environ.get("REDIS_URL"):
 elif DOCKERIZED:
     REDIS_URL = "redis://redis:6379"
 else:
-    REDIS_URL = "redis://localhost:6379"
+    REDIS_URL = None
 
 # Celery Settings
 CELERY_BROKER_URL = f"{REDIS_URL}/0"
@@ -357,25 +371,13 @@ CELERY_RESULT_BACKEND = f"{REDIS_URL}/0"
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
-CELERY_TIMEZONE = "America/New_York"
+CELERY_TIMEZONE = "UTC"
 
-if ON_HEROKU:
+if REDIS_URL is not None:
     CACHES = {
         "default": {
             "BACKEND": "django_redis.cache.RedisCache",
             "LOCATION": f"{REDIS_URL}/0",
-            "OPTIONS": {
-                "CLIENT_CLASS": "django_redis.client.DefaultClient",
-                "REDIS_CLIENT_KWARGS": {"ssl_cert_reqs": ssl.CERT_NONE},
-                "CONNECTION_POOL_KWARGS": {"ssl_cert_reqs": None},
-            },
-        }
-    }
-elif DOCKERIZED:
-    CACHES = {
-        "default": {
-            "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": f"{REDIS_URL}/3",
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
             },
@@ -556,7 +558,6 @@ SPECTACULAR_SETTINGS = {
         "BacktestStatusEnum": "metering_billing.utils.enums.BACKTEST_STATUS.choices",
         "BacktestKPIEnum": "metering_billing.utils.enums.BACKTEST_KPI.choices",
         "PaymentProvidersEnum": "metering_billing.utils.enums.PAYMENT_PROVIDERS.choices",
-        "FlatFeeBillingTypeEnum": "metering_billing.utils.enums.FLAT_FEE_BILLING_TYPE.choices",
         "MetricAggregationEnum": "metering_billing.utils.enums.METRIC_AGGREGATION.choices",
         "MetricGranularityEnum": "metering_billing.utils.enums.METRIC_GRANULARITY.choices",
         "PlanVersionStatusEnum": "metering_billing.utils.enums.PLAN_VERSION_STATUS.choices",

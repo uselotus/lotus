@@ -99,7 +99,7 @@ Optionally:
 
 Easy deployment options for AWS, GCP, and Azure are on the roadmap. If you have any questions, feel free to reach out to us.
 
-<p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
+<p align="right">(<a href="#lotus-pricing--packaging-infrastructure-for-any-business-model">back to top</a>)</p>
 
 <!-- CONTRIBUTING -->
 
@@ -142,13 +142,13 @@ Tech Stack:
 
 - **Cloud or Self-Hosted** - Apart from a managed cloud offering, Lotus provides a self-hosted version so you can keep your data local and have full control over your pricing.
 
-<p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
+<p align="right">(<a href="#lotus-pricing--packaging-infrastructure-for-any-business-model">back to top</a>)</p>
 
 ## :bar_chart: Repo Activity
 
 ![Alt](https://repobeats.axiom.co/api/embed/408c31cc31b6650e1e5c00414ec4a77b0277cf99.svg "Repobeats analytics image")
 
-<p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
+<p align="right">(<a href="#lotus-pricing--packaging-infrastructure-for-any-business-model">back to top</a>)</p>
 
 <!-- LICENSE -->
 
@@ -156,7 +156,7 @@ Tech Stack:
 
 Distributed under the MIT License. See `LICENSE` for more information.
 
-<p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
+<p align="right">(<a href="#lotus-pricing--packaging-infrastructure-for-any-business-model">back to top</a>)</p>
 
 <!-- CONTACT -->
 
@@ -173,4 +173,4 @@ Or visit www.uselotus.io
 </a>
 
 
-<p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
+<p align="right">(<a href="#lotus-pricing--packaging-infrastructure-for-any-business-model">back to top</a>)</p>

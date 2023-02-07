@@ -29,7 +29,7 @@ const industries = [
   { label: "Other", value: "other" },
 ];
 
-const CreateOrganization = (props: { onSave: (org: Organizaton) => void }) => {
+function CreateOrganization(props: { onSave: (org: Organizaton) => void }) {
   const [companyName, setCompanyName] = useState("");
   const [industry, setIndustry] = useState("");
   const [error, setError] = useState("");
@@ -90,6 +90,6 @@ const CreateOrganization = (props: { onSave: (org: Organizaton) => void }) => {
       </Card>
     </div>
   );
-};
+}
 
 export default CreateOrganization;

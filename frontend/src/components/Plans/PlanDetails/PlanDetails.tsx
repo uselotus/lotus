@@ -1,20 +1,20 @@
 // @ts-ignore
 import React, { FC, Fragment } from "react";
 import "./PlanDetails.css";
-import { PageLayout } from "../../base/PageLayout";
 import { Button } from "antd";
 import { useNavigate, useParams } from "react-router-dom";
-import SwitchVersions from "./SwitchVersions";
 import { useMutation, useQuery, useQueryClient } from "react-query";
+import { PlusOutlined } from "@ant-design/icons";
+import { toast } from "react-toastify";
+import { PageLayout } from "../../base/PageLayout";
+import SwitchVersions from "./SwitchVersions";
 import { Plan } from "../../../api/api";
 import {
   CreatePlanExternalLinkType,
   InitialExternalLinks,
   PlanDetailType,
 } from "../../../types/plan-type";
-import { PlusOutlined } from "@ant-design/icons";
 import LoadingSpinner from "../../LoadingSpinner";
-import { toast } from "react-toastify";
 
 type PlanDetailParams = {
   planId: string;
@@ -148,18 +148,16 @@ const PlanDetails: FC = () => {
   } = useQuery<PlanDetailType>(
     ["plan_detail", planId],
     () =>
-      Plan.getPlan(planId as string).then((res) => {
-        return res;
-      }),
+      Plan.getPlan(planId as string).then((res) => res),
     { refetchOnMount: "always" }
   );
 
   const navigateCreateCustomPlan = () => {
-    navigate("/create-custom/" + planId);
+    navigate(`/create-custom/${  planId}`);
   };
 
   return (
-    <Fragment>
+    <>
       {isLoading && (
         <div className="flex h-full">
           <div className="m-auto">
@@ -197,13 +195,14 @@ const PlanDetails: FC = () => {
               )
             }
             hasBackButton
+            aboveTitle
             backButton={
-              <div className="mt-10 ml-12">
+              <div>
                 <Button
                   onClick={() => navigate(-1)}
                   type="primary"
                   size="large"
-                  key="create-custom-plan"
+                  key="go-back"
                   style={{
                     background: "#FAFAFA",
                     borderColor: "#FAFAFA",
@@ -235,7 +234,7 @@ const PlanDetails: FC = () => {
                 </Button>,
               ]
             }
-          ></PageLayout>
+           />
           <div className="mx-10">
             {plan.versions.length > 0 && (
               <SwitchVersions
@@ -251,7 +250,7 @@ const PlanDetails: FC = () => {
           <div className="separator mt-4" />
         </div>
       )}
-    </Fragment>
+    </>
   );
 };
 export default PlanDetails;

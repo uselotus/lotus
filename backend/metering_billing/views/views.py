@@ -1,16 +1,10 @@
 import logging
 from decimal import Decimal
 
+import api.views as api_views
 from django.conf import settings
 from django.db.models import Count, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
-from rest_framework import serializers, status
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
-import api.views as api_views
 from metering_billing.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
@@ -19,6 +13,7 @@ from metering_billing.exceptions import (
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Customer,
+    Event,
     Invoice,
     Metric,
     Organization,
@@ -41,6 +36,7 @@ from metering_billing.serializers.request_serializers import (
 )
 from metering_billing.serializers.response_serializers import (
     CostAnalysisSerializer,
+    PeriodEventsResponseSerializer,
     PeriodMetricRevenueResponseSerializer,
     PeriodMetricUsageResponseSerializer,
     PeriodSubscriptionsResponseSerializer,
@@ -64,6 +60,11 @@ from metering_billing.utils.enums import (
     USAGE_CALC_GRANULARITY,
 )
 from metering_billing.views.model_views import CustomerViewSet
+from rest_framework import serializers, status
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -82,6 +83,7 @@ class PeriodMetricRevenueView(APIView):
         Returns the revenue for an organization in a given time period.
         """
         organization = request.organization
+        timezone = organization.timezone
         serializer = PeriodComparisonRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         p1_start, p1_end, p2_start, p2_end = (
@@ -93,8 +95,12 @@ class PeriodMetricRevenueView(APIView):
                 "period_2_end_date",
             ]
         )
-        p1_start, p2_start = date_as_min_dt(p1_start), date_as_min_dt(p2_start)
-        p1_end, p2_end = date_as_max_dt(p1_end), date_as_max_dt(p2_end)
+        p1_start, p2_start = date_as_min_dt(p1_start, timezone), date_as_min_dt(
+            p2_start, timezone
+        )
+        p1_end, p2_end = date_as_max_dt(p1_end, timezone), date_as_max_dt(
+            p2_end, timezone
+        )
         return_dict = {}
         # collected
         p1_collected = Invoice.objects.filter(
@@ -122,6 +128,7 @@ class PeriodMetricRevenueView(APIView):
                 )
                 .select_related("billing_plan")
                 .select_related("customer")
+                .prefetch_related("billing_plan__recurring_charges")
                 .prefetch_related("billing_plan__plan_components")
                 .prefetch_related("billing_plan__plan_components__billable_metric")
                 .prefetch_related("billing_plan__plan_components__tiers")
@@ -152,6 +159,51 @@ class PeriodMetricRevenueView(APIView):
         return Response(ret, status=status.HTTP_200_OK)
 
 
+class PeriodEventsView(APIView):
+    permission_classes = [IsAuthenticated | ValidOrganization]
+
+    @extend_schema(
+        parameters=[PeriodComparisonRequestSerializer],
+        responses={200: PeriodMetricRevenueResponseSerializer},
+    )
+    def get(self, request, format=None):
+        """
+        Returns the revenue for an organization in a given time period.
+        """
+        organization = request.organization
+        timezone = organization.timezone
+        serializer = PeriodComparisonRequestSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        p1_start, p1_end, p2_start, p2_end = (
+            serializer.validated_data.get(key, None)
+            for key in [
+                "period_1_start_date",
+                "period_1_end_date",
+                "period_2_start_date",
+                "period_2_end_date",
+            ]
+        )
+        p1_start, p2_start = date_as_min_dt(
+            p1_start, timezone=timezone
+        ), date_as_min_dt(p2_start, timezone=timezone)
+        p1_end, p2_end = date_as_max_dt(p1_end, timezone=timezone), date_as_max_dt(
+            p2_end, timezone=timezone
+        )
+        return_dict = {}
+        # earned
+        for start, end, num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
+            n_events = Event.objects.filter(
+                organization=organization,
+                time_created__gte=start,
+                time_created__lte=end,
+            ).count()
+            return_dict[f"total_events_period_{num}"] = n_events
+        serializer = PeriodEventsResponseSerializer(data=return_dict)
+        serializer.is_valid(raise_exception=True)
+        ret = serializer.validated_data
+        return Response(ret, status=status.HTTP_200_OK)
+
+
 class CostAnalysisView(APIView):
     permission_classes = [IsAuthenticated | ValidOrganization]
 
@@ -164,7 +216,6 @@ class CostAnalysisView(APIView):
         """
         Returns the revenue for an organization in a given time period.
         """
-        organization = request.organization
         organization = request.organization
         serializer = CostAnalysisRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
@@ -228,6 +279,7 @@ class CostAnalysisView(APIView):
             )
             .select_related("billing_plan")
             .select_related("customer")
+            .prefetch_related("billing_plan__recurring_charges")
             .prefetch_related("billing_plan__plan_components")
             .prefetch_related("billing_plan__plan_components__billable_metric")
             .prefetch_related("billing_plan__plan_components__tiers")
@@ -273,6 +325,7 @@ class PeriodSubscriptionsView(APIView):
     )
     def get(self, request, format=None):
         organization = request.organization
+        timezone = organization.timezone
         serializer = PeriodComparisonRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         p1_start, p1_end, p2_start, p2_end = (
@@ -284,8 +337,12 @@ class PeriodSubscriptionsView(APIView):
                 "period_2_end_date",
             ]
         )
-        p1_start, p2_start = date_as_min_dt(p1_start), date_as_min_dt(p2_start)
-        p1_end, p2_end = date_as_max_dt(p1_end), date_as_max_dt(p2_end)
+        p1_start, p2_start = date_as_min_dt(
+            p1_start, timezone=timezone
+        ), date_as_min_dt(p2_start, timezone=timezone)
+        p1_end, p2_end = date_as_max_dt(p1_end, timezone=timezone), date_as_max_dt(
+            p2_end, timezone=timezone
+        )
 
         return_dict = {}
         for i, (p_start, p_end) in enumerate([[p1_start, p1_end], [p2_start, p2_end]]):
@@ -434,7 +491,7 @@ class CustomersSummaryView(APIView):
         customers = Customer.objects.filter(organization=organization).prefetch_related(
             Prefetch(
                 "subscription_records",
-                queryset=SubscriptionRecord.objects.filter(
+                queryset=SubscriptionRecord.base_objects.filter(
                     organization=organization,
                     end_date__gte=now,
                     start_date__lte=now,
@@ -492,9 +549,12 @@ class DraftInvoiceView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         customer = serializer.validated_data.get("customer")
-        sub, sub_records = customer.get_subscription_and_records()
+        sub_records = SubscriptionRecord.objects.active().filter(
+            organization=organization,
+            customer=customer,
+        )
         response = {"invoice": None}
-        if sub is None or sub_records is None:
+        if sub_records is None or len(sub_records) == 0:
             response = {"invoices": []}
         else:
             sub_records = sub_records.select_related("billing_plan").prefetch_related(
@@ -503,7 +563,6 @@ class DraftInvoiceView(APIView):
                 "billing_plan__plan_components__tiers",
             )
             invoices = generate_invoice(
-                sub,
                 sub_records,
                 draft=True,
                 charge_next_plan=serializer.validated_data.get(

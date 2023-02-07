@@ -1,10 +1,11 @@
 import datetime
 import re
 from decimal import Decimal
-from typing import Literal, Optional, Union
+from typing import Literal, Union
 
 from django.conf import settings
 from django.db.models import Sum
+from drf_spectacular.utils import extend_schema_serializer
 from metering_billing.invoice import (
     generate_balance_adjustment_invoice,
     generate_invoice,
@@ -28,7 +29,7 @@ from metering_billing.models import (
     PriceAdjustment,
     PriceTier,
     PricingUnit,
-    Subscription,
+    RecurringCharge,
     SubscriptionRecord,
     Tag,
     UsageAlert,
@@ -37,26 +38,25 @@ from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.serializer_utils import (
     AddonUUIDField,
     BalanceAdjustmentUUIDField,
+    ConvertEmptyStringToNullMixin,
     FeatureUUIDField,
     InvoiceUUIDField,
     MetricUUIDField,
     PlanUUIDField,
     PlanVersionUUIDField,
     SlugRelatedFieldWithOrganization,
-    SubscriptionUUIDField,
+    TimezoneFieldMixin,
+    TimeZoneSerializerField,
     UsageAlertUUIDField,
 )
 from metering_billing.utils import convert_to_date, now_utc
 from metering_billing.utils.enums import (
-    BATCH_ROUNDING_TYPE,
     CATEGORICAL_FILTER_OPERATORS,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     FLAT_FEE_BEHAVIOR,
-    FLAT_FEE_BILLING_TYPE,
     INVOICE_STATUS_ENUM,
     INVOICING_BEHAVIOR,
     PAYMENT_PROVIDERS,
-    PRICE_TIER_TYPE,
     SUBSCRIPTION_STATUS,
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
@@ -67,7 +67,7 @@ from rest_framework.exceptions import ValidationError
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
 
-class TagSerializer(serializers.ModelSerializer):
+class TagSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Tag
         fields = ("tag_name", "tag_hex", "tag_color")
@@ -79,28 +79,16 @@ class TagSerializer(serializers.ModelSerializer):
         return data
 
 
-class ConvertEmptyStringToNullMixin:
-    def recursive_convert_empty_string_to_none(self, data: dict):
-        for key, value in data.items():
-            if isinstance(value, dict):
-                self.recursive_convert_empty_string_to_none(value)
-            elif value == "":
-                data[key] = None
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        self.recursive_convert_empty_string_to_none(data)
-        return data
-
-
-class PricingUnitSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer):
+class PricingUnitSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = PricingUnit
         fields = ("code", "name", "symbol")
 
 
 class LightweightCustomerSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = Customer
@@ -162,7 +150,7 @@ class LightweightCustomerSerializerForInvoice(LightweightCustomerSerializer):
 
 
 class LightweightPlanVersionSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = PlanVersion
@@ -180,7 +168,7 @@ class LightweightPlanVersionSerializer(
 
 
 class CategoricalFilterSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = CategoricalFilter
@@ -190,7 +178,7 @@ class CategoricalFilterSerializer(
 
 
 class SubscriptionCategoricalFilterSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = CategoricalFilter
@@ -224,7 +212,7 @@ class SubscriptionCategoricalFilterSerializer(
 
 
 class SubscriptionCustomerSummarySerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = SubscriptionRecord
@@ -240,7 +228,7 @@ class SubscriptionCustomerDetailSerializer(SubscriptionCustomerSummarySerializer
         fields = SubscriptionCustomerSummarySerializer.Meta.fields + ("start_date",)
 
 
-class LightweightAddonSerializer(serializers.ModelSerializer):
+class LightweightAddonSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Plan
         fields = ("addon_name", "addon_id", "addon_type", "billing_frequency")
@@ -267,12 +255,14 @@ class LightweightAddonSerializer(serializers.ModelSerializer):
             return "usage_based"
         return "flat"
 
-    def get_billing_frequency(self, obj) -> Literal["one_time", "recurring"]:
+    def get_billing_frequency(
+        self, obj
+    ) -> serializers.ChoiceField(choices=AddOnSpecification.BillingFrequency.labels):
         return obj.addon_spec.get_billing_frequency_display()
 
 
 class LightweightAddonSubscriptionRecordSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = SubscriptionRecord
@@ -293,7 +283,7 @@ class LightweightAddonSubscriptionRecordSerializer(
 
 
 class SubscriptionRecordSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = SubscriptionRecord
@@ -330,7 +320,7 @@ class SubscriptionRecordSerializer(
 
 
 class InvoiceLineItemSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = InvoiceLineItem
@@ -383,7 +373,9 @@ class LightweightInvoiceLineItemSerializer(InvoiceLineItemSerializer):
         extra_kwargs = {**InvoiceLineItemSerializer.Meta.extra_kwargs}
 
 
-class SellerSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer):
+class SellerSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = Organization
         fields = ("name", "address", "phone", "email")
@@ -400,7 +392,9 @@ class SellerSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerialize
         return data
 
 
-class InvoiceSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer):
+class InvoiceSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = Invoice
         fields = (
@@ -462,16 +456,8 @@ class InvoiceSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializ
 
     def get_payment_status(
         self, obj
-    ) -> Literal[INVOICE_STATUS_ENUM.PAID, INVOICE_STATUS_ENUM.UNPAID,]:
-        ps = obj.payment_status
-        if ps == Invoice.PaymentStatus.PAID:
-            return INVOICE_STATUS_ENUM.PAID
-        elif ps == Invoice.PaymentStatus.UNPAID:
-            return INVOICE_STATUS_ENUM.UNPAID
-        elif ps == Invoice.PaymentStatus.VOIDED:
-            return INVOICE_STATUS_ENUM.VOIDED
-        elif ps == Invoice.PaymentStatus.DRAFT:
-            return INVOICE_STATUS_ENUM.DRAFT
+    ) -> serializers.ChoiceField(choices=Invoice.PaymentStatus.labels):
+        return obj.get_payment_status_display()
 
     def get_start_date(self, obj) -> datetime.date:
         seq = [
@@ -507,7 +493,9 @@ class CustomerIntegrationsSerializer(serializers.Serializer):
     stripe = CustomerStripeIntegrationSerializer(required=False, allow_null=True)
 
 
-class CustomerSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer):
+class CustomerSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = Customer
         fields = (
@@ -520,9 +508,11 @@ class CustomerSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeriali
             "integrations",
             "default_currency",
             "payment_provider",
+            "payment_provider_id",
             "has_payment_method",
             "address",
             "tax_rate",
+            "timezone",
         )
         extra_kwargs = {
             "customer_id": {"required": True, "read_only": True},
@@ -534,9 +524,16 @@ class CustomerSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeriali
             "integrations": {"required": True, "read_only": True},
             "default_currency": {"required": True, "read_only": True},
             "payment_provider": {"required": True, "read_only": True},
+            "payment_provider_id": {
+                "required": True,
+                "read_only": True,
+                "allow_null": True,
+                "allow_blank": True,
+            },
             "has_payment_method": {"required": True, "read_only": True},
             "address": {"required": True, "read_only": True},
             "tax_rate": {"required": True, "read_only": True},
+            "timezone": {"required": True, "read_only": True},
         }
 
     customer_id = serializers.CharField()
@@ -555,8 +552,20 @@ class CustomerSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeriali
         required=True,
         allow_blank=False,
     )
+    payment_provider_id = serializers.SerializerMethodField()
     has_payment_method = serializers.SerializerMethodField()
     address = serializers.SerializerMethodField()
+    timezone = TimeZoneSerializerField(use_pytz=True)
+
+    def get_payment_provider_id(
+        self, obj
+    ) -> serializers.CharField(allow_null=True, required=True):
+        d = self.get_integrations(obj)
+        if obj.payment_provider == PAYMENT_PROVIDERS.STRIPE:
+            stripe_dict = d.get(PAYMENT_PROVIDERS.STRIPE)
+            if stripe_dict:
+                return stripe_dict["stripe_id"]
+        return None
 
     def get_address(self, obj) -> AddressSerializer(allow_null=True, required=True):
         d = obj.properties.get("address", {})
@@ -628,7 +637,7 @@ class CustomerSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeriali
 
 
 class CustomerCreateSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = Customer
@@ -705,10 +714,10 @@ class CustomerCreateSerializer(
             }
         customer = Customer.objects.create(**validated_data)
         if pp_id:
-            customer_properties = customer.properties
-            customer_properties[validated_data["payment_provider"]] = {}
-            customer_properties[validated_data["payment_provider"]]["id"] = pp_id
-            customer.properties = customer_properties
+            customer_integrations = customer.integrations
+            customer_integrations[validated_data["payment_provider"]] = {}
+            customer_integrations[validated_data["payment_provider"]]["id"] = pp_id
+            customer.integrations = customer_integrations
             customer.save()
         else:
             if "payment_provider" in validated_data:
@@ -719,7 +728,7 @@ class CustomerCreateSerializer(
 
 
 class NumericFilterSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = NumericFilter
@@ -727,7 +736,7 @@ class NumericFilterSerializer(
 
 
 class LightweightMetricSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = Metric
@@ -746,7 +755,9 @@ class LightweightMetricSerializer(
     metric_name = serializers.CharField(source="billable_metric_name")
 
 
-class MetricSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer):
+class MetricSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = Metric
         fields = (
@@ -806,7 +817,9 @@ class MetricSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerialize
     aggregation_type = serializers.CharField(source="usage_aggregation_type")
 
 
-class FeatureSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer):
+class FeatureSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = Feature
         fields = (
@@ -826,7 +839,9 @@ class FeatureSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializ
     feature_id = FeatureUUIDField()
 
 
-class PriceTierSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer):
+class PriceTierSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = PriceTier
         fields = (
@@ -855,45 +870,36 @@ class PriceTierSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerial
             },
         }
 
+    cost_per_batch = serializers.DecimalField(
+        max_digits=20, decimal_places=10, min_value=0, allow_null=True
+    )
+    metric_units_per_batch = serializers.DecimalField(
+        max_digits=20, decimal_places=10, min_value=0, allow_null=True
+    )
+    range_start = serializers.DecimalField(
+        max_digits=20, decimal_places=10, min_value=0
+    )
+    range_end = serializers.DecimalField(
+        max_digits=20, decimal_places=10, min_value=0, allow_null=True
+    )
     type = serializers.SerializerMethodField()
     batch_rounding_type = serializers.SerializerMethodField()
 
     def get_type(
         self, obj
-    ) -> Literal[PRICE_TIER_TYPE.FLAT, PRICE_TIER_TYPE.PER_UNIT, PRICE_TIER_TYPE.FREE]:
-        if obj.type == PriceTier.PriceTierType.FLAT:
-            return PRICE_TIER_TYPE.FLAT
-        elif obj.type == PriceTier.PriceTierType.PER_UNIT:
-            return PRICE_TIER_TYPE.PER_UNIT
-        elif obj.type == PriceTier.PriceTierType.FREE:
-            return PRICE_TIER_TYPE.FREE
-        else:
-            raise ValueError("Invalid price tier type")
+    ) -> serializers.ChoiceField(choices=PriceTier.PriceTierType.labels):
+        return obj.get_type_display()
 
     def get_batch_rounding_type(
         self, obj
-    ) -> Optional[
-        Literal[
-            BATCH_ROUNDING_TYPE.ROUND_UP,
-            BATCH_ROUNDING_TYPE.ROUND_DOWN,
-            BATCH_ROUNDING_TYPE.ROUND_NEAREST,
-            BATCH_ROUNDING_TYPE.NO_ROUNDING,
-        ]
-    ]:
-        if obj.batch_rounding_type == PriceTier.BatchRoundingType.ROUND_UP:
-            return BATCH_ROUNDING_TYPE.ROUND_UP
-        elif obj.batch_rounding_type == PriceTier.BatchRoundingType.ROUND_DOWN:
-            return BATCH_ROUNDING_TYPE.ROUND_DOWN
-        elif obj.batch_rounding_type == PriceTier.BatchRoundingType.ROUND_NEAREST:
-            return BATCH_ROUNDING_TYPE.ROUND_NEAREST
-        elif obj.batch_rounding_type == PriceTier.BatchRoundingType.NO_ROUNDING:
-            return BATCH_ROUNDING_TYPE.NO_ROUNDING
-        else:
-            return None
+    ) -> serializers.ChoiceField(
+        choices=PriceTier.BatchRoundingType.labels, allow_null=True
+    ):
+        return obj.get_batch_rounding_type_display()
 
 
 class PlanComponentSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = PlanComponent
@@ -914,7 +920,7 @@ class PlanComponentSerializer(
 
 
 class PriceAdjustmentSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = PriceAdjustment
@@ -932,13 +938,51 @@ class PriceAdjustmentSerializer(
         }
 
 
-class PlanVersionSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer):
+class RecurringChargeSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
+    class Meta:
+        model = RecurringCharge
+        fields = (
+            "name",
+            "charge_timing",
+            "charge_behavior",
+            "amount",
+            "pricing_unit",
+        )
+        extra_kwargs = {
+            "name": {"required": True},
+            "charge_timing": {"required": True},
+            "amount": {"required": True},
+            "pricing_unit": {"required": True},
+        }
+
+    pricing_unit = PricingUnitSerializer()
+    charge_timing = serializers.SerializerMethodField()
+    charge_behavior = serializers.SerializerMethodField()
+
+    def get_charge_timing(
+        self, obj
+    ) -> serializers.ChoiceField(choices=RecurringCharge.ChargeTimingType.labels):
+        return obj.get_charge_timing_display()
+
+    def get_charge_behavior(
+        self, obj
+    ) -> serializers.ChoiceField(choices=RecurringCharge.ChargeBehaviorType.labels):
+        return obj.get_charge_behavior_display()
+
+
+@extend_schema_serializer(deprecate_fields=["flat_fee_billing_type", "flat_rate"])
+class PlanVersionSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = PlanVersion
         fields = (
             "description",
             "flat_fee_billing_type",
             "flat_rate",
+            "recurring_charges",
             "components",
             "features",
             "price_adjustment",
@@ -953,6 +997,7 @@ class PlanVersionSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeri
             "flat_fee_billing_type": {"required": True, "read_only": True},
             "flat_rate": {"required": True, "read_only": True},
             "components": {"required": True, "read_only": True},
+            "recurring_charges": {"required": True, "read_only": True},
             "features": {"required": True, "read_only": True},
             "price_adjustment": {
                 "required": True,
@@ -965,12 +1010,29 @@ class PlanVersionSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeri
             "plan_name": {"required": True, "read_only": True},
         }
 
+    flat_rate = serializers.SerializerMethodField()
+    flat_fee_billing_type = serializers.SerializerMethodField()
     components = PlanComponentSerializer(many=True, source="plan_components")
     features = FeatureSerializer(many=True)
+    recurring_charges = RecurringChargeSerializer(many=True)
     price_adjustment = PriceAdjustmentSerializer(allow_null=True)
 
     plan_name = serializers.CharField(source="plan.plan_name")
     currency = PricingUnitSerializer(source="pricing_unit")
+
+    def get_flat_fee_billing_type(
+        self, obj
+    ) -> serializers.ChoiceField(choices=RecurringCharge.ChargeTimingType.labels):
+        recurring_charge = obj.recurring_charges.first()
+        if recurring_charge is not None:
+            return recurring_charge.get_charge_timing_display()
+        else:
+            return RecurringCharge.ChargeTimingType.IN_ADVANCE.label
+
+    def get_flat_rate(
+        self, obj
+    ) -> serializers.DecimalField(max_digits=20, decimal_places=10, min_value=0):
+        return sum(x.amount for x in obj.recurring_charges.all())
 
     def get_created_by(self, obj) -> str:
         if obj.created_by is not None:
@@ -992,7 +1054,7 @@ class PlanVersionSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSeri
 
 
 class PlanNameAndIDSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = Plan
@@ -1009,7 +1071,7 @@ class PlanNameAndIDSerializer(
 
 
 class InvoiceUpdateSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = Invoice
@@ -1045,14 +1107,16 @@ class InvoiceUpdateSerializer(
 
 
 class InitialExternalPlanLinkSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = ExternalPlanLink
         fields = ("source", "external_plan_id")
 
 
-class PlanSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer):
+class PlanSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = Plan
         fields = (
@@ -1116,7 +1180,7 @@ class PlanSerializer(ConvertEmptyStringToNullMixin, serializers.ModelSerializer)
         return data
 
 
-class EventSerializer(serializers.ModelSerializer):
+class EventSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Event
         fields = (
@@ -1138,7 +1202,7 @@ class EventSerializer(serializers.ModelSerializer):
 
 
 class SubscriptionRecordCreateSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = SubscriptionRecord
@@ -1223,24 +1287,14 @@ class SubscriptionRecordCreateSerializer(
             **validated_data, subscription_filters=subscription_filters
         )
         # new subscription means we need to create an invoice if its pay in advance
-        if (
-            sub_record.billing_plan.flat_fee_billing_type
-            == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
+        if any(
+            x.charge_timing == RecurringCharge.ChargeTimingType.IN_ADVANCE
+            for x in sub_record.billing_plan.recurring_charges.all()
         ):
-            (
-                sub,
-                sub_records,
-            ) = sub_record.customer.get_subscription_and_records()
-            sub_records.filter(pk=sub_record.pk).update(
-                flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
-                invoice_usage_charges=False,
-            )
-            generate_invoice(
-                sub,
-                sub_records.filter(pk=sub_record.pk),
-            )
+            sub_record.invoice_usage_charges = False
+            sub_record.save()
+            generate_invoice(sub_record)
             sub_record.invoice_usage_charges = True
-            sub_record.flat_fee_behavior = FLAT_FEE_BEHAVIOR.PRORATE
             sub_record.save()
         return sub_record
 
@@ -1260,38 +1314,6 @@ class LightweightSubscriptionRecordSerializer(SubscriptionRecordSerializer):
     )
 
 
-class SubscriptionSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
-):
-    class Meta:
-        model = Subscription
-        fields = (
-            "subscription_id",
-            "day_anchor",
-            "month_anchor",
-            "customer",
-            "billing_cadence",
-            "start_date",
-            "end_date",
-            "plans",
-        )
-
-    subscription_id = SubscriptionUUIDField(read_only=True)
-    customer = LightweightCustomerSerializer(read_only=True)
-    plans = serializers.SerializerMethodField()
-
-    def get_plans(self, obj) -> LightweightSubscriptionRecordSerializer(many=True):
-        sub_records = obj.get_subscription_records().prefetch_related(
-            "billing_plan",
-            "filters",
-            "billing_plan__plan",
-            "billing_plan__pricing_unit",
-        )
-
-        data = LightweightSubscriptionRecordSerializer(sub_records, many=True).data
-        return data
-
-
 class SubscriptionInvoiceSerializer(SubscriptionRecordSerializer):
     class Meta(SubscriptionRecordSerializer.Meta):
         model = SubscriptionRecord
@@ -1304,7 +1326,7 @@ class SubscriptionInvoiceSerializer(SubscriptionRecordSerializer):
 
 
 class SubscriptionRecordUpdateSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = SubscriptionRecord
@@ -1323,7 +1345,7 @@ class SubscriptionRecordUpdateSerializer(
         queryset=Plan.objects.all(),
         write_only=True,
         required=False,
-        help_text="The plan to replace the current plan with",
+        help_text="If provided, will replace the current subscription's plan with this plan. If this is provided,turn_off_auto_renew and end_date will be ignored. The provided plan must have the same duration as the current plan.",
     )
     invoicing_behavior = serializers.ChoiceField(
         choices=INVOICING_BEHAVIOR.choices,
@@ -1349,6 +1371,36 @@ class SubscriptionRecordUpdateSerializer(
         if data.get("billing_plan"):
             data["billing_plan"] = data["billing_plan"]["plan"].display_version
         return data
+
+
+class AddonSubscriptionRecordUpdateSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
+    class Meta:
+        model = SubscriptionRecord
+        fields = (
+            "invoicing_behavior",
+            "turn_off_auto_renew",
+            "end_date",
+            "quantity",
+        )
+
+    quantity = serializers.IntegerField(
+        required=False,
+        help_text="Change the quantity of the susbcription to be this number.",
+    )
+    invoicing_behavior = serializers.ChoiceField(
+        choices=INVOICING_BEHAVIOR.choices,
+        default=INVOICING_BEHAVIOR.INVOICE_NOW,
+        required=False,
+        help_text="The invoicing behavior to use when changing the quantity. Invoice now will recalculate the amount due immediately, whereas add_to_next_invoice will wait until the end of the subscription to do the calculation.",
+    )
+    turn_off_auto_renew = serializers.BooleanField(
+        required=False, help_text="Turn off auto renew for the addon"
+    )
+    end_date = serializers.DateTimeField(
+        required=False, help_text="Change the end date for the addon."
+    )
 
 
 class SubscriptionRecordFilterSerializer(serializers.Serializer):
@@ -1392,8 +1444,10 @@ class SubscriptionRecordFilterSerializerDelete(SubscriptionRecordFilterSerialize
 class SubscriptionRecordCancelSerializer(serializers.Serializer):
     flat_fee_behavior = serializers.ChoiceField(
         choices=FLAT_FEE_BEHAVIOR.choices,
-        default=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
-        help_text="Can either charge the full amount of the flat fee, regardless of how long the customer has been on the plan, prorate the fflat fee, or charge nothing for the flat fee. If the flat fee has already been invoiced (e.g. in advance payment on last subscription), and the reuslting charge is less than the amount already invoiced, the difference will be refunded as a credit. Defaults to charge full amount.",
+        allow_null=True,
+        required=False,
+        default=None,
+        help_text="When canceling a subscription, the behavior used to calculate the flat fee. If null or not provided, the charge's default behavior will be used according to the subscription's start and end dates. If charge_full, the full flat fee will be charged, regardless of the duration of teh subscription. If refund, the flat fee will not be charged. If charge_prorated, the prorated flat fee will be charged.",
     )
     usage_behavior = serializers.ChoiceField(
         choices=USAGE_BILLING_BEHAVIOR.choices,
@@ -1408,7 +1462,6 @@ class SubscriptionRecordCancelSerializer(serializers.Serializer):
 
 
 class ListSubscriptionRecordFilter(SubscriptionRecordFilterSerializer):
-    subscription_filters = None
     status = serializers.MultipleChoiceField(
         choices=SUBSCRIPTION_STATUS.choices,
         required=False,
@@ -1437,6 +1490,32 @@ class ListSubscriptionRecordFilter(SubscriptionRecordFilterSerializer):
         return data
 
 
+class AddonSubscriptionRecordFilterSerializer(serializers.Serializer):
+    attached_customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        required=True,
+        help_text="Filter to a specific customer.",
+    )
+    attached_plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        queryset=Plan.objects.filter(addon_spec__isnull=True),
+        required=True,
+        help_text="Filter to a specific plan.",
+    )
+    attached_subscription_filters = SubscriptionCategoricalFilterSerializer(
+        many=True,
+        required=False,
+        help_text="Filter to a specific set of subscription filters. If your billing model only allows for one subscription per customer, you very likely do not need this field. Must be formatted as a JSON-encoded + stringified list of dictionaries, where each dictionary has a key of 'property_name' and a key of 'value'.",
+    )
+    addon_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        queryset=Plan.addons.all(),
+        required=True,
+        help_text="Filter to a specific addon.",
+    )
+
+
 class InvoiceListFilterSerializer(serializers.Serializer):
     customer_id = SlugRelatedFieldWithOrganization(
         slug_field="customer_id",
@@ -1463,7 +1542,7 @@ class InvoiceListFilterSerializer(serializers.Serializer):
         return data
 
 
-class CreditDrawdownSerializer(serializers.ModelSerializer):
+class CreditDrawdownSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = CustomerBalanceAdjustment
         fields = (
@@ -1486,7 +1565,7 @@ class CreditDrawdownSerializer(serializers.ModelSerializer):
 
 
 class CustomerBalanceAdjustmentSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = CustomerBalanceAdjustment
@@ -1541,7 +1620,7 @@ class CustomerBalanceAdjustmentSerializer(
 
 
 class CustomerBalanceAdjustmentCreateSerializer(
-    ConvertEmptyStringToNullMixin, serializers.ModelSerializer
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = CustomerBalanceAdjustment
@@ -1606,7 +1685,9 @@ class CustomerBalanceAdjustmentCreateSerializer(
         return balance_adjustment
 
 
-class CustomerBalanceAdjustmentUpdateSerializer(serializers.ModelSerializer):
+class CustomerBalanceAdjustmentUpdateSerializer(
+    TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = CustomerBalanceAdjustment
         fields = (
@@ -1681,7 +1762,7 @@ class CustomerBalanceAdjustmentFilterSerializer(serializers.Serializer):
     )
 
 
-class UsageAlertSerializer(serializers.ModelSerializer):
+class UsageAlertSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = UsageAlert
         fields = (
@@ -1700,7 +1781,7 @@ class UsageAlertSerializer(serializers.ModelSerializer):
     plan_version = LightweightPlanVersionSerializer()
 
 
-class AddOnSerializer(serializers.ModelSerializer):
+class AddOnSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Plan
         fields = (
@@ -1714,7 +1795,6 @@ class AddOnSerializer(serializers.ModelSerializer):
             "active_instances",
             "invoice_when",
             "billing_frequency",
-            "recurring_flat_fee_timing",
             "addon_type",
         )
         extra_kwargs = {
@@ -1728,7 +1808,6 @@ class AddOnSerializer(serializers.ModelSerializer):
             "active_instances": {"required": True},
             "invoice_when": {"required": True},
             "billing_frequency": {"required": True},
-            "recurring_flat_fee_timing": {"required": True, "allow_null": True},
             "addon_type": {"required": True},
         }
 
@@ -1744,12 +1823,7 @@ class AddOnSerializer(serializers.ModelSerializer):
         source="display_version.description",
         help_text="The description of the add-on plan.",
     )
-    flat_rate = serializers.DecimalField(
-        source="display_version.flat_rate",
-        help_text="The flat rate of the add-on plan.",
-        decimal_places=10,
-        max_digits=20,
-    )
+    flat_rate = serializers.SerializerMethodField()
     components = PlanComponentSerializer(
         many=True, source="display_version.plan_components"
     )
@@ -1763,30 +1837,37 @@ class AddOnSerializer(serializers.ModelSerializer):
     )
     invoice_when = serializers.SerializerMethodField()
     billing_frequency = serializers.SerializerMethodField()
-    recurring_flat_fee_timing = serializers.SerializerMethodField()
     addon_type = serializers.SerializerMethodField()
+
+    def get_flat_rate(
+        self, obj
+    ) -> serializers.DecimalField(decimal_places=10, max_digits=20, min_value=0,):
+        return sum(x.amount for x in obj.display_version.recurring_charges.all())
 
     def get_invoice_when(
         self, obj
-    ) -> Literal["invoice_on_attach", "invoice_on_subscription_end",]:
+    ) -> serializers.ChoiceField(
+        choices=AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.labels
+    ):
         return obj.addon_spec.get_flat_fee_invoicing_behavior_on_attach_display()
 
-    def get_addon_type(self, obj) -> Literal["flat", "usage_based"]:
+    def get_addon_type(self, obj) -> Literal["usage_based", "flat"]:
         if obj.display_version.plan_components.all().count() > 0:
             return "usage_based"
         return "flat"
 
-    def get_billing_frequency(self, obj) -> Literal["one_time", "recurring"]:
+    def get_billing_frequency(
+        self, obj
+    ) -> serializers.ChoiceField(choices=AddOnSpecification.BillingFrequency.labels):
         return obj.addon_spec.get_billing_frequency_display()
-
-    def get_recurring_flat_fee_timing(self, obj) -> Literal["in_advance", "in_arrears"]:
-        return obj.addon_spec.get_recurring_flat_fee_timing_display()
 
     def get_active_instances(self, obj) -> int:
         return sum(x.active_subscriptions for x in obj.active_subs_by_version())
 
 
-class AddOnSubscriptionRecordSerializer(serializers.ModelSerializer):
+class AddOnSubscriptionRecordSerializer(
+    TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = SubscriptionRecord
         fields = (
@@ -1796,6 +1877,7 @@ class AddOnSubscriptionRecordSerializer(serializers.ModelSerializer):
             "end_date",
             "parent",
             "fully_billed",
+            "auto_renew",
         )
         extra_kwargs = {
             "customer": {"read_only": True, "required": True},
@@ -1804,6 +1886,7 @@ class AddOnSubscriptionRecordSerializer(serializers.ModelSerializer):
             "end_date": {"read_only": True, "required": True},
             "parent": {"read_only": True, "required": True},
             "fully_billed": {"read_only": True, "required": True},
+            "auto_renew": {"read_only": True, "required": True},
         }
 
     customer = LightweightCustomerSerializer()
@@ -1811,7 +1894,9 @@ class AddOnSubscriptionRecordSerializer(serializers.ModelSerializer):
     parent = LightweightSubscriptionRecordSerializer()
 
 
-class AddOnSubscriptionRecordCreateSerializer(serializers.ModelSerializer):
+class AddOnSubscriptionRecordCreateSerializer(
+    TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = SubscriptionRecord
         fields = (
@@ -1854,6 +1939,8 @@ class AddOnSubscriptionRecordCreateSerializer(serializers.ModelSerializer):
     )
     quantity = serializers.IntegerField(
         default=1,
+        min_value=1,
+        help_text="The quantity of the add-on to be applied to the subscription. Flat fees of add-ons will be multiplied by this quantity. Usage-based components of add-ons will be unaffected by the quantity.",
     )
 
     def validate(self, data):
@@ -1868,7 +1955,7 @@ class AddOnSubscriptionRecordCreateSerializer(serializers.ModelSerializer):
         )
         valid = []
         new_filter_set = set()
-        for sf in data["attach_to_subscription_filters"]:
+        for sf in data.get("attach_to_subscription_filters", []):
             new_filter_set.add((sf["property_name"], sf["value"]))
         if len(new_filter_set) > 0:
             for sr in to_attach_sr:
@@ -1917,146 +2004,39 @@ class AddOnSubscriptionRecordCreateSerializer(serializers.ModelSerializer):
             addon_spec.flat_fee_invoicing_behavior_on_attach
             == AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_ATTACH
         )
-        srs = []
-        for _ in range(validated_data["quantity"]):
-            is_recurring = (
-                addon_spec.billing_frequency
-                == AddOnSpecification.BillingFrequency.RECURRING
-            )
-            if addon_version.plan_components.all().count() > 0:
-                is_fully_billed = False  # if it has components its not fully billed
+        is_recurring = (
+            addon_spec.billing_frequency
+            == AddOnSpecification.BillingFrequency.RECURRING
+        )
+        if addon_version.plan_components.all().count() > 0:
+            is_fully_billed = False  # if it has components its not fully billed
+        else:
+            # otherwise, depends on if we invoice now or later
+            if invoice_now:
+                is_fully_billed = True
             else:
-                # otherwise, depends on if we invoice now or later
-                if invoice_now:
-                    is_fully_billed = True
-                else:
-                    is_fully_billed = False
-            sr = SubscriptionRecord.objects.create(
-                organization=organization,
-                customer=customer,
-                billing_plan=addon_version,
-                usage_start_date=now,
-                start_date=now,
-                end_date=attach_to_sr.end_date,
-                next_billing_date=attach_to_sr.next_billing_date,
-                last_billing_date=attach_to_sr.last_billing_date,
-                unadjusted_duration_seconds=attach_to_sr.unadjusted_duration_seconds,
-                auto_renew=is_recurring,
-                flat_fee_behavior=FLAT_FEE_BEHAVIOR.PRORATE
-                if is_recurring
-                else FLAT_FEE_BEHAVIOR.CHARGE_FULL,
-                parent=attach_to_sr,
-                fully_billed=is_fully_billed,
-            )
-            for sf in attach_to_sr.filters.all():
-                sr.filters.add(sf)
-            srs.append(sr)
+                is_fully_billed = False
+        sr = SubscriptionRecord.objects.create(
+            organization=organization,
+            customer=customer,
+            billing_plan=addon_version,
+            usage_start_date=now,
+            start_date=now,
+            end_date=attach_to_sr.end_date,
+            next_billing_date=attach_to_sr.next_billing_date,
+            last_billing_date=attach_to_sr.last_billing_date,
+            unadjusted_duration_microseconds=attach_to_sr.unadjusted_duration_microseconds,
+            auto_renew=is_recurring,
+            flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_PRORATED
+            if is_recurring
+            else FLAT_FEE_BEHAVIOR.CHARGE_FULL,
+            parent=attach_to_sr,
+            fully_billed=is_fully_billed,
+            quantity=validated_data["quantity"],
+        )
+        for sf in attach_to_sr.filters.all():
+            sr.filters.add(sf)
         if invoice_now:
-            sub, _ = customer.get_subscription_and_records()
-            generate_invoice(sub, srs)
-        return srs
-
-
-# class AddOnSubscriptionRecordUpdateSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = SubscriptionRecord
-#         fields = (
-#             "attached_customer_id",
-#             "attached_plan_id",
-#             "attached_subscription_filters",
-#             "addon_id",
-#             "quantity",
-#             "flat_fee_behavior",
-#             "turn_off_auto_renew",
-#             "end_now",
-#         )
-#         extra_kwargs = {
-#             "attached_customer_id": {"required": True, "write_only": True},
-#             "attached_plan_id": {"required": True, "write_only": True},
-#             "attached_subscription_filters": {"required": False, "write_only": True},
-#             "addon_id": {"required": True, "write_only": True},
-#             "quantity": {"required": False, "write_only": True},
-#             "flat_fee_behavior": {"required": False, "write_only": True},
-#             "turn_off_auto_renew": {"required": False, "write_only": True},
-#             "end_now": {"required": False, "write_only": True},
-#         }
-
-#     attached_customer_id = SlugRelatedFieldWithOrganization(
-#         slug_field="customer_id",
-#         queryset=Customer.objects.all(),
-#         required=True,
-#         help_text="The add-on will be applied to this customer's subscription.",
-#     )
-#     attached_plan_id = SlugRelatedFieldWithOrganization(
-#         slug_field="plan_id",
-#         queryset=Plan.objects.all(),
-#         required=True,
-#         help_text="The add-on will be applied to the subscription with this plan ID.",
-#     )
-#     attached_subscription_filters = SubscriptionCategoricalFilterSerializer(
-#         many=True,
-#         required=False,
-#         help_text="In the case the customer has multiple subscriptions with the same plan ID, the subscription filters should be used to specify which subscription to apply the add-on to.",
-#     )
-#     addon_id = SlugRelatedFieldWithOrganization(
-#         slug_field="plan_id",
-#         queryset=Plan.addons.all(),
-#         required=True,
-#         help_text="The add-on to be applied to the subscription.",
-#     )
-#     flat_fee_behavior = serializers.ChoiceField(
-#         choices=[
-#             FLAT_FEE_BEHAVIOR.PRORATE,
-#             FLAT_FEE_BEHAVIOR.CHARGE_FULL,
-#             FLAT_FEE_BEHAVIOR.REFUND,
-#         ],
-#         required=False,
-#     )
-#     turn_off_auto_renew = serializers.BooleanField(default=False)
-#     end_now = serializers.BooleanField(default=False)
-#     quantity = serializers.IntegerField(
-#         allow_null=True,
-#         help_text="In the case that multiple of the same add-on is attached, you can specify how many of the instances of the add on to edit. This parameter will grab the first `quantity` add-ons when ordered by `start_date` `ascending`. If left `null`, will apply the update operation to all instances",
-#     )
-
-#     def validate(self, data):
-#         data = super().validate(data)
-#         to_attach_sr = (
-#             SubscriptionRecord.objects.active()
-#             .filter(
-#                 customer=data["attached_customer_id"],
-#                 billing_plan__plan=data["attached_plan_id"],
-#             )
-#             .prefetch_related("filters")
-#         )
-#         valid = []
-#         sub_filter_set = set()
-#         for sf in data["attached_subscription_filters"]:
-#             sub_filter_set.add((sf["property_name"], sf["value"]))
-#         if len(sub_filter_set) > 0:
-#             for sr in to_attach_sr:
-#                 sr_filter_set = set()
-#                 for sf in sr.filters.all():
-#                     sr_filter_set.add((sf.property_name, sf.comparison_value[0]))
-#                 if sr_filter_set == sub_filter_set:
-#                     valid.append(sr)
-#         else:
-#             valid = to_attach_sr
-#         if len(valid) == 0:
-#             raise ValidationError(
-#                 "No subscriptions found for the given customer ID, plan ID, and subscription filters."
-#             )
-#         if len(valid) > 1:
-#             raise ValidationError(
-#                 "Multiple subscriptions found for the given customer ID, plan ID, and subscription filters."
-#             )
-#         data["attached_subscription_record"] = valid[0]
-#         addons = valid[0].add_ons.filter(plan_id=data["addon_id"])
-#         if len(addons) == 0:
-#             raise ValidationError(
-#                 "No add-ons found for the given customer ID, plan ID, subscription filters, and add-on ID."
-#             )
-#         data["add_ons_to_edit"] = addons.order_by("start_date")[
-#             : data["quantity"] or len(addons)
-#         ]
-#         return data
+            generate_invoice(sr)
+        return sr
+        return sr

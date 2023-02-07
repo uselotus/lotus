@@ -7,14 +7,16 @@ interface PageLayoutProps extends PageHeaderProps {
   hasBackButton?: boolean;
   backButton?: React.ReactNode;
   aboveTitle?: boolean;
+  mx?: boolean;
 }
-export const PageLayout = ({
+export function PageLayout({
   children,
   hasBackButton,
   backButton,
-  aboveTitle,
+  mx = true,
+  aboveTitle = true,
   ...props
-}: PageLayoutProps) => {
+}: PageLayoutProps) {
   return (
     <div>
       <SlideOver />
@@ -24,13 +26,13 @@ export const PageLayout = ({
         aboveTitle={aboveTitle}
         backButton={backButton}
       />
-      <PageHeader />
+      <PageHeader className="!-mt-[26px]" />
 
-      <div className="mx-10 mt-16">
+      <div className="mx-10 mt-16 pb-20">
         <div className="flex items-center justify-between mb-6">
           {props.title ? (
             <h1
-              className={hasBackButton ? "font-main  mx-10" : "font-main"}
+              className={hasBackButton && mx ? "font-main  mx-10" : "font-main"}
             >
               {hasBackButton && aboveTitle && backButton}
               <div className={hasBackButton ? "mt-12" : ""}>{props.title}</div>
@@ -46,4 +48,4 @@ export const PageLayout = ({
       </div>
     </div>
   );
-};
+}

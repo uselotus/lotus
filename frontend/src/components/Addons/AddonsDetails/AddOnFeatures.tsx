@@ -1,6 +1,6 @@
 import React, { FC } from "react";
-import { FeatureType } from "../../../types/feature-type";
 import { Typography } from "antd";
+import { FeatureType } from "../../../types/feature-type";
 import CopyText from "../../base/CopytoClipboard";
 import createShortenedText from "../../../helpers/createShortenedText";
 import useMediaQuery from "../../../hooks/useWindowQuery";
@@ -35,7 +35,7 @@ const AddOnFeatures: FC<AddOnFeaturesFeaturesProps> = ({ features }) => {
                   <CopyText showIcon onlyIcon textToCopy={feature.feature_id} />
                 </div>
               </div>
-              <div></div>
+              <div />
               <div className="text-card-grey">
                 {feature.feature_description}
               </div>

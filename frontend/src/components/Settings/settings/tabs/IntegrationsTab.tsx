@@ -1,13 +1,14 @@
 import React, { FC, useState } from "react";
+import { useQuery } from "react-query";
+import { useNavigate } from "react-router-dom";
+import { Divider, Typography, Row, Col } from "antd";
+import { PaymentProcessorIntegration } from "../../../../api/api";
 import {
   PaymentProcessorStatusType,
   integrationsMap,
 } from "../../../../types/payment-processor-type";
-import { useQuery } from "react-query";
-import { PaymentProcessorIntegration } from "../../../../api/api";
-import { useNavigate } from "react-router-dom";
-import { Divider, Typography, Row, Col } from "antd";
 import { AppCard } from "../components/AppCard";
+
 const IntegrationsTab: FC = () => {
   const navigate = useNavigate();
   const [connectedStatus, setConnectedStatus] = useState<boolean>(false);
@@ -15,9 +16,7 @@ const IntegrationsTab: FC = () => {
     ["PaymentProcessorIntegration"],
     () =>
       PaymentProcessorIntegration.getPaymentProcessorConnectionStatus().then(
-        (res) => {
-          return res;
-        }
+        (res) => res
       )
   );
 
@@ -32,8 +31,7 @@ const IntegrationsTab: FC = () => {
       <Row gutter={[24, 24]} className="flex items-stretch">
         {data &&
           data !== undefined &&
-          data.map((item, index) => {
-            return (
+          data.map((item, index) => (
               <Col span={6} key={index}>
                 <AppCard
                   connected={item.connected}
@@ -48,14 +46,13 @@ const IntegrationsTab: FC = () => {
                   selfHosted={item.redirect_url === ""}
                 />
               </Col>
-            );
-          })}
+            ))}
         <Col span={6} className="h-full">
           <AppCard
             connected={false}
             title="Snowflake"
             description="Sync your data to your Snowflake warehouse"
-            icon={integrationsMap["snowflake"].icon}
+            icon={integrationsMap.snowflake.icon}
             handleClick={() => navigate("/settings/integrations/snowflake")}
           />
         </Col>
@@ -64,7 +61,7 @@ const IntegrationsTab: FC = () => {
             connected={false}
             title="Salesforce"
             description="Sync your products, customers, and invoices to Salesforce"
-            icon={integrationsMap["salesforce"].icon}
+            icon={integrationsMap.salesforce.icon}
             handleClick={() => navigate("/settings/integrations/snowflake")}
           />
         </Col>

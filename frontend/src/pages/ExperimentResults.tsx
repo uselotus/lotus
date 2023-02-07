@@ -4,11 +4,11 @@ import { Select, Button } from "antd";
 import { Card, Flex, Metric } from "@tremor/react";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { useQuery, UseQueryResult } from "react-query";
+import dayjs from "dayjs";
 import { Backtests } from "../api/api";
 import { BacktestResultType, SpecificResults } from "../types/experiment-type";
 import { PageLayout } from "../components/base/PageLayout";
 import BacktestSubstitution from "../components/Experiments/BacktestSubsitution";
-import dayjs from "dayjs";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 const arrowURL = new URL("../components/arrow.svg", import.meta.url).href;
@@ -39,9 +39,7 @@ const ExperimentResults: FC = () => {
     ["experiment_results", experimentId],
     () =>
       Backtests.getBacktestResults(experimentId).then(
-        (res: BacktestResultType) => {
-          return res;
-        }
+        (res: BacktestResultType) => res
       )
   );
 
@@ -85,7 +83,7 @@ const ExperimentResults: FC = () => {
       title="Results"
       extra={[
         <Button
-          key={"back"}
+          key="back"
           onClick={goBackPage}
           icon={<ArrowLeftOutlined />}
           type="default"
@@ -183,9 +181,9 @@ const ExperimentResults: FC = () => {
                                 : "text-red",
                             ].join("")}
                           >
-                            {(
+                            {`${(
                               selectedSubstitution.pct_revenue_change * 100
-                            ).toFixed(2) + "%"}
+                            ).toFixed(2)  }%`}
                           </h3>
                         </Flex>
                         <Metric>

@@ -3,7 +3,7 @@ import React from "react";
 type Props = {
   color: "gold" | "default";
 };
-export const Paper = (props: Props | any) => {
+export function Paper(props: Props | any) {
   return (
     <div
       {...props}
@@ -15,4 +15,4 @@ export const Paper = (props: Props | any) => {
       ].join(" ")}
     />
   );
-};
+}

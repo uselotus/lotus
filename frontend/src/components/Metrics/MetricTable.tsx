@@ -43,39 +43,31 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
     categorical_filters: any[] | undefined
   ) => {
     if (numeric_filters !== undefined && categorical_filters === undefined) {
-      filters = numeric_filters.map((filter) => {
-        return {
+      filters = numeric_filters.map((filter) => ({
           ...filter,
           operator: operatorDisplayMap.get(filter.operator),
-        };
-      });
+        }));
     } else if (
       categorical_filters !== undefined &&
       numeric_filters === undefined
     ) {
-      filters = categorical_filters.map((filter) => {
-        return {
+      filters = categorical_filters.map((filter) => ({
           ...filter,
           operator: operatorDisplayMap.get(filter.operator),
-        };
-      });
+        }));
     } else if (
       numeric_filters !== undefined &&
       categorical_filters !== undefined
     ) {
-      filters = numeric_filters.map((filter) => {
-        return {
+      filters = numeric_filters.map((filter) => ({
           ...filter,
           operator: operatorDisplayMap.get(filter.operator),
-        };
-      });
+        }));
       filters = filters.concat(
-        categorical_filters.map((filter) => {
-          return {
+        categorical_filters.map((filter) => ({
             ...filter,
             operator: operatorDisplayMap.get(filter.operator),
-          };
-        })
+          }))
       );
     }
 
@@ -161,9 +153,9 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
               <div className="space-y-2">
                 {filters.map((filter) => (
                   <Tag color="" key={filter.property_name}>
-                    {<b>{filter.property_name}</b>} {filter.operator} {'"'}
+                    <b>{filter.property_name}</b> {filter.operator} "
                     {filter.comparison_value}
-                    {'"'}
+                    "
                   </Tag>
                 ))}
               </div>
@@ -179,13 +171,11 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
       <ProTable<MetricType>
         columns={columns}
         dataSource={metricArray}
-        onRow={(record, rowIndex) => {
-          return {
+        onRow={(record, rowIndex) => ({
             onClick: (event) => {
               setCurrentMetric(record);
             },
-          };
-        }}
+          })}
         toolBarRender={false}
         rowKey="customer_id"
         formRef={formRef}

@@ -1,14 +1,13 @@
 import React, { FC } from "react";
 import { Button, Row, Col, Descriptions } from "antd";
-import { Paper } from "../base/Paper";
 import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Paper } from "../base/Paper";
 
 export const FeatureDisplay: FC<{
   planFeatures: any;
   editFeatures: (any) => void;
   removeFeature: (any) => void;
-}> = ({ planFeatures, editFeatures, removeFeature }) => {
-  return (
+}> = ({ planFeatures, editFeatures, removeFeature }) => (
     <div className="flex items-center justify-start flex-wrap">
       {planFeatures.map((feature) => (
         <div className=" py-2 bg-[#FAFAFA] rounded planComponent mr-4 mb-2 border-2 border-solid border-[#EAEAEB]">
@@ -31,6 +30,5 @@ export const FeatureDisplay: FC<{
       ))}
     </div>
   );
-};
 
 export default FeatureDisplay;

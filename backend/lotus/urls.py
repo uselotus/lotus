@@ -53,6 +53,7 @@ from metering_billing.views.views import (  # MergeCustomersView,; ExperimentalT
     GetInvoicePdfURL,
     ImportCustomersView,
     ImportPaymentObjectsView,
+    PeriodEventsView,
     PeriodMetricRevenueView,
     PeriodMetricUsageView,
     PeriodSubscriptionsView,
@@ -62,7 +63,6 @@ from metering_billing.views.views import (  # MergeCustomersView,; ExperimentalT
 from rest_framework import routers
 
 DEBUG = settings.DEBUG
-ON_HEROKU = settings.ON_HEROKU
 PROFILER_ENABLED = settings.PROFILER_ENABLED
 
 # app router
@@ -179,6 +179,11 @@ urlpatterns = [
         "app/period_metric_usage/",
         PeriodMetricUsageView.as_view(),
         name="period_metric_usage",
+    ),
+    path(
+        "app/period_events/",
+        PeriodEventsView.as_view(),
+        name="period_events",
     ),
     path(
         "app/period_metric_revenue/",

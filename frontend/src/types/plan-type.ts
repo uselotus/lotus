@@ -25,14 +25,21 @@ export interface PlanDetailType extends PlanType {
   versions: PlanVersionType[];
 }
 
+export interface CreateRecurringCharge {
+  name: string;
+  charge_timing: "in_advance" | "in_arrears";
+  charge_behavior: "prorate" | "full";
+  amount: number;
+  pricing_unit_code?: string;
+}
+
 export interface CreatePlanVersionType {
   description?: string;
   plan_id?: string;
   features: string[];
   components: CreateComponent[];
-  flat_rate: number;
+  recurring_charges: CreateRecurringCharge[];
   usage_billing_frequency?: string;
-  flat_fee_billing_type: string;
   transition_to_plan_id: string;
   price_adjustment?: PriceAdjustment;
   make_active?: boolean;
@@ -51,10 +58,18 @@ export interface PriceAdjustment {
   price_adjustment_amount: number;
 }
 
+export interface RecurringCharge {
+  name: string;
+  charge_timing: "in_advance" | "in_arrears";
+  charge_behavior: "prorate" | "full";
+  amount: number;
+  pricing_unit: CurrencyType;
+}
+
 export interface PlanVersionType
   extends Omit<
     CreatePlanVersionType,
-    "components" | "currency_code" | "features"
+    "components" | "currency_code" | "features" | "recurring_charges"
   > {
   description: string;
   plan_id: string;
@@ -62,6 +77,7 @@ export interface PlanVersionType
   flat_rate: number;
   status: string;
   components: Component[];
+  recurring_charges: RecurringCharge[];
   version: number;
   version_id: string;
   created_by: string;

@@ -2,6 +2,7 @@ module.exports = {
   extends: [
     // By extending from a plugin config, we can get recommended rules without having to add them manually.
     "eslint:recommended",
+    "airbnb",
     "plugin:react/recommended",
     "plugin:react-hooks/recommended", // This line was added
     "plugin:import/recommended",

@@ -2,11 +2,12 @@ import logging
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
 
+import pytz
 from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
-from metering_billing.exceptions.exceptions import AlignmentEngineFailure
+
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
@@ -60,51 +61,34 @@ def calculate_invoice():
     # get ending subs
 
     from metering_billing.invoice import generate_invoice
-    from metering_billing.models import Invoice, Subscription
+    from metering_billing.models import Invoice, SubscriptionRecord
 
     now_minus_30 = now_utc() + relativedelta(
         minutes=-30
     )  # grace period of 30 minutes for sending events
-    subs_to_bill = list(
-        Subscription.objects.filter(
-            Q(end_date__lt=now_minus_30),
-        )
+    sub_records_to_bill = SubscriptionRecord.objects.filter(
+        (Q(end_date__lt=now_minus_30) | Q(next_billing_date__lt=now_minus_30))
+        & Q(fully_billed=False),
     )
 
     # now generate invoices and new subs
-    for old_subscription in subs_to_bill:
-        old_sub_records = old_subscription.get_subscription_records_to_bill()
-        if old_sub_records.count() == 0:
-            continue
-        try:
-            new_sub = Subscription.objects.create(
-                organization=old_subscription.organization,
-                day_anchor=old_subscription.day_anchor,
-                month_anchor=old_subscription.month_anchor,
-                customer=old_subscription.customer,
-                billing_cadence=old_subscription.billing_cadence,
-                start_date=date_as_min_dt(
-                    old_subscription.end_date + relativedelta(days=+1)
-                ),
-                end_date=old_subscription.get_new_sub_end_date(),
-            )
-        except AlignmentEngineFailure as e:
-            logger.info(f"Alignment engine failure on calculate_invoice: {e}")
-            new_sub = None
-            continue
+    cust_info = sub_records_to_bill.values_list("customer", "organization").distinct()
+    for customer_id, organization_id in cust_info:
+        customer_subscription_records = sub_records_to_bill.filter(
+            customer_id=customer_id
+        )
         # Generate the invoice
         try:
             generate_invoice(
-                old_subscription,
-                old_sub_records,
+                customer_subscription_records,
                 charge_next_plan=True,
                 generate_next_subscription_record=True,
             )
             now = now_utc()
         except Exception as e:
             logger.error(
-                "Error generating invoice for subscription {}. Error was {}".format(
-                    old_subscription, e
+                "Error generating invoice for subscription records {}. Error was {}".format(
+                    [str(x) for x in customer_subscription_records], e
                 )
             )
             continue
@@ -112,18 +96,9 @@ def calculate_invoice():
         Invoice.objects.filter(
             issue_date__lt=now,
             payment_status=Invoice.PaymentStatus.DRAFT,
-            subscription=old_subscription,
-            organization=old_subscription.organization,
+            customer_id=customer_id,
+            organization_id=organization_id,
         ).delete()
-        # if everything ends, delete the new sub
-        if new_sub:
-            num_subscription_records_active = (
-                new_sub.customer.subscription_records.active().count()
-            )
-            if not (num_subscription_records_active > 0):
-                new_sub.delete()
-            else:
-                new_sub.handle_remove_plan()
 
 
 def refresh_alerts_inner():
@@ -169,8 +144,9 @@ def update_invoice_status():
     for incomplete_invoice in incomplete_invoices:
         pp = incomplete_invoice.external_payment_obj_type
         if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
+            organization = incomplete_invoice.organization
             status = PAYMENT_PROVIDER_MAP[pp].update_payment_object_status(
-                incomplete_invoice.external_payment_obj_id
+                organization, incomplete_invoice.external_payment_obj_id
             )
             if status == Invoice.PaymentStatus.PAID:
                 incomplete_invoice.payment_status = Invoice.PaymentStatus.PAID
@@ -186,8 +162,8 @@ def run_backtest(backtest_id):
         backtest_substitutions = backtest.backtest_substitutions.all()
         queries = [Q(billing_plan=x.original_plan) for x in backtest_substitutions]
         query = queries.pop()
-        start_date = date_as_min_dt(backtest.start_date)
-        end_date = date_as_max_dt(backtest.end_date)
+        start_date = date_as_min_dt(backtest.start_date, timezone=pytz.UTC)
+        end_date = date_as_max_dt(backtest.end_date, timezone=pytz.UTC)
         for item in queries:
             query |= item
         all_subs_time_period = (
@@ -469,12 +445,12 @@ def run_backtest(backtest_id):
 
 
 @shared_task
-def run_generate_invoice(subscription_pk, subscription_record_pk_set, **kwargs):
+def run_generate_invoice(subscription_record_pk_set, **kwargs):
     from metering_billing.invoice import generate_invoice
-    from metering_billing.models import Subscription, SubscriptionRecord
+    from metering_billing.models import SubscriptionRecord
 
-    subscription = Subscription.objects.get(pk=subscription_pk)
     subscription_record_set = SubscriptionRecord.objects.filter(
-        pk__in=subscription_record_pk_set, organization=subscription.organization
+        pk__in=subscription_record_pk_set
     )
-    generate_invoice(subscription, subscription_record_set, **kwargs)
+    generate_invoice(subscription_record_set, **kwargs)
+    generate_invoice(subscription_record_set, **kwargs)

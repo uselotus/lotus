@@ -15,13 +15,12 @@ from metering_billing.exceptions.exceptions import ExternalConnectionInvalid
 from metering_billing.serializers.payment_provider_serializers import (
     PaymentProviderPostResponseSerializer,
 )
-from metering_billing.utils import calculate_end_date, date_as_max_dt, now_utc
+from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
     PAYMENT_PROVIDERS,
     PLAN_STATUS,
-    USAGE_BILLING_FREQUENCY,
 )
 from rest_framework import serializers, status
 from rest_framework.response import Response
@@ -29,9 +28,16 @@ from rest_framework.response import Response
 logger = logging.getLogger("django.server")
 
 SELF_HOSTED = settings.SELF_HOSTED
+<<<<<<< HEAD
 STRIPE_SECRET_KEY = settings.STRIPE_SECRET_KEY
 BRAINTREE_SECRET_KEY = settings.BRAINTREE_SECRET_KEY
 VITE_STRIPE_CLIENT = settings.VITE_STRIPE_CLIENT
+=======
+STRIPE_LIVE_SECRET_KEY = settings.STRIPE_LIVE_SECRET_KEY
+STRIPE_TEST_SECRET_KEY = settings.STRIPE_TEST_SECRET_KEY
+STRIPE_TEST_CLIENT = settings.STRIPE_TEST_CLIENT
+STRIPE_LIVE_CLIENT = settings.STRIPE_LIVE_CLIENT
+>>>>>>> main
 VITE_API_URL = settings.VITE_API_URL
 
 
@@ -64,7 +70,7 @@ class PaymentProvider(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def update_payment_object_status(self, payment_object_id: str):
+    def update_payment_object_status(self, organization, payment_object_id: str):
         """This method will be called periodically when the status of a payment object needs to be updated. It should return the status of the payment object, which should be either paid or unpaid."""
         pass
 
@@ -107,7 +113,7 @@ class PaymentProvider(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_redirect_url(self) -> str:
+    def get_redirect_url(self, organization) -> str:
         """The link returned by this method will be called when a user clicks on the connect button for a payment processor. It should return a link that the user will be redirected to in order to connect their account to the payment processor."""
         pass
 
@@ -210,22 +216,36 @@ class BraintreeConnector(PaymentProvider):
 
 class StripeConnector(PaymentProvider):
     def __init__(self):
-        self.secret_key = STRIPE_SECRET_KEY
+        self.live_secret_key = STRIPE_LIVE_SECRET_KEY
+        self.test_secret_key = STRIPE_TEST_SECRET_KEY
         self.self_hosted = SELF_HOSTED
-        redirect_dict = {
+        live_redirect_dict = {
             "response_type": "code",
             "scope": "read_write",
-            "client_id": VITE_STRIPE_CLIENT,
+            "client_id": STRIPE_LIVE_CLIENT,
             "redirect_uri": VITE_API_URL + "redirectstripe",
         }
-        qstr = urlencode(redirect_dict)
+        live_qstr = urlencode(live_redirect_dict)
+        test_redirect_dict = {
+            "response_type": "code",
+            "scope": "read_write",
+            "client_id": STRIPE_TEST_CLIENT,
+            "redirect_uri": VITE_API_URL + "redirectstripe",
+        }
+        test_qstr = urlencode(test_redirect_dict)
         if not self.self_hosted:
-            self.redirect_url = "https://connect.stripe.com/oauth/authorize?" + qstr
+            self.live_redirect_url = (
+                "https://connect.stripe.com/oauth/authorize?" + live_qstr
+            )
+            self.test_redirect_url = (
+                "https://connect.stripe.com/oauth/authorize?" + test_qstr
+            )
         else:
-            self.redirect_url = ""
+            self.live_redirect_url = None
+            self.test_redirect_url = None
 
     def working(self) -> bool:
-        return self.secret_key != "" and self.secret_key is not None
+        return self.live_secret_key is not None or self.test_secret_key is not None
 
     def customer_connected(self, customer) -> bool:
         pp_ids = customer.integrations
@@ -235,18 +255,26 @@ class StripeConnector(PaymentProvider):
 
     def organization_connected(self, organization) -> bool:
         if self.self_hosted:
-            return self.secret_key != "" and self.secret_key is not None
+            return self.live_secret_key is not None or self.test_secret_key is not None
         else:
             return (
-                organization.payment_provider_ids.get(PAYMENT_PROVIDERS.STRIPE, "")
-                != ""
+                organization.payment_provider_ids.get(PAYMENT_PROVIDERS.STRIPE, None)
+                is not None
             )
 
-    def update_payment_object_status(self, payment_object_id):
-        from metering_billing.models import Invoice
+    def update_payment_object_status(self, organization, payment_object_id):
+        from metering_billing.models import Invoice, Organization
 
-        stripe.api_key = self.secret_key
-        invoice = stripe.Invoice.retrieve(payment_object_id)
+        invoice_payload = {}
+        if not self.self_hosted:
+            invoice_payload["stripe_account"] = organization.payment_provider_ids.get(
+                PAYMENT_PROVIDERS.STRIPE
+            )
+        if organization.organization_type == Organization.OrganizationType.PRODUCTION:
+            stripe.api_key = self.live_secret_key
+        else:
+            stripe.api_key = self.test_secret_key
+        invoice = stripe.Invoice.retrieve(payment_object_id, **invoice_payload)
         if invoice.status == "paid":
             return Invoice.PaymentStatus.PAID
         else:
@@ -256,24 +284,25 @@ class StripeConnector(PaymentProvider):
         """
         Imports customers from Stripe. If they already exist (by checking that either they already have their Stripe ID in our system, or seeing that they have the same email address), then we update the Stripe section of payment_providers dict to reflect new information. If they don't exist, we create them (not as a Lotus customer yet, just as a Stripe customer).
         """
-        from metering_billing.models import Customer
+        from metering_billing.models import Customer, Organization
 
-        stripe.api_key = self.secret_key
+        if organization.organization_type == Organization.OrganizationType.PRODUCTION:
+            stripe.api_key = self.live_secret_key
+        else:
+            stripe.api_key = self.test_secret_key
 
         num_cust_added = 0
         org_ppis = organization.payment_provider_ids
 
         stripe_cust_kwargs = {}
-        if org_ppis.get(PAYMENT_PROVIDERS.STRIPE) not in ["", None]:
+        if not self.self_hosted:
             # this is to get "on behalf" of someone
             stripe_cust_kwargs["stripe_account"] = org_ppis.get(
                 PAYMENT_PROVIDERS.STRIPE
             )
         try:
             stripe_customers_response = stripe.Customer.list(**stripe_cust_kwargs)
-            for i, stripe_customer in enumerate(
-                stripe_customers_response.auto_paging_iter()
-            ):
+            for stripe_customer in stripe_customers_response.auto_paging_iter():
                 stripe_id = stripe_customer.id
                 stripe_email = stripe_customer.email
                 stripe_metadata = stripe_customer.metadata
@@ -300,16 +329,16 @@ class StripeConnector(PaymentProvider):
                     organization=organization,
                 ).first()
                 if customer:  # customer exists in system already
-                    cur_pp_dict = customer.integrations.get(
-                        PAYMENT_PROVIDERS.STRIPE, {}
-                    )
+                    integrations_dict = customer.integrations
+                    cur_pp_dict = integrations_dict.get(PAYMENT_PROVIDERS.STRIPE, {})
                     cur_pp_dict["id"] = stripe_id
                     cur_pp_dict["email"] = stripe_email
                     cur_pp_dict["metadata"] = stripe_metadata
                     cur_pp_dict["name"] = stripe_name
                     cur_pp_dict["currency"] = stripe_currency
                     cur_pp_dict["payment_methods"] = stripe_payment_methods
-                    customer.integrations[PAYMENT_PROVIDERS.STRIPE] = cur_pp_dict
+                    integrations_dict[PAYMENT_PROVIDERS.STRIPE] = cur_pp_dict
+                    customer.integrations = integrations_dict
                     customer.payment_provider = PAYMENT_PROVIDERS.STRIPE
                     customer.save()
                 else:
@@ -337,7 +366,12 @@ class StripeConnector(PaymentProvider):
         return num_cust_added
 
     def import_payment_objects(self, organization):
-        stripe.api_key = self.secret_key
+        from metering_billing.models import Organization
+
+        if organization.organization_type == Organization.OrganizationType.PRODUCTION:
+            stripe.api_key = self.live_secret_key
+        else:
+            stripe.api_key = self.test_secret_key
         imported_invoices = {}
         for customer in organization.customers.all():
             if PAYMENT_PROVIDERS.STRIPE in customer.integrations:
@@ -348,9 +382,13 @@ class StripeConnector(PaymentProvider):
     def _import_payment_objects_for_customer(self, customer):
         from metering_billing.models import Invoice
 
-        stripe.api_key = self.secret_key
+        payload = {}
+        if not self.self_hosted:
+            payload["stripe_account"] = customer.organization.payment_provider_ids.get(
+                PAYMENT_PROVIDERS.STRIPE
+            )
         invoices = stripe.Invoice.list(
-            customer=customer.integrations[PAYMENT_PROVIDERS.STRIPE]["id"]
+            customer=customer.integrations[PAYMENT_PROVIDERS.STRIPE]["id"], **payload
         )
         lotus_invoices = []
         for stripe_invoice in invoices.auto_paging_iter():
@@ -371,15 +409,21 @@ class StripeConnector(PaymentProvider):
                 "external_payment_obj_id": stripe_invoice.id,
                 "external_payment_obj_type": PAYMENT_PROVIDERS.STRIPE,
                 "organization": customer.organization,
-                "subscription": None,
             }
             lotus_invoice = Invoice.objects.create(**invoice_kwargs)
             lotus_invoices.append(lotus_invoice)
         return lotus_invoices
 
     def create_customer(self, customer):
-        stripe.api_key = self.secret_key
-        from metering_billing.models import OrganizationSetting
+        from metering_billing.models import Organization, OrganizationSetting
+
+        if (
+            customer.organization.organization_type
+            == Organization.OrganizationType.PRODUCTION
+        ):
+            stripe.api_key = self.live_secret_key
+        else:
+            stripe.api_key = self.test_secret_key
 
         setting = OrganizationSetting.objects.get(
             setting_name=ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS,
@@ -398,10 +442,10 @@ class StripeConnector(PaymentProvider):
             }
             if not self.self_hosted:
                 org_stripe_acct = customer.organization.payment_provider_ids.get(
-                    PAYMENT_PROVIDERS.STRIPE, ""
+                    PAYMENT_PROVIDERS.STRIPE, None
                 )
                 assert (
-                    org_stripe_acct != ""
+                    org_stripe_acct is not None
                 ), "Organization does not have a Stripe account ID"
                 customer_kwargs["stripe_account"] = org_stripe_acct
             try:
@@ -423,7 +467,15 @@ class StripeConnector(PaymentProvider):
             )
 
     def create_payment_object(self, invoice) -> str:
-        stripe.api_key = self.secret_key
+        from metering_billing.models import Organization
+
+        if (
+            invoice.organization.organization_type
+            == Organization.OrganizationType.PRODUCTION
+        ):
+            stripe.api_key = self.live_secret_key
+        else:
+            stripe.api_key = self.test_secret_key
         # check everything works as expected + build invoice item
         assert invoice.external_payment_obj_id is None
         customer = invoice.customer
@@ -434,9 +486,6 @@ class StripeConnector(PaymentProvider):
         invoice_kwargs = {
             "auto_advance": True,
             "customer": stripe_customer_id,
-            # "automatic_tax": {
-            #     "enabled": True,
-            # },
             "description": "Invoice from {}".format(
                 customer.organization.organization_name
             ),
@@ -444,10 +493,10 @@ class StripeConnector(PaymentProvider):
         }
         if not self.self_hosted:
             org_stripe_acct = customer.organization.payment_provider_ids.get(
-                PAYMENT_PROVIDERS.STRIPE, ""
+                PAYMENT_PROVIDERS.STRIPE, None
             )
             assert (
-                org_stripe_acct != ""
+                org_stripe_acct is not None
             ), "Organization does not have a Stripe account ID"
             invoice_kwargs["stripe_account"] = org_stripe_acct
 
@@ -479,6 +528,8 @@ class StripeConnector(PaymentProvider):
                 "tax_behavior": tax_behavior,
                 "metadata": metadata,
             }
+            if not self.self_hosted:
+                inv_dict["stripe_account"] = org_stripe_acct
             stripe.InvoiceItem.create(**inv_dict)
         stripe_invoice = stripe.Invoice.create(**invoice_kwargs)
         return stripe_invoice.id
@@ -490,7 +541,12 @@ class StripeConnector(PaymentProvider):
         return StripePostRequestDataSerializer
 
     def handle_post(self, data, organization) -> PaymentProviderPostResponseSerializer:
-        stripe.api_key = self.secret_key
+        from metering_billing.models import Organization
+
+        if organization.organization_type == Organization.OrganizationType.PRODUCTION:
+            stripe.api_key = self.live_secret_key
+        else:
+            stripe.api_key = self.test_secret_key
         response = stripe.OAuth.token(
             grant_type="authorization_code",
             code=data["authorization_code"],
@@ -522,8 +578,13 @@ class StripeConnector(PaymentProvider):
         validated_data = serializer.validated_data
         return Response(validated_data, status=status.HTTP_200_OK)
 
-    def get_redirect_url(self) -> str:
-        return self.redirect_url
+    def get_redirect_url(self, organization) -> str:
+        from metering_billing.models import Organization
+
+        if organization.organization_type == Organization.OrganizationType.PRODUCTION:
+            return self.live_redirect_url
+        else:
+            return self.test_redirect_url
 
     def transfer_subscriptions(
         self, organization, end_now=False
@@ -531,12 +592,15 @@ class StripeConnector(PaymentProvider):
         from metering_billing.models import (
             Customer,
             ExternalPlanLink,
+            Organization,
             Plan,
-            Subscription,
             SubscriptionRecord,
         )
 
-        stripe.api_key = self.secret_key
+        if organization.organization_type == Organization.OrganizationType.PRODUCTION:
+            stripe.api_key = self.live_secret_key
+        else:
+            stripe.api_key = self.test_secret_key
 
         org_ppis = organization.payment_provider_ids
         stripe_cust_kwargs = {}
@@ -551,7 +615,7 @@ class StripeConnector(PaymentProvider):
                 )
 
         stripe_subscriptions = stripe.Subscription.search(
-            query="status:'active'",
+            query="status:'active'", **stripe_cust_kwargs
         )
         plans_with_links = (
             Plan.objects.filter(organization=organization, status=PLAN_STATUS.ACTIVE)
@@ -599,7 +663,6 @@ class StripeConnector(PaymentProvider):
             # great, in this case we transfer the subscription
             elif len(matching_plans) == 1:
                 billing_plan = Plan.objects.get(id=matching_plans[0][0])
-                subscription
                 # check to see if subscription exists
                 validated_data = {
                     "organization": organization,
@@ -614,6 +677,7 @@ class StripeConnector(PaymentProvider):
                         subscription.id,
                         prorate=True,
                         invoice_now=True,
+                        **stripe_cust_kwargs,
                     )
                 else:
                     validated_data["start_date"] = datetime.datetime.utcfromtimestamp(
@@ -622,71 +686,9 @@ class StripeConnector(PaymentProvider):
                     sub = stripe.Subscription.modify(
                         subscription.id,
                         cancel_at_period_end=True,
+                        **stripe_cust_kwargs,
                     )
                 ret_subs.append(sub)
-                subscription = (
-                    Subscription.objects.active()
-                    .filter(
-                        organization=organization,
-                        customer=validated_data["customer"],
-                    )
-                    .first()
-                )
-                duration = validated_data["billing_plan"].plan.plan_duration
-                billing_freq = validated_data["billing_plan"].usage_billing_frequency
-                start_date = validated_data["start_date"]
-                plan_day_anchor = validated_data["billing_plan"].day_anchor
-                plan_month_anchor = validated_data["billing_plan"].month_anchor
-                if subscription is None:
-                    subscription = Subscription.objects.create(
-                        organization=organization,
-                        customer=validated_data["customer"],
-                        start_date=start_date,
-                        end_date=start_date,
-                    )
-                subscription.handle_attach_plan(
-                    plan_day_anchor=plan_day_anchor,
-                    plan_month_anchor=plan_month_anchor,
-                    plan_start_date=start_date,
-                    plan_duration=duration,
-                    plan_billing_frequency=billing_freq,
-                )
-                day_anchor, month_anchor = subscription.get_anchors()
-                end_date = calculate_end_date(
-                    duration,
-                    start_date,
-                    day_anchor=day_anchor,
-                    month_anchor=month_anchor,
-                )
-                end_date = validated_data.get("end_date", end_date)
-                if billing_freq in [
-                    USAGE_BILLING_FREQUENCY.MONTHLY,
-                    USAGE_BILLING_FREQUENCY.QUARTERLY,
-                ]:
-                    found = False
-                    i = 0
-                    num_months = (
-                        1 if billing_freq == USAGE_BILLING_FREQUENCY.MONTHLY else 3
-                    )
-                    while not found:
-                        tentative_nbd = date_as_max_dt(
-                            start_date
-                            + relativedelta(months=i, day=day_anchor, days=-1)
-                        )
-                        if tentative_nbd <= start_date:
-                            i += 1
-                            continue
-                        elif tentative_nbd > end_date:
-                            tentative_nbd = end_date
-                            break
-                        months_btwn = relativedelta(end_date, tentative_nbd).months
-                        if months_btwn % num_months == 0:
-                            found = True
-                        else:
-                            i += 1
-                    validated_data[
-                        "next_billing_date"
-                    ] = tentative_nbd  # end_date - i * relativedelta(months=num_months)
                 SubscriptionRecord.objects.create(**validated_data)
             else:  # error if multiple plans match
                 err_msg = "Multiple Lotus plans match Stripe subscription {}.".format(

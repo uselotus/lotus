@@ -1,8 +1,68 @@
+import datetime
 import uuid
 
+import pytz
+from dateutil.parser import parse
+from django.core.serializers.json import DjangoJSONEncoder
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+from timezone_field.rest_framework import TimeZoneSerializerField
+
+
+@extend_schema_field(serializers.ChoiceField(choices=pytz.common_timezones))
+class TimeZoneSerializerField(TimeZoneSerializerField):
+    pass
+
+
+class ConvertEmptyStringToNullMixin:
+    def recursive_convert_empty_string_to_none(self, data: dict):
+        for key, value in data.items():
+            if isinstance(value, dict):
+                self.recursive_convert_empty_string_to_none(value)
+            elif value == "":
+                data[key] = None
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        self.recursive_convert_empty_string_to_none(data)
+        return data
+
+
+class TimezoneFieldMixin:
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        customer = getattr(instance, "customer", None)
+        timezone_field = "timezone"
+        if customer is not None:
+            timezone = getattr(customer, timezone_field, None)
+        else:
+            organization = getattr(instance, "organization", None)
+            timezone = (
+                getattr(organization, timezone_field, None)
+                if organization is not None
+                else None
+            )
+        if timezone is not None:
+            for field_name, value in representation.items():
+                if value is None:
+                    representation[field_name] = None
+                field = self.fields.get(field_name)
+                if isinstance(field, serializers.DateTimeField) and value is not None:
+                    if isinstance(value, str):
+                        value = parse(value)
+                    representation[field_name] = value.astimezone(timezone).isoformat()
+        return representation
+
+
+class DjangoJSONEncoder(DjangoJSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime.datetime):
+            r = obj.isoformat()
+            if r.endswith("+00:00"):
+                r = r[:-6] + "Z"
+            return r
+        return super(DjangoJSONEncoder, self).default(obj)
 
 
 class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
@@ -28,7 +88,10 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
         elif self.queryset.model is Metric:
             data = MetricUUIDField().to_internal_value(data)
         elif self.queryset.model is Plan:
-            data = PlanUUIDField().to_internal_value(data)
+            try:
+                data = PlanUUIDField().to_internal_value(data)
+            except ValidationError:
+                data = AddonUUIDField().to_internal_value(data)
         elif self.queryset.model is PlanVersion:
             data = PlanVersionUUIDField().to_internal_value(data)
         elif self.queryset.model is Feature:
@@ -55,8 +118,10 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             return BalanceAdjustmentUUIDField().to_representation(obj.adjustment_id)
         elif isinstance(obj, Metric):
             return MetricUUIDField().to_representation(obj.metric_id)
-        elif isinstance(obj, Plan):
+        elif isinstance(obj, Plan) and obj.addon_spec is None:
             return PlanUUIDField().to_representation(obj.plan_id)
+        elif isinstance(obj, Plan) and obj.addon_spec is not None:
+            return AddonUUIDField().to_representation(obj.plan_id)
         elif isinstance(obj, PlanVersion):
             return PlanVersionUUIDField().to_representation(obj.version_id)
         elif isinstance(obj, Feature):
