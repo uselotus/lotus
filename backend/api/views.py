@@ -94,6 +94,7 @@ from metering_billing.models import (
     CustomerBalanceAdjustment,
     Event,
     Invoice,
+    InvoiceLineItem,
     Metric,
     Plan,
     PlanComponent,
@@ -193,7 +194,19 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 )
                 .order_by("-issue_date")
                 .select_related("currency", "organization")
-                .prefetch_related("line_items"),
+                .prefetch_related(
+                    Prefetch(
+                        "line_items",
+                        queryset=InvoiceLineItem.objects.select_related(
+                            "organization",
+                            "pricing_unit",
+                            "associated_subscription_record",
+                            "associated_plan_version",
+                            "associated_recurring_charge",
+                            "associated_plan_component",
+                        ),
+                    )
+                ),
                 to_attr="active_invoices",
             ),
         )
