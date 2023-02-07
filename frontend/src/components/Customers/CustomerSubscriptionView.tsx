@@ -414,7 +414,7 @@ const SubscriptionView: FC<Props> = ({
     );
   }
   return (
-    <div className="mt-auto mx-10">
+    <div className="mt-auto">
       <div className="flex mb-2 pb-4 pt-4 items-center justify-center">
         <h2 className="font-bold text-main">Active Plans</h2>
         <div className="ml-auto flex gap-2 max-h-[40px]">

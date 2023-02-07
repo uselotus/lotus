@@ -172,7 +172,7 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
 
   return (
     <div>
-      <h2 className="mb-2 pb-4 pt-4 font-bold text-main mx-10">Invoices</h2>
+      <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Invoices</h2>
       {invoices !== undefined ? (
         <Table
           columns={columns}
