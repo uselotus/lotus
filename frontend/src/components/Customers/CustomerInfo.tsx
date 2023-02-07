@@ -183,10 +183,10 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
 
   return (
     <div className="flex  flex-col">
-      <div className="grid grid-cols-1   md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-16  md:grid-cols-3">
         <div className="col-span-2">
           <CustomerCard
-            className={`overflow-x-clip w-[716px] ${
+            className={`overflow-x-clip ${
               !isEditing ? "h-[215px]" : "min-h-[230px]"
             }  `}
           >
