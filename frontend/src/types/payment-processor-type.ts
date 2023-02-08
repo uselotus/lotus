@@ -11,12 +11,15 @@ export interface PaymentProcessorConnectionResponseType {
 }
 
 export interface PaymentProcessorConnectionRequestType {
-  payment_processor: string;
+  payment_processor: "stripe" | "braintree";
   data: StripeConnectionRequestType | object;
 }
 
 export interface StripeConnectionRequestType {
   authorization_code: string;
+}
+export interface BraintreeConnectionRequestType {
+  merchant_code: string;
 }
 
 export const integrationsMap = {

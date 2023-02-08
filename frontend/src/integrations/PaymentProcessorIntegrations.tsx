@@ -6,6 +6,7 @@ import {
   PaymentProcessorConnectionRequestType,
   PaymentProcessorConnectionResponseType,
   StripeConnectionRequestType,
+  BraintreeConnectionRequestType,
 } from "../types/payment-processor-type";
 
 const StripeRedirect: FC = () => {
@@ -50,5 +51,48 @@ const StripeRedirect: FC = () => {
     </div>
   );
 };
+
+//Do the same thing for Braintree
+export const BraintreeRedirect: FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [connected, setConnected] = useState<string | boolean>(
+    "Not Yet Connected"
+  );
+  const navigate = useNavigate();
+
+  const code = searchParams.get("code") || "";
+
+  const request_data: BraintreeConnectionRequestType = {
+    merchant_code: code,
+  };
+
+  const returnToDashboard = () => {
+    navigate("/dashboard");
+  };
+
+  const pp_info: PaymentProcessorConnectionRequestType = {
+    payment_processor: "braintree",
+    data: request_data,
+  };
+  useEffect(() => {
+    if (code !== "") {
+      PaymentProcessorIntegration.connectPaymentProcessor(pp_info)
+        .then((data: PaymentProcessorConnectionResponseType) => {
+          setConnected(data.success);
+        })
+        .catch((error) => {
+          setConnected(error.response.data.details);
+        });
+    }
+  }, []);
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full">
+      <h1>Braintree Redirect: {connected} </h1>
+      <Button onClick={returnToDashboard}>Go To Dashboard</Button>
+    </div>
+  );
+
+
 
 export default StripeRedirect;
