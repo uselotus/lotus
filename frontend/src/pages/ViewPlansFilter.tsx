@@ -33,65 +33,67 @@ function ViewPlansFilter({
 }: ViewPlansFilterProps) {
   const [internalTags, setInternalTags] = useState<Tag[]>([]);
 
-  <div className="flex items-center gap-8 mb-10">
-    <Input
-      onFocus={() => onFocusHandler(true)}
-      placeholder="Search plans..."
-      className="!w-1/4 !bg-[#f8f8f8] border !border-[#f8f8f8]"
-      value={value}
-      onChange={onChangeHandler}
-    />
-    <DropdownComponent>
-      <DropdownComponent.Trigger>
-        {tags.length && tags && internalTags.length ? (
-          <div className="flex gap-8 px-4 py-6 items-center border border-[#f8f8f8] bg-[#f8f8f8]">
-            <PlansTags tags={internalTags} />
-            <ChevronDown />
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="relative w-full px-4 py-6 flex items-center gap-8  cursor-default  bg-[#f8f8f8] rounded-md border border-[#f8f8f8]    text-left shadow-sm  focus:outline-none  sm:text-sm"
-            aria-haspopup="listbox"
-            aria-expanded="true"
-            aria-labelledby="listbox-label"
-          >
-            <span className="block truncate">Tags</span>
-            <ChevronDown />
-          </button>
-        )}
-      </DropdownComponent.Trigger>
-      <DropdownComponent.Container>
-        {tags &&
-          tags.map((tag: Tag) => (
-            <DropdownComponent.MenuItem
-              key={tag.tag_name}
-              onSelect={() => {
-                onFocusHandler(false);
-                if (tag.from) {
-                  tag.from = false;
-                  setInternalTags((prevTags) =>
-                    prevTags.filter((t) => t.tag_name !== tag.tag_name)
-                  );
-                  onSelectHandler(tag, true);
-                } else {
-                  tag.from = true;
-                  setInternalTags((prevTags) => prevTags.concat(tag));
-                  onSelectHandler(tag, false);
-                }
-              }}
+  return (
+    <div className="flex items-center gap-8 mb-10">
+      <Input
+        onFocus={() => onFocusHandler(true)}
+        placeholder="Search plans..."
+        className="!w-1/4 !bg-[#f8f8f8] border !border-[#f8f8f8]"
+        value={value}
+        onChange={onChangeHandler}
+      />
+      <DropdownComponent>
+        <DropdownComponent.Trigger>
+          {tags.length && tags && internalTags.length ? (
+            <div className="flex gap-8 px-4 py-6 items-center border border-[#f8f8f8] bg-[#f8f8f8]">
+              <PlansTags tags={internalTags} />
+              <ChevronDown />
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="relative w-full px-4 py-6 flex items-center gap-8  cursor-default  bg-[#f8f8f8] rounded-md border border-[#f8f8f8]    text-left shadow-sm  focus:outline-none  sm:text-sm"
+              aria-haspopup="listbox"
+              aria-expanded="true"
+              aria-labelledby="listbox-label"
             >
-              <span key={tag.tag_name} className="flex gap-2 justify-between">
-                <span className="flex gap-2 items-center">
-                  <Badge.Dot fill={tag.tag_hex} />
-                  <span className="text-black">{tag.tag_name}</span>
+              <span className="block truncate">Tags</span>
+              <ChevronDown />
+            </button>
+          )}
+        </DropdownComponent.Trigger>
+        <DropdownComponent.Container>
+          {tags &&
+            tags.map((tag: Tag) => (
+              <DropdownComponent.MenuItem
+                key={tag.tag_name}
+                onSelect={() => {
+                  onFocusHandler(false);
+                  if (tag.from) {
+                    tag.from = false;
+                    setInternalTags((prevTags) =>
+                      prevTags.filter((t) => t.tag_name !== tag.tag_name)
+                    );
+                    onSelectHandler(tag, true);
+                  } else {
+                    tag.from = true;
+                    setInternalTags((prevTags) => prevTags.concat(tag));
+                    onSelectHandler(tag, false);
+                  }
+                }}
+              >
+                <span key={tag.tag_name} className="flex gap-2 justify-between">
+                  <span className="flex gap-2 items-center">
+                    <Badge.Dot fill={tag.tag_hex} />
+                    <span className="text-black">{tag.tag_name}</span>
+                  </span>
+                  {tag.from && <CheckCircleOutlined className="!text-gold" />}
                 </span>
-                {tag.from && <CheckCircleOutlined className="!text-gold" />}
-              </span>
-            </DropdownComponent.MenuItem>
-          ))}
-      </DropdownComponent.Container>
-    </DropdownComponent>
-  </div>;
+              </DropdownComponent.MenuItem>
+            ))}
+        </DropdownComponent.Container>
+      </DropdownComponent>
+    </div>
+  );
 }
 export default ViewPlansFilter;
