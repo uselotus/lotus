@@ -38,7 +38,9 @@ const columns: ProColumns<BacktestType>[] = [
     render: (_, record) => (
       <div>
         {record.kpis.map((kpi) => (
-          <Tag color="default">{kpi}</Tag>
+          <Tag key={kpi} color="default">
+            {kpi}
+          </Tag>
         ))}
       </div>
     ),
@@ -68,19 +70,18 @@ const BacktestTable: FC<Props> = ({ backtests }) => {
         options={false}
         toolBarRender={false}
         search={false}
-        onRow={(record, rowIndex) => ({
-            onClick: (event) => {
-              if (record.status === "completed") {
-                navigateToExperiment(record);
-              } else {
-                toast("Experiment is still running");
-              }
-            }, // click row
-          })}
+        onRow={(record) => ({
+          onClick: () => {
+            if (record.status === "completed") {
+              navigateToExperiment(record);
+            } else {
+              toast("Experiment is still running");
+            }
+          }, // click row
+        })}
         pagination={{
-          showTotal: (total, range) => (
-            <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
-          ),
+          showTotal: (total, range) =>
+            `${range[0]}-${range[1]} of ${total} total items`,
           pageSize: 10,
         }}
       />

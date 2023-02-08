@@ -17,6 +17,7 @@ module.exports = {
       // Tells eslint-plugin-react to automatically detect the version of React to use.
       version: "detect",
     },
+
     // Tells eslint how to resolve imports
     "import/resolver": {
       node: {
@@ -25,7 +26,44 @@ module.exports = {
       },
     },
   },
+
   rules: {
     // Add your own rules here to override ones from the extended configs.
+    "import/no-unresolved": "off",
+    camelcase: [
+      "error",
+      {
+        properties: "never",
+        ignoreDestructuring: true,
+        ignoreImports: true,
+        ignoreGlobals: true,
+      },
+    ],
+    "no-shadow": ["error", { hoist: "never", ignoreOnInitialization: true }],
+    "react/function-component-definition": [
+      2,
+      {
+        namedComponents: ["arrow-function", "function-declaration"],
+        unnamedComponents: "arrow-function",
+      },
+    ],
+    "react/require-default-props": [
+      0,
+      {
+        functions: "ignore",
+      },
+    ],
+    "import/no-extraneous-dependencies": [
+      "error",
+      {
+        peerDependencies: true,
+      },
+    ],
+    "react/jsx-filename-extension": [1, { extensions: [".tsx", ".ts"] }],
+    "import/extensions": [
+      "error",
+      "ignorePackages",
+      { js: "never", jsx: "never", ts: "never", tsx: "never" },
+    ],
   },
 };

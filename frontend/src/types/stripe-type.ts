@@ -20,7 +20,9 @@ export interface StripeSetting {
   setting_group: string;
   setting_id: string;
   setting_name: string;
-  setting_values: any;
+  setting_values: {
+    value: boolean;
+  };
 }
 
 export interface UpdateStripeSettingParams {

@@ -1,3 +1,8 @@
+/* eslint-disable no-console */
+/* eslint-disable no-shadow */
+/* eslint-disable no-param-reassign */
+/* eslint-disable no-plusplus */
+/* eslint-disable camelcase */
 import {
   Button,
   Card,
@@ -9,7 +14,6 @@ import {
   Row,
   Select,
 } from "antd";
-// @ts-ignore
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "react-query";
@@ -21,16 +25,16 @@ import {
   CreateInitialVersionType,
   CreatePlanType,
   PlanType,
+  CreateRecurringCharge,
 } from "../types/plan-type";
 import { Plan, Organization } from "../api/api";
-import { CreateFeatureType, FeatureType } from "../types/feature-type";
+import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
 import LinkExternalIds from "../components/Plans/LinkExternalIds";
 import { PageLayout } from "../components/base/PageLayout";
 import { ComponentDisplay } from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import { CurrencyType } from "../types/pricing-unit-type";
-import { CreateRecurringCharge } from "../types/plan-type";
 
 interface ComponentDisplay {
   metric: string;
@@ -71,23 +75,20 @@ function CreatePlan() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!allPlans?.length) {
-      Plan.getPlans().then((data) => setAllPlans(data));
-    }
+    Plan.getPlans().then((data) => setAllPlans(data));
   }, []);
 
   useEffect(() => {
-    if (!allCurrencies?.length) {
-      Organization.get().then((res) => {
-        setAllCurrencies(res[0].available_currencies);
-        setSelectedCurrency(res[0].default_currency);
-        if (res[0].default_currency) {
-          form.setFieldsValue({
-            plan_currency: res[0].default_currency.code,
-          });
-        }
-      });
-    }
+    Organization.get().then((res) => {
+      setAllCurrencies(res[0].available_currencies);
+      setSelectedCurrency(res[0].default_currency);
+      if (res[0].default_currency) {
+        form.setFieldsValue({
+          plan_currency: res[0].default_currency.code,
+        });
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const mutation = useMutation(
@@ -116,6 +117,7 @@ function CreatePlan() {
           (feat) => feat.feature_id === newFeatures[i].feature_id
         )
       ) {
+        //
       } else {
         setPlanFeatures((prev) => [...prev, newFeatures[i]]);
       }
@@ -123,10 +125,7 @@ function CreatePlan() {
     setFeatureVisible(false);
   };
 
-  const editFeatures = (feature_name: string) => {
-    const currentFeature = planFeatures.filter(
-      (item) => item.feature_name === feature_name
-    )[0];
+  const editFeatures = () => {
     setFeatureVisible(true);
   };
 
@@ -136,7 +135,9 @@ function CreatePlan() {
     );
   };
 
-  const onFinishFailed = (errorInfo: any) => {};
+  const onFinishFailed = () => {
+    //
+  };
 
   const hideComponentModal = () => {
     setcomponentVisible(false);
@@ -146,7 +147,7 @@ function CreatePlan() {
     setcomponentVisible(true);
   };
 
-  const handleComponentAdd = (newData: any) => {
+  const handleComponentAdd = (newData: CreateComponent) => {
     const old = componentsData;
 
     if (editComponentItem) {
@@ -169,7 +170,7 @@ function CreatePlan() {
     setcomponentVisible(false);
   };
 
-  const handleComponentEdit = (id: any) => {
+  const handleComponentEdit = (id: number) => {
     const currentComponent = componentsData.filter((item) => item.id === id)[0];
 
     setEditComponentsItem(currentComponent);
@@ -198,95 +199,92 @@ function CreatePlan() {
   };
 
   const submitPricingPlan = () => {
-    form
-      .validateFields()
-      .then((values) => {
-        const usagecomponentslist: CreateComponent[] = [];
-        const components: any = Object.values(componentsData);
-        if (components) {
-          for (let i = 0; i < components.length; i++) {
-            const usagecomponent: CreateComponent = {
-              metric_id: components[i].metric_id,
-              tiers: components[i].tiers,
-              proration_granularity: components[i].proration_granularity,
-            };
-            usagecomponentslist.push(usagecomponent);
-          }
-        }
-
-        const featureIdList: string[] = [];
-        const features: any = Object.values(planFeatures);
-        if (features) {
-          for (let i = 0; i < features.length; i++) {
-            featureIdList.push(features[i].feature_id);
-          }
-        }
-        const recurring_charges: CreateRecurringCharge[] = [];
-        recurring_charges.push({
-          amount: values.flat_rate,
-          charge_behavior: "prorate",
-          charge_timing: values.flat_fee_billing_type,
-          name: "Flat Fee",
-        });
-
-        if (values.usage_billing_frequency === "yearly") {
-          values.usage_billing_frequency = "end_of_period";
-        }
-        const initialPlanVersion: CreateInitialVersionType = {
-          description: values.description,
-          recurring_charges: recurring_charges,
-          transition_to_plan_id: values.transition_to_plan_id,
-          components: usagecomponentslist,
-          features: featureIdList,
-          usage_billing_frequency: values.usage_billing_frequency,
-          currency_code: values.plan_currency,
-        };
-        if (
-          values.price_adjustment_type !== undefined &&
-          values.price_adjustment_type !== "none"
-        ) {
-          if (
-            values.price_adjustment_type === "percentage" ||
-            values.price_adjustment_type === "fixed"
-          ) {
-            values.price_adjustment_amount =
-              Math.abs(values.price_adjustment_amount) * -1;
-          }
-
-          initialPlanVersion.price_adjustment = {
-            price_adjustment_type: values.price_adjustment_type,
-            price_adjustment_amount: values.price_adjustment_amount,
+    form.validateFields().then((values) => {
+      const usagecomponentslist: CreateComponent[] = [];
+      const components: CreateComponent[] = Object.values(componentsData);
+      if (components) {
+        for (let i = 0; i < components.length; i++) {
+          const usagecomponent: CreateComponent = {
+            metric_id: components[i].metric_id,
+            tiers: components[i].tiers,
+            proration_granularity: components[i].proration_granularity,
           };
+          usagecomponentslist.push(usagecomponent);
+        }
+      }
+
+      const featureIdList: string[] = [];
+      const features: FeatureType[] = Object.values(planFeatures);
+      if (features) {
+        for (let i = 0; i < features.length; i++) {
+          featureIdList.push(features[i].feature_id);
+        }
+      }
+      const recurring_charges: CreateRecurringCharge[] = [];
+      recurring_charges.push({
+        amount: values.flat_rate,
+        charge_behavior: "prorate",
+        charge_timing: values.flat_fee_billing_type,
+        name: "Flat Fee",
+      });
+
+      if (values.usage_billing_frequency === "yearly") {
+        values.usage_billing_frequency = "end_of_period";
+      }
+      const initialPlanVersion: CreateInitialVersionType = {
+        description: values.description,
+        recurring_charges,
+        transition_to_plan_id: values.transition_to_plan_id,
+        components: usagecomponentslist,
+        features: featureIdList,
+        usage_billing_frequency: values.usage_billing_frequency,
+        currency_code: values.plan_currency,
+      };
+      if (
+        values.price_adjustment_type !== undefined &&
+        values.price_adjustment_type !== "none"
+      ) {
+        if (
+          values.price_adjustment_type === "percentage" ||
+          values.price_adjustment_type === "fixed"
+        ) {
+          values.price_adjustment_amount =
+            Math.abs(values.price_adjustment_amount) * -1;
         }
 
-        if (values.align_plan == "calendar_aligned") {
-          if (values.plan_duration === "yearly") {
-            initialPlanVersion.day_anchor = 1;
-            initialPlanVersion.month_anchor = 1;
-          }
-          if (values.plan_duration === "monthly") {
-            initialPlanVersion.day_anchor = 1;
-          }
-          if (values.plan_duration === "quarterly") {
-            initialPlanVersion.day_anchor = 1;
-            initialPlanVersion.month_anchor = 1;
-          }
-        }
-        const plan: CreatePlanType = {
-          plan_name: values.name,
-          plan_duration: values.plan_duration,
-          initial_version: initialPlanVersion,
+        initialPlanVersion.price_adjustment = {
+          price_adjustment_type: values.price_adjustment_type,
+          price_adjustment_amount: values.price_adjustment_amount,
         };
-        const links = values.initial_external_links;
-        if (links?.length) {
-          plan.initial_external_links = links.map((link) => ({
-            source: "stripe",
-            external_plan_id: link,
-          }));
+      }
+
+      if (values.align_plan === "calendar_aligned") {
+        if (values.plan_duration === "yearly") {
+          initialPlanVersion.day_anchor = 1;
+          initialPlanVersion.month_anchor = 1;
         }
-        mutation.mutate(plan);
-      })
-      .catch((info) => {});
+        if (values.plan_duration === "monthly") {
+          initialPlanVersion.day_anchor = 1;
+        }
+        if (values.plan_duration === "quarterly") {
+          initialPlanVersion.day_anchor = 1;
+          initialPlanVersion.month_anchor = 1;
+        }
+      }
+      const plan: CreatePlanType = {
+        plan_name: values.name,
+        plan_duration: values.plan_duration,
+        initial_version: initialPlanVersion,
+      };
+      const links = values.initial_external_links;
+      if (links?.length) {
+        plan.initial_external_links = links.map((link) => ({
+          source: "stripe",
+          external_plan_id: link,
+        }));
+      }
+      mutation.mutate(plan);
+    });
   };
 
   return (
@@ -376,6 +374,7 @@ function CreatePlan() {
                               "quarterly"
                             );
                           } else {
+                            console.log(availableBillingTypes);
                             setAvailableBillingTypes([
                               { label: "Monthly", name: "monthly" },
                               { label: "Quarterly", name: "quarterly" },
@@ -519,7 +518,7 @@ function CreatePlan() {
                   }
                 >
                   <ComponentDisplay
-                    componentsData={componentsData}
+                    componentsData={componentsData as CreateComponent[]}
                     handleComponentEdit={handleComponentEdit}
                     deleteComponent={deleteComponent}
                     pricing_unit={selectedCurrency}

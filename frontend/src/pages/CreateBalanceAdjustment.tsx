@@ -1,14 +1,10 @@
+/* eslint-disable no-shadow */
+/* eslint-disable camelcase */
 import { Button, Form, Input, InputNumber, DatePicker, Modal } from "antd";
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  useMutation,
-  useQueryClient,
-  UseQueryResult,
-  useQuery,
-} from "react-query";
+import { useMutation, useQueryClient, useQuery } from "react-query";
 import { toast } from "react-toastify";
-import dayjs from "dayjs";
+import dayjs, { Dayjs } from "dayjs";
 import { Credits, PricingUnits } from "../api/api";
 import { CreateCreditType } from "../types/balance-adjustment";
 import { CurrencyType } from "../types/pricing-unit-type";
@@ -22,13 +18,12 @@ type Params = {
 };
 
 function CreateCredit({ customerId, visible, onCancel, onSubmit }: Params) {
-  const navigate = useNavigate();
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
 
-  const { data, isLoading }: UseQueryResult<CurrencyType[]> = useQuery<
-    CurrencyType[]
-  >(["pricing_unit_list"], () => PricingUnits.list().then((res) => res));
+  useQuery<CurrencyType[]>(["pricing_unit_list"], () =>
+    PricingUnits.list().then((res) => res)
+  );
   const [amount_paid, setAmountPaid] = useState(
     form.getFieldValue("amount_paid")
   );
@@ -67,22 +62,19 @@ function CreateCredit({ customerId, visible, onCancel, onSubmit }: Params) {
   );
 
   const submit = () => {
-    form
-      .validateFields()
-      .then((values) => {
-        mutation.mutate({
-          customer_id: customerId,
-          amount: values.amount,
-          description: values.description,
-          currency_code: values.pricing_unit_code,
-          effective_at: values.effective_at,
-          expires_at: values.expires_at,
-          amount_paid: values.amount_paid,
-          amount_paid_currency_code: values.amount_paid_currency,
-        });
-        onSubmit();
-      })
-      .catch((info) => {});
+    form.validateFields().then((values) => {
+      mutation.mutate({
+        customer_id: customerId,
+        amount: values.amount,
+        description: values.description,
+        currency_code: values.pricing_unit_code,
+        effective_at: values.effective_at,
+        expires_at: values.expires_at,
+        amount_paid: values.amount_paid,
+        amount_paid_currency_code: values.amount_paid_currency,
+      });
+      onSubmit();
+    });
   };
 
   const validateAmountPaidCurrency = () => ({
@@ -99,7 +91,7 @@ function CreateCredit({ customerId, visible, onCancel, onSubmit }: Params) {
   return (
     <Modal
       width={1000}
-      destroyOnClose={true}
+      destroyOnClose
       title="Create Credit"
       visible={visible}
       footer={[
@@ -124,7 +116,7 @@ function CreateCredit({ customerId, visible, onCancel, onSubmit }: Params) {
           }}
           onFinish={submit}
           autoComplete="off"
-          labelWrap={true}
+          labelWrap
         >
           <div className=" grid grid-cols-2 gap-4 p-4">
             <Form.Item
@@ -198,10 +190,13 @@ function CreateCredit({ customerId, visible, onCancel, onSubmit }: Params) {
               label="Effective At"
             >
               <DatePicker
-                defaultValue={dayjs(Date.now())}
+                defaultValue={dayjs(Date.now()) as moment.Moment}
                 disabledDate={disabledDate}
                 onChange={(data) =>
-                  form.setFieldValue("effective_at", dayjs(data))
+                  form.setFieldValue(
+                    "effective_at",
+                    dayjs(data as Dayjs) as moment.Moment
+                  )
                 }
               />
             </Form.Item>
@@ -213,7 +208,7 @@ function CreateCredit({ customerId, visible, onCancel, onSubmit }: Params) {
               <DatePicker
                 disabledDate={disabledDate}
                 onChange={(data) =>
-                  form.setFieldValue("expires_at", dayjs(data))
+                  form.setFieldValue("expires_at", dayjs(data as Dayjs))
                 }
               />
             </Form.Item>

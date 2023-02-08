@@ -2,34 +2,37 @@ import React, { useState } from "react";
 import { Modal, Select } from "antd";
 import { UseQueryResult, useQuery } from "react-query";
 import { Customer } from "../../api/api";
-import { CustomerPlus } from "../../types/customer-type";
+import { CustomerSummary } from "../../types/customer-type";
 
 const { Option } = Select;
 
-function TargetCustomerForm(props: {
+function TargetCustomerForm({
+  onCancel,
+  onAddTargetCustomer,
+  visible,
+}: {
   visible: boolean;
   onCancel: () => void;
   onAddTargetCustomer: (target_customer_id: string) => void;
 }) {
   const [targetCustomer, setTargetCustomer] = useState<string>(""); // id of the target customer
 
-  const { data: customers, isLoading }: UseQueryResult<CustomerPlus[]> =
-    useQuery<CustomerPlus[]>(["customer_list"], () =>
-      Customer.getCustomers().then((res) => res)
-    );
+  const { data: customers }: UseQueryResult<CustomerSummary[]> = useQuery<
+    CustomerSummary[]
+  >(["customer_list"], () => Customer.getCustomers().then((res) => res));
 
   return (
     <Modal
-      visible={props.visible}
+      visible={visible}
       title="Choose Target Customer For Plan"
       okText="Confirm and Create Plan"
       okType="default"
       okButtonProps={{
         type: "primary",
       }}
-      onCancel={props.onCancel}
+      onCancel={onCancel}
       onOk={() => {
-        props.onAddTargetCustomer(targetCustomer);
+        onAddTargetCustomer(targetCustomer);
       }}
     >
       <div className="grid grid-row-3">
@@ -42,7 +45,7 @@ function TargetCustomerForm(props: {
             }} // id of the target customer)}
           >
             {customers?.map((customer) => (
-              <Option value={customer.customer_id}>
+              <Option key={customer.customer_id} value={customer.customer_id}>
                 {customer.customer_name}
               </Option>
             ))}

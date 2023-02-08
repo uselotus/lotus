@@ -1,4 +1,6 @@
-import React, { PropsWithChildren, ReactElement, useEffect } from "react";
+/* eslint-disable no-shadow */
+/* eslint-disable react/no-unused-prop-types */
+import React, { PropsWithChildren } from "react";
 
 type TSelected = React.ReactNode | string;
 interface DropdownProps {
@@ -26,7 +28,7 @@ function Dropdown({ children }: PropsWithChildren<DropdownProps>) {
   );
   const value = React.useMemo(
     () => ({ isOpen, openHandler, closeHandler, selected }),
-    [isOpen]
+    [isOpen, openHandler, closeHandler, selected]
   );
   const handleClick = (e: MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -64,9 +66,10 @@ const Container: React.FC<PropsWithChildren<DropdownProps>> = ({
 }) => {
   const { isOpen } = useDropdownContext();
   return (
-    <>
+    <span>
       {isOpen && (
         <div
+          aria-hidden
           id="dd-container"
           className={
             !className
@@ -86,7 +89,7 @@ const Container: React.FC<PropsWithChildren<DropdownProps>> = ({
           </div>
         </div>
       )}
-    </>
+    </span>
   );
 };
 
@@ -98,6 +101,7 @@ const MenuItem: React.FC<PropsWithChildren<DropdownProps>> = ({
   const { closeHandler, isOpen, selected } = useDropdownContext();
 
   return (
+    // eslint-disable-next-line jsx-a11y/anchor-is-valid
     <a
       href="#"
       className={
@@ -110,7 +114,10 @@ const MenuItem: React.FC<PropsWithChildren<DropdownProps>> = ({
       onKeyDown={(e) => {
         const element = children as unknown as { type: string };
         if (element.type === "input" && e.key === "Enter") {
-          onSelect && onSelect(isOpen, selected);
+          if (onSelect) {
+            onSelect(isOpen, selected);
+          }
+          //   onSelect && onSelect(isOpen, selected);
           closeHandler(children);
         }
       }}
@@ -118,7 +125,7 @@ const MenuItem: React.FC<PropsWithChildren<DropdownProps>> = ({
         e.preventDefault();
         const element = children as unknown as { type: string };
         if (element.type !== "input") {
-          onSelect!(isOpen, selected);
+          onSelect?.(isOpen, selected);
           closeHandler(children);
         }
       }}
@@ -132,7 +139,11 @@ const DropdownTrigger: React.FC<PropsWithChildren<DropdownProps>> = ({
   children,
 }) => {
   const { openHandler } = useDropdownContext();
-  return <div onClick={openHandler}>{children}</div>;
+  return (
+    <div aria-hidden onClick={openHandler}>
+      {children}
+    </div>
+  );
 };
 
 Dropdown.Container = Container;

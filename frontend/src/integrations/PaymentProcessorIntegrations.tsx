@@ -1,5 +1,6 @@
+/* eslint-disable camelcase */
 import React, { FC, useEffect, useState } from "react";
-import { useSearchParams , useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "antd";
 import { PaymentProcessorIntegration } from "../api/api";
 import {
@@ -9,7 +10,7 @@ import {
 } from "../types/payment-processor-type";
 
 const StripeRedirect: FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [connected, setConnected] = useState<string | boolean>(
     "Not Yet Connected"
   );
@@ -17,16 +18,16 @@ const StripeRedirect: FC = () => {
 
   const code = searchParams.get("code") || "";
 
-  const request_data: StripeConnectionRequestType = {
-    authorization_code: code,
-  };
-
-  const pp_info: PaymentProcessorConnectionRequestType = {
-    payment_processor: "stripe",
-    data: request_data,
-  };
   useEffect(() => {
     if (code !== "") {
+      const request_data: StripeConnectionRequestType = {
+        authorization_code: code,
+      };
+
+      const pp_info: PaymentProcessorConnectionRequestType = {
+        payment_processor: "stripe",
+        data: request_data,
+      };
       PaymentProcessorIntegration.connectPaymentProcessor(pp_info)
         .then((data: PaymentProcessorConnectionResponseType) => {
           setConnected(data.success);
@@ -35,7 +36,7 @@ const StripeRedirect: FC = () => {
           setConnected(error.response.data.details);
         });
     }
-  }, []);
+  }, [code]);
   if (searchParams.get("error")) {
     return <div>{searchParams.get("error")}</div>;
   }

@@ -2,7 +2,11 @@ import React, { useState } from "react";
 import { Modal, Select, Radio } from "antd";
 import { toast } from "react-toastify";
 
-function VersionActiveForm(props: {
+function VersionActiveForm({
+  visible,
+  onCancel,
+  onOk,
+}: {
   visible: boolean;
   onCancel: () => void;
   onOk: (active: boolean, activeType: string) => void;
@@ -12,21 +16,21 @@ function VersionActiveForm(props: {
 
   return (
     <Modal
-      visible={props.visible}
+      visible={visible}
       title="Confirm New Version"
       okText="Create Version"
       okType="default"
       okButtonProps={{
         type: "primary",
       }}
-      onCancel={props.onCancel}
+      onCancel={onCancel}
       onOk={() => {
         if (active === undefined) {
           toast.error("Please choose whether to activate the new version");
         } else if (active === true && activeType === "") {
           toast.error("Please choose whether to activate the new version");
         } else {
-          props.onOk(active, activeType);
+          onOk(active, activeType);
         }
       }}
     >

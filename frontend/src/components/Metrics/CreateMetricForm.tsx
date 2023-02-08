@@ -1,3 +1,4 @@
+/* eslint-disable no-shadow */
 import React, { Fragment, useState } from "react";
 import {
   Modal,
@@ -11,13 +12,13 @@ import {
   Button,
   Tag,
 } from "antd";
-import { MetricType } from "../../types/metric-type";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-sql";
 import "ace-builds/src-noconflict/theme-github";
 import "ace-builds/src-noconflict/ext-language_tools";
 import { format } from "sql-formatter";
+import { MetricType } from "../../types/metric-type";
 
 const { Option } = Select;
 const { Panel } = Collapse;
@@ -34,18 +35,23 @@ export interface CreateMetricState extends MetricType {
   }[];
 }
 
-function CreateMetricForm(props: {
+function CreateMetricForm({
+  state,
+  visible,
+  onSave,
+  onCancel,
+}: {
   state: CreateMetricState;
   visible: boolean;
   onSave: (state: CreateMetricState) => void;
   onCancel: () => void;
 }) {
   const [form] = Form.useForm();
-  const gaugeGranularity = Form.useWatch("granularity_2", form);
+
   const [eventType, setEventType] = useState("counter");
   const [rate, setRate] = useState(false);
   const [preset, setPreset] = useState("none");
-  const [filters, setFilters] = useState();
+
   const [customSQL, setCustomSQL] = useState<null | string>(
     "SELECT COUNT(*) as usage_qty FROM events"
   );
@@ -112,39 +118,40 @@ function CreateMetricForm(props: {
           billable_aggregation_type: "max",
           granularity: "minutes",
         });
+        break;
+      default:
+        break;
     }
   };
 
   return (
     <Modal
-      visible={props.visible}
-      title={props.state.title}
+      visible={visible}
+      title={state.title}
       okText="Create"
       okType="primary"
       cancelText="Cancel"
       width={800}
-      onCancel={props.onCancel}
+      onCancel={onCancel}
       onOk={() => {
-        form
-          .validateFields()
-          .then((values) => {
-            values.is_cost_metric = costMetric;
-            if (rate) {
-              values.metric_type = "rate";
-            }
-            if (values.metric_type === "custom" && customSQL) {
-              values.custom_sql = format(customSQL, {
-                language: "postgresql",
-              });
-            }
-            props.onSave(values);
-            setCustomSQL("SELECT COUNT(*) as usage_qty FROM events");
-            form.resetFields();
-            setRate(false);
-            setEventType("counter");
-            setPreset("none");
-          })
-          .catch((info) => {});
+        form.validateFields().then((values) => {
+          const v = { ...values };
+          v.is_cost_metric = costMetric;
+          if (rate) {
+            v.metric_type = "rate";
+          }
+          if (values.metric_type === "custom" && customSQL) {
+            v.custom_sql = format(customSQL, {
+              language: "postgresql",
+            });
+          }
+          onSave(v);
+          setCustomSQL("SELECT COUNT(*) as usage_qty FROM events");
+          form.resetFields();
+          setRate(false);
+          setEventType("counter");
+          setPreset("none");
+        });
       }}
     >
       <div className="grid grid-cols-8 my-4 gap-4 items-center">
@@ -444,12 +451,12 @@ function CreateMetricForm(props: {
         {eventType === "custom" && (
           <div>
             <p>
-              The query you're building should calculate the raw usage number
-              for a customer's subscription. You'll define the price of the
-              accumulated usage later. You'll have access to a table called{" "}
-              <Tag>events</Tag>containing all of the events for the customer
-              whose subscription usage you're calculating. Each row represents
-              an event and has the following columns available:
+              The query you&apos;re building should calculate the raw usage
+              number for a customer&apos;s subscription. You&apos;ll define the
+              price of the accumulated usage later. You&apos;ll have access to a
+              table called <Tag>events</Tag>containing all of the events for the
+              customer whose subscription usage you&apos;re calculating. Each
+              row represents an event and has the following columns available:
             </p>
             <h4>
               <Tag>
@@ -554,6 +561,7 @@ function CreateMetricForm(props: {
                       >
                         <div className="flex flex-col space-y-4">
                           <Form.Item
+                            // eslint-disable-next-line react/jsx-props-no-spreading
                             {...field}
                             name={[field.name, "property_name"]}
                             validateTrigger={["onChange", "onBlur"]}

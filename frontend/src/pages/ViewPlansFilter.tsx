@@ -1,3 +1,5 @@
+/* eslint-disable no-shadow */
+/* eslint-disable no-param-reassign */
 import React, { useState } from "react";
 import { Input } from "antd";
 import { CheckCircleOutlined } from "@ant-design/icons";
@@ -6,27 +8,31 @@ import DropdownComponent from "../components/base/Dropdown/Dropdown";
 import { PlanType } from "../types/plan-type";
 import Badge from "../components/base/Badges/Badges";
 import PlansTags from "../components/Plans/PlanTags";
+
+type T = PlanType["tags"][0];
+
+interface Tag extends T {
+  from?: boolean;
+}
 interface ViewPlansFilterProps {
   onChangeHandler: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onSelectHandler: (tag: tag, remove: boolean) => void;
+
+  onSelectHandler: (tag: Tag, remove: boolean) => void;
+
   onFocusHandler: (focus: boolean) => void;
   value: string;
   tags: PlanType["tags"];
 }
-type T = PlanType["tags"][0];
 
-interface tag extends T {
-  from?: boolean;
-}
-
-const ViewPlansFilter = ({
+function ViewPlansFilter({
   value,
   onChangeHandler,
   onSelectHandler,
   onFocusHandler,
   tags,
-}: ViewPlansFilterProps) => {
-  const [internalTags, setInternalTags] = useState<tag[]>([]);
+}: ViewPlansFilterProps) {
+  const [internalTags, setInternalTags] = useState<Tag[]>([]);
+
   return (
     <div className="flex items-center gap-8 mb-10">
       <Input
@@ -58,8 +64,9 @@ const ViewPlansFilter = ({
         </DropdownComponent.Trigger>
         <DropdownComponent.Container>
           {tags &&
-            tags.map((tag: tag, index) => (
+            tags.map((tag: Tag) => (
               <DropdownComponent.MenuItem
+                key={tag.tag_name}
                 onSelect={() => {
                   onFocusHandler(false);
                   if (tag.from) {
@@ -75,10 +82,7 @@ const ViewPlansFilter = ({
                   }
                 }}
               >
-                <span
-                  key={index}
-                  className="flex gap-2 items-center justify-between"
-                >
+                <span key={tag.tag_name} className="flex gap-2 justify-between">
                   <span className="flex gap-2 items-center">
                     <Badge.Dot fill={tag.tag_hex} />
                     <span className="text-black">{tag.tag_name}</span>
@@ -91,5 +95,5 @@ const ViewPlansFilter = ({
       </DropdownComponent>
     </div>
   );
-};
+}
 export default ViewPlansFilter;

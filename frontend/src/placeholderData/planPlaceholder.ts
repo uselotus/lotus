@@ -1,7 +1,7 @@
 import { PlanDetailType } from "../types/plan-type";
 
 // create empty placeholder object for PlanDetailType
-export const planDetailPlaceholder: PlanDetailType = {
+const planDetailPlaceholder: PlanDetailType = {
   plan_name: "",
   plan_duration: "monthly",
   plan_id: "",
@@ -28,3 +28,4 @@ export const planDetailPlaceholder: PlanDetailType = {
     },
   ],
 };
+export default planDetailPlaceholder;

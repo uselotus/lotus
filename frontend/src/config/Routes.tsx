@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-expressions */
 import React, { FC, useState, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Layout } from "antd";
@@ -15,7 +16,6 @@ import ExperimentResults from "../pages/ExperimentResults";
 import PlanDetails from "../components/Plans/PlanDetails/PlanDetails";
 import EditPlanLoader from "../pages/EditPlanLoader";
 import StripeIntegrationView from "../integrations/pages/StripeIntegrationView";
-import CreateCredit from "../pages/CreateBalanceAdjustment";
 import ViewAddOns from "../pages/ViewAddOns";
 import CreateAddOns from "../pages/CreateAddOns";
 import AddonDetails from "../components/Addons/AddonsDetails/AddonDetails";
@@ -24,16 +24,12 @@ import CustomerDetail from "../components/Customers/CustomerDetail";
 const { Sider } = Layout;
 
 const getSettingsTab = (component) =>
-  // @ts-ignore
   // return import.meta.env.VITE_IS_DEMO ? <Navigate replace to={"/"} /> :component
   component;
 const AppRoutes: FC = () => {
   const [collapse, setCollapse] = useState(false);
   const { pathname } = useLocation();
-  const handleToggle = (event: any) => {
-    event.preventDefault();
-    collapse ? setCollapse(false) : setCollapse(true);
-  };
+
   const currentPath = pathname.split("/")[1];
   useEffect(() => {
     window.innerWidth <= 760 ? setCollapse(true) : setCollapse(false);
@@ -57,6 +53,7 @@ const AppRoutes: FC = () => {
             currentPath === "customers" ||
             currentPath === "dashboard" ||
             currentPath === "create-addons"
+
               ? { background: "#ffffff" }
               : { background: "#FAFAFA" }
           }

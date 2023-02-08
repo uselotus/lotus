@@ -1,19 +1,16 @@
+/* eslint-disable jsx-a11y/anchor-is-valid */
+/* eslint-disable camelcase */
 import React, { FC, useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "react-query";
 import { useNavigate } from "react-router-dom";
 import { Form, Button, Input, Radio, Select, Modal } from "antd";
 import { toast } from "react-toastify";
 import dayjs from "dayjs";
-import { PlanDetailType, PlanType, PlanVersionType } from "../types/plan-type";
-import { Plan , Backtests } from "../api/api";
+import { PlanDetailType, PlanType } from "../types/plan-type";
+import { Plan, Backtests } from "../api/api";
 import { PageLayout } from "../components/base/PageLayout";
 import { CreateBacktestType, Substitution } from "../types/experiment-type";
 import { usePlanState, usePlanUpdater } from "../context/PlanContext";
-
-interface PlanRepType {
-  plan_id: string;
-  plan_name: string;
-}
 
 const CreateBacktest: FC = () => {
   const navigate = useNavigate();
@@ -29,9 +26,7 @@ const CreateBacktest: FC = () => {
     experimentName,
     dateRange,
   } = usePlanState();
-  const [currentPlanModal, setCurrentPlanModal] = useState<PlanType>();
-  const [replacementPlanModal, setReplacementPlanModal] =
-    useState<PlanVersionType>();
+
   const {
     setCurrentPlan,
     setReplacementPlan,
@@ -48,20 +43,13 @@ const CreateBacktest: FC = () => {
 
   // temp
 
-  const {
-    data: plans,
-    isLoading,
-    isError,
-  } = useQuery<PlanType[]>(["plan_list"], () =>
+  const { data: plans } = useQuery<PlanType[]>(["plan_list"], () =>
     Plan.getPlans().then((res) => res)
   );
 
-  const {
-    data: planDetails,
-    isLoading: planDetailsLoading,
-    isError: planDetailsError,
-  } = useQuery<PlanDetailType>(["plan_details", planInFocus?.plan_id], () =>
-    Plan.getPlan(planInFocus?.plan_id || "11").then((res) => res)
+  const { data: planDetails } = useQuery<PlanDetailType>(
+    ["plan_details", planInFocus?.plan_id],
+    () => Plan.getPlan(planInFocus?.plan_id || "11").then((res) => res)
   );
 
   const mutation = useMutation(
@@ -73,19 +61,42 @@ const CreateBacktest: FC = () => {
         init();
         navigate("/experiments");
       },
-      onError: (e) => {
+      onError: () => {
         toast.error("Error creating backtest");
       },
     }
   );
+  const submitSubstitution = () => {
+    if (
+      currentPlan &&
+      replacementPlan &&
+      currentPlanVersion &&
+      replacementPlanVersion
+    ) {
+      setSubstitutions([
+        ...substitutions,
+        {
+          original_plans: [currentPlanVersion?.version_id],
+          new_plan: replacementPlanVersion?.version_id,
+          new_plan_name: replacementPlan.plan_name,
+          original_plan_names: [currentPlan.plan_name],
+        },
+      ]);
+      setCurrentPlan(null);
+      setReplacementPlan(null);
+      setCurrentPlanVersion(null);
+      setReplacementPlanVersion(null);
+    }
+  };
 
   const runBacktest = () => {
-    let singlesubscription: Substitution[];
     if (currentPlan && replacementPlan) {
       submitSubstitution();
-    } else if (substitutions.length === 0) {
+      return;
+    }
+    if (substitutions.length === 0) {
       toast.error("Please select a few plans");
-      return null;
+      return;
     }
     form.validateFields().then((values) => {
       const start_date = dayjs()
@@ -121,6 +132,7 @@ const CreateBacktest: FC = () => {
 
   useEffect(() => {
     submitSubstitution();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // const changeCurrentPlanModal = (plan_id: string) => {
@@ -176,29 +188,6 @@ const CreateBacktest: FC = () => {
     }
   };
 
-  const submitSubstitution = () => {
-    if (
-      currentPlan &&
-      replacementPlan &&
-      currentPlanVersion &&
-      replacementPlanVersion
-    ) {
-      setSubstitutions([
-        ...substitutions,
-        {
-          original_plans: [currentPlanVersion?.version_id],
-          new_plan: replacementPlanVersion?.version_id,
-          new_plan_name: replacementPlan.plan_name,
-          original_plan_names: [currentPlan.plan_name],
-        },
-      ]);
-      setCurrentPlan(null);
-      setReplacementPlan(null);
-      setCurrentPlanVersion(null);
-      setReplacementPlanVersion(null);
-    }
-  };
-
   return (
     <PageLayout
       title="New Experiment"
@@ -222,8 +211,8 @@ const CreateBacktest: FC = () => {
             runBacktest();
           }}
           initialValues={{
-            "backtest_name": experimentName,
-            "date_range": dateRange,
+            backtest_name: experimentName,
+            date_range: dateRange,
           }}
         >
           <div className="border-b border-gray-200 bg-white px-4 py-5 sm:px-6">
@@ -301,19 +290,21 @@ const CreateBacktest: FC = () => {
             <div className="grid grid-cols-3 mt-6 mb-3 justify-items-center">
               <div className="col-span-1">
                 <Button>
-                  <a onClick={openplanCurrentModal}>Choose Plans To Replace</a>
+                  <a aria-hidden role="button" onClick={openplanCurrentModal}>
+                    Choose Plans To Replace
+                  </a>
                 </Button>
                 <div>
-                  {substitutions.map((substitution, index) => (
-                      <div key={index}>
-                        <div className="flex flex-col rounded-lg text-xl bg-[#FAFAFA] py-3 px-2 items-center">
-                          <p>Plan</p>
-                          <span className="font-bold">
-                            {substitution.original_plan_names[0]}
-                          </span>
-                        </div>
+                  {substitutions.map((substitution) => (
+                    <div key={substitution.new_plan_name}>
+                      <div className="flex flex-col rounded-lg text-xl bg-[#FAFAFA] py-3 px-2 items-center">
+                        <p>Plan</p>
+                        <span className="font-bold">
+                          {substitution.original_plan_names[0]}
+                        </span>
                       </div>
-                    ))}
+                    </div>
+                  ))}
                 </div>
                 <div className="mt-4">
                   {currentPlan && currentPlanVersion && (
@@ -336,18 +327,18 @@ const CreateBacktest: FC = () => {
                   Create Experiment Plan
                 </Button>
                 <div>
-                  {substitutions.map((substitution, index) => (
-                      <div key={index}>
-                        <p>
-                          <div className="flex flex-col rounded-lg text-xl bg-[#FAFAFA] py-3 px-2 items-center">
-                            <p>Plan</p>
-                            <span className="font-bold">
-                              {substitution.new_plan_name}
-                            </span>
-                          </div>
-                        </p>
-                      </div>
-                    ))}
+                  {substitutions.map((substitution) => (
+                    <div key={substitution.new_plan_name}>
+                      <p>
+                        <div className="flex flex-col rounded-lg text-xl bg-[#FAFAFA] py-3 px-2 items-center">
+                          <p>Plan</p>
+                          <span className="font-bold">
+                            {substitution.new_plan_name}
+                          </span>
+                        </div>
+                      </p>
+                    </div>
+                  ))}
                 </div>
                 <div className="mt-4">
                   {replacementPlan && replacementPlanVersion && (
@@ -382,7 +373,7 @@ const CreateBacktest: FC = () => {
             defaultValue={currentPlan?.plan_name}
           >
             {plans?.map((plan) => (
-              <Select.Option value={plan.plan_id}>
+              <Select.Option key={plan.plan_id} value={plan.plan_id}>
                 {plan.plan_name}
               </Select.Option>
             ))}
@@ -391,7 +382,10 @@ const CreateBacktest: FC = () => {
             {planDetails !== undefined && (
               <Select onChange={addCurrentPlanVersion} className="w-8/12">
                 {planDetails?.versions.map((version) => (
-                  <Select.Option value={version.version_id}>
+                  <Select.Option
+                    key={version.version_id}
+                    value={version.version_id}
+                  >
                     {version.version}
                   </Select.Option>
                 ))}
@@ -414,7 +408,7 @@ const CreateBacktest: FC = () => {
             key="submit"
             type="primary"
             onClick={() => {
-              navigate(`/backtest-plan/${  replacementPlan?.plan_id}`);
+              navigate(`/backtest-plan/${replacementPlan?.plan_id}`);
             }}
           >
             Edit
@@ -436,7 +430,7 @@ const CreateBacktest: FC = () => {
             defaultValue={replacementPlan?.plan_name}
           >
             {plans?.map((plan) => (
-              <Select.Option value={plan.plan_id}>
+              <Select.Option key={plan.plan_id} value={plan.plan_id}>
                 {plan.plan_name}
               </Select.Option>
             ))}
@@ -445,7 +439,10 @@ const CreateBacktest: FC = () => {
             {planDetails !== undefined && (
               <Select onChange={addReplacementPlanVersion} className="w-8/12">
                 {planDetails?.versions.map((version) => (
-                  <Select.Option value={version.version_id}>
+                  <Select.Option
+                    key={version.version_id}
+                    value={version.version_id}
+                  >
                     {version.version}
                   </Select.Option>
                 ))}

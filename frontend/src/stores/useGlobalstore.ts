@@ -3,13 +3,6 @@ import { OrganizationType } from "../types/account-type";
 import { PlanType } from "../types/plan-type";
 import { CurrencyType } from "../types/pricing-unit-type";
 
-type GlobalStoreState = {
-  username: string;
-  org: IOrgStoreType;
-  setUsername: (username: string) => void;
-  setOrgInfo: (org: IOrgStoreType) => void;
-};
-
 interface IOrgStoreType {
   organization_id: string;
   organization_name: string;
@@ -19,6 +12,12 @@ interface IOrgStoreType {
   current_user: { username: string };
   linked_organizations?: OrganizationType["linked_organizations"];
 }
+type GlobalStoreState = {
+  username: string;
+  org: IOrgStoreType;
+  setUsername: (username: string) => void;
+  setOrgInfo: (org: IOrgStoreType) => void;
+};
 
 const useGlobalStore = create<GlobalStoreState>((set) => ({
   username: "",

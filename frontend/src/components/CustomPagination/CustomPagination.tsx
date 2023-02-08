@@ -1,4 +1,3 @@
-// @ts-ignore
 import React, { FC } from "react";
 import {
   RightOutlined,
@@ -24,13 +23,15 @@ const CustomPagination: FC<CustomPaginationProps> = ({
 }) => (
   <div className="flex justify-center space-x-4">
     <button
-      disabled={!cursor || currentPage == 1}
+      type="button"
+      disabled={!cursor || currentPage === 1}
       className="movementButton"
       onClick={() => handleMovements("START")}
     >
       <DoubleLeftOutlined />
     </button>
     <button
+      type="button"
       className="movementButton"
       disabled={previous === "null"}
       onClick={() => handleMovements("LEFT")}
@@ -39,6 +40,7 @@ const CustomPagination: FC<CustomPaginationProps> = ({
     </button>
     <div className="currentPageNumber"> {currentPage} </div>
     <button
+      type="button"
       className="movementButton"
       disabled={next === "null"}
       onClick={() => handleMovements("RIGHT")}

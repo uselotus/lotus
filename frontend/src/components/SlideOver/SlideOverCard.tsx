@@ -1,3 +1,4 @@
+/* eslint-disable camelcase */
 import React from "react";
 import { CheckCircleOutlined } from "@ant-design/icons";
 import useGlobalStore from "../../stores/useGlobalstore";
@@ -10,9 +11,11 @@ interface SlideOverCardProps {
 const SlideOverCard: React.FC<SlideOverCardProps> = ({ switchOrg }) => {
   const { linked_organizations } = useGlobalStore((state) => state.org);
   return (
-    <>
+    <div>
       {linked_organizations?.map((org) => (
         <div
+          aria-hidden
+          key={org.organization_name}
           onClick={() => switchOrg(org.organization_id)}
           className={
             org.current
@@ -43,7 +46,7 @@ const SlideOverCard: React.FC<SlideOverCardProps> = ({ switchOrg }) => {
           </div>
         </div>
       ))}
-    </>
+    </div>
   );
 };
 

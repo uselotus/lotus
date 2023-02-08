@@ -1,13 +1,13 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
-import {
-  Button,
-  Collapse,
-  Form,
-  InputNumber,
-  Modal,
-  Select,
-  Table,
-} from "antd";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react/no-unused-prop-types */
+/* eslint-disable no-unused-expressions */
+/* eslint-disable no-plusplus */
+/* eslint-disable camelcase */
+/* eslint-disable no-console */
+/* eslint-disable no-shadow */
+/* eslint-disable react/destructuring-assignment */
+import React, { Ref, useContext, useEffect, useRef, useState } from "react";
+import { Button, Form, InputNumber, Modal, Select, Table } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import "./UsageComponentForm.css";
 import type { InputRef } from "antd";
@@ -18,14 +18,14 @@ import { Tier } from "../../types/plan-type";
 import { CurrencyType } from "../../types/pricing-unit-type";
 
 const { Option } = Select;
-const { Panel } = Collapse;
 
-const EditableContext = React.createContext<FormInstance<any> | null>(null);
+const EditableContext = React.createContext<FormInstance | null>(null);
 type EditableTableProps = Parameters<typeof Table>[0];
 
 type ColumnTypes = Exclude<EditableTableProps["columns"], undefined>;
 type ValidateTiersType = { isValid: boolean; message: string }[];
 const validateTiers = (tiers: Tier[]): ValidateTiersType => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let currentStart = 0;
   let currentEnd: number | undefined;
 
@@ -43,7 +43,8 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
 
       if (!["flat", "free", "per_unit"].includes(tier.type)) {
         return { isValid: false, message: "Tiers are not valid" };
-      } if (tier.type === "per_unit") {
+      }
+      if (tier.type === "per_unit") {
         return typeof tier.batch_rounding_type === "string" &&
           typeof tier.cost_per_batch === "number" &&
           typeof tier.metric_units_per_batch === "number" &&
@@ -51,7 +52,8 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
           tier.cost_per_batch >= 0 === true
           ? { isValid: true, message: "" }
           : { isValid: false, message: "Unit is not valid." };
-      } if (tier.type === "flat") {
+      }
+      if (tier.type === "flat") {
         return {
           isValid:
             typeof tier.cost_per_batch === "number" && tier.cost_per_batch >= 0,
@@ -71,27 +73,27 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
       ) {
         return { isValid: false, message: "Range is not valid." };
       }
-        currentStart = tier.range_start;
-        currentEnd = tier.range_end;
+      currentStart = tier.range_start;
+      currentEnd = tier.range_end;
 
-        if (!["flat", "free", "per_unit"].includes(tier.type)) {
-          return { isValid: false, message: "Tiers are not valid" };
-        } if (tier.type === "per_unit") {
-          return typeof tier.cost_per_batch === "number" &&
-            typeof tier.metric_units_per_batch === "number" &&
-            tier.metric_units_per_batch > 0 &&
-            tier.cost_per_batch >= 0 === true
-            ? { isValid: true, message: "" }
-            : { isValid: false, message: "Unit is not valid." };
-        } if (tier.type === "flat") {
-          return {
-            isValid:
-              typeof tier.cost_per_batch === "number" &&
-              tier.cost_per_batch >= 0,
-            message: "",
-          };
-        }
-
+      if (!["flat", "free", "per_unit"].includes(tier.type)) {
+        return { isValid: false, message: "Tiers are not valid" };
+      }
+      if (tier.type === "per_unit") {
+        return typeof tier.cost_per_batch === "number" &&
+          typeof tier.metric_units_per_batch === "number" &&
+          tier.metric_units_per_batch > 0 &&
+          tier.cost_per_batch >= 0 === true
+          ? { isValid: true, message: "" }
+          : { isValid: false, message: "Unit is not valid." };
+      }
+      if (tier.type === "flat") {
+        return {
+          isValid:
+            typeof tier.cost_per_batch === "number" && tier.cost_per_batch >= 0,
+          message: "",
+        };
+      }
     }
     return { isValid: true, message: "" };
   });
@@ -99,20 +101,17 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
   return arr2;
 };
 
-interface Item {
-  key: string;
-  name: string;
-  age: string;
-  address: string;
+interface EditableRowProps {
+  index: number;
 }
 
-const EditableRow: React.FC<EditableRowProps> = ({ index, ...props }) => {
+const EditableRow: React.FC<EditableRowProps> = () => {
   const [form] = Form.useForm();
 
   return (
     <Form form={form} component={false}>
       <EditableContext.Provider value={form}>
-        <tr {...props} />
+        <tr />
       </EditableContext.Provider>
     </Form>
   );
@@ -127,10 +126,6 @@ interface EditableCellProps {
   handleSave: (record: Tier) => void;
 }
 
-interface EditableRowProps {
-  index: number;
-}
-
 const EditableCell: React.FC<EditableCellProps> = ({
   title,
   editable,
@@ -142,17 +137,17 @@ const EditableCell: React.FC<EditableCellProps> = ({
 }) => {
   const [editing, setEditing] = useState(false);
   const inputRef = useRef<InputRef>(null);
-  const form = useContext(EditableContext)!;
+  const form = useContext(EditableContext);
 
   useEffect(() => {
     if (editing) {
-      inputRef.current!.focus();
+      inputRef.current?.focus();
     }
   }, [editing]);
 
   const toggleEdit = () => {
     setEditing(!editing);
-    form.setFieldsValue({ [dataIndex]: record[dataIndex] });
+    form?.setFieldsValue({ [dataIndex]: record[dataIndex] });
   };
 
   const validateEditable = (dataIndex: keyof Tier, record: Tier) => {
@@ -176,7 +171,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
   };
   const save = async () => {
     try {
-      const values = await form.validateFields();
+      const values = await form?.validateFields();
       toggleEdit();
       handleSave({ ...record, ...values });
     } catch (errInfo) {
@@ -203,12 +198,8 @@ const EditableCell: React.FC<EditableCellProps> = ({
           switch (title) {
             case "Charge Type":
               return (
-                <Select
-                  onChange={save}
-                  ref={inputRef}
-                  onBlur={save}
-                  onPressEnter={save}
-                >
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                <Select onChange={save} ref={inputRef as any} onBlur={save}>
                   <Option value="per_unit">Per Unit</Option>
                   <Option value="free">Free</Option>
                   <Option value="flat">Flat</Option>
@@ -216,12 +207,8 @@ const EditableCell: React.FC<EditableCellProps> = ({
               );
             case "Rounding Type":
               return (
-                <Select
-                  onChange={save}
-                  ref={inputRef}
-                  onBlur={save}
-                  onPressEnter={save}
-                >
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                <Select onChange={save} ref={inputRef as any} onBlur={save}>
                   <Option value="round_up">round_up</Option>
                   <Option value="round_down">round_down</Option>
                   <Option value="round_nearest">round_nearest</Option>
@@ -231,7 +218,8 @@ const EditableCell: React.FC<EditableCellProps> = ({
             default:
               return (
                 <InputNumber
-                  ref={inputRef}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  ref={inputRef as any}
                   onPressEnter={save}
                   onBlur={save}
                   min={0}
@@ -242,20 +230,28 @@ const EditableCell: React.FC<EditableCellProps> = ({
       </Form.Item>
     ) : (
       <div
+        aria-hidden
         className="editable-cell-value-wrap"
         style={{ paddingRight: 24 }}
-        onClick={validateEditable(dataIndex, record) ? toggleEdit : () => {}}
+        onClick={
+          validateEditable(dataIndex, record)
+            ? toggleEdit
+            : () => {
+                //
+              }
+        }
       >
         {children}
       </div>
     );
   }
 
+  // eslint-disable-next-line react/jsx-props-no-spreading
   return <td {...restProps}>{childNode}</td>;
 };
 
 type Props = {
-  visible?: any;
+  visible?: boolean;
   onCancel: () => void;
   componentsData: any;
   handleComponentAdd: (s: any) => void;
@@ -277,13 +273,13 @@ function UsageComponentForm({
   const [metricGauge, setMetricGauge] = useState<boolean>(false);
   const selectedMetricName = Form.useWatch("metric", form);
 
-  const [prorationGranularity, setProrationGranularity] = useState<string>(
+  const [prorationGranularity] = useState<string>(
     editComponentItem?.proration_granularity ?? "total"
   );
 
   const initalData = editComponentItem ?? null;
   const [errorMessage, setErrorMessage] = useState("");
-  const buttonRef = useRef<HTMLButtonElement | undefined>(undefined!);
+  const buttonRef = useRef<HTMLButtonElement | undefined>(undefined);
   const initialTier: Tier[] = [
     {
       type: "free",
@@ -294,44 +290,19 @@ function UsageComponentForm({
     editComponentItem?.tiers ?? initialTier
   );
   const [rangeEnd, setRangeEnd] = useState<number | undefined>(
+    // eslint-disable-next-line no-unsafe-optional-chaining
     editComponentItem?.tiers[editComponentItem?.tiers.length - 1]?.range_end ??
       undefined
   );
 
-  /// Ouput accepted proration grandularities for a given metric
-  /// with a given period
-  const generateValidProrationGranularity = () => {
-    const all_proration_granularity = [
-      "seconds",
-      "minutes",
-      "hours",
-      "days",
-      "months",
-    ];
-    const currentMetric = metricObjects.find(
-      (metric) => metric.metric_name === form.getFieldValue("metric")
-    );
-
-    const valid_granularities: string[] = [];
-    if (currentMetric) {
-      for (let i = 0; i < all_proration_granularity.length; i++) {
-        if (currentMetric.granularity === all_proration_granularity[i]) {
-          valid_granularities.push(all_proration_granularity[i]);
-          break;
-        } else {
-          valid_granularities.push(all_proration_granularity[i]);
-        }
-      }
-    }
-    return valid_granularities;
-  };
+  console.log(metricGauge);
 
   useEffect(() => {
     setMetricGauge(
       metricObjects.find((metric) => metric.metric_name === selectedMetricName)
         ?.metric_type === "gauge"
     );
-  }, [selectedMetricName]);
+  }, [metricObjects, selectedMetricName]);
 
   useEffect(() => {
     Metrics.getMetrics().then((res) => {
@@ -351,6 +322,7 @@ function UsageComponentForm({
         setMetricObjects(data);
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAdd = () => {
@@ -371,18 +343,19 @@ function UsageComponentForm({
 
   const handleSave = (row: Tier) => {
     const newData = [...currentTiers];
+    const r = { ...row };
     const index = newData.findIndex(
       (item) => row.range_start === item.range_start
     );
     if (row.type === "free") {
-      row.cost_per_batch = 0;
-      row.metric_units_per_batch = undefined;
+      r.cost_per_batch = 0;
+      r.metric_units_per_batch = undefined;
     }
     setRangeEnd(row.range_end);
     const item = newData[index];
     newData.splice(index, 1, {
       ...item,
-      ...row,
+      ...r,
     });
     setCurrentTiers(newData);
   };
@@ -420,12 +393,12 @@ function UsageComponentForm({
       align: "center",
 
       editable: true,
-      render: (text: any, record: Tier) => {
-        if (record.range_end === undefined || record.range_end === null) {
+      render: (_text, record: object) => {
+        const r: Tier = record as Tier;
+        if (r.range_end === undefined || r.range_end === null) {
           return "∞";
         }
-          return record.range_end;
-
+        return r.range_end;
       },
     },
     {
@@ -448,12 +421,12 @@ function UsageComponentForm({
       width: "13%",
       align: "center",
       editable: true,
-      render: (text: any, record: Tier) => {
-        if (record.type === "flat" || record.type === "free") {
+      render: (_, record: object) => {
+        const r: Tier = record as Tier;
+        if (r.type === "flat" || r.type === "free") {
           return "-";
         }
-          return record.metric_units_per_batch;
-
+        return r.metric_units_per_batch;
       },
     },
     {
@@ -462,12 +435,12 @@ function UsageComponentForm({
       width: "23%",
       align: "center",
       editable: true,
-      render: (text: any, record: Tier) => {
-        if (record.type === "flat" || record.type === "free") {
+      render: (_, record: object) => {
+        const r: Tier = record as Tier;
+        if (r.type === "flat" || r.type === "free") {
           return "-";
         }
-          return <div>{record.batch_rounding_type}</div>;
-
+        return <div>{r.batch_rounding_type}</div>;
       },
     },
 
@@ -476,19 +449,23 @@ function UsageComponentForm({
       dataIndex: "delete",
       width: "8%",
       align: "center",
-      render: (_, record) =>
-        currentTiers.length > 1 &&
-        record.range_start != 0 && (
-          <Button
-            size="small"
-            type="text"
-            icon={<DeleteOutlined />}
-            danger
-            onClick={() => {
-              handleDelete(record.range_start);
-            }}
-          />
-        ),
+      render: (_, record) => {
+        const r: Tier = record as Tier;
+        return (
+          currentTiers.length > 1 &&
+          r.range_start !== 0 && (
+            <Button
+              size="small"
+              type="text"
+              icon={<DeleteOutlined />}
+              danger
+              onClick={() => {
+                handleDelete(r.range_start);
+              }}
+            />
+          )
+        );
+      },
     },
   ];
 
@@ -540,28 +517,25 @@ function UsageComponentForm({
         setEditComponentsItem(undefined);
       }}
       onOk={() => {
-        form
-          .validateFields()
-          .then((values) => {
-            if (
-              validateTiers(currentTiers).every((item) => item.isValid === true)
-            ) {
-              const currentMetric = metricObjects.find(
-                (metric) => metric.metric_name === form.getFieldValue("metric")
-              );
-              handleComponentAdd({
-                metric: values.metric,
-                tiers: currentTiers,
-                proration_granularity: prorationGranularity,
-                metric_id: currentMetric?.metric_id,
-              });
+        form.validateFields().then((values) => {
+          if (
+            validateTiers(currentTiers).every((item) => item.isValid === true)
+          ) {
+            const currentMetric = metricObjects.find(
+              (metric) => metric.metric_name === form.getFieldValue("metric")
+            );
+            handleComponentAdd({
+              metric: values.metric,
+              tiers: currentTiers,
+              proration_granularity: prorationGranularity,
+              metric_id: currentMetric?.metric_id,
+            });
 
-              form.submit();
-              form.resetFields();
-              setErrorMessage("");
-            }
-          })
-          .catch((info) => {});
+            form.submit();
+            form.resetFields();
+            setErrorMessage("");
+          }
+        });
       }}
     >
       <Form
@@ -584,34 +558,18 @@ function UsageComponentForm({
           >
             <Select>
               {metrics?.map((metric_name) => (
-                <Option value={metric_name}>{metric_name}</Option>
+                <Option key={metric_name} value={metric_name}>
+                  {metric_name}
+                </Option>
               ))}
             </Select>
           </Form.Item>
-
-          {/* TODO
-          <Form.Item
-            label="Reset Frequency"
-            className="col-span-11"
-            name="metric"
-            rules={[
-              {
-                required: true,
-                message: "Please select a metric",
-              },
-            ]}
-          >
-            <Select>
-              {metrics?.map((metric_name) => (
-                <Option value={metric_name}>{metric_name}</Option>
-              ))}
-            </Select>
-          </Form.Item> */}
         </div>
 
         <Table
           components={components}
-          columns={columns}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          columns={columns as any}
           rowClassName={() => "editable-row"}
           dataSource={currentTiers}
           pagination={false}
@@ -619,7 +577,7 @@ function UsageComponentForm({
         <div className="flex justify-center w-full mt-4">
           <Button
             onClick={handleAdd}
-            ref={buttonRef}
+            ref={buttonRef as Ref<HTMLElement> | undefined}
             type="primary"
             style={{ marginBottom: 16 }}
             disabled={errorMessage.length > 0}
@@ -630,63 +588,6 @@ function UsageComponentForm({
         {errorMessage !== "" && (
           <p className="flex justify-center text-danger">{errorMessage}</p>
         )}
-        <div className="mt-8 mb-12">
-          {/* <Collapse
-            className="col-span-full bg-white py-8 rounded"
-            defaultActiveKey={"1"}
-          >
-            <Panel header="Advanced Settings" key="1"> */}
-          {/* <div className="mb-8">
-                (Optional) Separate Reporting Based on Distinct Property Value
-              </div>
-
-              <div className="grid grid-flow-col items-center mb-8">
-                <p>Property:</p>
-                <Input
-                  onChange={(e) => {
-                    setSeparateByProperties([e.target.value]);
-                  }}
-                  value={separateByProperties[0]}
-                ></Input>
-              </div>
-              {separateByProperties &&
-                separateByProperties[0] !== "" &&
-                separateByProperties[0] !== undefined && (
-                  <p className=" text-darkgold mb-8">
-                    Important: Only events that contain the property with name{" "}
-                    {separateByProperties} will be counted under this metric.
-                  </p>
-                )} */}
-
-          {/* {metricGauge === true && (
-                <Fragment>
-                  <div className="separator mb-8"></div>
-                  <div className="grid grid-flow-col items-center mb-4">
-                    <p>Proration Granularity:</p>
-                    <Select
-                      onChange={(value) => {
-                        setProrationGranularity(value);
-                      }}
-                      value={prorationGranularity}
-                    >
-                      {generateValidProrationGranularity().map(
-                        (granularity) => (
-                          <Option value={granularity}>{granularity}</Option>
-                        )
-                      )}
-                      <Option value="total">none</Option>
-                    </Select>
-                  </div>
-                  {prorationGranularity === "total" && (
-                    <p className=" text-darkgold mb-4">
-                      Proration will not be applied to this component.
-                    </p>
-                  )}
-                </Fragment>
-              )} */}
-          {/* </Panel>
-          </Collapse> */}
-        </div>
       </Form>
     </Modal>
   );

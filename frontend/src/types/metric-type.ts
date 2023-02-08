@@ -1,3 +1,15 @@
+export interface CateogricalFilterType {
+  property_name: string;
+  operator: string;
+  comparison_value: string[];
+}
+
+export interface NumericFilterType {
+  property_name: string;
+  operator: string;
+  comparison_value: number;
+}
+
 export interface MetricType {
   event_name: string;
   property_name: string;
@@ -32,31 +44,19 @@ export interface MetricType {
   custom_sql?: string;
 }
 
-export interface MetricUsage {
-  metrics: { [key: string]: MetricUsageValue };
+interface CustomerUsage {
+  metric_amount: number;
+  customer: { name: string };
 }
-interface MetricUsageValue {
-  data: UsageData[];
-}
-
 interface UsageData {
   date: string;
   customer_usages: CustomerUsage[];
 }
 
-interface CustomerUsage {
-  metric_amount: number;
-  customer: { name: string };
+interface MetricUsageValue {
+  data: UsageData[];
 }
 
-export interface CateogricalFilterType {
-  property_name: string;
-  operator: string;
-  comparison_value: string[];
-}
-
-export interface NumericFilterType {
-  property_name: string;
-  operator: string;
-  comparison_value: number;
+export interface MetricUsage {
+  metrics: { [key: string]: MetricUsageValue };
 }

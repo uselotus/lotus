@@ -1,4 +1,6 @@
-// @ts-ignore
+/* eslint-disable camelcase */
+/* eslint-disable jsx-a11y/label-has-associated-control */
+/* eslint-disable no-shadow */
 import React, { FC, useEffect, useState } from "react";
 import {
   useMutation,
@@ -6,7 +8,6 @@ import {
   UseQueryResult,
   useQueryClient,
 } from "react-query";
-import { useNavigate } from "react-router-dom";
 import {
   Divider,
   Typography,
@@ -25,20 +26,11 @@ import LoadingSpinner from "../../../LoadingSpinner";
 import useGlobalStore from "../../../../stores/useGlobalstore";
 import { QueryErrors } from "../../../../types/error-response-types";
 import { OrganizationType } from "../../../../types/account-type";
-import { country_json } from "../../../../assets/country_codes";
-import { fourDP } from "../../../../helpers/fourDP";
 
-interface InviteWithEmailForm extends HTMLFormControlsCollection {
-  email: string;
-}
+import country_json from "../../../../assets/country_codes";
 
-interface FormElements extends HTMLFormElement {
-  readonly elements: InviteWithEmailForm;
-}
 
 const GeneralTab: FC = () => {
-  const navigate = useNavigate();
-  const [email, setEmail] = useState("");
   const [isEdit, setIsEdit] = useState(false);
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
@@ -61,13 +53,9 @@ const GeneralTab: FC = () => {
   const [formSubscriptionFilters, setFormSubscriptionFilters] =
     React.useState<string[]>(subscriptionFilters);
 
-  const {
-    data: pricingUnits,
-    isLoading: pricingUnitsLoading,
-  }: UseQueryResult<CurrencyType[]> = useQuery<CurrencyType[]>(
-    ["pricing_unit_list"],
-    () => PricingUnits.list().then((res) => res)
-  );
+  const { data: pricingUnits }: UseQueryResult<CurrencyType[]> = useQuery<
+    CurrencyType[]
+  >(["pricing_unit_list"], () => PricingUnits.list().then((res) => res));
 
   const { data: orgData, isLoading } = useQuery(
     ["organization"],
@@ -118,14 +106,10 @@ const GeneralTab: FC = () => {
     }
   }, [orgData]);
 
-  const handleEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setEmail(event.target.value);
-  };
-
   const mutation = useMutation(
-    (data: { email: string }) => Organization.invite(email),
+    (data: { email: string }) => Organization.invite(data.email),
     {
-      onSuccess: (response) => {
+      onSuccess: () => {
         toast.success("Invite sent");
       },
       onError: (error: QueryErrors) => {
@@ -177,9 +161,9 @@ const GeneralTab: FC = () => {
     }
   );
 
-  const handleSendInviteEmail = (event: React.FormEvent<FormElements>) => {
-    mutation.mutate({ email });
-  };
+
+  const fourDP = (taxRate: number) =>
+    parseFloat(parseFloat(String(taxRate)).toFixed(4));
 
   return (
     <div>
@@ -352,7 +336,7 @@ const GeneralTab: FC = () => {
                   onChange={(e) => setCountry(e)}
                 >
                   {country_json.map((country) => (
-                    <Select.Option value={country.Code}>
+                    <Select.Option key={country.Code} value={country.Code}>
                       {country.Name}
                     </Select.Option>
                   ))}

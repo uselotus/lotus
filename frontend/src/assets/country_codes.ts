@@ -1,4 +1,5 @@
-export const country_json: { Code: string; Name: string }[] = [
+/* eslint-disable camelcase */
+const country_json: { Code: string; Name: string }[] = [
   { Code: "AF", Name: "Afghanistan" },
   { Code: "AX", Name: "\u00c5land Islands" },
   { Code: "AL", Name: "Albania" },
@@ -249,3 +250,4 @@ export const country_json: { Code: string; Name: string }[] = [
   { Code: "ZM", Name: "Zambia" },
   { Code: "ZW", Name: "Zimbabwe" },
 ];
+export default country_json;

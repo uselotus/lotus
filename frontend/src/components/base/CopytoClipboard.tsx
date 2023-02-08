@@ -1,4 +1,3 @@
-// @ts-ignore
 import React, { useState } from "react";
 import { CheckCircleOutlined, CopyOutlined } from "@ant-design/icons";
 import "./CopytoClipboard.css";
@@ -33,7 +32,11 @@ const CopyText: React.FC<CopyTextProps> = ({
 
   return (
     <div className={`${className} flex`}>
-      <div className="copyText" onClick={() => copyToClipBoard(textToCopy)}>
+      <div
+        aria-hidden
+        className="copyText"
+        onClick={() => copyToClipBoard(textToCopy)}
+      >
         <Tooltip
           placement="right"
           title={

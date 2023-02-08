@@ -1,18 +1,28 @@
-import React from "react";
+import React, { PropsWithChildren } from "react";
 
 type Props = {
-  color: "gold" | "default";
+  color?: "gold" | "default" | "white";
+  border?: boolean;
+  className?: string;
+  children?: React.ReactNode | Element;
 };
-export function Paper(props: Props | any) {
+// eslint-disable-next-line import/prefer-default-export
+export function Paper({
+  border,
+  color,
+  className,
+  children,
+}: PropsWithChildren<Props>) {
   return (
     <div
-      {...props}
       className={[
         "py-4 px-8 rounded-lg",
-        props.color === "white" ? "bg-[#FFFFFF]" : "bg-[#FAFAFA]",
-        props.className,
-        props.border ? "border-2 border-solid border-[#EAEAEB]" : "",
+        color === "white" ? "bg-[#FFFFFF]" : "bg-[#FAFAFA]",
+        className,
+        border ? "border-2 border-solid border-[#EAEAEB]" : "",
       ].join(" ")}
-    />
+    >
+      {children}
+    </div>
   );
 }

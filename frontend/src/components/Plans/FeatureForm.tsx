@@ -1,12 +1,16 @@
+/* eslint-disable no-plusplus */
+/* eslint-disable camelcase */
 import React, { useState } from "react";
 import { Button, Divider, Modal, Select, Input, message } from "antd";
-import { UseQueryResult, useQuery , useMutation, useQueryClient } from "react-query";
+import { UseQueryResult, useQuery, useQueryClient } from "react-query";
 import { FeatureType, CreateFeatureType } from "../../types/feature-type";
 import { Features } from "../../api/api";
 
-const { Option } = Select;
-
-function FeatureForm(props: {
+function FeatureForm({
+  visible,
+  onAddFeatures,
+  onCancel,
+}: {
   visible: boolean;
   onCancel: () => void;
   onAddFeatures: (features: FeatureType[]) => void;
@@ -16,15 +20,9 @@ function FeatureForm(props: {
   const [createdFeatureDescription, setCreatedFeatureDescription] =
     useState<string>("");
   const queryClient = useQueryClient();
-  const {
-    data: features,
-    isLoading,
-    isError,
-  }: UseQueryResult<FeatureType[]> = useQuery<FeatureType[]>(
-    ["feature_list"],
-    () =>
-      Features.getFeatures().then((res) => res)
-  );
+  const { data: features, isLoading }: UseQueryResult<FeatureType[]> = useQuery<
+    FeatureType[]
+  >(["feature_list"], () => Features.getFeatures().then((res) => res));
 
   const addExistingFeatureToList = (feature_add_list: string[]) => {
     const newFeatureList: FeatureType[] = [];
@@ -63,7 +61,7 @@ function FeatureForm(props: {
   };
   return (
     <Modal
-      visible={props.visible}
+      visible={visible}
       title="Add Features"
       okText="Add"
       okType="default"
@@ -71,9 +69,9 @@ function FeatureForm(props: {
       okButtonProps={{
         className: "bg-black text-white",
       }}
-      onCancel={props.onCancel}
+      onCancel={onCancel}
       onOk={() => {
-        props.onAddFeatures(newFeatures);
+        onAddFeatures(newFeatures);
       }}
     >
       <div className="grid grid-row-3">
@@ -99,12 +97,12 @@ function FeatureForm(props: {
             placeholder="Feature Name"
             value={createdFeatureName}
             onChange={(e) => setCreatedFeatureName(e.target.value)}
-           />
+          />
           <Input
             placeholder="Feature Description"
             value={createdFeatureDescription}
             onChange={(e) => setCreatedFeatureDescription(e.target.value)}
-           />
+          />
 
           <Button onClick={addnewFeatureToList}> Create</Button>
         </div>

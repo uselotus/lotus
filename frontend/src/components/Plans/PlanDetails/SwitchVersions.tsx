@@ -1,12 +1,12 @@
-// @ts-ignore
-
-import React, { FC, Fragment, useEffect, useState } from "react";
+/* eslint-disable no-console */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable camelcase */
+import React, { FC, useEffect, useState } from "react";
 
 import "./SwitchVersions.css";
-import { PlusOutlined, MoreOutlined, DeleteOutlined } from "@ant-design/icons";
+import { PlusOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
-import { Dropdown, Menu, Button, Typography } from "antd";
-import dayjs from "dayjs";
+import { Typography } from "antd";
 import { useMutation, useQueryClient } from "react-query";
 import {
   PlanDetailType,
@@ -15,8 +15,7 @@ import {
 } from "../../../types/plan-type";
 import PlanComponents, { PlanInfo, PlanSummary } from "./PlanComponent";
 import PlanFeatures from "./PlanFeatures";
-import StateTabs from "./StateTabs";
-// @ts-ignore
+
 import { Plan } from "../../../api/api";
 
 interface SwitchVersionProps {
@@ -36,7 +35,7 @@ function getPriceAdjustmentEnding(
 ) {
   switch (type) {
     case "percentage":
-      return `${amount  }%`;
+      return `${amount}%`;
     case "fixed":
       return `${code} ${amount}`;
     case "price_override":
@@ -65,7 +64,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
   >(activePlanVersion);
   const [capitalizedState, setCapitalizedState] = useState<string>("");
   const queryClient = useQueryClient();
-
+  console.log(capitalizedState);
   const isSelectedVersion = (other_id: string) =>
     selectedVersion?.version_id === other_id;
   const createTag = useMutation(
@@ -102,7 +101,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
   }, [plan]);
   useEffect(() => {
     setCapitalizedState(capitalize(selectedVersion!.status));
-  }, [selectedVersion?.status]);
+  }, [selectedVersion, selectedVersion?.status]);
   if (!activePlanVersion) {
     return <div>No Active Plan</div>;
   }
@@ -112,6 +111,8 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
       <div className={className}>
         {versions.map((version) => (
           <div
+            aria-hidden
+            key={version.version_id}
             onClick={(e) => {
               console.log(e.target);
               refetch();
@@ -131,7 +132,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         ))}
         <Link
           type="text"
-          to={`/create-version/${  selectedVersion?.plan_id}`}
+          to={`/create-version/${selectedVersion?.plan_id}`}
           className="mx-4"
         >
           <div className="flex items-center justify-center px-2 py-2 rounded-[20px] hover:bg-[#EAEAEB]">

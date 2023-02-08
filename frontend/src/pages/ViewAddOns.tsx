@@ -15,14 +15,9 @@ const ViewAddOns: FC = () => {
 
   const { data: addOns, isLoading }: UseQueryResult<AddonType[]> = useQuery<
     AddonType[]
-  >(
-    ["add-ons"],
-    () =>
-      Addon.getAddons().then((res) => res),
-    {
-      refetchOnMount: "always",
-    }
-  );
+  >(["add-ons"], () => Addon.getAddons().then((res) => res), {
+    refetchOnMount: "always",
+  });
 
   const navigateCreatePlan = () => {
     navigate("/create-addons");
@@ -57,8 +52,8 @@ const ViewAddOns: FC = () => {
       <div className="flex flex-col">
         {addOns?.length ? (
           <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-            {addOns?.map((item, key) => (
-              <AddOnsCard add_on={item} key={key} />
+            {addOns?.map((item) => (
+              <AddOnsCard add_on={item} key={item.addon_id} />
             ))}
           </div>
         ) : (

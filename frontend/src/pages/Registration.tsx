@@ -2,7 +2,9 @@ import { Button, Steps } from "antd";
 import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "react-query";
-import CreateOrganization, { Organizaton } from "../components/Registration/CreateOrganization";
+import CreateOrganization, {
+  Organizaton,
+} from "../components/Registration/CreateOrganization";
 import { Authentication } from "../api/api";
 import { CreateOrgAccountType } from "../types/account-type";
 import SignUp from "../components/Registration/SignUp";
@@ -38,10 +40,6 @@ const Register: React.FC = () => {
     setCurrent(current + 1);
   };
 
-  const prev = () => {
-    setCurrent(current - 1);
-  };
-
   const handleCreateOrganization = (org: Organizaton) => {
     setOrganization(org);
     next();
@@ -64,6 +62,7 @@ const Register: React.FC = () => {
   }) => {
     // const pwBitArray = sjcl.hash.sha256.hash(user.password);
     // const hashedPassword = sjcl.codec.hex.fromBits(pwBitArray);
+    // eslint-disable-next-line camelcase
     const register_object: CreateOrgAccountType = {
       organization_name: organization.organization_name,
       industry: organization.industry,

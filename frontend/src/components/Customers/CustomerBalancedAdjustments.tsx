@@ -1,7 +1,8 @@
+/* eslint-disable no-nested-ternary */
+/* eslint-disable camelcase */
 import { Table, Button, Select, Dropdown, Menu, Tag } from "antd";
 import React, { FC, useState, useEffect } from "react";
 import dayjs from "dayjs";
-import { useNavigate } from "react-router-dom";
 import {
   useMutation,
   useQuery,
@@ -13,7 +14,7 @@ import { toast } from "react-toastify";
 import { ColumnsType } from "antd/es/table";
 import { Credits } from "../../api/api";
 import PricingUnitDropDown from "../PricingUnitDropDown";
-import { CreditType, DrawdownType } from "../../types/balance-adjustment";
+import { CreditType } from "../../types/balance-adjustment";
 import CreateCredit from "../../pages/CreateBalanceAdjustment";
 
 interface Props {
@@ -42,7 +43,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
     setSumOfCredits(total);
   }, [selectedCurrency, transformedData]);
 
-  const { data, isLoading, refetch }: UseQueryResult<CreditType[]> = useQuery<
+  const { data, refetch }: UseQueryResult<CreditType[]> = useQuery<
     CreditType[]
   >(["balance_adjustments", customerId], () =>
     Credits.getCreditsByCustomer({
@@ -52,7 +53,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
 
   const deleteCredit = useMutation(
     (adjustment_id: string) =>
-      Credits.deleteCredit(adjustment_id).then((v) => refetch()),
+      Credits.deleteCredit(adjustment_id).then(() => refetch()),
     {
       onSuccess: () => {
         toast.success("Successfully voided Credit", {
@@ -108,7 +109,6 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
       ),
     },
   ];
-  const navigate = useNavigate();
 
   // if (isLoading) {
   //   return (
@@ -254,9 +254,8 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
                 )
           }
           pagination={{
-            showTotal: (total, range) => (
-              <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
-            ),
+            showTotal: (total, range) =>
+              `${range[0]}-${range[1]} of ${total} total items`,
             pageSize: 6,
           }}
         />
@@ -266,7 +265,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
             No credits have been created for this customer.
           </div>
           <div className="text-base Inter mt-2 mb-2">
-            Credits are used to adjust a customer's balance.
+            Credits are used to adjust a customer&apos;s balance.
           </div>
         </div>
       )}

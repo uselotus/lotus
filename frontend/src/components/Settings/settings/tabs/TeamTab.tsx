@@ -1,27 +1,17 @@
+/* eslint-disable jsx-a11y/label-has-associated-control */
 import React, { FC, useState } from "react";
 import { useQuery, useMutation } from "react-query";
-import { useNavigate } from "react-router-dom";
 import { Table, Typography, Input, Button, Form, Tag } from "antd";
 import { toast } from "react-toastify";
 import { Organization } from "../../../../api/api";
 import LoadingSpinner from "../../../LoadingSpinner";
-
-interface InviteWithEmailForm extends HTMLFormControlsCollection {
-  email: string;
-}
-
-interface FormElements extends HTMLFormElement {
-  readonly elements: InviteWithEmailForm;
-}
+import { QueryErrors } from "../../../../types/error-response-types";
 
 const TeamTab: FC = () => {
-  const navigate = useNavigate();
   const [email, setEmail] = useState("");
 
   const {
     data: organization, // organization is the data returned from the query
-    isLoading,
-    isError,
   } = useQuery(["organization"], () =>
     Organization.get().then((res) => res[0])
   );
@@ -30,28 +20,25 @@ const TeamTab: FC = () => {
     setEmail(event.target.value);
   };
 
-  const mutation = useMutation(
-    (data: { email: string }) => Organization.invite(email),
-    {
-      onSuccess: (response) => {
-        toast.success("Invite sent");
-      },
-      onError: (error: any) => {
-        if (error.response.data) {
-          toast.error(
-            Array.isArray(error.response.data.email)
-              ? error.response.data.email[0]
-              : error.response.data.email
-          );
-        } else {
-          toast.error("Cannot send an invite now, try again later.");
-        }
-      },
-    }
-  );
+  const mutation = useMutation(() => Organization.invite(email), {
+    onSuccess: () => {
+      toast.success("Invite sent");
+    },
+    onError: (error: QueryErrors) => {
+      if (error.response.data) {
+        toast.error(
+          Array.isArray(error.response.data.email)
+            ? error.response.data.email[0]
+            : error.response.data.email
+        );
+      } else {
+        toast.error("Cannot send an invite now, try again later.");
+      }
+    },
+  });
 
-  const handleSendInviteEmail = (event: React.FormEvent<FormElements>) => {
-    mutation.mutate({ email });
+  const handleSendInviteEmail = () => {
+    mutation.mutate();
   };
 
   return (
@@ -65,41 +52,40 @@ const TeamTab: FC = () => {
                 <Table
                   className="min-w-full divide-y divide-gray-200"
                   pagination={false}
-                  columns={
-                    [
-                      {
-                        title: "Username",
-                        dataIndex: "username",
-                        key: "username",
+                  columns={[
+                    {
+                      title: "Username",
+                      dataIndex: "username",
+                      key: "username",
+                    },
+                    {
+                      title: "Email",
+                      dataIndex: "email",
+                      key: "email",
+                    },
+                    {
+                      title: "Role",
+                      dataIndex: "role",
+                      key: "role",
+                    },
+                    {
+                      title: "Status",
+                      dataIndex: "status",
+                      key: "status",
+                      render: (status: string) => {
+                        const color = status === "Active" ? "green" : "yellow";
+                        return (
+                          <Tag color={color} key={status}>
+                            {status.toUpperCase()}
+                          </Tag>
+                        );
                       },
-                      {
-                        title: "Email",
-                        dataIndex: "email",
-                        key: "email",
-                      },
-                      {
-                        title: "Role",
-                        dataIndex: "role",
-                        key: "role",
-                      },
-                      {
-                        title: "Status",
-                        dataIndex: "status",
-                        key: "status",
-                        render: (status: string) => {
-                          const color = status === "Active" ? "green" : "yellow";
-                          return (
-                            <Tag color={color} key={status}>
-                              {status.toUpperCase()}
-                            </Tag>
-                          );
-                        },
-                      },
-                      {
-                        render(text, record) {
-                          return (
-                            <div className="flex flex-row space-x-2">
-                              {/* <Button
+                    },
+                    {
+                      render() {
+                        return (
+                          <div className="flex flex-row space-x-2">
+                            {/* <Button
                                 type="primary"
                                 onClick={() => {
                                   console.log(record);
@@ -107,12 +93,11 @@ const TeamTab: FC = () => {
                               >
                                 Edit
                               </Button> */}
-                            </div>
-                          );
-                        },
+                          </div>
+                        );
                       },
-                    ] as any
-                  }
+                    },
+                  ]}
                   dataSource={organization?.users}
                 />
               </div>

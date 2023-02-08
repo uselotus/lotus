@@ -1,4 +1,5 @@
-// @ts-ignore
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable camelcase */
 import React, { FC, useEffect, useRef, useState } from "react";
 import "./PlanDetails.css";
 import {
@@ -33,7 +34,6 @@ import PlansTags from "../PlanTags";
 import LinkExternalIds from "../LinkExternalIds";
 import capitalize from "../../../helpers/capitalize";
 import CopyText from "../../base/CopytoClipboard";
-import useVersionStore from "../../../stores/useVersionStore";
 import Badge from "../../base/Badges/Badges";
 import Select from "../../base/Select/Select";
 import useMediaQuery from "../../../hooks/useWindowQuery";
@@ -61,7 +61,9 @@ const findAlertForComponent = (
   if (alerts === undefined) {
     return undefined;
   }
-  return alerts.find((alert) => alert.metric.metric_id === component.billable_metric.metric_id);
+  return alerts.find(
+    (alert) => alert.metric.metric_id === component.billable_metric.metric_id
+  );
 };
 
 const renderCost = (record: Tier, pricing_unit: CurrencyType) => {
@@ -84,6 +86,8 @@ const renderCost = (record: Tier, pricing_unit: CurrencyType) => {
 
     case "free":
       return <span>Free</span>;
+    default:
+      return <div />;
   }
 };
 interface PlanSummaryProps {
@@ -103,7 +107,7 @@ export function PlanSummary({
 }: PlanSummaryProps) {
   const { plan_tags } = useGlobalStore((state) => state.org);
   const windowWidth = useMediaQuery();
-  const inputRef = useRef<HTMLInputElement | null>(null!);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   return (
     <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card">
@@ -156,8 +160,9 @@ export function PlanSummary({
               </DropdownComponent.Trigger>
               <DropdownComponent.Container>
                 {plan_tags &&
-                  createPlanTagsList(plan.tags, plan_tags).map((tag, index) => (
+                  createPlanTagsList(plan.tags, plan_tags).map((tag) => (
                     <DropdownComponent.MenuItem
+                      key={tag.tag_name}
                       onSelect={() => {
                         if (tag.from !== "plans") {
                           const planTags = [...plan.tags];
@@ -185,7 +190,10 @@ export function PlanSummary({
                         }
                       }}
                     >
-                      <span key={index} className="flex gap-2 justify-between">
+                      <span
+                        key={tag.tag_name}
+                        className="flex gap-2 justify-between"
+                      >
                         <span className="flex gap-2 items-center">
                           <Badge.Dot fill={tag.tag_hex} />
                           <span className="text-black">{tag.tag_name}</span>
@@ -199,6 +207,7 @@ export function PlanSummary({
                 <DropdownComponent.MenuItem
                   onSelect={() => {
                     const tags = [...plan.tags];
+                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                     const newTag = createTags(inputRef.current!.value);
                     tags.push(newTag);
                     createTagMutation({ plan_id: plan.plan_id, tags });
@@ -231,8 +240,7 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
         .map((el) => capitalize(el))
         .join(" ");
     }
-      return str;
-
+    return str;
   };
   const queryClient = useQueryClient();
   const schedule = (duration: "monthly" | "yearly" | "quarterly") => {
@@ -261,7 +269,7 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
     <Menu>
       <Menu.Item
         key="1"
-        onClick={() => archivemutation.mutate(version!.version_id)}
+        onClick={() => archivemutation.mutate(version?.version_id)}
         disabled={
           version?.status === "active" || version?.status === "grandfathered"
         }
@@ -288,7 +296,11 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
             activeVersion={version.version}
             tabs={["Active", "Grandfathered", "Retiring", "Inactive"]}
           />
-          <span className="ml-auto" onClick={(e) => e.stopPropagation()}>
+          <span
+            aria-hidden
+            className="ml-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <Dropdown overlay={menu} trigger={["click"]}>
               <Button
                 type="text"
@@ -355,14 +367,14 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
             </div>
             <div>
               <Badge>
-                  <Badge.Content>
-                    <div className="p-1">
-                      {constructBillType(
-                        plan.display_version.flat_fee_billing_type
-                      )}
-                    </div>
-                  </Badge.Content>
-                </Badge>
+                <Badge.Content>
+                  <div className="p-1">
+                    {constructBillType(
+                      plan.display_version.flat_fee_billing_type
+                    )}
+                  </div>
+                </Badge.Content>
+              </Badge>
             </div>
           </div>
 
@@ -421,7 +433,9 @@ const PlanComponents: FC<PlanComponentsProps> = ({
       },
     }
   );
-  useEffect(() => {}, [plan]);
+  useEffect(() => {
+    //
+  }, [plan]);
   const deleteAlert = (usage_alert_id: string) => {
     deleteAlertMutation.mutate({
       usage_alert_id,
@@ -430,13 +444,6 @@ const PlanComponents: FC<PlanComponentsProps> = ({
 
   const showModal = () => {
     setIsModalVisible(true);
-  };
-
-  const handleDeleteAlert = () => {
-    deleteAlertMutation.mutate({
-      usage_alert_id: currentAlertId as string,
-    });
-    queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
   };
 
   const submitAlertModal = (component: Component, usage_alert_id?: string) => {
@@ -501,7 +508,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                         align: "left",
                         width: "50%",
                         className: "bg-primary-50 pointer-events-none",
-                        render: (value: any, record: any) => (
+                        render: (value, record) => (
                           <span>
                             From {value} to{" "}
                             {record.range_end == null ? "∞" : record.range_end}
@@ -515,7 +522,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                         key: "cost_per_batch",
                         className:
                           "bg-primary-50 pointer-events-none !text-card-grey arr",
-                        render: (value: any, record: any) => (
+                        render: (_, record) => (
                           <div>
                             {renderCost(record, component.pricing_unit)}
                           </div>
@@ -528,6 +535,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
 
                 <div className="mt-4 self-end">
                   <div
+                    aria-hidden
                     className="flex"
                     onClick={() => {
                       if (component.billable_metric.metric_type !== "counter") {
@@ -541,7 +549,8 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                             alerts
                           );
                           setIsCreateAlert(false);
-                          setAlertThreshold(alert?.threshold);
+                          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                          setAlertThreshold(alert!.threshold);
                           setCurrentAlertId(alert?.usage_alert_id);
                         } else {
                           setIsCreateAlert(true);
@@ -564,7 +573,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                     {findAlertForComponent(component, alerts) !== undefined ? (
                       <p className="align-middle">
                         Reaches:{" "}
-                        {findAlertForComponent(component, alerts).threshold}
+                        {findAlertForComponent(component, alerts)?.threshold}
                       </p>
                     ) : (
                       <p className=" text-small align-middle self-center">
@@ -592,7 +601,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                         key="submit"
                         type="primary"
                         disabled={isInvalid}
-                        onClick={() => submitAlertModal(currentComponent)}
+                        onClick={() => submitAlertModal(currentComponent!)}
                       >
                         Create
                       </Button>,
@@ -601,7 +610,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                       <Button
                         key="delete"
                         className=" bg-red-600"
-                        onClick={() => deleteAlert(currentAlertId)}
+                        onClick={() => deleteAlert(currentAlertId!)}
                       >
                         Delete
                       </Button>,
@@ -610,7 +619,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                         type="primary"
                         disabled={isInvalid}
                         onClick={() =>
-                          submitAlertModal(currentComponent, currentAlertId)
+                          submitAlertModal(currentComponent!, currentAlertId)
                         }
                       >
                         Update
@@ -655,7 +664,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
               >
                 <Select.Option selected>{plan.plan_duration}</Select.Option>
                 {["quarterly", "yearly"].map((el) => (
-                  <Select.Option>{el}</Select.Option>
+                  <Select.Option key={el}>{el}</Select.Option>
                 ))}
               </Select.Select>
             </Select>

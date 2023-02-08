@@ -1,12 +1,15 @@
+/* eslint-disable jsx-a11y/label-has-associated-control */
+/* eslint-disable camelcase */
 import { Button, Card, Form, Input } from "antd";
 import React, { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "react-query";
 import Cookies from "universal-cookie";
 import { toast } from "react-toastify";
 import { Organizaton } from "../components/Registration/CreateOrganization";
-import { Authentication , instance } from "../api/api";
+import { Authentication, instance } from "../api/api";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { ErrorResponseMessage } from "../types/error-response-types";
 
 const cookies = new Cookies();
 
@@ -23,10 +26,8 @@ const defaultOrg: Organizaton = {
 };
 
 const DemoSignup: React.FC = () => {
-  const [current, setCurrent] = useState(0);
-  const [organization, setOrganization] = useState<Organizaton>(defaultOrg);
+  const [organization] = useState<Organizaton>(defaultOrg);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,38 +35,26 @@ const DemoSignup: React.FC = () => {
   const [isDesktop, setIsDesktop] = useState(true);
 
   useEffect(() => {
-    const {userAgent} = navigator;
+    const { userAgent } = navigator;
 
     if (/iPad|iPhone|iPod|Android/.test(userAgent)) {
       setIsDesktop(false);
     }
   }, []);
-  const [timeOutId, setTimeOutId] = useState<number | undefined>();
+  const [timeOutId, setTimeOutId] = useState<NodeJS.Timeout | undefined>();
 
   const queryClient = useQueryClient();
-  const next = () => {
-    setCurrent(current + 1);
-  };
-
-  const prev = () => {
-    setCurrent(current - 1);
-  };
-
-  const handleCreateOrganization = (org: Organizaton) => {
-    setOrganization(org);
-    next();
-  };
 
   const mutation = useMutation(
     (register: DemoSignupProps) => Authentication.registerDemo(register),
     {
       onSuccess: (response) => {
-        const { token, detail } = response;
+        const { token } = response;
         cookies.set("Token", token);
         instance.defaults.headers.common.Authorization = `Token ${token}`;
         queryClient.invalidateQueries("session");
       },
-      onError: (error: any) => {
+      onError: (error: ErrorResponseMessage) => {
         toast.error(error.response.data.detail, {
           position: "top-center",
         });
@@ -108,6 +97,7 @@ const DemoSignup: React.FC = () => {
     return () => {
       clearTimeout(timeOutId);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mutation.isLoading]);
 
   return (
@@ -136,6 +126,7 @@ const DemoSignup: React.FC = () => {
                     {/* <img src="../assets/images/logo_large.jpg" alt="logo" /> */}
                     <Form onFinish={handleSignUp} name="create_organization">
                       <Form.Item>
+                        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
                         <label htmlFor="username">Username</label>
                         <Input
                           type="text"
@@ -154,6 +145,7 @@ const DemoSignup: React.FC = () => {
                           },
                         ]}
                       >
+                        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
                         <label htmlFor="username">Email</label>
                         <Input
                           type="email"

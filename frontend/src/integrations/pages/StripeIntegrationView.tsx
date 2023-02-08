@@ -1,6 +1,6 @@
-// @ts-ignore
+/* eslint-disable no-shadow */
 import React, { FC, useEffect, useState } from "react";
-import { useParams , useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "antd";
 import { useMutation, useQuery } from "react-query";
 import { toast } from "react-toastify";
@@ -19,7 +19,7 @@ const TOAST_POSITION = toast.POSITION.TOP_CENTER;
 // create FC component called StripeIntegration
 const StripeIntegrationView: FC = () => {
   // create variable called {id} and set it to type string
-  const { id } = useParams<{ id: string }>();
+
   const navigate = useNavigate();
   const [isSettingValue, setIsSettingValue] = useState(false);
   const [currentStripeSetting, setCurrentStripeSetting] =
@@ -76,8 +76,6 @@ const StripeIntegrationView: FC = () => {
       },
     }
   );
-
-  const resolveAfter3Sec = new Promise((resolve) => setTimeout(resolve, 3000));
 
   const transferSubscriptionsMutation = useMutation(
     (post: TransferSub) => Stripe.transferSubscriptions(post),
@@ -190,11 +188,12 @@ const StripeIntegrationView: FC = () => {
               disabled={isSettingValue || !currentStripeSetting}
               checked={currentStripeSetting?.setting_values.value === true}
               onChange={(value) => {
-                currentStripeSetting &&
+                if (currentStripeSetting) {
                   updateStripeSettings.mutate({
                     setting_values: value.target.checked,
                     setting_id: currentStripeSetting.setting_id,
                   });
+                }
                 setIsSettingValue(true);
               }}
               className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"

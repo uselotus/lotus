@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable no-shadow */
+/* eslint-disable camelcase */
 import React, { FC, useRef, useState } from "react";
 
 import {
@@ -44,30 +47,30 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
   ) => {
     if (numeric_filters !== undefined && categorical_filters === undefined) {
       filters = numeric_filters.map((filter) => ({
-          ...filter,
-          operator: operatorDisplayMap.get(filter.operator),
-        }));
+        ...filter,
+        operator: operatorDisplayMap.get(filter.operator),
+      }));
     } else if (
       categorical_filters !== undefined &&
       numeric_filters === undefined
     ) {
       filters = categorical_filters.map((filter) => ({
-          ...filter,
-          operator: operatorDisplayMap.get(filter.operator),
-        }));
+        ...filter,
+        operator: operatorDisplayMap.get(filter.operator),
+      }));
     } else if (
       numeric_filters !== undefined &&
       categorical_filters !== undefined
     ) {
       filters = numeric_filters.map((filter) => ({
-          ...filter,
-          operator: operatorDisplayMap.get(filter.operator),
-        }));
+        ...filter,
+        operator: operatorDisplayMap.get(filter.operator),
+      }));
       filters = filters.concat(
         categorical_filters.map((filter) => ({
-            ...filter,
-            operator: operatorDisplayMap.get(filter.operator),
-          }))
+          ...filter,
+          operator: operatorDisplayMap.get(filter.operator),
+        }))
       );
     }
 
@@ -101,18 +104,16 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
       dataIndex: "metric_type",
       align: "left",
       render: (_, record) => {
-        {
-          if (record.metric_type === "gauge") {
-            return "gauge";
-          }
-          if (record.metric_type === "rate") {
-            return "rate";
-          }
-          if (record.metric_type === "custom") {
-            return "custom";
-          }
-          return "counter";
+        if (record.metric_type === "gauge") {
+          return "gauge";
         }
+        if (record.metric_type === "rate") {
+          return "rate";
+        }
+        if (record.metric_type === "custom") {
+          return "custom";
+        }
+        return "counter";
       },
     },
     {
@@ -142,26 +143,24 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
       width: 150,
       align: "left",
       render: (_, record) => {
-        {
-          const filters = mergeFilters(
-            record.numeric_filters,
-            record.categorical_filters
-          );
+        const filters = mergeFilters(
+          record.numeric_filters,
+          record.categorical_filters
+        );
 
-          if (filters) {
-            return (
-              <div className="space-y-2">
-                {filters.map((filter) => (
-                  <Tag color="" key={filter.property_name}>
-                    <b>{filter.property_name}</b> {filter.operator} "
-                    {filter.comparison_value}
-                    "
-                  </Tag>
-                ))}
-              </div>
-            );
-          }
+        if (filters) {
+          return (
+            <div className="space-y-2">
+              {filters.map((filter) => (
+                <Tag color="" key={filter.property_name}>
+                  <b>{filter.property_name}</b> {filter.operator}
+                  {`"${filter.comparison_value}"`}
+                </Tag>
+              ))}
+            </div>
+          );
         }
+        return <div />;
       },
     },
   ];
@@ -171,17 +170,18 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
       <ProTable<MetricType>
         columns={columns}
         dataSource={metricArray}
-        onRow={(record, rowIndex) => ({
-            onClick: (event) => {
-              setCurrentMetric(record);
-            },
-          })}
+        onRow={(record) => ({
+          onClick: () => {
+            setCurrentMetric(record);
+          },
+        })}
         toolBarRender={false}
         rowKey="customer_id"
         formRef={formRef}
         search={false}
         className="w-full"
         pagination={{
+          // eslint-disable-next-line react/no-unstable-nested-components
           showTotal: (total, range) => (
             <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
           ),

@@ -1,13 +1,12 @@
+export interface WebhookTrigger {
+  trigger_name: string;
+}
 export interface WebhookEndpoint {
   webhook_endpoint_id: string;
   name: string;
   webhook_url: URL;
   webhook_secret: string;
   triggers: WebhookTrigger[];
-}
-
-export interface WebhookTrigger {
-  trigger_name: string;
 }
 
 export interface WebhookEndpointCreate

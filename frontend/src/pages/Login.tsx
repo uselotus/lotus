@@ -1,6 +1,6 @@
+/* eslint-disable no-shadow */
 import React, { FC, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Authentication , instance } from "../api/api";
 import { Card, Input, Button, Form } from "antd";
 import "./Login.css";
 import { useQueryClient, useMutation } from "react-query";
@@ -10,25 +10,14 @@ import posthog from "posthog-js";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { QueryErrors } from "../types/error-response-types";
 import useGlobalStore from "../stores/useGlobalstore";
-import Tooltip from "../components/base/Tooltip/Tooltip";
-import Avatar from "../components/base/Avatar/Avatar";
-import Dropdown from "../components/base/Dropdown/Dropdown";
+import { Authentication, instance } from "../api/api";
 
 const cookies = new Cookies();
-
-interface LoginForm extends HTMLFormControlsCollection {
-  username: string;
-  password: string;
-}
-
-interface FormElements extends HTMLFormElement {
-  readonly elements: LoginForm;
-}
 
 const Login: FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error] = useState("");
   const setUsernameToStore = useGlobalStore((state) => state.setUsername);
   const queryClient = useQueryClient();
 
@@ -52,13 +41,13 @@ const Login: FC = () => {
   const mutation = useMutation(
     (data: { username: string; password: string }) =>
       isDemo
-        ? Authentication.demo_login(username, password)
-        : Authentication.login(username, password),
+        ? Authentication.demo_login(data.username, data.password)
+        : Authentication.login(data.username, data.password),
 
     {
       onSuccess: (response) => {
         setIsAuthenticated(true);
-        const { token, detail, user } = response;
+        const { token, user } = response;
         setUsernameToStore(user.username);
         if (import.meta.env.VITE_API_URL === "https://api.uselotus.io/") {
           posthog.group("company", user.organization_id, {
@@ -88,7 +77,7 @@ const Login: FC = () => {
     }
   );
 
-  const handleLogin = (event: React.FormEvent<FormElements>) => {
+  const handleLogin = () => {
     // const pwBitArray = sjcl.hash.sha256.hash(password);
     // const hashedPassword = sjcl.codec.hex.fromBits(pwBitArray);
     mutation.mutate({ username, password });
@@ -97,69 +86,71 @@ const Login: FC = () => {
   if (!isAuthenticated) {
     return (
       <div className="grid h-screen place-items-center">
-          <div className="space-y-4">
-            <Card
-              title="Login"
-              className="flex flex-col"
-              style={{
-                borderRadius: "0.5rem",
-                borderWidth: "2px",
-                borderColor: "#EAEAEB",
-                borderStyle: "solid",
-              }}
-            >
-              {/* <img src="../assets/images/logo_large.jpg" alt="logo" /> */}
-              <Form onFinish={handleLogin} name="normal_login">
-                <Form.Item>
-                  <label htmlFor="username">Username or Email</label>
-                  <Input
-                    type="text"
-                    name="username"
-                    value={username}
-                    defaultValue="username123"
-                    onChange={handleUserNameChange}
-                  />
-                </Form.Item>
-                <label htmlFor="password">Password</label>
+        <div className="space-y-4">
+          <Card
+            title="Login"
+            className="flex flex-col"
+            style={{
+              borderRadius: "0.5rem",
+              borderWidth: "2px",
+              borderColor: "#EAEAEB",
+              borderStyle: "solid",
+            }}
+          >
+            {/* <img src="../assets/images/logo_large.jpg" alt="logo" /> */}
+            <Form onFinish={handleLogin} name="normal_login">
+              <Form.Item>
+                {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                <label htmlFor="username">Username or Email</label>
+                <Input
+                  type="text"
+                  name="username"
+                  value={username}
+                  defaultValue="username123"
+                  onChange={handleUserNameChange}
+                />
+              </Form.Item>
+              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+              <label htmlFor="password">Password</label>
 
-                <Form.Item>
-                  <Input
-                    type="password"
-                    name="password"
-                    value={password}
-                    defaultValue="password123"
-                    onChange={handlePasswordChange}
-                  />
-                  <div>
-                    {error && <small className="text-danger">{error}</small>}
-                  </div>
-                </Form.Item>
-                <Form.Item>
-                  <Button htmlType="submit">Login</Button>
-                </Form.Item>
-                <Link
-                  to="/reset-password"
-                  className=" text-darkgold hover:text-black"
-                >
-                  Forgot Password?
-                </Link>
-              </Form>
-            </Card>
-            {(import.meta.env.VITE_API_URL !== "https://api.uselotus.io/" ||
-              import.meta.env.IS_DEMO == "true") && (
-              <div>
-                <Button
-                  type="primary"
-                  className="w-full"
-                  onClick={() => navigate("/register")}
-                >
-                  Sign Up
-                </Button>
-              </div>
-            )}
-          </div>
-          {mutation.isLoading && <LoadingSpinner />}
+              <Form.Item>
+                <Input
+                  type="password"
+                  name="password"
+                  value={password}
+                  defaultValue="password123"
+                  onChange={handlePasswordChange}
+                />
+                <div>
+                  {error && <small className="text-danger">{error}</small>}
+                </div>
+              </Form.Item>
+              <Form.Item>
+                <Button htmlType="submit">Login</Button>
+              </Form.Item>
+              <Link
+                to="/reset-password"
+                className=" text-darkgold hover:text-black"
+              >
+                Forgot Password?
+              </Link>
+            </Form>
+          </Card>
+          {(import.meta.env.VITE_API_URL !== "https://api.uselotus.io/" ||
+            import.meta.env.IS_DEMO === "true") && (
+            <div>
+              <Button
+                type="primary"
+                className="w-full"
+                onClick={() => navigate("/register")}
+              >
+                Sign Up
+              </Button>
+            </div>
+          )}
         </div>
+        {mutation.isLoading && <LoadingSpinner />}
+      </div>
     );
   }
 

@@ -1,3 +1,7 @@
+/* eslint-disable no-shadow */
+/* eslint-disable no-param-reassign */
+/* eslint-disable no-plusplus */
+/* eslint-disable camelcase */
 import {
   Button,
   Select,
@@ -23,6 +27,8 @@ import {
   PlanDetailType,
   CreateInitialVersionType,
   CreatePlanVersionType,
+  CreateRecurringCharge,
+  Component,
 } from "../types/plan-type";
 import { Organization, Plan } from "../api/api";
 import { FeatureType } from "../types/feature-type";
@@ -34,17 +40,17 @@ import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import TargetCustomerForm from "../components/Plans/TargetCustomerForm";
 import VersionActiveForm from "../components/Plans/VersionActiveForm";
 import { CurrencyType } from "../types/pricing-unit-type";
-import { CreateRecurringCharge } from "../types/plan-type";
 
-interface CustomizedState {
-  plan: PlanType;
-}
 const durationConversion = {
   monthly: "Month",
   quarterly: "Quarter",
   yearly: "Year",
 };
-
+export interface ComponentType
+  extends Omit<Component, "billable_metric" | "id"> {
+  id: string;
+  metric_id: string;
+}
 interface Props {
   type: "backtest" | "version" | "custom";
   plan: PlanDetailType;
@@ -62,10 +68,10 @@ function EditPlan({ type, plan, versionIndex }: Props) {
   const [activeVersionType, setActiveVersionType] = useState<string>();
   const [allCurrencies, setAllCurrencies] = useState<CurrencyType[]>([]);
   const navigate = useNavigate();
-  const [componentsData, setComponentsData] = useState<any>([]);
+  const [componentsData, setComponentsData] = useState<ComponentType[]>([]);
   const [form] = Form.useForm();
   const { setReplacementPlan } = usePlanUpdater();
-  const [editComponentItem, setEditComponentsItem] = useState<any>();
+  const [editComponentItem, setEditComponentsItem] = useState<ComponentType>();
   const [targetCustomerId, setTargetCustomerId] = useState<string>(); // target customer id
   const [allPlans, setAllPlans] = useState<PlanType[]>([]);
   const [availableBillingTypes, setAvailableBillingTypes] = useState<
@@ -75,6 +81,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     { label: "Quarterly", name: "quarterly" },
     { label: "Yearly", name: "yearly" },
   ]);
+
   const [priceAdjustmentType, setPriceAdjustmentType] = useState<string>(
     plan.versions[versionIndex].price_adjustment?.price_adjustment_type ??
       "none"
@@ -97,32 +104,32 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     if (!allPlans?.length) {
       Plan.getPlans().then((data) => setAllPlans(data));
     }
-  }, []);
+  }, [allPlans?.length]);
 
   useEffect(() => {
-    const initialComponents: any[] = plan.versions[versionIndex].components.map(
-      (component) => ({
-          metric: component.billable_metric.metric_name,
-          tiers: component.tiers,
-          proration_granularity: component.proration_granularity,
-          id: component.billable_metric.metric_id,
-          metric_id: component.billable_metric.metric_id,
-          pricing_unit: component.pricing_unit,
-        })
-    );
-    setComponentsData(initialComponents);
-  }, [plan.versions[versionIndex].components]);
-
-  useEffect(() => {
-    if (!allCurrencies?.length) {
-      Organization.get().then((res) => {
-        setAllCurrencies(res[0].available_currencies);
-        form.setFieldsValue({
-          plan_currency: selectedCurrency.code,
-        });
-      });
+    if (plan.versions[versionIndex].components) {
+      const initialComponents: ComponentType[] = plan.versions[
+        versionIndex
+      ].components.map((component) => ({
+        metric: component.billable_metric.metric_name,
+        tiers: component.tiers,
+        proration_granularity: component.proration_granularity,
+        id: component.billable_metric.metric_id,
+        metric_id: component.billable_metric.metric_id,
+        pricing_unit: component.pricing_unit,
+      }));
+      setComponentsData(initialComponents);
     }
-  }, []);
+  }, [plan.versions, versionIndex]);
+
+  useEffect(() => {
+    Organization.get().then((res) => {
+      setAllCurrencies(res[0].available_currencies);
+      form.setFieldsValue({
+        plan_currency: selectedCurrency.code,
+      });
+    });
+  }, [selectedCurrency.code, form]);
 
   const mutation = useMutation(
     (data: CreatePlanVersionType) => Plan.createVersion(data),
@@ -132,7 +139,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           position: toast.POSITION.TOP_CENTER,
         });
         queryClient.invalidateQueries(["plan_list"]);
-        navigate(`/plans/${  plan.plan_id}`);
+        navigate(`/plans/${plan.plan_id}`);
       },
       onError: () => {
         toast.error("Failed to create version", {
@@ -148,11 +155,11 @@ function EditPlan({ type, plan, versionIndex }: Props) {
       onSuccess: (res) => {
         queryClient.invalidateQueries(["plan_list"]);
         form.resetFields();
-        if (type == "backtest") {
+        if (type === "backtest") {
           setReplacementPlan(res);
           navigate("/create-experiment");
         }
-        if (type == "custom") {
+        if (type === "custom") {
           navigate("/plans");
         }
       },
@@ -171,6 +178,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           (feat) => feat.feature_name === newFeatures[i].feature_name
         )
       ) {
+        //
       } else {
         setPlanFeatures((prev) => [...prev, newFeatures[i]]);
       }
@@ -178,10 +186,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     setFeatureVisible(false);
   };
 
-  const editFeatures = (feature_name: string) => {
-    const currentFeature = planFeatures.filter(
-      (item) => item.feature_name === feature_name
-    )[0];
+  const editFeatures = () => {
     setFeatureVisible(true);
   };
 
@@ -191,7 +196,9 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     );
   };
 
-  const onFinishFailed = (errorInfo: any) => {};
+  const onFinishFailed = () => {
+    //
+  };
 
   const hideComponentModal = () => {
     setcomponentVisible(false);
@@ -205,7 +212,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     setTargetCustomerFormVisible(false);
   };
 
-  const handleComponentAdd = (newData: any) => {
+  const handleComponentAdd = (newData: ComponentType) => {
     const old = componentsData;
     if (editComponentItem) {
       const index = componentsData.findIndex(
@@ -221,7 +228,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           id: Math.floor(Math.random() * 1000),
         },
       ];
-      setComponentsData(newComponentsData);
+      setComponentsData(newComponentsData as ComponentType[]);
     }
     setEditComponentsItem(undefined);
     setcomponentVisible(false);
@@ -283,155 +290,152 @@ function EditPlan({ type, plan, versionIndex }: Props) {
 
   /// Submit Pricing Plan Http Request
   const submitPricingPlan = () => {
-    form
-      .validateFields()
-      .then((values) => {
-        const usagecomponentslist: CreateComponent[] = [];
-        const components: any = Object.values(componentsData);
-        if (components) {
-          for (let i = 0; i < components.length; i++) {
-            const usagecomponent: CreateComponent = {
-              metric_id: components[i].metric_id,
-              tiers: components[i].tiers,
-              proration_granularity: components[i].proration_granularity,
-            };
-            usagecomponentslist.push(usagecomponent);
-          }
+    form.validateFields().then((values) => {
+      const usagecomponentslist: CreateComponent[] = [];
+      const components: ComponentType[] = Object.values(componentsData);
+      if (components) {
+        for (let i = 0; i < components.length; i++) {
+          const usagecomponent: CreateComponent = {
+            metric_id: components[i].metric_id,
+            tiers: components[i].tiers,
+            proration_granularity: components[i].proration_granularity,
+          };
+          usagecomponentslist.push(usagecomponent);
         }
+      }
 
-        const featureIdList: string[] = [];
-        const features: any = Object.values(planFeatures);
-        if (features) {
-          for (let i = 0; i < features.length; i++) {
-            featureIdList.push(features[i].feature_id);
-          }
+      const featureIdList: string[] = [];
+      const features: FeatureType[] = Object.values(planFeatures);
+      if (features) {
+        for (let i = 0; i < features.length; i++) {
+          featureIdList.push(features[i].feature_id);
         }
+      }
 
-        if (values.usage_billing_frequency === "yearly") {
-          values.usage_billing_frequency = "end_of_period";
+      if (values.usage_billing_frequency === "yearly") {
+        values.usage_billing_frequency = "end_of_period";
+      }
+
+      const recurring_charges: CreateRecurringCharge[] = [];
+      recurring_charges.push({
+        amount: values.flat_rate,
+        charge_behavior: "prorate",
+        charge_timing: values.flat_fee_billing_type,
+        name: "Flat Fee",
+      });
+
+      const initialPlanVersion: CreateInitialVersionType = {
+        description: values.description,
+        recurring_charges,
+        transition_to_plan_id: values.transition_to_plan_id,
+        components: usagecomponentslist,
+        features: featureIdList,
+        usage_billing_frequency: values.usage_billing_frequency,
+        currency_code: values.plan_currency.code,
+      };
+      if (values.align_plan === "calendar_aligned") {
+        if (values.plan_duration === "yearly") {
+          initialPlanVersion.day_anchor = 1;
+          initialPlanVersion.month_anchor = 1;
         }
+        if (values.plan_duration === "monthly") {
+          initialPlanVersion.day_anchor = 1;
+        }
+        if (values.plan_duration === "quarterly") {
+          initialPlanVersion.day_anchor = 1;
+          initialPlanVersion.month_anchor = 1;
+        }
+      }
+      if (
+        values.price_adjustment_type !== undefined &&
+        values.price_adjustment_type !== "none"
+      ) {
+        if (
+          values.price_adjustment_type === "percentage" ||
+          values.price_adjustment_type === "fixed"
+        ) {
+          values.price_adjustment_amount =
+            Math.abs(values.price_adjustment_amount) * -1;
+        }
+        initialPlanVersion.price_adjustment = {
+          price_adjustment_type: values.price_adjustment_type,
+          price_adjustment_amount: values.price_adjustment_amount,
+        };
+      }
 
-        const recurring_charges: CreateRecurringCharge[] = [];
-        recurring_charges.push({
-          amount: values.flat_rate,
-          charge_behavior: "prorate",
-          charge_timing: values.flat_fee_billing_type,
-          name: "Flat Fee",
-        });
-
-        const initialPlanVersion: CreateInitialVersionType = {
+      const newPlan: CreatePlanType = {
+        plan_name: values.name,
+        plan_duration: values.plan_duration,
+        initial_version: initialPlanVersion,
+      };
+      if (type === "backtest") {
+        newPlan.status = "experimental";
+        createPlanMutation.mutate(newPlan);
+      } else if (type === "version") {
+        const newVersion: CreatePlanVersionType = {
+          plan_id: plan.plan_id,
           description: values.description,
-          recurring_charges: recurring_charges,
+          recurring_charges,
           transition_to_plan_id: values.transition_to_plan_id,
           components: usagecomponentslist,
           features: featureIdList,
           usage_billing_frequency: values.usage_billing_frequency,
+          make_active: activeVersion,
+          make_active_type: activeVersionType,
           currency_code: values.plan_currency.code,
         };
-        if (values.align_plan == "calendar_aligned") {
+        if (values.align_plan === "calendar_aligned") {
           if (values.plan_duration === "yearly") {
-            initialPlanVersion.day_anchor = 1;
-            initialPlanVersion.month_anchor = 1;
+            newVersion.day_anchor = 1;
+            newVersion.month_anchor = 1;
           }
           if (values.plan_duration === "monthly") {
-            initialPlanVersion.day_anchor = 1;
+            newVersion.day_anchor = 1;
           }
           if (values.plan_duration === "quarterly") {
-            initialPlanVersion.day_anchor = 1;
-            initialPlanVersion.month_anchor = 1;
+            newVersion.day_anchor = 1;
+            newVersion.month_anchor = 1;
           }
         }
         if (
           values.price_adjustment_type !== undefined &&
           values.price_adjustment_type !== "none"
         ) {
-          if (
-            values.price_adjustment_type === "percentage" ||
-            values.price_adjustment_type === "fixed"
-          ) {
-            values.price_adjustment_amount =
-              Math.abs(values.price_adjustment_amount) * -1;
-          }
-          initialPlanVersion.price_adjustment = {
+          newVersion.price_adjustment = {
             price_adjustment_type: values.price_adjustment_type,
             price_adjustment_amount: values.price_adjustment_amount,
           };
         }
 
-        const newPlan: CreatePlanType = {
-          plan_name: values.name,
-          plan_duration: values.plan_duration,
-          initial_version: initialPlanVersion,
-        };
-        if (type === "backtest") {
-          newPlan.status = "experimental";
-          createPlanMutation.mutate(newPlan);
-        } else if (type === "version") {
-          const newVersion: CreatePlanVersionType = {
-            plan_id: plan.plan_id,
-            description: values.description,
-            recurring_charges: recurring_charges,
-            transition_to_plan_id: values.transition_to_plan_id,
-            components: usagecomponentslist,
-            features: featureIdList,
-            usage_billing_frequency: values.usage_billing_frequency,
-            make_active: activeVersion,
-            make_active_type: activeVersionType,
-            currency_code: values.plan_currency.code,
-          };
-          if (values.align_plan == "calendar_aligned") {
-            if (values.plan_duration === "yearly") {
-              newVersion.day_anchor = 1;
-              newVersion.month_anchor = 1;
-            }
-            if (values.plan_duration === "monthly") {
-              newVersion.day_anchor = 1;
-            }
-            if (values.plan_duration === "quarterly") {
-              newVersion.day_anchor = 1;
-              newVersion.month_anchor = 1;
-            }
-          }
-          if (
-            values.price_adjustment_type !== undefined &&
-            values.price_adjustment_type !== "none"
-          ) {
-            newVersion.price_adjustment = {
-              price_adjustment_type: values.price_adjustment_type,
-              price_adjustment_amount: values.price_adjustment_amount,
-            };
-          }
+        mutation.mutate(newVersion);
+      } else if (type === "custom") {
+        // target_id = await targetCustomerFormVisible(true);
 
-          mutation.mutate(newVersion);
-        } else if (type === "custom") {
-          // target_id = await targetCustomerFormVisible(true);
-
-          newPlan.parent_plan_id = plan.plan_id;
-          newPlan.target_customer_id = targetCustomerId;
-          createPlanMutation.mutate(newPlan);
-        }
-      })
-      .catch((info) => {});
+        newPlan.parent_plan_id = plan.plan_id;
+        newPlan.target_customer_id = targetCustomerId;
+        createPlanMutation.mutate(newPlan);
+      }
+    });
   };
 
   function returnPageTitle(): string {
     if (type === "backtest") {
       return "Backtest Plan";
-    } if (type === "version") {
-      return `Create New Version:` + ` ${  plan.plan_name}`;
     }
-      return `Create Custom Plan:` + ` ${  plan.plan_name}`;
-
+    if (type === "version") {
+      return `Create New Version: ${plan.plan_name}`;
+    }
+    return `Create Custom Plan: ${plan.plan_name}`;
   }
 
   function returnSubmitButtonText(): string {
     if (type === "backtest") {
       return "Create new Plan";
-    } if (type === "version") {
+    }
+    if (type === "version") {
       return "Publish version";
     }
-      return "Create custom plan";
-
+    return "Create custom plan";
   }
 
   return (
@@ -515,6 +519,8 @@ function EditPlan({ type, plan, versionIndex }: Props) {
                         disabled={type === "version"}
                         onChange={(e) => {
                           if (e.target.value === "monthly") {
+                            // eslint-disable-next-line no-console
+                            console.log(availableBillingTypes);
                             setAvailableBillingTypes([
                               { label: "Monthly", name: "monthly" },
                             ]);
@@ -648,6 +654,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
                 className="h-full"
                 extra={[
                   <Button
+                    key="show-component-button"
                     htmlType="button"
                     onClick={() => showComponentModal()}
                   >
@@ -705,7 +712,11 @@ function EditPlan({ type, plan, versionIndex }: Props) {
                   borderStyle: "solid",
                 }}
                 extra={[
-                  <Button htmlType="button" onClick={showFeatureModal}>
+                  <Button
+                    key="add-feat"
+                    htmlType="button"
+                    onClick={showFeatureModal}
+                  >
                     Add Feature
                   </Button>,
                 ]}

@@ -1,3 +1,5 @@
+/* eslint-disable react/require-default-props */
+/* eslint-disable react/no-unused-prop-types */
 import React, { forwardRef, PropsWithChildren } from "react";
 
 export type SelectRef = HTMLSelectElement;
@@ -11,19 +13,19 @@ interface SelectProps {
 function Select({ children }: PropsWithChildren) {
   return <div>{children}</div>;
 }
-function SelectLabel({
-  children,
-  className,
-}: PropsWithChildren<SelectProps>) {
-  return <label
-    className={
-      !className
-        ? "block text-sm font-medium text-gray-700"
-        : ["block text-sm font-medium text-gray-700", className].join(" ")
-    }
-  >
-    {children}
-  </label>
+function SelectLabel({ children, className }: PropsWithChildren<SelectProps>) {
+  return (
+    // eslint-disable-next-line jsx-a11y/label-has-associated-control
+    <label
+      className={
+        !className
+          ? "block text-sm font-medium text-gray-700"
+          : ["block text-sm font-medium text-gray-700", className].join(" ")
+      }
+    >
+      {children}
+    </label>
+  );
 }
 const SelectElement = forwardRef<SelectRef, PropsWithChildren<SelectProps>>(
   ({ children, className, onChange, disabled }, ref) => (
@@ -38,15 +40,20 @@ const SelectElement = forwardRef<SelectRef, PropsWithChildren<SelectProps>>(
       }
       disabled={disabled}
       ref={ref}
-      onChange={(e) => onChange!(e)}
+      onChange={(e) => onChange?.(e)}
     >
       {children}
     </select>
   )
 );
+SelectElement.displayName = "Select.Select";
 
 function SelectOption({ children, selected }: PropsWithChildren<SelectProps>) {
-  return selected ? <option selected>{children}</option> : <option>{children}</option>
+  return selected ? (
+    <option selected>{children}</option>
+  ) : (
+    <option>{children}</option>
+  );
 }
 
 Select.Label = SelectLabel;

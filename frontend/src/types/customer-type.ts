@@ -1,4 +1,4 @@
-import { PlanDisplay, PlanVersionType } from "./plan-type";
+import { PlanVersionType } from "./plan-type";
 import { SubscriptionType } from "./subscription-type";
 import { InvoiceType } from "./invoice-type";
 import { CurrencyType } from "./pricing-unit-type";
@@ -26,13 +26,13 @@ export interface CustomerType {
 }
 
 export type LightweightCustomerType = Omit<
-    CustomerType,
-    | "invoices"
-    | "subscriptions"
-    | "default_currency"
-    | "total_amount_due"
-    | "integrations"
-  >
+  CustomerType,
+  | "invoices"
+  | "subscriptions"
+  | "default_currency"
+  | "total_amount_due"
+  | "integrations"
+>;
 
 export interface CustomerCreateType
   extends Omit<
@@ -52,7 +52,17 @@ export interface CustomerCreateType
   properties?: { [key: string]: string };
   default_currency_code?: string;
 }
-
+export interface LightweightSubscription {
+  billing_plan_name: string;
+  plan_version: number;
+  end_date: string;
+  auto_renew: boolean;
+}
+export interface CustomerSummary {
+  customer_id: string;
+  customer_name: string;
+  subscriptions: LightweightSubscription[];
+}
 export interface CustomerTableItem extends CustomerSummary {
   total_amount_due: number;
 }
@@ -88,17 +98,4 @@ export interface CustomerDetailSubscription extends CustomerSubscription {
   billing_cadence: "monthly" | "quarterly" | "yearly";
   plans: DetailPlan[];
   status: string;
-}
-
-export interface CustomerSummary {
-  customer_id: string;
-  customer_name: string;
-  subscriptions: LightweightSubscription[];
-}
-
-export interface LightweightSubscription {
-  billing_plan_name: string;
-  plan_version: number;
-  end_date: string;
-  auto_renew: boolean;
 }

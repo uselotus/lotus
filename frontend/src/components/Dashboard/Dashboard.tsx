@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { FC } from "react";
 import { Col, Row } from "antd";
 import dayjs from "dayjs";
@@ -36,7 +37,7 @@ const dateFormat = "YYYY/MM/DD";
 const defaultDate = [dayjs().subtract(1, "months").add(1, "day"), dayjs()];
 
 const Dashboard: FC = () => {
-  const [dateRange, setDateRange] = React.useState<any>(defaultDate);
+  const [dateRange, setDateRange] = React.useState(defaultDate);
 
   const { data, isLoading }: UseQueryResult<RevenueType, RevenueType> =
     useQuery<RevenueType, RevenueType>(["total_revenue", dateRange], () =>
@@ -62,17 +63,15 @@ const Dashboard: FC = () => {
       ).then((res) => res)
     );
 
-  const { data: eventData, isLoading: eventLoading } = useQuery(
-    ["event_count", dateRange],
-    () =>
-      Events.getEventCount(
-        dateRange[0].format("YYYY-MM-DD"),
-        dateRange[1].format("YYYY-MM-DD"),
-        dateRange[0]
-          .subtract(dayjs.duration(dateRange[1].diff(dateRange[0])))
-          .format("YYYY-MM-DD"),
-        dateRange[1].subtract(1, "month").format("YYYY-MM-DD")
-      ).then((res) => res)
+  const { data: eventData } = useQuery(["event_count", dateRange], () =>
+    Events.getEventCount(
+      dateRange[0].format("YYYY-MM-DD"),
+      dateRange[1].format("YYYY-MM-DD"),
+      dateRange[0]
+        .subtract(dayjs.duration(dateRange[1].diff(dateRange[0])))
+        .format("YYYY-MM-DD"),
+      dateRange[1].subtract(1, "month").format("YYYY-MM-DD")
+    ).then((res) => res)
   );
 
   return (
@@ -93,9 +92,9 @@ const Dashboard: FC = () => {
             "This year": [dayjs().startOf("year"), dayjs().endOf("year")],
             "All time": [dayjs().subtract(10, "years"), dayjs()],
           }}
-          defaultValue={dateRange}
+          defaultValue={dateRange as any}
           onCalendarChange={(dates) => {
-            setDateRange(dates);
+            setDateRange(dates as any);
           }}
         />,
       ]}
@@ -144,10 +143,7 @@ const Dashboard: FC = () => {
               <MetricBarGraph range={dateRange} />
             </div>
             <div className="col-span-4">
-              <CustomerByPlanPie
-                data={data?.daily_usage_revenue_period_1}
-                isLoading={isLoading}
-              />
+              <CustomerByPlanPie />
             </div>
           </div>
         </Col>

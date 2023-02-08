@@ -1,3 +1,4 @@
+/* eslint-disable react/function-component-definition */
 import React, { FC, useState } from "react";
 import { Card, Button } from "antd";
 import {
@@ -21,6 +22,7 @@ import CreateMetricForm, {
 import EventPreview from "../components/EventPreview";
 import "./ViewMetrics.css";
 import { PageLayout } from "../components/base/PageLayout";
+import { ErrorResponseMessage } from "../types/error-response-types";
 
 const defaultMetricState: CreateMetricState = {
   title: "Create a new Metric",
@@ -42,9 +44,7 @@ const ViewMetrics: FC = () => {
 
   const { data, isLoading, isError }: UseQueryResult<MetricType[]> = useQuery<
     MetricType[]
-  >(["metric_list"], () =>
-    Metrics.getMetrics().then((res) => res)
-  );
+  >(["metric_list"], () => Metrics.getMetrics().then((res) => res));
 
   const mutation = useMutation(
     (post: MetricType) => Metrics.createMetric(post),
@@ -57,8 +57,8 @@ const ViewMetrics: FC = () => {
         });
       },
 
-      onError: (error: any) => {
-        toast.error(`Error creating metric: ${  error.response.data.detail}`, {
+      onError: (error: ErrorResponseMessage) => {
+        toast.error(`Error creating metric: ${error.response.data.detail}`, {
           position: toast.POSITION.TOP_CENTER,
         });
       },
@@ -81,7 +81,7 @@ const ViewMetrics: FC = () => {
           ? state.usage_aggregation_type_2
           : state.usage_aggregation_type,
       property_name:
-        state.metric_type == "gauge"
+        state.metric_type === "gauge"
           ? state.property_name_2
           : state.property_name,
       granularity: state.metric_type === "rate" ? state.granularity : "total",
@@ -100,6 +100,7 @@ const ViewMetrics: FC = () => {
     if (state.filters) {
       const numericFilters: NumericFilterType[] = [];
       const categoricalFilters: CateogricalFilterType[] = [];
+      // eslint-disable-next-line no-plusplus
       for (let i = 0; i < state.filters.length; i++) {
         if (
           state.filters[i].operator === "isin" ||

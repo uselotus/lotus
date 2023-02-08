@@ -1,5 +1,4 @@
 import { Modal, Form, Input, Select } from "antd";
-// @ts-ignore
 import React from "react";
 import { useQuery } from "react-query";
 import PricingUnitDropDown from "../PricingUnitDropDown";
@@ -18,7 +17,11 @@ export interface CreateCustomerState {
   default_currency_code?: string;
 }
 
-function CreateCustomerForm(props: {
+function CreateCustomerForm({
+  visible,
+  onCancel,
+  onSave,
+}: {
   visible: boolean;
   onSave: (state: CreateCustomerState) => void;
   onCancel: () => void;
@@ -26,7 +29,7 @@ function CreateCustomerForm(props: {
   const [form] = Form.useForm();
   const [paymentProviders, setPaymentProviders] = React.useState<string[]>([]);
 
-  const { data, isLoading } = useQuery<PaymentProcessorStatusType[]>(
+  useQuery<PaymentProcessorStatusType[]>(
     ["payment_processor_integration_list"],
     () => PaymentProcessorIntegration.getPaymentProcessorConnectionStatus(),
     {
@@ -41,20 +44,17 @@ function CreateCustomerForm(props: {
   );
   return (
     <Modal
-      visible={props.visible}
+      visible={visible}
       title="Create a Customer"
       okText="Create"
       okType="default"
       cancelText="Cancel"
-      onCancel={props.onCancel}
+      onCancel={onCancel}
       onOk={() => {
-        form
-          .validateFields()
-          .then((values) => {
-            form.resetFields();
-            props.onSave(values);
-          })
-          .catch((info) => {});
+        form.validateFields().then((values) => {
+          form.resetFields();
+          onSave(values);
+        });
       }}
     >
       <Form form={form} layout="vertical" name="customer_form">

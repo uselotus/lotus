@@ -1,3 +1,4 @@
+/* eslint-disable camelcase */
 import React, { Fragment, useEffect, useState } from "react";
 import LoadingSpinner from "../LoadingSpinner";
 import { Paper } from "../base/Paper";
@@ -19,9 +20,11 @@ const displayMetric = (metric: number | undefined): number => {
   return metric;
 };
 
-function RevenueDisplay(props: {
-  total_revenue_1: number | undefined;
-  total_revenue_2: number | undefined;
+function RevenueDisplay({
+  earned_revenue_1,
+  earned_revenue_2,
+  isLoading,
+}: {
   earned_revenue_1: number | undefined;
   earned_revenue_2: number | undefined;
   isLoading: boolean;
@@ -30,9 +33,9 @@ function RevenueDisplay(props: {
 
   useEffect(() => {
     setPercentageChange(
-      computePercentageChange(props.earned_revenue_1, props.earned_revenue_2)
+      computePercentageChange(earned_revenue_1, earned_revenue_2)
     );
-  }, [props.earned_revenue_1, props.earned_revenue_2]);
+  }, [earned_revenue_1, earned_revenue_2]);
   return (
     <Paper color="white" border>
       <div className="grid grid-flow-col auto-cols-auto  justify-between">
@@ -40,7 +43,7 @@ function RevenueDisplay(props: {
           <p className="text-sm mb-4 leading-[18px] font-normal">
             Earned Revenue
           </p>
-          {props.isLoading ? (
+          {isLoading ? (
             <div className="flex justify-center">
               <LoadingSpinner />
             </div>
@@ -50,7 +53,7 @@ function RevenueDisplay(props: {
                 {new Intl.NumberFormat("en-US", {
                   style: "currency",
                   currency: "USD",
-                }).format(displayMetric(props.earned_revenue_1))}
+                }).format(displayMetric(earned_revenue_1))}
               </span>
               <p className="text-sm mb-4 mt-4 leading-[18px] font-normal">
                 Prev. Period{" "}
