@@ -1,16 +1,19 @@
 import abc
+import base64
 import datetime
 import logging
 from decimal import Decimal
 from urllib.parse import urlencode
 
+import braintree
 import pytz
 import requests
 import stripe
-import base64
-from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import F, Prefetch, Q
+from rest_framework import serializers, status
+from rest_framework.response import Response
+
 from metering_billing.exceptions.exceptions import ExternalConnectionInvalid
 from metering_billing.serializers.payment_provider_serializers import (
     PaymentProviderPostResponseSerializer,
@@ -22,22 +25,18 @@ from metering_billing.utils.enums import (
     PAYMENT_PROVIDERS,
     PLAN_STATUS,
 )
-from rest_framework import serializers, status
-from rest_framework.response import Response
 
 logger = logging.getLogger("django.server")
 
 SELF_HOSTED = settings.SELF_HOSTED
-<<<<<<< HEAD
-STRIPE_SECRET_KEY = settings.STRIPE_SECRET_KEY
-BRAINTREE_SECRET_KEY = settings.BRAINTREE_SECRET_KEY
-VITE_STRIPE_CLIENT = settings.VITE_STRIPE_CLIENT
-=======
 STRIPE_LIVE_SECRET_KEY = settings.STRIPE_LIVE_SECRET_KEY
 STRIPE_TEST_SECRET_KEY = settings.STRIPE_TEST_SECRET_KEY
 STRIPE_TEST_CLIENT = settings.STRIPE_TEST_CLIENT
 STRIPE_LIVE_CLIENT = settings.STRIPE_LIVE_CLIENT
->>>>>>> main
+BRAINTREE_LIVE_SECRET_KEY = settings.BRAINTREE_LIVE_SECRET_KEY
+BRAINTREE_TEST_SECRET_KEY = settings.BRAINTREE_TEST_SECRET_KEY
+BRAINTREE_TEST_CLIENT = settings.BRAINTREE_TEST_CLIENT
+BRAINTREE_LIVE_CLIENT = settings.BRAINTREE_LIVE_CLIENT
 VITE_API_URL = settings.VITE_API_URL
 
 
@@ -125,13 +124,21 @@ class PaymentProvider(abc.ABC):
 
 class BraintreeConnector(PaymentProvider):
     def __init__(self):
-        self.secret_key = base64_encode(BRAINTREE_SECRET_KEY)
         self.self_hosted = SELF_HOSTED
         self.headers = {
             "Authorization": f"Basic {self.secret_key}",
             "Content-Type": "application/json",
         }
         self.base_url = "https://payments.braintree-api.com/graphql"
+        self.live_gateway = braintree.BraintreeGateway(
+            client_id=base64_encode(BRAINTREE_LIVE_CLIENT),
+            client_secret=base64_encode(BRAINTREE_LIVE_SECRET_KEY),
+        )
+        self.test_gateway = braintree.BraintreeGateway(
+            client_id=base64_encode(BRAINTREE_TEST_CLIENT),
+            client_secret=base64_encode(BRAINTREE_TEST_SECRET_KEY),
+        )
+        self.redirect_url = (VITE_API_URL + "redirectstripe",)
 
     def working(self) -> bool:
         return self.secret_key != "" and self.secret_key is not None
@@ -139,35 +146,144 @@ class BraintreeConnector(PaymentProvider):
     def customer_connected(self, customer) -> bool:
         pp_ids = customer.integrations
         braintree_dict = pp_ids.get(PAYMENT_PROVIDERS.BRAINTREE, {})
-        stripe_id = braintree_dict.get("id", None)
-        return stripe_id is not None
+        braintree_id = braintree_dict.get("id", None)
+        return braintree_id is not None
 
     def organization_connected(self, organization) -> bool:
         if self.self_hosted:
             return self.secret_key != "" and self.secret_key is not None
         else:
-            return (
-                organization.payment_provider_ids.get(PAYMENT_PROVIDERS.BRAINTREE, "")
-                != ""
+            braintree_dict = organization.payment_provider_ids.get(
+                PAYMENT_PROVIDERS.BRAINTREE, {}
             )
+            expires_at = braintree_dict.get("expires_at")
+            if expires_at is not None:
+                connected = datetime.datetime.fromisoformat(expires_at) > now_utc()
+                return connected
+            return False
+
+    def get_redirect_url(self, organization) -> str:
+        from metering_billing.models import Organization
+
+        if organization.organization_type == Organization.OrganizationType.PRODUCTION:
+            gateway = self.live_gateway
+        else:
+            gateway = self.test_gateway
+
+        scope_string = """
+        address:create,
+        address:delete,
+        address:update,
+        address:find,
+        customer:create,
+        customer:find,
+        customer:search,
+        customer:update,
+        transaction:sale,
+        view_facilitated_transaction_metrics,
+        transaction:void,
+        read_facilitated_transactions,
+        transaction:find,
+        transaction:refund
+        """
+        url = gateway.oauth.connect_url(
+            {
+                "redirect_uri": self.redirect_url,
+                "scope": scope_string,
+            }
+        )
+
+        return url
+
+    def refresh_tokens(self, organization):
+        from metering_billing.models import Organization
+
+        if organization.organization_type == Organization.OrganizationType.PRODUCTION:
+            gateway = self.live_gateway
+        else:
+            gateway = self.test_gateway
+
+        braintree_integration = organization.payment_provider_ids.get(
+            PAYMENT_PROVIDERS.BRAINTREE
+        )
+        if braintree_integration is None:
+            return
+
+        try:
+            result = gateway.oauth.create_token_from_refresh_token(
+                {"refresh_token": braintree_integration["refresh_token"]}
+            )
+            result.is_success
+
+            result.credentials.access_token
+            result.credentials.expires_at
+            result.credentials.refresh_token
+        except:
+            return
+
+    def store_access_token(self, organization, access_code, merchant_id):
+        from metering_billing.models import Organization
+
+        if organization.organization_type == Organization.OrganizationType.PRODUCTION:
+            gateway = self.live_gateway
+        else:
+            gateway = self.test_gateway
+
+        result = gateway.oauth.create_token_from_code({"code": access_code})
+
+        access_token = result.credentials.access_token
+        expires_at = result.credentials.expires_at
+        refresh_token = result.credentials.refresh_token
+
+        braintree_integration = organization.payment_provider_ids.get(
+            PAYMENT_PROVIDERS.BRAINTREE, {}
+        )
+        if "id" not in braintree_integration:
+            braintree_integration["id"] = merchant_id
+        else:
+            assert (
+                braintree_integration["id"] == merchant_id
+            ), "Merchant ID does not match existing braintree integration ID"
+        braintree_integration["access_token"] = access_token
+        braintree_integration["expires_at"] = expires_at
+        braintree_integration["refresh_token"] = refresh_token
+        organization.payment_provider_ids[
+            PAYMENT_PROVIDERS.BRAINTREE
+        ] = braintree_integration
+        organization.save()
+        return
 
     def create_payment_object(self, invoice) -> str:
-        stripe.api_key = self.secret_key
-        # check everything works as expected + build invoice item
-        logger.error(
-            "Invoice does not have a external_payment_obj_id ID",
-            extra={"customer": invoice.id},
-        )
-        assert invoice.external_payment_obj_id is None
+        from metering_billing.models import Organization
 
+        # select gateway
+        if (
+            invoice.organization.organization_type
+            == Organization.OrganizationType.PRODUCTION
+        ):
+            self.live_gateway
+        else:
+            self.test_gateway
+
+        # check everything works as expected + build invoice item
+        if invoice.external_payment_obj_id is not None:
+            logger.error(
+                "Invoice already has a external_payment_obj_id ID",
+                extra={
+                    "external_id": invoice.external_payment_obj_id,
+                    "invoice": invoice.id,
+                },
+            )
+            return invoice.external_payment_obj_id
+
+        # check customer
         customer = invoice.customer
-        braintree_method_id = customer.integrations.get(
+        braintree_customer_id = customer.integrations.get(
             PAYMENT_PROVIDERS.BRAINTREE, {}
         ).get("id")
-        logger.error(
-            "Customer does not have a Braintree ID", extra={"customer": customer.id}
-        )
-        assert braintree_method_id is not None, "Customer does not have a Braintree ID"
+        assert (
+            braintree_customer_id is not None
+        ), "Customer does not have a Braintree ID"
 
         body = """
                 mutation {

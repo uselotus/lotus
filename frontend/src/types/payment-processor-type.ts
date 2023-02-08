@@ -26,6 +26,12 @@ export const integrationsMap = {
     description:
       "Charge and invoice your customers through your Stripe account",
   },
+  braintree: {
+    name: "Braintree",
+    icon: "https://cdn.neverbounce.com/images/integrations/square/stripe-square.png",
+    description:
+      "Charge and invoice your customers through your Braintree account",
+  },
   snowflake: {
     name: "Snowflake",
     icon: "https://i.imgur.com/iNCQmMu.png",

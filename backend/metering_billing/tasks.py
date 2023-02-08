@@ -454,3 +454,20 @@ def run_generate_invoice(subscription_record_pk_set, **kwargs):
     )
     generate_invoice(subscription_record_set, **kwargs)
     generate_invoice(subscription_record_set, **kwargs)
+
+
+def do_refresh_braintree_tokens():
+    from metering_billing.models import Organization
+    from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+    from metering_billing.utils.enums import PAYMENT_PROVIDERS
+
+    for org in Organization.objects.filter(
+        payment_provider_ids__braintree__isnull=False
+    ):
+        payment_provider = PAYMENT_PROVIDER_MAP[PAYMENT_PROVIDERS.BRAINTREE]
+        payment_provider.refresh_tokens(org)
+
+
+@shared_task
+def refresh_braintree_tokens():
+    do_refresh_braintree_tokens()
