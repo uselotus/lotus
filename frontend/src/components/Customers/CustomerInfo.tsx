@@ -126,16 +126,14 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
 
   useEffect(() => {
     if (cost_data) {
-      console.log("yeh")
-      console.log(cost_data)
       const newgraphdata = cost_data.per_day.map((day) => {
-        const result_list = day.cost_data.map((metric) => ({
+        const result_list = day.cost_date.map((metric) => ({
           date: day.date,
           amount: metric.cost,
           metric: metric.metric.metric_name,
           type: "cost",
         }));
-  
+
         result_list.push({
           date: day.date,
           amount: day.revenue,
@@ -144,9 +142,9 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
         });
         return result_list;
       });
-  
+
       setTransformedGraphData(newgraphdata.flat(1));
-   }
+    }
   }, [cost_data]);
 
   const onSwitch = (key: string) => {
