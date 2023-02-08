@@ -15,10 +15,17 @@ interface Tag extends T {
 }
 interface ViewPlansFilterProps {
   onChangeHandler: (e: React.ChangeEvent<HTMLInputElement>) => void;
+
   onSelectHandler: (tag: Tag, remove: boolean) => void;
+
   onFocusHandler: (focus: boolean) => void;
   value: string;
   tags: PlanType["tags"];
+}
+type T = PlanType["tags"][0];
+
+interface tag extends T {
+  from?: boolean;
 }
 
 function ViewPlansFilter({
@@ -29,7 +36,7 @@ function ViewPlansFilter({
   tags,
 }: ViewPlansFilterProps) {
   const [internalTags, setInternalTags] = useState<Tag[]>([]);
-  return (
+
     <div className="flex items-center gap-8 mb-10">
       <Input
         onFocus={() => onFocusHandler(true)}
@@ -61,6 +68,7 @@ function ViewPlansFilter({
         <DropdownComponent.Container>
           {tags &&
             tags.map((tag: Tag) => (
+
               <DropdownComponent.MenuItem
                 key={tag.tag_name}
                 onSelect={() => {
@@ -79,6 +87,7 @@ function ViewPlansFilter({
                 }}
               >
                 <span key={tag.tag_name} className="flex gap-2 justify-between">
+
                   <span className="flex gap-2 items-center">
                     <Badge.Dot fill={tag.tag_hex} />
                     <span className="text-black">{tag.tag_name}</span>

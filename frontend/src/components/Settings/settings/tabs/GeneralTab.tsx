@@ -26,7 +26,9 @@ import LoadingSpinner from "../../../LoadingSpinner";
 import useGlobalStore from "../../../../stores/useGlobalstore";
 import { QueryErrors } from "../../../../types/error-response-types";
 import { OrganizationType } from "../../../../types/account-type";
+
 import country_json from "../../../../assets/country_codes";
+
 
 const GeneralTab: FC = () => {
   const [isEdit, setIsEdit] = useState(false);
@@ -159,8 +161,10 @@ const GeneralTab: FC = () => {
     }
   );
 
+
   const fourDP = (taxRate: number) =>
     parseFloat(parseFloat(String(taxRate)).toFixed(4));
+
   return (
     <div>
       <div className="flex justify-between w-6/12">
