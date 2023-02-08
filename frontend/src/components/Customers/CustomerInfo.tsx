@@ -1,20 +1,23 @@
+/* eslint-disable react/jsx-props-no-spreading */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-shadow */
+/* eslint-disable camelcase */
 import React, { FC, useEffect } from "react";
 import { Column } from "@ant-design/plots";
-import { useQueryClient, useMutation } from "react-query";
+import { useMutation } from "react-query";
 
-import { Select, Form, Typography, Input } from "antd";
+import { Select, Form, Typography } from "antd";
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
-import { DraftInvoiceType } from "../../types/invoice-type";
 
 import { Customer } from "../../api/api";
-import { country_json } from "../../assets/country_codes";
+import country_json from "../../assets/country_codes";
 
 import { CustomerType } from "../../types/customer-type";
 import { CustomerCostType } from "../../types/revenue-type";
 import { CurrencyType } from "../../types/pricing-unit-type";
 import CustomerCard from "./Card/CustomerCard";
-import { PencilSquareIcon } from "../base/PencilIcon";
+import PencilSquareIcon from "../base/PencilIcon";
 import CopyText from "../base/CopytoClipboard";
 import createShortenedText from "../../helpers/createShortenedText";
 import useMediaQuery from "../../hooks/useWindowQuery";
@@ -37,9 +40,14 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
 }) => {
   const windowWidth = useMediaQuery();
 
-  const [transformedGraphData, setTransformedGraphData] = React.useState<any>(
-    []
-  );
+  const [transformedGraphData, setTransformedGraphData] = React.useState<
+    {
+      date: string;
+      amount: number;
+      metric: string | undefined;
+      type: string;
+    }[]
+  >([]);
   const [form] = Form.useForm();
   const [currentCurrency, setCurrentCurrency] = React.useState<string>(
     data.default_currency.code ? data.default_currency.code : ""
@@ -64,12 +72,6 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     data.address ? data.address.postal_code : ""
   );
   const [isEditing, setIsEditing] = React.useState(false);
-  const queryClient = useQueryClient();
-
-  const invoiceData: DraftInvoiceType | undefined = queryClient.getQueryData([
-    "draft_invoice",
-    data.customer_id,
-  ]);
 
   const updateCustomer = useMutation(
     (obj: {
@@ -132,30 +134,30 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     refetch();
     setIsEditing(false);
   };
-  const displayMetric = (metric: number | undefined): number => {
-    if (metric === undefined) {
-      return 0;
-    }
-    return metric;
-  };
-  useEffect(() => {
-    const newgraphdata = cost_data.per_day.map((day: any) => {
-      const result_list = day.cost_data.map((metric: any) => ({
-        date: day.date,
-        amount: metric.cost,
-        metric: metric.metric.billable_metric_name,
-        type: "cost",
-      }));
 
-      result_list.push({
-        date: day.date,
-        amount: day.revenue,
-        type: "revenue",
-        metric: "Revenue",
+  useEffect(() => {
+    if (cost_data) {
+      console.log("yeh")
+      console.log(cost_data)
+      const newgraphdata = cost_data.per_day.map((day) => {
+        const result_list = day.cost_data.map((metric) => ({
+          date: day.date,
+          amount: metric.cost,
+          metric: metric.metric.metric_name,
+          type: "cost",
+        }));
+  
+        result_list.push({
+          date: day.date,
+          amount: day.revenue,
+          type: "revenue",
+          metric: "Revenue",
+        });
+        return result_list;
       });
-      return result_list;
-    });
-    setTransformedGraphData(newgraphdata.flat(1));
+  
+      setTransformedGraphData(newgraphdata.flat(1));
+   }
   }, [cost_data]);
 
   const onSwitch = (key: string) => {
@@ -175,6 +177,8 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
       case "4":
         start_date = dayjs().startOf("year").format("YYYY-MM-DD");
         break;
+      default:
+        break;
     }
 
     onDateChange(start_date, end_date);
@@ -188,7 +192,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     isStack: true,
     seriesField: "metric",
     groupField: "type",
-    legend: false,
+    legend: false as const,
     colorField: "type", // or seriesField in some cases
     color: ["#33658A", "#C3986B", "#D9D9D9", "#171412", "#547AA5"],
   };

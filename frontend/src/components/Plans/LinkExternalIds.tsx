@@ -35,7 +35,9 @@ const LinksExternalIds: React.FC<LinkExternalIdsProps> = ({
   }, [inputValue]);
 
   const handleClose = (removedTag: string) => {
-    deleteExternalLink && deleteExternalLink(removedTag);
+    if (deleteExternalLink) {
+      deleteExternalLink(removedTag);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,7 +46,9 @@ const LinksExternalIds: React.FC<LinkExternalIdsProps> = ({
 
   const handleInputConfirm = () => {
     if (inputValue && tags.indexOf(inputValue) === -1 && !setExternalLinks) {
-      createExternalLink && createExternalLink(inputValue);
+      if (createExternalLink) {
+        createExternalLink(inputValue);
+      }
     } else if (
       inputValue &&
       tags.indexOf(inputValue) === -1 &&

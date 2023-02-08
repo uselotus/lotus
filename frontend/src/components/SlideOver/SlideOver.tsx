@@ -1,3 +1,5 @@
+/* eslint-disable camelcase */
+/* eslint-disable jsx-a11y/label-has-associated-control */
 import React, { useState } from "react";
 import { PlusOutlined, CloseOutlined, LeftOutlined } from "@ant-design/icons";
 import { Button } from "antd";
@@ -9,21 +11,13 @@ import {
 } from "react-query";
 import { toast } from "react-toastify";
 import useToggleSlideOver from "../../stores/useToggleSlideOver";
-import useGlobalStore from "../../stores/useGlobalstore";
 import SlideOverCard from "./SlideOverCard";
 import Select from "../base/Select/Select";
 import { CurrencyType } from "../../types/pricing-unit-type";
 import { Organization, PricingUnits } from "../../api/api";
-import {
-  ErrorResponse,
-  ErrorResponseMessage,
-} from "../../types/error-response-types";
+import { ErrorResponseMessage } from "../../types/error-response-types";
 
-interface SlideOverProps {}
-
-const SlideOver: React.FC<SlideOverProps> = () => {
-  const { environment, linked_organizations, organization_name } =
-    useGlobalStore((state) => state.org);
+const SlideOver: React.FC = () => {
   const open = useToggleSlideOver((state) => state.open);
   const setOpen = useToggleSlideOver((state) => state.setOpen);
   const [isCreating, setIsCreating] = useState(false);
@@ -33,9 +27,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
   const queryClient = useQueryClient();
   const { data: pricingUnits }: UseQueryResult<CurrencyType[]> = useQuery<
     CurrencyType[]
-  >(["pricing_unit_list"], () =>
-    PricingUnits.list().then((res) => res)
-  );
+  >(["pricing_unit_list"], () => PricingUnits.list().then((res) => res));
   const createOrgMutation = useMutation(
     ({
       organization_name,
@@ -193,7 +185,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
                         >
                           <Select.Option selected>Development</Select.Option>
                           {["Production"].map((opt) => (
-                            <Select.Option>{opt}</Select.Option>
+                            <Select.Option key={opt}>{opt}</Select.Option>
                           ))}
                         </Select.Select>
                       </Select>
@@ -210,7 +202,9 @@ const SlideOver: React.FC<SlideOverProps> = () => {
                             Select an option
                           </Select.Option>
                           {pricingUnits?.map((pc) => (
-                            <Select.Option>{pc.code}</Select.Option>
+                            <Select.Option key={pc.code}>
+                              {pc.code}
+                            </Select.Option>
                           ))}
                         </Select.Select>
                       </Select>
@@ -236,7 +230,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
                     <div
                       className="h-full border-2 border-dashed border-gray-200"
                       aria-hidden="true"
-                     />
+                    />
                   </div>
                   {/* end replace */}
                 </div>

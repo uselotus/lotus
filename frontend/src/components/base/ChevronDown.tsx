@@ -1,7 +1,7 @@
 import React from "react";
 
-const ChevronDown = () => (
-  <svg
+function ChevronDown() {
+  return <svg
     className="h-8"
     aria-hidden="true"
     fill="none"
@@ -16,5 +16,5 @@ const ChevronDown = () => (
       strokeLinejoin="round"
     />
   </svg>
-);
+}
 export default ChevronDown;

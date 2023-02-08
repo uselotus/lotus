@@ -1,10 +1,6 @@
+/* eslint-disable jsx-a11y/label-has-associated-control */
 import React, { useState } from "react";
 import { Card, Input, Button, Form } from "antd";
-
-interface LoginForm extends HTMLFormControlsCollection {
-  username: string;
-  password: string;
-}
 
 interface UserSignup {
   username: string;
@@ -12,16 +8,12 @@ interface UserSignup {
   password: string;
 }
 
-interface FormElements extends HTMLFormElement {
-  readonly elements: LoginForm;
-}
-
 type SignupProps = {
   onSubmit: (user: UserSignup) => void;
   hasInvite?: boolean;
 };
 
-function SignUp(props: SignupProps) {
+function SignUp({ onSubmit, hasInvite }: SignupProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
@@ -36,11 +28,11 @@ function SignUp(props: SignupProps) {
   const handleEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(event.target.value);
   };
-  const handleNewUser = (event: React.FormEvent<FormElements>) => {
-    props.onSubmit({ username, email, password });
+  const handleNewUser = () => {
+    onSubmit({ username, email, password });
   };
 
-  const cardTitle = props.hasInvite ? "Sign up to join the Team" : "Sign Up";
+  const cardTitle = hasInvite ? "Sign up to join the Team" : "Sign Up";
 
   return (
     <div>
@@ -51,6 +43,7 @@ function SignUp(props: SignupProps) {
             <label htmlFor="username">Username</label>
             <Input
               type="text"
+              id="username"
               name="organization_name"
               value={username}
               defaultValue="username123"

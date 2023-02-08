@@ -1,3 +1,8 @@
+/* eslint-disable no-shadow */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable no-nested-ternary */
+/* eslint-disable jsx-a11y/label-has-associated-control */
+/* eslint-disable camelcase */
 import React, { FC, useCallback, useEffect, useRef, useState } from "react";
 import {
   Form,
@@ -18,8 +23,9 @@ import {
   UseQueryResult,
 } from "react-query";
 import { toast } from "react-toastify";
-import { PlanType } from "../../types/plan-type";
 import dayjs from "dayjs";
+import { useNavigate } from "react-router-dom";
+import { PlanType } from "../../types/plan-type";
 import {
   CreateSubscriptionType,
   TurnSubscriptionAutoRenewOffType,
@@ -41,8 +47,7 @@ import Badge from "../base/Badges/Badges";
 import DropdownComponent from "../base/Dropdown/Dropdown";
 import { DraftInvoiceType } from "../../types/invoice-type";
 import { Addon, Customer, Invoices } from "../../api/api";
-import { AddonType, AddonSubscriptionType } from "../../types/addon-type";
-import { useNavigate } from "react-router-dom";
+import { AddonType } from "../../types/addon-type";
 import ChevronDown from "../base/ChevronDown";
 
 interface Props {
@@ -66,14 +71,6 @@ const filter = (inputValue: string, path: DefaultOptionType[]) =>
   -1;
 
 const displayRender = (labels: string[]) => labels[labels.length - 1];
-
-interface PlanOption {
-  value: string;
-  label: string;
-  children?: ChangeOption[];
-  disabled?: boolean;
-}
-
 interface ChangeOption {
   value:
     | "change_subscription_plan"
@@ -82,6 +79,13 @@ interface ChangeOption {
   label: string;
   disabled?: boolean;
 }
+interface PlanOption {
+  value: string;
+  label: string;
+  children?: ChangeOption[];
+  disabled?: boolean;
+}
+
 const dropDownOptions = ["Switch Plan", "Attach Add-On", "Cancel Subscription"];
 const subscriptionCancellationOptions = [
   { name: "Cancel and Bill  Now", type: "bill_now" },
@@ -159,20 +163,20 @@ const SubscriptionView: FC<Props> = ({
     }
   );
 
-  const cancelAndDontBill = (plan_id, subscription_filters) => {
-    const query_params: CancelSubscriptionQueryParams = {
-      plan_id,
-      subscription_filters,
-      customer_id,
-    };
-    const body: CancelSubscriptionBody = {
-      usage_behavior: "bill_none",
-      flat_fee_behavior: "charge_prorated",
-      invoicing_behavior: "invoice_now",
-    };
-    onCancel(body, query_params);
-    setShowModal(false);
-  };
+  // const cancelAndDontBill = (plan_id, subscription_filters) => {
+  //   const query_params: CancelSubscriptionQueryParams = {
+  //     plan_id,
+  //     subscription_filters,
+  //     customer_id,
+  //   };
+  //   const body: CancelSubscriptionBody = {
+  //     usage_behavior: "bill_none",
+  //     flat_fee_behavior: "charge_prorated",
+  //     invoicing_behavior: "invoice_now",
+  //   };
+  //   onCancel(body, query_params);
+  //   setShowModal(false);
+  // };
 
   const cancelAndBill = (plan_id, subscription_filters) => {
     const query_params: CancelSubscriptionQueryParams = {
@@ -224,7 +228,7 @@ const SubscriptionView: FC<Props> = ({
       );
       setPlanList(newplanList);
     }
-  }, [plans]);
+  }, [customer_id, plans]);
 
   const cancelMenu = () => (
     <div>
@@ -529,10 +533,10 @@ const SubscriptionView: FC<Props> = ({
                           </button>
                         </DropdownComponent.Trigger>
                         <DropdownComponent.Container className="!bg-[#fff4e9] ">
-                          {dropDownOptions.map((key, index) => (
+                          {dropDownOptions.map((key) => (
                             <DropdownComponent.MenuItem
                               className="hover:text-black hover:bg-[#f8e8d7] whitespace-nowrap"
-                              key={index}
+                              key={key}
                               onSelect={() => {
                                 switch (index) {
                                   case 0:
@@ -565,8 +569,9 @@ const SubscriptionView: FC<Props> = ({
                       <div className=" flex-row flex font-alliance  items-center border-inherit w-full">
                         {subPlan.addons.map((addon) => (
                           <div
+                            aria-hidden
                             onClick={() => {
-                              navigate("/add-ons/" + addon.addon.addon_id);
+                              navigate(`/add-ons/${addon.addon.addon_id}`);
                             }}
                             key={addon.addon.addon_id}
                             className="flex gap-2 items-center bg-dark rounded-md border text-white border-[#fff4e9] py-2 pl-3 pr-10 text-left shadow-sm  focus:outline-none "
@@ -575,7 +580,7 @@ const SubscriptionView: FC<Props> = ({
                           </div>
                         ))}
                       </div>
-                      <div></div>
+                      <div />
                     </div>
                   </CustomerCard.Container>
                 </CustomerCard.Heading>
@@ -644,15 +649,17 @@ const SubscriptionView: FC<Props> = ({
                           type="primary"
                           className="!bg-rose-600 border !border-rose-600"
                           onClick={() => {
-                            cancelSubType === "bill_now"
-                              ? cancelAndBill(
-                                  subPlan.billing_plan.plan_id,
-                                  subPlan.subscription_filters
-                                )
-                              : turnAutoRenewOff(
-                                  subPlan.billing_plan.plan_id,
-                                  subPlan.subscription_filters
-                                );
+                            if (cancelSubType === "bill_now") {
+                              cancelAndBill(
+                                subPlan.billing_plan.plan_id,
+                                subPlan.subscription_filters
+                              );
+                            } else {
+                              turnAutoRenewOff(
+                                subPlan.billing_plan.plan_id,
+                                subPlan.subscription_filters
+                              );
+                            }
                           }}
                         >
                           Cancel Plan

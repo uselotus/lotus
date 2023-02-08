@@ -1,4 +1,5 @@
-// @ts-ignore
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable camelcase */
 import React, { FC, useRef } from "react";
 import { Menu, Dropdown, Button, Typography, Tag } from "antd";
 import {
@@ -6,11 +7,11 @@ import {
   CheckCircleOutlined,
   MoreOutlined,
 } from "@ant-design/icons";
-import { PlanType, UpdatePlanType } from "../../../types/plan-type";
 import "./PlanCard.css";
 import { useMutation, useQueryClient } from "react-query";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { PlanType } from "../../../types/plan-type";
 import { Plan } from "../../../api/api";
 import CopyText from "../../base/CopytoClipboard";
 import DropdownComponent from "../../base/Dropdown/Dropdown";
@@ -76,15 +77,9 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
     navigate(`/plans/${plan.plan_id}`);
   };
 
-  const customerNameOrID = (target_customer: any | undefined) => {
-    if (target_customer.customer_name) {
-      return target_customer.customer_name;
-    }
-    return target_customer.customer_id;
-  };
-
   return (
     <div
+      aria-hidden
       className="min-h-[200px]  min-w-[246px] p-6 cursor-pointer  rounded-sm bg-card  shadow-lg hover:shadow-neutral-400"
       onClick={(e) => {
         if ((e.target as HTMLInputElement).nodeName === "DIV") gotoPlanDetail();
@@ -92,7 +87,11 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
     >
       <Typography.Title className="pt-4 flex font-alliance" level={2}>
         <span>{plan.plan_name}</span>
-        <span className="ml-auto" onClick={(e) => e.stopPropagation()}>
+        <span
+          aria-hidden
+          className="ml-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
           <Dropdown overlay={planMenu} trigger={["click"]}>
             <Button
               type="text"
@@ -164,8 +163,9 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
             </DropdownComponent.Trigger>
             <DropdownComponent.Container>
               {plan_tags &&
-                createPlanTagsList(plan.tags, plan_tags).map((tag, index) => (
+                createPlanTagsList(plan.tags, plan_tags).map((tag) => (
                   <DropdownComponent.MenuItem
+                    key={tag.tag_name}
                     onSelect={() => {
                       if (tag.from !== "plans") {
                         const planTags = [...plan.tags];
@@ -195,7 +195,10 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
                       }
                     }}
                   >
-                    <span key={index} className="flex gap-2 justify-between">
+                    <span
+                      key={tag.tag_name}
+                      className="flex gap-2 justify-between"
+                    >
                       <span className="flex gap-2 items-center">
                         <Badge.Dot fill={tag.tag_hex} />
                         <span className="text-black">{tag.tag_name}</span>

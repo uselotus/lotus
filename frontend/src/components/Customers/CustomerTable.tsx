@@ -1,8 +1,11 @@
-// @ts-ignore
+/* eslint-disable no-shadow */
+/* eslint-disable no-plusplus */
+/* eslint-disable camelcase */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { FC, useState, useEffect } from "react";
 import type { ProColumns } from "@ant-design/pro-components";
 import { ProTable } from "@ant-design/pro-components";
-import { Button, Input, Tag } from "antd";
+import { Input, Tag } from "antd";
 import { useQuery, UseQueryResult, useQueryClient } from "react-query";
 import { useNavigate } from "react-router-dom";
 import {
@@ -13,7 +16,6 @@ import {
 import { CreateCustomerState } from "./CreateCustomerForm";
 import { Plan } from "../../api/api";
 import { PlanType } from "../../types/plan-type";
-import CustomerDetail from "./CustomerDetail";
 
 function getHighlightedText(text: string, highlight: string) {
   // Split text on highlight term, include term itself into parts, ignore case
@@ -23,7 +25,9 @@ function getHighlightedText(text: string, highlight: string) {
       <span>
         {parts.map((part) =>
           part.toLowerCase() === highlight.toLowerCase() ? (
-            <span className="highlightText">{part}</span>
+            <span key={part} className="highlightText">
+              {part}
+            </span>
           ) : (
             part
           )
@@ -31,6 +35,7 @@ function getHighlightedText(text: string, highlight: string) {
       </span>
     );
   }
+  return <div />;
 }
 
 interface Props {
@@ -47,6 +52,7 @@ const defaultCustomerState: CreateCustomerState = {
   email: "",
 };
 
+// eslint-disable-next-line react/function-component-definition
 const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
   const [customerVisible, setCustomerVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -113,7 +119,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
       width: 120,
       dataIndex: "customer_name",
       align: "left",
-      search: { transform: (value: any) => value },
+      search: { transform: (value) => value },
       render: (_, record) => {
         if (searchQuery) {
           getHighlightedText(record.customer_name, searchQuery);
@@ -128,7 +134,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
       render: (_, record) => (
         <div>
           {record.subscriptions.map((sub) => (
-            <div>
+            <div key={sub.end_date}>
               <Tag color="default">{sub.billing_plan_name}</Tag>
               <Tag color="default">v{sub.plan_version}</Tag>{" "}
             </div>
@@ -189,8 +195,6 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
     setCustomerVisible(false);
   };
 
-  const changePlan = (plan_id: string, customer_id: string) => {};
-
   const getFilteredTableData = (data: CustomerTableItem[] | undefined) => {
     if (data === undefined) {
       return data;
@@ -225,9 +229,8 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
           toolBarRender={false}
           search={false}
           pagination={{
-            showTotal: (total, range) => (
-              <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
-            ),
+            showTotal: (total, range) =>
+              `${range[0]}-${range[1]} of ${total} total items`,
             pageSize: 10,
           }}
           options={false}

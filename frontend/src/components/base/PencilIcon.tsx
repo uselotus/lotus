@@ -3,7 +3,7 @@ import React from "react";
 interface PencilSquareIconProps {
   onClick: VoidFunction;
 }
-export function PencilSquareIcon({ onClick }: PencilSquareIconProps) {
+function PencilSquareIcon({ onClick }: PencilSquareIconProps) {
   return (
     <svg
       aria-hidden="true"
@@ -24,3 +24,4 @@ export function PencilSquareIcon({ onClick }: PencilSquareIconProps) {
     </svg>
   );
 }
+export default PencilSquareIcon;

@@ -1,5 +1,6 @@
+/* eslint-disable camelcase */
 import React, { useState } from "react";
-import { Form, Tabs, Modal, Button } from "antd";
+import { Tabs, Button } from "antd";
 import {
   useMutation,
   useQueryClient,
@@ -20,14 +21,13 @@ import {
 import LoadingSpinner from "../LoadingSpinner";
 import { Customer, Plan, PricingUnits } from "../../api/api";
 import SubscriptionView from "./CustomerSubscriptionView";
-import { CustomerType, DetailPlan } from "../../types/customer-type";
+import { CustomerType } from "../../types/customer-type";
 import "./CustomerDetail.css";
 import CustomerInvoiceView from "./CustomerInvoices";
 import CustomerBalancedAdjustments from "./CustomerBalancedAdjustments";
 import { CustomerCostType } from "../../types/revenue-type";
 import CustomerInfoView from "./CustomerInfo";
 
-import CopyText from "../base/CopytoClipboard";
 import { CurrencyType } from "../../types/pricing-unit-type";
 import { PageLayout } from "../base/PageLayout";
 
@@ -36,7 +36,7 @@ type CustomerDetailsParams = {
 };
 function CustomerDetail() {
   const { customerId: customer_id } = useParams<CustomerDetailsParams>();
-  const [form] = Form.useForm();
+
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [startDate, setStartDate] = useState<string>(
@@ -51,25 +51,24 @@ function CustomerDetail() {
   const { data: pricingUnits }: UseQueryResult<CurrencyType[]> = useQuery<
     CurrencyType[]
   >(["pricing_unit_list"], () => PricingUnits.list().then((res) => res));
-  const { data, isLoading, refetch }: UseQueryResult<CustomerType> =
+  const { data, refetch }: UseQueryResult<CustomerType> =
     useQuery<CustomerType>(["customer_detail", customer_id], () =>
       Customer.getCustomerDetail(customer_id as string).then((res) => res)
     );
 
-  const { data: cost_analysis, isLoading: cost_analysis_loading } =
-    useQuery<CustomerCostType>(
-      ["customer_cost_analysis", customer_id, startDate, endDate],
-      () => Customer.getCost(customer_id as string, startDate, endDate),
-      {
-        enabled: true,
-        placeholderData: {
-          per_day: [],
-          total_revenue: 0,
-          total_cost: 0,
-          margin: 0,
-        },
-      }
-    );
+  const { data: cost_analysis } = useQuery<CustomerCostType>(
+    ["customer_cost_analysis", customer_id, startDate, endDate],
+    () => Customer.getCost(customer_id as string, startDate, endDate),
+    {
+      enabled: true,
+      placeholderData: {
+        per_day: [],
+        total_revenue: 0,
+        total_cost: 0,
+        margin: 0,
+      },
+    }
+  );
 
   const createSubscriptionMutation = useMutation(
     (post: CreateSubscriptionType) => Customer.createSubscription(post),

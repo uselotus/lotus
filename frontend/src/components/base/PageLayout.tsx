@@ -1,3 +1,4 @@
+/* eslint-disable import/prefer-default-export */
 import { Layout, PageHeader, PageHeaderProps } from "antd";
 import React from "react";
 import SlideOver from "../SlideOver/SlideOver";

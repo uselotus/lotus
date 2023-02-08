@@ -11,7 +11,6 @@ import { toast } from "react-toastify";
 import CustomerTable from "../components/Customers/CustomerTable";
 import {
   CustomerTotal,
-  CustomerType,
   CustomerCreateType,
   CustomerSummary,
 } from "../types/customer-type";
@@ -28,13 +27,10 @@ const ViewCustomers: FC = () => {
 
   const { data, isLoading }: UseQueryResult<CustomerSummary[]> = useQuery<
     CustomerSummary[]
-  >(["customer_list"], () =>
-    Customer.getCustomers().then((res) => res)
-  );
-  const { data: customerTotals, isLoading: totalLoading } = useQuery<
-    CustomerTotal[]
-  >(["customer_totals"], () =>
-    Customer.getCustomerTotals().then((res) => res)
+  >(["customer_list"], () => Customer.getCustomers().then((res) => res));
+  const { data: customerTotals } = useQuery<CustomerTotal[]>(
+    ["customer_totals"],
+    () => Customer.getCustomerTotals().then((res) => res)
   );
 
   const mutation = useMutation(

@@ -1,8 +1,8 @@
-import React, { FC, Fragment, useState } from "react";
+import React, { FC } from "react";
 
-import { Button, Typography } from "antd";
+import { Button } from "antd";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQuery, useQueryClient } from "react-query";
+import { useQuery } from "react-query";
 import { PageLayout } from "../../base/PageLayout";
 import { Addon } from "../../../api/api";
 import LoadingSpinner from "../../LoadingSpinner";
@@ -19,24 +19,7 @@ const AddonDetails: FC = () => {
   const navigate = useNavigate();
 
   const { addOnId } = useParams<AddonDetailsParams>();
-  const queryClient = useQueryClient();
-  const [add_on, setAddOn] = useState<AddonType>({
-    addon_name: "Unlimited Text Add-On",
-    description: "Lorem Ipsum Dolores stuff",
-    flat_rate: 49.0,
-    addon_id: "asdwwwew",
-    currency: {
-      symbol: "$",
-      name: "USD",
-      code: "USD",
-    },
-    billing_frequency: "one_time",
-    addon_type: "flat_fee",
-    invoice_when: "On Attach",
-    active_instances: 23,
-    components: [],
-    features: [],
-  });
+
   const {
     data: addon,
     isLoading,
@@ -44,8 +27,7 @@ const AddonDetails: FC = () => {
     refetch,
   } = useQuery<AddonType>(
     ["addon_detail", addOnId],
-    () =>
-      Addon.getAddon(addOnId as string).then((res) => res),
+    () => Addon.getAddon(addOnId as string).then((res) => res),
     { refetchOnMount: "always" }
   );
 
@@ -97,7 +79,7 @@ const AddonDetails: FC = () => {
                 </Button>
               </div>
             }
-           />
+          />
           <div className="mx-10">
             <div className="bg-white mb-6 flex flex-col py-4 px-10 rounded-lg space-y-12">
               <div>

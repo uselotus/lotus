@@ -1,4 +1,4 @@
-import React, { FC, useState } from "react";
+import React, { FC } from "react";
 import { useQuery } from "react-query";
 import { useNavigate } from "react-router-dom";
 import { Divider, Typography, Row, Col } from "antd";
@@ -11,8 +11,8 @@ import { AppCard } from "../components/AppCard";
 
 const IntegrationsTab: FC = () => {
   const navigate = useNavigate();
-  const [connectedStatus, setConnectedStatus] = useState<boolean>(false);
-  const { data, isLoading } = useQuery<PaymentProcessorStatusType[]>(
+
+  const { data } = useQuery<PaymentProcessorStatusType[]>(
     ["PaymentProcessorIntegration"],
     () =>
       PaymentProcessorIntegration.getPaymentProcessorConnectionStatus().then(
@@ -31,22 +31,22 @@ const IntegrationsTab: FC = () => {
       <Row gutter={[24, 24]} className="flex items-stretch">
         {data &&
           data !== undefined &&
-          data.map((item, index) => (
-              <Col span={6} key={index}>
-                <AppCard
-                  connected={item.connected}
-                  title={integrationsMap[item.payment_provider_name].name}
-                  description={
-                    integrationsMap[item.payment_provider_name].description
-                  }
-                  icon={integrationsMap[item.payment_provider_name].icon}
-                  handleClick={() =>
-                    handleConnectWithPaymentProcessorClick(item.redirect_url)
-                  }
-                  selfHosted={item.redirect_url === ""}
-                />
-              </Col>
-            ))}
+          data.map((item) => (
+            <Col span={6} key={item.payment_provider_name}>
+              <AppCard
+                connected={item.connected}
+                title={integrationsMap[item.payment_provider_name].name}
+                description={
+                  integrationsMap[item.payment_provider_name].description
+                }
+                icon={integrationsMap[item.payment_provider_name].icon}
+                handleClick={() =>
+                  handleConnectWithPaymentProcessorClick(item.redirect_url)
+                }
+                selfHosted={item.redirect_url === ""}
+              />
+            </Col>
+          ))}
         <Col span={6} className="h-full">
           <AppCard
             connected={false}

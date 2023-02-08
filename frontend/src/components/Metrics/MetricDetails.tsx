@@ -1,3 +1,5 @@
+/* eslint-disable no-console */
+/* eslint-disable camelcase */
 import { Modal, Tag, Button } from "antd";
 import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
@@ -9,6 +11,7 @@ import { colorMap } from "./MetricTable";
 import createShortenedText from "../../helpers/createShortenedText";
 import CopyText from "../base/CopytoClipboard";
 import useMediaQuery from "../../hooks/useWindowQuery";
+import { ErrorResponseMessage } from "../../types/error-response-types";
 
 interface MetricDetailsProps {
   metric: MetricType;
@@ -41,7 +44,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
         onclose();
       },
 
-      onError: (error: any) => {
+      onError: (error: ErrorResponseMessage) => {
         toast.error(error.response.data.detail);
       },
     }
@@ -120,7 +123,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
             </p>
             <p>
               <b className="mr-2">Proration:</b>{" "}
-              {metric.proration === "total" || metric.proration == undefined
+              {metric.proration === "total" || metric.proration === undefined
                 ? "none"
                 : metric.proration}
             </p>
@@ -152,24 +155,21 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
             </p>
             <div className="grid col-span-2">
               <div>
-                {metric.numeric_filters?.map((filter, index) => (
+                {metric.numeric_filters?.map((filter) => (
                   <Tag color="" key={filter.property_name}>
                     {<b>{filter.property_name}</b>}{" "}
-                    {operatorDisplayMap.get(filter.operator)} "
-                    "
-                    {filter.comparison_value}
-                    "
+                    {operatorDisplayMap.get(filter.operator)}
+                    {`"${filter.comparison_value}"`}
                   </Tag>
                 ))}
               </div>
 
               <div>
-                {metric.categorical_filters?.map((filter, index) => (
+                {metric.categorical_filters?.map((filter) => (
                   <Tag color="" key={filter.property_name}>
                     {<b>{filter.property_name}</b>}{" "}
-                    {operatorDisplayMap.get(filter.operator)} "
-                    {filter.comparison_value}
-                    "
+                    {operatorDisplayMap.get(filter.operator)}
+                    {`"${filter.comparison_value}"`}
                   </Tag>
                 ))}
               </div>

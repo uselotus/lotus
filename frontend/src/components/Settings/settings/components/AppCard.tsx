@@ -1,3 +1,4 @@
+/* eslint-disable import/prefer-default-export */
 import { Avatar, Card, Tag } from "antd";
 import React from "react";
 import { Link } from "react-router-dom";
@@ -32,6 +33,7 @@ export function AppCard({
         title={<Avatar shape="square" src={icon} />}
         size="small"
         extra={
+          // eslint-disable-next-line no-nested-ternary
           connected ? (
             <Tag color="success">Connected</Tag>
           ) : !selfHosted ? (

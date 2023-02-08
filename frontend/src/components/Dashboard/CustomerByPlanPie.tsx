@@ -1,23 +1,25 @@
+/* eslint-disable import/prefer-default-export */
+/* eslint-disable react/jsx-props-no-spreading */
 import React from "react";
 import { Pie } from "@ant-design/plots";
 import { useQuery, UseQueryResult } from "react-query";
 import { Paper } from "../base/Paper";
 import { PlansByCustomer } from "../../api/api";
 import LoadingSpinner from "../LoadingSpinner";
+import { PlansByCustomerArray } from "../../types/plan-type";
 
-export function CustomerByPlanPie(props: any) {
-  const { data, isLoading }: UseQueryResult<any> = useQuery<any>(
-    ["customer_by_plan_pie"],
-    () =>
+export function CustomerByPlanPie() {
+  const { data, isLoading }: UseQueryResult<PlansByCustomerArray> =
+    useQuery<PlansByCustomerArray>(["customer_by_plan_pie"], () =>
       PlansByCustomer.getPlansByCustomer().then((res) => res)
-  );
+    );
 
   const config = {
     legend: {
-      position: "bottom" as any,
+      position: "bottom" as const,
     },
     appendPadding: 20,
-    data: data?.results,
+    data: data?.results as unknown as Record<string, string>[],
     angleField: "num_customers",
     colorField: "plan_name",
     color: ["#33658A", "#547AA5", "#C3986B", "#D9D9D9", "#171412"],
@@ -41,7 +43,7 @@ export function CustomerByPlanPie(props: any) {
       },
     ],
     statistic: {
-      title: false,
+      title: false as const,
 
       content: {
         content: "",

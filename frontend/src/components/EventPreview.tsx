@@ -1,4 +1,3 @@
-// @ts-ignore
 import React, { FC, useState, useEffect, Fragment } from "react";
 import { useQuery, UseQueryResult, useQueryClient } from "react-query";
 import { Button, Collapse, Divider } from "antd";
@@ -6,7 +5,7 @@ import dayjs from "dayjs";
 import { EventPages } from "../types/event-type";
 import { Events } from "../api/api";
 import LoadingSpinner from "./LoadingSpinner";
-// @ts-ignore
+
 import "./EventPreview.css";
 import CustomPagination from "./CustomPagination/CustomPagination";
 import CopyText from "./base/CopytoClipboard";
@@ -72,7 +71,9 @@ const EventPreview: FC = () => {
         setCursor("");
         setCurrentPage(1);
         queryClient.invalidateQueries(["preview_events", null]);
-
+        break;
+      default:
+        break;
     }
   };
 
@@ -156,8 +157,8 @@ const EventPreview: FC = () => {
                     </div>
                     <div className="text-left flex-col flex">
                       {event.properties &&
-                        Object.keys(event.properties).map((keyName, i) => (
-                          <li className="travelcompany-input" key={i}>
+                        Object.keys(event.properties).map((keyName) => (
+                          <li className="travelcompany-input" key={keyName}>
                             {event.properties !== undefined && (
                               <span className="input-label">
                                 {keyName} : {event.properties[keyName]}{" "}

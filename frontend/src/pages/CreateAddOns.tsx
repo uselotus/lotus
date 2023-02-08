@@ -1,14 +1,15 @@
+/* eslint-disable no-shadow */
+/* eslint-disable jsx-a11y/label-has-associated-control */
+/* eslint-disable no-plusplus */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable camelcase */
 import { Button, Card, Form, Input, InputNumber, Select } from "antd";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
-import {
-  CreateComponent,
-  CreateRecurringCharge,
-  PlanType,
-} from "../types/plan-type";
-import { Plan, Organization, Addon } from "../api/api";
+import { CreateComponent, CreateRecurringCharge } from "../types/plan-type";
+import { Organization, Addon } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
 import { PageLayout } from "../components/base/PageLayout";
@@ -27,15 +28,9 @@ interface ComponentDisplay {
   id: number;
 }
 
-const durationConversion = {
-  monthly: "Month",
-  quarterly: "Quarter",
-  yearly: "Year",
-};
-
 function CreateAddOns() {
   const [componentVisible, setcomponentVisible] = useState<boolean>();
-  const [allPlans, setAllPlans] = useState<PlanType[]>([]);
+
   const [allCurrencies, setAllCurrencies] = useState<CurrencyType[]>([]);
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>({
     symbol: "",
@@ -44,8 +39,7 @@ function CreateAddOns() {
   });
   const [featureVisible, setFeatureVisible] = useState<boolean>(false);
   const [showInvoicing, setShowInvoicing] = useState(false);
-  const [priceAdjustmentType, setPriceAdjustmentType] =
-    useState<string>("none");
+
   const navigate = useNavigate();
   const [componentsData, setComponentsData] = useState<CreateComponent[]>([]);
   const [form] = Form.useForm();
@@ -67,23 +61,16 @@ function CreateAddOns() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!allPlans?.length) {
-      Plan.getPlans().then((data) => setAllPlans(data));
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!allCurrencies?.length) {
-      Organization.get().then((res) => {
-        setAllCurrencies(res[0].available_currencies);
-        setSelectedCurrency(res[0].default_currency);
-        if (res[0].default_currency) {
-          form.setFieldsValue({
-            plan_currency: res[0].default_currency.code,
-          });
-        }
-      });
-    }
+    Organization.get().then((res) => {
+      setAllCurrencies(res[0].available_currencies);
+      setSelectedCurrency(res[0].default_currency);
+      if (res[0].default_currency) {
+        form.setFieldsValue({
+          plan_currency: res[0].default_currency.code,
+        });
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const mutation = useMutation(
@@ -112,6 +99,7 @@ function CreateAddOns() {
           (feat) => feat.feature_id === newFeatures[i].feature_id
         )
       ) {
+        //
       } else {
         setPlanFeatures((prev) => [...prev, newFeatures[i]]);
       }
@@ -119,10 +107,7 @@ function CreateAddOns() {
     setFeatureVisible(false);
   };
 
-  const editFeatures = (feature_name: string) => {
-    const currentFeature = planFeatures.filter(
-      (item) => item.feature_name === feature_name
-    )[0];
+  const editFeatures = () => {
     setFeatureVisible(true);
   };
 
@@ -132,7 +117,9 @@ function CreateAddOns() {
     );
   };
 
-  const onFinishFailed = (errorInfo: any) => {};
+  const onFinishFailed = () => {
+    //
+  };
 
   const hideComponentModal = () => {
     setcomponentVisible(false);
@@ -142,7 +129,7 @@ function CreateAddOns() {
     setcomponentVisible(true);
   };
 
-  const handleComponentAdd = (newData: any) => {
+  const handleComponentAdd = (newData: CreateComponent) => {
     const old = componentsData;
 
     if (editComponentItem) {
@@ -165,7 +152,7 @@ function CreateAddOns() {
     setcomponentVisible(false);
   };
 
-  const handleComponentEdit = (id: any) => {
+  const handleComponentEdit = (id: number) => {
     const currentComponent = componentsData.filter((item) => item.id === id)[0];
 
     setEditComponentsItem(currentComponent);
@@ -191,7 +178,7 @@ function CreateAddOns() {
 
   const submitAddons = () => {
     const usagecomponentslist: CreateComponent[] = [];
-    const components: any = Object.values(componentsData);
+    const components = Object.values(componentsData);
     if (components) {
       for (let i = 0; i < components.length; i++) {
         const usagecomponent: CreateComponent = {
@@ -203,7 +190,7 @@ function CreateAddOns() {
       }
     }
     const featureIdList: string[] = [];
-    const features: any = Object.values(planFeatures);
+    const features: FeatureType[] = Object.values(planFeatures);
     if (features) {
       for (let i = 0; i < features.length; i++) {
         featureIdList.push(features[i].feature_id);
@@ -219,14 +206,15 @@ function CreateAddOns() {
     });
 
     const addons: CreateAddonType = {
-      addon_name: addon_name,
-      description: description,
-      addon_type: addon_type,
-      billing_frequency: billing_frequency,
-      recurring_charges: recurring_charges,
+      addon_name,
+      addon: [],
+      description,
+      addon_type,
+      billing_frequency,
+      recurring_charges,
       components: usagecomponentslist.length ? usagecomponentslist : [],
       features: featureIdList.length ? featureIdList : [],
-      invoice_when: invoice_when,
+      invoice_when,
       currency_code: selectedCurrency.code,
     };
     mutation.mutate(addons);
@@ -413,10 +401,11 @@ function CreateAddOns() {
 
               {showInvoicing && (
                 <Form.Item name="invoice_when">
-                  <label className="mb-4 required">
+                  <label htmlFor="invoice_when" className="mb-4 required">
                     Invoice Base Cost When
                   </label>
                   <Select
+                    id="invoice_when"
                     onChange={(e) => setInvoiceWhen(e)}
                     placeholder="On Attach"
                     className="w-full"
@@ -432,8 +421,15 @@ function CreateAddOns() {
               )}
               {billing_frequency === "recurring" && (
                 <Form.Item name="recurring_flat_fee_timing">
-                  <label className="mb-4 nowrap required"> Billing Type</label>
+                  <label
+                    htmlFor="billing_type"
+                    className="mb-4 nowrap required"
+                  >
+                    {" "}
+                    Billing Type
+                  </label>
                   <Select
+                    id="billing_type"
                     onChange={(e) => setRecurringFlatFeeTiming(e)}
                     className="w-full"
                     placeholder="Pay in advance"

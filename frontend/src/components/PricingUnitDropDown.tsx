@@ -1,5 +1,4 @@
 import { Select } from "antd";
-// @ts-ignore
 import React from "react";
 import { UseQueryResult, useQuery } from "react-query";
 import { PricingUnits } from "../api/api";
@@ -20,9 +19,10 @@ const PricingUnitDropDown: React.FC<PricingUnitDropDownProps> = ({
   shouldShowAllOption,
   disabled = false,
 }) => {
-  const { data, isLoading }: UseQueryResult<CurrencyType[]> = useQuery<
-    CurrencyType[]
-  >(["pricing_unit_list"], () => PricingUnits.list().then((res) => res));
+  const { data }: UseQueryResult<CurrencyType[]> = useQuery<CurrencyType[]>(
+    ["pricing_unit_list"],
+    () => PricingUnits.list().then((res) => res)
+  );
 
   const getCurrencies = () => {
     const items = data || [];

@@ -1,5 +1,5 @@
 import { Button, Card, Col, Form, Input, Row } from "antd";
-// @ts-ignore
+
 import React from "react";
 import { useMutation } from "react-query";
 import { toast } from "react-toastify";
@@ -26,10 +26,7 @@ function CreatePricingUnit() {
   );
 
   const submit = () => {
-    form
-      .validateFields()
-      .then((values) => mutation.mutate(values))
-      .catch((info) => {});
+    form.validateFields().then((values) => mutation.mutate(values));
   };
 
   return (

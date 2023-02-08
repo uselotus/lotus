@@ -1,3 +1,4 @@
+/* eslint-disable no-shadow */
 import { PlanType, PlanVersionType } from "../../types/plan-type";
 
 export enum ActionTypes {
@@ -23,6 +24,7 @@ export type State = {
 
 export type Actions = {
   type: ActionTypes;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payload?: any;
 };
 

@@ -1,3 +1,4 @@
+/* eslint-disable no-shadow */
 import React, { FC, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Select, Button } from "antd";
@@ -15,18 +16,10 @@ const arrowURL = new URL("../components/arrow.svg", import.meta.url).href;
 
 const { Option } = Select;
 
-const fakeData = [
-  { date: "2019-03", original_plan_revenue: 350, new_plan_revenue: 200 },
-  { date: "2019-04", original_plan_revenue: 900, new_plan_revenue: 300 },
-  { date: "2019-05", original_plan_revenue: 300, new_plan_revenue: 400 },
-  { date: "2019-06", original_plan_revenue: 450, new_plan_revenue: 500 },
-  { date: "2019-07", original_plan_revenue: 470, new_plan_revenue: 600 },
-];
-
 const ExperimentResults: FC = () => {
   const params = useParams();
   const navigate = useNavigate();
-  const { experimentId } = params as any;
+  const { experimentId } = params;
   const [selectedSubstitution, setSelectedSubstitution] = React.useState<
     SpecificResults | undefined
   >();
@@ -36,9 +29,9 @@ const ExperimentResults: FC = () => {
     isLoading,
     isError,
   }: UseQueryResult<BacktestResultType> = useQuery<BacktestResultType>(
-    ["experiment_results", experimentId],
+    ["experiment_results", experimentId as string],
     () =>
-      Backtests.getBacktestResults(experimentId).then(
+      Backtests.getBacktestResults(experimentId as string).then(
         (res: BacktestResultType) => res
       )
   );
@@ -183,7 +176,7 @@ const ExperimentResults: FC = () => {
                           >
                             {`${(
                               selectedSubstitution.pct_revenue_change * 100
-                            ).toFixed(2)  }%`}
+                            ).toFixed(2)}%`}
                           </h3>
                         </Flex>
                         <Metric>

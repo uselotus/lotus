@@ -61,9 +61,13 @@ export interface ActionUserType extends UserType {
 export interface Action {
   id: number;
   actor: ActionUserType;
-  verb: any;
-  action_object: any;
-  target: any;
+  verb: unknown;
+  action_object: {
+    [key: string]: string;
+  };
+  target: {
+    [key: string]: string;
+  };
   public: boolean;
   description: string;
   timestamp: string;

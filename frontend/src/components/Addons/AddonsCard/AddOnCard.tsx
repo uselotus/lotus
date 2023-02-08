@@ -1,8 +1,8 @@
-import React, { FC, useRef } from "react";
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable camelcase */
+import React, { FC } from "react";
 import { Typography } from "antd";
-import { useMutation, useQueryClient } from "react-query";
 import { useNavigate } from "react-router-dom";
-import { Plan } from "../../../api/api";
 import CopyText from "../../base/CopytoClipboard";
 import createShortenedText from "../../../helpers/createShortenedText";
 import capitalize from "../../../helpers/capitalize";
@@ -15,10 +15,9 @@ interface AddOnCardProps {
 }
 
 const AddOnsCard: FC<AddOnCardProps> = ({ add_on }) => {
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const windowWidth = useMediaQuery();
-  const inputRef = useRef<HTMLInputElement | null>(null!);
+
   //   const mutation = useMutation(
   //     (plan_id: string) =>
   //       Plan.updatePlan(plan_id, {
@@ -52,7 +51,7 @@ const AddOnsCard: FC<AddOnCardProps> = ({ add_on }) => {
   //   );
 
   const goToAddOnDetail = () => {
-    navigate(`/add-ons/${  add_on.addon_id}`);
+    navigate(`/add-ons/${add_on.addon_id}`);
   };
 
   return (
@@ -96,9 +95,9 @@ const AddOnsCard: FC<AddOnCardProps> = ({ add_on }) => {
             <div className="flex gap-1 text-card-grey font-menlo">
               {" "}
               <div>
-                {createShortenedText(add_on.addon_id, windowWidth >= 2500)}
+                {createShortenedText(add_on.addon_id!, windowWidth >= 2500)}
               </div>
-              <CopyText showIcon onlyIcon textToCopy={add_on.addon_id} />
+              <CopyText showIcon onlyIcon textToCopy={add_on.addon_id!} />
             </div>
           </div>
         </div>

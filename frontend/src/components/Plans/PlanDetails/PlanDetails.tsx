@@ -1,5 +1,5 @@
-// @ts-ignore
-import React, { FC, Fragment } from "react";
+/* eslint-disable camelcase */
+import React, { FC } from "react";
 import "./PlanDetails.css";
 import { Button } from "antd";
 import { useNavigate, useParams } from "react-router-dom";
@@ -25,7 +25,59 @@ const PlanDetails: FC = () => {
 
   const { planId } = useParams<PlanDetailParams>();
   const queryClient = useQueryClient();
+  const {
+    data: plan,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery<PlanDetailType>(
+    ["plan_detail", planId],
+    () => Plan.getPlan(planId as string).then((res) => res),
+    { refetchOnMount: "always" }
+  );
 
+  async function optimisticMutateCreateHandler(newExternalLink) {
+    // Cancel any outgoing refetches
+    // (so they don't overwrite our optimistic update)
+    await queryClient.cancelQueries({ queryKey: ["plan_detail", planId] });
+
+    // Snapshot the previous value
+    const previousPlan = queryClient.getQueryData(["plan_detail", planId]);
+
+    // immutably remove value we don't need from the external link
+    const external_link: Partial<CreatePlanExternalLinkType> = {
+      ...newExternalLink,
+    };
+
+    delete external_link.plan_id;
+
+    // Optimistically update to the new value
+    queryClient.setQueryData(["plan_detail", planId], (old) => {
+      const typed_old = old as PlanDetailType;
+      typed_old.external_links.push(external_link as InitialExternalLinks);
+      return typed_old;
+    });
+    return { previousPlan };
+  }
+  async function optimisticMutateDeleteHandler(newExternalLink) {
+    // Cancel any outgoing refetches
+    // (so they don't overwrite our optimistic update)
+    await queryClient.cancelQueries({ queryKey: ["plan_detail", planId] });
+
+    // Snapshot the previous value
+    const previousPlan = queryClient.getQueryData(["plan_detail", planId]);
+
+    // Optimistically update to the new value
+    queryClient.setQueryData(["plan_detail", planId], (old) => {
+      const typed_old = old as PlanDetailType;
+      const updated_data = typed_old.external_links.filter(
+        (link) => link.external_plan_id !== newExternalLink.external_plan_id
+      );
+      typed_old.external_links = updated_data;
+      return typed_old;
+    });
+    return { previousPlan };
+  }
   const createExternalLinkMutation = useMutation(
     (post: CreatePlanExternalLinkType) => Plan.createExternalLinks(post),
     {
@@ -75,56 +127,16 @@ const PlanDetails: FC = () => {
       },
     }
   );
-  async function optimisticMutateCreateHandler(newExternalLink) {
-    // Cancel any outgoing refetches
-    // (so they don't overwrite our optimistic update)
-    await queryClient.cancelQueries({ queryKey: ["plan_detail", planId] });
 
-    // Snapshot the previous value
-    const previousPlan = queryClient.getQueryData(["plan_detail", planId]);
-
-    // immutably remove value we don't need from the external link
-    const external_link: Partial<CreatePlanExternalLinkType> = {
-      ...newExternalLink,
-    };
-
-    delete external_link.plan_id;
-
-    // Optimistically update to the new value
-    queryClient.setQueryData(["plan_detail", planId], (old) => {
-      const typed_old = old as PlanDetailType;
-      typed_old.external_links.push(external_link as InitialExternalLinks);
-      return typed_old;
-    });
-    return { previousPlan };
-  }
-  async function optimisticMutateDeleteHandler(newExternalLink) {
-    // Cancel any outgoing refetches
-    // (so they don't overwrite our optimistic update)
-    await queryClient.cancelQueries({ queryKey: ["plan_detail", planId] });
-
-    // Snapshot the previous value
-    const previousPlan = queryClient.getQueryData(["plan_detail", planId]);
-
-    // Optimistically update to the new value
-    queryClient.setQueryData(["plan_detail", planId], (old) => {
-      const typed_old = old as PlanDetailType;
-      const updated_data = typed_old.external_links.filter(
-        (link) => link.external_plan_id !== newExternalLink.external_plan_id
-      );
-      typed_old.external_links = updated_data;
-      return typed_old;
-    });
-    return { previousPlan };
-  }
   const createPlanExternalLink = (link: string) => {
-    if (plan!.external_links.find((links) => links.external_plan_id === link)) {
-      toast.error(`Duplicate  external link for ${plan!.plan_name}`, {
+    if (plan?.external_links.find((links) => links.external_plan_id === link)) {
+      toast.error(`Duplicate  external link for ${plan?.plan_name}`, {
         position: toast.POSITION.TOP_CENTER,
       });
       return;
     }
     const data: CreatePlanExternalLinkType = {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       plan_id: plan!.plan_id,
       source: "stripe",
       external_plan_id: link,
@@ -140,20 +152,8 @@ const PlanDetails: FC = () => {
     deleteExternalLinkMutation.mutate(data);
   };
 
-  const {
-    data: plan,
-    isLoading,
-    isError,
-    refetch,
-  } = useQuery<PlanDetailType>(
-    ["plan_detail", planId],
-    () =>
-      Plan.getPlan(planId as string).then((res) => res),
-    { refetchOnMount: "always" }
-  );
-
   const navigateCreateCustomPlan = () => {
-    navigate(`/create-custom/${  planId}`);
+    navigate(`/create-custom/${planId}`);
   };
 
   return (
@@ -234,7 +234,7 @@ const PlanDetails: FC = () => {
                 </Button>,
               ]
             }
-           />
+          />
           <div className="mx-10">
             {plan.versions.length > 0 && (
               <SwitchVersions

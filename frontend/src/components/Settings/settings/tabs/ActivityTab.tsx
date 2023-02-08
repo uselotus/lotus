@@ -1,4 +1,4 @@
-import React, { Fragment, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "react-query";
 import dayjs from "dayjs";
 import { Typography } from "antd";
@@ -16,7 +16,6 @@ export default function ActivityStream() {
   const {
     data: activityItems, // organization is the data returned from the query
     isLoading,
-    isError,
   } = useQuery(
     ["stream", cursor],
     () =>
@@ -65,7 +64,7 @@ export default function ActivityStream() {
   const handleMovements = (direction: "LEFT" | "RIGHT" | "START") => {
     switch (direction) {
       case "LEFT":
-        if (currentPage == 1) return;
+        if (currentPage === 1) return;
         setCursor(previous);
         setCurrentPage(currentPage - 1);
         queryClient.invalidateQueries(["preview_events", cursor]);
@@ -76,10 +75,12 @@ export default function ActivityStream() {
         queryClient.invalidateQueries(["preview_events", cursor]);
         return;
       case "START":
-        setCursor(null);
+        setCursor("");
         setCurrentPage(1);
         queryClient.invalidateQueries(["preview_events", null]);
-
+        break;
+      default:
+        break;
     }
   };
 
@@ -88,8 +89,8 @@ export default function ActivityStream() {
       <Typography.Title level={2}>Activity Stream</Typography.Title>
       <div className="w-1/2 justify-center">
         <Paper border>
-          <ul role="list" className="divide-y divide-gray-200">
-            {activityItems?.map((activityItem) => (
+          <ul className="divide-y divide-gray-200">
+            {activityItems?.results.map((activityItem) => (
               <li key={activityItem.id} className="py-4">
                 <div className="flex space-x-3">
                   <div className="flex-1 space-y-3">
@@ -104,17 +105,15 @@ export default function ActivityStream() {
                       </h3>
                     </div>
                     <h3 className="m">
-                      {activityItem.verb}{" "}
-                      <b>{activityItem.action_object?.string_repr}</b> (
-                      {activityItem.action_object?.object_type})
-                      {activityItem?.target ? (
+                      <p>{activityItem.verb as string}</p>
+                      <b>{activityItem.action_object?.string_repr}</b>
+                      {activityItem.action_object?.object_type}
+                      {activityItem?.target && (
                         <h3 className="mt-1">
-                          on <b>{activityItem.target?.string_repr}</b> (
-                          {activityItem?.target?.object_type})
+                          on <b>{activityItem.target?.string_repr}</b>
+                          <p>{activityItem?.target?.object_type}</p>
                         </h3>
-                      ) : (
-                        ""
-                      )}{" "}
+                      )}
                     </h3>
                   </div>
                 </div>

@@ -1,10 +1,10 @@
+/* eslint-disable camelcase */
 import { Button, Dropdown, Menu, Table, Tag, Tooltip } from "antd";
 import React, { FC, useEffect } from "react";
 import dayjs from "dayjs";
-import { useMutation, useQuery } from "react-query";
+import { useMutation } from "react-query";
 import { toast } from "react-toastify";
 import { MoreOutlined } from "@ant-design/icons";
-import axios from "axios";
 import { integrationsMap } from "../../types/payment-processor-type";
 
 import { Invoices } from "../../api/api";
@@ -25,7 +25,6 @@ const getPdfUrl = async (invoice: InvoiceType) => {
     downloadFile(pdfUrl);
   } catch (err) {
     toast.error("Error downloading file");
-    console.log(err);
   }
 };
 
@@ -36,7 +35,7 @@ interface Props {
 }
 
 const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
-  const [selectedRecord, setSelectedRecord] = React.useState();
+  const [selectedRecord, setSelectedRecord] = React.useState<InvoiceType>();
   const changeStatus = useMutation(
     (post: MarkPaymentStatusAsPaid) => Invoices.changeStatus(post),
     {
@@ -45,7 +44,9 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
         toast.success(`Successfully Changed Invoice Status to ${status}`, {
           position: toast.POSITION.TOP_CENTER,
         });
-        selectedRecord.payment_status = data.payment_status;
+        if (selectedRecord) {
+          selectedRecord.payment_status = data.payment_status;
+        }
       },
       onError: () => {
         toast.error("Failed to Changed Invoice Status", {
@@ -63,6 +64,7 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
           selectedRecord.payment_status === "unpaid" ? "paid" : "unpaid",
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRecord]);
 
   const columns = [
@@ -121,7 +123,11 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
           >
             {record.payment_status.toUpperCase()}
           </Tag>
-          <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
+          <div
+            aria-hidden
+            className="ml-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <Dropdown
               overlay={
                 <Menu>
@@ -178,9 +184,8 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
           columns={columns}
           dataSource={invoices}
           pagination={{
-            showTotal: (total, range) => (
-              <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
-            ),
+            showTotal: (total, range) =>
+              `${range[0]}-${range[1]} of ${total} total items`,
             pageSize: 8,
           }}
           showSorterTooltip={false}

@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable camelcase */
 import React, { useState, useRef, FC } from "react";
 import { QueryClient, useMutation } from "react-query";
 import { toast } from "react-toastify";
@@ -13,18 +16,17 @@ interface AddOnsComponentsProps {
   components?: Component[];
   plan: AddonType;
   refetch: VoidFunction;
-  alerts?: AlertType[];
   plan_version_id?: string;
 }
-const findAlertForComponent = (
-  component: Component,
-  alerts: AlertType[] | undefined
-): AlertType | undefined => {
-  if (alerts === undefined) {
-    return undefined;
-  }
-  return alerts.find((alert) => alert.metric.metric_id === component.billable_metric.metric_id);
-};
+// const findAlertForComponent = (
+//   component: Component,
+//   alerts: AlertType[] | undefined
+// ): AlertType | undefined => {
+//   if (alerts === undefined) {
+//     return undefined;
+//   }
+//   return alerts.find((alert) => alert.metric.metric_id === component.billable_metric.metric_id);
+// };
 
 const renderCost = (record: Tier, pricing_unit: CurrencyType) => {
   switch (record.type) {
@@ -46,13 +48,14 @@ const renderCost = (record: Tier, pricing_unit: CurrencyType) => {
 
     case "free":
       return <span>Free</span>;
+    default:
+      return <span />;
   }
 };
 const AddOnComponents: FC<AddOnsComponentsProps> = ({
   components,
   plan,
   refetch,
-  alerts,
   plan_version_id,
 }) => {
   const selectRef = useRef<HTMLSelectElement | null>(null!);
@@ -112,22 +115,26 @@ const AddOnComponents: FC<AddOnsComponentsProps> = ({
       return;
     }
     if (isCreateAlert) {
-      createAlertMutation.mutate({
-        plan_version_id,
-        metric_id: component.billable_metric.metric_id,
-        threshold: alertThreshold,
-      });
+      if (plan_version_id) {
+        createAlertMutation.mutate({
+          plan_version_id,
+          metric_id: component.billable_metric.metric_id,
+          threshold: alertThreshold,
+        });
+      }
     } else {
       if (usage_alert_id !== undefined) {
         deleteAlertMutation.mutate({
           usage_alert_id,
         });
       }
-      createAlertMutation.mutate({
-        plan_version_id,
-        metric_id: component.billable_metric.metric_id,
-        threshold: alertThreshold,
-      });
+      if (plan_version_id) {
+        createAlertMutation.mutate({
+          plan_version_id,
+          metric_id: component.billable_metric.metric_id,
+          threshold: alertThreshold,
+        });
+      }
     }
     queryClient.invalidateQueries(["addon_detail", plan.addon_id]);
   };
@@ -168,7 +175,7 @@ const AddOnComponents: FC<AddOnsComponentsProps> = ({
                         align: "left",
                         width: "50%",
                         className: "bg-primary-50 pointer-events-none",
-                        render: (value: any, record: any) => (
+                        render: (value, record) => (
                           <span>
                             From {value} to{" "}
                             {record.range_end == null ? "∞" : record.range_end}
@@ -182,7 +189,7 @@ const AddOnComponents: FC<AddOnsComponentsProps> = ({
                         key: "cost_per_batch",
                         className:
                           "bg-primary-50 pointer-events-none !text-card-grey arr",
-                        render: (value: any, record: any) => (
+                        render: (value, record) => (
                           <div>
                             {renderCost(record, component.pricing_unit)}
                           </div>
@@ -260,7 +267,7 @@ const AddOnComponents: FC<AddOnsComponentsProps> = ({
                         key="submit"
                         type="primary"
                         disabled={isInvalid}
-                        onClick={() => submitAlertModal(currentComponent)}
+                        onClick={() => submitAlertModal(currentComponent!)}
                       >
                         Create
                       </Button>,
@@ -269,7 +276,7 @@ const AddOnComponents: FC<AddOnsComponentsProps> = ({
                       <Button
                         key="delete"
                         className=" bg-red-600"
-                        onClick={() => deleteAlert(currentAlertId)}
+                        onClick={() => deleteAlert(currentAlertId!)}
                       >
                         Delete
                       </Button>,
@@ -278,7 +285,7 @@ const AddOnComponents: FC<AddOnsComponentsProps> = ({
                         type="primary"
                         disabled={isInvalid}
                         onClick={() =>
-                          submitAlertModal(currentComponent, currentAlertId)
+                          submitAlertModal(currentComponent!, currentAlertId)
                         }
                       >
                         Update

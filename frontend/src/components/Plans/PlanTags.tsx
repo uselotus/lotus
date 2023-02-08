@@ -9,7 +9,7 @@ interface PlanTagsProps {
 
 function PlansTags({ tags, showAddTagButton }: PlanTagsProps) {
   return (
-    <>
+    <span>
       {!tags.length ? (
         <Badge className="bg-[#E0E7FF] text-[#3730A3] text-[12px] px-[6px] py-2">
           <Badge.Content>+ Add Tag</Badge.Content>
@@ -37,7 +37,7 @@ function PlansTags({ tags, showAddTagButton }: PlanTagsProps) {
               </span>
             ) : (
               tags.map((tag) => (
-                <span className="flex gap-2">
+                <span key={tag.tag_name} className="flex gap-2">
                   <span className="flex gap-2" key={tag.tag_name}>
                     <Badge className="text-[12px] px-[5px] py-2 bg-white text-black whitespace-nowrap">
                       <div className="flex gap-2 items-center">
@@ -57,7 +57,7 @@ function PlansTags({ tags, showAddTagButton }: PlanTagsProps) {
           </span>
         </span>
       )}
-    </>
+    </span>
   );
 }
 export default PlansTags;

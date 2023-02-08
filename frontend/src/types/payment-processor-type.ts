@@ -9,14 +9,12 @@ export interface PaymentProcessorConnectionResponseType {
   success: boolean;
   details: string;
 }
-
+export interface StripeConnectionRequestType {
+  authorization_code: string;
+}
 export interface PaymentProcessorConnectionRequestType {
   payment_processor: string;
   data: StripeConnectionRequestType | object;
-}
-
-export interface StripeConnectionRequestType {
-  authorization_code: string;
 }
 
 export const integrationsMap = {

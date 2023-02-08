@@ -1,4 +1,8 @@
-import React, { FC, useEffect } from "react";
+/* eslint-disable react/jsx-props-no-spreading */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-console */
+/* eslint-disable no-plusplus */
+import React, { FC, useEffect, useMemo } from "react";
 import {
   ColGrid,
   Text,
@@ -9,9 +13,11 @@ import {
   ListItem,
 } from "@tremor/react";
 import { Pie } from "@ant-design/plots";
-import { SpecificResults } from "../../types/experiment-type";
-
-const arrowURL = new URL("../arrow.svg", import.meta.url).href;
+import {
+  RevenuByMetricResults,
+  RevenueChartResults,
+  SpecificResults,
+} from "../../types/experiment-type";
 
 interface Props {
   substitution: SpecificResults;
@@ -21,12 +27,19 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
   const dataFormatter = (number: number) => `$${number.toFixed(2)}`;
   const dataFormatterNumber = (number: number) =>
     Math.round((number + Number.EPSILON) * 100) / 100;
-  const [revenueLineGraph, setRevenueLineGraph] = React.useState<any>([]);
-  const [revenuePerMetric, setRevenuePerMetric] = React.useState<any>([]);
-  const categories = [
-    substitution.original_plan.plan_name,
-    `[new]${  substitution.new_plan.plan_name}`,
-  ];
+  const [revenueLineGraph, setRevenueLineGraph] = React.useState<
+    RevenueChartResults[]
+  >([]);
+  const [revenuePerMetric, setRevenuePerMetric] = React.useState<
+    RevenuByMetricResults[]
+  >([]);
+  const categories = useMemo(
+    () => [
+      substitution.original_plan.plan_name,
+      `[new]${substitution.new_plan.plan_name}`,
+    ],
+    [substitution]
+  );
 
   const pieConfigNew = {
     appendPadding: 20,
@@ -55,7 +68,7 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
       },
     ],
     statistic: {
-      title: false,
+      title: false as const,
 
       content: {
         content: "",
@@ -96,7 +109,7 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
       },
     ],
     statistic: {
-      title: false,
+      title: false as const,
 
       content: {
         content: "",
@@ -115,8 +128,7 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
       for (let i = 0; i < newRevLineGraph.length; i++) {
         newRevLineGraph[i][categories[0]] =
           newRevLineGraph[i].original_plan_revenue;
-        newRevLineGraph[i][categories[1]] =
-          newRevLineGraph[i].new_plan_revenue;
+        newRevLineGraph[i][categories[1]] = newRevLineGraph[i].new_plan_revenue;
       }
       setRevenueLineGraph(newRevLineGraph);
 
@@ -133,7 +145,7 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
 
       setRevenuePerMetric(substitution.results.revenue_by_metric);
     }
-  }, [substitution.results.cumulative_revenue]);
+  }, [substitution.results, categories]);
 
   return (
     <div>

@@ -1,3 +1,5 @@
+/* eslint-disable camelcase */
+/* eslint-disable no-shadow */
 import {
   Button,
   Divider,
@@ -8,7 +10,8 @@ import {
   Menu,
   Dropdown,
   Checkbox,
- DatePicker } from "antd";
+  DatePicker,
+} from "antd";
 import dayjs from "dayjs";
 import React, { useState } from "react";
 import { useQuery, useMutation, QueryClient } from "react-query";
@@ -25,6 +28,7 @@ import {
   APIKeyCreate,
   APIKeyCreateResponse,
 } from "../../../../types/apikey-type";
+import { r } from "../../../../types/error-response-types";
 
 function isValidHttpUrl(string) {
   let url;
@@ -35,7 +39,7 @@ function isValidHttpUrl(string) {
   }
   return url.protocol === "https:";
 }
-export function DeveloperTab() {
+export default function DeveloperTab() {
   const [visible, setVisible] = useState<boolean>(false);
   const [visibleWebhook, setVisibleWebhook] = useState<boolean>(false);
   const [visibleAPIKey, setVisibleAPIKey] = useState<boolean>(false);
@@ -64,38 +68,6 @@ export function DeveloperTab() {
     setVisibleAPIKey(false);
   };
 
-  const webhookMenu = (
-    <Menu>
-      <Menu.Item
-        key="2"
-        onClick={() => handleDeleteUrl(webhookSelected?.webhook_endpoint_id)}
-      >
-        <div className="planMenuArchiveIcon">
-          <div className="archiveLabel">Delete</div>
-        </div>
-      </Menu.Item>
-    </Menu>
-  );
-  const apiKeyMenu = (
-    <Menu>
-      <div>
-        <Menu.Item
-          key="2"
-          onClick={() => handleDeleteKey(apiKeySelected?.prefix)}
-        >
-          <div className="planMenuArchiveIcon">
-            <div className="archiveLabel">Delete Key</div>
-          </div>
-        </Menu.Item>
-      </div>
-      <Menu.Item key="2" onClick={() => handleRollKey(apiKeySelected?.prefix)}>
-        <div className="planMenuArchiveIcon">
-          <div className="archiveLabel">Roll Key</div>
-        </div>
-      </Menu.Item>
-    </Menu>
-  );
-
   const {
     isLoading: isLoadingWebhook,
     data: webhookData,
@@ -123,7 +95,7 @@ export function DeveloperTab() {
         setVisibleWebhook(false);
         setWebhookSelected(undefined);
       },
-      onError: (error) => {
+      onError: (error: r) => {
         toast.error(error.response.title);
       },
     }
@@ -142,7 +114,7 @@ export function DeveloperTab() {
         setApiKey(record.key);
         setVisible(true);
       },
-      onError: (error) => {
+      onError: (error: r) => {
         toast.error(error.response.title);
       },
     }
@@ -199,31 +171,31 @@ export function DeveloperTab() {
     createAPIKeyMutation.mutate(endpointPost);
   };
 
-  const handleDeleteUrl = (id: string | undefined) => {
+  function handleDeleteUrl(id: string | undefined) {
     if (id) {
       Webhook.deleteEndpoint(id)
-        .then((data) => {
+        .then(() => {
           toast.success("Webhook URL deleted successfully");
           queryClient.invalidateQueries("webhook_urls");
           setWebhookSelected(undefined);
           refetchWebhook();
         })
-        .catch((err) => {
+        .catch(() => {
           toast.error("Error deleting webhook URL");
         });
     }
-  };
+  }
 
   const handleDeleteKey = (id: string | undefined) => {
     if (id) {
       APIKey.deleteKey(id)
-        .then((data) => {
+        .then(() => {
           toast.success("API Key deleted successfully");
           queryClient.invalidateQueries("api_keys");
           setApiKeySelected(undefined);
           refetchAPIKey();
         })
-        .catch((err) => {
+        .catch(() => {
           toast.error("Error deleting API Key");
         });
     }
@@ -241,12 +213,42 @@ export function DeveloperTab() {
           setApiKey(data.key);
           setVisible(true);
         })
-        .catch((err) => {
+        .catch(() => {
           toast.error("Error rolling API Key");
         });
     }
   };
-
+  const webhookMenu = (
+    <Menu>
+      <Menu.Item
+        key="2"
+        onClick={() => handleDeleteUrl(webhookSelected?.webhook_endpoint_id)}
+      >
+        <div className="planMenuArchiveIcon">
+          <div className="archiveLabel">Delete</div>
+        </div>
+      </Menu.Item>
+    </Menu>
+  );
+  const apiKeyMenu = (
+    <Menu>
+      <div>
+        <Menu.Item
+          key="2"
+          onClick={() => handleDeleteKey(apiKeySelected?.prefix)}
+        >
+          <div className="planMenuArchiveIcon">
+            <div className="archiveLabel">Delete Key</div>
+          </div>
+        </Menu.Item>
+      </div>
+      <Menu.Item key="2" onClick={() => handleRollKey(apiKeySelected?.prefix)}>
+        <div className="planMenuArchiveIcon">
+          <div className="archiveLabel">Roll Key</div>
+        </div>
+      </Menu.Item>
+    </Menu>
+  );
   if (isLoadingWebhook) return <div>Loading...</div>;
   return (
     <div>
@@ -277,7 +279,9 @@ export function DeveloperTab() {
               title: "Key",
               dataIndex: "prefix",
               key: "prefix",
-              render: (prefix: string) => <div className="font-menlo">{prefix}•••</div>,
+              render: (prefix: string) => (
+                <div className="font-menlo">{prefix}•••</div>
+              ),
             },
             {
               title: "Expiry Date",
@@ -288,12 +292,14 @@ export function DeveloperTab() {
               title: "Created At",
               dataIndex: "created",
               key: "created",
-              render: (created: string) => <div>{dayjs(created).format("DD MMM YYYY, hh:mm")}</div>,
+              render: (created: string) => (
+                <div>{dayjs(created).format("DD MMM YYYY, hh:mm")}</div>
+              ),
             },
             {
               key: "action",
               width: 100,
-              render: (text: any, record: any) => (
+              render: (text, record) => (
                 <Dropdown overlay={apiKeyMenu} trigger={["click"]}>
                   <Button
                     type="text"
@@ -328,7 +334,8 @@ export function DeveloperTab() {
 
       <div className="border-2 border-solid rounded border-[#EAEAEB]">
         <Table
-          dataSource={webhookData}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          dataSource={webhookData as any}
           pagination={false}
           columns={[
             {
@@ -340,7 +347,7 @@ export function DeveloperTab() {
               title: "Webhook URL",
               dataIndex: "webhook_url",
               key: "webhook_url",
-              render: (webhook_url: string, record) => (
+              render: (webhook_url: string) => (
                 <CopyText textToCopy={webhook_url} />
               ),
             },
@@ -348,7 +355,7 @@ export function DeveloperTab() {
               title: "Webhook Secret",
               dataIndex: "webhook_secret",
               key: "webhook_secret",
-              render: (webhook_secret: string, record) => (
+              render: (webhook_secret: string) => (
                 <CopyText textToCopy={webhook_secret} />
               ),
             },
@@ -356,20 +363,20 @@ export function DeveloperTab() {
               title: "Triggers",
               dataIndex: "triggers",
               key: "triggers",
-              render: (triggers: object[]) => (
-                  <div>
-                    {triggers.map((trigger) => (
-                        <div>
-                          [ {trigger.trigger_name} ]
-                        </div>
-                      ))}
-                  </div>
-                ),
+              render: (triggers: { trigger_name: string }[]) => (
+                <div>
+                  {triggers.map((trigger) => (
+                    <div key={trigger.trigger_name}>
+                      [ {trigger.trigger_name} ]
+                    </div>
+                  ))}
+                </div>
+              ),
             },
             {
               key: "action",
               width: 100,
-              render: (text: any, record: any) => (
+              render: (text, record) => (
                 <Dropdown overlay={webhookMenu} trigger={["click"]}>
                   <Button
                     type="text"
@@ -408,13 +415,13 @@ export function DeveloperTab() {
           <Input
             value={webhookName}
             onChange={(e) => setWebhookName(e.target.value)}
-           />
+          />
           <p className="text-lg font-main">Endpoint URL:</p>
           <Input
             addonBefore="https://"
             value={webhookUrl}
             onChange={(e) => setWebhookUrl(e.target.value)}
-           />
+          />
           <p className="text-lg font-main">Events Subscribed To:</p>
           <div className="grid grid-cols-2">
             <Checkbox
@@ -461,7 +468,7 @@ export function DeveloperTab() {
             value={apiKeyName}
             className="mt-0"
             onChange={(e) => setAPIKeyName(e.target.value)}
-           />
+          />
         </div>
         <div className="flex flex-col mt-10 space-y-8">
           <span className="text-lg font-main">Expiry Date + Time:</span>

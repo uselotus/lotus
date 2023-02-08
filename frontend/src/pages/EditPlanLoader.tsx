@@ -1,6 +1,6 @@
 // create react FC component called EditPlanLoader
 import React, { Fragment, useEffect } from "react";
-import { useParams , useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "react-query";
 import { Button } from "antd";
 import { Plan } from "../api/api";
@@ -29,12 +29,9 @@ function EditPlanLoader({ type }: EditPlanLoaderProps) {
     isError,
   } = useQuery<PlanDetailType>(
     ["plan_detail", planId],
-    () =>
-      Plan.getPlan(planId).then((res) => res),
+    () => Plan.getPlan(planId as string).then((res) => res),
 
-    {
-      onSuccess: (data) => {},
-    }
+    {}
   );
 
   useEffect(() => {
@@ -49,7 +46,7 @@ function EditPlanLoader({ type }: EditPlanLoaderProps) {
         setVersionIndex(plan.versions.findIndex((x) => x.status === "active"));
       }
     }
-  }, [plan]);
+  }, [plan, replacementPlanVersion?.version_id, type]);
 
   return (
     <>

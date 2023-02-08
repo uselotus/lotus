@@ -1,4 +1,5 @@
-// @ts-ignore
+/* eslint-disable no-shadow */
+/* eslint-disable camelcase */
 import React, { FC, Fragment, useEffect, useState } from "react";
 import "./StateTabs.css";
 import { Tooltip, Modal, Select } from "antd";
@@ -57,6 +58,8 @@ const StateTabs: FC<StateTabsProps> = ({
           return "This version is active and is the default version for new subscriptions";
         case "Grandfathered":
           return "This version has past subscriptions still on it.";
+        default:
+          return "";
       }
     } else {
       switch (tab) {
@@ -66,6 +69,8 @@ const StateTabs: FC<StateTabsProps> = ({
           return "If you make this version active, your other active version will become inactive.";
         case "Grandfathered":
           return "Grandfathered";
+        default:
+          return "";
       }
     }
   };
@@ -73,8 +78,9 @@ const StateTabs: FC<StateTabsProps> = ({
   return (
     <div className="flex items-center w-full justify-between tabsContainer">
       {tabs.map((tab) => (
-        <Tooltip title={getToolTipText(tab)}>
+        <Tooltip key={tab} title={getToolTipText(tab)}>
           <div
+            aria-hidden
             onClick={() => {
               if (
                 tab === "Active" &&
@@ -102,7 +108,7 @@ const StateTabs: FC<StateTabsProps> = ({
         onCancel={() => {
           setVisible(false);
         }}
-        title={`Are you sure you want to make v${  version  } active?`}
+        title={`Are you sure you want to make v${version} active?`}
       >
         <div className="space-y-4 ">
           <div className="grid grid-row-3 items-center my-5">

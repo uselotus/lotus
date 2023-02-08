@@ -1,3 +1,5 @@
+/* eslint-disable react/jsx-props-no-spreading */
+/* eslint-disable no-plusplus */
 import { Column } from "@ant-design/plots";
 import React, { useState, useEffect } from "react";
 import { RevenuePeriod } from "../../types/revenue-type";
@@ -7,33 +9,37 @@ import LoadingSpinner from "../LoadingSpinner";
 interface RevenueChartData {
   day: string;
   revenue: number;
-  type: string | any;
+  type: string;
 }
 
 // Generate more defaultData for the month of august
 
-function RevenueBarGraph(props: {
+function RevenueBarGraph({
+  data: propsData,
+  isLoading,
+}: {
   data?: RevenuePeriod[];
   isLoading: boolean;
 }) {
   const [data, setData] = useState<RevenueChartData[]>([]);
 
   useEffect(() => {
-    if (props.data) {
+    if (propsData) {
       const compressedArray: RevenueChartData[] = [];
-      for (let i = 0; i < props.data.length; i++) {
-        const {metric} = props.data[i];
-        for (const k in props.data[i].data) {
+      for (let i = 0; i < propsData.length; i++) {
+        const { metric } = propsData[i];
+        // eslint-disable-next-line no-restricted-syntax, guard-for-in
+        for (const k in propsData[i].data) {
           compressedArray.push({
-            day: props.data[i].data[k].date,
-            revenue: props.data[i].data[k].metric_revenue,
+            day: propsData[i].data[k].date,
+            revenue: propsData[i].data[k].metric_revenue,
             type: metric,
           });
         }
       }
       setData(compressedArray);
     }
-  }, [props.data]);
+  }, [propsData]);
 
   const config = {
     data,
@@ -59,7 +65,7 @@ function RevenueBarGraph(props: {
       ],
     },
   };
-  if (props.isLoading || props.data === undefined) {
+  if (isLoading || propsData === undefined) {
     return (
       <Paper>
         <h3>No Revenue Data</h3>
