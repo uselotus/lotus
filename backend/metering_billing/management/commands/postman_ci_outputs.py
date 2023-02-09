@@ -1,5 +1,4 @@
 from django.core.management.base import BaseCommand
-
 from metering_billing.models import (
     Customer,
     CustomerBalanceAdjustment,
@@ -51,4 +50,4 @@ class Command(BaseCommand):
             customer=cust,
             amount=100,
         )
-        print(f"CREDIT_ID={credit.credit_id.hex}")
+        print(f"CREDIT_ID={credit.adjustment_id.hex}")
