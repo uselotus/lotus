@@ -1,7 +1,4 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
-
-name: Collections Tests
+name: Python SDK Test
 
 on:
   push:
@@ -10,7 +7,7 @@ on:
     branches: ["main"]
 
 jobs:
-  postman-tests:
+  python-sdk-tests:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -51,6 +48,7 @@ jobs:
       DEBUG: False
       KAFKA_URL: "localhost:9092"
       PYTHONDONTWRITEBYTECODE: 1
+      LOTUS_HOST: "http://localhost:8000"
 
     steps:
       - uses: actions/checkout@v3
@@ -84,43 +82,25 @@ jobs:
         run: |
           pipenv run python manage.py migrate --noinput
 
-      - name: Install jq
-        run: sudo apt-get install -y jq
-
       - name: Capture Outputs
         run: |
-          OUTPUTS=$(pipenv run python manage.py postman_ci_outputs)
-          KEY=$(echo "$OUTPUTS" | grep "KEY=" | cut -d= -f2)
-          PLAN_ID=$(echo "$OUTPUTS" | grep "PLAN_ID=" | cut -d= -f2)
-          INVOICE_ID=$(echo "$OUTPUTS" | grep "INVOICE_ID=" | cut -d= -f2)
-          ADDON_ID=$(echo "$OUTPUTS" | grep "ADDON_ID=" | cut -d= -f2)
-          METRIC_ID=$(echo "$OUTPUTS" | grep "METRIC_ID=" | cut -d= -f2)
-          FEATURE_NAME=$(echo "$OUTPUTS" | grep "FEATURE_NAME=" | cut -d= -f2)
-          EVENT_NAME=$(echo "$OUTPUTS" | grep "EVENT_NAME=" | cut -d= -f2)
-          CUSTOMER_ID=$(echo "$OUTPUTS" | grep "CUSTOMER_ID=" | cut -d= -f2)
-          ENV_JSON=$(jq -n \
-            --arg key "$KEY" \
-            --arg plan_id "$PLAN_ID" \
-            --arg invoice_id "$INVOICE_ID" \
-            --arg addon_id "$ADDON_ID" \
-            --arg metric_id "$METRIC_ID" \
-            --arg feature_name "$FEATURE_NAME" \
-            --arg event_name "$EVENT_NAME" \
-            --arg customer_id "$CUSTOMER_ID" \
-            '{KEY: $key, PLAN_ID: $plan_id, INVOICE_ID: $invoice_id, ADDON_ID: $addon_id, METRIC_ID: $metric_id, FEATURE_NAME: $feature_name, EVENT_NAME: $event_name, CUSTOMER_ID: $customer_id, URL: "http://localhost:8000"}')
-          echo "$ENV_JSON" > environment.json
+        OUTPUTS=$(pipenv run python manage.py postman_ci_outputs)
+        API_KEY=$(echo "$OUTPUTS" | grep "KEY=" | cut -d= -f2)
+        PLAN_ID=$(echo "$OUTPUTS" | grep "PLAN_ID=" | cut -d= -f2)
+        ADDON_ID=$(echo "$OUTPUTS" | grep "ADDON_ID=" | cut -d= -f2)
+        echo "LOTUS_API_KEY=$API_KEY" >> $GITHUB_ENV
+        echo "LOTUS_PLAN_ID=$PLAN_ID" >> $GITHUB_ENV
+        echo "LOTUS_ADDON_ID=$ADDON_ID" >> $GITHUB_ENV
+        
 
       - name: Run server
         run: |
           pipenv run python manage.py runserver &
 
-      - name: Run Postman
-        uses: anthonyvscode/newman-action@v1
-        with:
-          apiKey: ${{ secrets.postmanApiKey }}
-          collection: 18225965-f895719c-ab58-4f3d-ba21-5c918691697e
-          environment: environment.json
-          reporters: cli
+      - name: Checkout lotus-python
+        run: |
+          pip install lotus-python
 
-      - name: Output summary to console
-        run: echo ${{ steps.run-newman.outputs.summary }}
+      - name: Run tests
+        run: |
+          pipenv run pytest lotus-python
