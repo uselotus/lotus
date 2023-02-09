@@ -367,7 +367,7 @@ class InvoicePDF:
             else:
                 plan_id, sub_filters, plan_name = None, None, None
 
-            key = (sub_filters, plan_id, plan_name)
+            key = tuple(sub_filters, plan_id, plan_name)
 
             if key not in grouped_line_items:
                 grouped_line_items[key] = []
