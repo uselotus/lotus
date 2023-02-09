@@ -91,7 +91,6 @@ jobs:
           KEY=$(echo "$OUTPUTS" | grep "KEY=" | cut -d= -f2)
           PLAN_ID=$(echo "$OUTPUTS" | grep "PLAN_ID=" | cut -d= -f2)
           INVOICE_ID=$(echo "$OUTPUTS" | grep "INVOICE_ID=" | cut -d= -f2)
-          CREDIT_ID=$(echo "$OUTPUTS" | grep "CREDIT_ID=" | cut -d= -f2)
           ADDON_ID=$(echo "$OUTPUTS" | grep "ADDON_ID=" | cut -d= -f2)
           METRIC_ID=$(echo "$OUTPUTS" | grep "METRIC_ID=" | cut -d= -f2)
           FEATURE_NAME=$(echo "$OUTPUTS" | grep "FEATURE_NAME=" | cut -d= -f2)
@@ -101,13 +100,12 @@ jobs:
             --arg key "$KEY" \
             --arg plan_id "$PLAN_ID" \
             --arg invoice_id "$INVOICE_ID" \
-            --arg credit_id "$CREDIT_ID" \
             --arg addon_id "$ADDON_ID" \
             --arg metric_id "$METRIC_ID" \
             --arg feature_name "$FEATURE_NAME" \
             --arg event_name "$EVENT_NAME" \
             --arg customer_id "$CUSTOMER_ID" \
-            '{KEY: $key, PLAN_ID: $plan_id, INVOICE_ID: $invoice_id, CREDIT_ID: $credit_id, ADDON_ID: $addon_id, METRIC_ID: $metric_id, FEATURE_NAME: $feature_name, EVENT_NAME: $event_name, CUSTOMER_ID: $customer_id, URL: "http://localhost:8000"}')
+            '{KEY: $key, PLAN_ID: $plan_id, INVOICE_ID: $invoice_id, ADDON_ID: $addon_id, METRIC_ID: $metric_id, FEATURE_NAME: $feature_name, EVENT_NAME: $event_name, CUSTOMER_ID: $customer_id, URL: "http://localhost:8000"}')
           echo "$ENV_JSON" > environment.json
 
       - name: Run server
