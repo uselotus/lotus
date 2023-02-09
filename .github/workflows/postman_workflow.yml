@@ -49,6 +49,7 @@ jobs:
       DEBUG: False
       KAFKA_URL: "localhost:9092"
       PYTHONDONTWRITEBYTECODE: 1
+      URL: "http://localhost:8000"
 
     steps:
       - uses: actions/checkout@v3
@@ -86,9 +87,17 @@ jobs:
         run: |
           echo "PLAN=$(echo pipenv run python manage.py plan_for_tests)" >> $GITHUB_ENV
 
+      - name: Print Plan
+        run: |
+          echo $PLAN
+
       - name: Create API Key
         run: |
           echo "KEY=$(echo pipenv run python manage.py api_key_for_tests)" >> $GITHUB_ENV
+
+      - name: Print API Key
+        run: |
+          echo $KEY
 
       - name: Run server
         run: |
