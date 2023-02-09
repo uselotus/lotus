@@ -14,11 +14,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         org = Organization.objects.create(
-            name="test",
+            organization_name="test",
         )
         cust = Customer.objects.create(
             organization=org,
-            name="test",
+            customer_name="test",
         )
 
         # API key
