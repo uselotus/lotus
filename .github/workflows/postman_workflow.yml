@@ -85,7 +85,8 @@ jobs:
 
       - name: Create Plan
         run: |
-          echo "PLAN=$(echo pipenv run python manage.py plan_for_tests)" >> $GITHUB_ENV
+          PLAN=$(pipenv run python manage.py plan_for_tests)
+          echo "PLAN=$PLAN" >> $GITHUB_ENV
 
       - name: Print Plan
         run: |
@@ -93,7 +94,8 @@ jobs:
 
       - name: Create API Key
         run: |
-          echo "KEY=$(echo pipenv run python manage.py api_key_for_tests)" >> $GITHUB_ENV
+          KEY=$(pipenv run python manage.py api_key_for_tests)
+          echo "KEY=$KEY" >> $GITHUB_ENV
 
       - name: Print API Key
         run: |
