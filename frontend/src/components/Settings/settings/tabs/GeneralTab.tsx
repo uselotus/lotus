@@ -241,6 +241,9 @@ const GeneralTab: FC = () => {
             </p>
           )}
           <p className="text-[16px]">
+            <b>Timezone:</b> {timezone}
+          </p>
+          <p className="text-[16px]">
             <b>Subscription Filters:</b>{" "}
             {orgData?.subscription_filter_keys.map((filter) => (
               <Tag key={filter}>{filter}</Tag>
