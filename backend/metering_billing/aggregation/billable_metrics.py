@@ -50,14 +50,6 @@ class UsageRevenueSummary(TypedDict):
 
 
 class MetricHandler(abc.ABC):
-    @abc.abstractmethod
-    def get_current_usage(
-        self,
-        subscription: SubscriptionRecord,
-    ) -> float:
-        """This method will be used to calculate how much usage a customer currently has on a subscription. THough there are cases where get_usage and get_current_usage will be the same, there are cases where they will not. For example, if your billable metric is Gauge with a Max aggregation, then your usage over some period will be the max over past readings, but your current usage will be the latest reading."""
-        pass
-
     @staticmethod
     @abc.abstractmethod
     def validate_data(data) -> dict:
