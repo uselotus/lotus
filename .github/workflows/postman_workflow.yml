@@ -78,9 +78,12 @@ jobs:
         run: |
           pipenv install --deploy --dev
 
-      - name: Migrate and Run
+      - name: Migrate
         run: |
           pipenv run python manage.py migrate --noinput
+
+      - name: Run server
+        run: |
           pipenv run python manage.py runserver &
 
       - name: Run tests
@@ -90,5 +93,6 @@ jobs:
           collection: 18225965-f895719c-ab58-4f3d-ba21-5c918691697e
           environment: 18225965-c47faabe-7ab5-449a-bcaa-0f3ba41fc5c9
           reporters: cli
+
       - name: Output summary to console
         run: echo ${{ steps.run-newman.outputs.summary }}
