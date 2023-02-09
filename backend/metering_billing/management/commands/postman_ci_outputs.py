@@ -1,4 +1,5 @@
 from django.core.management.base import BaseCommand
+
 from metering_billing.models import (
     Customer,
     CustomerBalanceAdjustment,
@@ -33,7 +34,7 @@ class Command(BaseCommand):
         # plan
         plan = Plan.objects.create(
             organization=org,
-            name="test",
+            plan_name="test",
         )
         print(f"PLAN_ID={plan.plan_id.hex}")
 
