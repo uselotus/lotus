@@ -84,9 +84,7 @@ import { AlertType, CreateAlertType } from "../types/alert-type";
 
 const cookies = new Cookies();
 
-axios.defaults.headers.common.Authorization = `Token ${cookies.get(
-  "Token"
-)}`;
+axios.defaults.headers.common.Authorization = `Token ${cookies.get("Token")}`;
 
 // @ts-ignore
 const API_HOST = import.meta.env.VITE_API_URL;
@@ -136,12 +134,14 @@ export const Customer = {
     customer_id: string,
     default_currency_code: string,
     address: CustomerType["address"],
-    tax_rate: number
+    tax_rate: number,
+    timezone: string
   ): Promise<CustomerType> =>
     requests.patch(`app/customers/${customer_id}/`, {
       default_currency_code,
       address,
       tax_rate,
+      timezone,
     }),
   // getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
   //   requests.get(`app/customer_detail/`, { params: { customer_id } }),
@@ -377,6 +377,7 @@ export const Organization = {
     org_id: string,
     default_currency_code: string,
     tax_rate: number,
+    timezone: string,
     payment_grace_period: number,
     address: OrganizationType["address"],
     subscription_filter_keys: string[]
@@ -384,6 +385,7 @@ export const Organization = {
     requests.patch(`app/organizations/${org_id}/`, {
       default_currency_code,
       tax_rate,
+      timezone,
       payment_grace_period,
       address,
       subscription_filter_keys,
@@ -527,11 +529,14 @@ export const PaymentProcessorIntegration = {
 };
 
 export const Invoices = {
-  changeStatus: (data: MarkPaymentStatusAsPaid): Promise<any> => requests.patch(`app/invoices/${data.invoice_id}/`, {
+  changeStatus: (data: MarkPaymentStatusAsPaid): Promise<any> =>
+    requests.patch(`app/invoices/${data.invoice_id}/`, {
       payment_status: data.payment_status,
     }),
-  getDraftInvoice: (customer_id: string): Promise<DraftInvoiceType> => requests.get("app/draft_invoice/", { params: { customer_id } }),
-  getInvoiceUrl: (invoice_id: string): Promise<{ url: string }> => requests.get(`app/invoice_url/`, { params: { invoice_id } }),
+  getDraftInvoice: (customer_id: string): Promise<DraftInvoiceType> =>
+    requests.get("app/draft_invoice/", { params: { customer_id } }),
+  getInvoiceUrl: (invoice_id: string): Promise<{ url: string }> =>
+    requests.get(`app/invoice_url/`, { params: { invoice_id } }),
 };
 
 export const Credits = {

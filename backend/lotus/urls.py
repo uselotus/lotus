@@ -13,12 +13,14 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-import api.views as api_views
 from django.conf import settings
 from django.conf.urls import include
 from django.contrib import admin
 from django.urls import path, re_path
 from django.views.generic import TemplateView
+from rest_framework import routers
+
+import api.views as api_views
 from metering_billing.views import auth_views, organization_views, webhook_views
 from metering_billing.views.model_views import (
     ActionViewSet,
@@ -58,9 +60,9 @@ from metering_billing.views.views import (  # MergeCustomersView,; ExperimentalT
     PeriodMetricUsageView,
     PeriodSubscriptionsView,
     PlansByNumCustomersView,
+    TimezonesView,
     TransferSubscriptionsView,
 )
-from rest_framework import routers
 
 DEBUG = settings.DEBUG
 PROFILER_ENABLED = settings.PROFILER_ENABLED
@@ -210,6 +212,11 @@ urlpatterns = [
         "app/transfer_subscriptions/",
         TransferSubscriptionsView.as_view(),
         name="transfer_subscriptions",
+    ),
+    path(
+        "app/timezones/",
+        TimezonesView.as_view(),
+        name="timezones",
     ),
     path(
         "app/payment_providers/",
