@@ -112,6 +112,7 @@ jobs:
           echo "LOTUS_API_KEY=$API_KEY" >> $GITHUB_ENV
           echo "PLAN_ID=$PLAN_ID" >> $GITHUB_ENV
           echo "ADDON_ID=$ADDON_ID" >> $GITHUB_ENV
+          echo "LOTUS_HOST"
 
       - name: Run server
         run: |
@@ -128,10 +129,31 @@ jobs:
       - name: Output summary to console
         run: echo ${{ steps.run-newman.outputs.summary }}
 
-      - name: Install lotus-python
-        run: |
-          pipenv install lotus-python
+      - name: Checkout lotus-python repository
+        uses: actions/checkout@v3
+        with:
+          repository: uselotus/lotus-python
+          ref: main
+          path: lotus-python
 
-      - name: Run lotus-python tests
+      - name: Install pipenv for lotus-python
         run: |
-          pipenv run python -m pytest lotus-python
+          cd lotus-python
+          python -m pip install --upgrade pipenv wheel && pipenv update
+
+      - id: cache-pipenv
+        uses: actions/cache@v1
+        with:
+          path: ~/.local/share/virtualenvs
+          key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
+
+      - name: Install dependencies for lotus-python
+        if: steps.cache-pipenv.outputs.cache-hit != 'true'
+        run: |
+          cd lotus-python
+          pipenv install --deploy --dev
+
+      - name: Test Pytest for lotus-python
+        run: |
+          cd lotus-python
+          pipenv run pytest
