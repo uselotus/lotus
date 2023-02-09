@@ -82,15 +82,19 @@ jobs:
         run: |
           pipenv run python manage.py migrate --noinput
 
+      - name: Create Plan
+        run: |
+          echo "PLAN=$(echo pipenv run python manage.py plan_for_tests)" >> $GITHUB_ENV
+
       - name: Create API Key
         run: |
-          pipenv run python manage.py api_key_for_tests >> $GITHUB_OUTPUT
+          echo "KEY=$(echo pipenv run python manage.py api_key_for_tests)" >> $GITHUB_ENV
 
       - name: Run server
         run: |
           pipenv run python manage.py runserver &
 
-      - name: Run tests
+      - name: Run Postman
         uses: anthonyvscode/newman-action@v1
         with:
           apiKey: ${{ secrets.postmanApiKey }}
