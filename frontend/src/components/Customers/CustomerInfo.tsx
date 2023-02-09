@@ -21,6 +21,7 @@ import useMediaQuery from "../../hooks/useWindowQuery";
 import Divider from "../base/Divider/Divider";
 import Badge from "../base/Badges/Badges";
 import { fourDP } from "../../helpers/fourDP";
+import { timezones } from "../../assets/timezones";
 
 interface CustomerInfoViewProps {
   data: CustomerType;
@@ -52,6 +53,8 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
   const [state, setState] = React.useState("");
   const [country, setCountry] = React.useState("");
   const [postalCode, setPostalCode] = React.useState("");
+  const [timezone, setTimezone] =
+    React.useState<(typeof timezones)[number]>("UTC");
   const [isEditing, setIsEditing] = React.useState(false);
   const queryClient = useQueryClient();
 
@@ -66,12 +69,14 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
       default_currency_code: string;
       address: CustomerType["address"];
       tax_rate: number;
+      timezone: string;
     }) =>
       Customer.updateCustomer(
         obj.customer_id,
         obj.default_currency_code,
         obj.address,
-        obj.tax_rate
+        obj.tax_rate,
+        obj.timezone
       ),
     {
       onSuccess: () => {
@@ -116,6 +121,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
       address: submittedAddress,
       default_currency_code: currentCurrency,
       tax_rate: fourDP(taxRate),
+      timezone,
     });
 
     refetch();
@@ -336,6 +342,40 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                             required
                           />
                         </div>
+                      </div>
+                    )}
+                  </div>
+                </CustomerCard.Item>
+
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Timezone
+                  </div>
+                  <div className="flex gap-1">
+                    {" "}
+                    {!isEditing ? (
+                      <div className="Inter">
+                        {data.timezone ? (
+                          <div>{data.timezone}</div>
+                        ) : (
+                          <div>{timezone}</div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="min-w-[100px]">
+                        <select
+                          className="w-full bg-white border border-black p-4"
+                          name="timezone"
+                          id="timezone"
+                          onChange={(e) => setTimezone(e.target.value)}
+                          defaultValue={data.timezone ? timezone : timezone}
+                        >
+                          {timezones.map((tz) => (
+                            <option key={tz} value={tz}>
+                              {tz}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     )}
                   </div>
