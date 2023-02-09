@@ -2,9 +2,9 @@ name: Python SDK Test
 
 on:
   push:
-    branches: ["main", "diego/python-sdk-ci"]
+    branches: ["main"]
   pull_request:
-    branches: ["main", "diego/python-sdk-ci"]
+    branches: ["main"]
 
 jobs:
   python-sdk-tests:
