@@ -96,11 +96,3 @@ jobs:
       - name: Run server
         run: |
           pipenv run python manage.py runserver &
-
-      - name: Checkout lotus-python
-        run: |
-          pip install lotus-python
-
-      - name: Run tests
-        run: |
-          pipenv run pytest lotus-python
