@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  tests:
+  pytest:
     runs-on: ubuntu-latest
     defaults:
       run:
