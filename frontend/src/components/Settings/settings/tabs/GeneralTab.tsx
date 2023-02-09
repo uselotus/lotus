@@ -386,7 +386,7 @@ const GeneralTab: FC = () => {
                 defaultValue={timezone}
                 onChange={(e) => setTimezone(e)}
               >
-                {timezone.map((tz) => (
+                {timezones.map((tz) => (
                   <Select.Option value={tz}>{tz}</Select.Option>
                 ))}
               </Select>
