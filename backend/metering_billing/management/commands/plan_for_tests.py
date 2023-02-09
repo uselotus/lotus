@@ -1,5 +1,5 @@
-from django.core import management
 from django.core.management.base import BaseCommand
+
 from metering_billing.demos import setup_demo3
 from metering_billing.models import Organization, Plan
 
@@ -8,8 +8,6 @@ class Command(BaseCommand):
     "Django command to execute calculate invoice"
 
     def handle(self, *args, **options):
-        management.call_command("initadmin")
-
         setup_demo3(
             organization_name="demo3",
             username="demo3",
