@@ -7,7 +7,6 @@ from urllib.parse import urlencode
 
 import braintree
 import pytz
-import requests
 import stripe
 from django.conf import settings
 from django.db.models import F, Prefetch, Q
@@ -91,8 +90,8 @@ class PaymentProvider(abc.ABC):
 
     # EXPORT METHODS
     @abc.abstractmethod
-    def create_customer(self, customer) -> str:
-        """Depending on global settings and the way you want to use Lotus, this method will be called when a customer is created in Lotus in order to create the same customer in the payment provider. It should return the id of the customer in the payment processor."""
+    def create_customer_flow(self, customer) -> None:
+        """Depending on global settings and the way you want to use Lotus, this method will be called when a customer is created in Lotus in order to create the same customer in the payment provider. After creating it, it should insert the payment provider customer id into the customer object in Lotus."""
         pass
 
     @abc.abstractmethod
@@ -123,6 +122,140 @@ class PaymentProvider(abc.ABC):
 
 
 class BraintreeConnector(PaymentProvider):
+    @abc.abstractmethod
+    def update_payment_object_status(self, organization, payment_object_id: str):
+        """This method will be called periodically when the status of a payment object needs to be updated. It should return the status of the payment object, which should be either paid or unpaid."""
+        pass
+
+    ## IMPORT METHODS
+    @abc.abstractmethod
+    def import_customers(self, organization) -> int:
+        """This method will be called periodically to match customers from the payment processor with customers in Lotus. Keep in mind that Customers have a payment_provider field that can be used to determine which payment processor the customer should be connected to, and that the payment_provider_id field can be used to store the id of the customer in the associated payment processor. Return the number of customers that were imported."""
+        pass
+
+    # EXPORT METHODS
+    def create_customer_flow(self, customer) -> None:
+        from metering_billing.models import Organization, OrganizationSetting
+
+        if (
+            customer.organization.organization_type
+            == Organization.OrganizationType.PRODUCTION
+        ):
+            gateway = self.live_gateway
+        else:
+            gateway = self.test_gateway
+
+        setting = OrganizationSetting.objects.get(
+            setting_name=ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_BRAINTREE_AFTER_LOTUS,
+            organization=customer.organization,
+            setting_group=ORGANIZATION_SETTING_GROUPS.BRAINTREE,
+        )
+        setting_value = setting.setting_values.get("value", False)
+        if setting_value is True:
+            assert (
+                customer.integrations.get(PAYMENT_PROVIDERS.BRAINTREE, {}).get("id")
+                is None
+            ), "Customer already has a Braintree ID"
+            customer_kwargs = {
+                "first_name": customer.customer_name,
+                "last_name": customer.customer_name,
+                "company": customer.customer_name,
+                "email": customer.email,
+            }
+            if not self.self_hosted:
+                org_braintree_acct = customer.organization.payment_provider_ids.get(
+                    PAYMENT_PROVIDERS.BRAINTREE, None
+                )
+                assert (
+                    org_braintree_acct is not None
+                ), "Organization does not have a Stripe account ID"
+            result = gateway.customer.create(**customer_kwargs)
+
+            if result.is_success:
+                customer.integrations[PAYMENT_PROVIDERS.BRAINTREE] = {
+                    "id": result.customer.id,
+                    "email": result.customer.email,
+                    "metadata": {},
+                    "name": result.customer.first_name,
+                }
+                customer.save()
+        elif setting_value is False:
+            pass
+        else:
+            raise Exception(
+                "Invalid value for generate_customer_after_creating_in_lotus setting"
+            )
+
+    @abc.abstractmethod
+    def create_payment_object(self, invoice) -> str:
+        from metering_billing.models import Organization
+
+        if (
+            invoice.organization.organization_type
+            == Organization.OrganizationType.PRODUCTION
+        ):
+            self.live_gateway
+        else:
+            self.test_gateway
+        # check everything works as expected + build invoice item
+        assert invoice.external_payment_obj_id is None
+        customer = invoice.customer
+        braintree_customer_id = customer.integrations.get(
+            PAYMENT_PROVIDERS.BRAINTREE, {}
+        ).get("id")
+        assert (
+            braintree_customer_id is not None
+        ), "Customer does not have a Braintree ID"
+        invoice_kwargs = {
+            "amount": invoice.cost_due,
+            "customer_id": braintree_customer_id,
+            "descriptor": {
+                "name": invoice.organization.team.name,
+            },
+            "line_items": [],
+        }
+        if not self.self_hosted:
+            org_stripe_acct = customer.organization.payment_provider_ids.get(
+                PAYMENT_PROVIDERS.BRAINTREE, None
+            )
+            assert (
+                org_stripe_acct is not None
+            ), "Organization does not have a Braintree account ID"
+
+        for line_item in invoice.line_items.all().order_by(
+            F("associated_subscription_record").desc(nulls_last=True)
+        ):
+            name = line_item.name
+            amount = line_item.subtotal
+            customer = stripe_customer_id
+            period = {
+                "start": int(line_item.start_date.timestamp()),
+                "end": int(line_item.end_date.timestamp()),
+            }
+            tax_behavior = "inclusive"
+            sr = line_item.associated_subscription_record
+            metadata = {
+                "plan_name": sr.billing_plan.plan.plan_name,
+            }
+            filters = sr.filters.all()
+            for f in filters:
+                metadata[f.property_name] = f.comparison_value[0]
+                name += f" - ({f.property_name} : {f.comparison_value[0]})"
+            inv_dict = {
+                "description": name,
+                "amount": int(amount * 100),
+                "customer": customer,
+                "period": period,
+                "currency": invoice.currency.code.lower(),
+                "tax_behavior": tax_behavior,
+                "metadata": metadata,
+            }
+            if not self.self_hosted:
+                inv_dict["stripe_account"] = org_stripe_acct
+            stripe.InvoiceItem.create(**inv_dict)
+        stripe_invoice = stripe.Invoice.create(**invoice_kwargs)
+        return stripe_invoice.id
+
     def __init__(self):
         self.self_hosted = SELF_HOSTED
         self.live_secret_key = BRAINTREE_LIVE_SECRET_KEY
@@ -198,46 +331,9 @@ class BraintreeConnector(PaymentProvider):
 
         return url
 
-    def refresh_tokens(self, organization):
-        from metering_billing.models import Organization
-
-        if organization.organization_type == Organization.OrganizationType.PRODUCTION:
-            gateway = self.live_gateway
-        else:
-            gateway = self.test_gateway
-
-        braintree_integration = organization.payment_provider_ids.get(
-            PAYMENT_PROVIDERS.BRAINTREE
-        )
-        if braintree_integration is None:
-            return
-
-        try:
-            result = gateway.oauth.create_token_from_refresh_token(
-                {"refresh_token": braintree_integration["refresh_token"]}
-            )
-            result.is_success
-
-            result.credentials.access_token
-            result.credentials.expires_at
-            result.credentials.refresh_token
-        except Exception:
-            return
-
-    def store_access_token(self, organization, access_code, merchant_id):
-        from metering_billing.models import Organization
-
-        if organization.organization_type == Organization.OrganizationType.PRODUCTION:
-            gateway = self.live_gateway
-        else:
-            gateway = self.test_gateway
-
-        result = gateway.oauth.create_token_from_code({"code": access_code})
-
-        access_token = result.credentials.access_token
-        expires_at = result.credentials.expires_at
-        refresh_token = result.credentials.refresh_token
-
+    def _insert_into_org(
+        self, organization, merchant_id, access_token, expires_at, refresh_token
+    ):
         braintree_integration = organization.payment_provider_ids.get(
             PAYMENT_PROVIDERS.BRAINTREE, {}
         )
@@ -254,125 +350,95 @@ class BraintreeConnector(PaymentProvider):
             PAYMENT_PROVIDERS.BRAINTREE
         ] = braintree_integration
         organization.save()
-        return
-
-    def create_payment_object(self, invoice) -> str:
-        from metering_billing.models import Organization
-
-        # select gateway
-        if (
-            invoice.organization.organization_type
-            == Organization.OrganizationType.PRODUCTION
-        ):
-            self.live_gateway
-        else:
-            self.test_gateway
-
-        # check everything works as expected + build invoice item
-        if invoice.external_payment_obj_id is not None:
-            logger.error(
-                "Invoice already has a external_payment_obj_id ID",
-                extra={
-                    "external_id": invoice.external_payment_obj_id,
-                    "invoice": invoice.id,
-                },
-            )
-            return invoice.external_payment_obj_id
-
-        # check customer
-        customer = invoice.customer
-        braintree_customer_id = customer.integrations.get(
-            PAYMENT_PROVIDERS.BRAINTREE, {}
-        ).get("id")
-        assert (
-            braintree_customer_id is not None
-        ), "Customer does not have a Braintree ID"
-
-        body = """
-                mutation {
-                createTransaction(
-                    id: 1
-                    scientific_name: "mangifera"
-                    tree_name: "mangifera indica"
-                    fruit_name: "Mango"ß
-                    family: "Anacardiaceae"
-                    origin: "India"
-                    description: "Mango is yellow"
-                    bloom: "Summer"
-                    maturation_fruit: "Mango"
-                    life_cycle: "100"
-                    climatic_zone: "humid"
-                ) {
-                    id
-                    scientific_name
-                    tree_name
-                    fruit_name
-                    origin
-                }
-                }
-                {
-            "input": {
-                "paymentMethodId": "fake-valid-nonce",
-                "transaction": {
-                "amount": "1.00"
-                }
-            }
-            }
-                """
-
-        response = requests.post(
-            url=self.base_url, headers=self.headers, data={"query": body}
-        )
-        if response.status_code != 200:
-            logger.error(
-                "Braintree returned a non-200 status code",
-                extra={"status_code": response.status_code},
-            )
-            raise Exception("Braintree returned a non-200 status code")
-
-        return "stripe_invoice.id"
-
-    def create_customer(self, customer):
-        pass
-
-    def create_subscription(self, subscription):
-        pass
-
-    def create_invoice(self, invoice):
-        pass
-
-    def create_invoice_item(self, invoice_item):
-        pass
-
-    def create_payment_method(self, payment_method):
-        pass
-
-    def create_payment_intent(self, payment_intent):
-        pass
-
-    def create_setup_intent(self, setup_intent):
-        pass
-
-    def get_post_data_serializer(self) -> serializers.Serializer:
-        return super().get_post_data_serializer()
 
     def handle_post(self, data, organization) -> PaymentProviderPostResponseSerializer:
-        return super().handle_post(data, organization)
+        from metering_billing.models import Organization
 
-    def import_customers(self, organization) -> int:
-        return super().import_customers(organization)
+        if organization.organization_type == Organization.OrganizationType.PRODUCTION:
+            gateway = self.live_gateway
+        else:
+            gateway = self.test_gateway
 
-    def import_payment_objects(self, organization) -> dict[str, list[str]]:
-        return super().import_payment_objects(organization)
+        merchant_id = data.get("merchant_id")
+        code = data.get("code")
 
-    def transfer_subscriptions(self, organization, end_now=False) -> int:
-        return super().transfer_subscriptions(organization, end_now)
+        response = gateway.oauth.create_token_from_code({"code": code})
+        if not response.is_success:
+            return Response(
+                {
+                    "payment_processor": PAYMENT_PROVIDERS.BRAINTREE,
+                    "success": False,
+                    "details": response.get("error_description"),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        access_token = response.credentials.access_token
+        expires_at = response.credentials.expires_at
+        refresh_token = response.credentials.refresh_token
 
-    def update_payment_object_status(self, organization, payment_object_id: str):
-        return super().update_payment_object_status(organization, payment_object_id)
+        self._insert_into_org(
+            organization, merchant_id, access_token, expires_at, refresh_token
+        )
+        self.initialize_settings(organization)
 
-    def initialize_settings(self, organization) -> None:
-        return super().initialize_settings(organization)
+        response = {
+            "payment_processor": PAYMENT_PROVIDERS.BRAINTREE,
+            "success": True,
+            "details": "Successfully connected to Braintree",
+        }
+        serializer = PaymentProviderPostResponseSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        validated_data = serializer.validated_data
+        return Response(validated_data, status=status.HTTP_200_OK)
+
+    def _refresh_tokens(self, organization):
+        from metering_billing.models import Organization
+
+        if organization.organization_type == Organization.OrganizationType.PRODUCTION:
+            gateway = self.live_gateway
+        else:
+            gateway = self.test_gateway
+
+        braintree_integration = organization.payment_provider_ids.get(
+            PAYMENT_PROVIDERS.BRAINTREE
+        )
+        if braintree_integration is None:
+            return
+
+        result = gateway.oauth.create_token_from_refresh_token(
+            {"refresh_token": braintree_integration["refresh_token"]}
+        )
+        if result.is_success:
+            access_token = result.credentials.access_token
+            expires_at = result.credentials.expires_at
+            refresh_token = result.credentials.refresh_token
+            self._insert_into_org(
+                organization,
+                braintree_integration.get("id"),
+                access_token,
+                expires_at,
+                refresh_token,
+            )
+
+    def get_post_data_serializer(self) -> serializers.Serializer:
+        class BraintreePostRequestDataSerializer(serializers.Serializer):
+            merchant_id = serializers.CharField()
+            code = serializers.CharField()
+
+        return BraintreePostRequestDataSerializer
+
+    def initialize_settings(self, organization, **kwargs):
+        from metering_billing.models import OrganizationSetting
+
+        generate_braintree_after_lotus_value = kwargs.get(
+            "generate_braintree_after_lotus", False
+        )
+        OrganizationSetting.objects.create(
+            organization=organization,
+            setting_name=ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_BRAINTREE_AFTER_LOTUS,
+            setting_values={"value": generate_braintree_after_lotus_value},
+            setting_group=PAYMENT_PROVIDERS.BRAINTREE,
+        )
 
 
 class StripeConnector(PaymentProvider):
@@ -575,7 +641,7 @@ class StripeConnector(PaymentProvider):
             lotus_invoices.append(lotus_invoice)
         return lotus_invoices
 
-    def create_customer(self, customer):
+    def create_customer_flow(self, customer) -> None:
         from metering_billing.models import Organization, OrganizationSetting
 
         if (
