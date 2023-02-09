@@ -83,23 +83,17 @@ jobs:
         run: |
           pipenv run python manage.py migrate --noinput
 
-      - name: Create Plan
+      - name: Capture Outputs
         run: |
-          PLAN=$(pipenv run python manage.py plan_for_tests)
-          echo "PLAN=$PLAN" >> $GITHUB_ENV
-
-      - name: Print Plan
-        run: |
-          echo $PLAN
-
-      - name: Create API Key
-        run: |
-          KEY=$(pipenv run python manage.py api_key_for_tests)
+          OUTPUTS=$(pipenv run python manage.py postman_ci_outputs)
+          KEY=$(echo "$OUTPUTS" | grep "KEY=" | cut -d= -f2)
+          PLAN_ID=$(echo "$OUTPUTS" | grep "PLAN_ID=" | cut -d= -f2)
+          INVOICE_ID=$(echo "$OUTPUTS" | grep "INVOICE_ID=" | cut -d= -f2)
+          CREDIT_ID=$(echo "$OUTPUTS" | grep "CREDIT_ID=" | cut -d= -f2)
           echo "KEY=$KEY" >> $GITHUB_ENV
-
-      - name: Print API Key
-        run: |
-          echo $KEY
+          echo "PLAN_ID=$PLAN_ID" >> $GITHUB_ENV
+          echo "INVOICE_ID=$INVOICE_ID" >> $GITHUB_ENV
+          echo "CREDIT_ID=$CREDIT_ID" >> $GITHUB_ENV
 
       - name: Run server
         run: |
