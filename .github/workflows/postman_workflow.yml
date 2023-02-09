@@ -89,11 +89,19 @@ jobs:
           KEY=$(echo "$OUTPUTS" | grep "KEY=" | cut -d= -f2)
           PLAN_ID=$(echo "$OUTPUTS" | grep "PLAN_ID=" | cut -d= -f2)
           INVOICE_ID=$(echo "$OUTPUTS" | grep "INVOICE_ID=" | cut -d= -f2)
-          CREDIT_ID=$(echo "$OUTPUTS" | grep "CREDIT_ID=" | cut -d= -f2)
+          ADDON_ID=$(echo "$OUTPUTS" | grep "ADDON_ID=" | cut -d= -f2)
+          METRIC_ID=$(echo "$OUTPUTS" | grep "METRIC_ID=" | cut -d= -f2)
+          FEATURE_NAME=$(echo "$OUTPUTS" | grep "FEATURE_NAME=" | cut -d= -f2)
+          EVENT_NAME=$(echo "$OUTPUTS" | grep "EVENT_NAME=" | cut -d= -f2)
+          CUSTOMER_ID=$(echo "$OUTPUTS" | grep "CUSTOMER_ID=" | cut -d= -f2)
           echo "KEY=$KEY" >> $GITHUB_ENV
           echo "PLAN_ID=$PLAN_ID" >> $GITHUB_ENV
           echo "INVOICE_ID=$INVOICE_ID" >> $GITHUB_ENV
-          echo "CREDIT_ID=$CREDIT_ID" >> $GITHUB_ENV
+          echo "ADDON_ID=$ADDON_ID" >> $GITHUB_ENV
+          echo "METRIC_ID=$METRIC_ID" >> $GITHUB_ENV
+          echo "FEATURE_NAME=$FEATURE_NAME" >> $GITHUB_ENV
+          echo "EVENT_NAME=$EVENT_NAME" >> $GITHUB_ENV
+          echo "CUSTOMER_ID=$CUSTOMER_ID" >> $GITHUB_ENV
 
       - name: Run server
         run: |
