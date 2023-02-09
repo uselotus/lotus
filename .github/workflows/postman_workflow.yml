@@ -82,6 +82,10 @@ jobs:
         run: |
           pipenv run python manage.py migrate --noinput
 
+      - name: Create API Key
+        run: |
+          pipenv run python manage.py api_key_for_tests >> $GITHUB_OUTPUT
+
       - name: Run server
         run: |
           pipenv run python manage.py runserver &
