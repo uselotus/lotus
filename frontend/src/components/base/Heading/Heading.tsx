@@ -5,6 +5,7 @@ import Avatar from "../Avatar/Avatar";
 import Badge from "../Badges/Badges";
 import useGlobalStore from "../../../stores/useGlobalstore";
 import useToggleSlideOver from "../../../stores/useToggleSlideOver";
+
 interface HeadingProps {
   hasBackButton?: boolean;
   backButton?: React.ReactNode;
@@ -16,7 +17,9 @@ const Heading: React.FC<HeadingProps> = ({
   backButton,
   aboveTitle,
 }) => {
-  const { current_user, environment } = useGlobalStore((state) => state.org);
+  const { current_user, environment, organization_name } = useGlobalStore(
+    (state) => state.org
+  );
   const { pathname } = useLocation();
   const setOpen = useToggleSlideOver((state) => state.setOpen);
   const currentPath = pathname.split("/")[1];
@@ -55,7 +58,7 @@ const Heading: React.FC<HeadingProps> = ({
               />
               <Badge.Content>
                 <span className="flex gap-2 ml-2 justify-center items-center">
-                  <span className="text-sm">{environment}</span>
+                  <span className="text-sm">{organization_name}</span>
                   <RightOutlined className="text-[10px]" />
                 </span>
               </Badge.Content>

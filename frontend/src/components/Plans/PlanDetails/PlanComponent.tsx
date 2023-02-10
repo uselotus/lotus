@@ -1,8 +1,23 @@
 // @ts-ignore
 import React, { FC, useEffect, useRef, useState } from "react";
 import "./PlanDetails.css";
-import { Table, Typography, Tag, Modal, Button, InputNumber } from "antd";
-import { CheckCircleOutlined } from "@ant-design/icons";
+import {
+  Table,
+  Typography,
+  Menu,
+  Modal,
+  Button,
+  InputNumber,
+  Dropdown,
+} from "antd";
+import {
+  CheckCircleOutlined,
+  MoreOutlined,
+  DeleteOutlined,
+} from "@ant-design/icons";
+import dayjs from "dayjs";
+import { useMutation, useQueryClient } from "react-query";
+import { toast } from "react-toastify";
 import StateTabs from "./StateTabs";
 import {
   Component,
@@ -18,7 +33,6 @@ import PlansTags from "../PlanTags";
 import LinkExternalIds from "../LinkExternalIds";
 import capitalize from "../../../helpers/capitalize";
 import CopyText from "../../base/CopytoClipboard";
-import dayjs from "dayjs";
 import useVersionStore from "../../../stores/useVersionStore";
 import Badge from "../../base/Badges/Badges";
 import Select from "../../base/Select/Select";
@@ -27,9 +41,8 @@ import createTags from "../helpers/createTags";
 import useGlobalStore from "../../../stores/useGlobalstore";
 import createPlanTagsList from "../helpers/createPlanTagsList";
 import { AlertType, CreateAlertType } from "../../../types/alert-type";
-import { useMutation, QueryClient } from "react-query";
 import { Plan } from "../../../api/api";
-import { toast } from "react-toastify";
+
 interface PlanComponentsProps {
   components?: Component[];
   plan: PlanType;
@@ -48,9 +61,7 @@ const findAlertForComponent = (
   if (alerts === undefined) {
     return undefined;
   }
-  return alerts.find((alert) => {
-    return alert.metric.metric_id === component.billable_metric.metric_id;
-  });
+  return alerts.find((alert) => alert.metric.metric_id === component.billable_metric.metric_id);
 };
 
 const renderCost = (record: Tier, pricing_unit: CurrencyType) => {
@@ -72,7 +83,7 @@ const renderCost = (record: Tier, pricing_unit: CurrencyType) => {
       );
 
     case "free":
-      return <span>{"Free"}</span>;
+      return <span>Free</span>;
   }
 };
 interface PlanSummaryProps {
@@ -84,15 +95,16 @@ interface PlanSummaryProps {
     tags: PlanType["tags"];
   }) => void;
 }
-export const PlanSummary = ({
+export function PlanSummary({
   plan,
   createTagMutation,
   createPlanExternalLink,
   deletePlanExternalLink,
-}: PlanSummaryProps) => {
+}: PlanSummaryProps) {
   const { plan_tags } = useGlobalStore((state) => state.org);
   const windowWidth = useMediaQuery();
   const inputRef = useRef<HTMLInputElement | null>(null!);
+
   return (
     <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card">
       <Typography.Title className="pt-4 whitespace-pre-wrap !text-[18px] level={2}">
@@ -206,22 +218,23 @@ export const PlanSummary = ({
       </div>
     </div>
   );
-};
+}
 interface PlanInfoProps {
   version: PlanVersionType;
   plan: PlanDetailType;
 }
-export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
+export function PlanInfo({ version, plan }: PlanInfoProps) {
   const constructBillType = (str: string) => {
     if (str.includes("_")) {
       return str
         .split("_")
         .map((el) => capitalize(el))
         .join(" ");
-    } else {
-      return str;
     }
+      return str;
+
   };
+  const queryClient = useQueryClient();
   const schedule = (duration: "monthly" | "yearly" | "quarterly") => {
     switch (duration) {
       case "monthly":
@@ -234,11 +247,40 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
     }
   };
 
+  const archivemutation = useMutation(
+    (version_id: string) =>
+      Plan.archivePlanVersion(version_id, { status: "archived" }),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("plan_list");
+        queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
+      },
+    }
+  );
+  const menu = (
+    <Menu>
+      <Menu.Item
+        key="1"
+        onClick={() => archivemutation.mutate(version!.version_id)}
+        disabled={
+          version?.status === "active" || version?.status === "grandfathered"
+        }
+      >
+        <div className="planMenuArchiveIcon">
+          <div>
+            <DeleteOutlined />
+          </div>
+          <div className="archiveLabel">Archive</div>
+        </div>
+      </Menu.Item>
+    </Menu>
+  );
+
   return (
     <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card ">
       <Typography.Title className="pt-4 whitespace-pre-wrap grid gap-4 !text-[18px] items-center grid-cols-1 md:grid-cols-2">
         <div>Plan Information</div>
-        <div>
+        <div className="flex flex-row">
           <StateTabs
             activeTab={capitalize(version.status)}
             version_id={version.version_id}
@@ -246,6 +288,17 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
             activeVersion={version.version}
             tabs={["Active", "Grandfathered", "Retiring", "Inactive"]}
           />
+          <span className="ml-auto" onClick={(e) => e.stopPropagation()}>
+            <Dropdown overlay={menu} trigger={["click"]}>
+              <Button
+                type="text"
+                size="small"
+                onClick={(e) => e.preventDefault()}
+              >
+                <MoreOutlined />
+              </Button>
+            </Dropdown>
+          </span>
         </div>
       </Typography.Title>
       <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
@@ -301,8 +354,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
               Recurring Bill Type
             </div>
             <div>
-              {
-                <Badge>
+              <Badge>
                   <Badge.Content>
                     <div className="p-1">
                       {constructBillType(
@@ -311,7 +363,6 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
                     </div>
                   </Badge.Content>
                 </Badge>
-              }
             </div>
           </div>
 
@@ -328,7 +379,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
       </div>
     </div>
   );
-};
+}
 const PlanComponents: FC<PlanComponentsProps> = ({
   components,
   plan,
@@ -344,7 +395,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
   const [currentComponent, setCurrentComponent] = useState<Component>();
   const [currentAlertId, setCurrentAlertId] = useState<string>();
   const [isInvalid, setIsInvalid] = useState(false);
-  const queryClient = new QueryClient();
+  const queryClient = useQueryClient();
   const createAlertMutation = useMutation(
     (post: CreateAlertType) => Plan.createAlert(post),
     {
@@ -373,7 +424,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
   useEffect(() => {}, [plan]);
   const deleteAlert = (usage_alert_id: string) => {
     deleteAlertMutation.mutate({
-      usage_alert_id: usage_alert_id,
+      usage_alert_id,
     });
   };
 
@@ -383,7 +434,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
 
   const handleDeleteAlert = () => {
     deleteAlertMutation.mutate({
-      usage_alert_id: currentAlertId,
+      usage_alert_id: currentAlertId as string,
     });
     queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
   };
@@ -395,18 +446,18 @@ const PlanComponents: FC<PlanComponentsProps> = ({
     }
     if (isCreateAlert) {
       createAlertMutation.mutate({
-        plan_version_id: plan_version_id,
+        plan_version_id,
         metric_id: component.billable_metric.metric_id,
         threshold: alertThreshold,
       });
     } else {
       if (usage_alert_id !== undefined) {
         deleteAlertMutation.mutate({
-          usage_alert_id: usage_alert_id,
+          usage_alert_id,
         });
       }
       createAlertMutation.mutate({
-        plan_version_id: plan_version_id,
+        plan_version_id,
         metric_id: component.billable_metric.metric_id,
         threshold: alertThreshold,
       });
@@ -570,7 +621,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
               <div className="flex flex-col justify-center items-center gap-4">
                 {currentComponent?.billable_metric.metric_name} reaches:{"  "}
                 <InputNumber
-                  type={"number"}
+                  type="number"
                   pattern="[0-9]+"
                   onChange={(value) => {
                     if (value && typeof value === "number") {

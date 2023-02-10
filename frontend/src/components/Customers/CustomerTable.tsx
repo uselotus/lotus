@@ -2,18 +2,18 @@
 import React, { FC, useState, useEffect } from "react";
 import type { ProColumns } from "@ant-design/pro-components";
 import { ProTable } from "@ant-design/pro-components";
+import { Button, Input, Tag } from "antd";
+import { useQuery, UseQueryResult, useQueryClient } from "react-query";
+import { useNavigate } from "react-router-dom";
 import {
   CustomerSummary,
   CustomerTableItem,
   CustomerTotal,
 } from "../../types/customer-type";
-import { Button, Input, Tag } from "antd";
 import { CreateCustomerState } from "./CreateCustomerForm";
-import { useQuery, UseQueryResult, useQueryClient } from "react-query";
 import { Plan } from "../../api/api";
 import { PlanType } from "../../types/plan-type";
 import CustomerDetail from "./CustomerDetail";
-import { useNavigate } from "react-router-dom";
 
 function getHighlightedText(text: string, highlight: string) {
   // Split text on highlight term, include term itself into parts, ignore case
@@ -88,10 +88,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
 
   const { data, isLoading }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
     ["plan_list"],
-    () =>
-      Plan.getPlans().then((res) => {
-        return res;
-      })
+    () => Plan.getPlans().then((res) => res)
   );
 
   const columns: ProColumns<CustomerTableItem>[] = [
@@ -132,15 +129,19 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
         <div>
           {record.subscriptions.map((sub) => (
             <div>
-              <Tag color={"default"}>{sub.billing_plan_name}</Tag>
-              <Tag color={"default"}>v{sub.plan_version}</Tag>{" "}
+              <Tag color="default">{sub.billing_plan_name}</Tag>
+              <Tag color="default">v{sub.plan_version}</Tag>{" "}
             </div>
           ))}
         </div>
       ),
     },
     {
-      title: "Outstanding Revenue",
+      title: (
+        <div>
+          Oustanding <br /> Revenue
+        </div>
+      ),
       width: 60,
       sorter: (a, b) => a.total_amount_due - b.total_amount_due,
 
@@ -157,15 +158,19 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
       dataIndex: "total_amount_due",
     },
     {
-      title: "Subscription Renews",
+      title: (
+        <div>
+          Subscription <br /> Renews
+        </div>
+      ),
       width: 60,
       render: (_, record) => (
         <div>
           {record.subscriptions[0] !== undefined &&
             (record.subscriptions[0].auto_renew ? (
-              <Tag color={"green"}>Renews</Tag>
+              <Tag color="green">Renews</Tag>
             ) : (
-              <Tag color={"red"}>Ends</Tag>
+              <Tag color="red">Ends</Tag>
             ))}
         </div>
       ),
@@ -185,18 +190,6 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
   };
 
   const changePlan = (plan_id: string, customer_id: string) => {};
-
-  const rowModal = (record: any) => {
-    setCustomerVisible(true);
-    setCustomerState({
-      title: "Customer Detail",
-      name: record.customer_name,
-      customer_id: record.customer_id,
-      subscriptions: record.subscriptions,
-      total_amount_due: record.total_amount_due,
-      email: record.email,
-    });
-  };
 
   const getFilteredTableData = (data: CustomerTableItem[] | undefined) => {
     if (data === undefined) {
@@ -226,13 +219,9 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
           columns={columns}
           dataSource={getFilteredTableData(tableData)}
           rowKey="customer_id"
-          onRow={(record, rowIndex) => {
-            return {
-              onClick: (event) => {
-                rowModal(record);
-              }, // click row
-            };
-          }}
+          onRow={(record) => ({
+            onClick: () => navigate(`/customers/${record.customer_id}`), // click row
+          })}
           toolBarRender={false}
           search={false}
           pagination={{
@@ -243,17 +232,6 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
           }}
           options={false}
         />
-
-        {customerVisible && (
-          <CustomerDetail
-            key={customerState.customer_id}
-            visible={customerVisible}
-            onCancel={onDetailCancel}
-            changePlan={changePlan}
-            plans={data}
-            customer_id={customerState.customer_id}
-          />
-        )}
       </div>
     </>
   );

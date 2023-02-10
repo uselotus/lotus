@@ -54,6 +54,7 @@ jinja2 = "*"
 sqlparse = "*"
 ruff = "*"
 "ruamel.yaml" = "*"
+django-timezone-field = "*"
 
 [dev-packages]
 platformdirs = "*"

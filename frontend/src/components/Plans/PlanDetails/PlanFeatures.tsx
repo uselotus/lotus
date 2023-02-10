@@ -1,7 +1,7 @@
 import React, { FC } from "react";
 import "./PlanDetails.css";
-import { FeatureType } from "../../../types/feature-type";
 import { Typography } from "antd";
+import { FeatureType } from "../../../types/feature-type";
 import CopyText from "../../base/CopytoClipboard";
 import createShortenedText from "../../../helpers/createShortenedText";
 import useMediaQuery from "../../../hooks/useWindowQuery";
@@ -14,9 +14,7 @@ const PlanFeatures: FC<PlanFeaturesProps> = ({ features }) => {
   const windowWidth = useMediaQuery();
   return (
     <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card ">
-      <Typography.Title className="!text-[18px]" level={2}>
-        Features
-      </Typography.Title>
+      <Typography.Title className="!text-[18px]">Features</Typography.Title>
       <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
       <div className="grid gap-6 grid-cols-1 xl:grid-cols-4">
         {features && features.length > 0 ? (
@@ -35,7 +33,7 @@ const PlanFeatures: FC<PlanFeaturesProps> = ({ features }) => {
                   <CopyText showIcon onlyIcon textToCopy={feature.feature_id} />
                 </div>
               </div>
-              <div></div>
+              <div />
               <div className="text-card-grey">
                 {feature.feature_description}
               </div>

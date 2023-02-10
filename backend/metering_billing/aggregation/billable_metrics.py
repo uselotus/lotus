@@ -10,6 +10,7 @@ from dateutil.relativedelta import relativedelta
 from django.apps import apps
 from django.db import connection
 from jinja2 import Template
+
 from metering_billing.exceptions import MetricValidationFailed
 from metering_billing.utils import (
     convert_to_date,
@@ -49,28 +50,6 @@ class UsageRevenueSummary(TypedDict):
 
 
 class MetricHandler(abc.ABC):
-    @abc.abstractmethod
-    def get_current_usage(
-        self,
-        subscription: SubscriptionRecord,
-    ) -> float:
-        """This method will be used to calculate how much usage a customer currently has on a subscription. THough there are cases where get_usage and get_current_usage will be the same, there are cases where they will not. For example, if your billable metric is Gauge with a Max aggregation, then your usage over some period will be the max over past readings, but your current usage will be the latest reading."""
-        pass
-
-    @abc.abstractmethod
-    def get_earned_usage_per_day(
-        self,
-        start: datetime.date,
-        end: datetime.date,
-        customer: Customer,
-        proration: Optional[METRIC_GRANULARITY] = None,
-    ) -> dict[datetime.datetime, float]:
-        """This method will be used when calculating a concept known as "earned revenue" which is very important in accounting. It essentially states that revenue is "earned" not when someone pays, but when you deliver the goods/services at a previously agreed upon price. To accurately calculate accounting metrics, we will need to be able to tell for a given susbcription, where each cent of revenue came from, and the first step for that is to calculate how much billable usage was delivered each day. This method will be used to calculate that.
-
-        Similar to the get current usage method above, this might often look extremely similar to the get usage method, bu there's cases where it can differ quite a bit. For example, if your billable metric is Counter with a Unique aggregation, then your usage per day would naturally make sense to be the number of unique values seen on that day, but you only "earn" from the first time a unique value is seen, so you would attribute the earned usage to that day.
-        """
-        pass
-
     @staticmethod
     @abc.abstractmethod
     def validate_data(data) -> dict:

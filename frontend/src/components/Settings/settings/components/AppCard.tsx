@@ -12,7 +12,7 @@ type Props = {
   isNew?: boolean;
   selfHosted?: boolean;
 };
-export const AppCard = ({
+export function AppCard({
   title,
   handleClick,
   description,
@@ -20,14 +20,15 @@ export const AppCard = ({
   icon,
   isNew,
   selfHosted,
-}: Props) => {
+}: Props) {
   return (
     <div>
       <Card
         style={{
           boxShadow: "0 2px 4px 0 #a8a8a833",
+          minHeight: "180px",
         }}
-        hoverable={true}
+        hoverable
         title={<Avatar shape="square" src={icon} />}
         size="small"
         extra={
@@ -75,11 +76,11 @@ export const AppCard = ({
             </Link>
           </div>
         ) : (
-          <div className="flex justify-end pt-4">
+          <div className="flex justify-end ">
             <h3 className="">-</h3>
           </div>
         )}
       </Card>
     </div>
   );
-};
+}

@@ -3,9 +3,8 @@
 import uuid
 
 import django.db.models.expressions
-from django.db import migrations, models
-
 import metering_billing.utils.utils
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):

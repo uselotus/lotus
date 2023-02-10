@@ -33,7 +33,7 @@
   "topbarLinks": [
     {
       "name": "GitHub Repo",
-      "url": "https://docs.uselotus.io/docs/api-reference/plans/plan-object#:~:text=API%20Reference-,GitHub,-SDK%20Setup"
+      "url": "https://github.com/uselotus/lotus"
     }
   ],
   "anchors": [

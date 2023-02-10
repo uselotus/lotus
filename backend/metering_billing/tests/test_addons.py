@@ -1,15 +1,21 @@
 import itertools
 import json
+import urllib.parse
 from datetime import timedelta
 from decimal import Decimal
 
 import pytest
-from django.core.serializers.json import DjangoJSONEncoder
+from dateutil import parser
 from django.urls import reverse
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     AddOnSpecification,
+    CustomerBalanceAdjustment,
     Feature,
     Invoice,
     Metric,
@@ -17,14 +23,12 @@ from metering_billing.models import (
     PlanComponent,
     PlanVersion,
     PriceTier,
-    Subscription,
+    RecurringCharge,
     SubscriptionRecord,
 )
+from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
-from metering_billing.utils.enums import FLAT_FEE_BILLING_TYPE, PLAN_VERSION_STATUS
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
+from metering_billing.utils.enums import PLAN_VERSION_STATUS
 
 
 @pytest.fixture
@@ -32,7 +36,7 @@ def addon_test_common_setup(
     generate_org_and_api_key,
     add_users_to_org,
     api_client_with_api_key_auth,
-    add_subscription_to_org,
+    add_subscription_record_to_org,
     add_customers_to_org,
     add_product_to_org,
     add_plan_to_product,
@@ -91,9 +95,15 @@ def addon_test_common_setup(
             PlanVersion,
             organization=org,
             description="test_plan for testing",
-            flat_rate=30.0,
             plan=plan,
-            flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+        )
+        RecurringCharge.objects.create(
+            organization=plan.organization,
+            plan_version=billing_plan,
+            charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+            charge_behavior=RecurringCharge.ChargeBehaviorType.PRORATE,
+            amount=30,
+            pricing_unit=billing_plan.pricing_unit,
         )
         plan.display_version = billing_plan
         plan.save()
@@ -126,7 +136,7 @@ def addon_test_common_setup(
 
         (customer,) = add_customers_to_org(org, n=1)
         if num_subscriptions > 0:
-            setup_dict["org_subscription"] = add_subscription_to_org(
+            setup_dict["org_subscription"] = add_subscription_record_to_org(
                 org, billing_plan, customer
             )
         # one time flat charge addon
@@ -149,7 +159,14 @@ def addon_test_common_setup(
             plan=flat_fee_addon,
             version=1,
             status=PLAN_VERSION_STATUS.ACTIVE,
-            flat_rate=10.0,
+        )
+        RecurringCharge.objects.create(
+            organization=plan.organization,
+            plan_version=flat_fee_addon_version,
+            charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+            charge_behavior=RecurringCharge.ChargeBehaviorType.PRORATE,
+            amount=10,
+            pricing_unit=flat_fee_addon_version.pricing_unit,
         )
         flat_fee_addon_version.features.add(premium_support_feature)
         setup_dict["flat_fee_addon"] = flat_fee_addon
@@ -168,7 +185,6 @@ def addon_test_common_setup(
             organization=org,
             billing_frequency=AddOnSpecification.BillingFrequency.RECURRING,
             flat_fee_invoicing_behavior_on_attach=AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_ATTACH,
-            recurring_flat_fee_timing=AddOnSpecification.RecurringFlatFeeTiming.IN_ADVANCE,
         )
         recurring_addon = Plan.objects.create(
             organization=org,
@@ -181,7 +197,14 @@ def addon_test_common_setup(
             plan=recurring_addon,
             version=1,
             status=PLAN_VERSION_STATUS.ACTIVE,
-            flat_rate=1.0,
+        )
+        RecurringCharge.objects.create(
+            organization=plan.organization,
+            plan_version=recurring_addon_version,
+            charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+            charge_behavior=RecurringCharge.ChargeBehaviorType.PRORATE,
+            amount=1,
+            pricing_unit=recurring_addon_version.pricing_unit,
         )
         recurring_addon_version.features.add(account_manager_feature)
         recurring_addon.display_version = recurring_addon_version
@@ -265,12 +288,15 @@ class TestAttachAddon:
         )
         invoice_after = len(Invoice.objects.all())
         assert response.status_code == status.HTTP_201_CREATED
-        data = response.json()[0]
+        data = response.json()
         assert data["start_date"] != start_date
         assert data["end_date"] == end_date
         assert invoice_before + 1 == invoice_after
         recent_inv = Invoice.objects.all().order_by("-issue_date").first()
-        assert recent_inv.cost_due == setup_dict["flat_fee_addon_version"].flat_rate
+        assert (
+            recent_inv.cost_due
+            == setup_dict["flat_fee_addon_version"].recurring_charges.first().amount
+        )
 
     def test_flat_addon_invoice_later_doesnt_make_new_invoice_and_invoices(
         self,
@@ -323,13 +349,11 @@ class TestAttachAddon:
         )
         invoice_after = len(Invoice.objects.all())
         assert response.status_code == status.HTTP_201_CREATED
-        data = response.json()[0]
+        data = response.json()
         assert data["start_date"] != start_date
         assert data["end_date"] == end_date
         assert invoice_before == invoice_after
-        invoices = generate_invoice(
-            Subscription.objects.all().first(), SubscriptionRecord.objects.all()
-        )
+        invoices = generate_invoice(SubscriptionRecord.objects.all())
         assert Decimal("10.00") - invoices[0].cost_due < Decimal("0.01")
 
     def test_flat_addon_invoice_later_and_recurring_prorates_current_charge_and_charges_full_next(
@@ -378,11 +402,6 @@ class TestAttachAddon:
         setup_dict[
             "flat_fee_addon_spec"
         ].billing_frequency = AddOnSpecification.BillingFrequency.RECURRING
-        setup_dict[
-            "flat_fee_addon_spec"
-        ].recurring_flat_fee_timing = (
-            AddOnSpecification.RecurringFlatFeeTiming.IN_ADVANCE
-        )
         setup_dict["flat_fee_addon_spec"].save()
         response = setup_dict["client"].post(
             reverse("subscription-attach-addon"),
@@ -391,22 +410,17 @@ class TestAttachAddon:
         )
         invoice_after = len(Invoice.objects.all())
         assert response.status_code == status.HTTP_201_CREATED
-        data = response.json()[0]
+        data = response.json()
         assert data["start_date"] != start_date
         assert data["end_date"] == end_date
         assert invoice_before == invoice_after
         invoices = generate_invoice(
-            Subscription.objects.all().first(),
             SubscriptionRecord.objects.all(),
             charge_next_plan=True,
         )
-        max_value = (
-            10 * (Decimal("31") - Decimal("5")) / Decimal("31")
-        )  # = 0.83870967741
-        min_value = (
-            10 * (Decimal("28") - Decimal("5")) / Decimal("28")
-        )  # = 0.82142857142
-        # were gonna charge the 30 from the base plan, 10 for new plan, and ~8.21-8.38 for the addon
+        max_value = 10 * (Decimal("31") - Decimal("5")) / Decimal("31")
+        min_value = 10 * (Decimal("28") - Decimal("6")) / Decimal("28")
+        # were gonna charge the 30 from the base plan, 10 for new plan, and ~8.20-8.39 for the addon
         assert invoices[0].cost_due - Decimal("40") >= min_value
         assert invoices[0].cost_due - Decimal("40") <= max_value
 
@@ -468,12 +482,15 @@ class TestAttachAddon:
         )
         invoice_after = len(Invoice.objects.all())
         assert response.status_code == status.HTTP_201_CREATED
-        data = response.json()[0]
+        data = response.json()
         assert data["start_date"] != start_date
         assert data["end_date"] == end_date
         assert invoice_before + 1 == invoice_after
         recent_inv = Invoice.objects.all().order_by("-issue_date").first()
-        assert recent_inv.cost_due == setup_dict["flat_fee_addon_version"].flat_rate
+        assert (
+            recent_inv.cost_due
+            == setup_dict["flat_fee_addon_version"].recurring_charges.first().amount
+        )
 
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
@@ -545,13 +562,17 @@ class TestAttachAddon:
         )
         invoice_after = len(Invoice.objects.all())
         assert response.status_code == status.HTTP_201_CREATED
-        data = response.json()[0]
+        data = response.json()
         assert data["start_date"] != start_date
         assert data["end_date"] == end_date
         assert invoice_before + 1 == invoice_after
         recent_inv = Invoice.objects.all().order_by("-issue_date").first()
         # prorated flat fee
-        assert 0 < recent_inv.cost_due < setup_dict["recurring_addon_version"].flat_rate
+        assert (
+            0
+            < recent_inv.cost_due
+            < setup_dict["recurring_addon_version"].recurring_charges.first().amount
+        )
 
     def test_usage_based_add_on(self, addon_test_common_setup):
         num_subscriptions = 0
@@ -595,10 +616,664 @@ class TestAttachAddon:
         )
         invoice_after = len(Invoice.objects.all())
         assert response.status_code == status.HTTP_201_CREATED
-        data = response.json()[0]
+        data = response.json()
         assert data["start_date"] != start_date
         assert data["end_date"] == end_date
         assert invoice_before + 1 == invoice_after
         recent_inv = Invoice.objects.all().order_by("-issue_date").first()
         # prorated flat fee
-        assert 0 < recent_inv.cost_due < setup_dict["recurring_addon_version"].flat_rate
+        assert (
+            0
+            < recent_inv.cost_due
+            < setup_dict["recurring_addon_version"].recurring_charges.first().amount
+        )
+
+        # test access
+        payload = {
+            "customer_id": setup_dict["customer"].customer_id,
+            "metric_id": setup_dict["metrics"][3].metric_id,
+        }
+        response = setup_dict["client"].get(reverse("metric_access"), payload)
+        assert response.status_code == status.HTTP_200_OK
+        response = response.json()
+        assert response["metric"]["event_name"] == setup_dict["metrics"][3].event_name
+        assert (
+            response["access_per_subscription"][0]["metric_usage"]
+            < response["access_per_subscription"][0]["metric_total_limit"]
+        )
+        assert response["access"] is True
+
+    def test_attach_addon_fail_with_no_subscription(self, addon_test_common_setup):
+        num_subscriptions = 0
+        setup_dict = addon_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        customer_id = setup_dict["customer"].customer_id
+        addon_payload = {
+            "attach_to_customer_id": customer_id,
+            "attach_to_plan_id": "bogus",
+            "attach_to_subscription_filters": [],
+            "addon_id": setup_dict["recurring_addon"].plan_id,
+            "quantity": 1,
+        }
+        response = setup_dict["client"].post(
+            reverse("subscription-attach-addon"),
+            data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_multi_quantity_flat_addon_invoice_later_prorates_current_charge_charges_next(
+        self,
+        addon_test_common_setup,
+    ):
+        num_subscriptions = 0
+        setup_dict = addon_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+
+        response = setup_dict["client"].post(
+            reverse("subscription-add"),
+            data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        start_date = data["start_date"]
+        end_date = data["end_date"]
+        auto_renew = data["auto_renew"]
+        subscription_filters = data["subscription_filters"]
+        billing_plan_id = data["billing_plan"]["plan_id"]
+        fully_billed = data["fully_billed"]
+        customer_id = data["customer"]["customer_id"]
+        assert auto_renew is True
+        assert len(subscription_filters) == 0
+        assert setup_dict["billing_plan"].plan.plan_id.hex in billing_plan_id
+        assert fully_billed is False
+        assert SubscriptionRecord.objects.all().count() == 1
+
+        invoice_before = len(Invoice.objects.all())
+        addon_payload = {
+            "attach_to_customer_id": customer_id,
+            "attach_to_plan_id": billing_plan_id,
+            "attach_to_subscription_filters": subscription_filters,
+            "addon_id": setup_dict["flat_fee_addon"].plan_id,
+            "quantity": 3,
+        }
+        setup_dict[
+            "flat_fee_addon_spec"
+        ].flat_fee_invoicing_behavior_on_attach = (
+            AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_SUBSCRIPTION_END
+        )
+        setup_dict[
+            "flat_fee_addon_spec"
+        ].billing_frequency = AddOnSpecification.BillingFrequency.RECURRING
+        setup_dict["flat_fee_addon_spec"].save()
+        response = setup_dict["client"].post(
+            reverse("subscription-attach-addon"),
+            data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert SubscriptionRecord.objects.all().count() == 2
+        invoice_after = len(Invoice.objects.all())
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        assert data["start_date"] != start_date
+        assert data["end_date"] == end_date
+        assert invoice_before == invoice_after
+
+        invoices = generate_invoice(
+            SubscriptionRecord.objects.all(),
+            charge_next_plan=True,
+        )
+        max_value = 10 * (Decimal("31") - Decimal("5")) / Decimal("31")
+        min_value = 10 * (Decimal("28") - Decimal("6")) / Decimal("28")
+        # were gonna charge the 30 from the base plan, 3*10 for new plan, and 3*~8.21-8.38 for the addon
+        assert invoices[0].cost_due - Decimal("60") >= 3 * min_value
+        assert invoices[0].cost_due - Decimal("60") <= 3 * max_value
+
+    def test_can_attach_flat_addon_with_full_name(
+        self,
+        addon_test_common_setup,
+    ):
+        num_subscriptions = 0
+        setup_dict = addon_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+
+        response = setup_dict["client"].post(
+            reverse("subscription-add"),
+            data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        start_date = data["start_date"]
+        end_date = data["end_date"]
+        auto_renew = data["auto_renew"]
+        subscription_filters = data["subscription_filters"]
+        billing_plan_id = data["billing_plan"]["plan_id"]
+        fully_billed = data["fully_billed"]
+        customer_id = data["customer"]["customer_id"]
+        assert auto_renew is True
+        assert len(subscription_filters) == 0
+        assert setup_dict["billing_plan"].plan.plan_id.hex in billing_plan_id
+        assert fully_billed is False
+
+        invoice_before = len(Invoice.objects.all())
+        addon_payload = {
+            "attach_to_customer_id": customer_id,
+            "attach_to_plan_id": billing_plan_id,
+            "attach_to_subscription_filters": subscription_filters,
+            "addon_id": "addon_" + setup_dict["flat_fee_addon"].plan_id.hex,
+            "quantity": 1,
+        }
+        response = setup_dict["client"].post(
+            reverse("subscription-attach-addon"),
+            data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        invoice_after = len(Invoice.objects.all())
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        assert data["start_date"] != start_date
+        assert data["end_date"] == end_date
+        assert invoice_before + 1 == invoice_after
+        recent_inv = Invoice.objects.all().order_by("-issue_date").first()
+        assert (
+            recent_inv.cost_due
+            == setup_dict["flat_fee_addon_version"].recurring_charges.first().amount
+        )
+
+
+@pytest.mark.django_db(transaction=True)
+class TestUpdateAddon:
+    def test_update_end_date_auto_renew_works(self, addon_test_common_setup):
+        num_subscriptions = 0
+        setup_dict = addon_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+
+        response = setup_dict["client"].post(
+            reverse("subscription-add"),
+            data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        start_date = data["start_date"]
+        end_date = data["end_date"]
+        auto_renew = data["auto_renew"]
+        subscription_filters = data["subscription_filters"]
+        billing_plan_id = data["billing_plan"]["plan_id"]
+        fully_billed = data["fully_billed"]
+        customer_id = data["customer"]["customer_id"]
+        assert auto_renew is True
+        assert len(subscription_filters) == 0
+        assert setup_dict["billing_plan"].plan.plan_id.hex in billing_plan_id
+        assert fully_billed is False
+
+        invoice_before = len(Invoice.objects.all())
+        addon_payload = {
+            "attach_to_customer_id": customer_id,
+            "attach_to_plan_id": billing_plan_id,
+            "attach_to_subscription_filters": subscription_filters,
+            "addon_id": setup_dict["recurring_addon"].plan_id,
+            "quantity": 1,
+        }
+        response = setup_dict["client"].post(
+            reverse("subscription-attach-addon"),
+            data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        invoice_after = len(Invoice.objects.all())
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        assert data["start_date"] != start_date
+        assert data["end_date"] == end_date
+        assert invoice_before + 1 == invoice_after
+        recent_inv = Invoice.objects.all().order_by("-issue_date").first()
+        # prorated flat fee
+        assert (
+            0
+            < recent_inv.cost_due
+            < setup_dict["recurring_addon_version"].recurring_charges.first().amount
+        )
+        assert data["auto_renew"] is True
+
+        # update the addon
+        update_addon_query_params = {
+            "addon_id": setup_dict["recurring_addon"].plan_id,
+            "attached_customer_id": customer_id,
+            "attached_plan_id": billing_plan_id,
+        }
+        end = now_utc() + timedelta(days=5)
+        update_addon_payload = {
+            "end_date": end,
+            "turn_off_auto_renew": True,
+        }
+        response = setup_dict["client"].post(
+            reverse("subscription-update-addon")
+            + "?"
+            + urllib.parse.urlencode(update_addon_query_params),
+            data=json.dumps(update_addon_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()[0]
+        assert parser.parse(data["end_date"]) == end
+        assert data["auto_renew"] is False
+
+    def test_update_quantity_on_invoice_later(
+        self,
+        addon_test_common_setup,
+    ):
+        num_subscriptions = 0
+        setup_dict = addon_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+
+        response = setup_dict["client"].post(
+            reverse("subscription-add"),
+            data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        start_date = data["start_date"]
+        end_date = data["end_date"]
+        auto_renew = data["auto_renew"]
+        subscription_filters = data["subscription_filters"]
+        billing_plan_id = data["billing_plan"]["plan_id"]
+        fully_billed = data["fully_billed"]
+        customer_id = data["customer"]["customer_id"]
+        assert auto_renew is True
+        assert len(subscription_filters) == 0
+        assert setup_dict["billing_plan"].plan.plan_id.hex in billing_plan_id
+        assert fully_billed is False
+
+        invoice_before = len(Invoice.objects.all())
+        addon_payload = {
+            "attach_to_customer_id": customer_id,
+            "attach_to_plan_id": billing_plan_id,
+            "attach_to_subscription_filters": subscription_filters,
+            "addon_id": setup_dict["flat_fee_addon"].plan_id,
+            "quantity": 1,
+        }
+        setup_dict[
+            "flat_fee_addon_spec"
+        ].flat_fee_invoicing_behavior_on_attach = (
+            AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_SUBSCRIPTION_END
+        )
+        setup_dict["flat_fee_addon_spec"].save()
+        response = setup_dict["client"].post(
+            reverse("subscription-attach-addon"),
+            data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        invoice_after = len(Invoice.objects.all())
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        assert data["start_date"] != start_date
+        assert data["end_date"] == end_date
+        assert invoice_before == invoice_after
+
+        # update the addon - add 1 to quantity but not invoiced before so chill
+        update_addon_query_params = {
+            "addon_id": setup_dict["recurring_addon"].plan_id,
+            "attached_customer_id": customer_id,
+            "attached_plan_id": billing_plan_id,
+        }
+        update_addon_payload = {
+            "quantity": 2,
+            "invoicing_behavior": "add_to_next_invoice",
+        }
+        response = setup_dict["client"].post(
+            reverse("subscription-update-addon")
+            + "?"
+            + urllib.parse.urlencode(update_addon_query_params),
+            data=json.dumps(update_addon_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()[0]
+
+        invoices = generate_invoice(SubscriptionRecord.objects.all())
+        assert Decimal("20.00") - invoices[0].cost_due < Decimal("0.01")
+
+    def test_update_quantity_on_invoice_invoice_now(
+        self,
+        addon_test_common_setup,
+    ):
+        num_subscriptions = 0
+        setup_dict = addon_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+
+        response = setup_dict["client"].post(
+            reverse("subscription-add"),
+            data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        start_date = data["start_date"]
+        end_date = data["end_date"]
+        auto_renew = data["auto_renew"]
+        subscription_filters = data["subscription_filters"]
+        billing_plan_id = data["billing_plan"]["plan_id"]
+        fully_billed = data["fully_billed"]
+        customer_id = data["customer"]["customer_id"]
+        assert auto_renew is True
+        assert len(subscription_filters) == 0
+        assert setup_dict["billing_plan"].plan.plan_id.hex in billing_plan_id
+        assert fully_billed is False
+
+        invoice_before = len(Invoice.objects.all())
+        addon_payload = {
+            "attach_to_customer_id": customer_id,
+            "attach_to_plan_id": billing_plan_id,
+            "attach_to_subscription_filters": subscription_filters,
+            "addon_id": setup_dict["flat_fee_addon"].plan_id,
+            "quantity": 1,
+        }
+        setup_dict[
+            "flat_fee_addon_spec"
+        ].flat_fee_invoicing_behavior_on_attach = (
+            AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_SUBSCRIPTION_END
+        )
+        setup_dict["flat_fee_addon_spec"].save()
+        response = setup_dict["client"].post(
+            reverse("subscription-attach-addon"),
+            data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        invoice_after = len(Invoice.objects.all())
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        assert data["start_date"] != start_date
+        assert data["end_date"] == end_date
+        assert invoice_before == invoice_after
+
+        # update the addon - add 1 to quantity but not invoiced before so chill
+        update_addon_query_params = {
+            "addon_id": setup_dict["recurring_addon"].plan_id,
+            "attached_customer_id": customer_id,
+            "attached_plan_id": billing_plan_id,
+        }
+        update_addon_payload = {
+            "quantity": 2,
+            "invoicing_behavior": "add_to_next_invoice",
+        }
+        response = setup_dict["client"].post(
+            reverse("subscription-update-addon")
+            + "?"
+            + urllib.parse.urlencode(update_addon_query_params),
+            data=json.dumps(update_addon_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()[0]
+
+        invoices = generate_invoice(SubscriptionRecord.objects.all())
+        # already charged so should be 0
+        assert Decimal("0") - invoices[0].cost_due < Decimal("0.01")
+
+    def test_update_quantity_on_invoice_reduce_quantity(
+        self,
+        addon_test_common_setup,
+    ):
+        num_subscriptions = 0
+        setup_dict = addon_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+
+        response = setup_dict["client"].post(
+            reverse("subscription-add"),
+            data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        start_date = data["start_date"]
+        end_date = data["end_date"]
+        auto_renew = data["auto_renew"]
+        subscription_filters = data["subscription_filters"]
+        billing_plan_id = data["billing_plan"]["plan_id"]
+        fully_billed = data["fully_billed"]
+        customer_id = data["customer"]["customer_id"]
+        assert auto_renew is True
+        assert len(subscription_filters) == 0
+        assert setup_dict["billing_plan"].plan.plan_id.hex in billing_plan_id
+        assert fully_billed is False
+
+        invoice_before = len(Invoice.objects.all())
+        addon_payload = {
+            "attach_to_customer_id": customer_id,
+            "attach_to_plan_id": billing_plan_id,
+            "attach_to_subscription_filters": subscription_filters,
+            "addon_id": setup_dict["flat_fee_addon"].plan_id,
+            "quantity": 5,
+        }
+        response = setup_dict["client"].post(
+            reverse("subscription-attach-addon"),
+            data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        invoice_after = len(Invoice.objects.all())
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        assert data["start_date"] != start_date
+        assert data["end_date"] == end_date
+        assert invoice_before + 1 == invoice_after
+
+        # update the addon - add 1 to quantity but not invoiced before so chill
+        update_addon_query_params = {
+            "addon_id": setup_dict["recurring_addon"].plan_id,
+            "attached_customer_id": customer_id,
+            "attached_plan_id": billing_plan_id,
+        }
+        update_addon_payload = {
+            "quantity": 2,
+            "invoicing_behavior": "invoice_now",
+        }
+        baladj_before = len(CustomerBalanceAdjustment.objects.all())
+        response = setup_dict["client"].post(
+            reverse("subscription-update-addon")
+            + "?"
+            + urllib.parse.urlencode(update_addon_query_params),
+            data=json.dumps(update_addon_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        baladj_after = len(CustomerBalanceAdjustment.objects.all())
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()[0]
+        assert baladj_before == baladj_after - 1
+        baladj = CustomerBalanceAdjustment.objects.all().last()
+        assert baladj.amount == Decimal("30.00")  # reduced from 5 to 2
+
+        invoices = generate_invoice(SubscriptionRecord.objects.all())
+        # already charged so should be 0
+        assert Decimal("0") - invoices[0].cost_due < Decimal("0.01")
+
+
+@pytest.mark.django_db(transaction=True)
+class TestCancelAddon:
+    def test_cancel_and_bill_now_works(self, addon_test_common_setup):
+        num_subscriptions = 0
+        setup_dict = addon_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+
+        response = setup_dict["client"].post(
+            reverse("subscription-add"),
+            data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        start_date = data["start_date"]
+        end_date = data["end_date"]
+        auto_renew = data["auto_renew"]
+        subscription_filters = data["subscription_filters"]
+        billing_plan_id = data["billing_plan"]["plan_id"]
+        fully_billed = data["fully_billed"]
+        customer_id = data["customer"]["customer_id"]
+        assert auto_renew is True
+        assert len(subscription_filters) == 0
+        assert setup_dict["billing_plan"].plan.plan_id.hex in billing_plan_id
+        assert fully_billed is False
+
+        invoice_before = len(Invoice.objects.all())
+        addon_payload = {
+            "attach_to_customer_id": customer_id,
+            "attach_to_plan_id": billing_plan_id,
+            "attach_to_subscription_filters": subscription_filters,
+            "addon_id": setup_dict["recurring_addon"].plan_id,
+            "quantity": 1,
+        }
+        response = setup_dict["client"].post(
+            reverse("subscription-attach-addon"),
+            data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        invoice_after = len(Invoice.objects.all())
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        assert data["start_date"] != start_date
+        assert data["end_date"] == end_date
+        assert invoice_before + 1 == invoice_after
+        recent_inv = Invoice.objects.all().order_by("-issue_date").first()
+        # prorated flat fee
+        assert (
+            0
+            < recent_inv.cost_due
+            < setup_dict["recurring_addon_version"].recurring_charges.first().amount
+        )
+        assert data["auto_renew"] is True
+
+        # cancel the addon
+        cancel_addon_query_params = {
+            "addon_id": setup_dict["recurring_addon"].plan_id,
+            "attached_customer_id": customer_id,
+            "attached_plan_id": billing_plan_id,
+        }
+        cancel_addon_payload = {
+            "flat_fee_behavior": "charge_full",
+            "invoicing_behavior": "invoice_now",
+        }
+        response = setup_dict["client"].post(
+            reverse("subscription-cancel-addon")
+            + "?"
+            + urllib.parse.urlencode(cancel_addon_query_params),
+            data=json.dumps(cancel_addon_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()[0]
+        assert parser.parse(data["end_date"]) < now_utc()
+        assert data["auto_renew"] is False
+
+        recenter_inv = Invoice.objects.all().order_by("-issue_date").first()
+        # prorated flat fee
+        assert (
+            recenter_inv.cost_due + recent_inv.cost_due
+            == setup_dict["recurring_addon_version"].recurring_charges.first().amount
+        )
+
+    def test_cancel_and_bill_later(self, addon_test_common_setup):
+        num_subscriptions = 0
+        setup_dict = addon_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+
+        response = setup_dict["client"].post(
+            reverse("subscription-add"),
+            data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        start_date = data["start_date"]
+        end_date = data["end_date"]
+        auto_renew = data["auto_renew"]
+        subscription_filters = data["subscription_filters"]
+        billing_plan_id = data["billing_plan"]["plan_id"]
+        fully_billed = data["fully_billed"]
+        customer_id = data["customer"]["customer_id"]
+        assert auto_renew is True
+        assert len(subscription_filters) == 0
+        assert setup_dict["billing_plan"].plan.plan_id.hex in billing_plan_id
+        assert fully_billed is False
+
+        invoice_before = len(Invoice.objects.all())
+        addon_payload = {
+            "attach_to_customer_id": customer_id,
+            "attach_to_plan_id": billing_plan_id,
+            "attach_to_subscription_filters": subscription_filters,
+            "addon_id": setup_dict["recurring_addon"].plan_id,
+            "quantity": 1,
+        }
+        response = setup_dict["client"].post(
+            reverse("subscription-attach-addon"),
+            data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        invoice_after = len(Invoice.objects.all())
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        assert data["start_date"] != start_date
+        assert data["end_date"] == end_date
+        assert invoice_before + 1 == invoice_after
+        recent_inv = Invoice.objects.all().order_by("-issue_date").first()
+        # prorated flat fee
+        assert (
+            0
+            < recent_inv.cost_due
+            < setup_dict["recurring_addon_version"].recurring_charges.first().amount
+        )
+        assert data["auto_renew"] is True
+
+        # cancel the addon
+        cancel_addon_query_params = {
+            "addon_id": setup_dict["recurring_addon"].plan_id,
+            "attached_customer_id": customer_id,
+            "attached_plan_id": billing_plan_id,
+        }
+        cancel_addon_payload = {
+            "flat_fee_behavior": "refund",
+            "invoicing_behavior": "add_to_next_invoice",
+        }
+        baladj_before = len(CustomerBalanceAdjustment.objects.all())
+        response = setup_dict["client"].post(
+            reverse("subscription-cancel-addon")
+            + "?"
+            + urllib.parse.urlencode(cancel_addon_query_params),
+            data=json.dumps(cancel_addon_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        data = response.json()[0]
+        assert response.status_code == status.HTTP_200_OK
+        assert parser.parse(data["end_date"]) < now_utc()
+        assert data["auto_renew"] is False
+        generate_invoice(SubscriptionRecord.objects.all())
+        baladj_after = len(CustomerBalanceAdjustment.objects.all())
+        assert baladj_before == baladj_after - 1

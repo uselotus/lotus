@@ -6,8 +6,7 @@ import Register from "../pages/Registration";
 import SetNewPassword from "../pages/SetNewPassword";
 import DemoSignup from "../pages/DemoSignup";
 
-const ExternalRoutes: FC = () => {
-  return (
+const ExternalRoutes: FC = () => (
     <Routes>
       <Route
         path="/register"
@@ -26,7 +25,7 @@ const ExternalRoutes: FC = () => {
         path="/*"
         element={
           import.meta.env.VITE_IS_DEMO === "true" ? (
-            <Navigate replace to={"/register"} />
+            <Navigate replace to="/register" />
           ) : (
             <Login />
           )
@@ -34,6 +33,5 @@ const ExternalRoutes: FC = () => {
       />
     </Routes>
   );
-};
 
 export default ExternalRoutes;

@@ -4,7 +4,7 @@ from rest_framework_api_key.admin import APIKeyModelAdmin
 from rest_framework_api_key.models import APIKey
 from simple_history.admin import SimpleHistoryAdmin
 
-from .models import (  # Subscription,
+from .models import (
     APIToken,
     Backtest,
     BacktestSubstitution,
@@ -17,7 +17,6 @@ from .models import (  # Subscription,
     Plan,
     PlanComponent,
     PlanVersion,
-    Subscription,
     SubscriptionRecord,
     TeamInviteToken,
     User,
@@ -35,7 +34,6 @@ admin.site.register(WebhookEndpoint)
 admin.site.register(User, CustomAdmin)
 admin.site.register(Customer, SimpleHistoryAdmin)
 admin.site.register(Event)
-admin.site.register(Subscription)
 admin.site.register(SubscriptionRecord)
 admin.site.register(Plan, SimpleHistoryAdmin)
 admin.site.register(Backtest)

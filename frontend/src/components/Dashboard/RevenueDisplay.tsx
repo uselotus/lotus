@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { Fragment, useEffect, useState } from "react";
 import LoadingSpinner from "../LoadingSpinner";
 import { Paper } from "../base/Paper";
 
@@ -34,22 +34,38 @@ function RevenueDisplay(props: {
     );
   }, [props.earned_revenue_1, props.earned_revenue_2]);
   return (
-    <Paper color="white" border={true}>
-      <div className="grid grid-flow-col auto-cols-auto	 justify-between">
+    <Paper color="white" border>
+      <div className="grid grid-flow-col auto-cols-auto  justify-between">
         <div>
-          <p className="text-base mb-4">Earned Revenue</p>
+          <p className="text-sm mb-4 leading-[18px] font-normal">
+            Earned Revenue
+          </p>
           {props.isLoading ? (
-            <LoadingSpinner />
+            <div className="flex justify-center">
+              <LoadingSpinner />
+            </div>
           ) : (
-            <span className="text-3xl font-bold">
-              {new Intl.NumberFormat("en-US", {
-                style: "currency",
-                currency: "USD",
-              }).format(displayMetric(props.earned_revenue_1))}
-            </span>
+            <>
+              <span className="text-2xl font-bold mb-4">
+                {new Intl.NumberFormat("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                }).format(displayMetric(props.earned_revenue_1))}
+              </span>
+              <p className="text-sm mb-4 mt-4 leading-[18px] font-normal">
+                Prev. Period{" "}
+                {percentageChange >= 0 ? (
+                  <span className="text-[#34B220] ">
+                    +{percentageChange.toFixed(2)}%{" "}
+                  </span>
+                ) : (
+                  <span className="text-[#cf1322] ">
+                    {percentageChange.toFixed(0)}%{" "}
+                  </span>
+                )}
+              </p>
+            </>
           )}
-
-          <span></span>
         </div>
 
         <div>

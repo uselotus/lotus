@@ -1,11 +1,13 @@
 import { Button, Card, Form, Input, InputNumber, Select } from "antd";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import UsageComponentForm from "../components/Plans/UsageComponentForm";
 import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
-
-import { CreateComponent, PlanType } from "../types/plan-type";
+import {
+  CreateComponent,
+  CreateRecurringCharge,
+  PlanType,
+} from "../types/plan-type";
 import { Plan, Organization, Addon } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
@@ -14,6 +16,7 @@ import { ComponentDisplay } from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import { CurrencyType } from "../types/pricing-unit-type";
 import { AddonTypeOption, CreateAddonType } from "../types/addon-type";
+import UsageComponentForm from "../components/Plans/UsageComponentForm";
 
 interface ComponentDisplay {
   metric: string;
@@ -30,7 +33,7 @@ const durationConversion = {
   yearly: "Year",
 };
 
-const CreateAddOns = () => {
+function CreateAddOns() {
   const [componentVisible, setcomponentVisible] = useState<boolean>();
   const [allPlans, setAllPlans] = useState<PlanType[]>([]);
   const [allCurrencies, setAllCurrencies] = useState<CurrencyType[]>([]);
@@ -53,8 +56,10 @@ const CreateAddOns = () => {
   );
   const [addon_type, setAddonType] = useState<AddonTypeOption>("flat_fee");
   const [base_cost, setBaseCost] = useState<number | null>(0.0);
-  const [recurring_flat_fee_timing, setRecurringFlatFeeTiming] = useState("");
-  const [invoice_when, setInvoiceWhen] = useState<string | null>(null);
+  const [recurring_flat_fee_timing, setRecurringFlatFeeTiming] = useState<
+    "in_advance" | "in_arrears"
+  >("in_advance");
+  const [invoice_when, setInvoiceWhen] = useState<string>("invoice_on_attach");
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>([]);
   const [editComponentItem, setEditComponentsItem] =
     useState<CreateComponent>();
@@ -204,26 +209,29 @@ const CreateAddOns = () => {
         featureIdList.push(features[i].feature_id);
       }
     }
-    const addons = {
-      addon_name,
-      description,
-      addon_type,
-      billing_frequency,
-      flat_rate: base_cost!,
+
+    const recurring_charges: CreateRecurringCharge[] = [];
+    recurring_charges.push({
+      name: "Flat Rate",
+      amount: base_cost || 0,
+      charge_timing: recurring_flat_fee_timing,
+      charge_behavior: "prorate",
+    });
+
+    const addons: CreateAddonType = {
+      addon_name: addon_name,
+      description: description,
+      addon_type: addon_type,
+      billing_frequency: billing_frequency,
+      recurring_charges: recurring_charges,
       components: usagecomponentslist.length ? usagecomponentslist : [],
       features: featureIdList.length ? featureIdList : [],
-      invoice_when,
-      recurring_flat_fee_timing: recurring_flat_fee_timing
-        ? recurring_flat_fee_timing
-        : null,
+      invoice_when: invoice_when,
       currency_code: selectedCurrency.code,
     };
     mutation.mutate(addons);
   };
-  if (
-    (addon_type === "usage" && billing_frequency !== "flat_fee") ||
-    (addon_type === "flat_fee" && billing_frequency === "recurring")
-  ) {
+  if (addon_type === "usage") {
     card = (
       <Card
         title="Added Components"
@@ -271,6 +279,7 @@ const CreateAddOns = () => {
           onClick={() => form.submit()}
           size="large"
           type="primary"
+          disabled={!addon_name || !billing_frequency || !base_cost}
         >
           Preview & publish
         </Button>,
@@ -328,7 +337,7 @@ const CreateAddOns = () => {
                 />
               </Form.Item>
               <Form.Item name="description">
-                <label className="mb-4 required">Description </label>
+                <label className="mb-4">Description </label>
                 <Input
                   className="w-full"
                   type="textarea"
@@ -344,7 +353,7 @@ const CreateAddOns = () => {
                     if (e === "flat_fee") {
                       setShowInvoicing(true);
                     } else {
-                      setShowInvoicing(false);
+                      setShowInvoicing(true);
                     }
                     setAddonType(e);
                   }}
@@ -402,6 +411,25 @@ const CreateAddOns = () => {
                 </Form.Item>
               </div>
 
+              {showInvoicing && (
+                <Form.Item name="invoice_when">
+                  <label className="mb-4 required">
+                    Invoice Base Cost When
+                  </label>
+                  <Select
+                    onChange={(e) => setInvoiceWhen(e)}
+                    placeholder="On Attach"
+                    className="w-full"
+                  >
+                    <Select.Option value="invoice_on_attach">
+                      On Attach
+                    </Select.Option>
+                    <Select.Option value="invoice_on_subscription_end">
+                      On Subscription End
+                    </Select.Option>
+                  </Select>
+                </Form.Item>
+              )}
               {billing_frequency === "recurring" && (
                 <Form.Item name="recurring_flat_fee_timing">
                   <label className="mb-4 nowrap required"> Billing Type</label>
@@ -415,24 +443,6 @@ const CreateAddOns = () => {
                     </Select.Option>
                     <Select.Option value="in_arrears">
                       Pay in arrears
-                    </Select.Option>
-                  </Select>
-                </Form.Item>
-              )}
-
-              {showInvoicing && (
-                <Form.Item name="invoice_when">
-                  <label className="mb-4">Invoicing When</label>
-                  <Select
-                    onChange={(e) => setInvoiceWhen(e)}
-                    placeholder="On Attach"
-                    className="w-full"
-                  >
-                    <Select.Option value="invoice_on_attach">
-                      On Attach
-                    </Select.Option>
-                    <Select.Option value="invoice_on_subscription_end">
-                      On Subscription End
                     </Select.Option>
                   </Select>
                 </Form.Item>
@@ -499,6 +509,6 @@ const CreateAddOns = () => {
       </Form.Provider>
     </PageLayout>
   );
-};
+}
 
 export default CreateAddOns;

@@ -1,9 +1,9 @@
 import React, { FC, Fragment, useState } from "react";
 
-import { PageLayout } from "../../base/PageLayout";
 import { Button, Typography } from "antd";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "react-query";
+import { PageLayout } from "../../base/PageLayout";
 import { Addon } from "../../../api/api";
 import LoadingSpinner from "../../LoadingSpinner";
 import { AddonType } from "../../../types/addon-type";
@@ -45,14 +45,12 @@ const AddonDetails: FC = () => {
   } = useQuery<AddonType>(
     ["addon_detail", addOnId],
     () =>
-      Addon.getAddon(addOnId as string).then((res) => {
-        return res;
-      }),
+      Addon.getAddon(addOnId as string).then((res) => res),
     { refetchOnMount: "always" }
   );
 
   return (
-    <Fragment>
+    <>
       {isLoading && (
         <div className="flex h-full">
           <div className="m-auto">
@@ -99,7 +97,7 @@ const AddonDetails: FC = () => {
                 </Button>
               </div>
             }
-          ></PageLayout>
+           />
           <div className="mx-10">
             <div className="bg-white mb-6 flex flex-col py-4 px-10 rounded-lg space-y-12">
               <div>
@@ -121,7 +119,7 @@ const AddonDetails: FC = () => {
           <div className="separator mt-4" />
         </div>
       )}
-    </Fragment>
+    </>
   );
 };
 export default AddonDetails;

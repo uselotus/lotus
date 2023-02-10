@@ -17,15 +17,17 @@ import {
   Select,
   Tag,
 } from "antd";
+import { toast } from "react-toastify";
+import { PlusOutlined } from "@ant-design/icons";
 import { Organization, PricingUnits } from "../../../../api/api";
 import { CurrencyType } from "../../../../types/pricing-unit-type";
-import { toast } from "react-toastify";
 import LoadingSpinner from "../../../LoadingSpinner";
 import useGlobalStore from "../../../../stores/useGlobalstore";
 import { QueryErrors } from "../../../../types/error-response-types";
 import { OrganizationType } from "../../../../types/account-type";
 import { country_json } from "../../../../assets/country_codes";
-import { PlusOutlined } from "@ant-design/icons";
+import { fourDP } from "../../../../helpers/fourDP";
+import { timezones } from "../../../../assets/timezones";
 
 interface InviteWithEmailForm extends HTMLFormControlsCollection {
   email: string;
@@ -43,6 +45,8 @@ const GeneralTab: FC = () => {
   const queryClient = useQueryClient();
   const org = useGlobalStore((state) => state.org);
   const [taxRate, setTaxRate] = useState(0);
+  const [timezone, setTimezone] =
+    React.useState<(typeof timezones)[number]>("UTC");
   const [invoiceGracePeriod, setInvoiceGracePeriod] = useState(0);
   const [displayTaxRate, setDisplayTaxRate] = useState(0);
   const [displayInvoiceGracePeriod, setDisplayInvoiceGracePeriod] = useState(0);
@@ -65,18 +69,12 @@ const GeneralTab: FC = () => {
     isLoading: pricingUnitsLoading,
   }: UseQueryResult<CurrencyType[]> = useQuery<CurrencyType[]>(
     ["pricing_unit_list"],
-    () =>
-      PricingUnits.list().then((res) => {
-        return res;
-      })
+    () => PricingUnits.list().then((res) => res)
   );
 
   const { data: orgData, isLoading } = useQuery(
     ["organization"],
-    () =>
-      Organization.get().then((res) => {
-        return res[0];
-      }),
+    () => Organization.get().then((res) => res[0]),
     {}
   );
 
@@ -117,6 +115,7 @@ const GeneralTab: FC = () => {
       setCity(orgData.address ? orgData.address.city : "");
       setState(orgData.address ? orgData.address.state : "");
       setCountry(orgData.address ? orgData.address.country : "");
+      setTimezone((prevTZ) => (orgData.timezone ? orgData.timezone : prevTZ));
       setPostalCode(orgData.address ? orgData.address.postal_code : "");
       setSubscriptionFilters(orgData.subscription_filter_keys);
       setFormSubscriptionFilters(orgData.subscription_filter_keys);
@@ -153,6 +152,7 @@ const GeneralTab: FC = () => {
       default_currency_code: string;
       address: OrganizationType["address"];
       tax_rate: number;
+      timezone: string;
       payment_grace_period: number;
       subscription_filter_keys: string[];
     }) =>
@@ -160,6 +160,7 @@ const GeneralTab: FC = () => {
         obj.org_id,
         obj.default_currency_code,
         obj.tax_rate,
+        obj.timezone,
         obj.payment_grace_period,
         obj.address,
         obj.subscription_filter_keys
@@ -185,12 +186,11 @@ const GeneralTab: FC = () => {
   const handleSendInviteEmail = (event: React.FormEvent<FormElements>) => {
     mutation.mutate({ email });
   };
-  const fourDP = (taxRate: number) =>
-    parseFloat(parseFloat(String(taxRate)).toFixed(4));
+
   return (
     <div>
       <div className="flex justify-between w-6/12">
-        <Typography.Title level={2}>Organization Settings</Typography.Title>
+        <Typography.Title level={2}>Environment Settings</Typography.Title>
         <Button onClick={() => setIsEdit(true)} className="justify-self-end">
           Edit
         </Button>
@@ -213,9 +213,7 @@ const GeneralTab: FC = () => {
             {org.default_currency !== undefined &&
             org.default_currency !== null ? (
               <Tag>
-                {org.default_currency?.name +
-                  " " +
-                  org.default_currency?.symbol}
+                {`${org.default_currency?.name} ${org.default_currency?.symbol}`}
               </Tag>
             ) : (
               "N/A"
@@ -243,13 +241,16 @@ const GeneralTab: FC = () => {
             </p>
           )}
           <p className="text-[16px]">
+            <b>Timezone:</b> {timezone}
+          </p>
+          <p className="text-[16px]">
             <b>Subscription Filters:</b>{" "}
-            {orgData?.subscription_filter_keys.map((filter) => {
-              return <Tag key={filter}>{filter}</Tag>;
-            })}
+            {orgData?.subscription_filter_keys.map((filter) => (
+              <Tag key={filter}>{filter}</Tag>
+            ))}
           </p>
 
-          <div className=" flex justify-end"></div>
+          <div className=" flex justify-end" />
         </div>
       )}
       <Modal
@@ -283,6 +284,7 @@ const GeneralTab: FC = () => {
               org_id: org.organization_id,
               default_currency_code: currentCurrency,
               tax_rate: fourDP(taxRate),
+              timezone,
               payment_grace_period: invoiceGracePeriod,
               address: submittedAddress,
               subscription_filter_keys: subscriptionFilters,
@@ -307,7 +309,7 @@ const GeneralTab: FC = () => {
                 },
               ]}
             >
-              <Input disabled={true} />
+              <Input disabled />
             </Form.Item>
             <Form.Item
               label="Default Organization Currency"
@@ -315,9 +317,10 @@ const GeneralTab: FC = () => {
             >
               <Select
                 onChange={setCurrentCurrency}
-                options={pricingUnits?.map((pc) => {
-                  return { label: `${pc.name} ${pc.symbol}`, value: pc.code };
-                })}
+                options={pricingUnits?.map((pc) => ({
+                  label: `${pc.name} ${pc.symbol}`,
+                  value: pc.code,
+                }))}
               />
             </Form.Item>
             <Form.Item label="Tax Rate" name="tax_rate">
@@ -380,6 +383,17 @@ const GeneralTab: FC = () => {
                 />
               </div>
             </Form.Item>
+            <Form.Item label="Timezone" name="timezone">
+              <Select
+                placeholder="Timezone"
+                defaultValue={timezone}
+                onChange={(e) => setTimezone(e)}
+              >
+                {timezones.map((tz) => (
+                  <Select.Option value={tz}>{tz}</Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
             <Form.Item label="Payment Grace Period" name="payment_grace_period">
               <Input
                 type="number"
@@ -395,9 +409,10 @@ const GeneralTab: FC = () => {
                 placeholder="Select subscription filters"
                 onChange={(e) => setSubscriptionFilters(e)}
                 optionLabelProp="label"
-                options={formSubscriptionFilters.map((filter) => {
-                  return { label: filter, value: filter };
-                })}
+                options={formSubscriptionFilters.map((filter) => ({
+                  label: filter,
+                  value: filter,
+                }))}
               />
             </Form.Item>
 
@@ -405,7 +420,7 @@ const GeneralTab: FC = () => {
               value={newSubscriptionFilter}
               placeholder="Enter New Subscription Filter"
               onChange={(e) => setNewSubscriptionFilter(e.target.value)}
-            ></Input>
+            />
             <Button
               onClick={() => {
                 if (newSubscriptionFilter.length !== 0) {

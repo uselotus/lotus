@@ -6,7 +6,7 @@ import { integrationsMap } from "../../types/payment-processor-type";
 type Props = {
   integrations: Object;
 };
-export const CustomerIntegrations = ({ integrations }: Props) => {
+export function CustomerIntegrations({ integrations }: Props) {
   const integrationKeys = Object.keys(integrations);
   return (
     <div className="flex items-center justify-center flex-wrap">
@@ -39,4 +39,4 @@ export const CustomerIntegrations = ({ integrations }: Props) => {
       })}
     </div>
   );
-};
+}

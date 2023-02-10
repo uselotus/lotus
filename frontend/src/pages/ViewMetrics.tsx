@@ -1,5 +1,12 @@
 import React, { FC, useState } from "react";
 import { Card, Button } from "antd";
+import {
+  useQuery,
+  UseQueryResult,
+  useMutation,
+  useQueryClient,
+} from "react-query";
+import { toast } from "react-toastify";
 import MetricTable from "../components/Metrics/MetricTable";
 import { Metrics } from "../api/api";
 import {
@@ -7,17 +14,10 @@ import {
   MetricType,
   NumericFilterType,
 } from "../types/metric-type";
-import {
-  useQuery,
-  UseQueryResult,
-  useMutation,
-  useQueryClient,
-} from "react-query";
 import LoadingSpinner from "../components/LoadingSpinner";
 import CreateMetricForm, {
   CreateMetricState,
 } from "../components/Metrics/CreateMetricForm";
-import { toast } from "react-toastify";
 import EventPreview from "../components/EventPreview";
 import "./ViewMetrics.css";
 import { PageLayout } from "../components/base/PageLayout";
@@ -43,9 +43,7 @@ const ViewMetrics: FC = () => {
   const { data, isLoading, isError }: UseQueryResult<MetricType[]> = useQuery<
     MetricType[]
   >(["metric_list"], () =>
-    Metrics.getMetrics().then((res) => {
-      return res;
-    })
+    Metrics.getMetrics().then((res) => res)
   );
 
   const mutation = useMutation(
@@ -60,7 +58,7 @@ const ViewMetrics: FC = () => {
       },
 
       onError: (error: any) => {
-        toast.error("Error creating metric: " + error.response.data.detail, {
+        toast.error(`Error creating metric: ${  error.response.data.detail}`, {
           position: toast.POSITION.TOP_CENTER,
         });
       },
@@ -92,7 +90,7 @@ const ViewMetrics: FC = () => {
       metric_name: state.metric_name,
       metric_type: state.metric_type,
       billable_aggregation_type: state.billable_aggregation_type,
-      //defaults for now
+      // defaults for now
       event_type: state.metric_type === "gauge" ? state.event_type : "delta",
       is_cost_metric: state.is_cost_metric,
       custom_sql: state.metric_type === "custom" ? state.custom_sql : undefined,
@@ -134,7 +132,7 @@ const ViewMetrics: FC = () => {
         <Button
           type="primary"
           size="large"
-          key={"create-plan"}
+          key="create-plan"
           onClick={createMetricButton}
         >
           Create Metric

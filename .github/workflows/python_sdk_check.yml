@@ -1,7 +1,4 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
-
-name: Django/Postgres CI
+name: Python SDK Test
 
 on:
   push:
@@ -9,11 +6,8 @@ on:
   pull_request:
     branches: ["main"]
 
-permissions:
-  contents: read
-
 jobs:
-  tests:
+  python-sdk-tests:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -49,10 +43,12 @@ jobs:
       DJANGO_SETTINGS_MODULE: "lotus.settings"
       PYTHONPATH: "."
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
-      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
+      STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
       DEBUG: False
       KAFKA_URL: "localhost:9092"
       PYTHONDONTWRITEBYTECODE: 1
+      LOTUS_HOST: "http://localhost:8000"
 
     steps:
       - uses: actions/checkout@v3
@@ -86,10 +82,25 @@ jobs:
         run: |
           pipenv run python manage.py migrate --noinput
 
-      - name: Test Pytest
+      - name: Capture Outputs
         run: |
-          pipenv run pytest -k "not integrations"
+        OUTPUTS=$(pipenv run python manage.py postman_ci_outputs)
+        API_KEY=$(echo "$OUTPUTS" | grep "KEY=" | cut -d= -f2)
+        PLAN_ID=$(echo "$OUTPUTS" | grep "PLAN_ID=" | cut -d= -f2)
+        ADDON_ID=$(echo "$OUTPUTS" | grep "ADDON_ID=" | cut -d= -f2)
+        echo "LOTUS_API_KEY=$API_KEY" >> $GITHUB_ENV
+        echo "LOTUS_PLAN_ID=$PLAN_ID" >> $GITHUB_ENV
+        echo "LOTUS_ADDON_ID=$ADDON_ID" >> $GITHUB_ENV
+        
 
-      - name: Test Setup Tasks
+      - name: Run server
         run: |
-          pipenv run python manage.py setup_tasks
+          pipenv run python manage.py runserver &
+
+      - name: Checkout lotus-python
+        run: |
+          pip install lotus-python
+
+      - name: Run tests
+        run: |
+          pipenv run pytest lotus-python

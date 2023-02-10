@@ -5,6 +5,9 @@ import React, { FC, Fragment, useEffect, useState } from "react";
 import "./SwitchVersions.css";
 import { PlusOutlined, MoreOutlined, DeleteOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
+import { Dropdown, Menu, Button, Typography } from "antd";
+import dayjs from "dayjs";
+import { useMutation, useQueryClient } from "react-query";
 import {
   PlanDetailType,
   PlanType,
@@ -13,11 +16,8 @@ import {
 import PlanComponents, { PlanInfo, PlanSummary } from "./PlanComponent";
 import PlanFeatures from "./PlanFeatures";
 import StateTabs from "./StateTabs";
-import { Dropdown, Menu, Button, Typography } from "antd";
 // @ts-ignore
-import dayjs from "dayjs";
 import { Plan } from "../../../api/api";
-import { useMutation, useQueryClient } from "react-query";
 
 interface SwitchVersionProps {
   versions: PlanVersionType[];
@@ -28,7 +28,7 @@ interface SwitchVersionProps {
   deletePlanExternalLink: (link: string) => void;
 }
 
-//function that takes in a string and returns a string based on the cases of the string equals percentage, flat, or override
+// function that takes in a string and returns a string based on the cases of the string equals percentage, flat, or override
 function getPriceAdjustmentEnding(
   type: string | undefined,
   amount: number | undefined,
@@ -36,7 +36,7 @@ function getPriceAdjustmentEnding(
 ) {
   switch (type) {
     case "percentage":
-      return amount + "%";
+      return `${amount  }%`;
     case "fixed":
       return `${code} ${amount}`;
     case "price_override":
@@ -93,15 +93,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
       },
     }
   );
-  const archivemutation = useMutation(
-    (version_id: string) =>
-      Plan.archivePlanVersion(version_id, { status: "archived" }),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries("plan_list");
-      },
-    }
-  );
+
   // useEffect(() => {
   //   setSelectedVersion(versions.find((x) => x.status === "active")!);
   // }, [versions]);
@@ -114,25 +106,6 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
   if (!activePlanVersion) {
     return <div>No Active Plan</div>;
   }
-  const menu = (
-    <Menu>
-      <Menu.Item
-        key="1"
-        onClick={() => archivemutation.mutate(selectedVersion!.version_id)}
-        disabled={
-          selectedVersion?.status === "active" ||
-          selectedVersion?.status === "grandfathered"
-        }
-      >
-        <div className="planMenuArchiveIcon">
-          <div>
-            <DeleteOutlined />
-          </div>
-          <div className="archiveLabel">Archive</div>
-        </div>
-      </Menu.Item>
-    </Menu>
-  );
 
   return (
     <div>
@@ -158,7 +131,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         ))}
         <Link
           type="text"
-          to={"/create-version/" + selectedVersion?.plan_id}
+          to={`/create-version/${  selectedVersion?.plan_id}`}
           className="mx-4"
         >
           <div className="flex items-center justify-center px-2 py-2 rounded-[20px] hover:bg-[#EAEAEB]">
@@ -199,7 +172,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         </div>
 
         <div className=" mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card">
-          <Typography.Title className="!text-[18px]" level={2}>
+          <Typography.Title className="!text-[18px]">
             Price Adjustments:{" "}
             {getPriceAdjustmentEnding(
               selectedVersion?.price_adjustment?.price_adjustment_type,

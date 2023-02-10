@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import React, { useEffect, useRef, useState, memo } from "react";
 import Badge from "../base/Badges/Badges";
+
 const MotionTag = motion(Tag, { forwardMotionProps: true });
 interface LinkExternalIdsProps {
   externalIds: string[];
