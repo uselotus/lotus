@@ -96,7 +96,7 @@ jobs:
           INVOICE_ID=$(echo "$OUTPUTS" | grep "INVOICE_ID=" | cut -d= -f2)
           ADDON_ID=$(echo "$OUTPUTS" | grep "ADDON_ID=" | cut -d= -f2)
           METRIC_ID=$(echo "$OUTPUTS" | grep "METRIC_ID=" | cut -d= -f2)
-          UNUSED_METRIC_ID=$(echo "$OUTPUTS" | grep "UNUSED_METRIC_ID=" | cut -d= -f2)
+          UNUSED_METRIC_ID=$(echo "$OUTPUTS" | grep "UNUSED_MID=" | cut -d= -f2)
           FEATURE_ID=$(echo "$OUTPUTS" | grep "FEATURE_ID=" | cut -d= -f2)
           FEATURE_NAME=$(echo "$OUTPUTS" | grep "FEATURE_NAME=" | cut -d= -f2)
           EVENT_NAME=$(echo "$OUTPUTS" | grep "EVENT_NAME=" | cut -d= -f2)

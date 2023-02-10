@@ -210,12 +210,10 @@ class Command(BaseCommand):
         # metric + feature
         print(f"METRIC_ID=metric_{sum_words.metric_id.hex}")
         unused_metric = metrics_map["unique_lang"]
-        print(f"UNUSED_METRIC_ID=metric_{unused_metric.metric_id.hex}")
+        print(f"UNUSED_MID=metric_{unused_metric.metric_id.hex}")
         print(f"FEATURE_ID=feature_{premium_support_feature.feature_id.hex}")
         print(f"EVENT_NAME={sum_words.event_name}")
         print(f"FEATURE_NAME={premium_support_feature.feature_name}")
-        logger.info(f"UNUSED_METRIC_ID=metric_{unused_metric.metric_id.hex}")
-        logger.info(f"METRIC_ID=metric_{sum_words.metric_id.hex}")
 
         # custometr
         print(f"CUSTOMER_ID={customer.customer_id}")
