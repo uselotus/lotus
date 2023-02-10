@@ -107,12 +107,11 @@ jobs:
             --arg invoice_id "$INVOICE_ID" \
             --arg addon_id "$ADDON_ID" \
             --arg metric_id "$METRIC_ID" \
-            --arg metric_name "$METRIC_NAME" \
             --arg feature_name "$FEATURE_NAME" \
             --arg feature_id "$FEATURE_ID" \
             --arg event_name "$EVENT_NAME" \
             --arg customer_id "$CUSTOMER_ID" \
-            '{KEY: $key, PLAN_ID: $plan_id, INVOICE_ID: $invoice_id, ADDON_ID: $addon_id, METRIC_ID: $metric_id, METRIC_NAME: $metric_name, FEATURE_NAME: $feature_name, FEATURE_ID: $feature_id,EVENT_NAME: $event_name, CUSTOMER_ID: $customer_id, URL: "http://localhost:8000"}')
+            '{KEY: $key, PLAN_ID: $plan_id, INVOICE_ID: $invoice_id, ADDON_ID: $addon_id, METRIC_ID: $metric_id, FEATURE_NAME: $feature_name, FEATURE_ID: $feature_id,EVENT_NAME: $event_name, CUSTOMER_ID: $customer_id, URL: "http://localhost:8000"}')
           echo "$ENV_JSON" > environment.json
           echo "LOTUS_API_KEY=$KEY" >> $GITHUB_ENV
           echo "PLAN_ID=$PLAN_ID" >> $GITHUB_ENV
