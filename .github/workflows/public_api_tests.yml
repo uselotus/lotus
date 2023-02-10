@@ -134,23 +134,23 @@ jobs:
         with:
           repository: uselotus/lotus-python
           ref: main
-          path: lotus-python
+          path: /home/runner/work/
 
       - name: Print ls
         run: echo $(ls)
 
       - name: Install pipenv for lotus-python
         run: |
-          cd lotus-python
+          cd /home/runner/work/lotus-python
           python -m pip install --upgrade pipenv wheel && pipenv update
 
       - name: Install dependencies for lotus-python
         if: steps.cache-pipenv.outputs.cache-hit != 'true'
         run: |
-          cd lotus-python
+          cd /home/runner/work/lotus-python
           pipenv install --deploy --dev
 
       - name: Test Pytest for lotus-python
         run: |
-          cd lotus-python
+          cd /home/runner/work/lotus-python
           pipenv run pytest
