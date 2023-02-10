@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from django.db.models.query import QuerySet
+
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
@@ -124,7 +125,11 @@ def generate_invoice(
                 if subscription_record.end_date <= now_utc():
                     subscription_record.fully_billed = True
                     subscription_record.save()
-            generate_invoice_pdf_async.delay(invoice.pk)
+            try:
+                generate_invoice_pdf_async.delay(invoice.pk)
+            except Exception as e:
+                sentry_sdk.capture_exception(e)
+
             invoice_created_webhook(invoice, organization)
 
     return list(invoices.values())
