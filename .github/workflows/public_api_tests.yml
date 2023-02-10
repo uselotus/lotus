@@ -142,6 +142,9 @@ jobs:
       - name: Print ls
         run: echo $(pwd) && echo $(ls)
 
+      - name: Print ls2
+        run: cd ../ && echo $(pwd) && echo $(ls)
+
       - name: Install pipenv for lotus-python
         run: |
           cd lotus-python
