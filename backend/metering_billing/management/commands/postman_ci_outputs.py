@@ -2,6 +2,7 @@ import logging
 import uuid
 
 from django.core.management.base import BaseCommand
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.demos import create_pc_and_tiers, make_subscription_record
 from metering_billing.invoice import generate_invoice
@@ -146,6 +147,10 @@ class Command(BaseCommand):
             billable_metric=num_seats,
             free_units=1,
         )
+        pc = free_bp.plan_components.all().first()
+        tier = pc.tiers.all().first()
+        tier.range_end = None
+        tier.save()
         plan.display_version = free_bp
         plan.save()
 
