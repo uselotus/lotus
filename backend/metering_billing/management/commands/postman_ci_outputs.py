@@ -2,7 +2,6 @@ import logging
 import uuid
 
 from django.core.management.base import BaseCommand
-
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.demos import create_pc_and_tiers, make_subscription_record
 from metering_billing.invoice import generate_invoice
@@ -65,7 +64,7 @@ class Command(BaseCommand):
         ):
             validated_data = {
                 "organization": organization,
-                "event_name": "generate_text",
+                "event_name": "test_event",
                 "property_name": property_name,
                 "usage_aggregation_type": usage_aggregation_type,
                 "billable_metric_name": billable_metric_name,
@@ -80,7 +79,7 @@ class Command(BaseCommand):
         ):
             validated_data = {
                 "organization": organization,
-                "event_name": "log_num_seats",
+                "event_name": "test_event",
                 "property_name": property_name,
                 "usage_aggregation_type": usage_aggregation_type,
                 "billable_metric_name": billable_metric_name,
@@ -94,7 +93,7 @@ class Command(BaseCommand):
         ):
             validated_data = {
                 "organization": organization,
-                "event_name": "computation",
+                "event_name": "test_event",
                 "property_name": property_name,
                 "usage_aggregation_type": usage_aggregation_type,
                 "billable_metric_name": billable_metric_name,
