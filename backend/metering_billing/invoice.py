@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from django.db.models.query import QuerySet
+
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
@@ -541,9 +542,7 @@ def calculate_due_date(issue_date, organization):
         due_date += relativedelta(
             days=int(grace_period_setting.setting_values["value"])
         )
-    else:
-        due_date = issue_date
-    return due_date
+        return due_date
 
 
 def finalize_cost_due(invoice, draft):

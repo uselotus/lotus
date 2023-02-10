@@ -526,7 +526,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   </div>
                   <div className="Inter text-card-grey">
                     {data.default_currency.symbol}
-                    {data.invoices[0].cost_due.toFixed(2)}
+                    {data.invoices[0]?.cost_due.toFixed(2)}
                   </div>
                 </CustomerCard.Item>
               </CustomerCard.Block>
