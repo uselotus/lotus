@@ -109,10 +109,10 @@ jobs:
             --arg customer_id "$CUSTOMER_ID" \
             '{KEY: $key, PLAN_ID: $plan_id, INVOICE_ID: $invoice_id, ADDON_ID: $addon_id, METRIC_ID: $metric_id, FEATURE_NAME: $feature_name, EVENT_NAME: $event_name, CUSTOMER_ID: $customer_id, URL: "http://localhost:8000"}')
           echo "$ENV_JSON" > environment.json
-          echo "LOTUS_API_KEY=$API_KEY" >> $GITHUB_ENV
+          echo "LOTUS_API_KEY=$KEY" >> $GITHUB_ENV
           echo "PLAN_ID=$PLAN_ID" >> $GITHUB_ENV
           echo "ADDON_ID=$ADDON_ID" >> $GITHUB_ENV
-          echo "LOTUS_HOST"
+          echo "LOTUS_HOST=http://localhost:8000" >> $GITHUB_ENV
 
       - name: Run server
         run: |
