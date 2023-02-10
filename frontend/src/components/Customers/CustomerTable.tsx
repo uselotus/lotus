@@ -127,12 +127,34 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
       dataIndex: "subscriptions",
       render: (_, record) => (
         <div>
-          {record.subscriptions.map((sub) => (
+          {record.subscriptions.length < 3 &&
+            record.subscriptions.map((sub, index) => (
+              <div>
+                <Tag color="default">{sub.billing_plan_name}</Tag>
+                <Tag color="default">v{sub.plan_version}</Tag>{" "}
+              </div>
+            ))}
+          {record.subscriptions.length >= 3 && (
             <div>
-              <Tag color="default">{sub.billing_plan_name}</Tag>
-              <Tag color="default">v{sub.plan_version}</Tag>{" "}
+              <div>
+                <Tag color="default">
+                  {record.subscriptions[0].billing_plan_name}
+                </Tag>
+                <Tag color="default">
+                  v{record.subscriptions[0].plan_version}
+                </Tag>{" "}
+              </div>
+              <div>
+                <Tag color="default">
+                  {record.subscriptions[1].billing_plan_name}
+                </Tag>
+                <Tag color="default">
+                  v{record.subscriptions[1].plan_version}
+                </Tag>{" "}
+              </div>
+              {"..."}
             </div>
-          ))}
+          )}
         </div>
       ),
     },
