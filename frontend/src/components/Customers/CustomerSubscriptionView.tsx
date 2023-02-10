@@ -370,20 +370,7 @@ const SubscriptionView: FC<Props> = ({
           .includes(searchQuery.toLowerCase())
     );
   }, [subscriptions, searchQuery]);
-  const subFilters = (index: number) => {
-    if (
-      invoiceData &&
-      invoiceData.invoices &&
-      invoiceData.invoices.length > 0
-    ) {
-      const totalLineItems = invoiceData.invoices[0].line_items.length - 1;
-      if (index > totalLineItems) {
-        return undefined;
-      }
-      return invoiceData?.invoices[0].line_items[index].subscription_filters;
-    }
-    return undefined;
-  };
+
   if (subscriptions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center">
@@ -438,10 +425,10 @@ const SubscriptionView: FC<Props> = ({
                   <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
                     <div>
                       <div> {subPlan.billing_plan.plan_name}</div>
-                      {subFilters(index) ? (
-                        subFilters(index)!.length > 0 ? (
+                      {subPlan.subscription_filters ? (
+                        subPlan.subscription_filters.length > 0 ? (
                           <p>
-                            {subFilters(index)!.map((filter) => (
+                            {subPlan.subscription_filters.map((filter) => (
                               <span key={filter.property_name}>
                                 {filter.property_name}: {filter.value}
                               </span>
@@ -685,7 +672,7 @@ const SubscriptionView: FC<Props> = ({
                             onChange={(e) => {
                               setAttachToPlanId(subPlan.billing_plan.plan_id);
                               setAddOnId(e);
-                              const filters = subFilters(index);
+                              const filters = subPlan.subscription_filters;
 
                               if (filters && filters.length > 0) {
                                 setAttachToSubscriptionFilters(filters);
