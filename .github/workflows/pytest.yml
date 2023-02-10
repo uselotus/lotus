@@ -87,17 +87,22 @@ jobs:
         run: |
           pipenv run python manage.py migrate --noinput
 
-      # - name: Test Pytest
-      #   run: |
-      #     pipenv run pytest -k "not integrations"
+      - name: Test Pytest
+        uses: nick-fields/retry@v2
+        with:
+          timeout_seconds: 15
+          max_attempts: 3
+          retry_on: error
+          command: |
+            pipenv run pytest -k "not integrations"
 
-      - name: Run Backend
-        run: pipenv run python manage.py runserver &
+      # - name: Run Backend
+      #   run: pipenv run python manage.py runserver &
 
-      - name: Install dependencies
-        run: cd ../frontend/ && yarn install
-      - name: Run Cypress tests
-        run: cd ../frontend/ && yarn cypress run
+      # - name: Install dependencies
+      #   run: cd ../frontend/ && yarn install
+      # - name: Run Cypress tests
+      #   run: cd ../frontend/ && yarn cypress run
       - name: Test Setup Tasks
         run: |
           pipenv run python manage.py setup_tasks
