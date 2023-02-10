@@ -542,6 +542,7 @@ def calculate_due_date(issue_date, organization):
         due_date += relativedelta(
             days=int(grace_period_setting.setting_values["value"])
         )
+        return due_date
 
 
 def finalize_cost_due(invoice, draft):
