@@ -147,7 +147,7 @@ class Command(BaseCommand):
         plan.display_version = free_bp
         plan.save()
 
-        print(f"PLAN_ID={plan.plan_id.hex}")
+        print(f"PLAN_ID=plan_{plan.plan_id.hex}")
 
         sr = make_subscription_record(
             organization=organization,
@@ -159,7 +159,7 @@ class Command(BaseCommand):
 
         # invoice
         invoice = generate_invoice(sr, draft=True)[0]
-        print(f"INVOICE_ID={invoice.invoice_id.hex}")
+        print(f"INVOICE_ID=invoice_{invoice.invoice_id.hex}")
 
         # credit
         CustomerBalanceAdjustment.objects.create(
@@ -202,11 +202,11 @@ class Command(BaseCommand):
         flat_fee_addon_version.features.add(premium_support_feature)
         flat_fee_addon.display_version = flat_fee_addon_version
         flat_fee_addon.save()
-        print(f"ADDON_ID={flat_fee_addon.plan_id.hex}")
+        print(f"ADDON_ID=addon_{flat_fee_addon.plan_id.hex}")
 
         # metric + feature
-        print(f"METRIC_ID={sum_words.metric_id.hex}")
-        print(f"FEATURE_ID={premium_support_feature.feature_id.hex}")
+        print(f"METRIC_ID=metric_{sum_words.metric_id.hex}")
+        print(f"FEATURE_ID=feature_{premium_support_feature.feature_id.hex}")
         print(f"EVENT_NAME={sum_words.event_name}")
         print(f"FEATURE_NAME={premium_support_feature.feature_name}")
 
