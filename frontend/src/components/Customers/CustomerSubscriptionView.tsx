@@ -376,6 +376,10 @@ const SubscriptionView: FC<Props> = ({
       invoiceData.invoices &&
       invoiceData.invoices.length > 0
     ) {
+      const totalLineItems = invoiceData.invoices[0].line_items.length - 1;
+      if (index > totalLineItems) {
+        return undefined;
+      }
       return invoiceData?.invoices[0].line_items[index].subscription_filters;
     }
     return undefined;
