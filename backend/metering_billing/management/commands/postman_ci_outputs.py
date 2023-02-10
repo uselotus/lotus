@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from django.core.management.base import BaseCommand
@@ -24,6 +25,8 @@ from metering_billing.utils.enums import (
     PLAN_VERSION_STATUS,
 )
 
+logger = logging.getLogger("django.server")
+
 
 class Command(BaseCommand):
     "Django command to execute calculate invoice"
@@ -32,9 +35,9 @@ class Command(BaseCommand):
         organization = Organization.objects.create(
             organization_name="test",
         )
+        organization.update_subscription_filter_settings(["region"])
         Customer.objects.create(
-            organization=organization,
-            customer_name="test",
+            organization=organization, customer_name="test", email="test@test.com"
         )
 
         # API key
@@ -61,7 +64,7 @@ class Command(BaseCommand):
         ):
             validated_data = {
                 "organization": organization,
-                "event_name": "generate_text",
+                "event_name": "test_event",
                 "property_name": property_name,
                 "usage_aggregation_type": usage_aggregation_type,
                 "billable_metric_name": billable_metric_name,
@@ -76,7 +79,7 @@ class Command(BaseCommand):
         ):
             validated_data = {
                 "organization": organization,
-                "event_name": "log_num_seats",
+                "event_name": "test_event",
                 "property_name": property_name,
                 "usage_aggregation_type": usage_aggregation_type,
                 "billable_metric_name": billable_metric_name,
@@ -90,7 +93,7 @@ class Command(BaseCommand):
         ):
             validated_data = {
                 "organization": organization,
-                "event_name": "computation",
+                "event_name": "test_event",
                 "property_name": property_name,
                 "usage_aggregation_type": usage_aggregation_type,
                 "billable_metric_name": billable_metric_name,
@@ -143,10 +146,14 @@ class Command(BaseCommand):
             billable_metric=num_seats,
             free_units=1,
         )
+        pc = free_bp.plan_components.all().first()
+        tier = pc.tiers.all().first()
+        tier.range_end = None
+        tier.save()
         plan.display_version = free_bp
         plan.save()
 
-        print(f"PLAN_ID={plan.plan_id.hex}")
+        print(f"PLAN_ID=plan_{plan.plan_id.hex}")
 
         sr = make_subscription_record(
             organization=organization,
@@ -158,7 +165,7 @@ class Command(BaseCommand):
 
         # invoice
         invoice = generate_invoice(sr, draft=True)[0]
-        print(f"INVOICE_ID={invoice.invoice_id.hex}")
+        print(f"INVOICE_ID=invoice_{invoice.invoice_id.hex}")
 
         # credit
         CustomerBalanceAdjustment.objects.create(
@@ -170,7 +177,7 @@ class Command(BaseCommand):
         # addon
         premium_support_feature = Feature.objects.create(
             organization=organization,
-            feature_name="premium_support",
+            feature_name="test_feature",
             feature_description="premium support",
         )
         flat_fee_addon_spec = AddOnSpecification.objects.create(
@@ -201,13 +208,16 @@ class Command(BaseCommand):
         flat_fee_addon_version.features.add(premium_support_feature)
         flat_fee_addon.display_version = flat_fee_addon_version
         flat_fee_addon.save()
-        print(f"ADDON_ID={flat_fee_addon.plan_id.hex}")
+        print(f"ADDON_ID=addon_{flat_fee_addon.plan_id.hex}")
 
         # metric + feature
-        print(f"METRIC_ID={sum_words.metric_id.hex}")
-        print(f"FEATURE_ID={premium_support_feature.feature_id.hex}")
+        print(f"METRIC_ID=metric_{sum_words.metric_id.hex}")
+        unused_metric = metrics_map["unique_lang"]
+        print(f"UNUSED_MID=metric_{unused_metric.metric_id.hex}")
+        print(f"FEATURE_ID=feature_{premium_support_feature.feature_id.hex}")
         print(f"EVENT_NAME={sum_words.event_name}")
         print(f"FEATURE_NAME={premium_support_feature.feature_name}")
 
         # custometr
         print(f"CUSTOMER_ID={customer.customer_id}")
+        logger.info("Done creating test data")
