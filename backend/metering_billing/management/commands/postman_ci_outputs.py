@@ -1,6 +1,7 @@
 import uuid
 
 from django.core.management.base import BaseCommand
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.demos import create_pc_and_tiers, make_subscription_record
 from metering_billing.invoice import generate_invoice
@@ -34,8 +35,7 @@ class Command(BaseCommand):
         )
         organization.update_subscription_filter_settings(["region"])
         Customer.objects.create(
-            organization=organization,
-            customer_name="test",
+            organization=organization, customer_name="test", email="test@test.com"
         )
 
         # API key
