@@ -137,6 +137,7 @@ jobs:
         with:
           repository: uselotus/lotus-python
           ref: main
+          path: lotus-python
 
       - name: Print ls
         run: echo $(pwd) && echo $(ls)
