@@ -464,11 +464,11 @@ class InvoiceSerializer(
         seq = [
             convert_to_date(x.start_date) for x in obj.line_items.all() if x.start_date
         ]
-        return min(seq) if len(seq) > 0 else obj.issue_date
+        return min(seq) if len(seq) > 0 else convert_to_date(obj.issue_date)
 
     def get_end_date(self, obj) -> datetime.date:
         seq = [convert_to_date(x.end_date) for x in obj.line_items.all() if x.end_date]
-        return max(seq) if len(seq) > 0 else obj.issue_date
+        return max(seq) if len(seq) > 0 else convert_to_date(obj.issue_date)
 
 
 class LightweightInvoiceSerializer(InvoiceSerializer):
