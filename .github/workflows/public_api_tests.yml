@@ -96,6 +96,8 @@ jobs:
           INVOICE_ID=$(echo "$OUTPUTS" | grep "INVOICE_ID=" | cut -d= -f2)
           ADDON_ID=$(echo "$OUTPUTS" | grep "ADDON_ID=" | cut -d= -f2)
           METRIC_ID=$(echo "$OUTPUTS" | grep "METRIC_ID=" | cut -d= -f2)
+          UNUSED_METRIC_ID=$(echo "$OUTPUTS" | grep "UNUSED_METRIC_ID=" | cut -d= -f2)
+          FEATURE_ID=$(echo "$OUTPUTS" | grep "FEATURE_ID=" | cut -d= -f2)
           FEATURE_NAME=$(echo "$OUTPUTS" | grep "FEATURE_NAME=" | cut -d= -f2)
           EVENT_NAME=$(echo "$OUTPUTS" | grep "EVENT_NAME=" | cut -d= -f2)
           CUSTOMER_ID=$(echo "$OUTPUTS" | grep "CUSTOMER_ID=" | cut -d= -f2)
@@ -108,10 +110,14 @@ jobs:
             --arg feature_name "$FEATURE_NAME" \
             --arg event_name "$EVENT_NAME" \
             --arg customer_id "$CUSTOMER_ID" \
-            '{KEY: $key, PLAN_ID: $plan_id, INVOICE_ID: $invoice_id, ADDON_ID: $addon_id, METRIC_ID: $metric_id, FEATURE_NAME: $feature_name, EVENT_NAME: $event_name, CUSTOMER_ID: $customer_id, URL: "http://localhost:8000"}')
+            --arg feature_id "$FEATURE_ID" \
+            '{KEY: $key, PLAN_ID: $plan_id, INVOICE_ID: $invoice_id, ADDON_ID: $addon_id, METRIC_ID: $metric_id, FEATURE_NAME: $feature_name, FEATURE_ID: $feature_id,EVENT_NAME: $event_name, CUSTOMER_ID: $customer_id, URL: "http://localhost:8000"}')
           echo "$ENV_JSON" > environment.json
           echo "LOTUS_API_KEY=$KEY" >> $GITHUB_ENV
           echo "PLAN_ID=$PLAN_ID" >> $GITHUB_ENV
+          echo "METRIC_ID=$METRIC_ID" >> $GITHUB_ENV
+          echo "UNUSED_METRIC_ID=$UNUSED_METRIC_ID" >> $GITHUB_ENV
+          echo "FEATURE_ID=$FEATURE_ID" >> $GITHUB_ENV
           echo "ADDON_ID=$ADDON_ID" >> $GITHUB_ENV
           echo "LOTUS_HOST=http://localhost:8000" >> $GITHUB_ENV
 
