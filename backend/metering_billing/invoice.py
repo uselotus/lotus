@@ -2,6 +2,7 @@ import logging
 from collections.abc import Iterable
 from decimal import Decimal
 
+import sentry_sdk
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
@@ -260,6 +261,7 @@ def charge_next_plan_flat_fee(
     subscription_record, next_subscription_record, next_bp, invoice
 ):
     from metering_billing.models import InvoiceLineItem, RecurringCharge
+
     timezone = subscription_record.customer.timezone
     for recurring_charge in next_bp.recurring_charges.all():
         charge_in_advance = (
@@ -493,7 +495,10 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
 
     if not draft:
         generate_external_payment_obj(invoice)
-        generate_invoice_pdf_async.delay(invoice.pk)
+        try:
+            generate_invoice_pdf_async.delay(invoice.pk)
+        except Exception as e:
+            sentry_sdk.capture_exception(e)
         invoice_created_webhook(invoice, organization)
 
     return invoice
