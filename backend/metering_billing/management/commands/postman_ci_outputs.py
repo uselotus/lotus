@@ -32,6 +32,7 @@ class Command(BaseCommand):
         organization = Organization.objects.create(
             organization_name="test",
         )
+        organization.update_subscription_filter_settings(["region"])
         Customer.objects.create(
             organization=organization,
             customer_name="test",
