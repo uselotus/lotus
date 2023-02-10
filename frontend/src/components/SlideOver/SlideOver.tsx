@@ -1,23 +1,24 @@
 import React, { useState } from "react";
-import useToggleSlideOver from "../../stores/useToggleSlideOver";
 import { PlusOutlined, CloseOutlined, LeftOutlined } from "@ant-design/icons";
-import useGlobalStore from "../../stores/useGlobalstore";
 import { Button } from "antd";
-import SlideOverCard from "./SlideOverCard";
-import Select from "../base/Select/Select";
-import { CurrencyType } from "../../types/pricing-unit-type";
 import {
   useQuery,
   UseQueryResult,
   useMutation,
   useQueryClient,
 } from "react-query";
-import { Organization, PricingUnits } from "../../api/api";
 import { toast } from "react-toastify";
+import useToggleSlideOver from "../../stores/useToggleSlideOver";
+import useGlobalStore from "../../stores/useGlobalstore";
+import SlideOverCard from "./SlideOverCard";
+import Select from "../base/Select/Select";
+import { CurrencyType } from "../../types/pricing-unit-type";
+import { Organization, PricingUnits } from "../../api/api";
 import {
   ErrorResponse,
   ErrorResponseMessage,
 } from "../../types/error-response-types";
+
 interface SlideOverProps {}
 
 const SlideOver: React.FC<SlideOverProps> = () => {
@@ -33,9 +34,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
   const { data: pricingUnits }: UseQueryResult<CurrencyType[]> = useQuery<
     CurrencyType[]
   >(["pricing_unit_list"], () =>
-    PricingUnits.list().then((res) => {
-      return res;
-    })
+    PricingUnits.list().then((res) => res)
   );
   const createOrgMutation = useMutation(
     ({
@@ -64,9 +63,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
     }
   );
   const switchOrgMutation = useMutation(
-    (org_id: string) => {
-      return Organization.switchOrg(org_id);
-    },
+    (org_id: string) => Organization.switchOrg(org_id),
     {
       onSuccess: () => {
         queryClient.invalidateQueries();
@@ -96,7 +93,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
       role="dialog"
       aria-modal="true"
     >
-      <div className="fixed inset-0"></div>
+      <div className="fixed inset-0" />
       <div className="fixed inset-0 overflow-hidden">
         <div className="absolute inset-0  overflow-hidden">
           <div
@@ -239,7 +236,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
                     <div
                       className="h-full border-2 border-dashed border-gray-200"
                       aria-hidden="true"
-                    ></div>
+                     />
                   </div>
                   {/* end replace */}
                 </div>

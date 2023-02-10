@@ -2,18 +2,18 @@ import React, { useState } from "react";
 import { Modal, Select, Radio } from "antd";
 import { toast } from "react-toastify";
 
-const VersionActiveForm = (props: {
+function VersionActiveForm(props: {
   visible: boolean;
   onCancel: () => void;
   onOk: (active: boolean, activeType: string) => void;
-}) => {
+}) {
   const [active, setActive] = useState<boolean>(false);
   const [activeType, setActiveType] = useState<string>("");
 
   return (
     <Modal
       visible={props.visible}
-      title={"Confirm New Version"}
+      title="Confirm New Version"
       okText="Create Version"
       okType="default"
       okButtonProps={{
@@ -49,7 +49,7 @@ const VersionActiveForm = (props: {
             buttonStyle="solid"
           >
             <Radio.Button value={false}>Inactive</Radio.Button>
-            <Radio.Button value={true}>Active</Radio.Button>
+            <Radio.Button value>Active</Radio.Button>
           </Radio.Group>
         </div>
       </div>
@@ -78,6 +78,6 @@ const VersionActiveForm = (props: {
       )}
     </Modal>
   );
-};
+}
 
 export default VersionActiveForm;

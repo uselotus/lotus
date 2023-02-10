@@ -263,7 +263,7 @@ WITH rate_per_bucket AS (
         AND bucket <= '{{ end_date }}'::timestamptz
         AND bucket <= NOW()
         {% if customer_id is not none %}
-        customer_id = {{ customer_id }}
+        AND customer_id = {{ customer_id }}
         {% endif %}
 )
 , per_groupby AS (   

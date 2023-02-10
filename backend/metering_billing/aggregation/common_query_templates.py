@@ -2,7 +2,7 @@ CAGG_REFRESH = """
 SELECT add_continuous_aggregate_policy('{{ cagg_name }}',
     start_offset => INTERVAL '32 days',
     end_offset => INTERVAL '1 day',
-    schedule_interval => INTERVAL '10 minutes',
+    schedule_interval => INTERVAL '30 minutes',
     if_not_exists => TRUE);
 """
 

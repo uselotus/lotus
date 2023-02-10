@@ -1,21 +1,24 @@
 import React, { FC } from "react";
 import { Col, Row } from "antd";
-import RevenueDisplay from "./RevenueDisplay";
-import SubscriptionStatistics from "./SubscriptionStatistics";
-import MetricBarGraph from "./MetricBarGraph";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import dayjsGenerateConfig from "rc-picker/lib/generate/dayjs";
 import generatePicker from "antd/es/date-picker/generatePicker";
 import { useQuery, UseQueryResult } from "react-query";
-import { RevenueType } from "../../types/revenue-type";
-import { GetRevenue } from "../../api/api";
 import advancedFormat from "dayjs/plugin/advancedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import localeData from "dayjs/plugin/localeData";
 import weekday from "dayjs/plugin/weekday";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import weekYear from "dayjs/plugin/weekYear";
+import { Events, GetRevenue, GetSubscriptions } from "../../api/api";
+import { RevenueType } from "../../types/revenue-type";
+import MetricBarGraph from "./MetricBarGraph";
+import { SubscriptionTotals } from "../../types/subscription-type";
+
+import { PageLayout } from "../base/PageLayout";
+import { CustomerByPlanPie } from "./CustomerByPlanPie";
+import NumberDisplay from "./NumberDisplay";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(advancedFormat);
@@ -23,9 +26,6 @@ dayjs.extend(weekday);
 dayjs.extend(localeData);
 dayjs.extend(weekOfYear);
 dayjs.extend(weekYear);
-
-import { PageLayout } from "../base/PageLayout";
-import { CustomerByPlanPie } from "./CustomerByPlanPie";
 
 dayjs.extend(duration);
 
@@ -47,17 +47,42 @@ const Dashboard: FC = () => {
           .subtract(dayjs.duration(dateRange[1].diff(dateRange[0])))
           .format("YYYY-MM-DD"),
         dateRange[1].subtract(1, "month").format("YYYY-MM-DD")
-      ).then((res) => {
-        return res;
-      })
+      ).then((res) => res)
     );
+
+  const { data: subscriptionData, isLoading: subscriptionLoading } =
+    useQuery<SubscriptionTotals>(["subscription_overview", dateRange], () =>
+      GetSubscriptions.getSubscriptionOverview(
+        dateRange[0].format("YYYY-MM-DD"),
+        dateRange[1].format("YYYY-MM-DD"),
+        dateRange[0]
+          .subtract(dayjs.duration(dateRange[1].diff(dateRange[0])))
+          .format("YYYY-MM-DD"),
+        dateRange[1].subtract(1, "month").format("YYYY-MM-DD")
+      ).then((res) => res)
+    );
+
+  const { data: eventData, isLoading: eventLoading } = useQuery(
+    ["event_count", dateRange],
+    () =>
+      Events.getEventCount(
+        dateRange[0].format("YYYY-MM-DD"),
+        dateRange[1].format("YYYY-MM-DD"),
+        dateRange[0]
+          .subtract(dayjs.duration(dateRange[1].diff(dateRange[0])))
+          .format("YYYY-MM-DD"),
+        dateRange[1].subtract(1, "month").format("YYYY-MM-DD")
+      ).then((res) => res)
+  );
 
   return (
     <PageLayout
-      title={"Dashboard"}
+      title="Dashboard"
+      className="text-[24px]"
       extra={[
         <RangePicker
           id="preset"
+          key="range-picker"
           format={dateFormat}
           ranges={{
             "This month": [dayjs().startOf("month"), dayjs().endOf("month")],
@@ -77,23 +102,44 @@ const Dashboard: FC = () => {
     >
       <Row gutter={[16, 16]}>
         <Col span="24">
-          <div className="grid grid-cols-12 justify-center align-baseline space-x-4">
-            <div className="col-span-8">
-              <RevenueDisplay
-                total_revenue_1={data?.total_revenue_period_1}
-                total_revenue_2={data?.total_revenue_period_2}
-                earned_revenue_1={data?.earned_revenue_period_1}
-                earned_revenue_2={data?.earned_revenue_period_2}
+          <div className="grid grid-cols-12 gap-18 justify-center align-baseline space-x-4">
+            <div className="col-span-3">
+              <NumberDisplay
+                metric_1={data?.earned_revenue_period_1}
+                metric_2={data?.earned_revenue_period_2}
                 isLoading={isLoading}
+                title="Earned Revenue"
+                currency="USD"
               />
             </div>
-            <div className="col-span-4">
-              <SubscriptionStatistics range={dateRange} />
+            <div className="col-span-3">
+              <NumberDisplay
+                metric_1={subscriptionData?.period_1_total_subscriptions}
+                metric_2={subscriptionData?.period_2_total_subscriptions}
+                isLoading={subscriptionLoading}
+                title="Total Subscriptions"
+              />
+            </div>
+            <div className="col-span-3">
+              <NumberDisplay
+                metric_1={eventData?.total_events_period_1}
+                metric_2={eventData?.total_events_period_2}
+                isLoading={false}
+                title="Events Tracked"
+              />{" "}
+            </div>
+            <div className="col-span-3">
+              <NumberDisplay
+                metric_1={subscriptionData?.period_1_new_subscriptions}
+                metric_2={subscriptionData?.period_2_new_subscriptions}
+                isLoading={subscriptionLoading}
+                title="New Subscriptions"
+              />{" "}
             </div>
           </div>
         </Col>
         <Col span="24">
-          <div className="grid grid-cols-12 justify-center space-x-4">
+          <div className="grid grid-cols-12 gap-18 justify-center space-x-4">
             <div className="col-span-8">
               <MetricBarGraph range={dateRange} />
             </div>

@@ -1,32 +1,34 @@
-import { Button, Form, Input, InputNumber , DatePicker } from "antd";
-// @ts-ignore
+import { Button, Form, Input, InputNumber, DatePicker, Modal } from "antd";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient, UseQueryResult , useQuery } from "react-query";
+import {
+  useMutation,
+  useQueryClient,
+  UseQueryResult,
+  useQuery,
+} from "react-query";
 import { toast } from "react-toastify";
+import dayjs from "dayjs";
 import { Credits, PricingUnits } from "../api/api";
 import { CreateCreditType } from "../types/balance-adjustment";
 import { CurrencyType } from "../types/pricing-unit-type";
 import PricingUnitDropDown from "../components/PricingUnitDropDown";
-// @ts-ignore
-import dayjs from "dayjs";
 
 type Params = {
   customerId: string;
+  onSubmit: () => void;
+  visible: boolean;
+  onCancel: () => void;
 };
 
-const CreateCredit = ({ customerId, onSubmit }) => {
+function CreateCredit({ customerId, visible, onCancel, onSubmit }: Params) {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
 
   const { data, isLoading }: UseQueryResult<CurrencyType[]> = useQuery<
     CurrencyType[]
-  >(["pricing_unit_list"], () =>
-    PricingUnits.list().then((res) => {
-      return res;
-    })
-  );
+  >(["pricing_unit_list"], () => PricingUnits.list().then((res) => res));
   const [amount_paid, setAmountPaid] = useState(
     form.getFieldValue("amount_paid")
   );
@@ -42,9 +44,7 @@ const CreateCredit = ({ customerId, onSubmit }) => {
     setAmountPaidCurrency(value);
   };
 
-  const disabledDate = (current) => {
-    return current && current < dayjs().startOf("day");
-  };
+  const disabledDate = (current) => current && current < dayjs().startOf("day");
 
   const mutation = useMutation(
     (post: CreateCreditType) => Credits.createCredit(post),
@@ -97,7 +97,20 @@ const CreateCredit = ({ customerId, onSubmit }) => {
   });
 
   return (
-    <div className=" w-8/12 my-4">
+    <Modal
+      width={1000}
+      destroyOnClose={true}
+      title="Create Credit"
+      visible={visible}
+      footer={[
+        <Button key="back" onClick={onCancel}>
+          Cancel
+        </Button>,
+        <Button key="submit" type="primary" onClick={submit}>
+          Submit
+        </Button>,
+      ]}
+    >
       <Form.Provider>
         <Form
           form={form}
@@ -111,18 +124,25 @@ const CreateCredit = ({ customerId, onSubmit }) => {
           }}
           onFinish={submit}
           autoComplete="off"
-          labelCol={{ span: 8 }}
-          wrapperCol={{ span: 16 }}
-          labelAlign="left"
+          labelWrap={true}
         >
-          <div className=" grid grid-cols-2 gap-4 p-4 border-2">
+          <div className=" grid grid-cols-2 gap-4 p-4">
             <Form.Item
-              label="Amount"
+              label="Amount Granted"
               name="amount"
               rules={[
                 {
                   required: true,
                   message: "Please enter an amount",
+                },
+                {
+                  validator(rule, value, callback) {
+                    if (value <= 0) {
+                      callback("Value must be greater than 0");
+                    } else {
+                      callback();
+                    }
+                  },
                 },
               ]}
             >
@@ -140,15 +160,30 @@ const CreateCredit = ({ customerId, onSubmit }) => {
                 setCurrentSymbol={() => null}
               />
             </Form.Item>
-            <Form.Item name="amount_paid" label="Amount Paid">
+            <Form.Item
+              name="amount_paid"
+              label="Amount Paid"
+              rules={[
+                {
+                  validator(rule, value, callback) {
+                    if (value && value < 0) {
+                      callback("Value must be greater than 0");
+                    } else {
+                      callback();
+                    }
+                  },
+                },
+              ]}
+            >
               <InputNumber precision={2} onChange={handleAmountPaidChange} />
             </Form.Item>
             <Form.Item
               name="amount_paid_currency"
-              label="Currency"
+              label="Paid Currency"
               rules={[validateAmountPaidCurrency]}
             >
               <PricingUnitDropDown
+                disabled={amount_paid === null || amount_paid === 0}
                 setCurrentCurrency={(value) => {
                   form.setFieldValue("amount_paid_currency", value);
                   handleAmountPaidCurrencyChange(value);
@@ -189,30 +224,19 @@ const CreateCredit = ({ customerId, onSubmit }) => {
             >
               <Input type="textarea" placeholder="Description for adjustment" />
             </Form.Item>
-            <div>
-              {amount_paid > 0 && amount_paid !== null ? (
-                <div className="warning-text mb-2 text-darkgold">
-                  Warning: An invoice will be generated for the amount paid of{" "}
-                  {amount_paid} {amount_paid_currency}.
-                </div>
-              ) : null}
-
-              <Form.Item>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  className="mr-4"
-                  loading={mutation.isLoading}
-                >
-                  Submit
-                </Button>
-              </Form.Item>
-            </div>
+          </div>
+          <div>
+            {amount_paid > 0 && amount_paid !== null ? (
+              <div className="warning-text mb-2 text-darkgold">
+                Warning: An invoice will be generated for the amount paid of{" "}
+                {amount_paid} {amount_paid_currency}.
+              </div>
+            ) : null}
           </div>
         </Form>
       </Form.Provider>
-    </div>
+    </Modal>
   );
-};
+}
 
 export default CreateCredit;

@@ -88,9 +88,10 @@ class COMPONENT_RESET_FREQUENCY(models.TextChoices):
     NONE = ("none", _("None"))
 
 
-class FLAT_FEE_BILLING_TYPE(models.TextChoices):
+class INVOICE_CHARGE_TIMING_TYPE(models.TextChoices):
     IN_ARREARS = ("in_arrears", _("In Arrears"))
     IN_ADVANCE = ("in_advance", _("In Advance"))
+    ONE_TIME = ("one_time", _("One Time"))
 
 
 class USAGE_CALC_GRANULARITY(models.TextChoices):
@@ -188,7 +189,7 @@ class WEBHOOK_TRIGGER_EVENTS(models.TextChoices):
 
 class FLAT_FEE_BEHAVIOR(models.TextChoices):
     REFUND = ("refund", _("Refund"))
-    PRORATE = ("prorate", _("Prorate"))
+    CHARGE_PRORATED = ("charge_prorated", _("Prorate"))
     CHARGE_FULL = ("charge_full", _("Charge Full"))
 
 

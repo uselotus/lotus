@@ -1,3 +1,5 @@
+from rest_framework import serializers
+
 from api.serializers.model_serializers import (
     FeatureSerializer,
     LightweightCustomerSerializer,
@@ -15,8 +17,8 @@ from metering_billing.models import (
 from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganization,
     SlugRelatedFieldWithOrganizationPK,
+    TimezoneFieldMixin,
 )
-from rest_framework import serializers
 
 
 class GetInvoicePdfURLRequestSerializer(serializers.Serializer):
@@ -103,7 +105,9 @@ class GetEventAccessSerializer(serializers.Serializer):
     )
 
 
-class AccessMethodsSubscriptionRecordSerializer(serializers.ModelSerializer):
+class AccessMethodsSubscriptionRecordSerializer(
+    TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = SubscriptionRecord
         fields = (
@@ -279,6 +283,7 @@ class GetCustomerFeatureAccessRequestSerializer(serializers.Serializer):
         data = super().validate(data)
         data["customer"] = data.pop("customer_id", None)
 
+        return data
         return data
         return data
         return data

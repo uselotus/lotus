@@ -5,13 +5,21 @@ import Avatar from "../Avatar/Avatar";
 import Badge from "../Badges/Badges";
 import useGlobalStore from "../../../stores/useGlobalstore";
 import useToggleSlideOver from "../../../stores/useToggleSlideOver";
+
 interface HeadingProps {
   hasBackButton?: boolean;
   backButton?: React.ReactNode;
+  aboveTitle?: boolean;
 }
 
-const Heading: React.FC<HeadingProps> = ({ hasBackButton, backButton }) => {
-  const { current_user, environment } = useGlobalStore((state) => state.org);
+const Heading: React.FC<HeadingProps> = ({
+  hasBackButton,
+  backButton,
+  aboveTitle,
+}) => {
+  const { current_user, environment, organization_name } = useGlobalStore(
+    (state) => state.org
+  );
   const { pathname } = useLocation();
   const setOpen = useToggleSlideOver((state) => state.setOpen);
   const currentPath = pathname.split("/")[1];
@@ -50,13 +58,14 @@ const Heading: React.FC<HeadingProps> = ({ hasBackButton, backButton }) => {
               />
               <Badge.Content>
                 <span className="flex gap-2 ml-2 justify-center items-center">
-                  <span className="text-sm">{environment}</span>
+                  <span className="text-sm">{organization_name}</span>
                   <RightOutlined className="text-[10px]" />
                 </span>
               </Badge.Content>
             </Badge>
           </div>
           <div
+            aria-hidden
             onClick={setOpen}
             className={`flex gap-4 items-center p-4 ${
               isPlansPage ? "hover:bg-gold-50" : "hover:bg-white"
@@ -82,7 +91,7 @@ const Heading: React.FC<HeadingProps> = ({ hasBackButton, backButton }) => {
           </div>
         </div>
       </div>
-      {hasBackButton && backButton}
+      {hasBackButton && !aboveTitle && backButton}
       <div className=" h-[1.5px] w-full bg-red" />
     </div>
   );

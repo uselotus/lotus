@@ -35,7 +35,16 @@
    <a href="https://www.producthunt.com/posts/lotus-6109ec1a-4e40-4280-8af3-c698da29e79e?utm_source=badge-top-post-badge&utm_medium=badge&utm_souce=badge-lotus&#0045;6109ec1a&#0045;4e40&#0045;4280&#0045;8af3&#0045;c698da29e79e" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/top-post-badge.svg?post_id=374178&theme=neutral&period=daily" alt="Lotus - Open&#0045;source&#0032;pricing&#0032;&#0038;&#0032;billing | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
 </div>
 
+
+<h3 align="center">
+  <a href="https://docs.uselotus.io/"><b>Documentation</b></a> &bull;
+  <a href="https://join.slack.com/t/lotus-community/shared_invite/zt-1fufuktbp-ignnw768aZgdFNlcvAOSrw"><b>Slack Community</b></a> &bull;
+  <a href="https://form.typeform.com/to/pehx2YSQ?typeform-source=docs.uselotus.io"><b>Book A Demo</b></a>
+</h3>
+
 <br/>
+
+
 
 Lotus is a pricing and billing engine that enables SaaS companies to deploy, monitor, and experiment with custom subscriptions and complex models like usage-based pricing.
 
@@ -45,7 +54,6 @@ Lotus provides a flexible and modular control panel on top of your existing quot
 
 <br/>
 
-[Website](https://www.uselotus.io/) · [Issues](https://github.com/uselotus/lotus/issues) · [Docs](https://docs.uselotus.io/docs/overview/why-lotus)
 
 <br/>
 
@@ -91,7 +99,7 @@ Optionally:
 
 Easy deployment options for AWS, GCP, and Azure are on the roadmap. If you have any questions, feel free to reach out to us.
 
-<p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
+<p align="right">(<a href="#lotus-pricing--packaging-infrastructure-for-any-business-model">back to top</a>)</p>
 
 <!-- CONTRIBUTING -->
 
@@ -134,13 +142,13 @@ Tech Stack:
 
 - **Cloud or Self-Hosted** - Apart from a managed cloud offering, Lotus provides a self-hosted version so you can keep your data local and have full control over your pricing.
 
-<p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
+<p align="right">(<a href="#lotus-pricing--packaging-infrastructure-for-any-business-model">back to top</a>)</p>
 
 ## :bar_chart: Repo Activity
 
 ![Alt](https://repobeats.axiom.co/api/embed/408c31cc31b6650e1e5c00414ec4a77b0277cf99.svg "Repobeats analytics image")
 
-<p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
+<p align="right">(<a href="#lotus-pricing--packaging-infrastructure-for-any-business-model">back to top</a>)</p>
 
 <!-- LICENSE -->
 
@@ -148,7 +156,7 @@ Tech Stack:
 
 Distributed under the MIT License. See `LICENSE` for more information.
 
-<p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
+<p align="right">(<a href="#lotus-pricing--packaging-infrastructure-for-any-business-model">back to top</a>)</p>
 
 <!-- CONTACT -->
 
@@ -160,4 +168,9 @@ Message Us on Slack: <a href="https://join.slack.com/t/lotus-community/shared_in
 
 Or visit www.uselotus.io
 
-<p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
+<a href="https://github.com/uselotus/lotus/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=uselotus/lotus" />
+</a>
+
+
+<p align="right">(<a href="#lotus-pricing--packaging-infrastructure-for-any-business-model">back to top</a>)</p>

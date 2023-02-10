@@ -1,10 +1,11 @@
+from rest_framework import serializers
+
 from api.serializers.model_serializers import (
     InvoiceSerializer,
     LightweightSubscriptionRecordSerializer,
     UsageAlertSerializer,
 )
 from metering_billing.utils.enums import WEBHOOK_TRIGGER_EVENTS
-from rest_framework import serializers
 
 
 class InvoiceCreatedSerializer(serializers.Serializer):

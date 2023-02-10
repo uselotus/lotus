@@ -23,16 +23,17 @@ export interface CustomerType {
   has_payment_method: boolean;
   payment_provider: string;
   tax_rate?: number;
+  timezone: string;
 }
 
 export type LightweightCustomerType = Omit<
-    CustomerType,
-    | "invoices"
-    | "subscriptions"
-    | "default_currency"
-    | "total_amount_due"
-    | "integrations"
-  >
+  CustomerType,
+  | "invoices"
+  | "subscriptions"
+  | "default_currency"
+  | "total_amount_due"
+  | "integrations"
+>;
 
 export interface CustomerCreateType
   extends Omit<

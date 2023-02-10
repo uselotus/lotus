@@ -96,7 +96,9 @@ a {
   font-size: 26px;
   line-height: 100%;
 }
-
+.ant-modal.font-alliance > .ant-modal-content > .ant-modal-header > .ant-modal-title{
+font-size: 24px;
+}
 .ant-descriptions-header {
   margin-bottom: 0;
 }
@@ -111,7 +113,31 @@ a {
   line-height: 30px;
   font-weight: 700;
 }
-
+.ant-input.w-full {
+  min-width: 150%;
+  margin-top: 10px;
+}
+.required:after {
+  content:" *";
+  color: red;
+}
+.ant-input-number.w-full {
+  min-width: 150%;
+  margin-top: 10px;
+}
+.input-class {
+  width: 150px;
+}
+.input-class-last {
+  min-width: 100px;
+}
+.ant-select.w-full {
+  min-width: 150%;
+  margin-top: 10px;
+}
+.ant-select.margin {
+  margin-top: 10px;
+}
 .ant-descriptions-small .ant-descriptions-title {
   font-size: 16px;
   line-height: 18px;
@@ -145,6 +171,9 @@ a {
 }
 .ant-table-row.ant-table-row-level-0 td.arr:not(:first-of-type) {
   text-align: right !important;
+}
+th.ant-table-cell {
+  white-space: nowrap;
 }
 .ant-picker {
   border-radius: 100px;

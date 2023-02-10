@@ -1,14 +1,15 @@
 import React, { FC, useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "react-query";
 import { useNavigate } from "react-router-dom";
+import { Form, Button, Input, Radio, Select, Modal } from "antd";
+import { toast } from "react-toastify";
+import dayjs from "dayjs";
 import { PlanDetailType, PlanType, PlanVersionType } from "../types/plan-type";
 import { Plan , Backtests } from "../api/api";
-import { Form, Button, Input, Radio, Select, Modal } from "antd";
 import { PageLayout } from "../components/base/PageLayout";
 import { CreateBacktestType, Substitution } from "../types/experiment-type";
-import { toast } from "react-toastify";
 import { usePlanState, usePlanUpdater } from "../context/PlanContext";
-import dayjs from "dayjs";
+
 interface PlanRepType {
   plan_id: string;
   plan_name: string;
@@ -45,16 +46,14 @@ const CreateBacktest: FC = () => {
 
   const [planInFocus, setPlanInFocus] = useState<PlanType>();
 
-  //temp
+  // temp
 
   const {
     data: plans,
     isLoading,
     isError,
   } = useQuery<PlanType[]>(["plan_list"], () =>
-    Plan.getPlans().then((res) => {
-      return res;
-    })
+    Plan.getPlans().then((res) => res)
   );
 
   const {
@@ -62,9 +61,7 @@ const CreateBacktest: FC = () => {
     isLoading: planDetailsLoading,
     isError: planDetailsError,
   } = useQuery<PlanDetailType>(["plan_details", planInFocus?.plan_id], () =>
-    Plan.getPlan(planInFocus?.plan_id || "11").then((res) => {
-      return res;
-    })
+    Plan.getPlan(planInFocus?.plan_id || "11").then((res) => res)
   );
 
   const mutation = useMutation(
@@ -96,10 +93,10 @@ const CreateBacktest: FC = () => {
         .format("YYYY-MM-DD");
       const post: CreateBacktestType = {
         backtest_name: values.backtest_name,
-        start_date: start_date,
+        start_date,
         end_date: dayjs().format("YYYY-MM-DD"),
         kpis: ["total_revenue"],
-        substitutions: substitutions,
+        substitutions,
       };
 
       mutation.mutate(post);
@@ -212,7 +209,7 @@ const CreateBacktest: FC = () => {
           }}
           className="bg-black text-white justify-self-end"
           size="large"
-          key={"update-plan"}
+          key="update-plan"
         >
           Run Experiment
         </Button>,
@@ -225,8 +222,8 @@ const CreateBacktest: FC = () => {
             runBacktest();
           }}
           initialValues={{
-            ["backtest_name"]: experimentName,
-            ["date_range"]: dateRange,
+            "backtest_name": experimentName,
+            "date_range": dateRange,
           }}
         >
           <div className="border-b border-gray-200 bg-white px-4 py-5 sm:px-6">
@@ -237,10 +234,10 @@ const CreateBacktest: FC = () => {
               value="backtest"
             >
               <Radio.Button value="backtest">Backtest</Radio.Button>
-              <Radio.Button value="forecast" disabled={true}>
+              <Radio.Button value="forecast" disabled>
                 Forecast
               </Radio.Button>
-              <Radio.Button value="deployment" disabled={true}>
+              <Radio.Button value="deployment" disabled>
                 Deployed Test
               </Radio.Button>
             </Radio.Group>
@@ -294,7 +291,7 @@ const CreateBacktest: FC = () => {
                 <h3 className=" font-bold">KPIs</h3>
                 <div className="ml-10 ">
                   {" "}
-                  <Radio.Button value={true}>Total Revenue</Radio.Button>
+                  <Radio.Button value>Total Revenue</Radio.Button>
                 </div>
               </div>
             </div>
@@ -307,8 +304,7 @@ const CreateBacktest: FC = () => {
                   <a onClick={openplanCurrentModal}>Choose Plans To Replace</a>
                 </Button>
                 <div>
-                  {substitutions.map((substitution, index) => {
-                    return (
+                  {substitutions.map((substitution, index) => (
                       <div key={index}>
                         <div className="flex flex-col rounded-lg text-xl bg-[#FAFAFA] py-3 px-2 items-center">
                           <p>Plan</p>
@@ -317,8 +313,7 @@ const CreateBacktest: FC = () => {
                           </span>
                         </div>
                       </div>
-                    );
-                  })}
+                    ))}
                 </div>
                 <div className="mt-4">
                   {currentPlan && currentPlanVersion && (
@@ -341,8 +336,7 @@ const CreateBacktest: FC = () => {
                   Create Experiment Plan
                 </Button>
                 <div>
-                  {substitutions.map((substitution, index) => {
-                    return (
+                  {substitutions.map((substitution, index) => (
                       <div key={index}>
                         <p>
                           <div className="flex flex-col rounded-lg text-xl bg-[#FAFAFA] py-3 px-2 items-center">
@@ -353,8 +347,7 @@ const CreateBacktest: FC = () => {
                           </div>
                         </p>
                       </div>
-                    );
-                  })}
+                    ))}
                 </div>
                 <div className="mt-4">
                   {replacementPlan && replacementPlanVersion && (
@@ -379,7 +372,7 @@ const CreateBacktest: FC = () => {
         visible={replacePlanVisible}
         onCancel={closeplanCurrentModal}
         onOk={closeplanCurrentModal}
-        closeIcon={<div></div>}
+        closeIcon={<div />}
       >
         <div className="border-b border-gray-200 bg-[#F7F8FD] px-4 py-5 sm:px-6">
           <h3 className="6">Choose An Existing Plan To Replace</h3>
@@ -421,7 +414,7 @@ const CreateBacktest: FC = () => {
             key="submit"
             type="primary"
             onClick={() => {
-              navigate("/backtest-plan/" + replacementPlan?.plan_id);
+              navigate(`/backtest-plan/${  replacementPlan?.plan_id}`);
             }}
           >
             Edit
@@ -430,7 +423,7 @@ const CreateBacktest: FC = () => {
             Use
           </Button>,
         ]}
-        closeIcon={<div></div>}
+        closeIcon={<div />}
       >
         <div className="border-b border-gray-200 bg-[#F7F8FD] px-4 py-5 sm:px-6">
           <h3 className="mb-6">Choose New Plan To Backtest</h3>

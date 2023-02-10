@@ -4,7 +4,6 @@ import posthog
 import pytest
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
-    FLAT_FEE_BILLING_TYPE,
     PLAN_DURATION,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
@@ -38,12 +37,12 @@ def use_dummy_cache_backend(settings):
 def turn_off_stripe_connection():
     from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 
-    sk = PAYMENT_PROVIDER_MAP["stripe"].secret_key
-    PAYMENT_PROVIDER_MAP["stripe"].secret_key = None
+    sk = PAYMENT_PROVIDER_MAP["stripe"].test_secret_key
+    PAYMENT_PROVIDER_MAP["stripe"].test_secret_key = None
 
     yield
 
-    PAYMENT_PROVIDER_MAP["stripe"].secret_key = sk
+    PAYMENT_PROVIDER_MAP["stripe"].test_secret_key = sk
 
 
 @pytest.fixture
@@ -172,11 +171,11 @@ def get_billable_metrics_in_org():
 
 
 @pytest.fixture
-def add_subscription_to_org():
-    from metering_billing.models import Subscription, SubscriptionRecord
+def add_subscription_record_to_org():
+    from metering_billing.models import SubscriptionRecord
     from metering_billing.utils import calculate_end_date
 
-    def do_add_subscription_to_org(
+    def do_add_subscription_record_to_org(
         organization,
         billing_plan,
         customer,
@@ -199,26 +198,14 @@ def add_subscription_to_org():
         )
         end_date = end_date
         if not end_date:
+            timezone = customer.timezone
             end_date = calculate_end_date(
                 duration,
                 start_date,
+                timezone,
                 day_anchor=day_anchor,
                 month_anchor=month_anchor,
             )
-        subscription = Subscription.objects.create(
-            organization=organization,
-            customer=customer,
-            billing_cadence=duration,
-            start_date=start_date,
-            end_date=end_date,
-        )
-        subscription.handle_attach_plan(
-            plan_day_anchor=day_anchor,
-            plan_month_anchor=month_anchor,
-            plan_start_date=start_date,
-            plan_duration=duration,
-        )
-
         subscription_record = SubscriptionRecord.objects.create(
             organization=organization,
             customer=customer,
@@ -228,26 +215,16 @@ def add_subscription_to_org():
             is_new=True,
         )
         subscription_record.save()
-        return subscription, subscription_record
+        return subscription_record
 
-    return do_add_subscription_to_org
-
-
-@pytest.fixture
-def get_subscriptions_in_org():
-    from metering_billing.models import Subscription
-
-    def do_get_subscriptions_in_org(organization):
-        return Subscription.objects.filter(organization=organization)
-
-    return do_get_subscriptions_in_org
+    return do_add_subscription_record_to_org
 
 
 @pytest.fixture
 def get_subscription_records_in_org():
     from metering_billing.models import SubscriptionRecord
 
-    def do_get_subscription_records_in_org(organization):
+    def do_get_subscription_records_in_org(organization) -> list[SubscriptionRecord]:
         return SubscriptionRecord.objects.filter(organization=organization)
 
     return do_get_subscription_records_in_org
@@ -291,7 +268,7 @@ def add_plan_to_product():
 
 @pytest.fixture
 def add_plan_version_to_plan():
-    from metering_billing.models import PlanVersion
+    from metering_billing.models import PlanVersion, RecurringCharge
 
     def do_add_planversion_to_plan(plan):
         (plan_version,) = baker.make(
@@ -299,12 +276,18 @@ def add_plan_version_to_plan():
             organization=plan.organization,
             description="test-plan-version-description",
             version=1,
-            flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
             usage_billing_frequency=USAGE_BILLING_FREQUENCY.MONTHLY,
             plan=plan,
             status=PLAN_VERSION_STATUS.ACTIVE,
-            flat_rate=30,
             _quantity=1,
+        )
+        RecurringCharge.objects.create(
+            organization=plan.organization,
+            plan_version=plan_version,
+            charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+            charge_behavior=RecurringCharge.ChargeBehaviorType.PRORATE,
+            amount=30,
+            pricing_unit=plan_version.pricing_unit,
         )
         return plan_version
 

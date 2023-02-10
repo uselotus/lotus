@@ -8,7 +8,6 @@ import pytz
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.db.models import Field, Model
-
 from metering_billing.exceptions.exceptions import ServerError
 from metering_billing.utils.enums import (
     METRIC_GRANULARITY,
@@ -37,16 +36,16 @@ def convert_to_date(value):
         raise ServerError(f"can't convert type {type(value)} into date")
 
 
-def convert_to_datetime(value, date_behavior="min"):
+def convert_to_datetime(value, date_behavior="min", tz=pytz.UTC):
     if isinstance(value, datetime.datetime):
         return value.replace(tzinfo=pytz.UTC)
     elif isinstance(value, str):
         return convert_to_datetime(parser.parse(value))
     elif isinstance(value, datetime.date):
         if date_behavior == "min":
-            return date_as_min_dt(value)
+            return date_as_min_dt(value, timezone=tz)
         elif date_behavior == "max":
-            return date_as_max_dt(value)
+            return date_as_max_dt(value, timezone=tz)
     else:
         raise ServerError(f"can't convert type {type(value)} into date")
 
@@ -262,24 +261,31 @@ def get_granularity_ratio(metric_granularity, proration_granularity, start_date)
     return granularity_dict[metric_granularity][proration_granularity]
 
 
-def calculate_end_date(interval, start_date, day_anchor=None, month_anchor=None):
+def calculate_end_date(
+    interval, start_date, timezone, day_anchor=None, month_anchor=None
+):
     if interval == PLAN_DURATION.MONTHLY:
-        end_date = date_as_max_dt(start_date + relativedelta(months=+1, days=-1))
+        end_date = date_as_max_dt(
+            start_date + relativedelta(months=+1, days=-1), timezone
+        )
         if day_anchor:
             tentative_end_date = date_as_max_dt(
-                start_date + relativedelta(day=day_anchor, days=-1)
+                start_date + relativedelta(day=day_anchor, days=-1), timezone
             )
             if tentative_end_date > start_date:
                 end_date = tentative_end_date
             else:
                 end_date = date_as_max_dt(
-                    start_date + relativedelta(months=1, day=day_anchor, days=-1)
+                    start_date + relativedelta(months=1, day=day_anchor, days=-1),
+                    timezone,
                 )
     elif interval == PLAN_DURATION.QUARTERLY:
-        end_date = date_as_max_dt(start_date + relativedelta(months=+3, days=-1))
+        end_date = date_as_max_dt(
+            start_date + relativedelta(months=+3, days=-1), timezone
+        )
         if day_anchor and not month_anchor:
             end_date = date_as_max_dt(
-                start_date + relativedelta(months=3, day=day_anchor, days=-1)
+                start_date + relativedelta(months=3, day=day_anchor, days=-1), timezone
             )
             rd = relativedelta(end_date, start_date)
             if rd.months >= 3 and (
@@ -290,11 +296,13 @@ def calculate_end_date(interval, start_date, day_anchor=None, month_anchor=None)
                 or rd.microseconds > 0
             ):  # went too far
                 end_date = date_as_max_dt(
-                    start_date + relativedelta(months=2, day=day_anchor, days=-1)
+                    start_date + relativedelta(months=2, day=day_anchor, days=-1),
+                    timezone,
                 )
         elif day_anchor and month_anchor:
             end_date = date_as_max_dt(
-                start_date + relativedelta(month=month_anchor, day=day_anchor, days=-1)
+                start_date + relativedelta(month=month_anchor, day=day_anchor, days=-1),
+                timezone,
             )
             rd = relativedelta(end_date, start_date)
             if rd.months >= 3 and (
@@ -307,7 +315,8 @@ def calculate_end_date(interval, start_date, day_anchor=None, month_anchor=None)
                 i = 12
                 while rd.months >= 3:
                     end_date = date_as_max_dt(
-                        start_date + relativedelta(months=i, day=day_anchor, days=-1)
+                        start_date + relativedelta(months=i, day=day_anchor, days=-1),
+                        timezone,
                     )
                     rd = relativedelta(end_date, start_date)
                     i -= 1
@@ -317,13 +326,14 @@ def calculate_end_date(interval, start_date, day_anchor=None, month_anchor=None)
                 i = 0
                 while not (rd.months % 3 == 0 and rd.months > 0):
                     end_date = date_as_max_dt(
-                        start_date + relativedelta(months=i, day=day_anchor, days=-1)
+                        start_date + relativedelta(months=i, day=day_anchor, days=-1),
+                        timezone,
                     )
                     rd = relativedelta(end_date, old_end_date)
                     i += 1
         elif month_anchor and not day_anchor:
             end_date = date_as_max_dt(
-                start_date + relativedelta(month=month_anchor, days=-1)
+                start_date + relativedelta(month=month_anchor, days=-1), timezone
             )
             rd = relativedelta(end_date, start_date)
             if rd.months >= 3 and (
@@ -334,16 +344,22 @@ def calculate_end_date(interval, start_date, day_anchor=None, month_anchor=None)
                 or rd.microseconds > 0
             ):
                 while rd.months >= 3:
-                    end_date = date_as_max_dt(end_date + relativedelta(months=-3))
+                    end_date = date_as_max_dt(
+                        end_date + relativedelta(months=-3), timezone
+                    )
                     rd = relativedelta(end_date, start_date)
             elif end_date < start_date:
                 while end_date < start_date:
-                    end_date = date_as_max_dt(end_date + relativedelta(months=3))
+                    end_date = date_as_max_dt(
+                        end_date + relativedelta(months=3), timezone
+                    )
     elif interval == PLAN_DURATION.YEARLY:
-        end_date = date_as_max_dt(start_date + relativedelta(years=+1, days=-1))
+        end_date = date_as_max_dt(
+            start_date + relativedelta(years=+1, days=-1), timezone
+        )
         if day_anchor and not month_anchor:
             end_date = date_as_max_dt(
-                start_date + relativedelta(years=1, day=day_anchor, days=-1)
+                start_date + relativedelta(years=1, day=day_anchor, days=-1), timezone
             )
             rd = relativedelta(end_date, start_date)
             if rd.years >= 1 and (
@@ -355,12 +371,14 @@ def calculate_end_date(interval, start_date, day_anchor=None, month_anchor=None)
                 or rd.microseconds > 0
             ):
                 end_date = date_as_max_dt(
-                    start_date + relativedelta(months=11, day=day_anchor, days=-1)
+                    start_date + relativedelta(months=11, day=day_anchor, days=-1),
+                    timezone,
                 )
         elif day_anchor and month_anchor:
             end_date = date_as_max_dt(
                 start_date
-                + relativedelta(years=1, month=month_anchor, day=day_anchor, days=-1)
+                + relativedelta(years=1, month=month_anchor, day=day_anchor, days=-1),
+                timezone,
             )
             rd = relativedelta(end_date, start_date)
             if rd.years >= 1 and (
@@ -374,7 +392,8 @@ def calculate_end_date(interval, start_date, day_anchor=None, month_anchor=None)
                 end_date = end_date + relativedelta(years=-1)
         elif month_anchor and not day_anchor:
             end_date = date_as_max_dt(
-                start_date + relativedelta(years=1, month=month_anchor, days=-1)
+                start_date + relativedelta(years=1, month=month_anchor, days=-1),
+                timezone,
             )
             rd = relativedelta(end_date, start_date)
             if rd.years >= 1 and (
@@ -445,6 +464,18 @@ def customer_balance_adjustment_uuid():
     return "custbaladj_" + str(uuid.uuid4().hex)
 
 
+def addon_uuid():
+    return "addon_" + str(uuid.uuid4().hex)
+
+
+def addon_version_uuid():
+    return "addon_vrs_" + str(uuid.uuid4().hex)
+
+
+def addon_sr_uuid():
+    return "addon_sr_" + str(uuid.uuid4().hex)
+
+
 def usage_alert_uuid():
     return "usgalert_" + str(uuid.uuid4().hex)
 
@@ -453,12 +484,28 @@ def random_uuid():
     return str(uuid.uuid4().hex)
 
 
-def date_as_min_dt(date):
-    return datetime.datetime.combine(date, datetime.time.min, tzinfo=pytz.UTC)
+def date_as_min_dt(date, timezone):
+    if isinstance(timezone, pytz.BaseTzInfo):
+        tz = timezone
+    elif isinstance(timezone, str):
+        if timezone not in pytz.all_timezones:
+            raise ValueError(f"Invalid timezone: {timezone}")
+        tz = pytz.timezone(timezone)
+    else:
+        raise ValueError(f"Invalid timezone: {timezone}")
+    return datetime.datetime.combine(date, datetime.time.min).astimezone(tz)
 
 
-def date_as_max_dt(date):
-    return datetime.datetime.combine(date, datetime.time.max, tzinfo=pytz.UTC)
+def date_as_max_dt(date, timezone):
+    if isinstance(timezone, pytz.BaseTzInfo):
+        tz = timezone
+    elif isinstance(timezone, str):
+        if timezone not in pytz.all_timezones:
+            raise ValueError(f"Invalid timezone: {timezone}")
+        tz = pytz.timezone(timezone)
+    else:
+        raise ValueError(f"Invalid timezone: {timezone}")
+    return datetime.datetime.combine(date, datetime.time.max).astimezone(tz)
 
 
 def namedtuplefetchall(cursor):

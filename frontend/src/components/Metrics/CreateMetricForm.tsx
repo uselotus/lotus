@@ -34,12 +34,12 @@ export interface CreateMetricState extends MetricType {
   }[];
 }
 
-const CreateMetricForm = (props: {
+function CreateMetricForm(props: {
   state: CreateMetricState;
   visible: boolean;
   onSave: (state: CreateMetricState) => void;
   onCancel: () => void;
-}) => {
+}) {
   const [form] = Form.useForm();
   const gaugeGranularity = Form.useWatch("granularity_2", form);
   const [eventType, setEventType] = useState("counter");
@@ -270,7 +270,7 @@ const CreateMetricForm = (props: {
           }
         >
           {eventType === "counter" && (
-            <Fragment>
+            <>
               <Form.Item
                 name="usage_aggregation_type"
                 label="Aggregation Type"
@@ -279,7 +279,7 @@ const CreateMetricForm = (props: {
                     required: true,
                     message: "Aggregation type is required",
                   },
-                  //if rate is selected, don't allow unique
+                  // if rate is selected, don't allow unique
                   {
                     validator: (_, value) => {
                       if (rate && value === "unique") {
@@ -292,7 +292,7 @@ const CreateMetricForm = (props: {
                   },
                 ]}
               >
-                <Select defaultValue={"count"}>
+                <Select defaultValue="count">
                   <Option value="count">count</Option>
                   <Option value="unique">unique</Option>
                   <Option value="sum">sum</Option>
@@ -348,7 +348,7 @@ const CreateMetricForm = (props: {
               </div>
 
               {rate && (
-                <Fragment>
+                <>
                   <Form.Item
                     name="granularity"
                     label="Rate Period"
@@ -379,16 +379,16 @@ const CreateMetricForm = (props: {
                       },
                     ]}
                   >
-                    <Select defaultValue={"max"}>
+                    <Select defaultValue="max">
                       <Option value="max">max</Option>
                     </Select>
                   </Form.Item>
-                </Fragment>
+                </>
               )}
-            </Fragment>
+            </>
           )}
           {eventType === "gauge" && (
-            <Fragment>
+            <>
               <div className="grid grid-cols-2 gap-4">
                 <Form.Item
                   name="usage_aggregation_type_2"
@@ -400,7 +400,7 @@ const CreateMetricForm = (props: {
                     },
                   ]}
                 >
-                  <Select defaultValue={"max"}>
+                  <Select defaultValue="max">
                     <Option value="max">max</Option>
                   </Select>
                 </Form.Item>
@@ -409,7 +409,7 @@ const CreateMetricForm = (props: {
                   label="Event Type (how the property amount is reported)"
                   rules={[{ required: true }]}
                 >
-                  <Select defaultValue={"total"}>
+                  <Select defaultValue="total">
                     <Option value="total">total</Option>
                     <Option value="delta">delta</Option>
                   </Select>
@@ -441,7 +441,7 @@ const CreateMetricForm = (props: {
                   the price per {gaugeGranularity.slice(0, -1)}
                 </p>
               )} */}
-            </Fragment>
+            </>
           )}
         </Form.Item>
         {eventType === "custom" && (
@@ -528,9 +528,9 @@ const CreateMetricForm = (props: {
               placeholder="SELECT * FROM events"
               onChange={(newValue) => setCustomSQL(newValue)}
               name="custom_sql"
-              highlightActiveLine={true}
-              value={customSQL ? customSQL : ""}
-              showGutter={true}
+              highlightActiveLine
+              value={customSQL || ""}
+              showGutter
               setOptions={{
                 enableBasicAutocompletion: true,
                 enableLiveAutocompletion: true,
@@ -634,6 +634,6 @@ const CreateMetricForm = (props: {
       </Form>
     </Modal>
   );
-};
+}
 
 export default CreateMetricForm;

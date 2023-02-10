@@ -5,11 +5,11 @@ export type TooltipProps = {
   className?: string;
 };
 
-const Tooltip = ({ children }: TooltipProps) => {
+function Tooltip({ children }: TooltipProps) {
   return <span className="group relative">{children}</span>;
-};
-const TooltipTop = ({ children, className = "" }: TooltipProps) => (
-  <span
+}
+function TooltipTop({ children, className }: TooltipProps) {
+  return <span
     className={
       !className
         ? "pointer-events-none absolute bottom-20 left-1/2 -translate-x-1/2  rounded bg-white px-6 py-1 text-black opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100 "
@@ -21,9 +21,9 @@ const TooltipTop = ({ children, className = "" }: TooltipProps) => (
   >
     {children}
   </span>
-);
-const TooltipBottom = ({ children, className = "" }: TooltipProps) => (
-  <span
+}
+function TooltipBottom({ children, className }: TooltipProps) {
+  return <span
     className={
       !className
         ? "pointer-events-none absolute top-20 left-1/2 -translate-x-1/2  rounded bg-white  z-10 px-16 py-12 text-black opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100 text-sm"
@@ -35,7 +35,7 @@ const TooltipBottom = ({ children, className = "" }: TooltipProps) => (
   >
     {children}
   </span>
-);
+}
 
 Tooltip.Top = TooltipTop;
 Tooltip.Bottom = TooltipBottom;

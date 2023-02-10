@@ -1,6 +1,6 @@
 import React from "react";
-import { GetSubscriptions } from "../../api/api";
 import { useQuery } from "react-query";
+import { GetSubscriptions } from "../../api/api";
 import { SubscriptionTotals } from "../../types/subscription-type";
 import { Paper } from "../base/Paper";
 
@@ -17,16 +17,14 @@ function SubscriptionStatistics(props: { range: any[] }) {
         props.range[1].format("YYYY-MM-DD"),
         props.range[0].subtract(1, "month").format("YYYY-MM-DD"),
         props.range[1].subtract(1, "month").format("YYYY-MM-DD")
-      ).then((res) => {
-        return res;
-      })
+      ).then((res) => res)
   );
   if (isLoading || !data) {
     return <div>Loading...</div>;
   }
 
   return (
-    <Paper border={true} color="white">
+    <Paper border>
       <h1 className="text-base font-normal mb-4">Subscriptions</h1>
       <div className="grid grid-flow-col auto-cols-auto	 justify-between">
         <div className="flex items-center">

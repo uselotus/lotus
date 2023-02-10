@@ -1,4 +1,5 @@
 import React, { PropsWithChildren } from "react";
+
 interface BadgeProps {
   className?: string;
   style?: React.CSSProperties;
@@ -10,8 +11,9 @@ const Badge = ({
   children,
   style,
   onClick,
-}: PropsWithChildren<BadgeProps>) => (
-  <span
+}: PropsWithChildren<BadgeProps>) {
+  return <span
+    aria-hidden
     style={style}
     onClick={onClick}
     className={
@@ -30,21 +32,23 @@ const BadgeDot = ({
   className = "",
   style,
   fill,
-}: PropsWithChildren<BadgeProps>) => (
-  <svg
+}: PropsWithChildren<BadgeProps>) {
+  return <svg
     style={style}
     className={
       !className
         ? "-ml-1 mr-1.5 h-4 w-4 text-emerald-400"
         : ["-ml-1 mr-2 h-4 w-4", className].join(" ")
     }
-    fill={fill ? fill : "currentColor"}
+    fill={fill || "currentColor"}
     viewBox="0 0 8 8"
   >
     <circle cx="4" cy="4" r="3" />
   </svg>
-);
-const BadgeContent = ({ children }: PropsWithChildren) => <>{children}</>;
+}
+function BadgeContent({ children }: PropsWithChildren) {
+  return <>{children}</>
+}
 
 Badge.Content = BadgeContent;
 Badge.Dot = BadgeDot;

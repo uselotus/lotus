@@ -7,6 +7,7 @@ from django.db.models import DecimalField, Q, Sum
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
+    AddOnSpecification,
     APIToken,
     Customer,
     ExternalPlanLink,
@@ -22,6 +23,7 @@ from metering_billing.models import (
     PriceTier,
     PricingUnit,
     Product,
+    RecurringCharge,
     SubscriptionRecord,
     Tag,
     TeamInviteToken,
@@ -36,6 +38,8 @@ from metering_billing.serializers.serializer_utils import (
     PlanUUIDField,
     PlanVersionUUIDField,
     SlugRelatedFieldWithOrganization,
+    TimezoneFieldMixin,
+    TimeZoneSerializerField,
     WebhookEndpointUUIDField,
     WebhookSecretUUIDField,
 )
@@ -66,7 +70,7 @@ class TagSerializer(api_serializers.TagSerializer):
     pass
 
 
-class OrganizationUserSerializer(serializers.ModelSerializer):
+class OrganizationUserSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("username", "email", "role", "status")
@@ -80,7 +84,9 @@ class OrganizationUserSerializer(serializers.ModelSerializer):
         return "Admin"
 
 
-class OrganizationInvitedUserSerializer(serializers.ModelSerializer):
+class OrganizationInvitedUserSerializer(
+    TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = User
         fields = ("email", "role")
@@ -109,7 +115,9 @@ class PricingUnitSerializer(api_serializers.PricingUnitSerializer):
         return PricingUnit.objects.create(**validated_data)
 
 
-class LightweightOrganizationSerializer(serializers.ModelSerializer):
+class LightweightOrganizationSerializer(
+    TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = Organization
         fields = (
@@ -140,13 +148,13 @@ class LightweightOrganizationSerializer(serializers.ModelSerializer):
         return obj == self.context.get("organization")
 
 
-class LightweightUserSerializer(serializers.ModelSerializer):
+class LightweightUserSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("username", "email")
 
 
-class OrganizationSettingSerializer(serializers.ModelSerializer):
+class OrganizationSettingSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = OrganizationSetting
         fields = ("setting_id", "setting_name", "setting_values", "setting_group")
@@ -166,7 +174,7 @@ class OrganizationSettingSerializer(serializers.ModelSerializer):
     )
 
 
-class OrganizationSerializer(serializers.ModelSerializer):
+class OrganizationSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = (
@@ -184,6 +192,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "address",
             "team_name",
             "subscription_filter_keys",
+            "timezone",
         )
 
     organization_id = OrganizationUUIDField()
@@ -197,6 +206,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
     address = serializers.SerializerMethodField(required=False, allow_null=True)
     team_name = serializers.SerializerMethodField()
     subscription_filter_keys = serializers.SerializerMethodField()
+    timezone = TimeZoneSerializerField(use_pytz=True)
 
     def get_subscription_filter_keys(
         self, obj
@@ -281,7 +291,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         return data
 
 
-class OrganizationCreateSerializer(serializers.ModelSerializer):
+class OrganizationCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = ("organization_name", "default_currency_code", "organization_type")
@@ -323,7 +333,7 @@ class OrganizationCreateSerializer(serializers.ModelSerializer):
         return organization
 
 
-class APITokenSerializer(serializers.ModelSerializer):
+class APITokenSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = APIToken
         fields = ("name", "prefix", "expiry_date", "created")
@@ -347,7 +357,7 @@ class APITokenSerializer(serializers.ModelSerializer):
         return api_key, key
 
 
-class OrganizationUpdateSerializer(serializers.ModelSerializer):
+class OrganizationUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = (
@@ -357,6 +367,7 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
             "payment_grace_period",
             "plan_tags",
             "subscription_filter_keys",
+            "timezone",
         )
 
     default_currency_code = SlugRelatedFieldWithOrganization(
@@ -370,6 +381,7 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
     subscription_filter_keys = serializers.ListField(
         child=serializers.CharField(), required=False
     )
+    timezone = TimeZoneSerializerField(use_pytz=True)
 
     def update(self, instance, validated_data):
         from metering_billing.tasks import update_subscription_filter_settings_task
@@ -381,6 +393,7 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
         instance.default_currency = validated_data.get(
             "default_currency", instance.default_currency
         )
+        instance.timezone = validated_data.get("timezone", instance.timezone)
         address = validated_data.pop("address", None)
         if address:
             cur_properties = instance.properties or {}
@@ -447,15 +460,16 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
         return instance
 
 
-class CustomerUpdateSerializer(serializers.ModelSerializer):
+class CustomerUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = ("default_currency_code", "address", "tax_rate")
+        fields = ("default_currency_code", "address", "tax_rate", "timezone")
 
     default_currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code", queryset=PricingUnit.objects.all(), source="default_currency"
     )
     address = api_serializers.AddressSerializer(required=False, allow_null=True)
+    timezone = TimeZoneSerializerField(use_pytz=True)
 
     def update(self, instance, validated_data):
         assert (
@@ -466,6 +480,10 @@ class CustomerUpdateSerializer(serializers.ModelSerializer):
             "default_currency", instance.default_currency
         )
         instance.tax_rate = validated_data.get("tax_rate", instance.tax_rate)
+        tz = validated_data.get("timezone", None)
+        if tz:
+            instance.timezone = tz
+            instance.timezone_set = True
         address = validated_data.pop("address", None)
         if address:
             cur_properties = instance.properties or {}
@@ -480,7 +498,7 @@ class EventSerializer(api_serializers.EventSerializer):
         fields = api_serializers.EventSerializer.Meta.fields
 
 
-class WebhookTriggerSerializer(serializers.ModelSerializer):
+class WebhookTriggerSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = WebhookTrigger
         fields = [
@@ -488,7 +506,7 @@ class WebhookTriggerSerializer(serializers.ModelSerializer):
         ]
 
 
-class WebhookEndpointSerializer(serializers.ModelSerializer):
+class WebhookEndpointSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = WebhookEndpoint
         fields = (
@@ -560,7 +578,7 @@ class WebhookEndpointSerializer(serializers.ModelSerializer):
 
 
 # USER
-class UserSerializer(serializers.ModelSerializer):
+class UserSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("username", "email", "organization_name", "organization_id")
@@ -584,7 +602,7 @@ class SubscriptionCustomerDetailSerializer(
         fields = api_serializers.SubscriptionCustomerDetailSerializer.Meta.fields
 
 
-class CustomerWithRevenueSerializer(serializers.ModelSerializer):
+class CustomerWithRevenueSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = (
@@ -656,7 +674,7 @@ class NumericFilterSerializer(api_serializers.NumericFilterSerializer):
         fields = api_serializers.NumericFilterSerializer.Meta.fields
 
 
-class MetricUpdateSerializer(serializers.ModelSerializer):
+class MetricUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Metric
         fields = (
@@ -706,7 +724,7 @@ class MetricSerializer(api_serializers.MetricSerializer):
         )
 
 
-class MetricCreateSerializer(serializers.ModelSerializer):
+class MetricCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Metric
         fields = (
@@ -766,7 +784,7 @@ class MetricCreateSerializer(serializers.ModelSerializer):
         return metric
 
 
-class ExternalPlanLinkSerializer(serializers.ModelSerializer):
+class ExternalPlanLinkSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = ExternalPlanLink
         fields = ("plan_id", "source", "external_plan_id")
@@ -806,7 +824,7 @@ class FeatureSerializer(api_serializers.FeatureSerializer):
         fields = api_serializers.FeatureSerializer.Meta.fields
 
 
-class PriceTierCreateSerializer(serializers.ModelSerializer):
+class PriceTierCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = PriceTier
         fields = (
@@ -824,6 +842,7 @@ class PriceTierCreateSerializer(serializers.ModelSerializer):
     )
     batch_rounding_type = serializers.ChoiceField(
         choices=BATCH_ROUNDING_TYPE.choices,
+        default=BATCH_ROUNDING_TYPE.NO_ROUNDING,
         required=False,
         allow_null=True,
     )
@@ -924,13 +943,13 @@ class PlanComponentCreateSerializer(api_serializers.PlanComponentSerializer):
         return pc
 
 
-class ProductSerializer(serializers.ModelSerializer):
+class ProductSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ("name", "description", "product_id", "status")
 
 
-class PlanVersionUpdateSerializer(serializers.ModelSerializer):
+class PlanVersionUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = PlanVersion
         fields = (
@@ -998,7 +1017,7 @@ class PlanVersionUpdateSerializer(serializers.ModelSerializer):
         return instance
 
 
-class PriceAdjustmentSerializer(serializers.ModelSerializer):
+class PriceAdjustmentSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = PriceAdjustment
         fields = (
@@ -1011,20 +1030,89 @@ class PriceAdjustmentSerializer(serializers.ModelSerializer):
     price_adjustment_name = serializers.CharField(default="")
 
 
-class FeatureCreateSerializer(serializers.ModelSerializer):
+class FeatureCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Feature
         fields = ("feature_name", "feature_description")
 
 
-class PlanVersionCreateSerializer(serializers.ModelSerializer):
+class RecurringChargeCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
+    class Meta:
+        model = RecurringCharge
+        fields = (
+            "name",
+            "charge_timing",
+            "charge_behavior",
+            "amount",
+            "pricing_unit_code",
+        )
+        extra_kwargs = {
+            "name": {"required": True},
+            "charge_timing": {"required": True},
+            "charge_behavior": {"required": False},
+            "amount": {"required": True},
+            "pricing_unit_code": {"required": False},
+        }
+
+    charge_timing = serializers.ChoiceField(
+        choices=RecurringCharge.ChargeTimingType.labels, required=True
+    )
+    charge_behavior = serializers.ChoiceField(
+        choices=RecurringCharge.ChargeBehaviorType.labels,
+        default=RecurringCharge.ChargeBehaviorType.PRORATE.label,
+    )
+    pricing_unit_code = SlugRelatedFieldWithOrganization(
+        slug_field="code",
+        queryset=PricingUnit.objects.all(),
+        required=False,
+    )
+    name = serializers.CharField(required=True)
+    amount = serializers.DecimalField(
+        max_digits=20, decimal_places=10, min_value=0, required=True
+    )
+
+    def validate(self, attrs):
+        if (
+            attrs.get("charge_timing")
+            == RecurringCharge.ChargeTimingType.IN_ADVANCE.label
+        ):
+            attrs["charge_timing"] = RecurringCharge.ChargeTimingType.IN_ADVANCE
+        elif (
+            attrs.get("charge_timing")
+            == RecurringCharge.ChargeTimingType.IN_ARREARS.label
+        ):
+            attrs["charge_timing"] = RecurringCharge.ChargeTimingType.IN_ARREARS
+        else:
+            raise serializers.ValidationError(
+                f"Invalid charge_timing: {attrs.get('charge_timing')}"
+            )
+        if (
+            attrs.get("charge_behavior")
+            == RecurringCharge.ChargeBehaviorType.PRORATE.label
+        ):
+            attrs["charge_behavior"] = RecurringCharge.ChargeBehaviorType.PRORATE
+        elif (
+            attrs.get("charge_behavior")
+            == RecurringCharge.ChargeBehaviorType.CHARGE_FULL.label
+        ):
+            attrs["charge_behavior"] = RecurringCharge.ChargeBehaviorType.CHARGE_FULL
+        else:
+            raise serializers.ValidationError(
+                f"Invalid charge_behavior: {attrs.get('charge_behavior')}"
+            )
+        return attrs
+
+    def create(self, validated_data):
+        return super().create(validated_data)
+
+
+class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = PlanVersion
         fields = (
             "description",
             "plan_id",
-            "flat_fee_billing_type",
-            "flat_rate",
+            "recurring_charges",
             "components",
             "features",
             "price_adjustment",
@@ -1040,8 +1128,7 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "description": {"write_only": True},
             "plan_id": {"write_only": True},
-            "flat_fee_billing_type": {"write_only": True},
-            "flat_rate": {"write_only": True},
+            "recurring_charges": {"write_only": True},
             "components": {"write_only": True},
             "features": {"write_only": True},
             "price_adjustment": {"write_only": True},
@@ -1057,6 +1144,9 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
 
     components = PlanComponentCreateSerializer(
         many=True, allow_null=True, required=False, source="plan_components"
+    )
+    recurring_charges = RecurringChargeCreateSerializer(
+        many=True, allow_null=True, required=False
     )
     features = SlugRelatedFieldWithOrganization(
         slug_field="feature_id",
@@ -1121,12 +1211,34 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         pricing_unit = validated_data.pop("currency_code", None)
         components_data = validated_data.pop("plan_components", [])
+        recurring_charge_data = validated_data.pop("recurring_charges", [])
+        features_data = validated_data.pop("features", [])
+        price_adjustment_data = validated_data.pop("price_adjustment", None)
+        make_active = validated_data.pop("make_active", False)
+        make_active_type = validated_data.pop("make_active_type", None)
+        replace_immediately_type = validated_data.pop("replace_immediately_type", None)
+        transition_to_plan = validated_data.pop("transition_to_plan_id", None)
+
+        validated_data["version"] = validated_data["plan"].versions.all().count() + 1
+        if "status" not in validated_data:
+            validated_data["status"] = (
+                PLAN_VERSION_STATUS.ACTIVE
+                if make_active
+                else PLAN_VERSION_STATUS.INACTIVE
+            )
+        billing_plan = PlanVersion.objects.create(
+            **validated_data, pricing_unit=pricing_unit
+        )
+        if transition_to_plan:
+            billing_plan.transition_to = transition_to_plan
+        org = billing_plan.organization
         if len(components_data) > 0:
             components_data = [
                 {
                     **component_data,
                     "pricing_unit": pricing_unit,
-                    "organization": self.context["organization"],
+                    "organization": org,
+                    "plan_version": billing_plan,
                 }
                 for component_data in components_data
             ]
@@ -1134,43 +1246,21 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
                 many=True, context=self.context
             ).create(components_data)
             assert type(components[0]) is PlanComponent
-        else:
-            components = []
-        features_data = validated_data.pop("features", [])
-        price_adjustment_data = validated_data.pop("price_adjustment", None)
-        make_active = validated_data.pop("make_active", False)
-        make_active_type = validated_data.pop("make_active_type", None)
-        replace_immediately_type = validated_data.pop("replace_immediately_type", None)
-        transition_to_plan = validated_data.get("transition_to_plan_id", None)
-
-        validated_data["version"] = len(validated_data["plan"].versions.all()) + 1
-        if "status" not in validated_data:
-            validated_data["status"] = (
-                PLAN_VERSION_STATUS.ACTIVE
-                if make_active
-                else PLAN_VERSION_STATUS.INACTIVE
-            )
-        if transition_to_plan:
-            validated_data.pop("transition_to_plan_id")
-        billing_plan = PlanVersion.objects.create(
-            **validated_data, pricing_unit=pricing_unit
-        )
-        if transition_to_plan:
-            billing_plan.transition_to = transition_to_plan
-        org = billing_plan.organization
-        for component in components:
-            component.plan_version = billing_plan
-            component.save()
+        if len(recurring_charge_data) > 0:
+            charges_data = [
+                {
+                    **recurring_charge,
+                    "pricing_unit": pricing_unit,
+                    "organization": org,
+                    "plan_version": billing_plan,
+                }
+                for recurring_charge in recurring_charge_data
+            ]
+            charges = RecurringChargeCreateSerializer(
+                many=True, context=self.context
+            ).create(charges_data)
+            assert type(charges[0]) is RecurringCharge
         for f in features_data:
-            # feature_data["organization"] = org
-            # description = feature_data.pop("description", None)
-            # try:
-            #     f, created = Feature.objects.get_or_create(**feature_data)
-            #     if created and description:
-            #         f.description = description
-            #         f.save()
-            # except Feature.MultipleObjectsReturned:
-            # f = Feature.objects.filter(**feature_data).first()
             assert type(f) is Feature
             billing_plan.features.add(f)
         if price_adjustment_data:
@@ -1257,7 +1347,7 @@ class PlanDetailSerializer(api_serializers.PlanSerializer):
         ).data
 
 
-class PlanCreateSerializer(serializers.ModelSerializer):
+class PlanCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Plan
         fields = (
@@ -1386,12 +1476,11 @@ class PlanCreateSerializer(serializers.ModelSerializer):
             plan.save()
             return plan
         except Exception as e:
-            print(e)
             plan.delete()
             raise ServerError(e)
 
 
-class PlanUpdateSerializer(serializers.ModelSerializer):
+class PlanUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Plan
         fields = (
@@ -1463,11 +1552,6 @@ class LightweightSubscriptionRecordSerializer(
 ):
     class Meta(api_serializers.LightweightSubscriptionRecordSerializer.Meta):
         fields = api_serializers.LightweightSubscriptionRecordSerializer.Meta.fields
-
-
-class SubscriptionSerializer(api_serializers.SubscriptionSerializer):
-    class Meta(api_serializers.SubscriptionSerializer.Meta):
-        fields = api_serializers.SubscriptionSerializer.Meta.fields
 
 
 class SubscriptionInvoiceSerializer(api_serializers.SubscriptionInvoiceSerializer):
@@ -1589,7 +1673,7 @@ class MetricActionSerializer(MetricSerializer):
         return "Metric"
 
 
-class CustomerSummarySerializer(serializers.ModelSerializer):
+class CustomerSummarySerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = (
@@ -1647,7 +1731,7 @@ class ActivityGenericRelatedField(serializers.Field):
         )
 
 
-class ActionSerializer(serializers.ModelSerializer):
+class ActionSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     """
     DRF serializer for :class:`~activity.models.Action`.
     """
@@ -1670,7 +1754,9 @@ class ActionSerializer(serializers.ModelSerializer):
         )
 
 
-class OrganizationSettingUpdateSerializer(serializers.ModelSerializer):
+class OrganizationSettingUpdateSerializer(
+    TimezoneFieldMixin, serializers.ModelSerializer
+):
     class Meta:
         model = OrganizationSetting
         fields = ("setting_values",)
@@ -1795,7 +1881,206 @@ class CustomerBalanceAdjustmentSerializer(
         fields = api_serializers.CustomerBalanceAdjustmentSerializer.Meta.fields
 
 
-class UsageAlertCreateSerializer(serializers.ModelSerializer):
+class AddOnSerializer(api_serializers.AddOnSerializer):
+    pass
+
+
+class AddOnCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
+    class Meta:
+        model = Plan
+        fields = (
+            "addon_name",
+            "description",
+            "recurring_charges",
+            "components",
+            "features",
+            "currency_code",
+            "invoice_when",
+            "billing_frequency",
+        )
+        extra_kwargs = {
+            "addon_name": {"write_only": True, "required": True},
+            "description": {"write_only": True, "required": True, "allow_null": True},
+            "recurring_charges": {"write_only": True, "required": True},
+            "components": {"write_only": True, "required": True},
+            "features": {"write_only": True, "required": True},
+            "currency_code": {"write_only": True, "allow_null": True},
+            "invoice_when": {"write_only": True, "required": True},
+            "billing_frequency": {"write_only": True, "required": True},
+        }
+
+    addon_name = serializers.CharField(
+        help_text="The name of the add-on plan.",
+    )
+    description = serializers.CharField(
+        help_text="The description of the add-on plan.",
+        allow_null=True,
+    )
+    components = PlanComponentCreateSerializer(
+        many=True, allow_null=True, required=False
+    )
+    recurring_charges = RecurringChargeCreateSerializer(
+        many=True, allow_null=True, required=False
+    )
+    features = SlugRelatedFieldWithOrganization(
+        slug_field="feature_id",
+        queryset=Feature.objects.all(),
+        many=True,
+        required=False,
+    )
+    currency_code = SlugRelatedFieldWithOrganization(
+        slug_field="code",
+        queryset=PricingUnit.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    invoice_when = serializers.ChoiceField(
+        choices=AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.labels
+    )
+    billing_frequency = serializers.ChoiceField(
+        choices=AddOnSpecification.BillingFrequency.labels
+    )
+
+    def validate(self, data):
+        data = super().validate(data)
+        # make sure every plan component has a unique metric
+        if data.get("components"):
+            component_metrics = []
+            for component in data.get("components"):
+                if component.get("billable_metric") in component_metrics:
+                    raise serializers.ValidationError(
+                        "Plan components must have unique metrics."
+                    )
+                else:
+                    component_metrics.append(component.get("metric"))
+        # if tehres any paid components add on must have a currency code
+        pricing_unit = data.pop("currency_code", None)
+        if pricing_unit is None:
+            no_flat_rate = data.get("flat_rate") == Decimal(0)
+            no_paid_components = True
+            for component in data.get("plan_components", []):
+                for tier in component["tiers"]:
+                    if tier["type"] != PRICE_TIER_TYPE.FREE:
+                        no_paid_components = False
+                        break
+                if not no_paid_components:
+                    break
+            if not (no_flat_rate and no_paid_components):
+                raise serializers.ValidationError(
+                    "A currency code is required for paid add-ons."
+                )
+        # convert string fields to int fields
+        if (
+            data.get("billing_frequency")
+            == AddOnSpecification.BillingFrequency.ONE_TIME.label
+        ):
+            data["billing_frequency"] = AddOnSpecification.BillingFrequency.ONE_TIME
+        elif (
+            data.get("billing_frequency")
+            == AddOnSpecification.BillingFrequency.RECURRING.label
+        ):
+            data["billing_frequency"] = AddOnSpecification.BillingFrequency.RECURRING
+
+        if (
+            data.get("invoice_when")
+            == AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_ATTACH.label
+        ):
+            data[
+                "invoice_when"
+            ] = AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_ATTACH
+        elif (
+            data.get("invoice_when")
+            == AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_SUBSCRIPTION_END.label
+        ):
+            data[
+                "invoice_when"
+            ] = (
+                AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_SUBSCRIPTION_END
+            )
+
+        return data
+
+    def create(self, validated_data):
+        now = now_utc()
+        org = validated_data["organization"]
+        # invoice_when, billing_frequency
+        addon_spec_data = {
+            "organization": org,
+            "billing_frequency": validated_data["billing_frequency"],
+            "flat_fee_invoicing_behavior_on_attach": validated_data["invoice_when"],
+        }
+        addon_spec = AddOnSpecification.objects.create(**addon_spec_data)
+        # start off by cretaing the plan
+        plan_create_data = {
+            "organization": org,
+            "plan_name": validated_data["addon_name"],
+            "status": PLAN_STATUS.ACTIVE,
+            "created_by": validated_data["created_by"],
+            "created_on": now,
+            "addon_spec": addon_spec,
+        }
+        plan = Plan.addons.create(**plan_create_data)
+
+        # create the plan version
+        plan_version_data = {
+            "organization": org,
+            "plan": plan,
+            "description": validated_data["description"],
+            "status": PLAN_VERSION_STATUS.ACTIVE,
+            "created_by": validated_data["created_by"],
+            "created_on": now,
+            "version": 1,
+        }
+        pricing_unit = validated_data.pop("currency_code", None)
+        billing_plan = PlanVersion.objects.create(
+            **plan_version_data, pricing_unit=pricing_unit
+        )
+        # create components
+        components_data = validated_data.pop("components", [])
+        if len(components_data) > 0:
+            if pricing_unit is not None:
+                data = [
+                    {
+                        **component_data,
+                        "pricing_unit": pricing_unit,
+                        "plan_version": billing_plan,
+                        "organization": org,
+                    }
+                    for component_data in components_data
+                ]
+            else:
+                data = components_data
+            PlanComponentCreateSerializer(
+                many=True, context={**self.context, "organization": org}
+            ).create(data)
+        else:
+            pass
+        # create features
+        features_data = validated_data.pop("features", [])
+        for f in features_data:
+            billing_plan.features.add(f)
+        # create the flat rates
+        recurring_charges = validated_data.pop("recurring_charges", [])
+        if len(recurring_charges) > 0:
+            charges_data = [
+                {
+                    **recurring_charge,
+                    "pricing_unit": pricing_unit,
+                    "organization": org,
+                    "plan_version": billing_plan,
+                }
+                for recurring_charge in recurring_charges
+            ]
+            charges = RecurringChargeCreateSerializer(
+                many=True, context=self.context
+            ).create(charges_data)
+            assert type(charges[0]) is RecurringCharge
+        plan.display_version = billing_plan
+        plan.save()
+        return plan
+
+
+class UsageAlertCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = UsageAlert
         fields = (
@@ -1821,6 +2106,4 @@ class UsageAlertCreateSerializer(serializers.ModelSerializer):
             plan_version=plan_version,
             **validated_data,
         )
-        return usage_alert
-        return usage_alert
         return usage_alert

@@ -1,9 +1,9 @@
 import { Button, Steps } from "antd";
 import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useMutation, useQueryClient } from "react-query";
 import CreateOrganization, { Organizaton } from "../components/Registration/CreateOrganization";
 import { Authentication } from "../api/api";
-import { useMutation, useQueryClient } from "react-query";
 import { CreateOrgAccountType } from "../types/account-type";
 import SignUp from "../components/Registration/SignUp";
 // import sjcl from "sjcl";

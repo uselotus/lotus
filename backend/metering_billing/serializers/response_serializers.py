@@ -1,5 +1,6 @@
-from metering_billing.serializers.model_serializers import MetricSerializer
 from rest_framework import serializers
+
+from metering_billing.serializers.model_serializers import MetricSerializer
 
 
 class PeriodSubscriptionsResponseSerializer(serializers.Serializer):
@@ -40,6 +41,11 @@ class PeriodMetricRevenueResponseSerializer(serializers.Serializer):
     total_revenue_period_2 = serializers.DecimalField(decimal_places=10, max_digits=20)
     earned_revenue_period_1 = serializers.DecimalField(decimal_places=10, max_digits=20)
     earned_revenue_period_2 = serializers.DecimalField(decimal_places=10, max_digits=20)
+
+
+class PeriodEventsResponseSerializer(serializers.Serializer):
+    total_events_period_1 = serializers.IntegerField()
+    total_events_period_2 = serializers.IntegerField()
 
 
 class SubscriptionUsageResponseSerializer(serializers.Serializer):

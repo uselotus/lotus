@@ -6,10 +6,46 @@ import logging
 import operator
 from decimal import Decimal
 from functools import reduce
+from itertools import chain
 from typing import Optional
 
 import posthog
+from dateutil import parser
+from dateutil.relativedelta import relativedelta
+from django.conf import settings
+from django.db.models import (
+    Count,
+    DecimalField,
+    F,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
+from django.db.utils import IntegrityError
+from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import (
+    action,
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from api.serializers.model_serializers import (
+    AddOnSubscriptionRecordCreateSerializer,
+    AddonSubscriptionRecordFilterSerializer,
+    AddOnSubscriptionRecordSerializer,
+    AddonSubscriptionRecordUpdateSerializer,
     CustomerBalanceAdjustmentCreateSerializer,
     CustomerBalanceAdjustmentFilterSerializer,
     CustomerBalanceAdjustmentSerializer,
@@ -40,25 +76,6 @@ from api.serializers.nonmodel_serializers import (
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
 )
-from dateutil import parser
-from dateutil.relativedelta import relativedelta
-from django.conf import settings
-from django.db.models import (
-    Count,
-    DecimalField,
-    F,
-    OuterRef,
-    Prefetch,
-    Q,
-    Subquery,
-    Sum,
-    Value,
-)
-from django.db.models.functions import Coalesce
-from django.db.utils import IntegrityError
-from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
 from metering_billing.exceptions import (
     DuplicateCustomer,
@@ -77,15 +94,16 @@ from metering_billing.models import (
     CustomerBalanceAdjustment,
     Event,
     Invoice,
+    InvoiceLineItem,
     Metric,
     Plan,
     PlanComponent,
     PriceTier,
-    Subscription,
     SubscriptionRecord,
 )
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.serializer_utils import (
+    AddonUUIDField,
     BalanceAdjustmentUUIDField,
     InvoiceUUIDField,
     MetricUUIDField,
@@ -106,22 +124,12 @@ from metering_billing.utils.enums import (
     METRIC_STATUS,
     ORGANIZATION_SETTING_NAMES,
     PLAN_STATUS,
+    PLAN_VERSION_STATUS,
     SUBSCRIPTION_STATUS,
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
     USAGE_BILLING_FREQUENCY,
 )
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import (
-    action,
-    api_view,
-    authentication_classes,
-    permission_classes,
-)
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -166,13 +174,13 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         qs = qs.select_related("default_currency")
         qs = qs.prefetch_related(
             Prefetch(
-                "subscriptions",
-                queryset=SubscriptionRecord.objects.active(now)
+                "subscription_records",
+                queryset=SubscriptionRecord.base_objects.active(now)
                 .filter(
                     organization=organization,
                 )
                 .select_related("customer", "billing_plan")
-                .prefetch_related("filters"),
+                .prefetch_related("filters", "addon_subscription_records"),
                 to_attr="active_subscription_records",
             ),
             Prefetch(
@@ -185,8 +193,20 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                     ],
                 )
                 .order_by("-issue_date")
-                .select_related("currency", "subscription", "organization")
-                .prefetch_related("line_items"),
+                .select_related("currency", "organization")
+                .prefetch_related(
+                    Prefetch(
+                        "line_items",
+                        queryset=InvoiceLineItem.objects.select_related(
+                            "organization",
+                            "pricing_unit",
+                            "associated_subscription_record",
+                            "associated_plan_version",
+                            "associated_recurring_charge",
+                            "associated_plan_component",
+                        ),
+                    )
+                ),
                 to_attr="active_invoices",
             ),
         )
@@ -351,8 +371,11 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     )
 
     def get_object(self):
-        string_uuid = self.kwargs[self.lookup_field]
-        uuid = PlanUUIDField().to_internal_value(string_uuid)
+        string_uuid = str(self.kwargs[self.lookup_field])
+        if "plan_" in string_uuid:
+            uuid = PlanUUIDField().to_internal_value(string_uuid)
+        else:
+            uuid = AddonUUIDField().to_internal_value(string_uuid)
         self.kwargs[self.lookup_field] = uuid
         return super().get_object()
 
@@ -382,9 +405,11 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             end_date__gte=now,
         ).annotate(active_subscriptions=Count("*"))
         qs = qs.prefetch_related(
+            "organization",
             Prefetch(
                 "versions",
                 queryset=PlanVersion.objects.filter(
+                    ~Q(status=PLAN_VERSION_STATUS.ARCHIVED),
                     organization=organization,
                 )
                 .annotate(
@@ -425,7 +450,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                         ),
                     ),
                 ),
-            )
+            ),
         )
         return qs
 
@@ -483,61 +508,72 @@ class SubscriptionViewSet(
     def get_serializer_class(self):
         if self.action == "edit":
             return SubscriptionRecordUpdateSerializer
-        elif self.action == "cancel":
+        elif self.action == "cancel" or self.action == "cancel_addon":
             return SubscriptionRecordCancelSerializer
         elif self.action == "add":
             return SubscriptionRecordCreateSerializer
+        elif self.action == "attach_addon":
+            return AddOnSubscriptionRecordCreateSerializer
+        elif self.action == "update_addon":
+            return AddonSubscriptionRecordUpdateSerializer
         else:
             return SubscriptionRecordSerializer
 
+    def _prefetch_qs(self, qs):
+        qs = qs.select_related("billing_plan")
+        qs = qs.prefetch_related(
+            Prefetch(
+                "billing_plan__plan_components",
+                queryset=PlanComponent.objects.all(),
+            ),
+            Prefetch(
+                "billing_plan__plan_components__billable_metric",
+                queryset=Metric.objects.all(),
+            ),
+            Prefetch(
+                "billing_plan__plan_components__tiers",
+                queryset=PriceTier.objects.all(),
+            ),
+            Prefetch(
+                "addon_subscription_records",
+                queryset=SubscriptionRecord.addon_objects.select_related(
+                    "billing_plan"
+                ).prefetch_related(
+                    Prefetch(
+                        "billing_plan__plan_components",
+                        queryset=PlanComponent.objects.all(),
+                    ),
+                    Prefetch(
+                        "billing_plan__plan_components__tiers",
+                        queryset=PriceTier.objects.all(),
+                    ),
+                ),
+            ),
+        )
+        return qs
+
     def get_queryset(self):
+        if self.action in ["cancel_addon", "update_addon"]:
+            qs = SubscriptionRecord.addon_objects.all()
+        else:
+            qs = SubscriptionRecord.base_objects.all()
         now = now_utc()
-        qs = super().get_queryset()
         organization = self.request.organization
         qs = qs.filter(organization=organization)
         context = self.get_serializer_context()
         context["organization"] = organization
-        if self.action == "list":
-            args = []
-            serializer = ListSubscriptionRecordFilter(
-                data=self.request.query_params, context=context
-            )
-            serializer.is_valid(raise_exception=True)
-            allowed_status = serializer.validated_data.get("status")
-            if len(allowed_status) == 0:
-                allowed_status = [SUBSCRIPTION_STATUS.ACTIVE]
-            range_start = serializer.validated_data.get("range_start")
-            range_end = serializer.validated_data.get("range_end")
-            if range_start:
-                args.append(Q(end_date__gte=range_start))
-            if range_end:
-                args.append(Q(start_date__lte=range_end))
-            range_end = serializer.validated_data.get("range_end")
-            if serializer.validated_data.get("customer"):
-                args.append(Q(customer=serializer.validated_data["customer"]))
-            status_combo = []
-            for sub_status in allowed_status:
-                if sub_status == SUBSCRIPTION_STATUS.ACTIVE:
-                    status_combo.append(Q(start_date__lte=now, end_date__gte=now))
-                elif sub_status == SUBSCRIPTION_STATUS.ENDED:
-                    status_combo.append(Q(end_date__lt=now))
-                elif sub_status == SUBSCRIPTION_STATUS.NOT_STARTED:
-                    status_combo.append(Q(start_date__gt=now))
-            args.append(reduce(operator.or_, status_combo))
-            qs = qs.filter(
-                *args,
-            ).select_related("customer")
-        elif self.action in ["edit", "cancel"]:
+        if self.action in ["list", "edit", "cancel"]:
             subscription_filters = self.request.query_params.getlist(
                 "subscription_filters[]"
             )
             subscription_filters = [json.loads(x) for x in subscription_filters]
             dict_params = self.request.query_params.dict()
-            data = {"subscription_filters": subscription_filters}
-            if "customer_id" in dict_params:
-                data["customer_id"] = dict_params["customer_id"]
-            if "plan_id" in dict_params:
-                data["plan_id"] = dict_params["plan_id"]
+            data = {
+                "subscription_filters": subscription_filters,
+                "customer_id": dict_params.get("customer_id"),
+            }
+            if dict_params.get("plan_id"):
+                data["plan_id"] = dict_params.get("plan_id")
             if self.action == "edit":
                 serializer = SubscriptionRecordFilterSerializer(
                     data=data, context=context
@@ -546,34 +582,56 @@ class SubscriptionViewSet(
                 serializer = SubscriptionRecordFilterSerializerDelete(
                     data=data, context=context
                 )
+            elif self.action == "list":
+                serializer = ListSubscriptionRecordFilter(
+                    data=self.request.query_params, context=context
+                )
             else:
                 raise Exception("Invalid action")
             serializer.is_valid(raise_exception=True)
+            # unpack whats in teh serialized data
+
+            customer = serializer.validated_data.get("customer")
+            subscription_filters = serializer.validated_data.get("subscription_filters")
+            allowed_status = serializer.validated_data.get(
+                "status", [SUBSCRIPTION_STATUS.ACTIVE]
+            )
+            range_start = serializer.validated_data.get("range_start")
+            range_end = serializer.validated_data.get("range_end")
+            plan = serializer.validated_data.get("plan")
+            # add onto args
             args = []
-            args.append(Q(start_date__lte=now, end_date__gte=now))
-            args.append(Q(customer=serializer.validated_data["customer"]))
-            if serializer.validated_data.get("plan"):
-                args.append(Q(billing_plan__plan=serializer.validated_data["plan"]))
-            organization = self.request.organization
-            args.append(Q(organization=organization))
-            qs = (
-                SubscriptionRecord.objects.filter(*args)
-                .select_related("billing_plan")
-                .prefetch_related(
-                    Prefetch(
-                        "billing_plan__plan_components",
-                        queryset=PlanComponent.objects.all(),
+            if customer:
+                args.append(Q(customer=customer))
+            if allowed_status:
+                status_combo = []
+                if SUBSCRIPTION_STATUS.ACTIVE in allowed_status:
+                    status_combo.append(Q(start_date__lte=now, end_date__gte=now))
+                if SUBSCRIPTION_STATUS.ENDED in allowed_status:
+                    status_combo.append(Q(end_date__lt=now))
+                if SUBSCRIPTION_STATUS.NOT_STARTED in allowed_status:
+                    status_combo.append(Q(start_date__gt=now))
+                args.append(reduce(operator.or_, status_combo))
+            if range_start:
+                args.append(Q(end_date__gte=range_start))
+            if range_end:
+                args.append(Q(start_date__lte=range_end))
+            if plan:
+                args.append(Q(billing_plan__plan=plan))
+
+            qs = qs.filter(*args)
+            qs = self._prefetch_qs(qs)
+            qs = SubscriptionRecord.objects.filter(
+                pk__in=[
+                    sr.pk
+                    for sr in chain(
+                        qs, *[r.addon_subscription_records.all() for r in qs]
                     )
-                )
-                .prefetch_related(
-                    Prefetch(
-                        "billing_plan__plan_components__tiers",
-                        queryset=PriceTier.objects.all(),
-                    )
-                )
+                ]
             )
 
             if serializer.validated_data.get("subscription_filters"):
+                filters = []
                 for filter in serializer.validated_data["subscription_filters"]:
                     m2m, _ = CategoricalFilter.objects.get_or_create(
                         organization=organization,
@@ -581,7 +639,81 @@ class SubscriptionViewSet(
                         comparison_value=[filter["value"]],
                         operator=CATEGORICAL_FILTER_OPERATORS.ISIN,
                     )
-                    qs = qs.filter(filters=m2m)
+                    filters.append(m2m)
+                query = reduce(
+                    lambda acc, filter: acc & Q(filters=filter), filters, Q()
+                )
+                qs = qs.filter(query)
+        elif self.action in ["cancel_addon", "update_addon"]:
+            subscription_filters = self.request.query_params.getlist(
+                "subscription_filters[]"
+            )
+            subscription_filters = [json.loads(x) for x in subscription_filters]
+            dict_params = self.request.query_params.dict()
+            data = {
+                "subscription_filters": subscription_filters,
+                "attached_customer_id": dict_params.get("attached_customer_id"),
+                "attached_plan_id": dict_params.get("attached_plan_id"),
+                "addon_id": dict_params.get("addon_id"),
+            }
+            serializer = AddonSubscriptionRecordFilterSerializer(
+                data=data, context=context
+            )
+            serializer.is_valid(raise_exception=True)
+
+            customer = serializer.validated_data.get("customer")
+            subscription_filters = serializer.validated_data.get("subscription_filters")
+            allowed_status = serializer.validated_data.get(
+                "status", [SUBSCRIPTION_STATUS.ACTIVE]
+            )
+            range_start = serializer.validated_data.get("range_start")
+            range_end = serializer.validated_data.get("range_end")
+            plan = serializer.validated_data.get("plan")
+            # add onto args
+            args = []
+            if customer:
+                args.append(Q(customer=customer))
+            if allowed_status:
+                status_combo = []
+                if SUBSCRIPTION_STATUS.ACTIVE in allowed_status:
+                    status_combo.append(Q(start_date__lte=now, end_date__gte=now))
+                if SUBSCRIPTION_STATUS.ENDED in allowed_status:
+                    status_combo.append(Q(end_date__lt=now))
+                if SUBSCRIPTION_STATUS.NOT_STARTED in allowed_status:
+                    status_combo.append(Q(start_date__gt=now))
+                args.append(reduce(operator.or_, status_combo))
+            if range_start:
+                args.append(Q(end_date__gte=range_start))
+            if range_end:
+                args.append(Q(start_date__lte=range_end))
+            if plan:
+                args.append(Q(billing_plan__plan=plan))
+
+            qs = qs.filter(*args)
+            qs = self._prefetch_qs(qs)
+            qs = SubscriptionRecord.objects.filter(
+                pk__in=[
+                    sr.pk
+                    for sr in chain(
+                        qs, *[r.addon_subscription_records.all() for r in qs]
+                    )
+                ]
+            )
+
+            if serializer.validated_data.get("subscription_filters"):
+                filters = []
+                for filter in serializer.validated_data["subscription_filters"]:
+                    m2m, _ = CategoricalFilter.objects.get_or_create(
+                        organization=organization,
+                        property_name=filter["property_name"],
+                        comparison_value=[filter["value"]],
+                        operator=CATEGORICAL_FILTER_OPERATORS.ISIN,
+                    )
+                    filters.append(m2m)
+                query = reduce(
+                    lambda acc, filter: acc & Q(filters=filter), filters, Q()
+                )
+                qs = qs.filter(query)
         return qs
 
     @extend_schema(
@@ -615,39 +747,24 @@ class SubscriptionViewSet(
                     "Invalid subscription filter. Please check your subscription filters setting."
                 )
         # check to see if subscription exists
-        subscription = (
-            Subscription.objects.active(now)
-            .filter(
-                organization=organization,
-                customer=serializer.validated_data["customer"],
-            )
-            .first()
-        )
         duration = serializer.validated_data["billing_plan"].plan.plan_duration
         billing_freq = serializer.validated_data["billing_plan"].usage_billing_frequency
         start_date = convert_to_datetime(
             serializer.validated_data["start_date"], date_behavior="min"
         )
-        plan_day_anchor = serializer.validated_data["billing_plan"].day_anchor
-        plan_month_anchor = serializer.validated_data["billing_plan"].month_anchor
-        if subscription is None:
-            subscription = Subscription.objects.create(
-                organization=organization,
-                customer=serializer.validated_data["customer"],
-                start_date=start_date,
-                end_date=start_date,
-            )
-        subscription.handle_attach_plan(
-            plan_day_anchor=plan_day_anchor,
-            plan_month_anchor=plan_month_anchor,
-            plan_start_date=start_date,
-            plan_duration=duration,
-            plan_billing_frequency=billing_freq,
+        day_anchor = (
+            serializer.validated_data["billing_plan"].day_anchor
+            or start_date.date().day
         )
-        day_anchor, month_anchor = subscription.get_anchors()
+        month_anchor = (
+            serializer.validated_data["billing_plan"].month_anchor
+            or start_date.date().month
+        )
+        timezone = serializer.validated_data["customer"].timezone
         end_date = calculate_end_date(
             duration,
             start_date,
+            timezone,
             day_anchor=day_anchor,
             month_anchor=month_anchor,
         )
@@ -724,18 +841,9 @@ class SubscriptionViewSet(
         )
         if invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
             for customer in customer_set:
-                subscription = (
-                    Subscription.objects.active()
-                    .filter(
-                        organization=customer.organization,
-                        customer=customer,
-                    )
-                    .first()
-                )
-                generate_invoice(subscription, qs.filter(customer=customer))
-                subscription.handle_remove_plan()
+                generate_invoice(qs.filter(customer=customer))
 
-        return_qs = SubscriptionRecord.objects.filter(
+        return_qs = SubscriptionRecord.base_objects.filter(
             pk__in=original_qs, organization=organization
         )
         ret = SubscriptionRecordSerializer(return_qs, many=True).data
@@ -771,9 +879,26 @@ class SubscriptionViewSet(
         turn_off_auto_renew = serializer.validated_data.get("turn_off_auto_renew")
         end_date = serializer.validated_data.get("end_date")
         if replace_billing_plan:
+            qs = qs.filter(
+                billing_plan__plan__addon_spec__isnull=True
+            )  # no addons in replace
             now = now_utc()
             keep_separate = usage_behavior == USAGE_BEHAVIOR.KEEP_SEPARATE
+            replace_plan_metrics = {
+                pc.billable_metric for pc in replace_billing_plan.plan_components.all()
+            }
             for subscription_record in qs:
+                original_sub_record_plan_metrics = {
+                    pc.billable_metric
+                    for sub_rec in subscription_record.addon_subscription_records.all()
+                    for pc in sub_rec.billing_plan.plan_components.all()
+                }
+                if replace_plan_metrics.intersection(original_sub_record_plan_metrics):
+                    logger.debug(
+                        "Cannot switch to a plan with overlapping metrics with the current addons."
+                    )
+                    original_qs.remove(subscription_record.pk)
+                    continue
                 sr = SubscriptionRecord.objects.create(
                     organization=subscription_record.organization,
                     customer=subscription_record.customer,
@@ -787,11 +912,13 @@ class SubscriptionViewSet(
                     else subscription_record.usage_start_date,
                     auto_renew=subscription_record.auto_renew,
                     fully_billed=False,
-                    unadjusted_duration_seconds=subscription_record.unadjusted_duration_seconds,
+                    unadjusted_duration_microseconds=subscription_record.unadjusted_duration_microseconds,
                 )
                 for filter in subscription_record.filters.all():
                     sr.filters.add(filter)
-                subscription_record.flat_fee_behavior = FLAT_FEE_BEHAVIOR.PRORATE
+                subscription_record.flat_fee_behavior = (
+                    FLAT_FEE_BEHAVIOR.CHARGE_PRORATED
+                )
                 subscription_record.invoice_usage_charges = keep_separate
                 subscription_record.auto_renew = False
                 subscription_record.end_date = now
@@ -799,20 +926,11 @@ class SubscriptionViewSet(
                     billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW
                 )
                 subscription_record.save()
-            customer = list(qs)[0].customer
-            subscription = (
-                Subscription.objects.active()
-                .filter(
-                    organization=customer.organization,
-                    customer=customer,
-                )
-                .first()
-            )
             new_qs = SubscriptionRecord.objects.filter(
                 pk__in=original_qs, organization=organization
             )
             if billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
-                generate_invoice(subscription, new_qs)
+                generate_invoice(new_qs)
         else:
             update_dict = {}
             if turn_off_auto_renew:
@@ -823,11 +941,109 @@ class SubscriptionViewSet(
             if len(update_dict) > 0:
                 qs.update(**update_dict)
 
-        return_qs = SubscriptionRecord.objects.filter(
+        return_qs = SubscriptionRecord.base_objects.filter(
             pk__in=original_qs, organization=organization
         )
         ret = SubscriptionRecordSerializer(return_qs, many=True).data
         return Response(ret, status=status.HTTP_200_OK)
+
+    @extend_schema(responses=AddOnSubscriptionRecordSerializer)
+    @action(detail=False, methods=["post"], url_path="addons/add")
+    def attach_addon(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        sr = serializer.save()
+        return Response(
+            AddOnSubscriptionRecordSerializer(sr).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @extend_schema(
+        parameters=[AddonSubscriptionRecordFilterSerializer],
+        responses=AddOnSubscriptionRecordSerializer(many=True),
+    )
+    @action(detail=False, methods=["post"], url_path="addons/update")
+    def update_addon(self, request, *args, **kwargs):
+        qs = self.get_queryset()
+        organization = self.request.organization
+        original_qs = list(copy.copy(qs).values_list("pk", flat=True))
+        if qs.count() == 0:
+            raise NotFoundException("Subscription matching the given filters not found")
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        billing_behavior = serializer.validated_data.get("invoicing_behavior")
+        turn_off_auto_renew = serializer.validated_data.get("turn_off_auto_renew")
+        end_date = serializer.validated_data.get("end_date")
+        quantity = serializer.validated_data.get("quantity")
+        update_dict = {}
+        if turn_off_auto_renew:
+            update_dict["auto_renew"] = False
+        if end_date:
+            update_dict["end_date"] = end_date
+            update_dict["next_billing_date"] = end_date
+        if quantity:
+            update_dict["quantity"] = quantity
+        if len(update_dict) > 0:
+            qs.update(**update_dict)
+        if (
+            billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW
+            and "quantity" in update_dict
+        ):
+            new_qs = SubscriptionRecord.addon_objects.filter(
+                pk__in=original_qs, organization=organization
+            )
+            if billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
+                generate_invoice(new_qs)
+
+        return_qs = SubscriptionRecord.addon_objects.filter(
+            pk__in=original_qs, organization=organization
+        )
+        return Response(
+            AddOnSubscriptionRecordSerializer(return_qs, many=True).data,
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        parameters=[AddonSubscriptionRecordFilterSerializer],
+        responses=AddOnSubscriptionRecordSerializer(many=True),
+    )
+    @action(detail=False, methods=["post"], url_path="addons/cancel")
+    def cancel_addon(self, request, *args, **kwargs):
+        qs = self.get_queryset()
+        original_qs = list(copy.copy(qs).values_list("pk", flat=True))
+        organization = self.request.organization
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
+        usage_behavior = serializer.validated_data["usage_behavior"]
+        invoicing_behavior = serializer.validated_data["invoicing_behavior"]
+        now = now_utc()
+        qs_pks = list(qs.values_list("pk", flat=True))
+        qs.update(
+            flat_fee_behavior=flat_fee_behavior,
+            invoice_usage_charges=usage_behavior == USAGE_BILLING_BEHAVIOR.BILL_FULL,
+            auto_renew=False,
+            end_date=now,
+            fully_billed=invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW,
+        )
+        qs = SubscriptionRecord.addon_objects.filter(
+            pk__in=qs_pks, organization=organization
+        )
+        customer_ids = qs.values_list("customer", flat=True).distinct()
+        customer_set = Customer.objects.filter(
+            id__in=customer_ids, organization=organization
+        )
+        if invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
+            for customer in customer_set:
+                generate_invoice(qs.filter(customer=customer))
+
+        return_qs = SubscriptionRecord.addon_objects.filter(
+            pk__in=original_qs, organization=organization
+        )
+        return Response(
+            AddOnSubscriptionRecordSerializer(return_qs, many=True).data,
+            status=status.HTTP_200_OK,
+        )
 
     def dispatch(self, request, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)
@@ -1176,7 +1392,9 @@ class MetricAccessView(APIView):
             "access": False,
             "access_per_subscription": [],
         }
-        for sr in subscription_records:
+        for sr in subscription_records.filter(
+            billing_plan__plan__addon_spec__isnull=True
+        ):
             if subscription_filters_set:
                 sr_filters_set = {(x.property_name, x.value) for x in sr.filters.all()}
                 if not subscription_filters_set.issubset(sr_filters_set):
@@ -1187,7 +1405,10 @@ class MetricAccessView(APIView):
                 "metric_free_limit": 0,
                 "metric_total_limit": 0,
             }
-            for component in sr.billing_plan.plan_components.all():
+            components = sr.billing_plan.plan_components.all()
+            for addon in sr.addon_subscription_records.all():
+                components = components | addon.billing_plan.plan_components.all()
+            for component in components:
                 check_metric = component.billable_metric
                 if check_metric == metric:
                     tiers = sorted(component.tiers.all(), key=lambda x: x.range_start)
@@ -1202,6 +1423,22 @@ class MetricAccessView(APIView):
                     single_sr_dict["metric_free_limit"] = free_limit
                     single_sr_dict["metric_total_limit"] = total_limit
                     break
+            # addon_srs = sr.addon_subscription_records.all()
+            # for addon_sr in addon_srs:
+            #     for component in addon_sr.billing_plan.plan_components.all():
+            #         check_metric = component.billable_metric
+            #         if check_metric == metric:
+            #             total_limit = tiers[-1].range_end
+            #             current_usage = metric.get_subscription_record_current_usage(
+            #                 addon_sr
+            #             )
+            #             if single_sr_dict["metric_total_limit"] is None:
+            #                 single_sr_dict["metric_total_limit"] += total_limit
+            #             elif total_limit is None:
+            #                 single_sr_dict["metric_total_limit"] = None
+            #             else:
+            #                 single_sr_dict["metric_total_limit"] += total_limit
+            #             break
             return_dict["access_per_subscription"].append(single_sr_dict)
         access = []
         for sr_dict in return_dict["access_per_subscription"]:
@@ -1216,110 +1453,6 @@ class MetricAccessView(APIView):
         return_dict["access"] = any(access)
         serializer = MetricAccessResponseSerializer(return_dict)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-class GetCustomerEventAccessView(APIView):
-    permission_classes = []
-    authentication_classes = []
-
-    @extend_schema(
-        parameters=[GetCustomerEventAccessRequestSerializer],
-        responses={
-            200: GetEventAccessSerializer(many=True),
-        },
-        deprecated=True,
-    )
-    def get(self, request, format=None):
-        result, success = fast_api_key_validation_and_cache(request)
-        if not success:
-            return result
-        else:
-            organization_pk = result
-        serializer = GetCustomerEventAccessRequestSerializer(
-            data=request.query_params, context={"organization_pk": organization_pk}
-        )
-        serializer.is_valid(raise_exception=True)
-        # try:
-        #     username = self.request.user.username
-        # except Exception as e:
-        #     username = None
-        # posthog.capture(
-        #     POSTHOG_PERSON
-        #     if POSTHOG_PERSON
-        #     else (username if username else organization.organization_name + " (Unknown)"),
-        #     event="get_access",
-        #     properties={"organization": organization.organization_name},
-        # )
-        customer = serializer.validated_data["customer"]
-        event_name = serializer.validated_data.get("event_name")
-        access_metric = serializer.validated_data.get("metric")
-        subscription_records = (
-            SubscriptionRecord.objects.active()
-            .select_related("billing_plan")
-            .filter(
-                organization_id=organization_pk,
-                customer=customer,
-            )
-        )
-        subscription_filters = {
-            x["property_name"]: x["value"]
-            for x in serializer.validated_data.get("subscription_filters", [])
-        }
-        for key, value in subscription_filters.items():
-            key = f"properties__{key}"
-            subscription_records = subscription_records.filter(**{key: value})
-        metrics = []
-        subscription_records = subscription_records.prefetch_related(
-            "billing_plan__plan_components",
-            "billing_plan__plan_components__billable_metric",
-            "billing_plan__plan_components__tiers",
-            "filters",
-        )
-        for sr in subscription_records:
-            subscription_filters = []
-            for filter in sr.filters.all():
-                subscription_filters.append(
-                    {
-                        "property_name": filter.property_name,
-                        "value": filter.comparison_value[0],
-                    }
-                )
-            single_sub_dict = {
-                "plan_id": PlanUUIDField().to_representation(
-                    sr.billing_plan.plan.plan_id
-                ),
-                "subscription_filters": subscription_filters,
-                "usage_per_component": [],
-            }
-            for component in sr.billing_plan.plan_components.all():
-                metric = component.billable_metric
-                if metric.event_name == event_name or access_metric == metric:
-                    metric_name = metric.billable_metric_name
-                    tiers = sorted(component.tiers.all(), key=lambda x: x.range_start)
-                    free_limit = (
-                        tiers[0].range_end
-                        if tiers[0].type == PriceTier.PriceTierType.FREE
-                        else None
-                    )
-                    total_limit = tiers[-1].range_end
-                    current_usage = metric.get_subscription_record_current_usage(sr)
-                    unique_tup_dict = {
-                        "event_name": metric.event_name,
-                        "metric_name": metric_name,
-                        "metric_usage": current_usage,
-                        "metric_free_limit": free_limit,
-                        "metric_total_limit": total_limit,
-                        "metric_id": MetricUUIDField().to_representation(
-                            metric.metric_id
-                        ),
-                    }
-                    single_sub_dict["usage_per_component"].append(unique_tup_dict)
-            metrics.append(single_sub_dict)
-        GetEventAccessSerializer(many=True).validate(metrics)
-        return Response(
-            metrics,
-            status=status.HTTP_200_OK,
-        )
 
 
 class FeatureAccessView(APIView):
@@ -1363,7 +1496,9 @@ class FeatureAccessView(APIView):
             "access": False,
             "access_per_subscription": [],
         }
-        for sr in subscription_records:
+        for sr in subscription_records.filter(
+            billing_plan__plan__addon_spec__isnull=True
+        ):
             if subscription_filters_set:
                 sr_filters_set = {(x.property_name, x.value) for x in sr.filters.all()}
                 if not subscription_filters_set.issubset(sr_filters_set):
@@ -1372,92 +1507,18 @@ class FeatureAccessView(APIView):
                 "subscription": sr,
                 "access": False,
             }
-            if feature in sr.billing_plan.features.all():
+            all_billing_plan_features = sr.billing_plan.features.all()
+            for addon in sr.addon_subscription_records.all():
+                all_billing_plan_features = (
+                    all_billing_plan_features | addon.billing_plan.features.all()
+                )
+            if feature in all_billing_plan_features.distinct():
                 single_sr_dict["access"] = True
             return_dict["access_per_subscription"].append(single_sr_dict)
         access = [d["access"] for d in return_dict["access_per_subscription"]]
         return_dict["access"] = any(access)
         serializer = FeatureAccessResponseSerializer(return_dict)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-class GetCustomerFeatureAccessView(APIView):
-    permission_classes = []
-    authentication_classes = []
-
-    @extend_schema(
-        parameters=[GetCustomerFeatureAccessRequestSerializer],
-        responses={
-            200: GetFeatureAccessSerializer(many=True),
-        },
-        deprecated=True,
-    )
-    def get(self, request, format=None):
-        result, success = fast_api_key_validation_and_cache(request)
-        if not success:
-            return result
-        else:
-            organization_pk = result
-        serializer = GetCustomerFeatureAccessRequestSerializer(
-            data=request.query_params, context={"organization_pk": organization_pk}
-        )
-        serializer.is_valid(raise_exception=True)
-        # try:
-        #     username = self.request.user.username
-        # except Exception as e:
-        #     username = None
-        # posthog.capture(
-        #     POSTHOG_PERSON
-        #     if POSTHOG_PERSON
-        #     else (username if username else organization.organization_name + " (Unknown)"),
-        #     event="get_access",
-        #     properties={"organization": organization.organization_name},
-        # )
-        customer = serializer.validated_data["customer"]
-        feature_name = serializer.validated_data.get("feature_name")
-        subscriptions = (
-            SubscriptionRecord.objects.active()
-            .select_related("billing_plan")
-            .filter(
-                organization_id=organization_pk,
-                customer=customer,
-            )
-        )
-        subscription_filters = {
-            x["property_name"]: x["value"]
-            for x in serializer.validated_data.get("subscription_filters", [])
-        }
-        for key, value in subscription_filters.items():
-            key = f"properties__{key}"
-            subscriptions = subscriptions.filter(**{key: value})
-        features = []
-        subscriptions = subscriptions.prefetch_related("billing_plan__features")
-        for sub in subscriptions:
-            subscription_filters = []
-            for filter in sub.filters.all():
-                subscription_filters.append(
-                    {
-                        "property_name": filter.property_name,
-                        "value": filter.comparison_value[0],
-                    }
-                )
-            sub_dict = {
-                "feature_name": feature_name,
-                "plan_id": PlanUUIDField().to_representation(
-                    sub.billing_plan.plan.plan_id
-                ),
-                "subscription_filters": subscription_filters,
-                "access": False,
-            }
-            for feature in sub.billing_plan.features.all():
-                if feature.feature_name == feature_name:
-                    sub_dict["access"] = True
-            features.append(sub_dict)
-        GetFeatureAccessSerializer(many=True).validate(features)
-        return Response(
-            features,
-            status=status.HTTP_200_OK,
-        )
 
 
 class Ping(APIView):
@@ -1661,52 +1722,46 @@ def track_event(request):
         return HttpResponseBadRequest(f"Invalid event data: {e}")
     if not event_list:
         return HttpResponseBadRequest("No data provided")
-    if type(event_list) != list:
+    if not isinstance(event_list, list):
         if "batch" in event_list:
             event_list = event_list["batch"]
         else:
             event_list = [event_list]
 
     bad_events = {}
-    events_to_insert = set()
-    events_by_customer = {}
     now = now_utc()
     for data in event_list:
         customer_id = data.get("customer_id")
-        idempotency_id = data.get("idempotency_id", None)
-        time_created = data.get("time_created", None)
-        if not customer_id or not idempotency_id:
-            if not idempotency_id:
-                bad_events["no_idempotency_id"] = "No idempotency_id provided"
-            else:
-                bad_events[idempotency_id] = "No customer_id provided"
+        idempotency_id = data.get("idempotency_id")
+        time_created = data.get("time_created")
+        if not idempotency_id:
+            bad_events["no_idempotency_id"] = "No idempotency_id provided"
             continue
-        if idempotency_id in events_to_insert:
-            bad_events[idempotency_id] = "Duplicate event idempotency in request"
+        if not customer_id:
+            bad_events[idempotency_id] = "No customer_id provided"
             continue
         if not time_created:
             bad_events[idempotency_id] = "Invalid time_created"
             continue
-        if parser.parse(time_created) < now - relativedelta(days=30):
+        if not (
+            now - relativedelta(days=30)
+            <= parser.parse(time_created)
+            <= now + relativedelta(days=1)
+        ):
             bad_events[
                 idempotency_id
-            ] = "Time created too far in the past. Events must be within 30 days of current time."
+            ] = "Time created too far in the past or future. Events must be within 30 days before or 1 day ahead of current time."
             continue
         try:
             transformed_event = ingest_event(data, customer_id, organization_pk)
-            events_to_insert.add(idempotency_id)
-            if customer_id not in events_by_customer:
-                events_by_customer[customer_id] = [transformed_event]
-            else:
-                events_by_customer[customer_id].append(transformed_event)
+            stream_events = {
+                "events": [transformed_event],
+                "organization_id": organization_pk,
+            }
+            kafka_producer.produce(customer_id, stream_events)
         except Exception as e:
             bad_events[idempotency_id] = str(e)
             continue
-
-    ## Sent to Redpanda Topic
-    for customer_id, events in events_by_customer.items():
-        stream_events = {"events": events, "organization_id": organization_pk}
-        kafka_producer.produce(customer_id, stream_events)
 
     if len(bad_events) == len(event_list):
         return Response(
@@ -1720,15 +1775,189 @@ def track_event(request):
         )
     else:
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
-        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
+
+
+###### DEPRECATED ######
+
+
+class GetCustomerFeatureAccessView(APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    @extend_schema(
+        parameters=[GetCustomerFeatureAccessRequestSerializer],
+        responses={
+            200: GetFeatureAccessSerializer(many=True),
+        },
+        deprecated=True,
+    )
+    def get(self, request, format=None):
+        result, success = fast_api_key_validation_and_cache(request)
+        if not success:
+            return result
+        else:
+            organization_pk = result
+        serializer = GetCustomerFeatureAccessRequestSerializer(
+            data=request.query_params, context={"organization_pk": organization_pk}
+        )
+        serializer.is_valid(raise_exception=True)
+        # try:
+        #     username = self.request.user.username
+        # except Exception as e:
+        #     username = None
+        # posthog.capture(
+        #     POSTHOG_PERSON
+        #     if POSTHOG_PERSON
+        #     else (username if username else organization.organization_name + " (Unknown)"),
+        #     event="get_access",
+        #     properties={"organization": organization.organization_name},
+        # )
+        customer = serializer.validated_data["customer"]
+        feature_name = serializer.validated_data.get("feature_name")
+        subscriptions = (
+            SubscriptionRecord.objects.active()
+            .select_related("billing_plan")
+            .filter(
+                organization_id=organization_pk,
+                customer=customer,
+            )
+        )
+        subscription_filters = {
+            x["property_name"]: x["value"]
+            for x in serializer.validated_data.get("subscription_filters", [])
+        }
+        for key, value in subscription_filters.items():
+            key = f"properties__{key}"
+            subscriptions = subscriptions.filter(**{key: value})
+        features = []
+        subscriptions = subscriptions.prefetch_related("billing_plan__features")
+        for sub in subscriptions:
+            subscription_filters = []
+            for filter in sub.filters.all():
+                subscription_filters.append(
+                    {
+                        "property_name": filter.property_name,
+                        "value": filter.comparison_value[0],
+                    }
+                )
+            sub_dict = {
+                "feature_name": feature_name,
+                "plan_id": PlanUUIDField().to_representation(
+                    sub.billing_plan.plan.plan_id
+                ),
+                "subscription_filters": subscription_filters,
+                "access": False,
+            }
+            for feature in sub.billing_plan.features.all():
+                if feature.feature_name == feature_name:
+                    sub_dict["access"] = True
+            features.append(sub_dict)
+        GetFeatureAccessSerializer(many=True).validate(features)
+        return Response(
+            features,
+            status=status.HTTP_200_OK,
+        )
+
+
+class GetCustomerEventAccessView(APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    @extend_schema(
+        parameters=[GetCustomerEventAccessRequestSerializer],
+        responses={
+            200: GetEventAccessSerializer(many=True),
+        },
+        deprecated=True,
+    )
+    def get(self, request, format=None):
+        result, success = fast_api_key_validation_and_cache(request)
+        if not success:
+            return result
+        else:
+            organization_pk = result
+        serializer = GetCustomerEventAccessRequestSerializer(
+            data=request.query_params, context={"organization_pk": organization_pk}
+        )
+        serializer.is_valid(raise_exception=True)
+        # try:
+        #     username = self.request.user.username
+        # except Exception as e:
+        #     username = None
+        # posthog.capture(
+        #     POSTHOG_PERSON
+        #     if POSTHOG_PERSON
+        #     else (username if username else organization.organization_name + " (Unknown)"),
+        #     event="get_access",
+        #     properties={"organization": organization.organization_name},
+        # )
+        customer = serializer.validated_data["customer"]
+        event_name = serializer.validated_data.get("event_name")
+        access_metric = serializer.validated_data.get("metric")
+        subscription_records = (
+            SubscriptionRecord.objects.active()
+            .select_related("billing_plan")
+            .filter(
+                organization_id=organization_pk,
+                customer=customer,
+            )
+        )
+        subscription_filters = {
+            x["property_name"]: x["value"]
+            for x in serializer.validated_data.get("subscription_filters", [])
+        }
+        for key, value in subscription_filters.items():
+            key = f"properties__{key}"
+            subscription_records = subscription_records.filter(**{key: value})
+        metrics = []
+        subscription_records = subscription_records.prefetch_related(
+            "billing_plan__plan_components",
+            "billing_plan__plan_components__billable_metric",
+            "billing_plan__plan_components__tiers",
+            "filters",
+        )
+        for sr in subscription_records:
+            subscription_filters = []
+            for filter in sr.filters.all():
+                subscription_filters.append(
+                    {
+                        "property_name": filter.property_name,
+                        "value": filter.comparison_value[0],
+                    }
+                )
+            single_sub_dict = {
+                "plan_id": PlanUUIDField().to_representation(
+                    sr.billing_plan.plan.plan_id
+                ),
+                "subscription_filters": subscription_filters,
+                "usage_per_component": [],
+            }
+            for component in sr.billing_plan.plan_components.all():
+                metric = component.billable_metric
+                if metric.event_name == event_name or access_metric == metric:
+                    metric_name = metric.billable_metric_name
+                    tiers = sorted(component.tiers.all(), key=lambda x: x.range_start)
+                    free_limit = (
+                        tiers[0].range_end
+                        if tiers[0].type == PriceTier.PriceTierType.FREE
+                        else None
+                    )
+                    total_limit = tiers[-1].range_end
+                    current_usage = metric.get_subscription_record_current_usage(sr)
+                    unique_tup_dict = {
+                        "event_name": metric.event_name,
+                        "metric_name": metric_name,
+                        "metric_usage": current_usage,
+                        "metric_free_limit": free_limit,
+                        "metric_total_limit": total_limit,
+                        "metric_id": MetricUUIDField().to_representation(
+                            metric.metric_id
+                        ),
+                    }
+                    single_sub_dict["usage_per_component"].append(unique_tup_dict)
+            metrics.append(single_sub_dict)
+        GetEventAccessSerializer(many=True).validate(metrics)
+        return Response(
+            metrics,
+            status=status.HTTP_200_OK,
+        )

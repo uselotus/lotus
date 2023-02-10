@@ -9,13 +9,13 @@ import {
 import { PlanType, UpdatePlanType } from "../../../types/plan-type";
 import "./PlanCard.css";
 import { useMutation, useQueryClient } from "react-query";
-import { Plan } from "../../../api/api";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { Plan } from "../../../api/api";
 import CopyText from "../../base/CopytoClipboard";
 import DropdownComponent from "../../base/Dropdown/Dropdown";
-import createShortenedText from "../helpers/createShortenedText";
-import capitalize from "../helpers/capitalize";
+import createShortenedText from "../../../helpers/createShortenedText";
+import capitalize from "../../../helpers/capitalize";
 import PlansTags from "../PlanTags";
 import Badge from "../../base/Badges/Badges";
 import useMediaQuery from "../../../hooks/useWindowQuery";
@@ -73,15 +73,14 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
   );
 
   const gotoPlanDetail = () => {
-    navigate("/plans/" + plan.plan_id);
+    navigate(`/plans/${plan.plan_id}`);
   };
 
   const customerNameOrID = (target_customer: any | undefined) => {
     if (target_customer.customer_name) {
       return target_customer.customer_name;
-    } else {
-      return target_customer.customer_id;
     }
+    return target_customer.customer_id;
   };
 
   return (
@@ -161,7 +160,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
         <div className="flex mt-2">
           <DropdownComponent>
             <DropdownComponent.Trigger>
-              <PlansTags tags={plan.tags} />
+              <PlansTags showAddTagButton tags={plan.tags} />
             </DropdownComponent.Trigger>
             <DropdownComponent.Container>
               {plan_tags &&
@@ -180,6 +179,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
                         createTagMutation({
                           plan_id: plan.plan_id,
                           tags,
+                          pane,
                         });
                       } else {
                         const planTags = [...plan.tags];

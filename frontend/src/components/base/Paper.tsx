@@ -6,7 +6,6 @@ type Props = {
   className?: string;
 };
 export const Paper = (props: Props) => {
-  console.log(props.color, props.border, props.className);
   const className = props.className || "";
   return (
     <div

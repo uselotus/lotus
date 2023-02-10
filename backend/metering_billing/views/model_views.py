@@ -42,7 +42,10 @@ from metering_billing.serializers.backtest_serializers import (
 )
 from metering_billing.serializers.model_serializers import (
     ActionSerializer,
+    AddOnCreateSerializer,
+    AddOnSerializer,
     APITokenSerializer,
+    CustomerSerializer,
     CustomerUpdateSerializer,
     EventSerializer,
     ExternalPlanLinkSerializer,
@@ -73,6 +76,7 @@ from metering_billing.serializers.request_serializers import (
     OrganizationSettingFilterSerializer,
 )
 from metering_billing.serializers.serializer_utils import (
+    AddonUUIDField,
     MetricUUIDField,
     OrganizationSettingUUIDField,
     OrganizationUUIDField,
@@ -434,6 +438,22 @@ class CustomerViewSet(api_views.CustomerViewSet):
             return CustomerUpdateSerializer
         return sc
 
+    @extend_schema(responses=PlanVersionDetailSerializer)
+    def update(self, request, *args, **kwargs):
+        customer = self.get_object()
+        serializer = self.get_serializer(customer, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        if getattr(customer, "_prefetched_objects_cache", None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            customer._prefetched_objects_cache = {}
+
+        return Response(
+            CustomerSerializer(customer, context=self.get_serializer_context()).data,
+            status=status.HTTP_200_OK,
+        )
+
 
 class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     http_method_names = ["get", "post", "head", "patch"]
@@ -700,7 +720,10 @@ class PlanViewSet(api_views.PlanViewSet):
 
     def get_object(self):
         string_uuid = self.kwargs[self.lookup_field]
-        uuid = PlanUUIDField().to_internal_value(string_uuid)
+        if "plan_" in string_uuid:
+            uuid = PlanUUIDField().to_internal_value(string_uuid)
+        else:
+            uuid = AddonUUIDField().to_internal_value(string_uuid)
         self.kwargs[self.lookup_field] = uuid
         return super().get_object()
 
@@ -1025,7 +1048,9 @@ class PricingUnitViewSet(
 
     def get_queryset(self):
         organization = self.request.organization
-        return PricingUnit.objects.filter(organization=organization)
+        return PricingUnit.objects.filter(organization=organization).prefetch_related(
+            "organization"
+        )
 
     def perform_create(self, serializer):
         serializer.save(organization=self.request.organization)
@@ -1097,7 +1122,6 @@ class OrganizationViewSet(
             # If 'prefetch_related' has been applied to a queryset, we need to
             # forcibly invalidate the prefetch cache on the instance.
             org._prefetched_objects_cache = {}
-
         return Response(
             OrganizationSerializer(org, context=self.get_serializer_context()).data,
             status=status.HTTP_200_OK,
@@ -1110,6 +1134,54 @@ class OrganizationViewSet(
 
 class CustomerBalanceAdjustmentViewSet(api_views.CustomerBalanceAdjustmentViewSet):
     pass
+
+
+class AddOnViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated & ValidOrganization]
+    http_method_names = ["get", "head", "post"]
+    lookup_field = "plan_id"
+    lookup_url_kwarg = "addon_id"
+    queryset = Plan.addons.all()
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        organization = self.request.organization
+        context.update({"organization": organization})
+        return context
+
+    def get_object(self):
+        string_uuid = self.kwargs[self.lookup_url_kwarg]
+        uuid = AddonUUIDField().to_internal_value(string_uuid)
+        self.kwargs[self.lookup_url_kwarg] = uuid
+        return super().get_object()
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return AddOnCreateSerializer
+        return AddOnSerializer
+
+    def perform_create(self, serializer):
+        if self.request.user.is_authenticated:
+            user = self.request.user
+        else:
+            user = None
+        instance = serializer.save(
+            organization=self.request.organization, created_by=user
+        )
+        return instance
+
+    def get_queryset(self):
+        filter_kwargs = {"organization": self.request.organization}
+        qs = self.queryset
+        return qs.filter(**filter_kwargs)
+
+    @extend_schema(responses=AddOnSerializer)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = self.perform_create(serializer)
+        addon_data = AddOnSerializer(instance).data
+        return Response(addon_data, status=status.HTTP_201_CREATED)
 
 
 class UsageAlertViewSet(viewsets.ModelViewSet):
@@ -1145,5 +1217,4 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
-        return context
         return context

@@ -1,5 +1,4 @@
 import { Layout, PageHeader, PageHeaderProps } from "antd";
-// @ts-ignore
 import React from "react";
 import SlideOver from "../SlideOver/SlideOver";
 import Heading from "./Heading/Heading";
@@ -7,27 +6,36 @@ import Heading from "./Heading/Heading";
 interface PageLayoutProps extends PageHeaderProps {
   hasBackButton?: boolean;
   backButton?: React.ReactNode;
+  aboveTitle?: boolean;
+  mx?: boolean;
 }
-export const PageLayout = ({
+export function PageLayout({
   children,
   hasBackButton,
   backButton,
+  mx = true,
+  aboveTitle = true,
   ...props
-}: PageLayoutProps) => {
+}: PageLayoutProps) {
   return (
     <div>
       <SlideOver />
 
-      <Heading />
-      <PageHeader />
+      <Heading
+        hasBackButton={hasBackButton}
+        aboveTitle={aboveTitle}
+        backButton={backButton}
+      />
+      <PageHeader className="!-mt-[26px]" />
 
-      <div className="mx-10 mt-16">
+      <div className="mx-10 mt-16 pb-20">
         <div className="flex items-center justify-between mb-6">
           {props.title ? (
             <h1
-              className={hasBackButton ? "font-main mt-20 mx-10" : "font-main"}
+              className={hasBackButton && mx ? "font-main  mx-10" : "font-main"}
             >
-              {props.title}
+              {hasBackButton && aboveTitle && backButton}
+              <div className={hasBackButton ? "mt-12" : ""}>{props.title}</div>
             </h1>
           ) : (
             <h1>{props.title}</h1>
@@ -40,4 +48,4 @@ export const PageLayout = ({
       </div>
     </div>
   );
-};
+}

@@ -1,21 +1,27 @@
-// @ts-ignore
 import React, { FC, useEffect } from "react";
 import { Column } from "@ant-design/plots";
-import { useQueryClient , useMutation } from "react-query";
+import { useQueryClient, useMutation } from "react-query";
 
-import { Button, Select, Tag, Form, Input } from "antd";
+import { Select, Form, Typography, Input } from "antd";
+import dayjs from "dayjs";
+import { toast } from "react-toastify";
 import { DraftInvoiceType } from "../../types/invoice-type";
 
-// @ts-ignore
-import dayjs from "dayjs";
-import LoadingSpinner from "../LoadingSpinner";
 import { Customer } from "../../api/api";
-import { toast } from "react-toastify";
+import { country_json } from "../../assets/country_codes";
 
 import { CustomerType } from "../../types/customer-type";
 import { CustomerCostType } from "../../types/revenue-type";
 import { CurrencyType } from "../../types/pricing-unit-type";
-import { country_json } from "../../assets/country_codes";
+import CustomerCard from "./Card/CustomerCard";
+import { PencilSquareIcon } from "../base/PencilIcon";
+import CopyText from "../base/CopytoClipboard";
+import createShortenedText from "../../helpers/createShortenedText";
+import useMediaQuery from "../../hooks/useWindowQuery";
+import Divider from "../base/Divider/Divider";
+import Badge from "../base/Badges/Badges";
+import { fourDP } from "../../helpers/fourDP";
+import { timezones } from "../../assets/timezones";
 
 interface CustomerInfoViewProps {
   data: CustomerType;
@@ -31,32 +37,24 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
   onDateChange,
   refetch,
 }) => {
+  const windowWidth = useMediaQuery();
+
   const [transformedGraphData, setTransformedGraphData] = React.useState<any>(
     []
   );
   const [form] = Form.useForm();
   const [currentCurrency, setCurrentCurrency] = React.useState<string>(
-    data.default_currency.code
+    data.default_currency.code ? data.default_currency.code : ""
   );
-  const [taxRate, setTaxRate] = React.useState(
-    data.tax_rate ? data.tax_rate : 0
-  );
-  const [line1, setLine1] = React.useState(
-    data.address ? data.address.line1 : ""
-  );
-  const [line2, setLine2] = React.useState(
-    data.address && data.address.line2 ? data.address.line2 : ""
-  );
-  const [city, setCity] = React.useState(data.address ? data.address.city : "");
-  const [state, setState] = React.useState(
-    data.address ? data.address.state : ""
-  );
-  const [country, setCountry] = React.useState(
-    data.address ? data.address.country : ""
-  );
-  const [postalCode, setPostalCode] = React.useState(
-    data.address ? data.address.postal_code : ""
-  );
+  const [taxRate, setTaxRate] = React.useState(0);
+  const [line1, setLine1] = React.useState("");
+  const [line2, setLine2] = React.useState("");
+  const [city, setCity] = React.useState("");
+  const [state, setState] = React.useState("");
+  const [country, setCountry] = React.useState("");
+  const [postalCode, setPostalCode] = React.useState("");
+  const [timezone, setTimezone] =
+    React.useState<(typeof timezones)[number]>("UTC");
   const [isEditing, setIsEditing] = React.useState(false);
   const queryClient = useQueryClient();
 
@@ -71,12 +69,14 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
       default_currency_code: string;
       address: CustomerType["address"];
       tax_rate: number;
+      timezone: string;
     }) =>
       Customer.updateCustomer(
         obj.customer_id,
         obj.default_currency_code,
         obj.address,
-        obj.tax_rate
+        obj.tax_rate,
+        obj.timezone
       ),
     {
       onSuccess: () => {
@@ -120,7 +120,8 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
       customer_id: data.customer_id,
       address: submittedAddress,
       default_currency_code: currentCurrency,
-      tax_rate: taxRate,
+      tax_rate: fourDP(taxRate),
+      timezone,
     });
 
     refetch();
@@ -134,14 +135,12 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
   };
   useEffect(() => {
     const newgraphdata = cost_data.per_day.map((day: any) => {
-      const result_list = day.cost_data.map((metric: any) => {
-        return {
-          date: day.date,
-          amount: metric.cost,
-          metric: metric.metric.billable_metric_name,
-          type: "cost",
-        };
-      });
+      const result_list = day.cost_data.map((metric: any) => ({
+        date: day.date,
+        amount: metric.cost,
+        metric: metric.metric.billable_metric_name,
+        type: "cost",
+      }));
 
       result_list.push({
         date: day.date,
@@ -189,249 +188,393 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col mb-8">
-      <div className="grid grid-cols-2 items-center justify-between mb-2 pb-4 pt-4 ">
-        <h2 className="pb-4 pt-4 font-bold text-main">Customer Details</h2>
-        <div className="">
-          {" "}
-          Date Range :{"    "}
-          <Select defaultValue={"1"} onChange={onSwitch}>
-            <Select.Option value="1">Last 30 Days</Select.Option>
-            <Select.Option value="2">Last 60 Days</Select.Option>
-            <Select.Option value="3">This Month</Select.Option>
-            <Select.Option value="4">Year to date</Select.Option>
-          </Select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-8">
-        <div className="border-2 border-solid rounded border-[#EAEAEB] py-4 px-8">
-          {!isEditing ? (
-            <div>
-              <p>
-                <b>Customer Name:</b> {data.customer_name ?? "N/A"}
-              </p>
-              <p>
-                <b>Customer ID:</b>{" "}
-                {<span className="font-menlo">{data.customer_id}</span> ??
-                  "N/A"}
-              </p>
-              <p>
-                <b>Email:</b> {data.email ?? "N/A"}
-              </p>
-              <p>
-                <b>Billing Address:</b>{" "}
-                {data.address ? (
-                  <div>
-                    {data.address.line1},{data.address.state},
-                    {data.address.country} {data.address.postal_code}
-                  </div>
-                ) : (
-                  "N/A"
-                )}
-              </p>
-              <p>
-                <b>Default Currency:</b>{" "}
-                {data ? (
-                  <Tag>
-                    {data.default_currency?.name +
-                      " " +
-                      data?.default_currency?.symbol}
-                  </Tag>
-                ) : (
-                  "N/A"
-                )}
-                {/* {data.default_currency ? (
-              <PricingUnitDropDown
-                defaultValue={data.default_currency.code}
-                setCurrentCurrency={(value) =>
-                  updateCustomer.mutate({
-                    customer_id: data.customer_id,
-                    default_currency_code: value,
-                  })
-                }
-              />
-            ) : (
-              "N/A"
-            )} */}
-              </p>
-
-              <p>
-                <b>Payment Method Connected:</b>{" "}
-                {data.has_payment_method ? (
-                  <Tag color="green">True</Tag>
-                ) : (
-                  <Tag color="red">False</Tag>
-                )}
-              </p>
-              <p>
-                <b>Tax Rate:</b> {data.tax_rate ?? "0"}%
-              </p>
-              <p>
-                <b>Amount Due On Next Invoice:</b>{" "}
-                {data?.default_currency?.symbol}
-                {invoiceData?.invoices !== undefined &&
-                  invoiceData?.invoices !== null &&
-                  invoiceData?.invoices.length > 0 &&
-                  invoiceData?.invoices[0].cost_due.toFixed(2)}
-              </p>
-              {!isEditing && (
-                <Button
-                  type="primary"
-                  size="large"
-                  className="w-1/3 mb-2 float-right"
-                  onClick={makeEditable}
-                >
-                  Edit
-                </Button>
-              )}
-            </div>
-          ) : (
-            <Form form={form}>
-              <Form.Item label="Customer Name" name="customer_name">
-                <Input disabled={true} defaultValue={data.customer_name} />
-              </Form.Item>
-              <Form.Item label="Customer Currency" name="default_currency">
-                <Select
-                  onChange={setCurrentCurrency}
-                  defaultValue={currentCurrency}
-                  options={pricingUnits?.map((pc) => {
-                    return { label: `${pc.name} ${pc.symbol}`, value: pc.code };
-                  })}
-                />
-              </Form.Item>
-              <Form.Item label="Tax Rate" name="tax_rate">
-                <Input
-                  type="number"
-                  step=".01"
-                  max={999.9999}
-                  onChange={(e) =>
-                    setTaxRate(e.target.value as unknown as number)
-                  }
-                  defaultValue={data.tax_rate ?? 0}
-                />
-              </Form.Item>
-              <Form.Item name="billing_address">
-                <label className="mb-2">Billing Address: </label>
-                <div className="flex gap-4 mt-2">
-                  <Input
-                    placeholder="Address Line 1"
-                    defaultValue={line1}
-                    onChange={(e) => setLine1(e.target.value)}
-                    required
-                  />
-                  <Input
-                    placeholder="Address Line 2"
-                    defaultValue={line2}
-                    onChange={(e) => setLine2(e.target.value)}
-                  />
+    <div className="flex  flex-col">
+      <div className="grid grid-cols-1 gap-16  md:grid-cols-3">
+        <div className="col-span-2">
+          <CustomerCard
+            className={`overflow-x-clip ${
+              !isEditing ? "h-[215px]" : "min-h-[230px]"
+            }  `}
+          >
+            <CustomerCard.Heading>
+              <div className="flex items-center">
+                <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
+                  Customer Details
+                </Typography.Title>
+                <div className="ml-auto">
+                  {!isEditing ? (
+                    <PencilSquareIcon onClick={makeEditable} />
+                  ) : (
+                    <div className="flex items-center gap-4">
+                      <span
+                        aria-hidden
+                        className="text-card-offGrey"
+                        onClick={() => setIsEditing(false)}
+                      >
+                        Cancel
+                      </span>
+                      <span
+                        aria-hidden
+                        className="text-gold"
+                        onClick={EditCustomerHandler}
+                      >
+                        Save
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <div className="flex gap-4 mt-2">
-                  <Input
-                    placeholder="City"
-                    onChange={(e) => setCity(e.target.value)}
-                    defaultValue={city}
-                    required
-                  />
-                  <Select
-                    placeholder="Country"
-                    defaultValue={country}
-                    onChange={(e) => setCountry(e)}
-                  >
-                    {country_json.map((country) => (
-                      <Select.Option value={country.Code}>
-                        {country.Name}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </div>
-                <div className="flex gap-4 mt-2">
-                  <Input
-                    placeholder="State"
-                    defaultValue={state}
-                    onChange={(e) => setState(e.target.value)}
-                    required
-                  />
-                  <Input
-                    defaultValue={postalCode}
-                    placeholder="Zip Code"
-                    onChange={(e) => setPostalCode(e.target.value)}
-                    required
-                  />
-                </div>
-              </Form.Item>
-              <div className="flex gap-2 mb-2">
-                <Button
-                  type="ghost"
-                  size="large"
-                  className=" w-full"
-                  onClick={() => setIsEditing(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="primary"
-                  size="large"
-                  className=" w-full"
-                  onClick={EditCustomerHandler}
-                >
-                  Submit
-                </Button>
               </div>
-            </Form>
-          )}
-        </div>
-        <div className="grid grid-cols-3 place-items-center gap-8 py-4">
-          <div>
-            <p className=" mb-4">Earned Revenue</p>
-            {cost_data === undefined ? (
-              <LoadingSpinner />
-            ) : (
-              <span className="text-3xl font-bold">
-                {new Intl.NumberFormat("en-US", {
-                  style: "currency",
-                  currency: "USD",
-                }).format(displayMetric(cost_data.total_revenue))}
-              </span>
-            )}
-          </div>
+              <Divider className="mt-[3.53px]" />
+            </CustomerCard.Heading>
+            <CustomerCard.Container className="grid gap-72  items-center grid-cols-1 md:grid-cols-2">
+              <CustomerCard.Block className="text-[13px] justify-between w-full">
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Name
+                  </div>
+                  <div className="flex gap-1">
+                    {" "}
+                    <div className="Inter">{data.customer_name}</div>
+                  </div>
+                </CustomerCard.Item>
+                <CustomerCard.Item>
+                  <div className="font-normal text-card-text font-alliance whitespace-nowrap leading-4">
+                    ID
+                  </div>
+                  <div className="flex gap-1 !text-card-grey font-menlo">
+                    {" "}
+                    <div>
+                      {createShortenedText(
+                        data.customer_id as string,
+                        windowWidth >= 2500
+                      )}
+                    </div>
+                    <CopyText
+                      showIcon
+                      onlyIcon
+                      textToCopy={data.customer_id as string}
+                    />
+                  </div>
+                </CustomerCard.Item>
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Billing Address
+                  </div>
+                  <div className="flex gap-1">
+                    {" "}
+                    {!isEditing ? (
+                      <div className="Inter">
+                        {data.address ? (
+                          <div>
+                            {data.address.line1},{data.address.state},
+                            {data.address.country} {data.address.postal_code}
+                          </div>
+                        ) : (
+                          "N/A"
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-4 w-full">
+                        <div className="flex gap-2">
+                          <input
+                            placeholder="Address Line 1"
+                            className="input-class focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
+                            defaultValue={
+                              data.address ? data.address.line1 : line1
+                            }
+                            onChange={(e) => setLine1(e.target.value)}
+                            required
+                          />
+                          <input
+                            placeholder="Address Line 2"
+                            className="input-class focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
+                            defaultValue={
+                              data.address && data.address.line2
+                                ? data.address.line2
+                                : line2
+                            }
+                            onChange={(e) => setLine2(e.target.value)}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <select
+                            name="Country"
+                            id="country"
+                            className=" w-1/2 bg-white border border-black rounded-sm p-2"
+                            defaultValue={country}
+                            onChange={(e) => setCountry(e.target.value)}
+                          >
+                            {country_json.map((country) => (
+                              <option key={country.Code} value={country.Code}>
+                                {country.Name}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            placeholder="City"
+                            className="input-class-last focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
+                            onChange={(e) => setCity(e.target.value)}
+                            defaultValue={
+                              data.address ? data.address.city : city
+                            }
+                            required
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            placeholder="State"
+                            className="w-1/2 focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
+                            defaultValue={
+                              data.address ? data.address.state : state
+                            }
+                            onChange={(e) => setState(e.target.value)}
+                            required
+                          />
+                          <input
+                            defaultValue={
+                              data.address
+                                ? data.address.postal_code
+                                : postalCode
+                            }
+                            className="w-1/2 focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
+                            placeholder="Zip Code"
+                            onChange={(e) => setPostalCode(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CustomerCard.Item>
 
-          <div>
-            <p className=" mb-4">Total Cost</p>
-            {cost_data === undefined ? (
-              <LoadingSpinner />
-            ) : (
-              <span className="text-3xl font-bold">
-                {new Intl.NumberFormat("en-US", {
-                  style: "currency",
-                  currency: "USD",
-                }).format(displayMetric(cost_data.total_cost))}
-              </span>
-            )}
-          </div>
-          <div className="">
-            <p className=" mb-4">Profit Margin</p>
-            {cost_data.margin === undefined ? (
-              <LoadingSpinner />
-            ) : cost_data.margin < 0 ? (
-              <span className="text-3xl font-bold text-danger">
-                {displayMetric(cost_data.margin * 100).toFixed(2)}%
-              </span>
-            ) : (
-              <span className="text-3xl font-bold text-success">
-                {displayMetric(cost_data.margin * 100).toFixed(2)}%
-              </span>
-            )}
-          </div>
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Timezone
+                  </div>
+                  <div className="flex gap-1">
+                    {" "}
+                    {!isEditing ? (
+                      <div className="Inter">
+                        {data.timezone ? (
+                          <div>{data.timezone}</div>
+                        ) : (
+                          <div>{timezone}</div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="min-w-[100px]">
+                        <select
+                          className="w-full bg-white border border-black p-4"
+                          name="timezone"
+                          id="timezone"
+                          onChange={(e) => setTimezone(e.target.value)}
+                          defaultValue={data.timezone ? timezone : timezone}
+                        >
+                          {timezones.map((tz) => (
+                            <option key={tz} value={tz}>
+                              {tz}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                </CustomerCard.Item>
+              </CustomerCard.Block>
+              <CustomerCard.Block className="w-full ml-auto text-[13px] justify-between">
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Email
+                  </div>
+                  <div className="flex gap-1">
+                    {" "}
+                    <div
+                      className={`Inter ${
+                        data.email.length > 36 ? "break-all text-[10px]" : ""
+                      } `}
+                    >
+                      {data.email}
+                    </div>
+                  </div>
+                </CustomerCard.Item>
+                <CustomerCard.Item>
+                  <div className="font-normal text-card-text font-alliance whitespace-nowrap leading-4">
+                    Default Currency
+                  </div>
+                  {!isEditing ? (
+                    <div className="flex gap-1 !text-card-text Inter">
+                      {" "}
+                      <div>
+                        {data.default_currency.code}-
+                        {data.default_currency.symbol}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="min-w-[100px]">
+                      <select
+                        className="w-full bg-white border border-black p-4"
+                        name="currency"
+                        id="currency"
+                      >
+                        {pricingUnits?.map((pc) => (
+                          <option
+                            key={pc.code}
+                            value={pc.code}
+                          >{`${pc.name} ${pc.symbol}`}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </CustomerCard.Item>
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Tax Rate
+                  </div>
+                  <div className="flex gap-1">
+                    {" "}
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        placeholder="Tax Rate"
+                        className="input-class focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
+                        defaultValue={data.tax_rate ? data.tax_rate : taxRate}
+                        step=".01"
+                        max={999.9999}
+                        onChange={(e) =>
+                          setTaxRate(e.target.value as unknown as number)
+                        }
+                        required
+                      />
+                    ) : (
+                      <div className="Inter">
+                        {data.tax_rate ? <span>{data.tax_rate}%</span> : "0%"}
+                      </div>
+                    )}
+                  </div>
+                </CustomerCard.Item>
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Payment Method Connected
+                  </div>
+                  <div className="flex gap-1">
+                    {" "}
+                    <div className="Inter">
+                      {data.payment_provider ? (
+                        <img
+                          width={25}
+                          src="https://cdn.neverbounce.com/images/integrations/square/stripe-square.png"
+                          alt="stripe logo"
+                        />
+                      ) : (
+                        "N/A"
+                      )}
+                    </div>
+                  </div>
+                </CustomerCard.Item>
+              </CustomerCard.Block>
+            </CustomerCard.Container>
+          </CustomerCard>
+        </div>
+        <div className="col-span-1 mr-8">
+          <CustomerCard className="h-[215px]">
+            <CustomerCard.Heading>
+              <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
+                Revenue Details
+              </Typography.Title>
+            </CustomerCard.Heading>
+            <Divider />
+            <CustomerCard.Container>
+              <CustomerCard.Block className="text-sm">
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Earned Revenue
+                  </div>
+                  <div className="Inter">
+                    {data.default_currency.symbol}
+                    {cost_data.total_revenue.toFixed(2)}
+                  </div>
+                </CustomerCard.Item>
+
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Total Cost
+                  </div>
+                  <div className="Inter">
+                    {data.default_currency.symbol}
+                    {cost_data.total_cost.toFixed(2)}
+                  </div>
+                </CustomerCard.Item>
+
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Profit Margin
+                  </div>
+                  <div
+                    className={`Inter ${
+                      cost_data.margin * 100 > 0
+                        ? "text-emerald-800"
+                        : "text-rose-700"
+                    }`}
+                  >
+                    {((cost_data.margin as number) * 100).toFixed(2)}%
+                  </div>
+                </CustomerCard.Item>
+
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Next Invoice Due
+                  </div>
+                  <div className="Inter text-card-grey">
+                    {data.default_currency.symbol}
+                    {data.invoices[0].cost_due.toFixed(2)}
+                  </div>
+                </CustomerCard.Item>
+              </CustomerCard.Block>
+            </CustomerCard.Container>
+          </CustomerCard>
         </div>
       </div>
       <div className="space-y-4 mt-8">
-        <div className="flex items-center space-x-8">
-          <h2 className="mb-2 pb-4 pt-4 font-bold text-main">
-            Revenue vs Cost Per Day
-          </h2>
-        </div>
-        <Column {...config} />
+        <CustomerCard>
+          <CustomerCard.Heading>
+            <div className="flex">
+              <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
+                Revenue vs Cost Per Day
+              </Typography.Title>
+              <div className="ml-auto">
+                <div className="flex gap-4 items-center">
+                  <div>
+                    <Badge className="bg-transparent">
+                      <Badge.Dot className="text-sky-800" />
+                      <Badge.Content>Cost</Badge.Content>
+                    </Badge>
+                  </div>
+                  <div>
+                    <Badge className="bg-transparent">
+                      <Badge.Dot className="text-darkgold" />
+                      <Badge.Content>Revenue</Badge.Content>
+                    </Badge>
+                  </div>
+                  <div className="">
+                    {" "}
+                    <Select defaultValue="1" onChange={onSwitch}>
+                      <Select.Option value="1">Last 30 Days</Select.Option>
+                      <Select.Option value="2">Last 60 Days</Select.Option>
+                      <Select.Option value="3">This Month</Select.Option>
+                      <Select.Option value="4">Year to date</Select.Option>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <Divider />
+          </CustomerCard.Heading>
+          <CustomerCard.Container>
+            <CustomerCard.Block>
+              <Column {...config} />
+            </CustomerCard.Block>
+          </CustomerCard.Container>
+        </CustomerCard>
       </div>
     </div>
   );

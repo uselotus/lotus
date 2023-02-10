@@ -1,12 +1,12 @@
 import React, { FC, useState, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Layout } from "antd";
 import Dashboard from "../components/Dashboard/Dashboard";
 import ViewPlans from "../pages/ViewPlans";
 import ViewCustomers from "../pages/ViewCustomers";
 import SettingsPage from "../pages/SettingsPage";
 import StripeRedirect from "../integrations/PaymentProcessorIntegrations";
 import SideBar from "../components/SideBar";
-import { Layout } from "antd";
 import CreatePlan from "../pages/CreatePlan";
 import ViewMetrics from "../pages/ViewMetrics";
 import ViewExperiments from "../pages/ViewExperiments";
@@ -16,15 +16,17 @@ import PlanDetails from "../components/Plans/PlanDetails/PlanDetails";
 import EditPlanLoader from "../pages/EditPlanLoader";
 import StripeIntegrationView from "../integrations/pages/StripeIntegrationView";
 import CreateCredit from "../pages/CreateBalanceAdjustment";
+import ViewAddOns from "../pages/ViewAddOns";
+import CreateAddOns from "../pages/CreateAddOns";
+import AddonDetails from "../components/Addons/AddonsDetails/AddonDetails";
+import CustomerDetail from "../components/Customers/CustomerDetail";
 
 const { Sider } = Layout;
 
-const getSettingsTab = (component) => {
+const getSettingsTab = (component) =>
   // @ts-ignore
   // return import.meta.env.VITE_IS_DEMO ? <Navigate replace to={"/"} /> :component
-  return component;
-};
-
+  component;
 const AppRoutes: FC = () => {
   const [collapse, setCollapse] = useState(false);
   const { pathname } = useLocation();
@@ -50,7 +52,11 @@ const AppRoutes: FC = () => {
 
         <Layout
           style={
-            currentPath === "plans"
+            currentPath === "plans" ||
+            currentPath === "add-ons" ||
+            currentPath === "customers" ||
+            currentPath === "dashboard" ||
+            currentPath === "create-addons"
               ? { background: "#ffffff" }
               : { background: "#FAFAFA" }
           }
@@ -61,6 +67,9 @@ const AppRoutes: FC = () => {
             <Route path="/plans" element={<ViewPlans />} />
             <Route path="/plans/:planId" element={<PlanDetails />} />
             <Route path="create-plan" element={<CreatePlan />} />
+            <Route path="create-addons" element={<CreateAddOns />} />
+            <Route path="/add-ons" element={<ViewAddOns />} />
+            <Route path="/add-ons/:addOnId" element={<AddonDetails />} />
             <Route
               path="create-version/:planId"
               element={<EditPlanLoader type="version" />}
@@ -75,6 +84,7 @@ const AppRoutes: FC = () => {
             />
             <Route path="/plan" />
             <Route path="/customers" element={<ViewCustomers />} />
+            <Route path="/customers/:customerId" element={<CustomerDetail />} />
             <Route path="/metrics" element={<ViewMetrics />} />
             <Route path="/customers-create" element={<CreatePlan />} />
             {/* <Route

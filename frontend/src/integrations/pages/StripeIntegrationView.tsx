@@ -1,10 +1,10 @@
 // @ts-ignore
 import React, { FC, useEffect, useState } from "react";
 import { useParams , useNavigate } from "react-router-dom";
-import { PageLayout } from "../../components/base/PageLayout";
 import { Button } from "antd";
 import { useMutation, useQuery } from "react-query";
 import { toast } from "react-toastify";
+import { PageLayout } from "../../components/base/PageLayout";
 import { Stripe } from "../../api/api";
 import {
   StripeSetting,
@@ -16,9 +16,9 @@ import {
 
 const TOAST_POSITION = toast.POSITION.TOP_CENTER;
 
-//create FC component called StripeIntegration
+// create FC component called StripeIntegration
 const StripeIntegrationView: FC = () => {
-  //create variable called {id} and set it to type string
+  // create variable called {id} and set it to type string
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isSettingValue, setIsSettingValue] = useState(false);
@@ -116,14 +116,14 @@ const StripeIntegrationView: FC = () => {
     }
   );
 
-  //promises to handle toast loading messages
+  // promises to handle toast loading messages
 
-  //create variable called returnToDashboard and set it to type void
+  // create variable called returnToDashboard and set it to type void
   const returnToDashboard = () => {
     navigate(-1);
   };
 
-  //create return statement
+  // create return statement
   return (
     <PageLayout
       title="Stripe Integration"

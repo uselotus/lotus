@@ -1,4 +1,5 @@
 import React, { PropsWithChildren, ReactElement, useEffect } from "react";
+
 type TSelected = React.ReactNode | string;
 interface DropdownProps {
   className?: string;
@@ -12,7 +13,7 @@ interface DropdownContextState {
 }
 const DropdownContext = React.createContext({} as DropdownContextState);
 
-const Dropdown = ({ children }: PropsWithChildren<DropdownProps>) => {
+function Dropdown({ children }: PropsWithChildren<DropdownProps>) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [selected, setSelected] = React.useState<TSelected>("");
   const openHandler = React.useCallback(() => setIsOpen(true), []);
@@ -27,14 +28,27 @@ const Dropdown = ({ children }: PropsWithChildren<DropdownProps>) => {
     () => ({ isOpen, openHandler, closeHandler, selected }),
     [isOpen]
   );
+  const handleClick = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.matches("#dd-container, #dd-container *")) {
+      return;
+    }
+    if (!target?.matches("#parent-node, #parent-node *")) {
+      setIsOpen(false);
+    }
+  };
+  React.useEffect(() => {
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
+  }, []);
   return (
-    <div className="group relative inline-block">
+    <div id="parent-node" className="group relative inline-block">
       <DropdownContext.Provider value={value}>
         {children}
       </DropdownContext.Provider>
     </div>
   );
-};
+}
 const useDropdownContext = () => {
   const context = React.useContext(DropdownContext);
   if (!context) {
@@ -53,6 +67,7 @@ const Container: React.FC<PropsWithChildren<DropdownProps>> = ({
     <>
       {isOpen && (
         <div
+          id="dd-container"
           className={
             !className
               ? "absolute right-0 z-10 mt-2  m-w-64 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none "
