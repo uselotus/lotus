@@ -136,6 +136,9 @@ jobs:
           ref: main
           path: lotus-python
 
+      - name: Print ls
+        run: echo $(ls)
+
       - name: Install pipenv for lotus-python
         run: |
           cd lotus-python
