@@ -13,10 +13,19 @@ from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import Count, F, FloatField, Q, Sum
+from django.db.models import Count, F, FloatField, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
+
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
@@ -68,14 +77,6 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -942,6 +943,22 @@ class CategoricalFilter(models.Model):
 
     def __str__(self):
         return f"{self.property_name} {self.operator} {self.comparison_value}"
+
+    @staticmethod
+    def overlaps(filters1, filters2):
+        # Convert the inputs to sets of primary keys
+        if isinstance(filters1, (set, list)):
+            if all(isinstance(f, CategoricalFilter) for f in filters1):
+                filters1 = {f.pk for f in filters1}
+        if isinstance(filters2, (set, list)):
+            if all(isinstance(f, CategoricalFilter) for f in filters2):
+                filters2 = {f.pk for f in filters2}
+        if isinstance(filters1, QuerySet):
+            filters1 = set(filters1.values_list("pk", flat=True))
+        if isinstance(filters2, QuerySet):
+            filters2 = set(filters2.values_list("pk", flat=True))
+        # Check if there is an overlap between the sets
+        return filters1.issubset(filters2) or filters2.issubset(filters1)
 
 
 class Metric(models.Model):
@@ -2248,14 +2265,10 @@ class SubscriptionRecord(models.Model):
                 organization=self.organization,
                 customer=self.customer,
                 billing_plan=self.billing_plan,
-            )
+            ).prefetch_related("filters")
             for subscription in overlapping_subscriptions:
                 old_filters = subscription.filters.all()
-                if (
-                    len(old_filters) == 0
-                    or len(new_filters) == 0
-                    or set(old_filters) == set(new_filters)
-                ):
+                if CategoricalFilter.overlaps(old_filters, new_filters):
                     raise OverlappingPlans(
                         f"Overlapping subscriptions with the same filters are not allowed. \n Plan: {self.billing_plan} \n Customer: {self.customer}. \n New dates: ({self.start_date, self.end_date}) \n New subscription_filters: {new_filters} \n Old dates: ({self.start_date, self.end_date}) \n Old subscription_filters: {list(old_filters)}"
                     )
