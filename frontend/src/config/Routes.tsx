@@ -58,7 +58,7 @@ const AppRoutes: FC = () => {
             currentPath === "dashboard" ||
             currentPath === "create-addons"
               ? { background: "#ffffff" }
-              : { background: "#FAFAFA" }
+              : { background: "#ffffff" }
           }
         >
           <Routes>

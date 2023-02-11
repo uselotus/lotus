@@ -174,6 +174,19 @@ const SubscriptionView: FC<Props> = ({
     setShowModal(false);
   };
 
+  const cancelAllSubscriptions = () => {
+    const query_params: CancelSubscriptionQueryParams = {
+      customer_id,
+    };
+    const body: CancelSubscriptionBody = {
+      usage_behavior: "bill_full",
+      flat_fee_behavior: "charge_prorated",
+      invoicing_behavior: "invoice_now",
+    };
+    onCancel(body, query_params);
+    setShowModal(false);
+  };
+
   const cancelAndBill = (plan_id, subscription_filters) => {
     const query_params: CancelSubscriptionQueryParams = {
       plan_id,
@@ -414,6 +427,35 @@ const SubscriptionView: FC<Props> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          <Button
+            type="primary"
+            className="hover:!bg-rose-700"
+            size="large"
+            disabled={false}
+            onClick={() => {
+              indexRef.current = 6;
+              setTitle("Cancel All Subscriptions");
+
+              setShowModal(true);
+            }}
+          >
+            Cancel All
+          </Button>
+          <Button
+            type="primary"
+            className="hover:!bg-primary-700"
+            style={{ background: "#C3986B", borderColor: "#C3986B" }}
+            size="large"
+            disabled={false}
+            onClick={() => {
+              indexRef.current = 5;
+              setTitle("Add New Plan");
+
+              setShowModal(true);
+            }}
+          >
+            Add New Plan
+          </Button>
         </div>
       </div>
       <div className="flex flex-col justify-center">
@@ -443,7 +485,7 @@ const SubscriptionView: FC<Props> = ({
                     <CustomerCard.Block>
                       <CustomerCard.Item>
                         <div className="font-normal text-card-text font-alliance whitespace-nowrap leading-4">
-                          ID
+                          Plan ID
                         </div>
                         <div className="flex gap-1 !text-card-grey font-menlo">
                           {" "}
@@ -579,7 +621,9 @@ const SubscriptionView: FC<Props> = ({
                 closeIcon={
                   <div style={{ display: "none" }} className="hidden" />
                 }
-                onCancel={() => setShowModal(false)}
+                onCancel={() => {
+                  setShowModal(false);
+                }}
                 footer={
                   indexRef.current === 0
                     ? [
@@ -626,7 +670,8 @@ const SubscriptionView: FC<Props> = ({
                           Add
                         </Button>,
                       ]
-                    : [
+                    : indexRef.current == 2
+                    ? [
                         <Button key="back" onClick={() => setShowModal(false)}>
                           Back
                         </Button>,
@@ -649,6 +694,40 @@ const SubscriptionView: FC<Props> = ({
                           Cancel Plan
                         </Button>,
                       ]
+                    : indexRef.current === 5
+                    ? [
+                        <Button key="back" onClick={() => setShowModal(false)}>
+                          Back
+                        </Button>,
+                        <Button
+                          key="submit"
+                          type="primary"
+                          className="hover:!bg-primary-700"
+                          onClick={() => {
+                            handleAttachPlanSubmit();
+                            setShowModal(false);
+                          }}
+                        >
+                          Start Subscription
+                        </Button>,
+                      ]
+                    : indexRef.current === 6
+                    ? [
+                        <Button key="back" onClick={() => setShowModal(false)}>
+                          Back
+                        </Button>,
+                        <Button
+                          key="submit"
+                          type="primary"
+                          className="!bg-rose-600 border !border-rose-600"
+                          onClick={() => {
+                            cancelAllSubscriptions();
+                          }}
+                        >
+                          Cancel All Subscriptions
+                        </Button>,
+                      ]
+                    : null
                 }
               >
                 <div className="flex flex-col justify-center items-center gap-4">
@@ -657,7 +736,17 @@ const SubscriptionView: FC<Props> = ({
                       subPlan.billing_plan.plan_id,
                       subPlan.subscription_filters
                     )
-                  ) : indexRef.current === 2 ? (
+                  ) : indexRef.current === 5 ? (
+                    <Select
+                      showSearch
+                      placeholder="Select a plan"
+                      onChange={selectPlan}
+                      options={planList}
+                      optionLabelProp="label"
+                    >
+                      {" "}
+                    </Select>
+                  ) : indexRef.current === 6 ? null : indexRef.current === 2 ? (
                     cancelMenu()
                   ) : (
                     <Form.Provider>
