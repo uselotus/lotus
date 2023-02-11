@@ -6,6 +6,8 @@ class SinglePaymentProviderSerializer(serializers.Serializer):
     payment_provider_name = serializers.CharField()
     connected = serializers.BooleanField()
     redirect_url = serializers.URLField(allow_blank=True)
+    self_hosted = serializers.BooleanField()
+    connection_id = serializers.CharField(allow_null=True)
 
 
 class PaymentProviderGetResponseSerializer(serializers.Serializer):

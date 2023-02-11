@@ -26,6 +26,13 @@ export interface OrganizationSettingsType {
   };
 }
 
+export interface UpdateOrganizationPPType {
+  org_id: string;
+  payment_provider: "stripe" | "braintree";
+  payment_provider_id: string;
+  nango_connected?: boolean;
+}
+
 export interface OrganizationType {
   organization_name: string;
   payment_provider_ids: object;

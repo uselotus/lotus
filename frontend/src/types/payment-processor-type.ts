@@ -1,7 +1,9 @@
 export interface PaymentProcessorStatusType {
-  payment_provider_name: string;
+  payment_provider_name: "stripe" | "braintree";
   connected: boolean;
   redirect_url: string;
+  self_hosted: boolean;
+  connection_id: string;
 }
 
 export interface PaymentProcessorConnectionResponseType {
@@ -30,12 +32,14 @@ export const integrationsMap = {
     icon: "https://cdn.neverbounce.com/images/integrations/square/stripe-square.png",
     description:
       "Charge and invoice your customers through your Stripe account",
+    connection_id_name: "Stripe Account ID",
   },
   braintree: {
     name: "Braintree",
     icon: "https://cdn.neverbounce.com/images/integrations/square/stripe-square.png",
     description:
       "Charge and invoice your customers through your Braintree account",
+    connection_id_name: "Merchant ID",
   },
   snowflake: {
     name: "Snowflake",

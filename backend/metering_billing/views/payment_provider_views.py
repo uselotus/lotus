@@ -1,3 +1,4 @@
+from django.conf import settings
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -11,6 +12,8 @@ from metering_billing.serializers.payment_provider_serializers import (
     PaymentProviderPostResponseSerializer,
     SinglePaymentProviderSerializer,
 )
+
+SELF_HOSTED = settings.SELF_HOSTED
 
 
 class PaymentProviderView(APIView):
@@ -28,6 +31,8 @@ class PaymentProviderView(APIView):
                 "payment_provider_name": payment_processor_name,
                 "connected": pp_obj.organization_connected(organization),
                 "redirect_url": pp_obj.get_redirect_url(organization),
+                "self_hosted": SELF_HOSTED,
+                "connection_id": pp_obj.get_connection_id(organization),
             }
             response.append(pp_response)
         serializer = SinglePaymentProviderSerializer(data=response, many=True)

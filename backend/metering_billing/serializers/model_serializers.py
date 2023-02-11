@@ -1,9 +1,12 @@
 from decimal import Decimal
 
-import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
 from django.db.models import DecimalField, Q, Sum
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
+import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -32,6 +35,7 @@ from metering_billing.models import (
     WebhookEndpoint,
     WebhookTrigger,
 )
+from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.serializer_utils import (
     OrganizationSettingUUIDField,
     OrganizationUUIDField,
@@ -52,6 +56,7 @@ from metering_billing.utils.enums import (
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
     ORGANIZATION_STATUS,
+    PAYMENT_PROVIDERS,
     PLAN_DURATION,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
@@ -60,8 +65,6 @@ from metering_billing.utils.enums import (
     TAG_GROUP,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
@@ -368,6 +371,9 @@ class OrganizationUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializ
             "plan_tags",
             "subscription_filter_keys",
             "timezone",
+            "payment_provider",
+            "payment_provider_id",
+            "nango_connected",
         )
 
     default_currency_code = SlugRelatedFieldWithOrganization(
@@ -382,6 +388,28 @@ class OrganizationUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializ
         child=serializers.CharField(), required=False
     )
     timezone = TimeZoneSerializerField(use_pytz=True)
+    payment_provider = serializers.ChoiceField(
+        choices=PAYMENT_PROVIDERS.choices,
+        required=False,
+        help_text="To udpate a payment provider's ID, specify the payment provider you want to update in this field, and the payment_provider_id in the corresponding field.",
+    )
+    payment_provider_id = serializers.CharField(required=False)
+    nango_connected = serializers.BooleanField(required=False)
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        # if payment_provider is specified, payment_provider_id must be specified, and vice versa
+        if (
+            attrs.get("payment_provider") is not None
+            and attrs.get("payment_provider_id") is None
+        ) or (
+            attrs.get("payment_provider") is None
+            and attrs.get("payment_provider_id") is not None
+        ):
+            raise serializers.ValidationError(
+                "If payment_provider is specified, payment_provider_id must be specified."
+            )
+        return attrs
 
     def update(self, instance, validated_data):
         from metering_billing.tasks import update_subscription_filter_settings_task
@@ -390,6 +418,31 @@ class OrganizationUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializ
             type(validated_data.get("default_currency")) == PricingUnit
             or validated_data.get("default_currency") is None
         )
+        if validated_data.get("payment_provider") is not None:
+            provider = validated_data.get("payment_provider")
+            pp_dict = instance.payment_provider_ids.get(provider)
+            if pp_dict is None:
+                connected = validated_data.get("nango_connected") or False
+                new_dict = {
+                    "id": validated_data.get("payment_provider_id"),
+                    "connected": connected,
+                }
+            elif not isinstance(pp_dict, dict):
+                connected = validated_data.get(
+                    "nango_connected"
+                ) or pp_dict == validated_data.get("payment_provider_id")
+                new_dict = {"id": pp_dict, "connected": connected}
+            else:
+                connected = validated_data.get("nango_connected") or pp_dict.get(
+                    "id"
+                ) == validated_data.get("payment_provider_id")
+                new_dict = pp_dict
+                new_dict["id"] = validated_data.get("payment_provider_id")
+                new_dict["connected"] = connected
+            instance.payment_provider_ids[provider] = new_dict
+            PAYMENT_PROVIDER_MAP[provider].initialize_settings(
+                instance
+            )
         instance.default_currency = validated_data.get(
             "default_currency", instance.default_currency
         )

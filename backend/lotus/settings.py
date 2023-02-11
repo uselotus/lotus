@@ -59,6 +59,9 @@ SENTRY_DSN = config("SENTRY_DSN", default="")
 SELF_HOSTED = config("SELF_HOSTED", default=False, cast=bool)
 PRODUCT_ANALYTICS_OPT_IN = config("PRODUCT_ANALYTICS_OPT_IN", default=True, cast=bool)
 PRODUCT_ANALYTICS_OPT_IN = True if not SELF_HOSTED else PRODUCT_ANALYTICS_OPT_IN
+# Nango
+NANGO_SERVER = config("NANGO_SERVER", default=None)
+NANGO_SECRET = config("NANGO_SECRET", default=None)
 # Stripe required
 STRIPE_LIVE_SECRET_KEY = config("STRIPE_LIVE_SECRET_KEY", default=None)
 if STRIPE_LIVE_SECRET_KEY is None:

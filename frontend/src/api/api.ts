@@ -59,6 +59,7 @@ import {
   CreateOrgAccountType,
   OrganizationType,
   PaginatedActionsType,
+  UpdateOrganizationPPType,
 } from "../types/account-type";
 import { FeatureType, CreateFeatureType } from "../types/feature-type";
 import {
@@ -84,9 +85,7 @@ import { AlertType, CreateAlertType } from "../types/alert-type";
 
 const cookies = new Cookies();
 
-axios.defaults.headers.common.Authorization = `Token ${cookies.get(
-  "Token"
-)}`;
+axios.defaults.headers.common.Authorization = `Token ${cookies.get("Token")}`;
 
 // @ts-ignore
 const API_HOST = import.meta.env.VITE_API_URL;
@@ -388,6 +387,12 @@ export const Organization = {
       address,
       subscription_filter_keys,
     }),
+  updateOrganizationPaymentProvider: (
+    data: UpdateOrganizationPPType
+  ): Promise<OrganizationType> => {
+    const { org_id, ...payload } = data;
+    return requests.patch(`app/organizations/${org_id}/`, { ...payload });
+  },
 };
 
 export const GetRevenue = {
@@ -527,11 +532,14 @@ export const PaymentProcessorIntegration = {
 };
 
 export const Invoices = {
-  changeStatus: (data: MarkPaymentStatusAsPaid): Promise<any> => requests.patch(`app/invoices/${data.invoice_id}/`, {
+  changeStatus: (data: MarkPaymentStatusAsPaid): Promise<any> =>
+    requests.patch(`app/invoices/${data.invoice_id}/`, {
       payment_status: data.payment_status,
     }),
-  getDraftInvoice: (customer_id: string): Promise<DraftInvoiceType> => requests.get("app/draft_invoice/", { params: { customer_id } }),
-  getInvoiceUrl: (invoice_id: string): Promise<{ url: string }> => requests.get(`app/invoice_url/`, { params: { invoice_id } }),
+  getDraftInvoice: (customer_id: string): Promise<DraftInvoiceType> =>
+    requests.get("app/draft_invoice/", { params: { customer_id } }),
+  getInvoiceUrl: (invoice_id: string): Promise<{ url: string }> =>
+    requests.get(`app/invoice_url/`, { params: { invoice_id } }),
 };
 
 export const Credits = {
