@@ -85,12 +85,13 @@ jobs:
         run: |
           cd ./backend && pipenv run python manage.py demo_up
 
-      - name: Start services
-        run: docker-compose -f docker-compose.prod.yaml up -d backend frontend
+      - name: Run Django server
+        run: |
+          cd ./backend && pipenv run python manage.py runserver 0.0.0.0:8000 &
 
       - name: Cypress run
         uses: cypress-io/github-action@v5
         with:
-          wait-on: http://localhost:3000
           project: ./frontend
           working-directory: ./frontend
+          start: yarn run dev --host 0.0.0.0 --port 3000 &
