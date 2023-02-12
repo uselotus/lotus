@@ -94,6 +94,10 @@ jobs:
         run: |
           cd ./frontend && yarn install
 
+      - name: Run Frontend
+        run: |
+          cd ./frontend && yarn run dev --host 0.0.0.0 --port 3000
+
       - name: Run Cypress tests
         run: |
           cd ./frontend && yarn cypress run
