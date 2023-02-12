@@ -96,4 +96,4 @@ jobs:
           wait-on: http://localhost:8000
           project: ./frontend
           working-directory: ./frontend
-          start: yarn run dev --host 0.0.0.0 --port 3000
+          start: yarn run dev --host 0.0.0.0 --port 3000 &
