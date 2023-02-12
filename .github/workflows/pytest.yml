@@ -84,10 +84,19 @@ jobs:
         run: |
           pipenv run python manage.py migrate --noinput
 
+      - name: Test Pytest Subscriptions
+        run: |
+          for i in 1 2 3; do
+            pipenv run pytest -x -k "subscription" && break
+            sleep 5s
+          done
+        env:
+          RETRY_DESCRIPTION: "Running Pytest"
+
       - name: Test Pytest
         run: |
           for i in 1 2 3; do
-            pipenv run pytest -k "not integrations" && break
+            pipenv run pytest -x -k "not integrations and not subscription" && break
             sleep 5s
           done
         env:
