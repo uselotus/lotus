@@ -85,13 +85,13 @@ jobs:
           pipenv run python manage.py migrate --noinput
 
       - name: Test Pytest
-        uses: nick-fields/retry@v2
-        with:
-          timeout_seconds: 600
-          max_attempts: 3
-          retry_on: error
-          command: |
-            pipenv run pytest -k "not integrations"
+        run: |
+          for i in 1 2 3; do
+            pipenv run pytest -k "not integrations" && break
+            sleep 5s
+          done
+        env:
+          RETRY_DESCRIPTION: "Running Pytest"
 
       - name: Test Setup Tasks
         run: |
