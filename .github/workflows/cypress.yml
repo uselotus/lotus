@@ -1,4 +1,4 @@
-name: Pytest
+name: Cypress Tests
 
 on:
   push:
@@ -6,15 +6,12 @@ on:
   pull_request:
     branches: ["main"]
 
-permissions:
-  contents: read
-
 jobs:
-  pytest:
+  cypress-tests:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./backend
+        working-directory: .
 
     services:
       postgres:
@@ -51,6 +48,7 @@ jobs:
       DEBUG: False
       KAFKA_URL: "localhost:9092"
       PYTHONDONTWRITEBYTECODE: 1
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
     steps:
       - uses: actions/checkout@v3
@@ -67,7 +65,7 @@ jobs:
 
       - name: Install pipenv
         run: |
-          python -m pip install --upgrade pipenv wheel && pipenv update
+          cd ./backend && python -m pip install --upgrade pipenv wheel && pipenv update
 
       - id: cache-pipenv
         uses: actions/cache@v1
@@ -75,24 +73,27 @@ jobs:
           path: ~/.local/share/virtualenvs
           key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
 
-      - name: Install dependencies
+      - name: Install backend dependencies
         if: steps.cache-pipenv.outputs.cache-hit != 'true'
         run: |
-          pipenv install --deploy --dev
+          cd ./backend && pipenv install --deploy --dev
 
-      - name: Migrate
+       - name: Migrate
         run: |
-          pipenv run python manage.py migrate --noinput
+          cd ./backend && pipenv run python manage.py migrate --noinput
 
-      - name: Test Pytest
-        uses: nick-fields/retry@v2
-        with:
-          timeout_seconds: 15
-          max_attempts: 3
-          retry_on: error
-          command: |
-            pipenv run pytest -k "not integrations"
-
-      - name: Test Setup Tasks
+      - name: Demo up
         run: |
-          pipenv run python manage.py setup_tasks
+          cd ./backend && pipenv run python manage.py demo_up
+
+      - name: Run Django server
+        run: |
+          cd ./backend && pipenv run python manage.py runserver &
+
+      - name: Install frontend dependencies
+        run: |
+          cd ./frontend && yarn install
+
+      - name: Run Cypress tests
+        run: |
+          cd ./frontend && yarn cypress run
