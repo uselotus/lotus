@@ -183,8 +183,9 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     isStack: true,
     seriesField: "metric",
     groupField: "type",
+    legend: false,
     colorField: "type", // or seriesField in some cases
-    color: ["#33658A", "#C3986B", "#D9D9D9", "#171412", "#547AA5"],
+    color: ["#E4D5C5", "#C3986B", "#D9D9D9", "#171412", "#547AA5"],
   };
 
   return (
@@ -227,7 +228,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
               <Divider className="mt-[3.53px]" />
             </CustomerCard.Heading>
             <CustomerCard.Container className="grid gap-72  items-center grid-cols-1 md:grid-cols-2">
-              <CustomerCard.Block className="text-[13px] justify-between w-full">
+              <CustomerCard.Block className="text-[14px] justify-between w-full">
                 <CustomerCard.Item>
                   <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
                     Name
@@ -381,7 +382,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   </div>
                 </CustomerCard.Item>
               </CustomerCard.Block>
-              <CustomerCard.Block className="w-full ml-auto text-[13px] justify-between">
+              <CustomerCard.Block className="w-full ml-auto text-[14px] justify-between">
                 <CustomerCard.Item>
                   <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
                     Email
@@ -545,7 +546,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                 <div className="flex gap-4 items-center">
                   <div>
                     <Badge className="bg-transparent">
-                      <Badge.Dot className="text-sky-800" />
+                      <Badge.Dot className="text-[#E4D5C5]" />
                       <Badge.Content>Cost</Badge.Content>
                     </Badge>
                   </div>
@@ -567,9 +568,8 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                 </div>
               </div>
             </div>
-            <Divider />
           </CustomerCard.Heading>
-          <CustomerCard.Container>
+          <CustomerCard.Container className=" mt-8">
             <CustomerCard.Block>
               <Column {...config} />
             </CustomerCard.Block>
