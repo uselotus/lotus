@@ -78,7 +78,7 @@ jobs:
         run: |
           cd ./backend && pipenv install --deploy --dev
 
-       - name: Migrate
+      - name: Migrate
         run: |
           cd ./backend && pipenv run python manage.py migrate --noinput
 
