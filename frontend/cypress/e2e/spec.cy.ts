@@ -16,7 +16,7 @@ function getEmail(length) {
 }
 
 const Login = () => {
-  cy.visit("http://localhost:3000/login");
+  cy.visit("http://localhost:8000/login");
   cy.contains("Username or Email");
   cy.get("[name='username']").type("demo4");
   cy.get("[name='password']").type("demo4");
@@ -33,14 +33,14 @@ describe("Testing Successful Login", () => {
   it("Navigates to Dashboard After Login", () => {
     Login();
     cy.contains("Dashboard");
-    cy.url().should("eq", "http://localhost:3000/dashboard"); // => true
+    cy.url().should("eq", "http://localhost:8000/dashboard"); // => true
   });
 });
 
 describe("Testing Successful Plan Creation", () => {
   it("Test Plan creation flow", () => {
     Login();
-    cy.visit("http://localhost:3000/create-plan");
+    cy.visit("http://localhost:8000/create-plan");
     cy.wait(10000);
     cy.contains("Create Plan");
     cy.get("#create_plan_name").type("Random Plan");
@@ -54,7 +54,7 @@ describe("Testing Successful Plan Creation", () => {
 describe("Testing Successful Metric Creation", () => {
   it("Test Metric creation flow", () => {
     Login();
-    cy.visit("http://localhost:3000/metrics");
+    cy.visit("http://localhost:8000/metrics");
     cy.wait(10000);
     cy.get("#create-metric-button").click();
     cy.contains("Create a new Metric");
@@ -67,7 +67,7 @@ describe("Testing Successful Metric Creation", () => {
 describe("Testing Create Customer and Attach Subscription", () => {
   it("Test Create customer flow", () => {
     Login();
-    cy.visit("http://localhost:3000/customers");
+    cy.visit("http://localhost:8000/customers");
     cy.wait(10000);
     cy.contains("Customers");
     cy.get("#create-cutsomer-model").click();
