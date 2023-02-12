@@ -183,8 +183,9 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     isStack: true,
     seriesField: "metric",
     groupField: "type",
+    legend: false,
     colorField: "type", // or seriesField in some cases
-    color: ["#33658A", "#C3986B", "#D9D9D9", "#171412", "#547AA5"],
+    color: ["#E4D5C5", "#C3986B", "#D9D9D9", "#171412", "#547AA5"],
   };
 
   return (
@@ -545,7 +546,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                 <div className="flex gap-4 items-center">
                   <div>
                     <Badge className="bg-transparent">
-                      <Badge.Dot className="text-sky-800" />
+                      <Badge.Dot className="text-[#E4D5C5]" />
                       <Badge.Content>Cost</Badge.Content>
                     </Badge>
                   </div>

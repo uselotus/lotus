@@ -15,6 +15,12 @@ interface Props {
   customer_id: string;
 }
 
+const addKeysToLineItems = (lineItems: ExternalLineItem[]) => {
+  return lineItems.map((lineItem, index) => {
+    return { ...lineItem, key: index };
+  });
+};
+
 const DraftInvoice: FC<Props> = ({ customer_id }) => {
   const { data: invoiceData, isLoading: invoiceLoading } =
     useQuery<DraftInvoiceType>(
@@ -143,10 +149,13 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
             </CustomerCard>
             <div className="col-span-2">
               <Table
-                dataSource={invoice.line_items}
+                dataSource={addKeysToLineItems(invoice.line_items)}
                 pagination={false}
                 expandable={{
                   expandedRowRender: expandedRowRender(invoice),
+                  onExpand: (expanded, record) =>
+                    handleExpand(expanded, record),
+                  expandedRowKeys: [expandedRowKey],
                 }}
                 columns={[
                   {

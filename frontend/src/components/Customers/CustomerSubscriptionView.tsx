@@ -623,6 +623,7 @@ const SubscriptionView: FC<Props> = ({
                 }
                 onCancel={() => {
                   setShowModal(false);
+                  setTitle("");
                 }}
                 footer={
                   indexRef.current === 0
