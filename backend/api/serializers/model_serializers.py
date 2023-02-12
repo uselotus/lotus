@@ -4,8 +4,11 @@ from decimal import Decimal
 from typing import Literal, Union
 
 from django.conf import settings
-from django.db.models import Sum
+from django.db.models import Max, Min, Sum
 from drf_spectacular.utils import extend_schema_serializer
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
 from metering_billing.invoice import (
     generate_balance_adjustment_invoice,
     generate_invoice,
@@ -61,8 +64,6 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
@@ -460,14 +461,26 @@ class InvoiceSerializer(
         return obj.get_payment_status_display()
 
     def get_start_date(self, obj) -> datetime.date:
-        seq = [
-            convert_to_date(x.start_date) for x in obj.line_items.all() if x.start_date
-        ]
-        return min(seq) if len(seq) > 0 else None
+        try:
+            min_date = obj.min_date
+        except AttributeError:
+            min_date = obj.line_items.all().aggregate(min_date=Min("start_date"))[
+                "min_date"
+            ]
+        return (
+            convert_to_date(min_date) if min_date else convert_to_date(obj.issue_date)
+        )
 
     def get_end_date(self, obj) -> datetime.date:
-        seq = [convert_to_date(x.end_date) for x in obj.line_items.all() if x.end_date]
-        return max(seq) if len(seq) > 0 else None
+        try:
+            max_date = obj.max_date
+        except AttributeError:
+            max_date = obj.line_items.all().aggregate(max_date=Max("end_date"))[
+                "max_date"
+            ]
+        return (
+            convert_to_date(max_date) if max_date else convert_to_date(obj.issue_date)
+        )
 
 
 class LightweightInvoiceSerializer(InvoiceSerializer):

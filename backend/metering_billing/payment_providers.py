@@ -126,16 +126,12 @@ class StripeConnector(PaymentProvider):
             "redirect_uri": VITE_API_URL + "redirectstripe",
         }
         test_qstr = urlencode(test_redirect_dict)
-        if not self.self_hosted:
-            self.live_redirect_url = (
-                "https://connect.stripe.com/oauth/authorize?" + live_qstr
-            )
-            self.test_redirect_url = (
-                "https://connect.stripe.com/oauth/authorize?" + test_qstr
-            )
-        else:
-            self.live_redirect_url = None
-            self.test_redirect_url = None
+        self.live_redirect_url = (
+            "https://connect.stripe.com/oauth/authorize?" + live_qstr
+        )
+        self.test_redirect_url = (
+            "https://connect.stripe.com/oauth/authorize?" + test_qstr
+        )
 
     def working(self) -> bool:
         return self.live_secret_key is not None or self.test_secret_key is not None

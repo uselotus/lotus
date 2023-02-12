@@ -16,6 +16,7 @@ from reportlab.rl_config import TTFSearchPath
 
 from metering_billing.models import Invoice
 from metering_billing.serializers.serializer_utils import PlanUUIDField
+from metering_billing.utils import make_hashable
 from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
 
 logger = logging.getLogger("django.server")
@@ -367,7 +368,7 @@ class InvoicePDF:
             else:
                 plan_id, sub_filters, plan_name = None, None, None
 
-            key = tuple([sub_filters, plan_id, plan_name])
+            key = make_hashable([sub_filters, plan_id, plan_name])
 
             if key not in grouped_line_items:
                 grouped_line_items[key] = []

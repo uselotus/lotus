@@ -1296,15 +1296,23 @@ class PlanVersionDetailSerializer(api_serializers.PlanVersionSerializer):
             "version_id",
             "plan_id",
             "alerts",
+            "active_subscriptions",
         )
         extra_kwargs = {**api_serializers.PlanVersionSerializer.Meta.extra_kwargs}
 
     plan_id = PlanUUIDField(source="plan.plan_id", read_only=True)
     alerts = serializers.SerializerMethodField()
     version_id = PlanVersionUUIDField(read_only=True)
+    active_subscriptions = serializers.SerializerMethodField()
 
     def get_alerts(self, obj) -> UsageAlertSerializer(many=True):
         return UsageAlertSerializer(obj.usage_alerts, many=True).data
+
+    def get_active_subscriptions(self, obj) -> int:
+        try:
+            return obj.active_subscriptions
+        except AttributeError:
+            return obj.num_active_subs() or 0
 
 
 class InitialPlanVersionSerializer(PlanVersionCreateSerializer):

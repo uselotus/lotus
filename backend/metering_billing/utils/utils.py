@@ -1,7 +1,8 @@
 import collections
 import datetime
 import uuid
-from collections import namedtuple
+from collections import OrderedDict, namedtuple
+from collections.abc import MutableMapping, MutableSequence
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
 
 import pytz
@@ -17,6 +18,17 @@ from metering_billing.utils.enums import (
 
 ModelType = type[Model]
 Fields = list[Field]
+
+
+def make_hashable(obj):
+    if isinstance(obj, MutableSequence):
+        return tuple(make_hashable(x) for x in obj)
+    elif isinstance(obj, set):
+        return frozenset(make_hashable(x) for x in obj)
+    elif isinstance(obj, MutableMapping):
+        return OrderedDict((make_hashable(k), make_hashable(v)) for k, v in obj.items())
+    else:
+        return obj
 
 
 def convert_to_decimal(value):

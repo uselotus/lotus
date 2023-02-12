@@ -2,10 +2,12 @@ import logging
 from collections.abc import Iterable
 from decimal import Decimal
 
+import sentry_sdk
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from django.db.models.query import QuerySet
+
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
@@ -123,7 +125,11 @@ def generate_invoice(
                 if subscription_record.end_date <= now_utc():
                     subscription_record.fully_billed = True
                     subscription_record.save()
-            generate_invoice_pdf_async.delay(invoice.pk)
+            try:
+                generate_invoice_pdf_async.delay(invoice.pk)
+            except Exception as e:
+                sentry_sdk.capture_exception(e)
+
             invoice_created_webhook(invoice, organization)
 
     return list(invoices.values())
@@ -260,6 +266,7 @@ def charge_next_plan_flat_fee(
     subscription_record, next_subscription_record, next_bp, invoice
 ):
     from metering_billing.models import InvoiceLineItem, RecurringCharge
+
     timezone = subscription_record.customer.timezone
     for recurring_charge in next_bp.recurring_charges.all():
         charge_in_advance = (
@@ -493,7 +500,10 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
 
     if not draft:
         generate_external_payment_obj(invoice)
-        generate_invoice_pdf_async.delay(invoice.pk)
+        try:
+            generate_invoice_pdf_async.delay(invoice.pk)
+        except Exception as e:
+            sentry_sdk.capture_exception(e)
         invoice_created_webhook(invoice, organization)
 
     return invoice
@@ -532,6 +542,7 @@ def calculate_due_date(issue_date, organization):
         due_date += relativedelta(
             days=int(grace_period_setting.setting_values["value"])
         )
+        return due_date
 
 
 def finalize_cost_due(invoice, draft):
