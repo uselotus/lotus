@@ -93,7 +93,7 @@ jobs:
       - name: Cypress run
         uses: cypress-io/github-action@v5
         with:
-          wait-on: http://localhost:8000
+          wait-on: http://0.0.0.0:8000
           project: ./frontend
           working-directory: ./frontend
           start: yarn run dev --host 0.0.0.0 --port 3000 &
