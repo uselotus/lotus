@@ -90,13 +90,21 @@ jobs:
         run: |
           cd ./backend && pipenv run python manage.py runserver &
 
+      - name: Cache frontend dependencies
+        id: cache-frontend-deps
+        uses: actions/cache@v2
+        with:
+          path: frontend/node_modules
+          key: ${{ runner.os }}-frontend-${{ hashFiles('frontend/yarn.lock') }}
+        if: success() || failure()
+
       - name: Install frontend dependencies
-        run: |
-          cd ./frontend && yarn install
+        if: steps.cache-frontend-deps.outputs.cache-hit != 'true'
+        run: cd frontend && yarn install
 
       - name: Run Frontend
         run: |
-          cd ./frontend && yarn run dev --host 0.0.0.0 --port 3000
+          cd ./frontend && yarn run dev --host 0.0.0.0 --port 3000 &
 
       - name: Run Cypress tests
         run: |

@@ -85,15 +85,13 @@ jobs:
           pipenv run python manage.py migrate --noinput
 
       - name: Test Pytest
-        uses: softprops/action-retry@v1
+        uses: nick-fields/retry@v2
         with:
-          command: pipenv run pytest -k "not integrations"
-          retries: 2
-          delay: 5s
           timeout_seconds: 600
-        if: ${{ failure() }}
-        env:
-          RETRY_DESCRIPTION: "Running Pytest"
+          max_attempts: 3
+          retry_on: error
+          command: |
+            pipenv run pytest -k "not integrations"
 
       - name: Test Setup Tasks
         run: |
