@@ -48,7 +48,6 @@ jobs:
       DEBUG: False
       KAFKA_URL: "localhost:9092"
       PYTHONDONTWRITEBYTECODE: 1
-      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
     steps:
       - uses: actions/checkout@v3
@@ -86,14 +85,12 @@ jobs:
         run: |
           cd ./backend && pipenv run python manage.py demo_up
 
-      - name: Run Django server
-        run: |
-          cd ./backend && pipenv run python manage.py runserver 0.0.0.0:8000 &
+      - name: Start services
+        run: docker-compose up -d backend frontend
 
       - name: Cypress run
         uses: cypress-io/github-action@v5
         with:
-          wait-on: http://0.0.0.0:8000
+          wait-on: http://localhost:3000
           project: ./frontend
           working-directory: ./frontend
-          start: yarn run dev --host 0.0.0.0 --port 3000 &
