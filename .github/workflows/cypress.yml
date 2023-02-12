@@ -86,7 +86,7 @@ jobs:
           cd ./backend && pipenv run python manage.py demo_up
 
       - name: Start services
-        run: docker-compose up -d backend frontend
+        run: docker-compose -f docker-compose.prod.yaml up -d backend frontend
 
       - name: Cypress run
         uses: cypress-io/github-action@v5
