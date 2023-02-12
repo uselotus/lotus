@@ -11,6 +11,6 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "lotus.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "lotus.backend.settings")
 
 application = get_wsgi_application()
