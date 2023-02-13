@@ -27,5 +27,29 @@ module.exports = {
   },
   rules: {
     // Add your own rules here to override ones from the extended configs.
+    "import/no-unresolved": "off",
+    camelcase: [
+      "error",
+      {
+        properties: "never",
+        ignoreDestructuring: true,
+        ignoreImports: true,
+        ignoreGlobals: true,
+      },
+    ],
+    "no-shadow": ["error", { hoist: "never", ignoreOnInitialization: true }],
+    "react/function-component-definition": [
+      2,
+      {
+        namedComponents: ["arrow-function", "function-declaration"],
+        unnamedComponents: "arrow-function",
+      },
+    ],
+    "react/require-default-props": [
+      0,
+      {
+        functions: "ignore",
+      },
+    ],
   },
 };
