@@ -2,100 +2,134 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
-
 	"time"
 
-	"github.com/lib/pq"
 	"github.com/twmb/franz-go/pkg/kgo"
-	"github.com/uselotus/lotus/pkg/event_ingest"
 )
 
-const batchSize = 100
-const flushInterval = time.Second
+const batchSize = 1000
+
+type Event struct {
+	OrganizationID int                    `json:"organization_id,omitempty"`
+	CustomerID     *int                   `json:"customer_id,omitempty"`
+	CustID         string                 `json:"cust_id,omitempty"`
+	EventName      string                 `json:"event_name,omitempty"`
+	TimeCreated    time.Time              `json:"time_created,omitempty"`
+	Properties     map[string]interface{} `json:"properties,omitempty"`
+	IdempotencyID  string                 `json:"idempotency_id,omitempty"`
+	InsertedAt     time.Time              `json:"inserted_at,omitempty"`
+}
 
 func main() {
-	topic := "demo"
-	ctx := context.Background()
 	seeds := []string{"localhost:9092"}
+	ctx := context.Background()
 
-	client, err := kgo.NewClient(
+	// Setup kafka consumer
+	cl, err := kgo.NewClient(
 		kgo.SeedBrokers(seeds...),
-		kgo.ConsumerGroup("demo-group"),
-		kgo.ConsumeTopics(topic),
-		kgo.ConsumeResetOffset(kgo.NewOffset().AtStart()),
+		kgo.ConsumerGroup("default"),
+		kgo.ConsumeTopics("test-topic"),
+		kgo.DisableAutoCommit(),
 	)
 	if err != nil {
 		panic(err)
 	}
-	defer client.Close()
+	defer cl.Close()
+
+	//setup db connection
+	db, err := sql.Open("postgres", "postgres://user:password@localhost/dbname?sslmode=disable")
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
+	// Set up prepared statement for insert
+	stmt, err := db.Prepare(`INSERT INTO events (organization_id, customer_id, cust_id, event_name, time_created, properties, idempotency_id, inserted_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		ON CONFLICT DO NOTHING`)
+	if err != nil {
+		panic(err)
+	}
 
 	for {
-		fetches := client.PollFetches(ctx)
+		fetches := cl.PollFetches(ctx)
+		if fetches == nil {
+			continue
+		}
+		if fetches.IsClientClosed() {
+			return
+		}
 		if errs := fetches.Errors(); len(errs) > 0 {
-			// All errors are retried internally when fetching, but non-retriable
-			// errors are returned from polls so that users can notice and take
-			// action.
+			// All errors are retried internally when fetching, but non-retriable errors are
+			// returned from polls so that users can notice and take action.
 			panic(fmt.Sprint(errs))
 		}
 
-		iter := fetches.RecordIter()
-		for !iter.Done() {
-			record := iter.Next()
-			var event event_ingest.Event // Event will have null Customer fk and time_created
-			err := json.Unmarshal(record.Value, &event)
+		events := make([]*Event, 0)
+		fetches.EachRecord(func(r *kgo.Record) {
+			event := &Event{}
+			err := json.Unmarshal(r.Value, event)
 			if err != nil {
-				panic(err)
+				fmt.Printf("Error unmarshalling event: %s\n", err)
+				return
 			}
+			event.CustomerID = nil
+			event.InsertedAt = time.Now()
+			events = append(events, event)
 
-			topicInfo := fmt.Sprintf("topic: %s (%d|%d)",
-				record.Topic, record.Partition, record.Offset)
-			messageInfo := fmt.Sprintf("key: %s, Value: %+v",
-				record.Key, event)
-			fmt.Printf("Message consumed: %s, %s \n", topicInfo, messageInfo)
+			if len(events) >= batchSize {
+				err = insertEvents(stmt, events, db, ctx)
+				if err != nil {
+					fmt.Printf("Error inserting events into database: %s\n", err)
+				}
+				events = make([]*Event, 0)
+				if err := cl.CommitUncommittedOffsets(context.Background()); err != nil {
+					fmt.Printf("commit records failed: %v", err)
+				}
+			}
+		})
+
+		if len(events) > 0 {
+			err := insertEvents(stmt, events, db, ctx)
+			if err != nil {
+				fmt.Printf("Error inserting events into database: %s\n", err)
+				return
+			}
+			if err := cl.CommitUncommittedOffsets(context.Background()); err != nil {
+				fmt.Printf("commit records failed: %v", err)
+			}
 		}
 	}
 }
 
-func flushBuffer(db *pq.DB, buffer []event_ingest.Event) {
-	// Start a transaction
-	txn, err := db.Begin()
+func insertEvents(stmt *sql.Stmt, events []*Event, db *sql.DB, ctx context.Context) error {
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		fmt.Println("Error starting transaction:", err)
-		return
+		return fmt.Errorf("error starting transaction: %s", err)
+	}
+	defer tx.Rollback()
+
+	// Create a slice to hold the values to be inserted
+	var values []interface{}
+
+	// Loop through the events and add their values to the slice
+	for _, event := range events {
+		values = append(values, event.OrganizationID, event.CustomerID, event.CustID, event.EventName, event.TimeCreated, event.Properties, event.IdempotencyID, event.InsertedAt)
 	}
 
-	// Prepare the statement
-	stmt, err := txn.Prepare(pq.CopyIn("your_table", "column1", "column2", "idempotency_id", "time_created", "time_inserted"))
+	// Execute the batch insert statement with the values slice
+	_, err = stmt.Exec(values...)
 	if err != nil {
-		fmt.Println("Error preparing statement:", err)
-		return
+		return fmt.Errorf("error executing statement: %s", err)
 	}
 
-	// Execute the statement for each event in the buffer
-	for _, ev := range buffer {
-		_, err := stmt.Exec(string(ev.Key), string(ev.Value), ev.IdempotencyID, ev.TimeCreated, ev.TimeInserted)
-		if err != nil {
-			fmt.Println("Error inserting event:", err)
-			return
-		}
-	}
-
-	// Close the statement
-	_, err = stmt.Exec()
+	err = tx.Commit()
 	if err != nil {
-		fmt.Println("Error closing statement:", err)
-		return
+		return fmt.Errorf("error committing transaction: %s", err)
 	}
 
-	// Commit the transaction
-	err = txn.Commit()
-	if err != nil {
-		fmt.Println("Error committing transaction:", err)
-		return
-	}
-
-	// Clear the buffer
-	buffer = nil
+	return nil
 }

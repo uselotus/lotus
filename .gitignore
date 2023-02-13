@@ -185,3 +185,11 @@ load_testing/
 
 !env/.env.dev.example
 !env/.env.prod.example
+
+golang/bin
+golang/.go
+golang/.push-*
+golang/.container-*
+golang/.dockerfile-*
+golang/.licenses*
+golang/.buildx-initialized
