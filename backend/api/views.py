@@ -1553,6 +1553,25 @@ class Ping(APIView):
         )
 
 
+class Healthcheck(APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="HealthcheckResponse",
+                fields={},
+            ),
+        },
+    )
+    def get(self, request, format=None):
+        return Response(
+            {},
+            status=status.HTTP_200_OK,
+        )
+
+
 class GetInvoicePdfURL(APIView):
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
