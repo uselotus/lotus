@@ -89,6 +89,7 @@ from metering_billing.models import (
     Plan,
     PlanComponent,
     PriceTier,
+    RecurringCharge,
     SubscriptionRecord,
 )
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
@@ -391,7 +392,11 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
         now = now_utc()
         organization = self.request.organization
-        qs = Plan.objects.filter(organization=organization, status=PLAN_STATUS.ACTIVE)
+        qs = (
+            Plan.objects.all()
+            .order_by(F("created_on").desc(nulls_last=False), F("plan_name"))
+            .filter(organization=organization, status=PLAN_STATUS.ACTIVE)
+        )
         # first go for the ones that are one away (FK) and not nested
         qs = qs.select_related(
             "organization",
@@ -412,7 +417,6 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             end_date__gte=now,
         ).annotate(active_subscriptions=Count("*"))
         qs = qs.prefetch_related(
-            "organization",
             Prefetch(
                 "versions",
                 queryset=PlanVersion.objects.filter(
@@ -431,7 +435,6 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 )
                 .select_related("price_adjustment", "created_by", "pricing_unit")
                 .prefetch_related(
-                    "subscription_records",
                     "usage_alerts",
                     "features",
                 )
@@ -442,8 +445,13 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                             organization=organization,
                         )
                         .select_related("pricing_unit")
-                        .prefetch_related("tiers")
                         .prefetch_related(
+                            Prefetch(
+                                "tiers",
+                                queryset=PriceTier.objects.filter(
+                                    organization=organization
+                                ),
+                            ),
                             Prefetch(
                                 "billable_metric",
                                 queryset=Metric.objects.filter(
@@ -456,7 +464,16 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                             ),
                         ),
                     ),
-                ),
+                    Prefetch(
+                        "recurring_charges",
+                        queryset=RecurringCharge.objects.filter(
+                            organization=organization,
+                        ).select_related("pricing_unit", "organization"),
+                        to_attr="recurring_charges_prefetched",
+                    ),
+                )
+                .order_by("version"),
+                to_attr="versions_prefetched",
             ),
         )
         return qs
