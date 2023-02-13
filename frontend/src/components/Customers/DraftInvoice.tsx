@@ -1,4 +1,10 @@
-import React, { FC, useState } from "react";
+/* eslint-disable no-shadow */
+/* eslint-disable react/destructuring-assignment */
+/* eslint-disable react/display-name */
+/* eslint-disable func-names */
+/* eslint-disable react/no-unstable-nested-components */
+/* eslint-disable camelcase */
+import React, { FC } from "react";
 import { useQuery } from "react-query";
 import { Table } from "antd";
 import dayjs from "dayjs";
@@ -7,6 +13,7 @@ import { Invoices } from "../../api/api";
 import {
   DraftInvoiceType,
   ExternalLineItem,
+  IndividualDraftInvoiceType,
   LineItem,
 } from "../../types/invoice-type";
 import CustomerCard from "./Card/CustomerCard";
@@ -15,41 +22,25 @@ interface Props {
   customer_id: string;
 }
 
-const addKeysToLineItems = (lineItems: ExternalLineItem[]) => {
-  return lineItems.map((lineItem, index) => {
-    return { ...lineItem, key: index };
-  });
-};
+const addKeysToLineItems = (lineItems: ExternalLineItem[]) =>
+  lineItems.map((lineItem, index) => ({ ...lineItem, key: index }));
 
 const DraftInvoice: FC<Props> = ({ customer_id }) => {
-  const { data: invoiceData, isLoading: invoiceLoading } =
-    useQuery<DraftInvoiceType>(
-      ["draft_invoice", customer_id],
-      () => Invoices.getDraftInvoice(customer_id),
-      {
-        refetchInterval: 10000,
-      }
-    );
-  const [expandedRowKey, setExpandedRowKey] = useState(null);
+  const { data: invoiceData } = useQuery<DraftInvoiceType>(
+    ["draft_invoice", customer_id],
+    () => Invoices.getDraftInvoice(customer_id)
+  );
 
-  const handleExpand = (expanded, record) => {
-    if (expanded) {
-      setExpandedRowKey(record.key);
-    } else {
-      setExpandedRowKey(null);
-    }
-  };
-
-  const expandedRowRender = (invoice: ExternalLineItem) => {
-    return (record) => {
+  const expandedRowRender =
+    (invoice: IndividualDraftInvoiceType) => (record) => {
       const columns: TableColumnsType<LineItem> = [
         {
-          title: "Item",
+          title: "ITEM",
           dataIndex: "name",
           key: "name",
         },
         {
-          title: "Dates",
+          title: "DATES",
           dataIndex: "start_date",
           key: "date",
           render: (_, record) => (
@@ -61,7 +52,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
           ),
         },
         {
-          title: "Quantity",
+          title: "QUANTITY",
           dataIndex: "quantity",
           render: (_, record) => (
             <div className="flex flex-col">
@@ -70,7 +61,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
           ),
         },
         {
-          title: "Subtotal",
+          title: "SUBTOTAL",
           dataIndex: "subtotal",
           render: (_, record) => (
             <div className="flex flex-col">
@@ -80,7 +71,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
           ),
         },
         {
-          title: "Billing Type",
+          title: "BILLING TYPE",
           dataIndex: "billing_type",
         },
       ];
@@ -91,12 +82,9 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
           rowClassName="bg-card"
           dataSource={record.sub_items}
           pagination={false}
-          onExpand={(expanded) => handleExpand(expanded, record)}
-          expandedRowKeys={expandedRowKey === record.key ? [record.key] : []}
         />
       );
     };
-  };
 
   return (
     <div>
@@ -105,8 +93,11 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
       </h2>
       {invoiceData?.invoices !== null &&
         invoiceData?.invoices !== undefined &&
-        invoiceData.invoices.map((invoice, index) => (
-          <div key={index} className="grid gap-12 grid-cols-1  md:grid-cols-3">
+        invoiceData.invoices.map((invoice) => (
+          <div
+            key={invoice.cost_due}
+            className="grid gap-12 grid-cols-1  md:grid-cols-3"
+          >
             <CustomerCard className="col-span-1 h-[200px] shadow-none">
               <CustomerCard.Container>
                 <CustomerCard.Block>
@@ -153,9 +144,6 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
                 pagination={false}
                 expandable={{
                   expandedRowRender: expandedRowRender(invoice),
-                  onExpand: (expanded, record) =>
-                    handleExpand(expanded, record),
-                  expandedRowKeys: [expandedRowKey],
                 }}
                 columns={[
                   {
