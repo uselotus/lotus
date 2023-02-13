@@ -20,6 +20,15 @@ ModelType = type[Model]
 Fields = list[Field]
 
 
+def print_prefetch_counts(queryset, prefix=""):
+    for obj in queryset:
+        print(f"{prefix}{obj.__class__.__name__} {obj.pk}")
+        if hasattr(obj, "_prefetched_objects_cache"):
+            for prefetch_key, prefetched_objs in obj._prefetched_objects_cache.items():
+                print(f"{prefix} - {prefetch_key}: {prefetched_objs.all().count()}")
+                print_prefetch_counts(prefetched_objs.all(), prefix=prefix + "    ")
+
+
 def make_hashable(obj):
     if isinstance(obj, MutableSequence):
         return tuple(make_hashable(x) for x in obj)

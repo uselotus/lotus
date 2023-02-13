@@ -712,7 +712,6 @@ class PlanViewSet(api_views.PlanViewSet):
     serializer_class = PlanDetailSerializer
     lookup_field = "plan_id"
     http_method_names = ["get", "post", "patch", "head"]
-    queryset = Plan.objects.all()
     permission_classes_per_method = {
         "create": [IsAuthenticated & ValidOrganization],
         "partial_update": [IsAuthenticated & ValidOrganization],
@@ -730,6 +729,15 @@ class PlanViewSet(api_views.PlanViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         return qs
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def get_serializer_class(self):
         if self.action == "partial_update":
@@ -1217,4 +1225,5 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
+        return context
         return context
