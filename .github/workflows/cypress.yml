@@ -97,7 +97,7 @@ jobs:
       - name: Start frontend
         run: |
           cd ./frontend
-          yarn run dev --port 3000 &
+          yarn run dev --port 3000
 
       - name: Wait for frontend to start
         run: |
