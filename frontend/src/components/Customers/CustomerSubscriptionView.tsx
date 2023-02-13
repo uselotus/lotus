@@ -8,14 +8,11 @@ import {
   Form,
   Button,
   InputNumber,
-  Cascader,
   Typography,
   Select,
   Modal,
   Input,
-  Radio,
 } from "antd";
-import type { DefaultOptionType } from "antd/es/cascader";
 import {
   useMutation,
   useQuery,
@@ -45,11 +42,12 @@ import createShortenedText from "../../helpers/createShortenedText";
 import useMediaQuery from "../../hooks/useWindowQuery";
 import Badge from "../base/Badges/Badges";
 import DropdownComponent from "../base/Dropdown/Dropdown";
-import { DraftInvoiceType } from "../../types/invoice-type";
-import { Addon, Customer, Invoices } from "../../api/api";
+import { Addon, Customer } from "../../api/api";
 import { AddonType } from "../../types/addon-type";
 
 import ChevronDown from "../base/ChevronDown";
+import CancelMenu from "./CancelMenu";
+import SwitchMenu from "./SwitchMenu";
 
 interface Props {
   customer_id: string;
@@ -67,12 +65,6 @@ interface Props {
   onCreate: (props: CreateSubscriptionType) => void;
 }
 
-const filter = (inputValue: string, path: DefaultOptionType[]) =>
-  (path[0].label as string).toLowerCase().indexOf(inputValue.toLowerCase()) >
-  -1;
-
-const displayRender = (labels: string[]) => labels[labels.length - 1];
-
 interface ChangeOption {
   value:
     | "change_subscription_plan"
@@ -89,43 +81,7 @@ interface PlanOption {
 }
 
 const dropDownOptions = ["Switch Plan", "Attach Add-On", "Cancel Subscription"];
-const subscriptionCancellationOptions = [
-  { name: "Cancel and Bill  Now", type: "bill_now" },
-  { name: "Cancel Renewal", type: "remove_renewal" },
-];
-const CancelMenuComponent = ({
-  setCancelSubType,
-}: {
-  setCancelSubType: (e: "bill_now" | "remove_renewal") => void;
-}) => (
-  <div>
-    <p className="text-base Inter">
-      If you cancel a plan the customer will lose it permanently, and you
-      won&apos;t be able to recover it. Do you want to continue?
-    </p>
-    <Radio.Group
-      onChange={(e) => setCancelSubType(e.target.value)}
-      buttonStyle="solid"
-    >
-      <div className="flex flex-row items-center justify-center gap-4">
-        {subscriptionCancellationOptions.map((options) => (
-          <div
-            key={options.type}
-            className="flex items-center justify-center gap-2"
-          >
-            <Radio.Button
-              value={options.type}
-              defaultChecked={options.type === "bill_now"}
-            >
-              {options.name}
-            </Radio.Button>
-          </div>
-        ))}
-      </div>
-    </Radio.Group>
-  </div>
-);
-const CancelMenu = React.memo(CancelMenuComponent);
+
 const SubscriptionView: FC<Props> = ({
   customer_id,
   subscriptions,
@@ -165,13 +121,7 @@ const SubscriptionView: FC<Props> = ({
   const selectPlan = (plan_id: string) => {
     setSelectedPlan(plan_id);
   };
-  useQuery<DraftInvoiceType>(
-    ["draft_invoice", customer_id],
-    () => Invoices.getDraftInvoice(customer_id),
-    {
-      refetchOnMount: "always",
-    }
-  );
+
   const { data: addOns, isLoading }: UseQueryResult<AddonType[]> = useQuery<
     AddonType[]
   >(["add-ons"], () => Addon.getAddons().then((res) => res), {
@@ -263,34 +213,6 @@ const SubscriptionView: FC<Props> = ({
     }
   }, [customer_id, plans]);
 
-  // const cancelMenu = () => (
-  //   <div>
-  //     <p className="text-base Inter">
-  //       If you cancel a plan the customer will lose it permanently, and you
-  //       won&apos;t be able to recover it. Do you want to continue?
-  //     </p>
-  //     <Radio.Group
-  //       onChange={(e) => setCancelSubType(e.target.value)}
-  //       buttonStyle="solid"
-  //     >
-  //       <div className="flex flex-row items-center justify-center gap-4">
-  //         {subscriptionCancellationOptions.map((options) => (
-  //           <div
-  //             key={options.type}
-  //             className="flex items-center justify-center gap-2"
-  //           >
-  //             <Radio.Button
-  //               value={options.type}
-  //               defaultChecked={options.type === "bill_now"}
-  //             >
-  //               {options.name}
-  //             </Radio.Button>
-  //           </div>
-  //         ))}
-  //       </div>
-  //     </Radio.Group>
-  //   </div>
-  // );
   const plansWithSwitchOptions = (plan_id: string) =>
     planList?.reduce((acc, plan) => {
       if (plan.value !== plan_id) {
@@ -318,51 +240,6 @@ const SubscriptionView: FC<Props> = ({
       }
     );
   };
-
-  const switchMenu = (
-    plan_id: string,
-    subscription_filters: SubscriptionType["subscription_filters"]
-  ) => (
-    <div>
-      <Form.Item>
-        <label htmlFor="addon_id" className="mb-4 required">
-          Current Plan
-        </label>
-        <Input
-          className="!mt-2"
-          placeholder={
-            subscriptions.filter((el) => el.billing_plan.plan_id === plan_id)[0]
-              .billing_plan.plan_name
-          }
-          disabled
-        />
-      </Form.Item>
-      <Form.Item>
-        <label htmlFor="addon_id" className="mb-4 required">
-          New Plan
-        </label>
-        <div>
-          <Cascader
-            className="!w-[332px] !mt-2"
-            options={plansWithSwitchOptions(plan_id)}
-            onChange={(value) =>
-              setCascaderOptions({
-                value: value[0] as string,
-                plan_id,
-                subscriptionFilters: subscription_filters,
-              })
-            }
-            expandTrigger="hover"
-            placeholder="Please select"
-            showSearch={{ filter }}
-            displayRender={displayRender}
-            changeOnSelect
-            style={{ width: "80%" }}
-          />
-        </div>
-      </Form.Item>
-    </div>
-  );
 
   const handleAttachPlanSubmit = () => {
     if (selectedPlan) {
@@ -392,196 +269,7 @@ const SubscriptionView: FC<Props> = ({
     mutation.mutate(body);
     setShowModal(false);
   };
-  // const ModalComponent = (title) => (
-  //   <Modal
-  //     className="font-alliance"
-  //     title={title}
-  //     visible={showModal}
-  //     cancelButtonProps={{ hidden: true }}
-  //     closeIcon={<div style={{ display: "none" }} className="hidden" />}
-  //     onCancel={() => {
-  //       setShowModal(false);
-  //       setTitle("");
-  //     }}
-  //     footer={
-  //       indexRef.current === 0
-  //         ? [
-  //             <Button key="back" onClick={() => setShowModal(false)}>
-  //               Cancel
-  //             </Button>,
-  //             <Button
-  //               key="back"
-  //               type="primary"
-  //               className="hover:!bg-primary-700 "
-  //               style={{
-  //                 background: "#C3986B",
-  //                 borderColor: "#C3986B",
-  //               }}
-  //               onClick={() => {
-  //                 onChange(
-  //                   cascaderOptions?.value as string,
-  //                   cascaderOptions?.plan_id as string,
-  //                   cascaderOptions!.subscriptionFilters
-  //                 );
-  //                 setShowModal(false);
-  //               }}
-  //             >
-  //               Switch
-  //             </Button>,
-  //           ]
-  //         : indexRef.current === 1
-  //         ? [
-  //             <Button key="back" onClick={() => setShowModal(false)}>
-  //               Cancel
-  //             </Button>,
 
-  //             <Button
-  //               key="submit"
-  //               type="primary"
-  //               className="hover:!bg-primary-700"
-  //               style={{
-  //                 background: "#C3986B",
-  //                 borderColor: "#C3986B",
-  //               }}
-  //               disabled={addOnId.length < 1}
-  //               onClick={submitAddOns}
-  //             >
-  //               Add
-  //             </Button>,
-  //           ]
-  //         : indexRef.current === 2
-  //         ? [
-  //             <Button key="back" onClick={() => setShowModal(false)}>
-  //               Back
-  //             </Button>,
-  //             <Button
-  //               key="submit"
-  //               type="primary"
-  //               className="!bg-rose-600 border !border-rose-600"
-  //               onClick={() => {
-  //                 if (cancelSubType === "bill_now") {
-  //                   cancelAndBill(
-  //                     subPlan.billing_plan.plan_id,
-  //                     subPlan.subscription_filters
-  //                   );
-  //                 } else {
-  //                   turnAutoRenewOff(
-  //                     subPlan.billing_plan.plan_id,
-  //                     subPlan.subscription_filters
-  //                   );
-  //                 }
-  //               }}
-  //             >
-  //               Cancel Plan
-  //             </Button>,
-  //           ]
-  //         : indexRef.current === 5
-  //         ? [
-  //             <Button key="back" onClick={() => setShowModal(false)}>
-  //               Back
-  //             </Button>,
-  //             <Button
-  //               key="submit"
-  //               type="primary"
-  //               className="hover:!bg-primary-700"
-  //               onClick={() => {
-  //                 handleAttachPlanSubmit();
-  //                 setShowModal(false);
-  //               }}
-  //             >
-  //               Start Subscription
-  //             </Button>,
-  //           ]
-  //         : indexRef.current === 6
-  //         ? [
-  //             <Button key="back" onClick={() => setShowModal(false)}>
-  //               Back
-  //             </Button>,
-  //             <Button
-  //               key="submit"
-  //               type="primary"
-  //               className="!bg-rose-600 border !border-rose-600"
-  //               onClick={() => {
-  //                 cancelAllSubscriptions();
-  //               }}
-  //             >
-  //               Cancel All Subscriptions
-  //             </Button>,
-  //           ]
-  //         : null
-  //     }
-  //   >
-  //     <div className="flex flex-col justify-center items-center gap-4">
-  //       {indexRef.current === 0 ? (
-  //         switchMenu(subPlan.billing_plan.plan_id, subPlan.subscription_filters)
-  //       ) : indexRef.current === 5 ? (
-  //         <Select
-  //           showSearch
-  //           placeholder="Select a plan"
-  //           onChange={selectPlan}
-  //           options={planList}
-  //           optionLabelProp="label"
-  //         >
-  //           {" "}
-  //         </Select>
-  //       ) : indexRef.current === 6 ? null : indexRef.current === 2 ? (
-  //         cancelMenu()
-  //       ) : (
-  //         <Form.Provider>
-  //           <Form form={form} name="create_subscriptions_addons">
-  //             <Form.Item name="addon_id">
-  //               <label htmlFor="addon_id" className="mb-4 required">
-  //                 Select Add-On
-  //               </label>
-  //               <Select
-  //                 id="addon_id"
-  //                 placeholder="Select An Option"
-  //                 onChange={(e) => {
-  //                   setAttachToPlanId(subPlan.billing_plan.plan_id);
-  //                   setAddOnId(e);
-  //                   const filters = subPlan.subscription_filters;
-
-  //                   if (filters && filters.length > 0) {
-  //                     setAttachToSubscriptionFilters(filters);
-  //                   } else {
-  //                     setAttachToSubscriptionFilters(undefined);
-  //                   }
-  //                 }}
-  //                 style={{ width: "100%" }}
-  //               >
-  //                 {addOns && !isLoading
-  //                   ? addOns.map((addOn) => (
-  //                       <Select.Option
-  //                         key={addOn.addon_id}
-  //                         value={addOn.addon_id}
-  //                       >
-  //                         {addOn.addon_name}
-  //                       </Select.Option>
-  //                     ))
-  //                   : null}
-  //               </Select>
-  //             </Form.Item>
-  //             <Form.Item name="quantity">
-  //               <label htmlFor="quantity" className="mb-4">
-  //                 Quantity
-  //               </label>
-  //               <InputNumber
-  //                 id="quantity"
-  //                 style={{ width: "100%" }}
-  //                 type="number"
-  //                 onChange={(e) => {
-  //                   setQuantity(e!);
-  //                 }}
-  //                 defaultValue={1}
-  //                 controls
-  //               />
-  //             </Form.Item>
-  //           </Form>
-  //         </Form.Provider>
-  //       )}
-  //     </div>
-  //   </Modal>
-  // );
   const getFilteredSubscriptions = useCallback(() => {
     if (!searchQuery) {
       return subscriptions;
@@ -596,13 +284,7 @@ const SubscriptionView: FC<Props> = ({
           .includes(searchQuery.toLowerCase())
     );
   }, [subscriptions, searchQuery]);
-  React.useEffect(() => {
-    console.log("indedxref before we check");
-    console.log(indexRef.current);
-    if (showModal) {
-      console.log(indexRef.current);
-    }
-  });
+
   if (subscriptions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center">
@@ -974,10 +656,15 @@ const SubscriptionView: FC<Props> = ({
                 >
                   <div className="flex flex-col justify-center items-center gap-4">
                     {indexRef.current === 0 ? (
-                      switchMenu(
-                        subPlan.billing_plan.plan_id,
-                        subPlan.subscription_filters
-                      )
+                      <SwitchMenu
+                        plan_id={subPlan.billing_plan.plan_id}
+                        subscription_filters={subPlan.subscription_filters}
+                        subscriptions={subscriptions}
+                        plansWithSwitchOptions={(plan_id) =>
+                          plansWithSwitchOptions(plan_id)
+                        }
+                        setCascaderOptions={(args) => setCascaderOptions(args)}
+                      />
                     ) : indexRef.current === 5 ? (
                       <Select
                         showSearch
