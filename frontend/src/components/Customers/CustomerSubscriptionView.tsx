@@ -1,3 +1,8 @@
+/* eslint-disable no-shadow */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable no-nested-ternary */
+/* eslint-disable jsx-a11y/label-has-associated-control */
+/* eslint-disable camelcase */
 import React, { FC, useCallback, useEffect, useRef, useState } from "react";
 import {
   Form,
