@@ -41,7 +41,11 @@ class TimezoneFieldMixin:
             if tz_string is None:
                 customer_tz = Customer.objects.get(pk=customer_id).timezone
                 cache.set(customer_cache_key, customer_tz.zone, 60 * 60 * 24 * 7)
-            timezone = pytz.timezone(tz_string)
+                tz_string = customer_tz.zone
+            try:
+                timezone = pytz.timezone(tz_string)
+            except pytz.UnknownTimeZoneError:
+                timezone = pytz.UTC
         else:
             organization_id = getattr(instance, "organization_id", None)
             organization_cache_key = f"tz_organization_{organization_id}"
@@ -51,7 +55,11 @@ class TimezoneFieldMixin:
                 cache.set(
                     organization_cache_key, organization_tz.zone, 60 * 60 * 24 * 7
                 )
-            timezone = pytz.timezone(tz_string)
+                tz_string = organization_tz.zone
+            try:
+                timezone = pytz.timezone(tz_string)
+            except pytz.UnknownTimeZoneError:
+                timezone = pytz.UTC
         return timezone
 
     def to_representation(self, instance):
