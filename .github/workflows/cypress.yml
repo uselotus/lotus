@@ -94,6 +94,19 @@ jobs:
           curl -IsS http://localhost:8000/api/healthcheck/ >/dev/null
           echo "Backend is available"
 
+      - name: Cache node modules
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.npm
+            ~/.cache
+          key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
+
+      - name: Install dependencies
+        run: |
+          cd ./frontend
+          yarn install --frozen-lockfile
+
       - name: Start frontend
         run: |
           cd ./frontend
