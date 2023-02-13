@@ -26,6 +26,8 @@ import useGlobalStore from "../../../../stores/useGlobalstore";
 import { QueryErrors } from "../../../../types/error-response-types";
 import { OrganizationType } from "../../../../types/account-type";
 import { country_json } from "../../../../assets/country_codes";
+import { fourDP } from "../../../../helpers/fourDP";
+import { timezones } from "../../../../assets/timezones";
 
 interface InviteWithEmailForm extends HTMLFormControlsCollection {
   email: string;
@@ -43,6 +45,8 @@ const GeneralTab: FC = () => {
   const queryClient = useQueryClient();
   const org = useGlobalStore((state) => state.org);
   const [taxRate, setTaxRate] = useState(0);
+  const [timezone, setTimezone] =
+    React.useState<(typeof timezones)[number]>("UTC");
   const [invoiceGracePeriod, setInvoiceGracePeriod] = useState(0);
   const [displayTaxRate, setDisplayTaxRate] = useState(0);
   const [displayInvoiceGracePeriod, setDisplayInvoiceGracePeriod] = useState(0);
@@ -111,6 +115,7 @@ const GeneralTab: FC = () => {
       setCity(orgData.address ? orgData.address.city : "");
       setState(orgData.address ? orgData.address.state : "");
       setCountry(orgData.address ? orgData.address.country : "");
+      setTimezone((prevTZ) => (orgData.timezone ? orgData.timezone : prevTZ));
       setPostalCode(orgData.address ? orgData.address.postal_code : "");
       setSubscriptionFilters(orgData.subscription_filter_keys);
       setFormSubscriptionFilters(orgData.subscription_filter_keys);
@@ -147,6 +152,7 @@ const GeneralTab: FC = () => {
       default_currency_code: string;
       address: OrganizationType["address"];
       tax_rate: number;
+      timezone: string;
       payment_grace_period: number;
       subscription_filter_keys: string[];
     }) =>
@@ -154,6 +160,7 @@ const GeneralTab: FC = () => {
         obj.org_id,
         obj.default_currency_code,
         obj.tax_rate,
+        obj.timezone,
         obj.payment_grace_period,
         obj.address,
         obj.subscription_filter_keys
@@ -179,8 +186,7 @@ const GeneralTab: FC = () => {
   const handleSendInviteEmail = (event: React.FormEvent<FormElements>) => {
     mutation.mutate({ email });
   };
-  const fourDP = (taxRate: number) =>
-    parseFloat(parseFloat(String(taxRate)).toFixed(4));
+
   return (
     <div>
       <div className="flex justify-between w-6/12">
@@ -235,6 +241,9 @@ const GeneralTab: FC = () => {
             </p>
           )}
           <p className="text-[16px]">
+            <b>Timezone:</b> {timezone}
+          </p>
+          <p className="text-[16px]">
             <b>Subscription Filters:</b>{" "}
             {orgData?.subscription_filter_keys.map((filter) => (
               <Tag key={filter}>{filter}</Tag>
@@ -275,6 +284,7 @@ const GeneralTab: FC = () => {
               org_id: org.organization_id,
               default_currency_code: currentCurrency,
               tax_rate: fourDP(taxRate),
+              timezone,
               payment_grace_period: invoiceGracePeriod,
               address: submittedAddress,
               subscription_filter_keys: subscriptionFilters,
@@ -372,6 +382,17 @@ const GeneralTab: FC = () => {
                   required
                 />
               </div>
+            </Form.Item>
+            <Form.Item label="Timezone" name="timezone">
+              <Select
+                placeholder="Timezone"
+                defaultValue={timezone}
+                onChange={(e) => setTimezone(e)}
+              >
+                {timezones.map((tz) => (
+                  <Select.Option value={tz}>{tz}</Select.Option>
+                ))}
+              </Select>
             </Form.Item>
             <Form.Item label="Payment Grace Period" name="payment_grace_period">
               <Input

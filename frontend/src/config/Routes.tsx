@@ -26,9 +26,7 @@ const { Sider } = Layout;
 const getSettingsTab = (component) =>
   // @ts-ignore
   // return import.meta.env.VITE_IS_DEMO ? <Navigate replace to={"/"} /> :component
-   component
-;
-
+  component;
 const AppRoutes: FC = () => {
   const [collapse, setCollapse] = useState(false);
   const { pathname } = useLocation();
@@ -57,10 +55,10 @@ const AppRoutes: FC = () => {
             currentPath === "plans" ||
             currentPath === "add-ons" ||
             currentPath === "customers" ||
-            currentPath === "dashboard"
-
+            currentPath === "dashboard" ||
+            currentPath === "create-addons"
               ? { background: "#ffffff" }
-              : { background: "#FAFAFA" }
+              : { background: "#ffffff" }
           }
         >
           <Routes>

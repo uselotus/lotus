@@ -82,6 +82,9 @@ function CustomerDetail() {
         refetch();
         toast.success("Subscription created successfully");
       },
+      onError: (error: any) => {
+        toast.error(error.response.data.title);
+      },
     }
   );
 
@@ -99,6 +102,9 @@ function CustomerDetail() {
         refetch();
         toast.success("Subscription cancelled successfully");
       },
+      onError: (error: any) => {
+        toast.error(error.response.data.title);
+      },
     }
   );
 
@@ -114,6 +120,9 @@ function CustomerDetail() {
         refetch();
         toast.success("Subscription switched successfully");
       },
+      onError: (error: any) => {
+        toast.error(error.response.data.title);
+      },
     }
   );
 
@@ -125,6 +134,9 @@ function CustomerDetail() {
         queryClient.invalidateQueries(["customer_list"]);
         refetch();
         toast.success("Subscription auto renew turned off");
+      },
+      onError: (error: any) => {
+        toast.error(error.response.data.title);
       },
     }
   );
@@ -168,13 +180,14 @@ function CustomerDetail() {
   const createSubscription = (props: CreateSubscriptionType) => {
     createSubscriptionMutation.mutate(props);
   };
-
+  console.log(data);
   return (
     <PageLayout
       title={data?.customer_name}
       className="text-[24px] font-alliance "
       hasBackButton
       aboveTitle
+      mx={false}
       backButton={
         <div>
           <Button
