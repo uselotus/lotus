@@ -28,7 +28,8 @@ const addKeysToLineItems = (lineItems: ExternalLineItem[]) =>
 const DraftInvoice: FC<Props> = ({ customer_id }) => {
   const { data: invoiceData } = useQuery<DraftInvoiceType>(
     ["draft_invoice", customer_id],
-    () => Invoices.getDraftInvoice(customer_id)
+    () => Invoices.getDraftInvoice(customer_id),
+    { refetchInterval: 10000 }
   );
 
   const expandedRowRender =
