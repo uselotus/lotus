@@ -3,6 +3,7 @@ import uuid
 
 import pytz
 from dateutil.parser import parse
+from django.core.cache import cache
 from django.core.serializers.json import DjangoJSONEncoder
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
@@ -30,28 +31,48 @@ class ConvertEmptyStringToNullMixin:
 
 
 class TimezoneFieldMixin:
+    def get_timezone(self, instance):
+        from metering_billing.models import Customer, Organization
+
+        customer_id = getattr(instance, "customer_id", None)
+        if customer_id is not None:
+            customer_cache_key = f"tz_customer_{customer_id}"
+            tz_string = cache.get(customer_cache_key)
+            if tz_string is None:
+                customer_tz = Customer.objects.get(pk=customer_id).timezone
+                cache.set(customer_cache_key, customer_tz.zone, 60 * 60 * 24 * 7)
+                tz_string = customer_tz.zone
+            try:
+                timezone = pytz.timezone(tz_string)
+            except pytz.UnknownTimeZoneError:
+                timezone = pytz.UTC
+        else:
+            organization_id = getattr(instance, "organization_id", None)
+            organization_cache_key = f"tz_organization_{organization_id}"
+            tz_string = cache.get(organization_cache_key)
+            if tz_string is None:
+                organization_tz = Organization.objects.get(pk=organization_id).timezone
+                cache.set(
+                    organization_cache_key, organization_tz.zone, 60 * 60 * 24 * 7
+                )
+                tz_string = organization_tz.zone
+            try:
+                timezone = pytz.timezone(tz_string)
+            except pytz.UnknownTimeZoneError:
+                timezone = pytz.UTC
+        return timezone
+
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        customer = getattr(instance, "customer", None)
-        timezone_field = "timezone"
-        if customer is not None:
-            timezone = getattr(customer, timezone_field, None)
-        else:
-            organization = getattr(instance, "organization", None)
-            timezone = (
-                getattr(organization, timezone_field, None)
-                if organization is not None
-                else None
-            )
-        if timezone is not None:
-            for field_name, value in representation.items():
-                if value is None:
-                    representation[field_name] = None
-                field = self.fields.get(field_name)
-                if isinstance(field, serializers.DateTimeField) and value is not None:
-                    if isinstance(value, str):
-                        value = parse(value)
-                    representation[field_name] = value.astimezone(timezone).isoformat()
+        for field_name, value in representation.items():
+            if value is None:
+                representation[field_name] = None
+            field = self.fields.get(field_name)
+            if isinstance(field, serializers.DateTimeField) and value is not None:
+                if isinstance(value, str):
+                    value = parse(value)
+                timezone = self.get_timezone(instance)
+                representation[field_name] = value.astimezone(timezone).isoformat()
         return representation
 
 
@@ -264,6 +285,11 @@ class WebhookSecretUUIDField(UUIDPrefixField):
 
 
 @extend_schema_field(serializers.RegexField(regex=r"addon_[0-9a-f]{32}"))
+class AddonUUIDField(UUIDPrefixField):
+    def __init__(self, *args, **kwargs):
+        super().__init__("addon_", *args, **kwargs)
+
+
 class AddonUUIDField(UUIDPrefixField):
     def __init__(self, *args, **kwargs):
         super().__init__("addon_", *args, **kwargs)

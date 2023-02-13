@@ -10,6 +10,7 @@ from typing import Literal, Optional, TypedDict, Union
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -17,15 +18,6 @@ from django.db.models import Count, F, FloatField, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
-
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
@@ -77,6 +69,14 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -158,7 +158,15 @@ class Organization(models.Model):
                 )
         new = self.pk is None
         if self.timezone != self.__original_timezone and self.pk:
-            self.customers.filter(timezone_set=False).update(timezone=self.timezone)
+            num_updated = self.customers.filter(timezone_set=False).update(
+                timezone=self.timezone
+            )
+            if num_updated > 0:
+                customer_ids = self.customers.filter(timezone_set=False).values_list(
+                    "id", flat=True
+                )
+                customer_cache_keys = [f"tz_customer_{id}" for id in customer_ids]
+                cache.delete_many(customer_cache_keys)
         if self.team is None:
             self.team = Team.objects.create(name=self.organization_name)
         super(Organization, self).save(*args, **kwargs)
