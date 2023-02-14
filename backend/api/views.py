@@ -10,6 +10,7 @@ from itertools import chain
 from typing import Optional
 
 import posthog
+import pytz
 from api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
     AddonSubscriptionRecordFilterSerializer,
@@ -1767,9 +1768,14 @@ def track_event(request):
         if not time_created:
             bad_events[idempotency_id] = "Invalid time_created"
             continue
+        tc = parser.parse(time_created)
+        # Check if the datetime object is naive
+        if tc.tzinfo is None or tc.tzinfo.utcoffset(tc) is None:
+            # If the datetime object is naive, replace its tzinfo with UTC
+            tc = tc.replace(tzinfo=pytz.UTC)
         if not (
             now - relativedelta(days=30)
-            <= parser.parse(time_created)
+            <= tc
             <= now + relativedelta(days=1)
         ):
             bad_events[
@@ -1983,5 +1989,7 @@ class GetCustomerEventAccessView(APIView):
         GetEventAccessSerializer(many=True).validate(metrics)
         return Response(
             metrics,
+            status=status.HTTP_200_OK,
+        )
             status=status.HTTP_200_OK,
         )

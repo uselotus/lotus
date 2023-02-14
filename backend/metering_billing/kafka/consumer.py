@@ -97,5 +97,3 @@ def write_batch_events_to_db(buffer):
             )
         except Exception:
             pass
-        except Exception:
-            pass
