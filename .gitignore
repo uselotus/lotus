@@ -12,6 +12,7 @@ dump.rdb
 # Distribution / packaging
 .Python
 build/
+!/golang/build
 develop-eggs/
 dist/
 downloads/

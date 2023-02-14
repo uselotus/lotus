@@ -1781,6 +1781,7 @@ def track_event(request):
             stream_events = {
                 "events": [transformed_event],
                 "organization_id": organization_pk,
+                "event": transformed_event,
             }
             kafka_producer.produce(customer_id, stream_events)
         except Exception as e:
