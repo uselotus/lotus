@@ -239,7 +239,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
               <Divider className="mt-[3.48px]" />
             </CustomerCard.Heading>
             <CustomerCard.Container className="grid gap-72  items-center grid-cols-1 md:grid-cols-2">
-              <CustomerCard.Block className="text-[14px] justify-between w-full">
+              <CustomerCard.Block className="text-[14px] p-2 justify-between w-full">
                 <CustomerCard.Item>
                   <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
                     Name
@@ -395,7 +395,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   </div>
                 </CustomerCard.Item>
               </CustomerCard.Block>
-              <CustomerCard.Block className="w-full ml-auto text-[14px] justify-between">
+              <CustomerCard.Block className="w-full p-2 ml-auto text-[14px] justify-between">
                 <CustomerCard.Item>
                   <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
                     Email
