@@ -50,6 +50,7 @@ export interface OrganizationType {
   organization_id: string;
   plan_tags: PlanType["tags"];
   tax_rate: null | number;
+  timezone: string;
   payment_grace_period: number;
   subscription_filter_keys: [];
   current_user: { username: string };

@@ -1,7 +1,9 @@
+import logging
 from decimal import Decimal
 
 from actstream.models import Action
 from django.conf import settings
+from django.core.cache import cache
 from django.db.models import DecimalField, Q, Sum
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
@@ -67,6 +69,7 @@ from metering_billing.utils.enums import (
 )
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
+logger = logging.getLogger("django.server")
 
 
 class TagSerializer(api_serializers.TagSerializer):
@@ -446,7 +449,11 @@ class OrganizationUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializ
         instance.default_currency = validated_data.get(
             "default_currency", instance.default_currency
         )
-        instance.timezone = validated_data.get("timezone", instance.timezone)
+        new_tz = validated_data.get("timezone", instance.timezone)
+        if new_tz != instance.timezone:
+            cache.delete(f"tz_organization_{instance.id}")
+        instance.timezone = new_tz
+
         address = validated_data.pop("address", None)
         if address:
             cur_properties = instance.properties or {}
@@ -534,6 +541,8 @@ class CustomerUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         )
         instance.tax_rate = validated_data.get("tax_rate", instance.tax_rate)
         tz = validated_data.get("timezone", None)
+        if tz != instance.timezone:
+            cache.delete(f"tz_customer_{instance.id}")
         if tz:
             instance.timezone = tz
             instance.timezone_set = True
@@ -1349,15 +1358,23 @@ class PlanVersionDetailSerializer(api_serializers.PlanVersionSerializer):
             "version_id",
             "plan_id",
             "alerts",
+            "active_subscriptions",
         )
         extra_kwargs = {**api_serializers.PlanVersionSerializer.Meta.extra_kwargs}
 
     plan_id = PlanUUIDField(source="plan.plan_id", read_only=True)
     alerts = serializers.SerializerMethodField()
     version_id = PlanVersionUUIDField(read_only=True)
+    active_subscriptions = serializers.SerializerMethodField()
 
     def get_alerts(self, obj) -> UsageAlertSerializer(many=True):
         return UsageAlertSerializer(obj.usage_alerts, many=True).data
+
+    def get_active_subscriptions(self, obj) -> int:
+        try:
+            return obj.active_subscriptions
+        except AttributeError:
+            return obj.num_active_subs() or 0
 
 
 class InitialPlanVersionSerializer(PlanVersionCreateSerializer):
@@ -1391,13 +1408,27 @@ class PlanDetailSerializer(api_serializers.PlanSerializer):
     class Meta(api_serializers.PlanSerializer.Meta):
         fields = api_serializers.PlanSerializer.Meta.fields + ("versions",)
 
-    display_version = PlanVersionDetailSerializer()
+    display_version = serializers.SerializerMethodField()
     versions = serializers.SerializerMethodField()
 
+    def get_display_version(self, obj) -> PlanVersionDetailSerializer:
+        try:
+            display = [
+                x for x in obj.versions_prefetched if x.pk == obj.display_version_id
+            ][0]
+            return PlanVersionDetailSerializer(display).data
+        except AttributeError as e:
+            logger.error(f"AttributeError on plan: {e}")
+            return PlanVersionDetailSerializer(obj.display_version).data
+
     def get_versions(self, obj) -> PlanVersionDetailSerializer(many=True):
-        return PlanVersionDetailSerializer(
-            obj.versions.all().order_by("version"), many=True
-        ).data
+        try:
+            return PlanVersionDetailSerializer(obj.versions_prefetched, many=True).data
+        except AttributeError as e:
+            logger.error(f"AttributeError on plan: {e}")
+            return PlanVersionDetailSerializer(
+                obj.versions.all().order_by("version"), many=True
+            ).data
 
 
 class PlanCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
@@ -2159,4 +2190,8 @@ class UsageAlertCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer
             plan_version=plan_version,
             **validated_data,
         )
+        return usage_alert
+        return usage_alert
+        return usage_alert
+        return usage_alert
         return usage_alert

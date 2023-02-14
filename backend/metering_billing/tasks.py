@@ -118,6 +118,19 @@ def refresh_alerts():
     refresh_alerts_inner()
 
 
+def prune_guard_table_inner():
+    from metering_billing.models import IdempotenceCheck
+
+    # get all UsageAlertResults
+    thirty_three_days = now_utc() - relativedelta(days=33)
+    IdempotenceCheck.objects.filter(time_created__lt=thirty_three_days).delete()
+
+
+@shared_task
+def prune_guard_table():
+    prune_guard_table_inner()
+
+
 @shared_task
 def zero_out_expired_balance_adjustments():
     from metering_billing.models import CustomerBalanceAdjustment

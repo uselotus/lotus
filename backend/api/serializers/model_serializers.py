@@ -1,10 +1,11 @@
 import datetime
+import logging
 import re
 from decimal import Decimal
 from typing import Literal, Union
 
 from django.conf import settings
-from django.db.models import Sum
+from django.db.models import Max, Min, Sum
 from drf_spectacular.utils import extend_schema_serializer
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
@@ -66,6 +67,7 @@ from metering_billing.utils.enums import (
 )
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
+logger = logging.getLogger("django.server")
 
 
 class TagSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
@@ -461,14 +463,26 @@ class InvoiceSerializer(
         return obj.get_payment_status_display()
 
     def get_start_date(self, obj) -> datetime.date:
-        seq = [
-            convert_to_date(x.start_date) for x in obj.line_items.all() if x.start_date
-        ]
-        return min(seq) if len(seq) > 0 else None
+        try:
+            min_date = obj.min_date
+        except AttributeError:
+            min_date = obj.line_items.all().aggregate(min_date=Min("start_date"))[
+                "min_date"
+            ]
+        return (
+            convert_to_date(min_date) if min_date else convert_to_date(obj.issue_date)
+        )
 
     def get_end_date(self, obj) -> datetime.date:
-        seq = [convert_to_date(x.end_date) for x in obj.line_items.all() if x.end_date]
-        return max(seq) if len(seq) > 0 else None
+        try:
+            max_date = obj.max_date
+        except AttributeError:
+            max_date = obj.line_items.all().aggregate(max_date=Max("end_date"))[
+                "max_date"
+            ]
+        return (
+            convert_to_date(max_date) if max_date else convert_to_date(obj.issue_date)
+        )
 
 
 class LightweightInvoiceSerializer(InvoiceSerializer):
@@ -1015,25 +1029,48 @@ class PlanVersionSerializer(
     flat_fee_billing_type = serializers.SerializerMethodField()
     components = PlanComponentSerializer(many=True, source="plan_components")
     features = FeatureSerializer(many=True)
-    recurring_charges = RecurringChargeSerializer(many=True)
+    recurring_charges = serializers.SerializerMethodField()
     price_adjustment = PriceAdjustmentSerializer(allow_null=True)
 
     plan_name = serializers.CharField(source="plan.plan_name")
     currency = PricingUnitSerializer(source="pricing_unit")
 
+    def get_recurring_charges(self, obj) -> RecurringChargeSerializer(many=True):
+        try:
+            return RecurringChargeSerializer(
+                obj.recurring_charges_prefetched, many=True
+            ).data
+        except AttributeError as e:
+            logger.error("Error getting get_recurring_charges: %s", e)
+            return RecurringChargeSerializer(
+                obj.recurring_charges.all(), many=True
+            ).data
+
     def get_flat_fee_billing_type(
         self, obj
     ) -> serializers.ChoiceField(choices=RecurringCharge.ChargeTimingType.labels):
-        recurring_charge = obj.recurring_charges.first()
-        if recurring_charge is not None:
-            return recurring_charge.get_charge_timing_display()
-        else:
-            return RecurringCharge.ChargeTimingType.IN_ADVANCE.label
+        try:
+            charges = obj.recurring_charges_prefetched
+            if len(charges) == 0:
+                return RecurringCharge.ChargeTimingType.IN_ADVANCE.label
+            else:
+                return charges[0].get_charge_timing_display()
+        except AttributeError as e:
+            logger.error("Error getting flat_fee_billing_type: %s", e)
+            recurring_charge = obj.recurring_charges.first()
+            if recurring_charge is not None:
+                return recurring_charge.get_charge_timing_display()
+            else:
+                return RecurringCharge.ChargeTimingType.IN_ADVANCE.label
 
     def get_flat_rate(
         self, obj
     ) -> serializers.DecimalField(max_digits=20, decimal_places=10, min_value=0):
-        return sum(x.amount for x in obj.recurring_charges.all())
+        try:
+            return sum(x.amount for x in obj.recurring_charges_prefetched)
+        except AttributeError as e:
+            logger.error("Error getting get_flat_rate: %s", e)
+            return sum(x.amount for x in obj.recurring_charges.all())
 
     def get_created_by(self, obj) -> str:
         if obj.created_by is not None:
@@ -1163,12 +1200,21 @@ class PlanSerializer(
     tags = serializers.SerializerMethodField(help_text="The tags that this plan has.")
 
     def get_num_versions(self, obj) -> int:
-        return obj.versions.all().count()
+        try:
+            return len(obj.versions_prefetched)
+        except AttributeError:
+            logger.error(
+                "PlanSerializer.get_num_versions() called without prefetching 'versions_prefetched'"
+            )
+            return obj.versions.all().count()
 
     def get_active_subscriptions(self, obj) -> int:
         try:
-            return sum(x.active_subscriptions for x in obj.versions.all())
+            return sum(x.active_subscriptions for x in obj.versions_prefetched)
         except AttributeError:
+            logger.error(
+                "PlanSerializer.get_active_subscriptions() called without prefetching 'versions_prefetched'"
+            )
             return (
                 obj.active_subs_by_version().aggregate(res=Sum("active_subscriptions"))[
                     "res"
@@ -2039,5 +2085,14 @@ class AddOnSubscriptionRecordCreateSerializer(
             sr.filters.add(sf)
         if invoice_now:
             generate_invoice(sr)
+        return sr
+        return sr
+        return sr
+        return sr
+        return sr
+        return sr
+        return sr
+        return sr
+        return sr
         return sr
         return sr

@@ -135,12 +135,14 @@ export const Customer = {
     customer_id: string,
     default_currency_code: string,
     address: CustomerType["address"],
-    tax_rate: number
+    tax_rate: number,
+    timezone: string
   ): Promise<CustomerType> =>
     requests.patch(`app/customers/${customer_id}/`, {
       default_currency_code,
       address,
       tax_rate,
+      timezone,
     }),
   // getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
   //   requests.get(`app/customer_detail/`, { params: { customer_id } }),
@@ -376,6 +378,7 @@ export const Organization = {
     org_id: string,
     default_currency_code: string,
     tax_rate: number,
+    timezone: string,
     payment_grace_period: number,
     address: OrganizationType["address"],
     subscription_filter_keys: string[]
@@ -383,6 +386,7 @@ export const Organization = {
     requests.patch(`app/organizations/${org_id}/`, {
       default_currency_code,
       tax_rate,
+      timezone,
       payment_grace_period,
       address,
       subscription_filter_keys,

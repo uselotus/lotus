@@ -1,0 +1,160 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Public API Tests
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  postman-and-sdk-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    services:
+      postgres:
+        image: timescale/timescaledb:latest-pg14
+        env:
+          POSTGRES_USER: lotus
+          POSTGRES_PASSWORD: lotus
+          SSLMODE: PREFER
+        ports:
+          - 5432:5432
+        # needed because the postgres container does not provide a healthcheck
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    environment: Development
+
+    env:
+      REDIS_HOST: localhost
+      DJANGO_SETTINGS_MODULE: "lotus.settings"
+      PYTHONPATH: "."
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
+      STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+      DEBUG: False
+      KAFKA_URL: "localhost:9092"
+      PYTHONDONTWRITEBYTECODE: 1
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: start redpanda
+        uses: redpanda-data/github-action@v0.1.3
+        with:
+          version: "latest"
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.9"
+
+      - name: Install pipenv
+        run: |
+          python -m pip install --upgrade pipenv wheel && pipenv update
+
+      - id: cache-pipenv
+        uses: actions/cache@v1
+        with:
+          path: ~/.local/share/virtualenvs
+          key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
+
+      - name: Install dependencies
+        if: steps.cache-pipenv.outputs.cache-hit != 'true'
+        run: |
+          pipenv install --deploy --dev
+
+      - name: Migrate
+        run: |
+          pipenv run python manage.py migrate --noinput
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Capture Outputs
+        run: |
+          OUTPUTS=$(pipenv run python manage.py postman_ci_outputs)
+          KEY=$(echo "$OUTPUTS" | grep "KEY=" | cut -d= -f2)
+          PLAN_ID=$(echo "$OUTPUTS" | grep "PLAN_ID=" | cut -d= -f2)
+          INVOICE_ID=$(echo "$OUTPUTS" | grep "INVOICE_ID=" | cut -d= -f2)
+          ADDON_ID=$(echo "$OUTPUTS" | grep "ADDON_ID=" | cut -d= -f2)
+          METRIC_ID=$(echo "$OUTPUTS" | grep "METRIC_ID=" | cut -d= -f2)
+          UNUSED_METRIC_ID=$(echo "$OUTPUTS" | grep "UNUSED_MID=" | cut -d= -f2)
+          FEATURE_ID=$(echo "$OUTPUTS" | grep "FEATURE_ID=" | cut -d= -f2)
+          FEATURE_NAME=$(echo "$OUTPUTS" | grep "FEATURE_NAME=" | cut -d= -f2)
+          EVENT_NAME=$(echo "$OUTPUTS" | grep "EVENT_NAME=" | cut -d= -f2)
+          CUSTOMER_ID=$(echo "$OUTPUTS" | grep "CUSTOMER_ID=" | cut -d= -f2)
+          ENV_JSON=$(jq -n \
+            --arg key "$KEY" \
+            --arg plan_id "$PLAN_ID" \
+            --arg invoice_id "$INVOICE_ID" \
+            --arg addon_id "$ADDON_ID" \
+            --arg metric_id "$METRIC_ID" \
+            --arg feature_name "$FEATURE_NAME" \
+            --arg feature_id "$FEATURE_ID" \
+            --arg event_name "$EVENT_NAME" \
+            --arg customer_id "$CUSTOMER_ID" \
+            '{KEY: $key, PLAN_ID: $plan_id, INVOICE_ID: $invoice_id, ADDON_ID: $addon_id, METRIC_ID: $metric_id, FEATURE_NAME: $feature_name, FEATURE_ID: $feature_id,EVENT_NAME: $event_name, CUSTOMER_ID: $customer_id, URL: "http://localhost:8000"}')
+          echo "$ENV_JSON" > environment.json
+          echo "LOTUS_API_KEY=$KEY" >> $GITHUB_ENV
+          echo "PLAN_ID=$PLAN_ID" >> $GITHUB_ENV
+          echo "METRIC_ID=$METRIC_ID" >> $GITHUB_ENV
+          echo "UNUSED_METRIC_ID=$UNUSED_METRIC_ID" >> $GITHUB_ENV
+          echo "FEATURE_ID=$FEATURE_ID" >> $GITHUB_ENV
+          echo "ADDON_ID=$ADDON_ID" >> $GITHUB_ENV
+          echo "LOTUS_HOST=http://localhost:8000" >> $GITHUB_ENV
+
+      - name: Run server
+        run: |
+          pipenv run python manage.py runserver &
+
+      - name: Run Postman
+        uses: anthonyvscode/newman-action@v1
+        with:
+          apiKey: ${{ secrets.postmanApiKey }}
+          collection: 18225965-f895719c-ab58-4f3d-ba21-5c918691697e
+          environment: environment.json
+          reporters: cli
+
+      - name: Output summary to console
+        run: echo ${{ steps.run-newman.outputs.summary }}
+
+      - name: Checkout lotus-python repository
+        uses: actions/checkout@v3
+        with:
+          repository: uselotus/lotus-python
+          ref: main
+          path: lotus-python
+
+      - name: Install pipenv for lotus-python
+        run: |
+          cd ../lotus-python
+          python -m pip install --upgrade pipenv wheel && pipenv update
+
+      - name: Install dependencies for lotus-python
+        if: steps.cache-pipenv.outputs.cache-hit != 'true'
+        run: |
+          cd ../lotus-python
+          pipenv install --deploy --dev
+
+      - name: Test Pytest for lotus-python
+        run: |
+          cd ../lotus-python
+          pipenv run pytest
