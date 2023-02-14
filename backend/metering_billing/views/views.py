@@ -1,17 +1,11 @@
 import logging
 from decimal import Decimal
 
+import api.views as api_views
 import pytz
 from django.conf import settings
 from django.db.models import Count, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
-from rest_framework import serializers, status
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
-import api.views as api_views
 from metering_billing.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
@@ -67,6 +61,11 @@ from metering_billing.utils.enums import (
     USAGE_CALC_GRANULARITY,
 )
 from metering_billing.views.model_views import CustomerViewSet
+from rest_framework import serializers, status
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -120,20 +119,22 @@ class PeriodMetricRevenueView(APIView):
         return_dict["total_revenue_period_1"] = p1_collected or Decimal(0)
         return_dict["total_revenue_period_2"] = p2_collected or Decimal(0)
         # earned
+        subs = (
+            SubscriptionRecord.objects.filter(
+                organization=organization,
+            )
+            .select_related("billing_plan")
+            .select_related("customer")
+            .prefetch_related("billing_plan__recurring_charges")
+            .prefetch_related("billing_plan__plan_components")
+            .prefetch_related("billing_plan__plan_components__billable_metric")
+            .prefetch_related("billing_plan__plan_components__tiers")
+        )
         for start, end, num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
-            subs = (
-                SubscriptionRecord.objects.filter(
-                    Q(start_date__range=(start, end))
-                    | Q(end_date__range=(start, end))
-                    | Q(start_date__lte=start, end_date__gte=end),
-                    organization=organization,
-                )
-                .select_related("billing_plan")
-                .select_related("customer")
-                .prefetch_related("billing_plan__recurring_charges")
-                .prefetch_related("billing_plan__plan_components")
-                .prefetch_related("billing_plan__plan_components__billable_metric")
-                .prefetch_related("billing_plan__plan_components__tiers")
+            subs = subs.filter(
+                Q(start_date__range=(start, end))
+                | Q(end_date__range=(start, end))
+                | Q(start_date__lte=start, end_date__gte=end),
             )
             per_day_dict = {}
             for period in periods_bwn_twodates(
