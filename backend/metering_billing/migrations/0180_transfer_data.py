@@ -12,7 +12,7 @@ def copy_events_to_idempotencecheck(apps, schema_editor):
     ).values("time_created", "idempotency_id", "organization"):
         idempotency_check, created = IdempotenceCheck.objects.get_or_create(
             idempotency_id=event["idempotency_id"],
-            organization=event["organization"],
+            organization_id=event["organization"],
         )
         if created or not idempotency_check.time_created:
             idempotency_check.time_created = event["time_created"]
