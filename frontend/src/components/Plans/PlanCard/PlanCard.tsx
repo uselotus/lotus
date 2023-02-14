@@ -107,7 +107,9 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
 
       <div>
         {plan.parent_plan !== null ? (
-          <Tag color="#C3986B">{plan.parent_plan?.plan_name}</Tag>
+          <Tag className="!text-[12px]" color="#C3986B">
+            {plan.parent_plan?.plan_name}
+          </Tag>
         ) : null}
         <div>
           <div className="mb-2">

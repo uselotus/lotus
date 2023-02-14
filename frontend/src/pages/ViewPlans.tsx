@@ -1,5 +1,11 @@
+/* eslint-disable camelcase */
+/* eslint-disable no-case-declarations */
+/* eslint-disable no-plusplus */
+/* eslint-disable no-shadow */
+/* eslint-disable react/function-component-definition */
 import React, { FC, useCallback, useEffect, useState } from "react";
 import { Button, Tabs } from "antd";
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { ArrowRightOutlined, PlusOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import {
@@ -15,6 +21,7 @@ import PlanCard from "../components/Plans/PlanCard/PlanCard";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ViewPlansFilter from "./ViewPlansFilter";
 import useGlobalStore from "../stores/useGlobalstore";
+
 export interface Plan extends PlanType {
   from: boolean;
 }
@@ -35,6 +42,8 @@ const ViewPlans: FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [tagSearchQuery, setTagSearchQuery] = useState<string[]>([]);
   const [plansWithTagsFilter, setPlansWithTagsFilter] = useState<Plan[]>([]);
+  const [isDisplayed, setIsDisplayed] = useState(false);
+
   const { plan_tags } = useGlobalStore((state) => state.org);
 
   const navigateCreatePlan = () => {
@@ -43,6 +52,7 @@ const ViewPlans: FC = () => {
   const changeTab = (activeKey: string) => {
     // setTagSearchQuery([]);
     // setSearchQuery("");
+    setIsDisplayed(false);
     setActiveKey(activeKey);
   };
   const setPlans = useCallback(
@@ -54,18 +64,18 @@ const ViewPlans: FC = () => {
         // go through all possible matches and set state
         switch (tabPane) {
           case "All":
-            setAllCustom(data.filter((plan) => plan.parent_plan));
             setAllPlans(data.filter((plan) => !plan.parent_plan));
+            setAllCustom(data.filter((plan) => plan.parent_plan));
             return;
           case "Monthly":
-            setMonthlyCustom(
-              data.filter(
-                (plan) => plan.plan_duration === "monthly" && plan.parent_plan
-              )
-            );
             setMonthlyPlans(
               data.filter(
                 (plan) => plan.plan_duration === "monthly" && !plan.parent_plan
+              )
+            );
+            setMonthlyCustom(
+              data.filter(
+                (plan) => plan.plan_duration === "monthly" && plan.parent_plan
               )
             );
             return;
@@ -113,16 +123,16 @@ const ViewPlans: FC = () => {
         const quarterlycustom = data.filter(
           (plan) => plan.plan_duration === "quarterly" && plan.parent_plan
         );
-        const allcustom = data.filter((plan) => plan.parent_plan);
         const allplans = data.filter((plan) => !plan.parent_plan);
+        const allcustom = data.filter((plan) => plan.parent_plan);
 
-        setAllCustom(allcustom);
         setAllPlans(allplans);
-        setYearlyPlans(yearlystandard);
+        setAllCustom(allcustom);
         setMonthlyPlans(monthlystandard);
+        setQuarterlyPlans(quarterlystandard);
+        setYearlyPlans(yearlystandard);
         setYearlyCustom(yearlycustom);
         setMonthlyCustom(monthlycustom);
-        setQuarterlyPlans(quarterlystandard);
         setQuarterlyCustom(quarterlycustom);
       }
     },
@@ -159,47 +169,51 @@ const ViewPlans: FC = () => {
     }
   );
 
-  const getFilteredPlans = useCallback(() => {
-    switch (activeKey) {
-      case "0":
-        if (!searchQuery && allPlans) {
-          return allPlans;
-        }
-        return allPlans.filter(
-          (plan) =>
-            plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+  const getFilteredPlans = useCallback(
+    () => {
+      switch (activeKey) {
+        case "0":
+          if (!searchQuery && allPlans) {
+            return allPlans;
+          }
+          return allPlans.filter(
+            (plan) =>
+              plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
+          );
 
-      case "1":
-        if (!searchQuery) {
-          return monthlyPlans;
-        }
-        return monthlyPlans.filter(
-          (plan) =>
-            plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      case "2":
-        if (!searchQuery) {
-          return quarterlyPlans;
-        }
-        return quarterlyPlans.filter(
-          (plan) =>
-            plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      default:
-        if (!searchQuery) {
-          return yearlyPlans;
-        }
-        return yearlyPlans.filter(
-          (plan) =>
-            plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-    }
-  }, [data, searchQuery, activeKey]);
+        case "1":
+          if (!searchQuery) {
+            return monthlyPlans;
+          }
+          return monthlyPlans.filter(
+            (plan) =>
+              plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
+          );
+        case "2":
+          if (!searchQuery) {
+            return quarterlyPlans;
+          }
+          return quarterlyPlans.filter(
+            (plan) =>
+              plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
+          );
+        default:
+          if (!searchQuery) {
+            return yearlyPlans;
+          }
+          return yearlyPlans.filter(
+            (plan) =>
+              plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
+          );
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data, searchQuery, activeKey]
+  );
   const getFilteredTagsAllPlans = useCallback(
     (tagName: string) => {
       switch (activeKey) {
@@ -207,7 +221,7 @@ const ViewPlans: FC = () => {
           const r = allPlans
             .map((el, index) => ({ ...el, index }))
             .filter((plan) => plan.tags.length);
-          let p2: Plan | undefined = undefined;
+          let p2: Plan | undefined;
           for (let index = 0; index < r.length; index++) {
             const element = r[index];
             const idx = element.index;
@@ -217,7 +231,9 @@ const ViewPlans: FC = () => {
               }
             }
           }
-          p2!.from = true;
+          if (p2) {
+            p2.from = true;
+          }
 
           return p2;
 
@@ -225,7 +241,7 @@ const ViewPlans: FC = () => {
           const rs = monthlyPlans
             .map((el, index) => ({ ...el, index }))
             .filter((plan) => plan.tags.length);
-          let p: Plan | undefined = undefined;
+          let p: Plan | undefined;
           for (let index = 0; index < rs.length; index++) {
             const element = rs[index];
             const idx = element.index;
@@ -235,14 +251,16 @@ const ViewPlans: FC = () => {
               }
             }
           }
-          p!.from = true;
+          if (p) {
+            p.from = true;
+          }
 
           return p;
         case "2":
           const r3 = monthlyPlans
             .map((el, index) => ({ ...el, index }))
             .filter((plan) => plan.tags.length);
-          let p3: Plan | undefined = undefined;
+          let p3: Plan | undefined;
           for (let index = 0; index < r3.length; index++) {
             const element = r3[index];
             const idx = element.index;
@@ -252,14 +270,16 @@ const ViewPlans: FC = () => {
               }
             }
           }
-          p3!.from = true;
+          if (p3) {
+            p3.from = true;
+          }
 
           return p3;
         default:
           const r4 = monthlyPlans
             .map((el, index) => ({ ...el, index }))
             .filter((plan) => plan.tags.length);
-          let p4: Plan | undefined = undefined;
+          let p4: Plan | undefined;
           for (let index = 0; index < r4.length; index++) {
             const element = r4[index];
             const idx = element.index;
@@ -269,19 +289,17 @@ const ViewPlans: FC = () => {
               }
             }
           }
-          p4!.from = true;
+          if (p4) {
+            p4.from = true;
+          }
 
           return p4;
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [data, tagSearchQuery]
   );
 
-  useEffect(() => {
-    if (data) {
-      setPlans(data);
-    }
-  }, [data, setPlans]);
   useEffect(() => {
     switch (activeKey) {
       case "0":
@@ -289,11 +307,9 @@ const ViewPlans: FC = () => {
           const p = allPlans.map((el) => ({ ...el, from: false }));
 
           setPlansWithTagsFilter(p);
-          return;
         } else if (!tagSearchQuery.length) {
           const p = allPlans.map((el) => ({ ...el, from: false }));
           setPlansWithTagsFilter(p);
-          return;
         }
         break;
       case "1":
@@ -301,11 +317,9 @@ const ViewPlans: FC = () => {
           const p = monthlyPlans.map((el) => ({ ...el, from: false }));
 
           setPlansWithTagsFilter(p);
-          return;
         } else if (!tagSearchQuery.length) {
           const p = monthlyPlans.map((el) => ({ ...el, from: false }));
           setPlansWithTagsFilter(p);
-          return;
         }
         break;
       case "2":
@@ -314,10 +328,10 @@ const ViewPlans: FC = () => {
 
           setPlansWithTagsFilter(p);
           return;
-        } else if (!tagSearchQuery.length) {
+        }
+        if (!tagSearchQuery.length) {
           const p = quarterlyPlans.map((el) => ({ ...el, from: false }));
           setPlansWithTagsFilter(p);
-          return;
         }
         break;
       default:
@@ -326,10 +340,10 @@ const ViewPlans: FC = () => {
 
           setPlansWithTagsFilter(p);
           return;
-        } else if (!tagSearchQuery.length) {
+        }
+        if (!tagSearchQuery.length) {
           const p = yearlyPlans.map((el) => ({ ...el, from: false }));
           setPlansWithTagsFilter(p);
-          return;
         }
     }
   }, [
@@ -340,6 +354,12 @@ const ViewPlans: FC = () => {
     yearlyPlans,
     activeKey,
   ]);
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setIsDisplayed(true);
+    }, 10);
+    return () => clearTimeout(timeout);
+  }, [activeKey]);
 
   return (
     <PageLayout
@@ -416,20 +436,20 @@ const ViewPlans: FC = () => {
             {data ? (
               <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {focus
-                  ? getFilteredPlans().map((item, key) => (
+                  ? getFilteredPlans().map((item) => (
                       <PlanCard
                         pane="All"
                         createTagMutation={createTag.mutate}
                         plan={item}
-                        key={key}
+                        key={item.plan_id}
                       />
                     ))
-                  : plansWithTagsFilter?.map((item, key) => (
+                  : plansWithTagsFilter?.map((item) => (
                       <PlanCard
                         pane="All"
                         createTagMutation={createTag.mutate}
                         plan={item}
-                        key={key}
+                        key={item.plan_id}
                       />
                     ))}
               </div>
@@ -440,20 +460,24 @@ const ViewPlans: FC = () => {
               </div>
             )}
             <div className="mt-12">
-              {allCustom?.length > 0 && (
-                <h2 className="text-center text-bold mb-8">Custom Plans</h2>
-              )}
+              {isDisplayed ? (
+                <>
+                  {allCustom?.length > 0 && (
+                    <h2 className="text-center text-bold mb-8">Custom Plans</h2>
+                  )}
 
-              <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4 mt-4">
-                {allCustom?.map((item, key) => (
-                  <PlanCard
-                    pane="All"
-                    createTagMutation={createTag.mutate}
-                    plan={item}
-                    key={key}
-                  />
-                ))}
-              </div>
+                  <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4 mt-4">
+                    {allCustom?.map((item) => (
+                      <PlanCard
+                        pane="All"
+                        createTagMutation={createTag.mutate}
+                        plan={item}
+                        key={item.plan_id}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : null}
             </div>
           </div>
         </Tabs.TabPane>
@@ -504,20 +528,20 @@ const ViewPlans: FC = () => {
             {data ? (
               <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {focus
-                  ? getFilteredPlans()?.map((item, key) => (
+                  ? getFilteredPlans()?.map((item) => (
                       <PlanCard
                         pane="Monthly"
                         createTagMutation={createTag.mutate}
                         plan={item}
-                        key={key}
+                        key={item.plan_id}
                       />
                     ))
-                  : plansWithTagsFilter.map((item, key) => (
+                  : plansWithTagsFilter.map((item) => (
                       <PlanCard
                         pane="Monthly"
                         createTagMutation={createTag.mutate}
                         plan={item}
-                        key={key}
+                        key={item.plan_id}
                       />
                     ))}
               </div>
@@ -528,20 +552,24 @@ const ViewPlans: FC = () => {
               </div>
             )}
             <div className="mt-12">
-              {monthlyCustom?.length > 0 && (
-                <h2 className="text-center mb-8">Custom Plans</h2>
-              )}
+              {isDisplayed ? (
+                <>
+                  {monthlyCustom?.length > 0 && (
+                    <h2 className="text-center mb-8">Custom Plans</h2>
+                  )}
 
-              <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-                {monthlyCustom?.map((item, key) => (
-                  <PlanCard
-                    pane="Monthly"
-                    createTagMutation={createTag.mutate}
-                    plan={item}
-                    key={key}
-                  />
-                ))}
-              </div>
+                  <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+                    {monthlyCustom?.map((item) => (
+                      <PlanCard
+                        pane="Monthly"
+                        createTagMutation={createTag.mutate}
+                        plan={item}
+                        key={item.plan_id}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : null}
             </div>
           </div>
         </Tabs.TabPane>
@@ -592,20 +620,20 @@ const ViewPlans: FC = () => {
             {data ? (
               <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {focus
-                  ? getFilteredPlans()?.map((item, key) => (
+                  ? getFilteredPlans()?.map((item) => (
                       <PlanCard
                         pane="Quarterly"
                         createTagMutation={createTag.mutate}
                         plan={item}
-                        key={key}
+                        key={item.plan_id}
                       />
                     ))
-                  : plansWithTagsFilter.map((item, key) => (
+                  : plansWithTagsFilter.map((item) => (
                       <PlanCard
                         pane="Quarterly"
                         createTagMutation={createTag.mutate}
                         plan={item}
-                        key={key}
+                        key={item.plan_id}
                       />
                     ))}
               </div>
@@ -616,19 +644,23 @@ const ViewPlans: FC = () => {
               </div>
             )}
             <div className="mt-12">
-              {quarterlyCustom?.length > 0 && (
-                <h2 className="text-center mb-8">Custom Plans</h2>
-              )}
-              <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-                {quarterlyCustom?.map((item, key) => (
-                  <PlanCard
-                    pane="Quarterly"
-                    createTagMutation={createTag.mutate}
-                    plan={item}
-                    key={key}
-                  />
-                ))}
-              </div>
+              {isDisplayed ? (
+                <>
+                  {quarterlyCustom?.length > 0 && (
+                    <h2 className="text-center mb-8">Custom Plans</h2>
+                  )}
+                  <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+                    {quarterlyCustom?.map((item) => (
+                      <PlanCard
+                        pane="Quarterly"
+                        createTagMutation={createTag.mutate}
+                        plan={item}
+                        key={item.plan_id}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : null}
             </div>
           </div>
         </Tabs.TabPane>
@@ -678,20 +710,20 @@ const ViewPlans: FC = () => {
             {data ? (
               <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {focus
-                  ? getFilteredPlans()?.map((item, key) => (
+                  ? getFilteredPlans()?.map((item) => (
                       <PlanCard
                         pane="Yearly"
                         createTagMutation={createTag.mutate}
                         plan={item}
-                        key={key}
+                        key={item.plan_id}
                       />
                     ))
-                  : plansWithTagsFilter.map((item, key) => (
+                  : plansWithTagsFilter.map((item) => (
                       <PlanCard
                         pane="Yearly"
                         createTagMutation={createTag.mutate}
                         plan={item}
-                        key={key}
+                        key={item.plan_id}
                       />
                     ))}
               </div>
@@ -702,19 +734,23 @@ const ViewPlans: FC = () => {
               </div>
             )}
             <div className="mt-12">
-              {yearlyCustom?.length > 0 && (
-                <h2 className="text-center mb-8">Custom Plans</h2>
-              )}
-              <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-                {yearlyCustom?.map((item, key) => (
-                  <PlanCard
-                    pane="Yearly"
-                    createTagMutation={createTag.mutate}
-                    plan={item}
-                    key={key}
-                  />
-                ))}
-              </div>
+              {isDisplayed ? (
+                <>
+                  {yearlyCustom?.length > 0 && (
+                    <h2 className="text-center mb-8">Custom Plans</h2>
+                  )}
+                  <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+                    {yearlyCustom?.map((item) => (
+                      <PlanCard
+                        pane="Yearly"
+                        createTagMutation={createTag.mutate}
+                        plan={item}
+                        key={item.plan_id}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : null}
             </div>
           </div>
         </Tabs.TabPane>
