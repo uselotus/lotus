@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -76,8 +78,26 @@ func main() {
 	}
 	defer cl.Close()
 
-	//setup db connection
-	db, err := sql.Open("postgres", "postgres://lotus:lotus@localhost/lotus?sslmode=disable")
+	var dbURL string
+	if dbURL = os.Getenv("DATABASE_URL"); dbURL == "" {
+		host := "localhost"
+		dockerized := os.Getenv("DOCKERIZED")
+		if dockerized != "" && dockerized != "0" && strings.ToLower(dockerized) != "false" {
+			host = "db"
+		}
+		if os.Getenv("POSTGRES_USER") == "" {
+			os.Setenv("POSTGRES_USER", "lotus")
+		}
+		if os.Getenv("POSTGRES_PASSWORD") == "" {
+			os.Setenv("POSTGRES_PASSWORD", "lotus")
+		}
+		if os.Getenv("POSTGRES_DB") == "" {
+			os.Setenv("POSTGRES_DB", "lotus")
+		}
+
+		dbURL = fmt.Sprintf("postgres://%s:%s@%s:5432/%s?sslmode=disable", os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD"), host, os.Getenv("POSTGRES_DB"))
+	}
+	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		panic(err)
 	}
