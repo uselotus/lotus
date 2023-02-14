@@ -10,13 +10,17 @@ def copy_events_to_idempotencecheck(apps, schema_editor):
     for event in Event.objects.order_by(
         "idempotency_id", "organization", "-time_created"
     ).values("time_created", "idempotency_id", "organization"):
-        idempotency_check, created = IdempotenceCheck.objects.get_or_create(
-            idempotency_id=event["idempotency_id"],
-            organization_id=event["organization"],
-        )
-        if created or not idempotency_check.time_created:
-            idempotency_check.time_created = event["time_created"]
-            idempotency_check.save()
+        try:
+            IdempotenceCheck.objects.get(
+                idempotency_id=event["idempotency_id"],
+                organization_id=event["organization"],
+            )
+        except IdempotenceCheck.DoesNotExist:
+            IdempotenceCheck.objects.create(
+                time_created=event["time_created"],
+                idempotency_id=event["idempotency_id"],
+                organization_id=event["organization"],
+            )
 
 
 class Migration(migrations.Migration):
