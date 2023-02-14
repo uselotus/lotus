@@ -10,14 +10,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunSQL(
-            sql=(
-                "ALTER TABLE metering_billing_usageevent "
-                "ADD CONSTRAINT usageevent_unique_organization_id_idempotency_id "
-                "UNIQUE (organization_id, idempotency_id);"
-            ),
-            reverse_sql=(
-                "ALTER TABLE metering_billing_usageevent "
-                "DROP CONSTRAINT usageevent_unique_organization_id_idempotency_id;"
-            ),
+            sql="CREATE UNIQUE INDEX metering_billing_usageevent_unique_idx ON metering_billing_usageevent (idempotency_id, organization_id)",
+            reverse_sql="DROP INDEX metering_billing_usageevent_unique_idx",
         ),
     ]

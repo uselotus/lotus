@@ -5,7 +5,7 @@ from django.db.models import Count, Max
 
 
 def remove_duplicates(apps, schema_editor):
-    Event = apps.get_model("myapp", "Event")
+    Event = apps.get_model("metering_billing", "Event")
     unique_fields = ["organization_id", "idempotency_id"]
 
     duplicates = (
