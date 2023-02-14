@@ -1773,11 +1773,7 @@ def track_event(request):
         if tc.tzinfo is None or tc.tzinfo.utcoffset(tc) is None:
             # If the datetime object is naive, replace its tzinfo with UTC
             tc = tc.replace(tzinfo=pytz.UTC)
-        if not (
-            now - relativedelta(days=30)
-            <= tc
-            <= now + relativedelta(days=1)
-        ):
+        if not (now - relativedelta(days=30) <= tc <= now + relativedelta(days=1)):
             bad_events[
                 idempotency_id
             ] = "Time created too far in the past or future. Events must be within 30 days before or 1 day ahead of current time."
@@ -1989,7 +1985,5 @@ class GetCustomerEventAccessView(APIView):
         GetEventAccessSerializer(many=True).validate(metrics)
         return Response(
             metrics,
-            status=status.HTTP_200_OK,
-        )
             status=status.HTTP_200_OK,
         )
