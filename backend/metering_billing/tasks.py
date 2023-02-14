@@ -7,7 +7,6 @@ from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
-
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
@@ -117,6 +116,19 @@ def refresh_alerts_inner():
 @shared_task
 def refresh_alerts():
     refresh_alerts_inner()
+
+
+def prune_guard_table_inner():
+    from metering_billing.models import IdempotenceCheck
+
+    # get all UsageAlertResults
+    thirty_three_days = now_utc() - relativedelta(days=33)
+    IdempotenceCheck.objects.filter(time_created__lt=thirty_three_days).delete()
+
+
+@shared_task
+def prune_guard_table():
+    prune_guard_table_inner()
 
 
 @shared_task
