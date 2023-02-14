@@ -1,3 +1,7 @@
+/* eslint-disable react/jsx-props-no-spreading */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-shadow */
+/* eslint-disable camelcase */
 import React, { FC, useEffect } from "react";
 import { Column } from "@ant-design/plots";
 import { useQueryClient, useMutation } from "react-query";
@@ -39,9 +43,14 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
 }) => {
   const windowWidth = useMediaQuery();
 
-  const [transformedGraphData, setTransformedGraphData] = React.useState<any>(
-    []
-  );
+  const [transformedGraphData, setTransformedGraphData] = React.useState<
+    {
+      date: string;
+      amount: number;
+      metric: string | undefined;
+      type: string;
+    }[]
+  >([]);
   const [form] = Form.useForm();
   const [currentCurrency, setCurrentCurrency] = React.useState<string>(
     data.default_currency.code ? data.default_currency.code : ""
@@ -134,11 +143,11 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     return metric;
   };
   useEffect(() => {
-    const newgraphdata = cost_data.per_day.map((day: any) => {
-      const result_list = day.cost_data.map((metric: any) => ({
+    const newgraphdata = cost_data.per_day.map((day) => {
+      const result_list = day.cost_data.map((metric) => ({
         date: day.date,
         amount: metric.cost,
-        metric: metric.metric.billable_metric_name,
+        metric: metric.metric.metric_name,
         type: "cost",
       }));
 
@@ -170,6 +179,8 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
       case "4":
         start_date = dayjs().startOf("year").format("YYYY-MM-DD");
         break;
+      default:
+        break;
     }
 
     onDateChange(start_date, end_date);
@@ -183,7 +194,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     isStack: true,
     seriesField: "metric",
     groupField: "type",
-    legend: false,
+    legend: false as const,
     colorField: "type", // or seriesField in some cases
     color: ["#E4D5C5", "#C3986B", "#D9D9D9", "#171412", "#547AA5"],
   };
@@ -225,7 +236,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   )}
                 </div>
               </div>
-              <Divider className="mt-[3.53px]" />
+              <Divider className="mt-[3.48px]" />
             </CustomerCard.Heading>
             <CustomerCard.Container className="grid gap-72  items-center grid-cols-1 md:grid-cols-2">
               <CustomerCard.Block className="text-[14px] justify-between w-full">
@@ -368,7 +379,9 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                           className="w-full bg-white border border-black p-4"
                           name="timezone"
                           id="timezone"
-                          onChange={(e) => setTimezone(e.target.value)}
+                          onChange={(e) =>
+                            setTimezone(e.target.value as typeof timezone)
+                          }
                           defaultValue={data.timezone ? timezone : timezone}
                         >
                           {timezones.map((tz) => (
@@ -389,12 +402,19 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   </div>
                   <div className="flex gap-1">
                     {" "}
-                    <div
-                      className={`Inter ${
-                        data.email.length > 36 ? "break-all text-[10px]" : ""
-                      } `}
-                    >
-                      {data.email}
+                    <div className="flex gap-1 !text-card-grey font-menlo">
+                      {" "}
+                      <div>
+                        {createShortenedText(
+                          data.email as string,
+                          windowWidth >= 2500
+                        )}
+                      </div>
+                      <CopyText
+                        showIcon
+                        onlyIcon
+                        textToCopy={data.email as string}
+                      />
                     </div>
                   </div>
                 </CustomerCard.Item>
