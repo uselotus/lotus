@@ -1,8 +1,8 @@
 import logging
-import threading
 from dataclasses import dataclass
 
 import posthog
+import sentry_sdk
 from django.conf import settings
 from django.core.cache import cache
 from metering_billing.models import Customer, Event, Organization
@@ -34,8 +34,6 @@ class Consumer(metaclass=Singleton):
         self.__connection = CONSUMER
         self.config = ConsumerConfig()
         self.topic = self.config.topic
-        self.buffer = {}
-        self.buffer_size = 0
 
     def consume(self):
         """Consume messages from a Redpanda topic"""
@@ -48,30 +46,16 @@ class Consumer(metaclass=Singleton):
                 try:
                     event = msg.value["events"][0]
                     organization_pk = msg.value["organization_id"]
-                    self.buffer[organization_pk] = self.buffer.get(
-                        organization_pk, []
-                    ).append(event)
-                    self.buffer_size += 1
-                    if self.buffer_size >= 100:
-                        self.write_events_to_db()
-                    elif self.timer is None:
-                        self.timer = threading.Timer(0.250, self.write_events_to_db)
-                        self.timer.start()
-                except Exception:
+                    write_batch_events_to_db({organization_pk: [event]})
+                except Exception as e:
+                    sentry_sdk.capture_exception(e)
+                    logger.info(
+                        f"Could not consume from topic: {self.topic}. Excpetionmessage: {e}"
+                    )
                     continue
         except Exception:
             logger.info(f"Could not consume from topic: {self.topic}")
             raise
-
-    def write_events_to_db(self):
-        self.timer.cancel()
-
-        if self.buffer:
-            write_batch_events_to_db(self.buffer)
-            self.buffer = {}
-            self.buffer_size = 0
-
-        self.timer = threading.Timer(0.250, self.write_events_to_db)
 
 
 def write_batch_events_to_db(buffer):
@@ -111,5 +95,7 @@ def write_batch_events_to_db(buffer):
                     "organization": organization_name,
                 },
             )
+        except Exception:
+            pass
         except Exception:
             pass
