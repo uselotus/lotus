@@ -6,21 +6,24 @@ from django.db.models import Count, Max
 
 def remove_duplicates(apps, schema_editor):
     Event = apps.get_model("myapp", "Event")
-    unique_fields = ["organization_id", "time_created"]
+    unique_fields = ["organization_id", "idempotency_id"]
 
     duplicates = (
         Event.objects.values(*unique_fields)
         .order_by()
         .annotate(
             max_time_created=Max("time_created"),
-            count_time_created=Count("time_created"),
+            cnt=Count("*"),
         )
-        .filter(count_time_created__gt=1)
+        .filter(cnt__gt=1)
     )
 
     for duplicate in duplicates:
         (
-            Event.objects.filter(organization_id=duplicate["organization_id"])
+            Event.objects.filter(
+                organization_id=duplicate["organization_id"],
+                idempotency_id=duplicate["idempotency_id"],
+            )
             .exclude(time_created=duplicate["max_time_created"])
             .delete()
         )
