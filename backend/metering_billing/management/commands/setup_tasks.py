@@ -49,3 +49,9 @@ class Command(BaseCommand):
             task="metering_billing.tasks.zero_out_expired_balance_adjustments",
             defaults={"interval": every_5_mins, "crontab": None},
         )
+
+        PeriodicTask.objects.update_or_create(
+            name="Prune Guard Table",
+            task="metering_billing.tasks.prune_guard_table",
+            defaults={"interval": every_15_mins, "crontab": None},
+        )

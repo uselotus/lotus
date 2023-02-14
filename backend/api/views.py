@@ -10,6 +10,7 @@ from itertools import chain
 from typing import Optional
 
 import posthog
+import pytz
 from api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
     AddonSubscriptionRecordFilterSerializer,
@@ -1767,11 +1768,12 @@ def track_event(request):
         if not time_created:
             bad_events[idempotency_id] = "Invalid time_created"
             continue
-        if not (
-            now - relativedelta(days=30)
-            <= parser.parse(time_created)
-            <= now + relativedelta(days=1)
-        ):
+        tc = parser.parse(time_created)
+        # Check if the datetime object is naive
+        if tc.tzinfo is None or tc.tzinfo.utcoffset(tc) is None:
+            # If the datetime object is naive, replace its tzinfo with UTC
+            tc = tc.replace(tzinfo=pytz.UTC)
+        if not (now - relativedelta(days=30) <= tc <= now + relativedelta(days=1)):
             bad_events[
                 idempotency_id
             ] = "Time created too far in the past or future. Events must be within 30 days before or 1 day ahead of current time."
