@@ -825,6 +825,32 @@ class CustomerBalanceAdjustment(models.Model):
         return total_balance
 
 
+class IdempotenceCheck(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.SET_NULL, related_name="+", null=True, blank=True
+    )
+    time_created = models.DateTimeField(
+        help_text="The time that the event occured, represented as a datetime in ISO 8601 in the UTC timezome."
+    )
+    idempotency_id = models.SlugField(
+        max_length=255,
+        default=event_uuid,
+        help_text="A unique identifier for the specific event being passed in. Passing in a unique id allows Lotus to make sure no double counting occurs. We recommend using a UUID4. You can use the same idempotency_id again after 45 days.",
+        primary_key=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "idempotency_id"],
+                name="unique_idempotency_id_per_org_raw",
+            )
+        ]
+
+    def __str__(self):
+        return +str(self.time_created)[:10] + "-" + str(self.idempotency_id)[:6]
+
+
 class Event(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.SET_NULL, related_name="+", null=True, blank=True
