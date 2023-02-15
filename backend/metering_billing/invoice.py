@@ -45,7 +45,7 @@ def generate_invoice(
     """
     Generate an invoice for a subscription.
     """
-    from metering_billing.models import Invoice
+    from metering_billing.models import Invoice, PricingUnit
     from metering_billing.tasks import generate_invoice_pdf_async
 
     if not issue_date:
@@ -55,19 +55,25 @@ def generate_invoice(
     if len(subscription_records) == 0:
         return None
 
-    customer = subscription_records[0].customer
-    assert all(
-        sr.customer == customer for sr in subscription_records
+    customers = subscription_records.values("customer").distinct()
+    assert (
+        customers.count() == 1
     ), "All subscription records must belong to the same customer when invoicing."
-    organization = subscription_records[0].organization
-    assert all(
-        sr.organization == organization for sr in subscription_records
+    organizations = subscription_records.values("organization").distinct()
+    assert (
+        organizations.count() == 1
     ), "All subscription records must belong to the same organization when invoicing."
+    organization = subscription_records[0].organization
+    customer = subscription_records[0].customer
     due_date = calculate_due_date(issue_date, organization)
 
-    distinct_currencies = set(
-        [sr.billing_plan.pricing_unit for sr in subscription_records]
+    distinct_currencies_pks = (
+        subscription_records.order_by()
+        .values_list("billing_plan__pricing_unit", flat=True)
+        .distinct()
     )
+    distinct_currencies = PricingUnit.objects.filter(pk__in=distinct_currencies_pks)
+
     invoices = {}
     for currency in distinct_currencies:
         # create kwargs for invoice
