@@ -179,7 +179,7 @@ class BraintreeConnector(PaymentProcesor):
 
         id_in = organization.payment_provider_ids.get(
             PAYMENT_PROCESSORS.BRAINTREE, {}
-        ).get("connected", False)
+        ).get("id", False)
         if self.self_hosted:
             if (
                 organization.organization_type
@@ -441,11 +441,11 @@ class BraintreeConnector(PaymentProcesor):
             }
             if not self.self_hosted:
                 org_braintree_acct = customer.organization.payment_provider_ids.get(
-                    PAYMENT_PROCESSORS.BRAINTREE, None
-                )
+                    PAYMENT_PROCESSORS.BRAINTREE, {}
+                ).get("id")
                 assert (
                     org_braintree_acct is not None
-                ), "Organization does not have a Stripe account ID"
+                ), "Organization does not have a Braintree account ID"
             result = gateway.customer.create(customer_kwargs)
 
             if result.is_success:
@@ -580,9 +580,15 @@ class StripeConnector(PaymentProcesor):
     def organization_connected(self, organization) -> bool:
         from metering_billing.models import Organization
 
-        id_in = organization.payment_provider_ids.get(
-            PAYMENT_PROCESSORS.STRIPE, {}
-        ).get("connected", False)
+        try:
+            id_in = organization.payment_provider_ids.get(
+                PAYMENT_PROCESSORS.STRIPE, {}
+            ).get("id", False)
+        except AttributeError:
+            organization.payment_provider_ids[PAYMENT_PROCESSORS.STRIPE] = {
+                "id": organization.payment_provider_ids[PAYMENT_PROCESSORS.STRIPE],
+            }
+            organization.save()
         if self.self_hosted:
             if (
                 organization.organization_type
@@ -603,7 +609,7 @@ class StripeConnector(PaymentProcesor):
     def get_connection_id(self, organization):
         stored_id = organization.payment_provider_ids.get(
             PAYMENT_PROCESSORS.STRIPE, {}
-        ).get("id", None)
+        ).get("id")
 
         if self.self_hosted:
             if stored_id != self.stripe_account_id:
@@ -624,8 +630,8 @@ class StripeConnector(PaymentProcesor):
         invoice_payload = {}
         if not self.self_hosted:
             invoice_payload["stripe_account"] = organization.payment_provider_ids.get(
-                PAYMENT_PROCESSORS.STRIPE
-            )
+                PAYMENT_PROCESSORS.STRIPE, {}
+            ).get("id")
         if organization.organization_type == Organization.OrganizationType.PRODUCTION:
             stripe.api_key = self.live_secret_key
         else:
@@ -741,8 +747,8 @@ class StripeConnector(PaymentProcesor):
         payload = {}
         if not self.self_hosted:
             payload["stripe_account"] = customer.organization.payment_provider_ids.get(
-                PAYMENT_PROCESSORS.STRIPE
-            )
+                PAYMENT_PROCESSORS.STRIPE, {}
+            ).get("id")
         invoices = stripe.Invoice.list(
             customer=customer.integrations[PAYMENT_PROCESSORS.STRIPE]["id"], **payload
         )
@@ -798,8 +804,8 @@ class StripeConnector(PaymentProcesor):
             }
             if not self.self_hosted:
                 org_stripe_acct = customer.organization.payment_provider_ids.get(
-                    PAYMENT_PROCESSORS.STRIPE, None
-                )
+                    PAYMENT_PROCESSORS.STRIPE, {}
+                ).get("id")
                 assert (
                     org_stripe_acct is not None
                 ), "Organization does not have a Stripe account ID"
@@ -849,8 +855,8 @@ class StripeConnector(PaymentProcesor):
         }
         if not self.self_hosted:
             org_stripe_acct = customer.organization.payment_provider_ids.get(
-                PAYMENT_PROCESSORS.STRIPE, None
-            )
+                PAYMENT_PROCESSORS.STRIPE, {}
+            ).get("id")
             assert (
                 org_stripe_acct is not None
             ), "Organization does not have a Stripe account ID"

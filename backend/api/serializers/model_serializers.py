@@ -7,6 +7,9 @@ from typing import Literal, Union
 from django.conf import settings
 from django.db.models import Max, Min, Sum
 from drf_spectacular.utils import extend_schema_serializer
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
 from metering_billing.invoice import (
     generate_balance_adjustment_invoice,
     generate_invoice,
@@ -62,8 +65,6 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -576,9 +577,9 @@ class CustomerSerializer(
     ) -> serializers.CharField(allow_null=True, required=True):
         d = self.get_integrations(obj)
         if obj.payment_provider == PAYMENT_PROCESSORS.STRIPE:
-            stripe_dict = d.get(PAYMENT_PROCESSORS.STRIPE)
-            if stripe_dict:
-                return stripe_dict["stripe_id"]
+            return d.get(PAYMENT_PROCESSORS.STRIPE, {}).get("id", None)
+        elif obj.payment_provider == PAYMENT_PROCESSORS.BRAINTREE:
+            return d.get(PAYMENT_PROCESSORS.BRAINTREE, {}).get("id", None)
         return None
 
     def get_address(self, obj) -> AddressSerializer(allow_null=True, required=True):

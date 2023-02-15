@@ -248,7 +248,10 @@ function CustomerDetail() {
             )}
           </Tabs.TabPane>
           <Tabs.TabPane tab="Invoices" key="invoices">
-            <CustomerInvoiceView invoices={data?.invoices} />
+            <CustomerInvoiceView
+              invoices={data?.invoices}
+              paymentMethod={data?.payment_provider}
+            />
           </Tabs.TabPane>
           <Tabs.TabPane tab="Credits" key="credits">
             <CustomerBalancedAdjustments customerId={customer_id as string} />
