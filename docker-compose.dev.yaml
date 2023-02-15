@@ -1,6 +1,6 @@
 services:
   db:
-    image: timescale/timescaledb-ha:pg14-latest
+    image: docker.io/timescale/timescaledb-ha:pg14-latest
     restart: on-failure
     ports:
       - 5433:5432
@@ -10,13 +10,13 @@ services:
       - ./env/.env.dev
 
   redis:
-    image: redis:7-alpine
+    image: docker.io/redis:7-alpine
     command: redis-server
     env_file:
       - ./env/.env.dev
 
   redpanda:
-    image: docker.redpanda.com/vectorized/redpanda:v22.2.2
+    image: docker.io/vectorized/redpanda:v22.2.2
     command:
       - redpanda start
       - --smp 1
@@ -34,7 +34,7 @@ services:
       - 29092:29092
 
   svix-server:
-    image: svix/svix-server:v0.74
+    image: docker.io/svix/svix-server:v0.74
     environment:
       WAIT_FOR: "true"
       SVIX_REDIS_DSN: redis://redis
