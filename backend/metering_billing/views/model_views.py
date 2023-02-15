@@ -1,22 +1,16 @@
 # import lotus_python
+import api.views as api_views
 import posthog
 from actstream.models import Action
-from django.conf import settings
-from django.core.cache import cache
-from django.db.utils import IntegrityError
-from drf_spectacular.utils import OpenApiCallback, extend_schema, inline_serializer
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import action
-from rest_framework.pagination import CursorPagination
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-
-import api.views as api_views
 from api.serializers.webhook_serializers import (
     InvoiceCreatedSerializer,
     InvoicePaidSerializer,
     UsageAlertTriggeredSerializer,
 )
+from django.conf import settings
+from django.core.cache import cache
+from django.db.utils import IntegrityError
+from drf_spectacular.utils import OpenApiCallback, extend_schema, inline_serializer
 from metering_billing.exceptions import (
     DuplicateMetric,
     DuplicateWebhookEndpoint,
@@ -39,6 +33,7 @@ from metering_billing.models import (
     User,
     WebhookEndpoint,
 )
+from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import ValidOrganization
 from metering_billing.serializers.backtest_serializers import (
     BacktestCreateSerializer,
@@ -57,6 +52,7 @@ from metering_billing.serializers.model_serializers import (
     ExternalPlanLinkSerializer,
     FeatureCreateSerializer,
     FeatureSerializer,
+    InvoiceSerializer,
     MetricCreateSerializer,
     MetricSerializer,
     MetricUpdateSerializer,
@@ -98,6 +94,11 @@ from metering_billing.utils.enums import (
     PAYMENT_PROCESSORS,
     WEBHOOK_TRIGGER_EVENTS,
 )
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.pagination import CursorPagination
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -787,7 +788,28 @@ class SubscriptionViewSet(api_views.SubscriptionViewSet):
 
 
 class InvoiceViewSet(api_views.InvoiceViewSet):
-    pass
+    http_method_names = ["get", "patch", "head", "post"]
+
+    def get_serializer_class(self):
+        if self.action == "send":
+            return InvoiceSerializer
+        return super().get_serializer_class()
+
+    @extend_schema(request=None)
+    @action(detail=True, methods=["post"])
+    def send(self, request, *args, **kwargs):
+        invoice = self.get_object()
+        customer = invoice.customer
+        if customer.payment_provider and invoice.external_payment_obj_type is None:
+            connector = PAYMENT_PROCESSOR_MAP.get(customer.payment_provider)
+            if connector:
+                external_id = connector.create_payment_object(invoice)
+                if external_id:
+                    invoice.external_payment_obj_id = external_id
+                    invoice.external_payment_obj_type = customer.payment_provider
+                    invoice.save()
+        serializer = self.get_serializer(invoice)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
