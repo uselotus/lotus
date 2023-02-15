@@ -43,7 +43,7 @@ jobs:
 
     env:
       REDIS_HOST: localhost
-      DJANGO_SETTINGS_MODULE: "lotus.settings"
+      DJANGO_SETTINGS_MODULE: "lotus.backend.settings"
       PYTHONPATH: "."
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
       STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}

@@ -191,7 +191,7 @@ if PROFILER_ENABLED:
     SILKY_PYTHON_PROFILER = True
 
 
-ROOT_URLCONF = "lotus.urls"
+ROOT_URLCONF = "lotus.backend.urls"
 
 TEMPLATES = [
     {
@@ -209,7 +209,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "lotus.wsgi.application"
+WSGI_APPLICATION = "lotus.backend.wsgi.application"
 
 AUTH_USER_MODEL = "metering_billing.User"
 AUTHENTICATION_BACKENDS = ["metering_billing.model_backend.EmailOrUsernameModelBackend"]
