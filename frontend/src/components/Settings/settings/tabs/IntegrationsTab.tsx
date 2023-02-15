@@ -29,6 +29,7 @@ const IntegrationsTab: FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [paymentProcessor, setPaymentProvider] =
     useState<PaymentProcessorType | null>(null);
+
   var nango = new Nango({ publicKey: (import.meta as any).env.VITE_NANGO_PK }); // Nango Cloud
 
   const handleConnectWithPaymentProcessorClick = (
