@@ -176,7 +176,7 @@ func main() {
 			}
 			if err := cl.CommitUncommittedOffsets(context.Background()); err != nil {
 				fmt.Printf("commit records failed: %v", err)
-				panic(errors.New("commit records failed"))
+				panic(fmt.Errorf("commit records failed: %w", err))
 			}
 		}
 	}
