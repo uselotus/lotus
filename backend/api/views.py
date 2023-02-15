@@ -183,7 +183,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 .filter(
                     organization=organization,
                 )
-                .select_related("customer", "billing_plan")
+                .select_related("customer", "billing_plan", "billing_plan__plan")
                 .prefetch_related(
                     "filters",
                     "addon_subscription_records",
@@ -195,6 +195,10 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 "invoices",
                 queryset=Invoice.objects.filter(
                     organization=organization,
+                    payment_status__in=[
+                        Invoice.PaymentStatus.PAID,
+                        Invoice.PaymentStatus.UNPAID,
+                    ],
                 )
                 .order_by("-issue_date")
                 .select_related("currency")
@@ -217,6 +221,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                     min_date=Min("line_items__start_date"),
                     max_date=Max("line_items__end_date"),
                 ),
+                to_attr="active_invoices",
             ),
         )
         qs = qs.annotate(

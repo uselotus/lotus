@@ -7,6 +7,9 @@ from typing import Literal, Union
 from django.conf import settings
 from django.db.models import Max, Min, Sum
 from drf_spectacular.utils import extend_schema_serializer
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
 from metering_billing.invoice import (
     generate_balance_adjustment_invoice,
     generate_invoice,
@@ -62,8 +65,6 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -616,7 +617,10 @@ class CustomerSerializer(
     ) -> CustomerStripeIntegrationSerializer:
         return {
             "stripe_id": stripe_connections_dict["id"],
-            "has_payment_method": len(stripe_connections_dict["payment_methods"]) > 0,
+            "has_payment_method": len(
+                stripe_connections_dict.get("payment_methods", [])
+            )
+            > 0,
         }
 
     def _format_braintree_integration(
@@ -624,7 +628,9 @@ class CustomerSerializer(
     ) -> CustomerBraintreeIntegrationSerializer:
         return {
             "braintree_id": braintree_connections_dict["id"],
-            "has_payment_method": len(braintree_connections_dict["payment_methods"])
+            "has_payment_method": len(
+                braintree_connections_dict.get("payment_methods", [])
+            )
             > 0,
         }
 

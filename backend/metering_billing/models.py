@@ -14,7 +14,7 @@ from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import Count, F, FloatField, Q, QuerySet, Sum
+from django.db.models import Count, F, FloatField, Prefetch, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
@@ -2290,9 +2290,17 @@ class SubscriptionRecord(models.Model):
                 organization=self.organization,
                 customer=self.customer,
                 billing_plan=self.billing_plan,
-            ).prefetch_related("filters")
+            ).prefetch_related(
+                Prefetch(
+                    "filters",
+                    queryset=CategoricalFilter.objects.filter(
+                        organization=self.organization
+                    ),
+                    to_attr="filters_lst",
+                )
+            )
             for subscription in overlapping_subscriptions:
-                old_filters = subscription.filters.all()
+                old_filters = subscription.filters_lst
                 if CategoricalFilter.overlaps(old_filters, new_filters):
                     raise OverlappingPlans(
                         f"Overlapping subscriptions with the same filters are not allowed. \n Plan: {self.billing_plan} \n Customer: {self.customer}. \n New dates: ({self.start_date, self.end_date}) \n New subscription_filters: {new_filters} \n Old dates: ({self.start_date, self.end_date}) \n Old subscription_filters: {list(old_filters)}"

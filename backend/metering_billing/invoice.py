@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from django.db.models.query import QuerySet
+
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.utils import (
     calculate_end_date,
@@ -45,29 +46,47 @@ def generate_invoice(
     """
     Generate an invoice for a subscription.
     """
-    from metering_billing.models import Invoice
+    from metering_billing.models import Invoice, PricingUnit
     from metering_billing.tasks import generate_invoice_pdf_async
 
     if not issue_date:
         issue_date = now_utc()
     if not isinstance(subscription_records, (QuerySet, Iterable)):
         subscription_records = [subscription_records]
+
     if len(subscription_records) == 0:
         return None
 
-    customer = subscription_records[0].customer
-    assert all(
-        sr.customer == customer for sr in subscription_records
+    try:
+        customers = subscription_records.values("customer").distinct().count()
+    except AttributeError:
+        customers = len({x.customer for x in subscription_records})
+    assert (
+        customers == 1
     ), "All subscription records must belong to the same customer when invoicing."
-    organization = subscription_records[0].organization
-    assert all(
-        sr.organization == organization for sr in subscription_records
+    try:
+        organizations = subscription_records.values("organization").distinct().count()
+    except AttributeError:
+        organizations = len({x.organization for x in subscription_records})
+    assert (
+        organizations == 1
     ), "All subscription records must belong to the same organization when invoicing."
+    organization = subscription_records[0].organization
+    customer = subscription_records[0].customer
     due_date = calculate_due_date(issue_date, organization)
 
-    distinct_currencies = set(
-        [sr.billing_plan.pricing_unit for sr in subscription_records]
-    )
+    try:
+        distinct_currencies_pks = (
+            subscription_records.order_by()
+            .values_list("billing_plan__pricing_unit", flat=True)
+            .distinct()
+        )
+        distinct_currencies = PricingUnit.objects.filter(pk__in=distinct_currencies_pks)
+    except AttributeError:
+        distinct_currencies = {
+            x.billing_plan.pricing_unit for x in subscription_records
+        }
+
     invoices = {}
     for currency in distinct_currencies:
         # create kwargs for invoice

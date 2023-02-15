@@ -288,8 +288,3 @@ class WebhookSecretUUIDField(UUIDPrefixField):
 class AddonUUIDField(UUIDPrefixField):
     def __init__(self, *args, **kwargs):
         super().__init__("addon_", *args, **kwargs)
-
-
-class AddonUUIDField(UUIDPrefixField):
-    def __init__(self, *args, **kwargs):
-        super().__init__("addon_", *args, **kwargs)
