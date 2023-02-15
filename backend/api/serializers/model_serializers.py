@@ -35,7 +35,7 @@ from metering_billing.models import (
     Tag,
     UsageAlert,
 )
-from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.serializers.serializer_utils import (
     AddonUUIDField,
     BalanceAdjustmentUUIDField,
@@ -57,7 +57,7 @@ from metering_billing.utils.enums import (
     FLAT_FEE_BEHAVIOR,
     INVOICE_STATUS_ENUM,
     INVOICING_BEHAVIOR,
-    PAYMENT_PROVIDERS,
+    PAYMENT_PROCESSORS,
     SUBSCRIPTION_STATUS,
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
@@ -443,7 +443,7 @@ class InvoiceSerializer(
 
     invoice_id = InvoiceUUIDField()
     external_payment_obj_type = serializers.ChoiceField(
-        choices=PAYMENT_PROVIDERS.choices,
+        choices=PAYMENT_PROCESSORS.choices,
         allow_null=True,
         required=True,
         allow_blank=False,
@@ -561,7 +561,7 @@ class CustomerSerializer(
         help_text="A dictionary containing the customer's integrations. Keys are the integration type, and the value is a dictionary containing the integration's properties, which can vary by integration.",
     )
     payment_provider = serializers.ChoiceField(
-        choices=PAYMENT_PROVIDERS.choices,
+        choices=PAYMENT_PROCESSORS.choices,
         allow_null=True,
         required=True,
         allow_blank=False,
@@ -575,8 +575,8 @@ class CustomerSerializer(
         self, obj
     ) -> serializers.CharField(allow_null=True, required=True):
         d = self.get_integrations(obj)
-        if obj.payment_provider == PAYMENT_PROVIDERS.STRIPE:
-            stripe_dict = d.get(PAYMENT_PROVIDERS.STRIPE)
+        if obj.payment_provider == PAYMENT_PROCESSORS.STRIPE:
+            stripe_dict = d.get(PAYMENT_PROCESSORS.STRIPE)
             if stripe_dict:
                 return stripe_dict["stripe_id"]
         return None
@@ -591,8 +591,8 @@ class CustomerSerializer(
 
     def get_has_payment_method(self, obj) -> bool:
         d = self.get_integrations(obj)
-        if obj.payment_provider == PAYMENT_PROVIDERS.STRIPE:
-            stripe_dict = d.get(PAYMENT_PROVIDERS.STRIPE)
+        if obj.payment_provider == PAYMENT_PROCESSORS.STRIPE:
+            stripe_dict = d.get(PAYMENT_PROCESSORS.STRIPE)
             if stripe_dict:
                 return stripe_dict["has_payment_method"]
         return False
@@ -607,15 +607,15 @@ class CustomerSerializer(
 
     def get_integrations(self, obj) -> CustomerIntegrationsSerializer:
         d = obj.integrations
-        if PAYMENT_PROVIDERS.STRIPE in d:
+        if PAYMENT_PROCESSORS.STRIPE in d:
             try:
-                d[PAYMENT_PROVIDERS.STRIPE] = self._format_stripe_integration(
-                    d[PAYMENT_PROVIDERS.STRIPE]
+                d[PAYMENT_PROCESSORS.STRIPE] = self._format_stripe_integration(
+                    d[PAYMENT_PROCESSORS.STRIPE]
                 )
             except (KeyError, TypeError):
-                d[PAYMENT_PROVIDERS.STRIPE] = None
+                d[PAYMENT_PROCESSORS.STRIPE] = None
         else:
-            d[PAYMENT_PROVIDERS.STRIPE] = None
+            d[PAYMENT_PROCESSORS.STRIPE] = None
         return d
 
     def get_subscriptions(self, obj) -> SubscriptionRecordSerializer(many=True):
@@ -672,7 +672,7 @@ class CustomerCreateSerializer(
         }
 
     payment_provider = serializers.ChoiceField(
-        choices=PAYMENT_PROVIDERS.choices,
+        choices=PAYMENT_PROCESSORS.choices,
         required=False,
         help_text="The payment provider this customer is associated with. Currently, only Stripe is supported.",
     )
@@ -701,7 +701,7 @@ class CustomerCreateSerializer(
         payment_provider = data.get("payment_provider", None)
         payment_provider_id = data.get("payment_provider_id", None)
         if payment_provider or payment_provider_id:
-            if not PAYMENT_PROVIDER_MAP[payment_provider].organization_connected(
+            if not PAYMENT_PROCESSOR_MAP[payment_provider].organization_connected(
                 self.context["organization"]
             ):
                 raise serializers.ValidationError(
@@ -735,9 +735,9 @@ class CustomerCreateSerializer(
             customer.save()
         else:
             if "payment_provider" in validated_data:
-                PAYMENT_PROVIDER_MAP[
+                PAYMENT_PROCESSOR_MAP[
                     validated_data["payment_provider"]
-                ].create_customer(customer)
+                ].create_customer_flow(customer)
         return customer
 
 
@@ -2084,6 +2084,7 @@ class AddOnSubscriptionRecordCreateSerializer(
             sr.filters.add(sf)
         if invoice_now:
             generate_invoice(sr)
+        return sr
         return sr
         return sr
         return sr

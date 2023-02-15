@@ -24,7 +24,7 @@ function CreateCustomerForm(props: {
   onCancel: () => void;
 }) {
   const [form] = Form.useForm();
-  const [paymentProviders, setPaymentProviders] = React.useState<string[]>([]);
+  const [paymentProcessors, setPaymentProviders] = React.useState<string[]>([]);
 
   const { data, isLoading } = useQuery<PaymentProcessorStatusType[]>(
     ["payment_processor_integration_list"],
@@ -88,14 +88,14 @@ function CreateCustomerForm(props: {
         </Form.Item>
 
         <div className="grid grid-cols-6 items-center gap-4">
-          {paymentProviders.length > 0 && (
+          {paymentProcessors.length > 0 && (
             <Form.Item
               className="col-span-2"
               name="payment_provider"
               label="Payment Provider"
             >
               <Select>
-                {paymentProviders.map((provider) => (
+                {paymentProcessors.map((provider) => (
                   <Select.Option key={provider} value={provider}>
                     {provider}
                   </Select.Option>
@@ -104,7 +104,7 @@ function CreateCustomerForm(props: {
             </Form.Item>
           )}
 
-          {paymentProviders.length > 0 && (
+          {paymentProcessors.length > 0 && (
             <Form.Item
               className="col-span-4"
               name="payment_provider_id"

@@ -55,6 +55,7 @@ sqlparse = "*"
 ruff = "*"
 "ruamel.yaml" = "*"
 django-timezone-field = "*"
+braintree = "*"
 
 [dev-packages]
 platformdirs = "*"

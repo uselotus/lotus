@@ -9,38 +9,37 @@ import { PaymentProcessor } from "../../api/api";
 import {
   PaymentProcessorSetting,
   Source,
-  PaymentProcessorImportCustomerResponse,
   TransferSub,
+  PaymentProcessorImportCustomerResponse,
   UpdatePaymentProcessorSettingParams,
 } from "../../types/payment-processor-type";
 
 const TOAST_POSITION = toast.POSITION.TOP_CENTER;
 
-// create FC component called StripeIntegration
-const StripeIntegrationView: FC = () => {
+// create FC component called BraintreeIntegration
+const BraintreeIntegrationView: FC = () => {
   // create variable called {id} and set it to type string
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isSettingValue, setIsSettingValue] = useState(false);
-  const [currentPaymentProcessorSetting, setCurrentPaymentProcessorSetting] =
+  const [currentBraintreeSetting, setCurrentBraintreeSetting] =
     useState<PaymentProcessorSetting>();
 
-  const getPaymentProcessorSettings = async (): Promise<
-    PaymentProcessorSetting[]
-  > =>
-    PaymentProcessor.getPaymentProcessorSettings({ setting_group: "stripe" });
+  const getBraintreeSettings = async (): Promise<PaymentProcessorSetting[]> =>
+    PaymentProcessor.getPaymentProcessorSettings({
+      setting_group: "braintree",
+    });
 
   const { error, data, isLoading } = useQuery<PaymentProcessorSetting[]>(
-    ["stripe_settings"],
-    getPaymentProcessorSettings
+    ["braintree_settings"],
+    getBraintreeSettings
   );
 
   useEffect(() => {
     if (!isLoading && !error && data) {
-      setCurrentPaymentProcessorSetting(
+      setCurrentBraintreeSetting(
         data.filter(
-          (item) =>
-            item.setting_name === "generate_customer_after_creating_in_lotus"
+          (item) => item.setting_name === "gen_cust_in_braintree_after_lotus"
         )[0]
       );
     }
@@ -97,22 +96,22 @@ const StripeIntegrationView: FC = () => {
     }
   );
 
-  const updatePaymentProcessorSettings = useMutation(
+  const updateBraintreeSettings = useMutation(
     (post: UpdatePaymentProcessorSettingParams) =>
       PaymentProcessor.updatePaymentProcessorSetting(post),
     {
       onSuccess: (data: PaymentProcessorSetting) => {
-        setCurrentPaymentProcessorSetting(data);
+        setCurrentBraintreeSetting(data);
         setIsSettingValue(false);
         const state =
           data.setting_values.value === true ? "Enabled" : "Disabled";
-        toast.success(`${state} Create Lotus Customers In Stripe`, {
+        toast.success(`${state} Create Lotus Customers In Braintree`, {
           position: TOAST_POSITION,
         });
       },
       onError: () => {
         setIsSettingValue(false);
-        toast.error("Failed to Update Create Lotus Customers In Stripe", {
+        toast.error("Failed to Update Create Lotus Customers In Braintree", {
           position: TOAST_POSITION,
         });
       },
@@ -129,15 +128,15 @@ const StripeIntegrationView: FC = () => {
   // create return statement
   return (
     <PageLayout
-      title="Stripe Integration"
+      title="Braintree Integration"
       extra={<Button onClick={returnToDashboard}>Back to Integrations</Button>}
     >
       <div className="w-6/12">
         <h2 className="text-16px mb-10">
-          Charge and invoice your customers through your Stripe account
+          Charge and invoice your customers through your Braintree account
         </h2>
         <div className="grid grid-cols-2 justify-start items-center gap-6 border-2 border-solid rounded border-[#EAEAEB] px-6 py-10">
-          <h3>Import Stripe Customers:</h3>
+          <h3>Import Braintree Customers:</h3>
           <Button
             size="large"
             className="w-4/12"
@@ -146,13 +145,13 @@ const StripeIntegrationView: FC = () => {
                 source: "stripe",
               });
               toast.promise(promise, {
-                pending: "Importing Customers From Stripe",
+                pending: "Importing Customers From Braintree",
               });
             }}
           >
             Import
           </Button>
-          <h3 className="mx-0">Import Stripe Payments:</h3>
+          {/* <h3 className="mx-0">Import Braintree Payments:</h3>
           <Button
             size="large"
             className="w-4/12"
@@ -161,13 +160,13 @@ const StripeIntegrationView: FC = () => {
                 source: "stripe",
               });
               toast.promise(promise, {
-                pending: "Importing Past Payments From Stripe",
+                pending: "Importing Past Payments From Braintree",
               });
             }}
           >
             Import
-          </Button>
-          <h3>Transfer Subscriptions:</h3>
+          </Button> */}
+          {/* <h3>Transfer Subscriptions:</h3>
           <Button
             size="large"
             className="w-4/12"
@@ -177,28 +176,26 @@ const StripeIntegrationView: FC = () => {
                 end_now: false,
               });
               toast.promise(promise, {
-                pending: "Transfering Subscriptions From Stripe",
+                pending: "Transfering Subscriptions From Braintree",
               });
             }}
           >
             Transfer
-          </Button>
-          <h3>Create Lotus Customers In Stripe:</h3>
+          </Button> */}
+          <h3>Create Lotus Customers In Braintree:</h3>
           <div className="flex h-6 items-center">
             <input
               id="comments"
               aria-describedby="comments-description"
               name="comments"
               type="checkbox"
-              disabled={isSettingValue || !currentPaymentProcessorSetting}
-              checked={
-                currentPaymentProcessorSetting?.setting_values.value === true
-              }
+              disabled={isSettingValue || !currentBraintreeSetting}
+              checked={currentBraintreeSetting?.setting_values.value === true}
               onChange={(value) => {
-                currentPaymentProcessorSetting &&
-                  updatePaymentProcessorSettings.mutate({
+                currentBraintreeSetting &&
+                  updateBraintreeSettings.mutate({
                     setting_values: value.target.checked,
-                    setting_id: currentPaymentProcessorSetting.setting_id,
+                    setting_id: currentBraintreeSetting.setting_id,
                   });
                 setIsSettingValue(true);
               }}
@@ -213,4 +210,4 @@ const StripeIntegrationView: FC = () => {
   );
 };
 
-export default StripeIntegrationView;
+export default BraintreeIntegrationView;

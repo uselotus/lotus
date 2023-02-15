@@ -36,6 +36,12 @@ import {
   PaymentProcessorConnectionResponseType,
   PaymentProcessorStatusType,
   PaymentProcessorConnectionRequestType,
+  PaymentProcessorSettingsParams,
+  PaymentProcessorSetting,
+  Source,
+  PaymentProcessorImportCustomerResponse,
+  TransferSub,
+  UpdatePaymentProcessorSettingParams,
 } from "../types/payment-processor-type";
 import { CustomerCostType, RevenueType } from "../types/revenue-type";
 import {
@@ -59,6 +65,7 @@ import {
   CreateOrgAccountType,
   OrganizationType,
   PaginatedActionsType,
+  UpdateOrganizationPPType,
 } from "../types/account-type";
 import { FeatureType, CreateFeatureType } from "../types/feature-type";
 import {
@@ -66,14 +73,6 @@ import {
   BacktestType,
   BacktestResultType,
 } from "../types/experiment-type";
-import {
-  StripeSettingsParams,
-  StripeSetting,
-  Source,
-  StripeImportCustomerResponse,
-  TransferSub,
-  UpdateStripeSettingParams,
-} from "../types/stripe-type";
 import {
   DraftInvoiceType,
   MarkPaymentStatusAsPaid,
@@ -390,6 +389,12 @@ export const Organization = {
       address,
       subscription_filter_keys,
     }),
+  updateOrganizationPaymentProvider: (
+    data: UpdateOrganizationPPType
+  ): Promise<OrganizationType> => {
+    const { org_id, ...payload } = data;
+    return requests.patch(`app/organizations/${org_id}/`, { ...payload });
+  },
 };
 
 export const GetRevenue = {
@@ -490,29 +495,35 @@ export const Backtests = {
     requests.get(`app/backtests/${id}/`),
 };
 
-export const Stripe = {
+export const PaymentProcessor = {
   // Import Customers
-  importCustomers: (post: Source): Promise<StripeImportCustomerResponse> =>
+  importCustomers: (
+    post: Source
+  ): Promise<PaymentProcessorImportCustomerResponse> =>
     requests.post("app/import_customers/", post),
 
   // Import Payments
-  importPayments: (post: Source): Promise<StripeImportCustomerResponse> =>
+  importPayments: (
+    post: Source
+  ): Promise<PaymentProcessorImportCustomerResponse> =>
     requests.post("app/import_payment_objects/", post),
 
   // transfer Subscription
   transferSubscriptions: (
     post: TransferSub
-  ): Promise<StripeImportCustomerResponse> =>
+  ): Promise<PaymentProcessorImportCustomerResponse> =>
     requests.post("app/transfer_subscriptions/", post),
 
   // Get Stripe Setting
-  getStripeSettings: (data: StripeSettingsParams): Promise<StripeSetting[]> =>
+  getPaymentProcessorSettings: (
+    data: PaymentProcessorSettingsParams
+  ): Promise<PaymentProcessorSetting[]> =>
     requests.get("app/organization_settings/", { params: data }),
 
   // Update Stripe Setting
-  updateStripeSetting: (
-    data: UpdateStripeSettingParams
-  ): Promise<StripeSetting> =>
+  updatePaymentProcessorSetting: (
+    data: UpdatePaymentProcessorSettingParams
+  ): Promise<PaymentProcessorSetting> =>
     requests.patch(`app/organization_settings/${data.setting_id}/`, {
       setting_values: data.setting_values,
     }),

@@ -359,8 +359,8 @@ paths:
             - inactive
             type: string
           default:
-          - inactive
           - active
+          - inactive
         description: Filter to a specific set of adjustment statuses. Defaults to
           both active and inactive.
       tags:
@@ -775,6 +775,7 @@ paths:
         schema:
           enum:
           - stripe
+          - braintree
           type: string
           minLength: 1
         required: true
@@ -1221,6 +1222,7 @@ paths:
         schema:
           enum:
           - stripe
+          - braintree
           - billing
           type: string
           minLength: 1
@@ -1233,6 +1235,7 @@ paths:
           items:
             enum:
             - generate_customer_after_creating_in_lotus
+            - gen_cust_in_braintree_after_lotus
             - subscription_filter_keys
             - payment_grace_period
             type: string
@@ -1404,7 +1407,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/SinglePaymentProvider'
+                  $ref: '#/components/schemas/SinglePaymentProcesor'
           description: ''
     post:
       operationId: app_payment_providers_create
@@ -1414,13 +1417,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PaymentProviderPostRequestRequest'
+              $ref: '#/components/schemas/PaymentProcesorPostRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PaymentProviderPostRequestRequest'
+              $ref: '#/components/schemas/PaymentProcesorPostRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PaymentProviderPostRequestRequest'
+              $ref: '#/components/schemas/PaymentProcesorPostRequestRequest'
         required: true
       security:
       - knoxTokenAuth: []
@@ -1431,7 +1434,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaymentProviderPostResponse'
+                $ref: '#/components/schemas/PaymentProcesorPostResponse'
           description: ''
   /app/period_events/:
     get:
@@ -3190,35 +3193,35 @@ components:
     BacktestDetail:
       type: object
       properties:
-        start_date:
-          type: string
-          format: date
-        kpis:
-          type: object
-          additionalProperties: {}
-        end_date:
-          type: string
-          format: date
-        backtest_substitutions:
-          type: array
-          items:
-            $ref: '#/components/schemas/BacktestSubstitution'
-        backtest_name:
-          type: string
-          maxLength: 100
         time_created:
           type: string
           format: date-time
-        backtest_id:
+        backtest_name:
           type: string
+          maxLength: 100
         status:
           enum:
           - running
           - completed
           - failed
           type: string
+        end_date:
+          type: string
+          format: date
         backtest_results:
           $ref: '#/components/schemas/AllSubstitutionResults'
+        start_date:
+          type: string
+          format: date
+        kpis:
+          type: object
+          additionalProperties: {}
+        backtest_id:
+          type: string
+        backtest_substitutions:
+          type: array
+          items:
+            $ref: '#/components/schemas/BacktestSubstitution'
       required:
       - backtest_id
       - backtest_name
@@ -3530,6 +3533,7 @@ components:
         payment_provider:
           enum:
           - stripe
+          - braintree
           - 
           type: string
           nullable: true
@@ -4158,6 +4162,7 @@ components:
         payment_provider:
           enum:
           - stripe
+          - braintree
           type: string
           description: The payment provider this customer is associated with. Currently,
             only Stripe is supported.
@@ -4798,25 +4803,6 @@ components:
     DraftInvoice:
       type: object
       properties:
-        issue_date:
-          type: string
-          format: date-time
-          readOnly: true
-        start_date:
-          type: string
-          format: date
-          readOnly: true
-        invoice_id:
-          type: string
-        end_date:
-          type: string
-          format: date
-          readOnly: true
-        due_date:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
         cost_due:
           type: number
           format: double
@@ -4825,12 +4811,31 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           readOnly: true
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
         line_items:
           type: array
           items:
             $ref: '#/components/schemas/GroupedLineItem'
+          readOnly: true
+        invoice_id:
+          type: string
+        end_date:
+          type: string
+          format: date
+          readOnly: true
+        start_date:
+          type: string
+          format: date
+          readOnly: true
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
+        due_date:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        issue_date:
+          type: string
+          format: date-time
           readOnly: true
       required:
       - cost_due
@@ -4934,6 +4939,7 @@ components:
         source:
           enum:
           - stripe
+          - braintree
           type: string
         external_plan_id:
           type: string
@@ -4951,6 +4957,7 @@ components:
         source:
           enum:
           - stripe
+          - braintree
           type: string
         external_plan_id:
           type: string
@@ -5148,6 +5155,7 @@ components:
         source:
           enum:
           - stripe
+          - braintree
           type: string
       required:
       - source
@@ -5181,6 +5189,7 @@ components:
         source:
           enum:
           - stripe
+          - braintree
           type: string
       required:
       - source
@@ -5197,6 +5206,7 @@ components:
         source:
           enum:
           - stripe
+          - braintree
           type: string
         external_plan_id:
           type: string
@@ -5210,6 +5220,7 @@ components:
         source:
           enum:
           - stripe
+          - braintree
           type: string
         external_plan_id:
           type: string
@@ -5221,14 +5232,27 @@ components:
     InitialPlanVersionRequest:
       type: object
       properties:
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustmentRequest'
         transition_to_plan_id:
           type: string
           format: uuid
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponentCreateRequest'
+          nullable: true
         month_anchor:
           type: integer
           maximum: 12
+          minimum: 1
+          writeOnly: true
+          nullable: true
+        description:
+          type: string
+          writeOnly: true
+          nullable: true
+        day_anchor:
+          type: integer
+          maximum: 31
           minimum: 1
           writeOnly: true
           nullable: true
@@ -5238,6 +5262,16 @@ components:
             type: string
             format: uuid
             nullable: true
+        currency_code:
+          type: string
+          minLength: 1
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustmentRequest'
+        recurring_charges:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecurringChargeCreateRequest'
+          nullable: true
         usage_billing_frequency:
           enum:
           - monthly
@@ -5245,29 +5279,6 @@ components:
           - end_of_period
           - ''
           - 
-          type: string
-          writeOnly: true
-          nullable: true
-        recurring_charges:
-          type: array
-          items:
-            $ref: '#/components/schemas/RecurringChargeCreateRequest'
-          nullable: true
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponentCreateRequest'
-          nullable: true
-        day_anchor:
-          type: integer
-          maximum: 31
-          minimum: 1
-          writeOnly: true
-          nullable: true
-        currency_code:
-          type: string
-          minLength: 1
-        description:
           type: string
           writeOnly: true
           nullable: true
@@ -5324,6 +5335,7 @@ components:
         external_payment_obj_type:
           enum:
           - stripe
+          - braintree
           - 
           type: string
           nullable: true
@@ -5500,6 +5512,7 @@ components:
         external_payment_obj_type:
           enum:
           - stripe
+          - braintree
           - 
           type: string
           nullable: true
@@ -5669,25 +5682,18 @@ components:
     LightweightInvoice:
       type: object
       properties:
-        issue_date:
+        invoice_pdf:
           type: string
-          format: date-time
-          readOnly: true
-        start_date:
-          type: string
-          format: date
-          readOnly: true
-        invoice_id:
-          type: string
-        end_date:
-          type: string
-          format: date
-          readOnly: true
-        due_date:
-          type: string
-          format: date-time
+          format: uri
           readOnly: true
           nullable: true
+        payment_status:
+          enum:
+          - draft
+          - voided
+          - paid
+          - unpaid
+          readOnly: true
         cost_due:
           type: number
           format: double
@@ -5696,35 +5702,43 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           readOnly: true
+        invoice_number:
+          type: string
+          readOnly: true
+        seller:
+          $ref: '#/components/schemas/Seller'
+        invoice_id:
+          type: string
+        end_date:
+          type: string
+          format: date
+          readOnly: true
+        start_date:
+          type: string
+          format: date
+          readOnly: true
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
         external_payment_obj_type:
           enum:
           - stripe
+          - braintree
           - 
           type: string
-          nullable: true
-        seller:
-          $ref: '#/components/schemas/Seller'
-        invoice_pdf:
-          type: string
-          format: uri
-          readOnly: true
           nullable: true
         external_payment_obj_id:
           type: string
           readOnly: true
           nullable: true
-        invoice_number:
+        due_date:
           type: string
+          format: date-time
           readOnly: true
-        payment_status:
-          enum:
-          - draft
-          - voided
-          - paid
-          - unpaid
+          nullable: true
+        issue_date:
+          type: string
+          format: date-time
           readOnly: true
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
       required:
       - cost_due
       - currency
@@ -5742,6 +5756,30 @@ components:
     LightweightInvoiceLineItem:
       type: object
       properties:
+        plan:
+          allOf:
+          - $ref: '#/components/schemas/LightweightPlanVersion'
+          nullable: true
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        subtotal:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        end_date:
+          type: string
+          format: date-time
+        subscription_filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
+          nullable: true
+          readOnly: true
         start_date:
           type: string
           format: date-time
@@ -5752,12 +5790,6 @@ components:
           minimum: 0
           exclusiveMaximum: true
           nullable: true
-        subscription_filters:
-          type: array
-          items:
-            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
-          nullable: true
-          readOnly: true
         billing_type:
           enum:
           - in_arrears
@@ -5766,24 +5798,6 @@ components:
           - 
           type: string
           nullable: true
-        end_date:
-          type: string
-          format: date-time
-        subtotal:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-        name:
-          type: string
-          maxLength: 100
-        plan:
-          allOf:
-          - $ref: '#/components/schemas/LightweightPlanVersion'
-          nullable: true
-          readOnly: true
       required:
       - billing_type
       - end_date
@@ -5865,7 +5879,23 @@ components:
     LightweightSubscriptionRecord:
       type: object
       properties:
-        start_date:
+        addons:
+          type: array
+          items:
+            $ref: '#/components/schemas/LightweightAddonSubscriptionRecord'
+        plan_detail:
+          allOf:
+          - $ref: '#/components/schemas/LightweightPlanVersion'
+          readOnly: true
+        is_new:
+          type: boolean
+          description: Whether this subscription came from a renewal or from a first-time.
+            Defaults to true on creation.
+        customer:
+          $ref: '#/components/schemas/LightweightCustomer'
+        billing_plan:
+          $ref: '#/components/schemas/LightweightPlanVersion'
+        end_date:
           type: string
           format: date-time
           description: The time the subscription starts. This will be a string in
@@ -5875,34 +5905,18 @@ components:
           items:
             $ref: '#/components/schemas/SubscriptionCategoricalFilter'
           readOnly: true
-        customer:
-          $ref: '#/components/schemas/LightweightCustomer'
-        end_date:
+        start_date:
           type: string
           format: date-time
           description: The time the subscription starts. This will be a string in
             yyyy-mm-dd HH:mm:ss format in UTC time.
+        fully_billed:
+          type: boolean
+          description: Whether the subscription has been fully billed and finalized.
         auto_renew:
           type: boolean
           description: Whether the subscription automatically renews. Defaults to
             true.
-        billing_plan:
-          $ref: '#/components/schemas/LightweightPlanVersion'
-        is_new:
-          type: boolean
-          description: Whether this subscription came from a renewal or from a first-time.
-            Defaults to true on creation.
-        plan_detail:
-          allOf:
-          - $ref: '#/components/schemas/LightweightPlanVersion'
-          readOnly: true
-        addons:
-          type: array
-          items:
-            $ref: '#/components/schemas/LightweightAddonSubscriptionRecord'
-        fully_billed:
-          type: boolean
-          description: Whether the subscription has been fully billed and finalized.
       required:
       - addons
       - auto_renew
@@ -5917,33 +5931,33 @@ components:
     LightweightSubscriptionRecordRequest:
       type: object
       properties:
-        start_date:
-          type: string
-          format: date-time
-          description: The time the subscription starts. This will be a string in
-            yyyy-mm-dd HH:mm:ss format in UTC time.
+        addons:
+          type: array
+          items:
+            $ref: '#/components/schemas/LightweightAddonSubscriptionRecordRequest'
+        is_new:
+          type: boolean
+          description: Whether this subscription came from a renewal or from a first-time.
+            Defaults to true on creation.
+        billing_plan:
+          $ref: '#/components/schemas/LightweightPlanVersionRequest'
         end_date:
           type: string
           format: date-time
           description: The time the subscription starts. This will be a string in
             yyyy-mm-dd HH:mm:ss format in UTC time.
+        start_date:
+          type: string
+          format: date-time
+          description: The time the subscription starts. This will be a string in
+            yyyy-mm-dd HH:mm:ss format in UTC time.
+        fully_billed:
+          type: boolean
+          description: Whether the subscription has been fully billed and finalized.
         auto_renew:
           type: boolean
           description: Whether the subscription automatically renews. Defaults to
             true.
-        billing_plan:
-          $ref: '#/components/schemas/LightweightPlanVersionRequest'
-        is_new:
-          type: boolean
-          description: Whether this subscription came from a renewal or from a first-time.
-            Defaults to true on creation.
-        addons:
-          type: array
-          items:
-            $ref: '#/components/schemas/LightweightAddonSubscriptionRecordRequest'
-        fully_billed:
-          type: boolean
-          description: Whether the subscription has been fully billed and finalized.
       required:
       - addons
       - auto_renew
@@ -6951,6 +6965,7 @@ components:
         setting_name:
           enum:
           - generate_customer_after_creating_in_lotus
+          - gen_cust_in_braintree_after_lotus
           - subscription_filter_keys
           - payment_grace_period
           type: string
@@ -6960,6 +6975,7 @@ components:
         setting_group:
           enum:
           - stripe
+          - braintree
           - billing
           type: string
       required:
@@ -7972,6 +7988,19 @@ components:
           - US/Pacific
           - UTC
           type: string
+        payment_provider:
+          enum:
+          - stripe
+          - braintree
+          type: string
+          description: To udpate a payment provider's ID, specify the payment provider
+            you want to update in this field, and the payment_provider_id in the corresponding
+            field.
+        payment_provider_id:
+          type: string
+          minLength: 1
+        nango_connected:
+          type: boolean
     PatchedPlanUpdateRequest:
       type: object
       properties:
@@ -8016,12 +8045,13 @@ components:
           type: string
           format: uuid
           writeOnly: true
-    PaymentProviderPostDataRequest:
+    PaymentProcesorPostDataRequest:
       type: object
       properties:
         payment_processor:
           enum:
           - stripe
+          - braintree
           type: string
         data:
           type: object
@@ -8029,19 +8059,20 @@ components:
       required:
       - data
       - payment_processor
-    PaymentProviderPostRequestRequest:
+    PaymentProcesorPostRequestRequest:
       type: object
       properties:
         pp_info:
-          $ref: '#/components/schemas/PaymentProviderPostDataRequest'
+          $ref: '#/components/schemas/PaymentProcesorPostDataRequest'
       required:
       - pp_info
-    PaymentProviderPostResponse:
+    PaymentProcesorPostResponse:
       type: object
       properties:
         payment_processor:
           enum:
           - stripe
+          - braintree
           type: string
         success:
           type: boolean
@@ -9139,7 +9170,7 @@ components:
       required:
       - cost
       - metric
-    SinglePaymentProvider:
+    SinglePaymentProcesor:
       type: object
       properties:
         payment_provider_name:
@@ -9149,10 +9180,20 @@ components:
         redirect_url:
           type: string
           format: uri
+        self_hosted:
+          type: boolean
+        connection_id:
+          type: string
+          nullable: true
+        working:
+          type: boolean
       required:
       - connected
+      - connection_id
       - payment_provider_name
       - redirect_url
+      - self_hosted
+      - working
     SinglePlanNumCustomers:
       type: object
       properties:
@@ -9565,6 +9606,7 @@ components:
         source:
           enum:
           - stripe
+          - braintree
           type: string
         end_now:
           type: boolean

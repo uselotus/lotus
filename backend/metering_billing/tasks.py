@@ -7,7 +7,7 @@ from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
-from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
 )
@@ -155,9 +155,9 @@ def update_invoice_status():
     )
     for incomplete_invoice in incomplete_invoices:
         pp = incomplete_invoice.external_payment_obj_type
-        if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
+        if pp in PAYMENT_PROCESSOR_MAP and PAYMENT_PROCESSOR_MAP[pp].working():
             organization = incomplete_invoice.organization
-            status = PAYMENT_PROVIDER_MAP[pp].update_payment_object_status(
+            status = PAYMENT_PROCESSOR_MAP[pp].update_payment_object_status(
                 organization, incomplete_invoice.external_payment_obj_id
             )
             if status == Invoice.PaymentStatus.PAID:
@@ -465,4 +465,20 @@ def run_generate_invoice(subscription_record_pk_set, **kwargs):
         pk__in=subscription_record_pk_set
     )
     generate_invoice(subscription_record_set, **kwargs)
-    generate_invoice(subscription_record_set, **kwargs)
+
+
+def do_refresh_braintree_tokens():
+    from metering_billing.models import Organization
+    from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
+    from metering_billing.utils.enums import PAYMENT_PROCESSORS
+
+    for org in Organization.objects.filter(
+        payment_provider_ids__braintree__id__isnull=False
+    ):
+        payment_provider = PAYMENT_PROCESSOR_MAP[PAYMENT_PROCESSORS.BRAINTREE]
+        payment_provider.refresh_tokens(org)
+
+
+@shared_task
+def refresh_braintree_tokens():
+    do_refresh_braintree_tokens()

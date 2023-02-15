@@ -3,7 +3,7 @@ import datetime
 import uuid
 from collections import OrderedDict, namedtuple
 from collections.abc import MutableMapping, MutableSequence
-from decimal import ROUND_DOWN, ROUND_UP, Decimal
+from decimal import ROUND_DOWN, ROUND_HALF_UP, ROUND_UP, Decimal
 
 import pytz
 from dateutil import parser
@@ -44,6 +44,12 @@ def convert_to_decimal(value):
     if value is None:
         return Decimal(0)
     return Decimal(value).quantize(Decimal(".0000000001"), rounding=ROUND_UP)
+
+
+def convert_to_two_decimal_places(value):
+    if value is None:
+        return Decimal(0)
+    return Decimal(value).quantize(Decimal(".01"), rounding=ROUND_HALF_UP)
 
 
 def convert_to_date(value):
@@ -533,4 +539,5 @@ def namedtuplefetchall(cursor):
     "Return all rows from a cursor as a namedtuple"
     desc = cursor.description
     nt_result = namedtuple("Result", [col[0] for col in desc])
+    return [nt_result(*row) for row in cursor.fetchall()]
     return [nt_result(*row) for row in cursor.fetchall()]
