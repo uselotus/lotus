@@ -5,9 +5,9 @@ import pytest
 from django.urls import reverse
 from rest_framework import status
 
-from metering_billing.kafka.consumer import write_batch_events_to_db
-from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
-from metering_billing.utils import now_utc
+from lotus.backend.metering_billing.kafka.consumer import write_batch_events_to_db
+from lotus.backend.metering_billing.serializers.serializer_utils import DjangoJSONEncoder
+from lotus.backend.metering_billing.utils import now_utc
 
 
 @pytest.fixture

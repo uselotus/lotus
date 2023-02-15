@@ -11,9 +11,9 @@ from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
-from metering_billing.invoice import generate_invoice
-from metering_billing.models import (
+from lotus.backend.metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+from lotus.backend.metering_billing.invoice import generate_invoice
+from lotus.backend.metering_billing.models import (
     AddOnSpecification,
     CustomerBalanceAdjustment,
     Feature,
@@ -26,9 +26,9 @@ from metering_billing.models import (
     RecurringCharge,
     SubscriptionRecord,
 )
-from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
-from metering_billing.utils import now_utc
-from metering_billing.utils.enums import PLAN_VERSION_STATUS
+from lotus.backend.metering_billing.serializers.serializer_utils import DjangoJSONEncoder
+from lotus.backend.metering_billing.utils import now_utc
+from lotus.backend.metering_billing.utils.enums import PLAN_VERSION_STATUS
 
 
 @pytest.fixture

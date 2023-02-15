@@ -5,8 +5,8 @@ from datetime import timedelta
 
 import pytest
 from django.urls import reverse
-from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
-from metering_billing.models import (
+from lotus.backend.metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+from lotus.backend.metering_billing.models import (
     Event,
     Invoice,
     Metric,
@@ -16,9 +16,9 @@ from metering_billing.models import (
     PriceTier,
     SubscriptionRecord,
 )
-from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
-from metering_billing.utils import now_utc
-from metering_billing.utils.enums import (
+from lotus.backend.metering_billing.serializers.serializer_utils import DjangoJSONEncoder
+from lotus.backend.metering_billing.utils import now_utc
+from lotus.backend.metering_billing.utils.enums import (
     CHARGEABLE_ITEM_TYPE,
     FLAT_FEE_BEHAVIOR,
     INVOICING_BEHAVIOR,
@@ -730,7 +730,7 @@ class TestRegressions:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_refresh_rate_metric_doesnt_fail(self, subscription_test_common_setup):
-        from metering_billing.utils.enums import (
+        from lotus.backend.metering_billing.utils.enums import (
             METRIC_AGGREGATION,
             METRIC_GRANULARITY,
             METRIC_TYPE,

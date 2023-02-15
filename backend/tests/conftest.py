@@ -2,8 +2,8 @@ import uuid
 
 import posthog
 import pytest
-from metering_billing.utils import now_utc
-from metering_billing.utils.enums import (
+from lotus.backend.metering_billing.utils import now_utc
+from lotus.backend.metering_billing.utils.enums import (
     PLAN_DURATION,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
@@ -35,7 +35,7 @@ def use_dummy_cache_backend(settings):
 
 @pytest.fixture
 def turn_off_stripe_connection():
-    from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+    from lotus.backend.metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 
     sk = PAYMENT_PROVIDER_MAP["stripe"].test_secret_key
     PAYMENT_PROVIDER_MAP["stripe"].test_secret_key = None
@@ -59,7 +59,7 @@ def api_client_with_api_key_auth():
 
 @pytest.fixture
 def generate_org_and_api_key():
-    from metering_billing.models import APIToken, Organization
+    from lotus.backend.metering_billing.models import APIToken, Organization
 
     def do_generate_org_and_api_key():
         organization = baker.make(Organization, tax_rate=None)
@@ -73,7 +73,7 @@ def generate_org_and_api_key():
 
 @pytest.fixture
 def add_customers_to_org():
-    from metering_billing.models import Customer
+    from lotus.backend.metering_billing.models import Customer
 
     def do_add_customers_to_org(organization, n):
         customer_set = baker.make(
@@ -91,7 +91,7 @@ def add_customers_to_org():
 
 @pytest.fixture
 def get_customers_in_org():
-    from metering_billing.models import Customer
+    from lotus.backend.metering_billing.models import Customer
 
     def do_get_customers_in_org(organization):
         return Customer.objects.filter(organization=organization)
@@ -101,7 +101,7 @@ def get_customers_in_org():
 
 @pytest.fixture
 def add_users_to_org():
-    from metering_billing.models import User
+    from lotus.backend.metering_billing.models import User
 
     def do_add_users_to_org(organization, n):
         user_set = baker.make(User, _quantity=n, organization=organization)
@@ -112,7 +112,7 @@ def add_users_to_org():
 
 @pytest.fixture
 def create_events_with_org_customer():
-    from metering_billing.models import Event
+    from lotus.backend.metering_billing.models import Event
 
     def do_create_events_with_org_customer(organization, customer, n):
         event_set = baker.make(
@@ -125,7 +125,7 @@ def create_events_with_org_customer():
 
 @pytest.fixture
 def get_events_with_org_customer_id():
-    from metering_billing.models import Event
+    from lotus.backend.metering_billing.models import Event
 
     def do_get_events_with_org_customer_id(organization, customer_id):
         event_set = Event.objects.filter(
@@ -138,7 +138,7 @@ def get_events_with_org_customer_id():
 
 @pytest.fixture
 def get_events_with_org():
-    from metering_billing.models import Event
+    from lotus.backend.metering_billing.models import Event
 
     def do_get_events_with_org(organization):
         event_set = Event.objects.filter(organization=organization)
@@ -149,7 +149,7 @@ def get_events_with_org():
 
 @pytest.fixture
 def add_billable_metrics_to_org():
-    from metering_billing.models import Metric
+    from lotus.backend.metering_billing.models import Metric
 
     def do_add_billable_metrics_to_org(organization, n):
         bm_set = baker.make(
@@ -162,7 +162,7 @@ def add_billable_metrics_to_org():
 
 @pytest.fixture
 def get_billable_metrics_in_org():
-    from metering_billing.models import Metric
+    from lotus.backend.metering_billing.models import Metric
 
     def do_get_billable_metrics_in_org(organization):
         return Metric.objects.filter(organization=organization)
@@ -172,8 +172,8 @@ def get_billable_metrics_in_org():
 
 @pytest.fixture
 def add_subscription_record_to_org():
-    from metering_billing.models import SubscriptionRecord
-    from metering_billing.utils import calculate_end_date
+    from lotus.backend.metering_billing.models import SubscriptionRecord
+    from lotus.backend.metering_billing.utils import calculate_end_date
 
     def do_add_subscription_record_to_org(
         organization,
@@ -222,7 +222,7 @@ def add_subscription_record_to_org():
 
 @pytest.fixture
 def get_subscription_records_in_org():
-    from metering_billing.models import SubscriptionRecord
+    from lotus.backend.metering_billing.models import SubscriptionRecord
 
     def do_get_subscription_records_in_org(organization) -> list[SubscriptionRecord]:
         return SubscriptionRecord.objects.filter(organization=organization)
@@ -232,7 +232,7 @@ def get_subscription_records_in_org():
 
 @pytest.fixture
 def add_product_to_org():
-    from metering_billing.models import Product
+    from lotus.backend.metering_billing.models import Product
 
     def do_add_product_to_org(organization):
         product = baker.make(
@@ -249,7 +249,7 @@ def add_product_to_org():
 
 @pytest.fixture
 def add_plan_to_product():
-    from metering_billing.models import Plan
+    from lotus.backend.metering_billing.models import Plan
 
     def do_add_plan_to_product(product):
         (plan,) = baker.make(
@@ -268,7 +268,7 @@ def add_plan_to_product():
 
 @pytest.fixture
 def add_plan_version_to_plan():
-    from metering_billing.models import PlanVersion, RecurringCharge
+    from lotus.backend.metering_billing.models import PlanVersion, RecurringCharge
 
     def do_add_planversion_to_plan(plan):
         (plan_version,) = baker.make(

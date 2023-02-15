@@ -1,6 +1,6 @@
 import pytest
 from django.urls import reverse
-from metering_billing.utils.enums import PLAN_DURATION, PLAN_VERSION_STATUS, TAG_GROUP
+from lotus.backend.metering_billing.utils.enums import PLAN_DURATION, PLAN_VERSION_STATUS, TAG_GROUP
 from rest_framework import status
 from rest_framework.test import APIClient
 

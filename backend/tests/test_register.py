@@ -5,8 +5,8 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from metering_billing.models import Organization, User
-from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
+from lotus.backend.metering_billing.models import Organization, User
+from lotus.backend.metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 
 
 @pytest.fixture

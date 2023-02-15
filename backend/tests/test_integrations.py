@@ -8,16 +8,16 @@ from django.conf import settings
 from django.db.models import Q
 from rest_framework.test import APIClient
 
-from metering_billing.invoice import generate_invoice
-from metering_billing.models import (
+from lotus.backend.metering_billing.invoice import generate_invoice
+from lotus.backend.metering_billing.models import (
     Customer,
     ExternalPlanLink,
     Invoice,
     SubscriptionRecord,
 )
-from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
-from metering_billing.utils import now_utc
-from metering_billing.utils.enums import PAYMENT_PROVIDERS
+from lotus.backend.metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from lotus.backend.metering_billing.utils import now_utc
+from lotus.backend.metering_billing.utils.enums import PAYMENT_PROVIDERS
 
 STRIPE_TEST_SECRET_KEY = settings.STRIPE_TEST_SECRET_KEY
 stripe.api_key = STRIPE_TEST_SECRET_KEY

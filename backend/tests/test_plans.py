@@ -5,10 +5,10 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from metering_billing.models import Plan, PlanVersion
-from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
-from metering_billing.utils import now_utc
-from metering_billing.utils.enums import (
+from lotus.backend.metering_billing.models import Plan, PlanVersion
+from lotus.backend.metering_billing.serializers.serializer_utils import DjangoJSONEncoder
+from lotus.backend.metering_billing.utils import now_utc
+from lotus.backend.metering_billing.utils.enums import (
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
     PLAN_DURATION,
     PLAN_STATUS,
