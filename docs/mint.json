@@ -131,7 +131,7 @@
           ]
         },
         {
-          "group": "Access",
+          "group": "Entitelments",
           "pages": [
             "api-reference/access/feature-access",
             "api-reference/access/metric-access"
