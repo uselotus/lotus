@@ -37,7 +37,7 @@ class PRICE_ADJUSTMENT_TYPE(models.TextChoices):
     PRICE_OVERRIDE = ("price_override", _("Price Override"))
 
 
-class PAYMENT_PROVIDERS(models.TextChoices):
+class PAYMENT_PROCESSORS(models.TextChoices):
     STRIPE = ("stripe", _("Stripe"))
     BRAINTREE = ("braintree", _("Braintree"))
 

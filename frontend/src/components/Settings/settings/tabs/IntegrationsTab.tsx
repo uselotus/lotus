@@ -6,6 +6,7 @@ import { PaymentProcessorIntegration, Organization } from "../../../../api/api";
 import {
   PaymentProcessorStatusType,
   integrationsMap,
+  PaymentProcessorType,
 } from "../../../../types/payment-processor-type";
 import { AppCard } from "../components/AppCard";
 import useGlobalStore from "../../../../stores/useGlobalstore";
@@ -26,10 +27,9 @@ const IntegrationsTab: FC = () => {
   const [connectionId, setConnectionId] = useState("");
   const [connectionIdName, setConnectionIdName] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [paymentProvider, setPaymentProvider] = useState<
-    "stripe" | "braintree" | null
-  >(null);
-  var nango = new Nango((import.meta as any).env.VITE_NANGO_URL); // Nango Cloud
+  const [paymentProcessor, setPaymentProvider] =
+    useState<PaymentProcessorType | null>(null);
+  var nango = new Nango({ publicKey: (import.meta as any).env.VITE_NANGO_PK }); // Nango Cloud
 
   const handleConnectWithPaymentProcessorClick = (
     item: PaymentProcessorStatusType
@@ -72,10 +72,10 @@ const IntegrationsTab: FC = () => {
   };
 
   const handleUpdatePaymentProviderId = () => {
-    if (paymentProvider !== null && connectionId !== "") {
+    if (paymentProcessor !== null && connectionId !== "") {
       Organization.updateOrganizationPaymentProvider({
         org_id: org.organization_id,
-        payment_provider: paymentProvider,
+        payment_provider: paymentProcessor,
         payment_provider_id: connectionId,
       })
         .then((res) => {
@@ -116,13 +116,16 @@ const IntegrationsTab: FC = () => {
                   integrationsMap[item.payment_provider_name].connection_id_name
                 }
                 idValue={item.connection_id}
+                working={item.working}
                 handleClickId={() => {
-                  setShowModal(true);
-                  setConnectionIdName(
-                    integrationsMap[item.payment_provider_name]
-                      .connection_id_name
-                  );
-                  setPaymentProvider(item.payment_provider_name);
+                  if (item.self_hosted === false) {
+                    setShowModal(true);
+                    setConnectionIdName(
+                      integrationsMap[item.payment_provider_name]
+                        .connection_id_name
+                    );
+                    setPaymentProvider(item.payment_provider_name);
+                  }
                 }}
               />
             </Col>

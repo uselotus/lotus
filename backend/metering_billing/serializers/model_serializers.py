@@ -1,14 +1,11 @@
 import logging
 from decimal import Decimal
 
+import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import DecimalField, Q, Sum
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-
-import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -37,7 +34,7 @@ from metering_billing.models import (
     WebhookEndpoint,
     WebhookTrigger,
 )
-from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.serializers.serializer_utils import (
     OrganizationSettingUUIDField,
     OrganizationUUIDField,
@@ -58,7 +55,7 @@ from metering_billing.utils.enums import (
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
     ORGANIZATION_STATUS,
-    PAYMENT_PROVIDERS,
+    PAYMENT_PROCESSORS,
     PLAN_DURATION,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
@@ -67,6 +64,8 @@ from metering_billing.utils.enums import (
     TAG_GROUP,
     WEBHOOK_TRIGGER_EVENTS,
 )
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -392,7 +391,7 @@ class OrganizationUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializ
     )
     timezone = TimeZoneSerializerField(use_pytz=True)
     payment_provider = serializers.ChoiceField(
-        choices=PAYMENT_PROVIDERS.choices,
+        choices=PAYMENT_PROCESSORS.choices,
         required=False,
         help_text="To udpate a payment provider's ID, specify the payment provider you want to update in this field, and the payment_provider_id in the corresponding field.",
     )
@@ -443,9 +442,7 @@ class OrganizationUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializ
                 new_dict["id"] = validated_data.get("payment_provider_id")
                 new_dict["connected"] = connected
             instance.payment_provider_ids[provider] = new_dict
-            PAYMENT_PROVIDER_MAP[provider].initialize_settings(
-                instance
-            )
+            PAYMENT_PROCESSOR_MAP[provider].initialize_settings(instance)
         instance.default_currency = validated_data.get(
             "default_currency", instance.default_currency
         )
@@ -1861,10 +1858,10 @@ class OrganizationSettingUpdateSerializer(
             validated_data["setting_values"] = list(
                 current_setting_values.union(new_setting_values)
             )
-        elif (
-            instance.setting_name
-            == ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS
-        ):
+        elif instance.setting_name in [
+            ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS,
+            ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_BRAINTREE_AFTER_LOTUS,
+        ]:
             if not isinstance(setting_values, bool):
                 raise serializers.ValidationError("Setting values must be a boolean")
             setting_values = {"value": setting_values}

@@ -73,11 +73,24 @@ STRIPE_TEST_SECRET_KEY = config("STRIPE_TEST_SECRET_KEY", default=None)
 STRIPE_TEST_CLIENT = config("STRIPE_TEST_CLIENT", default="")
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="whsec_")
 # Braintree
-BRAINTREE_SECRET_KEY = config("BRAINTREE_SECRET_KEY", default="")
-BRAINTREE_LIVE_SECRET_KEY = config("BRAINTREE_LIVE_SECRET_KEY", default="")
-BRAINTREE_LIVE_CLIENT = config("BRAINTREE_LIVE_CLIENT", default="")
-BRAINTREE_TEST_SECRET_KEY = config("BRAINTREE_TEST_SECRET_KEY", default="")
-BRAINTREE_TEST_CLIENT = config("BRAINTREE_TEST_CLIENT", default="")
+BRAINTREE_LIVE_MERCHANT_ID = config("BRAINTREE_LIVE_MERCHANT_ID", default=None)
+BRAINTREE_LIVE_PUBLIC_KEY = config("BRAINTREE_LIVE_PUBLIC_KEY", default=None)
+BRAINTREE_LIVE_SECRET_KEY = config("BRAINTREE_LIVE_SECRET_KEY", default=None)
+BRAINTREE_TEST_MERCHANT_ID = config("BRAINTREE_TEST_MERCHANT_ID", default=None)
+BRAINTREE_TEST_PUBLIC_KEY = config("BRAINTREE_TEST_PUBLIC_KEY", default=None)
+BRAINTREE_TEST_SECRET_KEY = config("BRAINTREE_TEST_SECRET_KEY", default=None)
+if BRAINTREE_LIVE_MERCHANT_ID == "change_me":
+    BRAINTREE_LIVE_MERCHANT_ID = None
+if BRAINTREE_LIVE_PUBLIC_KEY == "change_me":
+    BRAINTREE_LIVE_PUBLIC_KEY = None
+if BRAINTREE_LIVE_SECRET_KEY == "change_me":
+    BRAINTREE_LIVE_SECRET_KEY = None
+if BRAINTREE_TEST_MERCHANT_ID == "change_me":
+    BRAINTREE_TEST_MERCHANT_ID = None
+if BRAINTREE_TEST_PUBLIC_KEY == "change_me":
+    BRAINTREE_TEST_PUBLIC_KEY = None
+if BRAINTREE_TEST_SECRET_KEY == "change_me":
+    BRAINTREE_TEST_SECRET_KEY = None
 BRAINTREE_WEBHOOK_SECRET = config("BRAINTREE_WEBHOOK_SECRET", default="")
 # Webhooks for Svix
 SVIX_API_KEY = config("SVIX_API_KEY", default="")
@@ -565,7 +578,7 @@ SPECTACULAR_SETTINGS = {
         "categorical_filter_operators": "metering_billing.utils.enums.CATEGORICAL_FILTER_OPERATORS.choices",
         "BacktestStatusEnum": "metering_billing.utils.enums.BACKTEST_STATUS.choices",
         "BacktestKPIEnum": "metering_billing.utils.enums.BACKTEST_KPI.choices",
-        "PaymentProvidersEnum": "metering_billing.utils.enums.PAYMENT_PROVIDERS.choices",
+        "PaymentProcesorsEnum": "metering_billing.utils.enums.PAYMENT_PROCESSORS.choices",
         "MetricAggregationEnum": "metering_billing.utils.enums.METRIC_AGGREGATION.choices",
         "MetricGranularityEnum": "metering_billing.utils.enums.METRIC_GRANULARITY.choices",
         "PlanVersionStatusEnum": "metering_billing.utils.enums.PLAN_VERSION_STATUS.choices",

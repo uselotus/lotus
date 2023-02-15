@@ -18,15 +18,6 @@ from django.db.models import Count, F, FloatField, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
-
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
@@ -63,7 +54,7 @@ from metering_billing.utils.enums import (
     NUMERIC_FILTER_OPERATORS,
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
-    PAYMENT_PROVIDERS,
+    PAYMENT_PROCESSORS,
     PLAN_DURATION,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
@@ -78,6 +69,14 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -153,9 +152,9 @@ class Organization(models.Model):
 
     def save(self, *args, **kwargs):
         for k, v in self.payment_provider_ids.items():
-            if k not in PAYMENT_PROVIDERS:
+            if k not in PAYMENT_PROCESSORS:
                 raise ExternalConnectionInvalid(
-                    f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
+                    f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROCESSORS}"
                 )
         new = self.pk is None
         if self.timezone != self.__original_timezone and self.pk:
@@ -434,18 +433,6 @@ class Product(models.Model):
 
 
 class Customer(models.Model):
-    """
-    Customer Model
-
-    This model represents a customer.
-
-    Attributes:
-        name (str): The name of the customer.
-        customer_id (str): A :model:`metering_billing.Organization`'s internal designation for the customer.
-        payment_provider_id (str): The id of the payment provider the customer is using.
-        properties (dict): An extendable dictionary of properties, useful for filtering, etc.
-    """
-
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="customers"
     )
@@ -466,7 +453,7 @@ class Customer(models.Model):
         help_text="The id provided when creating the customer, we suggest matching with your internal customer id in your backend",
     )
     payment_provider = models.CharField(
-        blank=True, choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True
+        blank=True, choices=PAYMENT_PROCESSORS.choices, max_length=40, null=True
     )
     integrations = models.JSONField(default=dict, blank=True)
     properties = models.JSONField(
@@ -507,9 +494,9 @@ class Customer(models.Model):
 
     def save(self, *args, **kwargs):
         for k, v in self.integrations.items():
-            if k not in PAYMENT_PROVIDERS:
+            if k not in PAYMENT_PROCESSORS:
                 raise ExternalConnectionInvalid(
-                    f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
+                    f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROCESSORS}"
                 )
             id = v.get("id")
             if id is None:
@@ -1481,7 +1468,7 @@ class Invoice(models.Model):
     invoice_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     external_payment_obj_id = models.CharField(max_length=100, blank=True, null=True)
     external_payment_obj_type = models.CharField(
-        choices=PAYMENT_PROVIDERS.choices, max_length=40, blank=True, null=True
+        choices=PAYMENT_PROCESSORS.choices, max_length=40, blank=True, null=True
     )
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="invoices", null=True
@@ -2108,7 +2095,7 @@ class ExternalPlanLink(models.Model):
     plan = models.ForeignKey(
         Plan, on_delete=models.CASCADE, related_name="external_links"
     )
-    source = models.CharField(choices=PAYMENT_PROVIDERS.choices, max_length=40)
+    source = models.CharField(choices=PAYMENT_PROCESSORS.choices, max_length=40)
     external_plan_id = models.CharField(max_length=100)
 
     def __str__(self):

@@ -35,14 +35,14 @@ def use_dummy_cache_backend(settings):
 
 @pytest.fixture
 def turn_off_stripe_connection():
-    from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+    from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 
-    sk = PAYMENT_PROVIDER_MAP["stripe"].test_secret_key
-    PAYMENT_PROVIDER_MAP["stripe"].test_secret_key = None
+    sk = PAYMENT_PROCESSOR_MAP["stripe"].test_secret_key
+    PAYMENT_PROCESSOR_MAP["stripe"].test_secret_key = None
 
     yield
 
-    PAYMENT_PROVIDER_MAP["stripe"].test_secret_key = sk
+    PAYMENT_PROCESSOR_MAP["stripe"].test_secret_key = sk
 
 
 @pytest.fixture

@@ -89,7 +89,7 @@ from metering_billing.tasks import run_backtest
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     METRIC_STATUS,
-    PAYMENT_PROVIDERS,
+    PAYMENT_PROCESSORS,
     WEBHOOK_TRIGGER_EVENTS,
 )
 from rest_framework import mixins, serializers, status, viewsets
@@ -980,7 +980,9 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
             inline_serializer(
                 name="SourceSerializer",
                 fields={
-                    "source": serializers.ChoiceField(choices=PAYMENT_PROVIDERS.choices)
+                    "source": serializers.ChoiceField(
+                        choices=PAYMENT_PROCESSORS.choices
+                    )
                 },
             ),
         ],

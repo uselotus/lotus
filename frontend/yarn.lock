@@ -872,10 +872,10 @@
     hey-listen "^1.0.8"
     tslib "^2.3.1"
 
-"@nangohq/frontend@^0.7.2":
-  version "0.7.2"
-  resolved "https://registry.yarnpkg.com/@nangohq/frontend/-/frontend-0.7.2.tgz#72c386dd65a681da2d4b45142a5cb3c5c0467aed"
-  integrity sha512-pNgFqhLANspNRa6LGSbWP1hVgaSTXD3sKIjedOgIdxJTG5jVBvIMb8qI2K2EhuqyTp6aUUYxQlim96ekVHZ9Vg==
+"@nangohq/frontend@^0.8.0":
+  version "0.8.0"
+  resolved "https://registry.yarnpkg.com/@nangohq/frontend/-/frontend-0.8.0.tgz#bd12cd9779e2d11297fec26b99869f2259d6ad0a"
+  integrity sha512-Mpagw1+4eNwSuae5zlbEqZ7bHRZROzfv+enCXzYHDchMtaieDvROSCGO9zfnDaLM4O6/FJj2pBZhLPnab03Skg==
 
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"

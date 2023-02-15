@@ -2,8 +2,8 @@ import stripe
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from metering_billing.models import Customer, Invoice
-from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
-from metering_billing.utils.enums import PAYMENT_PROVIDERS
+from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
+from metering_billing.utils.enums import PAYMENT_PROCESSORS
 from rest_framework import status
 from rest_framework.decorators import (
     api_view,
@@ -21,7 +21,7 @@ def _invoice_paid_handler(event):
     invoice = event["data"]["object"]
     id = invoice.id
     matching_invoice = Invoice.objects.filter(
-        external_payment_obj_type=PAYMENT_PROVIDERS.STRIPE, external_payment_obj_id=id
+        external_payment_obj_type=PAYMENT_PROCESSORS.STRIPE, external_payment_obj_id=id
     ).first()
     if matching_invoice:
         matching_invoice.payment_status = Invoice.PaymentStatus.PAID
@@ -40,13 +40,13 @@ def _payment_method_refresh_handler(stripe_customer_id):
             stripe.api_key = STRIPE_TEST_SECRET_KEY
         integrations_dict = matching_customer.integrations
         stripe_payment_methods = []
-        if PAYMENT_PROVIDER_MAP[PAYMENT_PROVIDERS.STRIPE].self_hosted:
+        if PAYMENT_PROCESSOR_MAP[PAYMENT_PROCESSORS.STRIPE].self_hosted:
             payment_methods = stripe.Customer.list_payment_methods(stripe_customer_id)
         else:
             payment_methods = stripe.Customer.list_payment_methods(
                 customer=stripe_customer_id,
                 stripe_account=organization.payment_provider_ids.get(
-                    PAYMENT_PROVIDERS.STRIPE
+                    PAYMENT_PROCESSORS.STRIPE
                 ),
             )
         for payment_method in payment_methods.auto_paging_iter():
@@ -61,7 +61,7 @@ def _payment_method_refresh_handler(stripe_customer_id):
                 pm_dict["details"]["exp_year"] = payment_method.card.exp_year
                 pm_dict["details"]["last4"] = payment_method.card.last4
             stripe_payment_methods.append(pm_dict)
-        integrations_dict[PAYMENT_PROVIDERS.STRIPE][
+        integrations_dict[PAYMENT_PROCESSORS.STRIPE][
             "payment_methods"
         ] = stripe_payment_methods
 

@@ -14,6 +14,7 @@ type Props = {
   selfHosted?: boolean;
   idName?: string;
   idValue?: string;
+  working?: boolean;
 };
 
 export function AppCard({
@@ -27,7 +28,13 @@ export function AppCard({
   selfHosted,
   idName,
   idValue,
+  working,
 }: Props) {
+  const link = title.toLowerCase().includes("stripe")
+    ? "stripe"
+    : title.toLowerCase().includes("braintree")
+    ? "braintree"
+    : title.toLowerCase();
   return (
     <div>
       <Card
@@ -40,14 +47,9 @@ export function AppCard({
         size="small"
         extra={
           <>
-            {idName ? (
-              <Tag onClick={handleClickId} style={{ cursor: "pointer" }}>
-                <b>{idName}:</b> {idValue || "-"}
-              </Tag>
-            ) : null}
             {(idValue || selfHosted) && connected ? (
               <Tag color="success">Connected</Tag>
-            ) : !selfHosted && !idValue ? null : !selfHosted ? (
+            ) : !selfHosted && !idValue ? null : !selfHosted || working ? (
               <Tag
                 color="default"
                 onClick={
@@ -66,7 +68,7 @@ export function AppCard({
                 }
                 style={{ cursor: "pointer" }}
               >
-                {idValue ? "Connect" : "Account Not Linked"}
+                {idValue ? "Connect" : "Not Linked"}
               </Tag>
             ) : (
               <Tag color="default">No API Key</Tag>
@@ -82,19 +84,22 @@ export function AppCard({
           }
           description={description}
         />
+        {idName ? (
+          <div className="flex justify-end pt-4">
+            <Tag onClick={handleClickId} style={{ cursor: "pointer" }}>
+              <b>{idName}:</b> {idValue || "-"}
+            </Tag>
+          </div>
+        ) : null}
         {connected ? (
           <div className="flex justify-end pt-4">
-            <Link to={title.toLowerCase()}>
+            <Link to={link}>
               <h3 className="text-darkgold hover:text-black">
                 View Integration
               </h3>
             </Link>
           </div>
-        ) : (
-          <div className="flex justify-end ">
-            <h3 className="">-</h3>
-          </div>
-        )}
+        ) : null}
       </Card>
     </div>
   );
