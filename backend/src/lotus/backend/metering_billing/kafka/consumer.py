@@ -5,8 +5,8 @@ from dataclasses import dataclass
 import posthog
 from django.conf import settings
 from django.core.cache import cache
-from metering_billing.models import Customer, Event, Organization
-from metering_billing.utils import now_utc
+from lotus.backend.metering_billing.models import Customer, Event, Organization
+from lotus.backend.metering_billing.utils import now_utc
 
 from .singleton import Singleton
 

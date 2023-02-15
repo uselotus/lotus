@@ -9,11 +9,11 @@ from drf_spectacular.utils import extend_schema_serializer
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from metering_billing.invoice import (
+from lotus.backend.metering_billing.invoice import (
     generate_balance_adjustment_invoice,
     generate_invoice,
 )
-from metering_billing.models import (
+from lotus.backend.metering_billing.models import (
     AddOnSpecification,
     CategoricalFilter,
     Customer,
@@ -37,8 +37,8 @@ from metering_billing.models import (
     Tag,
     UsageAlert,
 )
-from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
-from metering_billing.serializers.serializer_utils import (
+from lotus.backend.metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from lotus.backend.metering_billing.serializers.serializer_utils import (
     AddonUUIDField,
     BalanceAdjustmentUUIDField,
     ConvertEmptyStringToNullMixin,
@@ -52,8 +52,8 @@ from metering_billing.serializers.serializer_utils import (
     TimeZoneSerializerField,
     UsageAlertUUIDField,
 )
-from metering_billing.utils import convert_to_date, now_utc
-from metering_billing.utils.enums import (
+from lotus.backend.metering_billing.utils import convert_to_date, now_utc
+from lotus.backend.metering_billing.utils.enums import (
     CATEGORICAL_FILTER_OPERATORS,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     FLAT_FEE_BEHAVIOR,
@@ -1263,7 +1263,7 @@ class SubscriptionRecordCreateSerializer(
         return data
 
     def create(self, validated_data):
-        from metering_billing.invoice import generate_invoice
+        from lotus.backend.metering_billing.invoice import generate_invoice
 
         filters = validated_data.pop("subscription_filters", [])
         subscription_filters = []

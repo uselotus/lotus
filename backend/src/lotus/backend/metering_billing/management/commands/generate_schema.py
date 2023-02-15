@@ -6,7 +6,7 @@ from ruamel.yaml import YAML
 
 
 class Command(BaseCommand):
-    "Django command to execute calculate invoice"
+    """Django command to execute calculate invoice"""
 
     def handle(self, *args, **options):
         management.call_command(

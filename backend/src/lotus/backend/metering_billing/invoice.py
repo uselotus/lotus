@@ -8,21 +8,21 @@ from django.conf import settings
 from django.db.models import Sum
 from django.db.models.query import QuerySet
 
-from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
-from metering_billing.utils import (
+from lotus.backend.metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from lotus.backend.metering_billing.utils import (
     calculate_end_date,
     convert_to_datetime,
     date_as_min_dt,
     now_utc,
 )
-from metering_billing.utils.enums import (
+from lotus.backend.metering_billing.utils.enums import (
     CHARGEABLE_ITEM_TYPE,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     INVOICE_CHARGE_TIMING_TYPE,
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
 )
-from metering_billing.webhooks import invoice_created_webhook
+from lotus.backend.metering_billing.webhooks import invoice_created_webhook
 
 logger = logging.getLogger("django.server")
 
@@ -46,8 +46,8 @@ def generate_invoice(
     """
     Generate an invoice for a subscription.
     """
-    from metering_billing.models import Invoice
-    from metering_billing.tasks import generate_invoice_pdf_async
+    from lotus.backend.metering_billing.models import Invoice
+    from lotus.backend.metering_billing.tasks import generate_invoice_pdf_async
 
     if not issue_date:
         issue_date = now_utc()
@@ -136,7 +136,7 @@ def generate_invoice(
 
 
 def calculate_subscription_record_flat_fees(subscription_record, invoice):
-    from metering_billing.models import InvoiceLineItem, RecurringCharge
+    from lotus.backend.metering_billing.models import InvoiceLineItem, RecurringCharge
 
     for recurring_charge in subscription_record.billing_plan.recurring_charges.all():
         flat_fee_due = recurring_charge.calculate_amount_due(subscription_record)
@@ -196,7 +196,7 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice):
 
 
 def calculate_subscription_record_usage_fees(subscription_record, invoice):
-    from metering_billing.models import InvoiceLineItem
+    from lotus.backend.metering_billing.models import InvoiceLineItem
 
     billing_plan = subscription_record.billing_plan
     # only calculate this for parent plans! addons should never calculate
@@ -243,7 +243,7 @@ def check_subscription_record_renews(subscription_record, issue_date):
 
 
 def create_next_subscription_record(subscription_record, next_bp):
-    from metering_billing.models import SubscriptionRecord
+    from lotus.backend.metering_billing.models import SubscriptionRecord
 
     timezone = subscription_record.customer.timezone
     subrec_dict = {
@@ -265,7 +265,7 @@ def create_next_subscription_record(subscription_record, next_bp):
 def charge_next_plan_flat_fee(
     subscription_record, next_subscription_record, next_bp, invoice
 ):
-    from metering_billing.models import InvoiceLineItem, RecurringCharge
+    from lotus.backend.metering_billing.models import InvoiceLineItem, RecurringCharge
 
     timezone = subscription_record.customer.timezone
     for recurring_charge in next_bp.recurring_charges.all():
@@ -304,7 +304,7 @@ def charge_next_plan_flat_fee(
 
 
 def apply_plan_discounts(invoice):
-    from metering_billing.models import InvoiceLineItem, PlanVersion, SubscriptionRecord
+    from lotus.backend.metering_billing.models import InvoiceLineItem, PlanVersion, SubscriptionRecord
 
     distinct_sr_pv_combos = (
         invoice.line_items.filter(
@@ -354,7 +354,7 @@ def apply_taxes(invoice, customer, organization):
     """
     Apply taxes to an invoice
     """
-    from metering_billing.models import Invoice, InvoiceLineItem
+    from lotus.backend.metering_billing.models import Invoice, InvoiceLineItem
 
     if invoice.payment_status == Invoice.PaymentStatus.PAID:
         return
@@ -395,7 +395,7 @@ def apply_customer_balance_adjustments(invoice, customer, organization, draft):
     """
     Apply customer balance adjustments to an invoice
     """
-    from metering_billing.models import (
+    from lotus.backend.metering_billing.models import (
         CustomerBalanceAdjustment,
         Invoice,
         InvoiceLineItem,
@@ -461,8 +461,8 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
     """
     Generate an invoice for a subscription.
     """
-    from metering_billing.models import Invoice, InvoiceLineItem
-    from metering_billing.tasks import generate_invoice_pdf_async
+    from lotus.backend.metering_billing.models import Invoice, InvoiceLineItem
+    from lotus.backend.metering_billing.tasks import generate_invoice_pdf_async
 
     issue_date = balance_adjustment.created
     customer = balance_adjustment.customer
@@ -530,7 +530,7 @@ def generate_external_payment_obj(invoice):
 
 
 def calculate_due_date(issue_date, organization):
-    from metering_billing.models import OrganizationSetting
+    from lotus.backend.metering_billing.models import OrganizationSetting
 
     due_date = issue_date
     grace_period_setting = OrganizationSetting.objects.filter(
@@ -546,7 +546,7 @@ def calculate_due_date(issue_date, organization):
 
 
 def finalize_cost_due(invoice, draft):
-    from metering_billing.models import Invoice
+    from lotus.backend.metering_billing.models import Invoice
 
     invoice.cost_due = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
     if abs(invoice.cost_due) < 0.01 and not draft:

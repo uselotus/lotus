@@ -14,9 +14,9 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.rl_config import TTFSearchPath
 
-from metering_billing.models import Invoice
-from metering_billing.serializers.serializer_utils import PlanUUIDField
-from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
+from lotus.backend.metering_billing.models import Invoice
+from lotus.backend.metering_billing.serializers.serializer_utils import PlanUUIDField
+from lotus.backend.metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
 
 logger = logging.getLogger("django.server")
 

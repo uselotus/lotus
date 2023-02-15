@@ -8,12 +8,12 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
 
-from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
-from metering_billing.serializers.backtest_serializers import (
+from lotus.backend.metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from lotus.backend.metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
 )
-from metering_billing.serializers.serializer_utils import PlanVersionUUIDField
-from metering_billing.utils import (
+from lotus.backend.metering_billing.serializers.serializer_utils import PlanVersionUUIDField
+from lotus.backend.metering_billing.utils import (
     date_as_max_dt,
     date_as_min_dt,
     dates_bwn_two_dts,
@@ -22,7 +22,7 @@ from metering_billing.utils import (
     make_all_decimals_floats,
     now_utc,
 )
-from metering_billing.utils.enums import (
+from lotus.backend.metering_billing.utils.enums import (
     BACKTEST_STATUS,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
 )
@@ -35,7 +35,7 @@ POSTHOG_PERSON = settings.POSTHOG_PERSON
 
 @shared_task
 def update_subscription_filter_settings_task(org_pk, subscription_filter_keys):
-    from metering_billing.models import Organization
+    from lotus.backend.metering_billing.models import Organization
 
     org = Organization.objects.get(pk=org_pk)
     org.update_subscription_filter_settings(subscription_filter_keys)
@@ -43,8 +43,8 @@ def update_subscription_filter_settings_task(org_pk, subscription_filter_keys):
 
 @shared_task
 def generate_invoice_pdf_async(invoice_pk):
-    from metering_billing.invoice_pdf import generate_invoice_pdf
-    from metering_billing.models import Invoice
+    from lotus.backend.metering_billing.invoice_pdf import generate_invoice_pdf
+    from lotus.backend.metering_billing.models import Invoice
 
     invoice = Invoice.objects.get(pk=invoice_pk)
     pdf_url = generate_invoice_pdf(
@@ -60,8 +60,8 @@ def calculate_invoice():
     # GENERAL PHILOSOPHY: this task is for periodic maintenance of ending susbcriptions. We only end and re-start subscriptions when they're scheduled to end, if for some other reason they end early then it is up to the other process to handle the invoice creationg and .
     # get ending subs
 
-    from metering_billing.invoice import generate_invoice
-    from metering_billing.models import Invoice, SubscriptionRecord
+    from lotus.backend.metering_billing.invoice import generate_invoice
+    from lotus.backend.metering_billing.models import Invoice, SubscriptionRecord
 
     now_minus_30 = now_utc() + relativedelta(
         minutes=-30
@@ -102,7 +102,7 @@ def calculate_invoice():
 
 
 def refresh_alerts_inner():
-    from metering_billing.models import UsageAlertResult
+    from lotus.backend.metering_billing.models import UsageAlertResult
 
     # get all UsageAlertResults
     now = now_utc()
@@ -121,7 +121,7 @@ def refresh_alerts():
 
 @shared_task
 def zero_out_expired_balance_adjustments():
-    from metering_billing.models import CustomerBalanceAdjustment
+    from lotus.backend.metering_billing.models import CustomerBalanceAdjustment
 
     now = now_utc()
     expired_balance_adjustments = CustomerBalanceAdjustment.objects.filter(
@@ -135,7 +135,7 @@ def zero_out_expired_balance_adjustments():
 
 @shared_task
 def update_invoice_status():
-    from metering_billing.models import Invoice
+    from lotus.backend.metering_billing.models import Invoice
 
     incomplete_invoices = Invoice.objects.filter(
         Q(payment_status=Invoice.PaymentStatus.UNPAID),
@@ -155,7 +155,7 @@ def update_invoice_status():
 
 @shared_task
 def run_backtest(backtest_id):
-    from metering_billing.models import Backtest, PlanComponent, SubscriptionRecord
+    from lotus.backend.metering_billing.models import Backtest, PlanComponent, SubscriptionRecord
 
     try:
         backtest = Backtest.objects.get(backtest_id=backtest_id)
@@ -446,8 +446,8 @@ def run_backtest(backtest_id):
 
 @shared_task
 def run_generate_invoice(subscription_record_pk_set, **kwargs):
-    from metering_billing.invoice import generate_invoice
-    from metering_billing.models import SubscriptionRecord
+    from lotus.backend.metering_billing.invoice import generate_invoice
+    from lotus.backend.metering_billing.models import SubscriptionRecord
 
     subscription_record_set = SubscriptionRecord.objects.filter(
         pk__in=subscription_record_pk_set

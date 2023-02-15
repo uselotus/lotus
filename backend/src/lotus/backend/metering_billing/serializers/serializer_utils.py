@@ -73,7 +73,7 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
         return queryset
 
     def to_internal_value(self, data):
-        from metering_billing.models import (
+        from lotus.backend.metering_billing.models import (
             CustomerBalanceAdjustment,
             Feature,
             Invoice,
@@ -103,7 +103,7 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
         return super().to_internal_value(data)
 
     def to_representation(self, obj):
-        from metering_billing.models import (
+        from lotus.backend.metering_billing.models import (
             CustomerBalanceAdjustment,
             Feature,
             Invoice,

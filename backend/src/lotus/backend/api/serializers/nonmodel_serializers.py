@@ -7,14 +7,14 @@ from api.serializers.model_serializers import (
     LightweightPlanVersionSerializer,
     SubscriptionCategoricalFilterSerializer,
 )
-from metering_billing.models import (
+from lotus.backend.metering_billing.models import (
     Customer,
     Feature,
     Invoice,
     Metric,
     SubscriptionRecord,
 )
-from metering_billing.serializers.serializer_utils import (
+from lotus.backend.metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganization,
     SlugRelatedFieldWithOrganizationPK,
     TimezoneFieldMixin,

@@ -10,8 +10,8 @@ import pytz
 from dateutil.relativedelta import relativedelta
 from model_bakery import baker
 
-from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
-from metering_billing.models import (
+from lotus.backend.metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+from lotus.backend.metering_billing.models import (
     APIToken,
     Backtest,
     BacktestSubstitution,
@@ -41,9 +41,9 @@ from metering_billing.models import (
     WebhookEndpoint,
     WebhookTrigger,
 )
-from metering_billing.tasks import run_backtest, run_generate_invoice
-from metering_billing.utils import date_as_max_dt, date_as_min_dt, now_utc
-from metering_billing.utils.enums import (
+from lotus.backend.metering_billing.tasks import run_backtest, run_generate_invoice
+from lotus.backend.metering_billing.utils import date_as_max_dt, date_as_min_dt, now_utc
+from lotus.backend.metering_billing.utils.enums import (
     BACKTEST_KPI,
     EVENT_TYPE,
     METRIC_AGGREGATION,

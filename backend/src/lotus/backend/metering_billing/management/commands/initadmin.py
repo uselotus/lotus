@@ -3,8 +3,8 @@ import os
 from django.core.management.base import BaseCommand
 from dotenv import load_dotenv
 
-from metering_billing.models import Metric, Organization, User
-from metering_billing.utils.enums import METRIC_STATUS
+from lotus.backend.metering_billing.models import Metric, Organization, User
+from lotus.backend.metering_billing.utils.enums import METRIC_STATUS
 
 load_dotenv()
 

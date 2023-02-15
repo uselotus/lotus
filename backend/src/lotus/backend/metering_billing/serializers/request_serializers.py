@@ -1,8 +1,8 @@
-from metering_billing.models import Customer
-from metering_billing.serializers.serializer_utils import (
+from lotus.backend.metering_billing.models import Customer
+from lotus.backend.metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganization,
 )
-from metering_billing.utils.enums import (
+from lotus.backend.metering_billing.utils.enums import (
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
 )

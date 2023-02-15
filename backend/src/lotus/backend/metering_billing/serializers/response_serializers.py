@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from metering_billing.serializers.model_serializers import MetricSerializer
+from lotus.backend.metering_billing.serializers.model_serializers import MetricSerializer
 
 
 class PeriodSubscriptionsResponseSerializer(serializers.Serializer):

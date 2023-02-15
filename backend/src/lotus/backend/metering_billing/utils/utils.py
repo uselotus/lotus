@@ -8,8 +8,8 @@ import pytz
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.db.models import Field, Model
-from metering_billing.exceptions.exceptions import ServerError
-from metering_billing.utils.enums import (
+from lotus.backend.metering_billing.exceptions.exceptions import ServerError
+from lotus.backend.metering_billing.utils.enums import (
     METRIC_GRANULARITY,
     PLAN_DURATION,
     USAGE_CALC_GRANULARITY,

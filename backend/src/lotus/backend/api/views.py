@@ -41,7 +41,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.serializers.model_serializers import (
+from lotus.backend.api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
     AddonSubscriptionRecordFilterSerializer,
     AddOnSubscriptionRecordSerializer,
@@ -65,7 +65,7 @@ from api.serializers.model_serializers import (
     SubscriptionRecordSerializer,
     SubscriptionRecordUpdateSerializer,
 )
-from api.serializers.nonmodel_serializers import (
+from lotus.backend.api.serializers.nonmodel_serializers import (
     FeatureAccessRequestSerialzier,
     FeatureAccessResponseSerializer,
     GetCustomerEventAccessRequestSerializer,
@@ -76,19 +76,19 @@ from api.serializers.nonmodel_serializers import (
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
 )
-from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
-from metering_billing.exceptions import (
+from lotus.backend.metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
+from lotus.backend.metering_billing.exceptions import (
     DuplicateCustomer,
     MethodNotAllowed,
     ServerError,
     SwitchPlanDurationMismatch,
     SwitchPlanSamePlanException,
 )
-from metering_billing.exceptions.exceptions import NotFoundException
-from metering_billing.invoice import generate_invoice
-from metering_billing.invoice_pdf import get_invoice_presigned_url
-from metering_billing.kafka.producer import Producer
-from metering_billing.models import (
+from lotus.backend.metering_billing.exceptions.exceptions import NotFoundException
+from lotus.backend.metering_billing.invoice import generate_invoice
+from lotus.backend.metering_billing.invoice_pdf import get_invoice_presigned_url
+from lotus.backend.metering_billing.kafka.producer import Producer
+from lotus.backend.metering_billing.models import (
     CategoricalFilter,
     Customer,
     CustomerBalanceAdjustment,
@@ -101,8 +101,8 @@ from metering_billing.models import (
     PriceTier,
     SubscriptionRecord,
 )
-from metering_billing.permissions import HasUserAPIKey, ValidOrganization
-from metering_billing.serializers.serializer_utils import (
+from lotus.backend.metering_billing.permissions import HasUserAPIKey, ValidOrganization
+from lotus.backend.metering_billing.serializers.serializer_utils import (
     AddonUUIDField,
     BalanceAdjustmentUUIDField,
     InvoiceUUIDField,
@@ -110,13 +110,13 @@ from metering_billing.serializers.serializer_utils import (
     OrganizationUUIDField,
     PlanUUIDField,
 )
-from metering_billing.utils import (
+from lotus.backend.metering_billing.utils import (
     calculate_end_date,
     convert_to_datetime,
     date_as_max_dt,
     now_utc,
 )
-from metering_billing.utils.enums import (
+from lotus.backend.metering_billing.utils.enums import (
     CATEGORICAL_FILTER_OPERATORS,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     FLAT_FEE_BEHAVIOR,
@@ -380,7 +380,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return super().get_object()
 
     def get_queryset(self):
-        from metering_billing.models import PlanVersion
+        from lotus.backend.metering_billing.models import PlanVersion
 
         now = now_utc()
         organization = self.request.organization

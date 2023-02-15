@@ -2,7 +2,7 @@
 
 from django.db import migrations
 
-from metering_billing.utils.enums import BATCH_ROUNDING_TYPE, PRICE_TIER_TYPE
+from lotus.backend.metering_billing.utils.enums import BATCH_ROUNDING_TYPE, PRICE_TIER_TYPE
 
 
 def migrate_plancomponetns_to_price_tiers(apps, schema_editor):

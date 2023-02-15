@@ -1,12 +1,12 @@
 from decimal import Decimal
 
-import api.serializers.model_serializers as api_serializers
+import lotus.backend.api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
 from django.db.models import DecimalField, Q, Sum
-from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
-from metering_billing.exceptions import DuplicateOrganization, ServerError
-from metering_billing.models import (
+from lotus.backend.metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+from lotus.backend.metering_billing.exceptions import DuplicateOrganization, ServerError
+from lotus.backend.metering_billing.models import (
     AddOnSpecification,
     APIToken,
     Customer,
@@ -32,7 +32,7 @@ from metering_billing.models import (
     WebhookEndpoint,
     WebhookTrigger,
 )
-from metering_billing.serializers.serializer_utils import (
+from lotus.backend.metering_billing.serializers.serializer_utils import (
     OrganizationSettingUUIDField,
     OrganizationUUIDField,
     PlanUUIDField,
@@ -43,8 +43,8 @@ from metering_billing.serializers.serializer_utils import (
     WebhookEndpointUUIDField,
     WebhookSecretUUIDField,
 )
-from metering_billing.utils import now_utc
-from metering_billing.utils.enums import (
+from lotus.backend.metering_billing.utils import now_utc
+from lotus.backend.metering_billing.utils.enums import (
     BATCH_ROUNDING_TYPE,
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
     METRIC_GRANULARITY,
@@ -384,7 +384,7 @@ class OrganizationUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializ
     timezone = TimeZoneSerializerField(use_pytz=True)
 
     def update(self, instance, validated_data):
-        from metering_billing.tasks import update_subscription_filter_settings_task
+        from lotus.backend.metering_billing.tasks import update_subscription_filter_settings_task
 
         assert (
             type(validated_data.get("default_currency")) == PricingUnit

@@ -5,7 +5,7 @@ from django.db import connections
 
 
 class Command(BaseCommand):
-    "Django command to pause execution until the database is available"
+    """Django command to pause execution until the database is available"""
 
     def handle(self, *args, **options):
         "Pause execution until the database is available"

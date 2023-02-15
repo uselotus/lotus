@@ -4,9 +4,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
-from metering_billing.permissions import ValidOrganization
-from metering_billing.serializers.payment_provider_serializers import (
+from lotus.backend.metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from lotus.backend.metering_billing.permissions import ValidOrganization
+from lotus.backend.metering_billing.serializers.payment_provider_serializers import (
     PaymentProviderPostRequestSerializer,
     PaymentProviderPostResponseSerializer,
     SinglePaymentProviderSerializer,

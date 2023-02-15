@@ -8,12 +8,12 @@ import pytz
 import stripe
 from django.conf import settings
 from django.db.models import F, Prefetch, Q
-from metering_billing.exceptions.exceptions import ExternalConnectionInvalid
-from metering_billing.serializers.payment_provider_serializers import (
+from lotus.backend.metering_billing.exceptions.exceptions import ExternalConnectionInvalid
+from lotus.backend.metering_billing.serializers.payment_provider_serializers import (
     PaymentProviderPostResponseSerializer,
 )
-from metering_billing.utils import now_utc
-from metering_billing.utils.enums import (
+from lotus.backend.metering_billing.utils import now_utc
+from lotus.backend.metering_billing.utils.enums import (
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
     PAYMENT_PROVIDERS,
@@ -156,7 +156,7 @@ class StripeConnector(PaymentProvider):
             )
 
     def update_payment_object_status(self, organization, payment_object_id):
-        from metering_billing.models import Invoice, Organization
+        from lotus.backend.metering_billing.models import Invoice, Organization
 
         invoice_payload = {}
         if not self.self_hosted:
@@ -177,7 +177,7 @@ class StripeConnector(PaymentProvider):
         """
         Imports customers from Stripe. If they already exist (by checking that either they already have their Stripe ID in our system, or seeing that they have the same email address), then we update the Stripe section of payment_providers dict to reflect new information. If they don't exist, we create them (not as a Lotus customer yet, just as a Stripe customer).
         """
-        from metering_billing.models import Customer, Organization
+        from lotus.backend.metering_billing.models import Customer, Organization
 
         if organization.organization_type == Organization.OrganizationType.PRODUCTION:
             stripe.api_key = self.live_secret_key
@@ -259,7 +259,7 @@ class StripeConnector(PaymentProvider):
         return num_cust_added
 
     def import_payment_objects(self, organization):
-        from metering_billing.models import Organization
+        from lotus.backend.metering_billing.models import Organization
 
         if organization.organization_type == Organization.OrganizationType.PRODUCTION:
             stripe.api_key = self.live_secret_key
@@ -273,7 +273,7 @@ class StripeConnector(PaymentProvider):
         return imported_invoices
 
     def _import_payment_objects_for_customer(self, customer):
-        from metering_billing.models import Invoice
+        from lotus.backend.metering_billing.models import Invoice
 
         payload = {}
         if not self.self_hosted:
@@ -308,7 +308,7 @@ class StripeConnector(PaymentProvider):
         return lotus_invoices
 
     def create_customer(self, customer):
-        from metering_billing.models import Organization, OrganizationSetting
+        from lotus.backend.metering_billing.models import Organization, OrganizationSetting
 
         if (
             customer.organization.organization_type
@@ -360,7 +360,7 @@ class StripeConnector(PaymentProvider):
             )
 
     def create_payment_object(self, invoice) -> str:
-        from metering_billing.models import Organization
+        from lotus.backend.metering_billing.models import Organization
 
         if (
             invoice.organization.organization_type
@@ -434,7 +434,7 @@ class StripeConnector(PaymentProvider):
         return StripePostRequestDataSerializer
 
     def handle_post(self, data, organization) -> PaymentProviderPostResponseSerializer:
-        from metering_billing.models import Organization
+        from lotus.backend.metering_billing.models import Organization
 
         if organization.organization_type == Organization.OrganizationType.PRODUCTION:
             stripe.api_key = self.live_secret_key
@@ -472,7 +472,7 @@ class StripeConnector(PaymentProvider):
         return Response(validated_data, status=status.HTTP_200_OK)
 
     def get_redirect_url(self, organization) -> str:
-        from metering_billing.models import Organization
+        from lotus.backend.metering_billing.models import Organization
 
         if organization.organization_type == Organization.OrganizationType.PRODUCTION:
             return self.live_redirect_url
@@ -482,7 +482,7 @@ class StripeConnector(PaymentProvider):
     def transfer_subscriptions(
         self, organization, end_now=False
     ) -> list[stripe.Subscription]:
-        from metering_billing.models import (
+        from lotus.backend.metering_billing.models import (
             Customer,
             ExternalPlanLink,
             Organization,
@@ -595,7 +595,7 @@ class StripeConnector(PaymentProvider):
         return ret_subs
 
     def initialize_settings(self, organization, **kwargs):
-        from metering_billing.models import OrganizationSetting
+        from lotus.backend.metering_billing.models import OrganizationSetting
 
         generate_stripe_after_lotus_value = kwargs.get(
             "generate_stripe_after_lotus", False

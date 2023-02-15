@@ -2,14 +2,14 @@ from django.core.cache import cache
 from django.http import HttpResponseBadRequest
 from django.utils.translation import gettext_lazy as _
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
-from metering_billing.exceptions import (
+from lotus.backend.metering_billing.exceptions import (
     NoMatchingAPIKey,
     OrganizationMismatch,
     UserNoOrganization,
 )
-from metering_billing.models import APIToken
-from metering_billing.permissions import HasUserAPIKey
-from metering_billing.utils import now_utc
+from lotus.backend.metering_billing.models import APIToken
+from lotus.backend.metering_billing.permissions import HasUserAPIKey
+from lotus.backend.metering_billing.utils import now_utc
 
 
 # AUTH METHODS

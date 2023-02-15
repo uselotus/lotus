@@ -17,13 +17,13 @@ from django.db.models import Count, F, FloatField, Q, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
-from metering_billing.exceptions.exceptions import (
+from lotus.backend.metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
     NotEditable,
     OverlappingPlans,
 )
-from metering_billing.utils import (
+from lotus.backend.metering_billing.utils import (
     calculate_end_date,
     convert_to_date,
     convert_to_decimal,
@@ -35,7 +35,7 @@ from metering_billing.utils import (
     periods_bwn_twodates,
     product_uuid,
 )
-from metering_billing.utils.enums import (
+from lotus.backend.metering_billing.utils.enums import (
     ACCOUNTS_RECEIVABLE_TRANSACTION_TYPES,
     BACKTEST_STATUS,
     CATEGORICAL_FILTER_OPERATORS,
@@ -67,7 +67,7 @@ from metering_billing.utils.enums import (
     USAGE_CALC_GRANULARITY,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
+from lotus.backend.metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
 from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
@@ -182,7 +182,7 @@ class Organization(models.Model):
             self.save()
 
     def update_subscription_filter_settings(self, filter_keys):
-        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+        from lotus.backend.metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 
         if not self.subscription_filters_setting_provisioned:
             self.provision_subscription_filter_settings()
@@ -551,7 +551,7 @@ class Customer(models.Model):
         return subscription_usages
 
     def get_active_sub_drafts_revenue(self):
-        from metering_billing.invoice import generate_invoice
+        from lotus.backend.metering_billing.invoice import generate_invoice
 
         total = 0
         sub_records = self.get_active_subscription_records()
@@ -1112,7 +1112,7 @@ class Metric(models.Model):
         return self.aggregation_type
 
     def get_subscription_record_total_billable_usage(self, subscription_record):
-        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+        from lotus.backend.metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 
         handler = METRIC_HANDLER_MAP[self.metric_type]
         usage = handler.get_subscription_record_total_billable_usage(
@@ -1122,7 +1122,7 @@ class Metric(models.Model):
         return usage
 
     def get_subscription_record_daily_billable_usage(self, subscription_record):
-        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+        from lotus.backend.metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 
         handler = METRIC_HANDLER_MAP[self.metric_type]
         usage = handler.get_subscription_record_daily_billable_usage(
@@ -1132,7 +1132,7 @@ class Metric(models.Model):
         return usage
 
     def get_subscription_record_current_usage(self, subscription_record):
-        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+        from lotus.backend.metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 
         handler = METRIC_HANDLER_MAP[self.metric_type]
         usage = handler.get_subscription_record_current_usage(self, subscription_record)
@@ -1146,7 +1146,7 @@ class Metric(models.Model):
         customer: Optional[Customer] = None,
         top_n: Optional[int] = None,
     ) -> dict[Union[Customer, Literal["Other"]], dict[datetime.date, Decimal]]:
-        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+        from lotus.backend.metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 
         handler = METRIC_HANDLER_MAP[self.metric_type]
         usage = handler.get_daily_total_usage(
@@ -1156,7 +1156,7 @@ class Metric(models.Model):
         return usage
 
     def refresh_materialized_views(self):
-        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+        from lotus.backend.metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 
         handler = METRIC_HANDLER_MAP[self.metric_type]
         handler.create_continuous_aggregate(self, refresh=True)
@@ -1164,7 +1164,7 @@ class Metric(models.Model):
         self.save()
 
     def provision_materialized_views(self):
-        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+        from lotus.backend.metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 
         handler = METRIC_HANDLER_MAP[self.metric_type]
         handler.create_continuous_aggregate(self)
@@ -1172,7 +1172,7 @@ class Metric(models.Model):
         self.save()
 
     def delete_materialized_views(self):
-        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+        from lotus.backend.metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 
         handler = METRIC_HANDLER_MAP[self.metric_type]
         handler.archive_metric(self)

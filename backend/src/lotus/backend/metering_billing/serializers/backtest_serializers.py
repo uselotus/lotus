@@ -1,9 +1,9 @@
 from django.db.models import Q
 from rest_framework import serializers
 
-from metering_billing.models import Backtest, BacktestSubstitution, PlanVersion
-from metering_billing.serializers.model_serializers import PlanVersionDetailSerializer
-from metering_billing.utils.enums import BACKTEST_KPI, PLAN_VERSION_STATUS
+from lotus.backend.metering_billing.models import Backtest, BacktestSubstitution, PlanVersion
+from lotus.backend.metering_billing.serializers.model_serializers import PlanVersionDetailSerializer
+from lotus.backend.metering_billing.utils.enums import BACKTEST_KPI, PLAN_VERSION_STATUS
 
 from .serializer_utils import (
     BacktestUUIDField,

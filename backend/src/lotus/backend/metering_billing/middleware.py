@@ -1,9 +1,9 @@
 import logging
 
 from django.core.cache import cache
-from metering_billing.models import APIToken, Organization
-from metering_billing.permissions import HasUserAPIKey
-from metering_billing.utils import now_utc
+from lotus.backend.metering_billing.models import APIToken, Organization
+from lotus.backend.metering_billing.permissions import HasUserAPIKey
+from lotus.backend.metering_billing.utils import now_utc
 
 logger = logging.getLogger("django.server")
 

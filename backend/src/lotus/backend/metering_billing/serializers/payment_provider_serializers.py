@@ -1,4 +1,4 @@
-from metering_billing.utils.enums import PAYMENT_PROVIDERS
+from lotus.backend.metering_billing.utils.enums import PAYMENT_PROVIDERS
 from rest_framework import serializers
 
 

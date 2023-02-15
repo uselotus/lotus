@@ -1,8 +1,8 @@
 # import lotus_python
-import api.views as api_views
+import lotus.backend.api.views as api_views
 import posthog
 from actstream.models import Action
-from api.serializers.webhook_serializers import (
+from lotus.backend.api.serializers.webhook_serializers import (
     InvoiceCreatedSerializer,
     InvoicePaidSerializer,
     UsageAlertTriggeredSerializer,
@@ -11,12 +11,12 @@ from django.conf import settings
 from django.core.cache import cache
 from django.db.utils import IntegrityError
 from drf_spectacular.utils import OpenApiCallback, extend_schema, inline_serializer
-from metering_billing.exceptions import (
+from lotus.backend.metering_billing.exceptions import (
     DuplicateMetric,
     DuplicateWebhookEndpoint,
     ServerError,
 )
-from metering_billing.models import (
+from lotus.backend.metering_billing.models import (
     APIToken,
     Backtest,
     Event,
@@ -33,14 +33,14 @@ from metering_billing.models import (
     User,
     WebhookEndpoint,
 )
-from metering_billing.permissions import ValidOrganization
-from metering_billing.serializers.backtest_serializers import (
+from lotus.backend.metering_billing.permissions import ValidOrganization
+from lotus.backend.metering_billing.serializers.backtest_serializers import (
     BacktestCreateSerializer,
     BacktestDetailSerializer,
     BacktestSummarySerializer,
     BacktestUUIDField,
 )
-from metering_billing.serializers.model_serializers import (
+from lotus.backend.metering_billing.serializers.model_serializers import (
     ActionSerializer,
     AddOnCreateSerializer,
     AddOnSerializer,
@@ -72,10 +72,10 @@ from metering_billing.serializers.model_serializers import (
     UserSerializer,
     WebhookEndpointSerializer,
 )
-from metering_billing.serializers.request_serializers import (
+from lotus.backend.metering_billing.serializers.request_serializers import (
     OrganizationSettingFilterSerializer,
 )
-from metering_billing.serializers.serializer_utils import (
+from lotus.backend.metering_billing.serializers.serializer_utils import (
     AddonUUIDField,
     MetricUUIDField,
     OrganizationSettingUUIDField,
@@ -85,9 +85,9 @@ from metering_billing.serializers.serializer_utils import (
     UsageAlertUUIDField,
     WebhookEndpointUUIDField,
 )
-from metering_billing.tasks import run_backtest
-from metering_billing.utils import now_utc
-from metering_billing.utils.enums import (
+from lotus.backend.metering_billing.tasks import run_backtest
+from lotus.backend.metering_billing.utils import now_utc
+from lotus.backend.metering_billing.utils.enums import (
     METRIC_STATUS,
     PAYMENT_PROVIDERS,
     WEBHOOK_TRIGGER_EVENTS,

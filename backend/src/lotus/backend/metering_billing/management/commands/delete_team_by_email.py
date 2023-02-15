@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from metering_billing.models import Event, User
+from lotus.backend.metering_billing.models import Event, User
 
 
 class Command(BaseCommand):

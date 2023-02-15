@@ -3,7 +3,7 @@ from drf_standardized_errors.formatter import ExceptionFormatter
 from drf_standardized_errors.handler import ExceptionHandler
 from drf_standardized_errors.types import ErrorResponse, ErrorType
 
-from metering_billing.exceptions.exceptions import DatabaseOperationFailed
+from lotus.backend.metering_billing.exceptions.exceptions import DatabaseOperationFailed
 
 
 class CustomHandler(ExceptionHandler):

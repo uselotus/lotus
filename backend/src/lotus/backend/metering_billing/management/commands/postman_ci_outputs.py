@@ -2,10 +2,10 @@ import logging
 import uuid
 
 from django.core.management.base import BaseCommand
-from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
-from metering_billing.demos import create_pc_and_tiers, make_subscription_record
-from metering_billing.invoice import generate_invoice
-from metering_billing.models import (
+from lotus.backend.metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+from lotus.backend.metering_billing.demos import create_pc_and_tiers, make_subscription_record
+from lotus.backend.metering_billing.invoice import generate_invoice
+from lotus.backend.metering_billing.models import (
     AddOnSpecification,
     Customer,
     CustomerBalanceAdjustment,
@@ -15,9 +15,9 @@ from metering_billing.models import (
     PlanVersion,
     RecurringCharge,
 )
-from metering_billing.serializers.model_serializers import APITokenSerializer
-from metering_billing.utils import now_utc
-from metering_billing.utils.enums import (
+from lotus.backend.metering_billing.serializers.model_serializers import APITokenSerializer
+from lotus.backend.metering_billing.utils import now_utc
+from lotus.backend.metering_billing.utils.enums import (
     EVENT_TYPE,
     METRIC_TYPE,
     PLAN_DURATION,
@@ -29,7 +29,7 @@ logger = logging.getLogger("django.server")
 
 
 class Command(BaseCommand):
-    "Django command to execute calculate invoice"
+    """Django command to execute calculate invoice"""
 
     def handle(self, *args, **options):
         organization = Organization.objects.create(

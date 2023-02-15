@@ -11,14 +11,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-import api.views as api_views
-from metering_billing.exceptions import (
+import lotus.backend.api.views as api_views
+from lotus.backend.metering_billing.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
     NotFoundException,
 )
-from metering_billing.invoice import generate_invoice
-from metering_billing.models import (
+from lotus.backend.metering_billing.invoice import generate_invoice
+from lotus.backend.metering_billing.models import (
     Customer,
     Event,
     Invoice,
@@ -27,29 +27,29 @@ from metering_billing.models import (
     PlanVersion,
     SubscriptionRecord,
 )
-from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
-from metering_billing.permissions import HasUserAPIKey, ValidOrganization
-from metering_billing.serializers.model_serializers import (
+from lotus.backend.metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from lotus.backend.metering_billing.permissions import HasUserAPIKey, ValidOrganization
+from lotus.backend.metering_billing.serializers.model_serializers import (
     CustomerSummarySerializer,
     CustomerWithRevenueSerializer,
     DraftInvoiceSerializer,
     MetricSerializer,
 )
-from metering_billing.serializers.request_serializers import (
+from lotus.backend.metering_billing.serializers.request_serializers import (
     CostAnalysisRequestSerializer,
     DraftInvoiceRequestSerializer,
     PeriodComparisonRequestSerializer,
     PeriodMetricUsageRequestSerializer,
 )
-from metering_billing.serializers.response_serializers import (
+from lotus.backend.metering_billing.serializers.response_serializers import (
     CostAnalysisSerializer,
     PeriodEventsResponseSerializer,
     PeriodMetricRevenueResponseSerializer,
     PeriodMetricUsageResponseSerializer,
     PeriodSubscriptionsResponseSerializer,
 )
-from metering_billing.serializers.serializer_utils import OrganizationUUIDField
-from metering_billing.utils import (
+from lotus.backend.metering_billing.serializers.serializer_utils import OrganizationUUIDField
+from lotus.backend.metering_billing.utils import (
     convert_to_date,
     convert_to_datetime,
     convert_to_decimal,
@@ -60,13 +60,13 @@ from metering_billing.utils import (
     now_utc,
     periods_bwn_twodates,
 )
-from metering_billing.utils.enums import (
+from lotus.backend.metering_billing.utils.enums import (
     METRIC_STATUS,
     METRIC_TYPE,
     PAYMENT_PROVIDERS,
     USAGE_CALC_GRANULARITY,
 )
-from metering_billing.views.model_views import CustomerViewSet
+from lotus.backend.metering_billing.views.model_views import CustomerViewSet
 
 logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON

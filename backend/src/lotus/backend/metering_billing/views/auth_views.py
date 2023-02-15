@@ -11,22 +11,22 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
 from knox.views import LogoutView as KnoxLogoutView
-from metering_billing.demos import setup_demo4
-from metering_billing.exceptions import (
+from lotus.backend.metering_billing.demos import setup_demo4
+from lotus.backend.metering_billing.exceptions import (
     DuplicateOrganization,
     DuplicateUser,
     InvalidRequest,
     RegistrationFailure,
 )
-from metering_billing.models import Organization, Team, TeamInviteToken, User
-from metering_billing.serializers.auth_serializers import (
+from lotus.backend.metering_billing.models import Organization, Team, TeamInviteToken, User
+from lotus.backend.metering_billing.serializers.auth_serializers import (
     DemoRegistrationSerializer,
     RegistrationSerializer,
 )
-from metering_billing.serializers.model_serializers import UserSerializer
-from metering_billing.serializers.serializer_utils import EmailSerializer
-from metering_billing.services.user import user_service
-from metering_billing.utils import now_utc
+from lotus.backend.metering_billing.serializers.model_serializers import UserSerializer
+from lotus.backend.metering_billing.serializers.serializer_utils import EmailSerializer
+from lotus.backend.metering_billing.services.user import user_service
+from lotus.backend.metering_billing.utils import now_utc
 from rest_framework import serializers, status
 from rest_framework.authentication import BasicAuthentication
 from rest_framework.exceptions import PermissionDenied

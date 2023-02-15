@@ -1,9 +1,9 @@
 import stripe
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
-from metering_billing.models import Customer, Invoice
-from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
-from metering_billing.utils.enums import PAYMENT_PROVIDERS
+from lotus.backend.metering_billing.models import Customer, Invoice
+from lotus.backend.metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from lotus.backend.metering_billing.utils.enums import PAYMENT_PROVIDERS
 from rest_framework import status
 from rest_framework.decorators import (
     api_view,

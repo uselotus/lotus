@@ -5,7 +5,7 @@ from api.serializers.model_serializers import (
     LightweightSubscriptionRecordSerializer,
     UsageAlertSerializer,
 )
-from metering_billing.utils.enums import WEBHOOK_TRIGGER_EVENTS
+from lotus.backend.metering_billing.utils.enums import WEBHOOK_TRIGGER_EVENTS
 
 
 class InvoiceCreatedSerializer(serializers.Serializer):

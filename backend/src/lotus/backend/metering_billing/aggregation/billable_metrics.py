@@ -11,15 +11,15 @@ from django.apps import apps
 from django.db import connection
 from jinja2 import Template
 
-from metering_billing.exceptions import MetricValidationFailed
-from metering_billing.utils import (
+from lotus.backend.metering_billing.exceptions import MetricValidationFailed
+from lotus.backend.metering_billing.utils import (
     convert_to_date,
     dates_bwn_two_dts,
     get_granularity_ratio,
     namedtuplefetchall,
     now_utc,
 )
-from metering_billing.utils.enums import (
+from lotus.backend.metering_billing.utils.enums import (
     METRIC_AGGREGATION,
     METRIC_GRANULARITY,
     METRIC_TYPE,
@@ -60,7 +60,7 @@ class MetricHandler(abc.ABC):
     @abc.abstractmethod
     def create_metric(validated_data: Metric) -> Metric:
         """We will use this method when creating a billable metric. You should create the metric and return it. This is a great time to create all the other queries you we want to keep track of in order to optimize the usage"""
-        from metering_billing.models import CategoricalFilter, Metric, NumericFilter
+        from lotus.backend.metering_billing.models import CategoricalFilter, Metric, NumericFilter
 
         # edit custom name and pop filters + properties
         num_filter_data = validated_data.pop("numeric_filters", [])
@@ -133,7 +133,7 @@ class MetricHandler(abc.ABC):
         """
         This method just returns the usage of the metric in that day, without worrying about whether it's billable, prorations, etc. Typically used for visualization purposes only and not in any billing runs. Can optionally include a customer to get a single customers usage. Can also incldue top_n, which will group the usage of the non top_n customers into a field called Other.
         """
-        from metering_billing.models import Customer, Organization, OrganizationSetting
+        from lotus.backend.metering_billing.models import Customer, Organization, OrganizationSetting
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
@@ -219,7 +219,7 @@ class CounterHandler(MetricHandler):
         subscription_record: SubscriptionRecord,
         organization: Organization,
     ) -> dict:
-        from metering_billing.models import OrganizationSetting
+        from lotus.backend.metering_billing.models import OrganizationSetting
 
         injection_dict = {
             "query_type": metric.usage_aggregation_type,
@@ -247,7 +247,7 @@ class CounterHandler(MetricHandler):
         subscription_record: SubscriptionRecord,
         organization: Organization,
     ) -> list[namedtuple]:
-        from metering_billing.aggregation.counter_query_templates import (
+        from lotus.backend.metering_billing.aggregation.counter_query_templates import (
             COUNTER_CAGG_TOTAL,
         )
 
@@ -345,10 +345,10 @@ class CounterHandler(MetricHandler):
     def get_subscription_record_total_billable_usage(
         metric: Metric, subscription_record: SubscriptionRecord
     ) -> Decimal:
-        from metering_billing.aggregation.counter_query_templates import (
+        from lotus.backend.metering_billing.aggregation.counter_query_templates import (
             COUNTER_UNIQUE_TOTAL,
         )
-        from metering_billing.models import Organization
+        from lotus.backend.metering_billing.models import Organization
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
@@ -420,7 +420,7 @@ class CounterHandler(MetricHandler):
     def get_subscription_record_daily_billable_usage(
         metric: Metric, subscription_record: SubscriptionRecord
     ) -> dict[datetime.date, Decimal]:
-        from metering_billing.models import Organization
+        from lotus.backend.metering_billing.models import Organization
 
         from .counter_query_templates import COUNTER_UNIQUE_PER_DAY
 
@@ -553,7 +553,7 @@ class CounterHandler(MetricHandler):
         # make one for the total daily usage graph, but not for second
         # if we're refreshing the matview, then we need to drop the last
         # one and recreate it
-        from metering_billing.models import Organization, OrganizationSetting
+        from lotus.backend.metering_billing.models import Organization, OrganizationSetting
 
         from .common_query_templates import CAGG_COMPRESSION, CAGG_DROP, CAGG_REFRESH
         from .counter_query_templates import COUNTER_CAGG_QUERY
@@ -648,7 +648,7 @@ class CounterHandler(MetricHandler):
 class CustomHandler(MetricHandler):
     @staticmethod
     def _run_query(custom_sql, injection_dict: dict):
-        from metering_billing.aggregation.custom_query_templates import (
+        from lotus.backend.metering_billing.aggregation.custom_query_templates import (
             CUSTOM_BASE_QUERY,
         )
 
@@ -666,7 +666,7 @@ class CustomHandler(MetricHandler):
     def get_subscription_record_total_billable_usage(
         metric: Metric, subscription_record: SubscriptionRecord
     ) -> Decimal:
-        from metering_billing.models import Organization
+        from lotus.backend.metering_billing.models import Organization
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
@@ -970,7 +970,7 @@ class GaugeHandler(MetricHandler):
 
     @staticmethod
     def create_continuous_aggregate(metric: Metric, refresh=False):
-        from metering_billing.models import Organization, OrganizationSetting
+        from lotus.backend.metering_billing.models import Organization, OrganizationSetting
 
         from .common_query_templates import CAGG_COMPRESSION, CAGG_DROP, CAGG_REFRESH
         from .gauge_query_templates import (
@@ -1056,7 +1056,7 @@ class GaugeHandler(MetricHandler):
     def get_subscription_record_total_billable_usage(
         metric: Metric, subscription_record: SubscriptionRecord
     ) -> Decimal:
-        from metering_billing.models import Organization, OrganizationSetting
+        from lotus.backend.metering_billing.models import Organization, OrganizationSetting
 
         from .gauge_query_templates import (
             GAUGE_DELTA_GET_TOTAL_USAGE_WITH_PRORATION,
@@ -1142,7 +1142,7 @@ class GaugeHandler(MetricHandler):
     def get_subscription_record_current_usage(
         metric: Metric, subscription_record: SubscriptionRecord
     ) -> Decimal:
-        from metering_billing.models import Organization, OrganizationSetting
+        from lotus.backend.metering_billing.models import Organization, OrganizationSetting
 
         from .gauge_query_templates import (
             GAUGE_DELTA_GET_CURRENT_USAGE,
@@ -1224,7 +1224,7 @@ class GaugeHandler(MetricHandler):
     def get_subscription_record_daily_billable_usage(
         metric: Metric, subscription_record: SubscriptionRecord
     ) -> dict[datetime.date, Decimal]:
-        from metering_billing.models import Organization, OrganizationSetting
+        from lotus.backend.metering_billing.models import Organization, OrganizationSetting
 
         from .gauge_query_templates import (
             GAUGE_DELTA_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY,
@@ -1417,7 +1417,7 @@ class RateHandler(MetricHandler):
 
     @staticmethod
     def create_continuous_aggregate(metric: Metric, refresh=False):
-        from metering_billing.models import OrganizationSetting
+        from lotus.backend.metering_billing.models import OrganizationSetting
 
         from .common_query_templates import CAGG_COMPRESSION, CAGG_DROP, CAGG_REFRESH
         from .rate_query_templates import RATE_CAGG_QUERY
@@ -1470,7 +1470,7 @@ class RateHandler(MetricHandler):
 
     @staticmethod
     def archive_metric(metric: Metric) -> Metric:
-        from metering_billing.models import Organization
+        from lotus.backend.metering_billing.models import Organization
 
         from .common_query_templates import CAGG_DROP
 
@@ -1495,8 +1495,8 @@ class RateHandler(MetricHandler):
     def _rate_cagg_total_results(
         metric: Metric, subscription_record: SubscriptionRecord
     ):
-        from metering_billing.aggregation.rate_query_templates import RATE_CAGG_TOTAL
-        from metering_billing.models import Organization, OrganizationSetting
+        from lotus.backend.metering_billing.aggregation.rate_query_templates import RATE_CAGG_TOTAL
+        from lotus.backend.metering_billing.models import Organization, OrganizationSetting
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
@@ -1553,10 +1553,10 @@ class RateHandler(MetricHandler):
     def get_subscription_record_current_usage(
         metric: Metric, subscription_record: SubscriptionRecord
     ) -> Decimal:
-        from metering_billing.aggregation.rate_query_templates import (
+        from lotus.backend.metering_billing.aggregation.rate_query_templates import (
             RATE_GET_CURRENT_USAGE,
         )
-        from metering_billing.models import Organization, OrganizationSetting
+        from lotus.backend.metering_billing.models import Organization, OrganizationSetting
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id

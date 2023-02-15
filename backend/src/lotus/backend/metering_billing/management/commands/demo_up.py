@@ -1,13 +1,13 @@
 from django.core.management.base import BaseCommand
 
-from metering_billing.demos import setup_demo3, setup_demo4, setup_paas_demo
+from lotus.backend.metering_billing.demos import setup_demo3, setup_demo4, setup_paas_demo
 
 
 class Command(BaseCommand):
-    "Django command to pause execution until the database is available"
+    """Django command to pause execution until the database is available"""
 
     def handle(self, *args, **options):
-        from metering_billing.models import Organization
+        from lotus.backend.metering_billing.models import Organization
 
         setup_demo3(
             organization_name="demo3",

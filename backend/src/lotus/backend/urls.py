@@ -20,9 +20,9 @@ from django.urls import path, re_path
 from django.views.generic import TemplateView
 from rest_framework import routers
 
-import api.views as api_views
-from metering_billing.views import auth_views, organization_views, webhook_views
-from metering_billing.views.model_views import (
+import lotus.backend.api as api.views as api_views
+from lotus.backend.metering_billing.views import auth_views, organization_views, webhook_views
+from lotus.backend.metering_billing.views.model_views import (
     ActionViewSet,
     AddOnViewSet,
     APITokenViewSet,
@@ -45,8 +45,8 @@ from metering_billing.views.model_views import (
     UserViewSet,
     WebhookViewSet,
 )
-from metering_billing.views.payment_provider_views import PaymentProviderView
-from metering_billing.views.views import (  # MergeCustomersView,; ExperimentalToActiveView,
+from lotus.backend.metering_billing.views.payment_provider_views import PaymentProviderView
+from lotus.backend.metering_billing.views.views import (  # MergeCustomersView,; ExperimentalToActiveView,
     ChangeUserOrganizationView,
     CostAnalysisView,
     CustomersSummaryView,

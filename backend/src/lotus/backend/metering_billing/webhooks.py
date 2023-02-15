@@ -1,10 +1,10 @@
 from django.conf import settings
-from metering_billing.utils import (
+from lotus.backend.metering_billing.utils import (
     make_all_dates_times_strings,
     make_all_decimals_floats,
     now_utc,
 )
-from metering_billing.utils.enums import WEBHOOK_TRIGGER_EVENTS
+from lotus.backend.metering_billing.utils.enums import WEBHOOK_TRIGGER_EVENTS
 from svix.api import MessageIn
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -12,7 +12,7 @@ SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
 def invoice_created_webhook(invoice, organization):
     from api.serializers.model_serializers import InvoiceSerializer
-    from metering_billing.models import WebhookEndpoint
+    from lotus.backend.metering_billing.models import WebhookEndpoint
 
     if SVIX_CONNECTOR is not None:
         endpoints = (
@@ -51,7 +51,7 @@ def invoice_created_webhook(invoice, organization):
 
 def invoice_paid_webhook(invoice, organization):
     from api.serializers.model_serializers import InvoiceSerializer
-    from metering_billing.models import WebhookEndpoint
+    from lotus.backend.metering_billing.models import WebhookEndpoint
 
     if SVIX_CONNECTOR is not None:
         endpoints = (
@@ -94,7 +94,7 @@ def usage_alert_webhook(usage_alert, alert_result, subscription_record, organiza
         UsageAlertSerializer,
     )
     from api.serializers.webhook_serializers import UsageAlertPayload
-    from metering_billing.models import WebhookEndpoint
+    from lotus.backend.metering_billing.models import WebhookEndpoint
 
     if SVIX_CONNECTOR is not None:
         endpoints = (
