@@ -1,9 +1,6 @@
 import stripe
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
-from metering_billing.models import Customer, Invoice
-from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
-from metering_billing.utils.enums import PAYMENT_PROCESSORS
 from rest_framework import status
 from rest_framework.decorators import (
     api_view,
@@ -11,6 +8,10 @@ from rest_framework.decorators import (
     permission_classes,
 )
 from rest_framework.response import Response
+
+from metering_billing.models import Customer, Invoice
+from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
+from metering_billing.utils.enums import PAYMENT_PROCESSORS
 
 STRIPE_WEBHOOK_SECRET = settings.STRIPE_WEBHOOK_SECRET
 STRIPE_TEST_SECRET_KEY = settings.STRIPE_TEST_SECRET_KEY
@@ -46,8 +47,8 @@ def _payment_method_refresh_handler(stripe_customer_id):
             payment_methods = stripe.Customer.list_payment_methods(
                 customer=stripe_customer_id,
                 stripe_account=organization.payment_provider_ids.get(
-                    PAYMENT_PROCESSORS.STRIPE
-                ),
+                    PAYMENT_PROCESSORS.STRIPE, {}
+                ).get("id"),
             )
         for payment_method in payment_methods.auto_paging_iter():
             pm_dict = {

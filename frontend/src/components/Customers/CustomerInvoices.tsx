@@ -32,9 +32,10 @@ const lotusUrl = new URL("./lotusIcon.svg", import.meta.url).href;
 
 interface Props {
   invoices: InvoiceType[] | undefined;
+  paymentMethod: string;
 }
 
-const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
+const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
   const [selectedRecord, setSelectedRecord] = React.useState();
   const changeStatus = useMutation(
     (post: MarkPaymentStatusAsPaid) => Invoices.changeStatus(post),
