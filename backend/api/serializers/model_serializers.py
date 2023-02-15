@@ -7,9 +7,6 @@ from typing import Literal, Union
 from django.conf import settings
 from django.db.models import Max, Min, Sum
 from drf_spectacular.utils import extend_schema_serializer
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-
 from metering_billing.invoice import (
     generate_balance_adjustment_invoice,
     generate_invoice,
@@ -65,6 +62,8 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -504,8 +503,14 @@ class CustomerStripeIntegrationSerializer(serializers.Serializer):
     has_payment_method = serializers.BooleanField()
 
 
+class CustomerBraintreeIntegrationSerializer(serializers.Serializer):
+    braintree_id = serializers.CharField()
+    has_payment_method = serializers.BooleanField()
+
+
 class CustomerIntegrationsSerializer(serializers.Serializer):
     stripe = CustomerStripeIntegrationSerializer(required=False, allow_null=True)
+    braintree = CustomerBraintreeIntegrationSerializer(required=False, allow_null=True)
 
 
 class CustomerSerializer(
@@ -577,9 +582,13 @@ class CustomerSerializer(
     ) -> serializers.CharField(allow_null=True, required=True):
         d = self.get_integrations(obj)
         if obj.payment_provider == PAYMENT_PROCESSORS.STRIPE:
-            return d.get(PAYMENT_PROCESSORS.STRIPE, {}).get("id", None)
+            stripe_dict = d.get(PAYMENT_PROCESSORS.STRIPE)
+            if stripe_dict:
+                return stripe_dict["stripe_id"]
         elif obj.payment_provider == PAYMENT_PROCESSORS.BRAINTREE:
-            return d.get(PAYMENT_PROCESSORS.BRAINTREE, {}).get("id", None)
+            braintree_dict = d.get(PAYMENT_PROCESSORS.BRAINTREE)
+            if braintree_dict:
+                return braintree_dict["paypal_id"]
         return None
 
     def get_address(self, obj) -> AddressSerializer(allow_null=True, required=True):
@@ -596,6 +605,10 @@ class CustomerSerializer(
             stripe_dict = d.get(PAYMENT_PROCESSORS.STRIPE)
             if stripe_dict:
                 return stripe_dict["has_payment_method"]
+        elif obj.payment_provider == PAYMENT_PROCESSORS.BRAINTREE:
+            braintree_dict = d.get(PAYMENT_PROCESSORS.BRAINTREE)
+            if braintree_dict:
+                return braintree_dict["has_payment_method"]
         return False
 
     def _format_stripe_integration(
@@ -604,6 +617,15 @@ class CustomerSerializer(
         return {
             "stripe_id": stripe_connections_dict["id"],
             "has_payment_method": len(stripe_connections_dict["payment_methods"]) > 0,
+        }
+
+    def _format_braintree_integration(
+        self, braintree_connections_dict
+    ) -> CustomerBraintreeIntegrationSerializer:
+        return {
+            "braintree_id": braintree_connections_dict["id"],
+            "has_payment_method": len(braintree_connections_dict["payment_methods"])
+            > 0,
         }
 
     def get_integrations(self, obj) -> CustomerIntegrationsSerializer:
@@ -617,6 +639,13 @@ class CustomerSerializer(
                 d[PAYMENT_PROCESSORS.STRIPE] = None
         else:
             d[PAYMENT_PROCESSORS.STRIPE] = None
+        if PAYMENT_PROCESSORS.BRAINTREE in d:
+            try:
+                d[PAYMENT_PROCESSORS.BRAINTREE] = self._format_braintree_integration(
+                    d[PAYMENT_PROCESSORS.BRAINTREE]
+                )
+            except (KeyError, TypeError):
+                d[PAYMENT_PROCESSORS.BRAINTREE] = None
         return d
 
     def get_subscriptions(self, obj) -> SubscriptionRecordSerializer(many=True):

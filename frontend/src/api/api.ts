@@ -75,6 +75,7 @@ import {
 } from "../types/experiment-type";
 import {
   DraftInvoiceType,
+  InvoiceType,
   MarkPaymentStatusAsPaid,
 } from "../types/invoice-type";
 import { CreateCreditType, CreditType } from "../types/balance-adjustment";
@@ -544,6 +545,8 @@ export const Invoices = {
     requests.patch(`app/invoices/${data.invoice_id}/`, {
       payment_status: data.payment_status,
     }),
+  sendToPaymentProcessor: (invoice_id: string): Promise<InvoiceType> =>
+    requests.post(`app/invoices/${invoice_id}/send`, {}),
   getDraftInvoice: (customer_id: string): Promise<DraftInvoiceType> =>
     requests.get("app/draft_invoice/", { params: { customer_id } }),
   getInvoiceUrl: (invoice_id: string): Promise<{ url: string }> =>

@@ -55,6 +55,24 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
     }
   );
 
+  const sendToPaymentProcessor = useMutation(
+    (invoice_id: string) => Invoices.sendToPaymentProcessor(invoice_id),
+    {
+      onSuccess: (data) => {
+        toast.success("Successfully sent to payment processor", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+        selectedRecord.external_payment_obj_type =
+          data.external_payment_obj_type;
+      },
+      onError: () => {
+        toast.error("Failed to send to payment processor", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
+    }
+  );
+
   useEffect(() => {
     if (selectedRecord !== undefined) {
       changeStatus.mutate({
@@ -73,13 +91,21 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
       render: (_, record) => (
         <div className="flex">
           <Tooltip
-            title={record.external_payment_obj_type ? "Stripe" : "Lotus"}
+            title={
+              record.external_payment_obj_type === "stripe"
+                ? "Stripe"
+                : record.external_payment_obj_type === "braintree"
+                ? "Braintree"
+                : "Lotus"
+            }
           >
             <img
               className="sourceIcon"
               src={
-                record.external_payment_obj_type
+                record.external_payment_obj_type === "stripe"
                   ? integrationsMap.stripe.icon
+                  : record.external_payment_obj_type === "braintree"
+                  ? integrationsMap.braintree.icon
                   : lotusUrl
               }
               alt="Source icon"
@@ -152,6 +178,22 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
                       </div>
                     </Menu.Item>
                   )}
+                  {!record.external_payment_obj_type &&
+                    paymentMethod &&
+                    record.payment_status === "unpaid" && (
+                      <Menu.Item
+                        key="2"
+                        onClick={() => {
+                          if (selectedRecord === record) {
+                            sendToPaymentProcessor.mutate(record.invoice_id);
+                          } else {
+                            setSelectedRecord(record);
+                          }
+                        }}
+                      >
+                        <div className="archiveLabel">Send to Processor</div>
+                      </Menu.Item>
+                    )}
                 </Menu>
               }
               trigger={["click"]}
