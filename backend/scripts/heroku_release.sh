@@ -1,3 +1,3 @@
-python manage.py migrate
-python manage.py initadmin
-python manage.py setup_tasks
+lotus_backend migrate
+lotus_backend initadmin
+lotus_backend setup_tasks
