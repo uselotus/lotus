@@ -5,7 +5,7 @@ from celery import Celery
 from django.conf import settings
 
 # Set the default Django settings module for the 'celery' program.
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "lotus.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "lotus.backend.settings")
 
 celery = Celery("lotus")
 # Using a string here means the worker doesn't have to serialize
