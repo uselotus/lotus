@@ -7,8 +7,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from django.db.models.query import QuerySet
-
-from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.utils import (
     calculate_end_date,
     convert_to_datetime,
@@ -515,18 +514,17 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
 def generate_external_payment_obj(invoice):
     customer = invoice.customer
     for pp in customer.integrations.keys():
-        if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
-            pp_connector = PAYMENT_PROVIDER_MAP[pp]
+        if pp in PAYMENT_PROCESSOR_MAP and PAYMENT_PROCESSOR_MAP[pp].working():
+            pp_connector = PAYMENT_PROCESSOR_MAP[pp]
             customer_conn = pp_connector.customer_connected(customer)
             org_conn = pp_connector.organization_connected(invoice.organization)
             if customer_conn and org_conn:
-                invoice.external_payment_obj_id = pp_connector.create_payment_object(
-                    invoice
-                )
-                invoice.external_payment_obj_type = pp
-                invoice.save()
-
-                break
+                external_id = pp_connector.create_payment_object(invoice)
+                if external_id:
+                    invoice.external_payment_obj_id = external_id
+                    invoice.external_payment_obj_type = pp
+                    invoice.save()
+                    break
 
 
 def calculate_due_date(issue_date, organization):

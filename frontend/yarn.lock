@@ -872,6 +872,11 @@
     hey-listen "^1.0.8"
     tslib "^2.3.1"
 
+"@nangohq/frontend@^0.8.0":
+  version "0.8.0"
+  resolved "https://registry.yarnpkg.com/@nangohq/frontend/-/frontend-0.8.0.tgz#bd12cd9779e2d11297fec26b99869f2259d6ad0a"
+  integrity sha512-Mpagw1+4eNwSuae5zlbEqZ7bHRZROzfv+enCXzYHDchMtaieDvROSCGO9zfnDaLM4O6/FJj2pBZhLPnab03Skg==
+
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"
   resolved "https://registry.npmjs.org/@nodelib/fs.scandir/-/fs.scandir-2.1.5.tgz"

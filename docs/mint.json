@@ -86,7 +86,7 @@
     },
     {
       "group": "External Integrations",
-      "pages": ["external-integrations/stripe"]
+      "pages": ["external-integrations/stripe", "external-integrations/braintree"]
     },
     {
       "group": "Extensibility",

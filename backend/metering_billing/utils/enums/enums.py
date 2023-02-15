@@ -37,8 +37,9 @@ class PRICE_ADJUSTMENT_TYPE(models.TextChoices):
     PRICE_OVERRIDE = ("price_override", _("Price Override"))
 
 
-class PAYMENT_PROVIDERS(models.TextChoices):
+class PAYMENT_PROCESSORS(models.TextChoices):
     STRIPE = ("stripe", _("Stripe"))
+    BRAINTREE = ("braintree", _("Braintree"))
 
 
 class METRIC_TYPE(models.TextChoices):
@@ -253,6 +254,10 @@ class ORGANIZATION_SETTING_NAMES(models.TextChoices):
         "generate_customer_after_creating_in_lotus",
         _("Generate in Stripe after Lotus"),
     )
+    GENERATE_CUSTOMER_IN_BRAINTREE_AFTER_LOTUS = (
+        "gen_cust_in_braintree_after_lotus",
+        _("Generate in Braintree after Lotus"),
+    )
     SUBSCRIPTION_FILTER_KEYS = (
         "subscription_filter_keys",
         _("Subscription Filter Keys"),
@@ -266,4 +271,5 @@ class TAG_GROUP(models.TextChoices):
 
 class ORGANIZATION_SETTING_GROUPS(models.TextChoices):
     STRIPE = ("stripe", _("Stripe"))
+    BRAINTREE = ("braintree", _("Braintree"))
     BILLING = ("billing", _("Billing"))

@@ -1,11 +1,12 @@
 import React, { FC, useEffect, useState } from "react";
-import { useSearchParams , useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "antd";
 import { PaymentProcessorIntegration } from "../api/api";
 import {
   PaymentProcessorConnectionRequestType,
   PaymentProcessorConnectionResponseType,
   StripeConnectionRequestType,
+  BraintreeConnectionRequestType,
 } from "../types/payment-processor-type";
 
 const StripeRedirect: FC = () => {
