@@ -63,14 +63,22 @@ func (b *batch) addRecord(event *Event) error {
 }
 
 func main() {
-	seeds := []string{"localhost:9092"}
+	var kafkaURL string
+	if kafkaURL = os.Getenv("KAFKA_URL"); kafkaURL == "" {
+		kafkaURL = "localhost:9092"
+	}
+	var kafkaTopic string
+	if kafkaTopic = os.Getenv("EVENTS_TOPIC"); kafkaTopic == "" {
+		kafkaTopic = "test-topic"
+	}
+	seeds := []string{kafkaURL}
 	ctx := context.Background()
 
 	// Setup kafka consumer
 	cl, err := kgo.NewClient(
 		kgo.SeedBrokers(seeds...),
 		kgo.ConsumerGroup("default"),
-		kgo.ConsumeTopics("test-topic"),
+		kgo.ConsumeTopics(kafkaTopic),
 		kgo.DisableAutoCommit(),
 	)
 	if err != nil {
@@ -116,7 +124,6 @@ func main() {
 		}
 		if fetches.IsClientClosed() {
 			panic(errors.New("client is closed"))
-
 		}
 		if errs := fetches.Errors(); len(errs) > 0 {
 			// All errors are retried internally when fetching, but non-retriable errors are
