@@ -3,7 +3,7 @@ from django.apps import AppConfig
 
 class MeteringBillingConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "metering_billing"
+    name = "lotus.backend.metering_billing"
 
     def ready(self):
         from actstream import registry
