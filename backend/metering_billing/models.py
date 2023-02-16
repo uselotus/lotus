@@ -765,7 +765,7 @@ class CustomerBalanceAdjustment(models.Model):
                     Sum("drawdowns__amount"), 0, output_field=models.DecimalField()
                 )
             )
-            .annotate(remaining_balance=F("amount") - F("drawn_down_amount"))
+            .annotate(remaining_balance=F("amount") + F("drawn_down_amount"))
         )
         am = amount
         for adj in adjs:
@@ -2729,6 +2729,4 @@ class UsageAlertResult(models.Model):
             self.triggered_count = self.triggered_count + 1
         self.last_run_value = new_value
         self.last_run_timestamp = now
-        self.save()
-        self.save()
         self.save()
