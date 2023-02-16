@@ -1043,7 +1043,7 @@ class CustomerBalanceAdjustment(models.Model):
                     Sum("drawdowns__amount"), 0, output_field=models.DecimalField()
                 )
             )
-            .annotate(remaining_balance=F("amount") - F("drawn_down_amount"))
+            .annotate(remaining_balance=F("amount") + F("drawn_down_amount"))
         )
         am = amount
         for adj in adjs:
