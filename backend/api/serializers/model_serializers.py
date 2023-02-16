@@ -16,6 +16,7 @@ from metering_billing.invoice import (
 )
 from metering_billing.models import (
     AddOnSpecification,
+    Address,
     CategoricalFilter,
     Customer,
     CustomerBalanceAdjustment,
@@ -107,31 +108,23 @@ class LightweightCustomerSerializer(
         }
 
 
-class AddressSerializer(serializers.Serializer):
-    city = serializers.CharField(
-        required=True, help_text="City, district, suburb, town, or village"
-    )
-    country = serializers.CharField(
-        min_length=2,
-        max_length=2,
-        required=True,
-        help_text="ISO 3166-1 alpha-2 country code",
-    )
-    line1 = serializers.CharField(
-        required=True,
-        help_text="Address line 1 (e.g., street, PO Box, or company name)",
-    )
-    line2 = serializers.CharField(
-        allow_blank=True,
-        allow_null=True,
-        required=False,
-        help_text="Address line 2 (e.g., apartment, suite, unit, or building)",
-    )
-    postal_code = serializers.CharField(required=True, help_text="ZIP or postal code")
-    state = serializers.CharField(
-        required=True, help_text="State, county, province, or region"
-    )
+class AddressCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = ("city", "country", "line1", "line2", "postal_code", "state")
 
+class AddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = ("city", "country", "line1", "line2", "postal_code", "state")
+    extra_kwargs = {
+        "city": {"required": True, "allow_null": True},
+        "country": {"required": True, "allow_null": True},
+        "line1": {"required": True, "allow_null": True},
+        "line2": {"required": True, "allow_null": True},
+        "postal_code": {"required": True, "allow_null": True},
+        "state": {"required": True, "allow_null": True},
+    }
 
 class LightweightCustomerSerializerForInvoice(LightweightCustomerSerializer):
     class Meta(LightweightCustomerSerializer.Meta):

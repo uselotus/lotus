@@ -110,6 +110,11 @@ class PaymentProcesor(abc.ABC):
         """This method will be called periodically when the status of a payment object needs to be updated. It should return the status of the payment object, which should be either paid or unpaid."""
         pass
 
+    @abc.abstractmethod
+    def retrieve_customer_by_external_id(self, organization, external_id: str):
+        """This method will be called when a customer is created in Lotus and the payment provider is connected. It should return the customer object from the payment provider."""
+        pass
+
     # EXPORT METHODS
     @abc.abstractmethod
     def create_customer_flow(self, customer) -> None:
@@ -152,7 +157,7 @@ class BraintreeConnector(PaymentProcesor):
         self.test_public_key = BRAINTREE_TEST_PUBLIC_KEY
         self.test_private_key = BRAINTREE_TEST_SECRET_KEY
         self.config_key = "braintree-sandbox"
-        self.scopes = "address:create, address:update, address:find, customer:create, customer:update, customer:find, customer:search, payment_method:find, transaction:sale, transaction:find, transaction:search, view_facilitated_transaction_metrics, read_facilitated_transactions"
+        self.scopes = "address:create, address:update, address:find, customer:create, customer:update, customer:find, customer:search, payment_method:find, transaction:sale, transaction:find, transaction:search, view_facilitated_transaction_metrics, read_facilitated_transactions, merchant_account:all,merchant_account:find, payment_method_nonce:find"
 
     def working(self) -> bool:
         if self.self_hosted:
@@ -520,6 +525,16 @@ class BraintreeConnector(PaymentProcesor):
         else:
             return Invoice.PaymentStatus.UNPAID
 
+    def retrieve_customer_by_external_id(self, organization, external_id: str):
+        gateway = self._get_gateway(organization)
+        customer = gateway.customer.find(external_id)
+        return customer
+
+    def retrieve_account(self, organization):
+        gateway = self._get_gateway(organization)
+        result = gateway.merchant_accounts.all()
+        return result[0] if result else None
+
     # FRONTEND REQUEST METHODS
     def handle_post(self, data, organization) -> None:
         pass
@@ -641,6 +656,38 @@ class StripeConnector(PaymentProcesor):
             return Invoice.PaymentStatus.PAID
         else:
             return Invoice.PaymentStatus.UNPAID
+
+    def retrieve_customer_by_external_id(self, organization, external_id: str):
+        from metering_billing.models import Organization
+
+        customer_payload = {}
+        if not self.self_hosted:
+            customer_payload["stripe_account"] = organization.payment_provider_ids.get(
+                PAYMENT_PROCESSORS.STRIPE, {}
+            ).get("id")
+        if organization.organization_type == Organization.OrganizationType.PRODUCTION:
+            stripe.api_key = self.live_secret_key
+        else:
+            stripe.api_key = self.test_secret_key
+        customer = stripe.Customer.retrieve(external_id, **customer_payload)
+
+        return customer
+
+    def retrieve_account(self, organization):
+        from metering_billing.models import Organization
+
+        account_payload = {}
+        if not self.self_hosted:
+            account_payload["stripe_account"] = organization.payment_provider_ids.get(
+                PAYMENT_PROCESSORS.STRIPE, {}
+            ).get("id")
+        if organization.organization_type == Organization.OrganizationType.PRODUCTION:
+            stripe.api_key = self.live_secret_key
+        else:
+            stripe.api_key = self.test_secret_key
+        customer = stripe.Account.retrieve(**account_payload)
+
+        return customer
 
     def import_customers(self, organization):
         """

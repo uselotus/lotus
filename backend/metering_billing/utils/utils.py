@@ -1,5 +1,6 @@
 import collections
 import datetime
+import json
 import uuid
 from collections import OrderedDict, namedtuple
 from collections.abc import MutableMapping, MutableSequence
@@ -9,6 +10,7 @@ import pytz
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.db.models import Field, Model
+
 from metering_billing.exceptions.exceptions import ServerError
 from metering_billing.utils.enums import (
     METRIC_GRANULARITY,
@@ -18,6 +20,11 @@ from metering_billing.utils.enums import (
 
 ModelType = type[Model]
 Fields = list[Field]
+
+
+def parse_nested_response(obj) -> dict:
+    json_enc = json.dumps(obj, default=lambda o: "<not serializable>")
+    return json.loads(json_enc)
 
 
 def print_prefetch_counts(queryset, prefix=""):

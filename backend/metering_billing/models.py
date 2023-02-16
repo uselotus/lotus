@@ -7,23 +7,39 @@ from decimal import Decimal
 from typing import Literal, Optional, TypedDict, Union
 
 # import lotus_python
+import pycountry
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
-from django.core.validators import MaxValueValidator, MinValueValidator
+from django.core.validators import (
+    MaxLengthValidator,
+    MaxValueValidator,
+    MinLengthValidator,
+    MinValueValidator,
+)
 from django.db import models
 from django.db.models import Count, F, FloatField, Prefetch, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
+
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
     NotEditable,
     OverlappingPlans,
 )
+from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.utils import (
     calculate_end_date,
     convert_to_date,
@@ -33,6 +49,7 @@ from metering_billing.utils import (
     event_uuid,
     now_plus_day,
     now_utc,
+    parse_nested_response,
     periods_bwn_twodates,
     product_uuid,
 )
@@ -64,19 +81,12 @@ from metering_billing.utils.enums import (
     SUPPORTED_CURRENCIES,
     SUPPORTED_CURRENCIES_VERSION,
     TAG_GROUP,
+    TAX_PROVIDER,
     USAGE_BILLING_FREQUENCY,
     USAGE_CALC_GRANULARITY,
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -89,6 +99,38 @@ class Team(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Address(models.Model):
+    organization = models.ForeignKey(
+        "Organization", on_delete=models.CASCADE, related_name="addresses"
+    )
+    city = models.CharField(
+        max_length=50, help_text="City, district, suburb, town, or village"
+    )
+    country = models.CharField(
+        max_length=2,
+        help_text="Two-letter country code (ISO 3166-1 alpha-2)",
+        validators=[MinLengthValidator(2), MaxLengthValidator(2)],
+        choices=list([x.alpha_2 for x in pycountry.countries]),
+    )
+    line1 = models.TextField(
+        max_length=100,
+        help_text="Address line 1 (e.g., street, PO Box, or company name)",
+    )
+    line2 = models.TextField(
+        help_text="Address line 2 (e.g., apartment, suite, unit, or building)",
+        null=True,
+    )
+    postal_code = models.CharField(
+        max_length=20,
+        help_text="ZIP or postal code",
+    )
+    state = models.CharField(
+        max_length=30,
+        help_text="State, county, province, or region",
+        null=True,
+    )
 
 
 class Organization(models.Model):
@@ -108,6 +150,37 @@ class Organization(models.Model):
     organization_type = models.PositiveSmallIntegerField(
         choices=OrganizationType.choices, default=OrganizationType.DEVELOPMENT
     )
+    subscription_filters_setting_provisioned = models.BooleanField(default=False)
+    properties = models.JSONField(default=dict, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+
+    # BILLING RELATED FIELDS
+    default_payment_provider = models.CharField(
+        blank=True, choices=PAYMENT_PROCESSORS.choices, max_length=40, null=True
+    )
+    stripe_integration = models.ForeignKey(
+        "StripeOrganizationIntegration",
+        on_delete=models.SET_NULL,
+        related_name="organizations",
+        null=True,
+        blank=True,
+    )
+    braintree_integration = models.ForeignKey(
+        "BraintreeOrganizationIntegration",
+        on_delete=models.SET_NULL,
+        related_name="organizations",
+        null=True,
+        blank=True,
+    )
+    address = models.ForeignKey(
+        "Address",
+        on_delete=models.SET_NULL,
+        related_name="shipping_customers",
+        null=True,
+        blank=True,
+        help_text="The primary origin address for the organization",
+    )
     default_currency = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
@@ -115,12 +188,9 @@ class Organization(models.Model):
         null=True,
         blank=True,
     )
-    webhooks_provisioned = models.BooleanField(default=False)
     currencies_provisioned = models.IntegerField(default=0)
-    subscription_filters_setting_provisioned = models.BooleanField(default=False)
-    properties = models.JSONField(default=dict, blank=True, null=True)
-    email = models.EmailField(blank=True, null=True)
-    phone = models.CharField(max_length=20, blank=True, null=True)
+
+    # TAX RELATED FIELDS
     tax_rate = models.DecimalField(
         max_digits=7,
         decimal_places=4,
@@ -131,8 +201,18 @@ class Organization(models.Model):
         help_text="Tax rate as percentage. For example, 10.5 for 10.5%",
         null=True,
     )
+    tax_provider = models.PositiveSmallIntegerField(
+        choices=TAX_PROVIDER.choices, default=TAX_PROVIDER.LOTUS
+    )
+
+    # TIMEZONE RELATED FIELDS
     timezone = TimeZoneField(default="UTC", use_pytz=True)
     __original_timezone = None
+
+    # SVIX RELATED FIELDS
+    webhooks_provisioned = models.BooleanField(default=False)
+
+    # HISTORY RELATED FIELDS
     history = HistoricalRecords()
 
     def __init__(self, *args, **kwargs):
@@ -179,6 +259,56 @@ class Organization(models.Model):
             )
             self.save()
         self.provision_subscription_filter_settings()
+
+    def get_address(self) -> Address:
+        if self.default_payment_provider == PAYMENT_PROCESSORS.STRIPE:
+            acct_dict = cache.get(
+                f"stripe_account_{self.stripe_integration.stripe_account_id}"
+            )
+            if acct_dict is None:
+                customer_obj = PAYMENT_PROCESSOR_MAP[
+                    PAYMENT_PROCESSORS.STRIPE
+                ].retrieve_account(self)
+                acct_dict = parse_nested_response(customer_obj)
+                cache.set(
+                    f"stripe_account_{self.stripe_integration.stripe_account_id}",
+                    acct_dict,
+                )
+            address = acct_dict.get("company", {}).get("address")
+            addy = Address(
+                city=address.get("city"),
+                country=address.get("country"),
+                line1=address.get("line1"),
+                line2=address.get("line2"),
+                postal_code=address.get("postal_code"),
+                state=address.get("state"),
+            )
+            return addy
+        elif self.default_payment_provider == PAYMENT_PROCESSORS.BRAINTREE:
+            acct_dict = cache.get(
+                f"braintree_account_{self.braintree_integration.braintree_merchant_id}"
+            )
+            if acct_dict is None:
+                customer_obj = PAYMENT_PROCESSOR_MAP[
+                    PAYMENT_PROCESSORS.BRAINTREE
+                ].retrieve_account(self)
+                acct_dict = parse_nested_response(customer_obj)
+                cache.set(
+                    f"braintree_account_{self.braintree_integration.braintree_merchant_id}",
+                    acct_dict,
+                )
+            address = acct_dict.get("business_details", {}).get("address_details", {})
+            addy = Address(
+                city=address.get("locality"),
+                country=address.get("country_code_alpha2"),
+                line1=address.get("street_address"),
+                line2=address.get("extended_address"),
+                postal_code=address.get("postal_code"),
+                state=address.get("region"),
+            )
+            return addy
+        else:
+            return self.address
 
     def provision_subscription_filter_settings(self):
         if not self.subscription_filters_setting_provisioned:
@@ -452,13 +582,11 @@ class Customer(models.Model):
         default=customer_uuid,
         help_text="The id provided when creating the customer, we suggest matching with your internal customer id in your backend",
     )
-    payment_provider = models.CharField(
-        blank=True, choices=PAYMENT_PROCESSORS.choices, max_length=40, null=True
-    )
-    integrations = models.JSONField(default=dict, blank=True)
     properties = models.JSONField(
         default=dict, null=True, help_text="Extra metadata for the customer"
     )
+
+    # BILLING RELATED FIELDS
     default_currency = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
@@ -466,6 +594,27 @@ class Customer(models.Model):
         null=True,
         blank=True,
         help_text="The currency the customer will be invoiced in",
+    )
+    shipping_address = models.ForeignKey(
+        "Address",
+        on_delete=models.SET_NULL,
+        related_name="shipping_customers",
+        null=True,
+        blank=True,
+        help_text="The shipping address for the customer",
+    )
+    billing_address = models.ForeignKey(
+        "Address",
+        on_delete=models.SET_NULL,
+        related_name="billing_customers",
+        null=True,
+        blank=True,
+        help_text="The billing address for the customer",
+    )
+
+    # TAX RELATED FIELDS
+    tax_provider = models.PositiveSmallIntegerField(
+        choices=TAX_PROVIDER.choices, null=True, blank=True
     )
     tax_rate = models.DecimalField(
         max_digits=7,
@@ -477,8 +626,32 @@ class Customer(models.Model):
         help_text="Tax rate as percentage. For example, 10.5 for 10.5%",
         null=True,
     )
+
+    # TIMEZONE FIELDS
     timezone = TimeZoneField(default="UTC", use_pytz=True)
     timezone_set = models.BooleanField(default=False)
+
+    # PAYMENT PROCESSOR FIELDS
+    payment_provider = models.CharField(
+        blank=True, choices=PAYMENT_PROCESSORS.choices, max_length=40, null=True
+    )
+    integrations = models.JSONField(default=dict, blank=True)
+    stripe_integration = models.ForeignKey(
+        "StripeCustomerIntegration",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="customers",
+    )
+    braintree_integration = models.ForeignKey(
+        "BraintreeCustomerIntegration",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="customers",
+    )
+
+    # HISTORY FIELDS
     history = HistoricalRecords()
 
     class Meta:
@@ -581,8 +754,113 @@ class Customer(models.Model):
         total_amount_due = unpaid_invoice_amount_due or 0
         return total_amount_due
 
-    def get_address(self):
-        return self.address
+    def get_billing_address(self) -> Address:
+        if self.payment_provider == PAYMENT_PROCESSORS.STRIPE:
+            cust_dict = cache.get(
+                f"stripe_customer_{self.stripe_integration.stripe_customer_id}"
+            )
+            if cust_dict is None:
+                customer_obj = PAYMENT_PROCESSOR_MAP[
+                    PAYMENT_PROCESSORS.STRIPE
+                ].retrieve_customer_by_external_id(
+                    self.organization, self.stripe_integration.stripe_customer_id
+                )
+                cust_dict = parse_nested_response(customer_obj)
+                cache.set(
+                    f"stripe_customer_{self.stripe_integration.stripe_customer_id}",
+                    cust_dict,
+                )
+            address = cust_dict.get("address")
+            addy = Address(
+                city=address.get("city"),
+                country=address.get("country"),
+                line1=address.get("line1"),
+                line2=address.get("line2"),
+                postal_code=address.get("postal_code"),
+                state=address.get("state"),
+            )
+            return addy
+        elif self.payment_provider == PAYMENT_PROCESSORS.BRAINTREE:
+            cust_dict = cache.get(
+                f"braintree_customer_{self.braintree_integration.braintree_customer_id}"
+            )
+            if cust_dict is None:
+                customer_obj = PAYMENT_PROCESSOR_MAP[
+                    PAYMENT_PROCESSORS.BRAINTREE
+                ].retrieve_customer_by_external_id(
+                    self.organization, self.stripe_integration.stripe_customer_id
+                )
+                cust_dict = parse_nested_response(customer_obj)
+                cache.set(
+                    f"braintree_customer_{self.braintree_integration.braintree_customer_id}",
+                    cust_dict,
+                )
+            address = next(iter(cust_dict["addresses"]), {})
+            addy = Address(
+                city=address.get("locality"),
+                country=address.get("country_code_alpha2"),
+                line1=address.get("street_address"),
+                line2=address.get("extended_address"),
+                postal_code=address.get("postal_code"),
+                state=address.get("region"),
+            )
+            return addy
+        else:
+            return self.billing_address
+
+    def get_shipping_address(self) -> Address:
+        if self.payment_provider == PAYMENT_PROCESSORS.STRIPE:
+            cust_dict = cache.get(
+                f"stripe_customer_{self.stripe_integration.stripe_customer_id}"
+            )
+            if cust_dict is None:
+                customer_obj = PAYMENT_PROCESSOR_MAP[
+                    PAYMENT_PROCESSORS.STRIPE
+                ].retrieve_customer_by_external_id(
+                    self.organization, self.stripe_integration.stripe_customer_id
+                )
+                cust_dict = parse_nested_response(customer_obj)
+                cache.set(
+                    f"stripe_customer_{self.stripe_integration.stripe_customer_id}",
+                    cust_dict,
+                )
+            address = cust_dict.get("shipping", {})
+            addy = Address(
+                city=address.get("city"),
+                country=address.get("country"),
+                line1=address.get("line1"),
+                line2=address.get("line2"),
+                postal_code=address.get("postal_code"),
+                state=address.get("state"),
+            )
+            return addy
+        elif self.payment_provider == PAYMENT_PROCESSORS.BRAINTREE:
+            cust_dict = cache.get(
+                f"braintree_customer_{self.braintree_integration.braintree_customer_id}"
+            )
+            if cust_dict is None:
+                customer_obj = PAYMENT_PROCESSOR_MAP[
+                    PAYMENT_PROCESSORS.BRAINTREE
+                ].retrieve_customer_by_external_id(
+                    self.organization, self.stripe_integration.stripe_customer_id
+                )
+                cust_dict = parse_nested_response(customer_obj)
+                cache.set(
+                    f"braintree_customer_{self.braintree_integration.braintree_customer_id}",
+                    cust_dict,
+                )
+            address = next(iter(cust_dict["addresses"]), {})
+            addy = Address(
+                city=address.get("locality"),
+                country=address.get("country_code_alpha2"),
+                line1=address.get("street_address"),
+                line2=address.get("extended_address"),
+                postal_code=address.get("postal_code"),
+                state=address.get("region"),
+            )
+            return addy
+        else:
+            return self.shipping_address
 
 
 class CustomerBalanceAdjustment(models.Model):
@@ -2730,5 +3008,69 @@ class UsageAlertResult(models.Model):
         self.last_run_value = new_value
         self.last_run_timestamp = now
         self.save()
-        self.save()
-        self.save()
+
+
+class StripeCustomerIntegration(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="stripe_customer_links"
+    )
+    stripe_customer_id = models.TextField()
+    created = models.DateTimeField(default=now_utc)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["organization", "stripe_customer_id"],
+                name="unique_stripe_customer_id",
+            ),
+        ]
+
+
+class BraintreeCustomerIntegration(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="braintree_customer_links"
+    )
+    braintree_customer_id = models.CharField()
+    created = models.DateTimeField(default=now_utc)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["organization", "braintree_customer_id"],
+                name="unique_braintree_customer_id",
+            ),
+        ]
+
+
+class StripeOrganizationIntegration(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="stripe_organization_links"
+    )
+    stripe_account_id = models.TextField()
+    created = models.DateTimeField(default=now_utc)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["organization", "stripe_account_id"],
+                name="unique_stripe_account_id",
+            ),
+        ]
+
+
+class BraintreeOrganizationIntegration(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="braintree_organization_links",
+    )
+    braintree_merchant_id = models.CharField()
+    created = models.DateTimeField(default=now_utc)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["organization", "braintree_merchant_id"],
+                name="unique_braintree_merchant_id",
+            ),
+        ]
