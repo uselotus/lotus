@@ -3,6 +3,7 @@ import api.views as api_views
 import posthog
 from actstream.models import Action
 from api.serializers.webhook_serializers import (
+    CustomerCreatedSerializer,
     InvoiceCreatedSerializer,
     InvoicePaidSerializer,
     UsageAlertTriggeredSerializer,
@@ -303,6 +304,14 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 extend_schema(
                     description="Usage alert triggered webhook",
                     responses={200: UsageAlertTriggeredSerializer},
+                ),
+            ),
+            OpenApiCallback(
+                WEBHOOK_TRIGGER_EVENTS.CUSTOMER_CREATED.value,
+                "{$request.body#/webhook_url}",
+                extend_schema(
+                    description="Customer created webhook",
+                    responses={200: CustomerCreatedSerializer},
                 ),
             ),
         ]
