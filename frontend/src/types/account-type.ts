@@ -1,6 +1,6 @@
 import { PlanType } from "./plan-type";
 import { CurrencyType } from "./pricing-unit-type";
-
+import { PaymentProcessorType } from "./payment-processor-type";
 export interface CreateOrgAccountType {
   username: string;
   password: string;
@@ -24,6 +24,13 @@ export interface OrganizationSettingsType {
     setting_group: string;
     setting_name: string;
   };
+}
+
+export interface UpdateOrganizationPPType {
+  org_id: string;
+  payment_provider: PaymentProcessorType;
+  payment_provider_id: string;
+  nango_connected?: boolean;
 }
 
 export interface OrganizationType {

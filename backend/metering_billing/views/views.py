@@ -27,7 +27,7 @@ from metering_billing.models import (
     PlanVersion,
     SubscriptionRecord,
 )
-from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.model_serializers import (
     CustomerSummarySerializer,
@@ -63,7 +63,7 @@ from metering_billing.utils import (
 from metering_billing.utils.enums import (
     METRIC_STATUS,
     METRIC_TYPE,
-    PAYMENT_PROVIDERS,
+    PAYMENT_PROCESSORS,
     USAGE_CALC_GRANULARITY,
 )
 from metering_billing.views.model_views import CustomerViewSet
@@ -586,6 +586,7 @@ class DraftInvoiceView(APIView):
                 "billing_plan__plan_components",
                 "billing_plan__plan_components__billable_metric",
                 "billing_plan__plan_components__tiers",
+                "billing_plan__pricing_unit",
             )
             invoices = generate_invoice(
                 sub_records,
@@ -608,7 +609,7 @@ class ImportCustomersView(APIView):
         request=inline_serializer(
             name="ImportCustomersRequest",
             fields={
-                "source": serializers.ChoiceField(choices=PAYMENT_PROVIDERS.choices)
+                "source": serializers.ChoiceField(choices=PAYMENT_PROCESSORS.choices)
             },
         ),
         responses={
@@ -631,9 +632,9 @@ class ImportCustomersView(APIView):
     def post(self, request, format=None):
         organization = request.organization
         source = request.data["source"]
-        if source not in [choice[0] for choice in PAYMENT_PROVIDERS.choices]:
+        if source not in [choice[0] for choice in PAYMENT_PROCESSORS.choices]:
             raise ExternalConnectionInvalid(f"Invalid source: {source}")
-        connector = PAYMENT_PROVIDER_MAP[source]
+        connector = PAYMENT_PROCESSOR_MAP[source]
         try:
             num = connector.import_customers(organization)
         except Exception as e:
@@ -654,7 +655,7 @@ class ImportPaymentObjectsView(APIView):
         request=inline_serializer(
             name="ImportPaymentObjectsRequest",
             fields={
-                "source": serializers.ChoiceField(choices=PAYMENT_PROVIDERS.choices)
+                "source": serializers.ChoiceField(choices=PAYMENT_PROCESSORS.choices)
             },
         ),
         responses={
@@ -677,9 +678,9 @@ class ImportPaymentObjectsView(APIView):
     def post(self, request, format=None):
         organization = request.organization
         source = request.data["source"]
-        if source not in [choice[0] for choice in PAYMENT_PROVIDERS.choices]:
+        if source not in [choice[0] for choice in PAYMENT_PROCESSORS.choices]:
             raise ExternalConnectionInvalid(f"Invalid source: {source}")
-        connector = PAYMENT_PROVIDER_MAP[source]
+        connector = PAYMENT_PROCESSOR_MAP[source]
         try:
             num = connector.import_payment_objects(organization)
         except Exception as e:
@@ -701,7 +702,7 @@ class TransferSubscriptionsView(APIView):
         request=inline_serializer(
             name="TransferSubscriptionsRequest",
             fields={
-                "source": serializers.ChoiceField(choices=PAYMENT_PROVIDERS.choices),
+                "source": serializers.ChoiceField(choices=PAYMENT_PROCESSORS.choices),
                 "end_now": serializers.BooleanField(),
             },
         ),
@@ -725,10 +726,10 @@ class TransferSubscriptionsView(APIView):
     def post(self, request, format=None):
         organization = request.organization
         source = request.data["source"]
-        if source not in [choice[0] for choice in PAYMENT_PROVIDERS.choices]:
+        if source not in [choice[0] for choice in PAYMENT_PROCESSORS.choices]:
             raise ExternalConnectionInvalid(f"Invalid source: {source}")
         end_now = request.data.get("end_now", False)
-        connector = PAYMENT_PROVIDER_MAP[source]
+        connector = PAYMENT_PROCESSOR_MAP[source]
         try:
             num = connector.transfer_subscriptions(organization, end_now)
         except Exception as e:

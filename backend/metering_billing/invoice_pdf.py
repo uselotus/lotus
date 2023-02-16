@@ -16,6 +16,7 @@ from reportlab.rl_config import TTFSearchPath
 
 from metering_billing.models import Invoice
 from metering_billing.serializers.serializer_utils import PlanUUIDField
+from metering_billing.utils import make_hashable
 from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
 
 logger = logging.getLogger("django.server")
@@ -367,7 +368,7 @@ class InvoicePDF:
             else:
                 plan_id, sub_filters, plan_name = None, None, None
 
-            key = tuple([sub_filters, plan_id, plan_name])
+            key = make_hashable([sub_filters, plan_id, plan_name])
 
             if key not in grouped_line_items:
                 grouped_line_items[key] = []
@@ -411,15 +412,24 @@ class InvoicePDF:
                 for line_item in grouped_line_items[group]
                 if line_item.chargeable_item_type != CHARGEABLE_ITEM_TYPE.TAX
             )
+            # Subscription title
             pt1 = group[2]
-            pt2 = group[0]
-            if pt2 is not None:
-                pt2 = pt2[0]
-            pt3 = group[0]
-            if pt3 is not None:
-                pt3 = pt3[1]
+            # Subscription filter
+            subscription_filters = group[0]
+            if (
+                subscription_filters is not None
+                and len(subscription_filters) > 0
+                and subscription_filters[0] is not None
+            ):
+                pt2 = subscription_filters[0][0]
+                pt3 = subscription_filters[0][1]
+            else:
+                pt2 = None
+                pt3 = None
+
             if not pt2 and not pt3 and pt1:
                 subscription_title = pt1
+            # If there is no plan name
             elif not pt1:
                 subscription_title = "Credit"
             else:

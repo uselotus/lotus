@@ -1,9 +1,14 @@
+import logging
 from decimal import Decimal
 
-import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
+from django.core.cache import cache
 from django.db.models import DecimalField, Q, Sum
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
+import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -32,6 +37,7 @@ from metering_billing.models import (
     WebhookEndpoint,
     WebhookTrigger,
 )
+from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.serializers.serializer_utils import (
     OrganizationSettingUUIDField,
     OrganizationUUIDField,
@@ -52,6 +58,7 @@ from metering_billing.utils.enums import (
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
     ORGANIZATION_STATUS,
+    PAYMENT_PROCESSORS,
     PLAN_DURATION,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
@@ -60,10 +67,9 @@ from metering_billing.utils.enums import (
     TAG_GROUP,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
+logger = logging.getLogger("django.server")
 
 
 class TagSerializer(api_serializers.TagSerializer):
@@ -368,6 +374,9 @@ class OrganizationUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializ
             "plan_tags",
             "subscription_filter_keys",
             "timezone",
+            "payment_provider",
+            "payment_provider_id",
+            "nango_connected",
         )
 
     default_currency_code = SlugRelatedFieldWithOrganization(
@@ -382,6 +391,28 @@ class OrganizationUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializ
         child=serializers.CharField(), required=False
     )
     timezone = TimeZoneSerializerField(use_pytz=True)
+    payment_provider = serializers.ChoiceField(
+        choices=PAYMENT_PROCESSORS.choices,
+        required=False,
+        help_text="To udpate a payment provider's ID, specify the payment provider you want to update in this field, and the payment_provider_id in the corresponding field.",
+    )
+    payment_provider_id = serializers.CharField(required=False)
+    nango_connected = serializers.BooleanField(required=False)
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        # if payment_provider is specified, payment_provider_id must be specified, and vice versa
+        if (
+            attrs.get("payment_provider") is not None
+            and attrs.get("payment_provider_id") is None
+        ) or (
+            attrs.get("payment_provider") is None
+            and attrs.get("payment_provider_id") is not None
+        ):
+            raise serializers.ValidationError(
+                "If payment_provider is specified, payment_provider_id must be specified."
+            )
+        return attrs
 
     def update(self, instance, validated_data):
         from metering_billing.tasks import update_subscription_filter_settings_task
@@ -390,10 +421,37 @@ class OrganizationUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializ
             type(validated_data.get("default_currency")) == PricingUnit
             or validated_data.get("default_currency") is None
         )
+        if validated_data.get("payment_provider") is not None:
+            provider = validated_data.get("payment_provider")
+            pp_dict = instance.payment_provider_ids.get(provider)
+            if pp_dict is None:
+                connected = validated_data.get("nango_connected") or False
+                new_dict = {
+                    "id": validated_data.get("payment_provider_id"),
+                    "connected": connected,
+                }
+            elif not isinstance(pp_dict, dict):
+                connected = validated_data.get(
+                    "nango_connected"
+                ) or pp_dict == validated_data.get("payment_provider_id")
+                new_dict = {"id": pp_dict, "connected": connected}
+            else:
+                connected = validated_data.get("nango_connected") or pp_dict.get(
+                    "id"
+                ) == validated_data.get("payment_provider_id")
+                new_dict = pp_dict
+                new_dict["id"] = validated_data.get("payment_provider_id")
+                new_dict["connected"] = connected
+            instance.payment_provider_ids[provider] = new_dict
+            PAYMENT_PROCESSOR_MAP[provider].initialize_settings(instance)
         instance.default_currency = validated_data.get(
             "default_currency", instance.default_currency
         )
-        instance.timezone = validated_data.get("timezone", instance.timezone)
+        new_tz = validated_data.get("timezone", instance.timezone)
+        if new_tz != instance.timezone:
+            cache.delete(f"tz_organization_{instance.id}")
+        instance.timezone = new_tz
+
         address = validated_data.pop("address", None)
         if address:
             cur_properties = instance.properties or {}
@@ -481,6 +539,8 @@ class CustomerUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         )
         instance.tax_rate = validated_data.get("tax_rate", instance.tax_rate)
         tz = validated_data.get("timezone", None)
+        if tz != instance.timezone:
+            cache.delete(f"tz_customer_{instance.id}")
         if tz:
             instance.timezone = tz
             instance.timezone_set = True
@@ -1296,15 +1356,23 @@ class PlanVersionDetailSerializer(api_serializers.PlanVersionSerializer):
             "version_id",
             "plan_id",
             "alerts",
+            "active_subscriptions",
         )
         extra_kwargs = {**api_serializers.PlanVersionSerializer.Meta.extra_kwargs}
 
     plan_id = PlanUUIDField(source="plan.plan_id", read_only=True)
     alerts = serializers.SerializerMethodField()
     version_id = PlanVersionUUIDField(read_only=True)
+    active_subscriptions = serializers.SerializerMethodField()
 
     def get_alerts(self, obj) -> UsageAlertSerializer(many=True):
         return UsageAlertSerializer(obj.usage_alerts, many=True).data
+
+    def get_active_subscriptions(self, obj) -> int:
+        try:
+            return obj.active_subscriptions
+        except AttributeError:
+            return obj.num_active_subs() or 0
 
 
 class InitialPlanVersionSerializer(PlanVersionCreateSerializer):
@@ -1338,13 +1406,27 @@ class PlanDetailSerializer(api_serializers.PlanSerializer):
     class Meta(api_serializers.PlanSerializer.Meta):
         fields = api_serializers.PlanSerializer.Meta.fields + ("versions",)
 
-    display_version = PlanVersionDetailSerializer()
+    display_version = serializers.SerializerMethodField()
     versions = serializers.SerializerMethodField()
 
+    def get_display_version(self, obj) -> PlanVersionDetailSerializer:
+        try:
+            display = [
+                x for x in obj.versions_prefetched if x.pk == obj.display_version_id
+            ][0]
+            return PlanVersionDetailSerializer(display).data
+        except AttributeError as e:
+            logger.error(f"AttributeError on plan: {e}")
+            return PlanVersionDetailSerializer(obj.display_version).data
+
     def get_versions(self, obj) -> PlanVersionDetailSerializer(many=True):
-        return PlanVersionDetailSerializer(
-            obj.versions.all().order_by("version"), many=True
-        ).data
+        try:
+            return PlanVersionDetailSerializer(obj.versions_prefetched, many=True).data
+        except AttributeError as e:
+            logger.error(f"AttributeError on plan: {e}")
+            return PlanVersionDetailSerializer(
+                obj.versions.all().order_by("version"), many=True
+            ).data
 
 
 class PlanCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
@@ -1777,10 +1859,10 @@ class OrganizationSettingUpdateSerializer(
             validated_data["setting_values"] = list(
                 current_setting_values.union(new_setting_values)
             )
-        elif (
-            instance.setting_name
-            == ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS
-        ):
+        elif instance.setting_name in [
+            ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS,
+            ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_BRAINTREE_AFTER_LOTUS,
+        ]:
             if not isinstance(setting_values, bool):
                 raise serializers.ValidationError("Setting values must be a boolean")
             setting_values = {"value": setting_values}
@@ -2106,4 +2188,8 @@ class UsageAlertCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer
             plan_version=plan_version,
             **validated_data,
         )
+        return usage_alert
+        return usage_alert
+        return usage_alert
+        return usage_alert
         return usage_alert

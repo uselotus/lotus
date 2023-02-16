@@ -1,6 +1,11 @@
+/* eslint-disable react/jsx-props-no-spreading */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-shadow */
+/* eslint-disable camelcase */
 import React, { FC, useEffect } from "react";
 import { Column } from "@ant-design/plots";
 import { useQueryClient, useMutation } from "react-query";
+import { Tooltip } from "antd";
 
 import { Select, Form, Typography, Input } from "antd";
 import dayjs from "dayjs";
@@ -9,6 +14,7 @@ import { DraftInvoiceType } from "../../types/invoice-type";
 
 import { Customer } from "../../api/api";
 import { country_json } from "../../assets/country_codes";
+import { integrationsMap } from "../../types/payment-processor-type";
 
 import { CustomerType } from "../../types/customer-type";
 import { CustomerCostType } from "../../types/revenue-type";
@@ -39,9 +45,14 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
 }) => {
   const windowWidth = useMediaQuery();
 
-  const [transformedGraphData, setTransformedGraphData] = React.useState<any>(
-    []
-  );
+  const [transformedGraphData, setTransformedGraphData] = React.useState<
+    {
+      date: string;
+      amount: number;
+      metric: string | undefined;
+      type: string;
+    }[]
+  >([]);
   const [form] = Form.useForm();
   const [currentCurrency, setCurrentCurrency] = React.useState<string>(
     data.default_currency.code ? data.default_currency.code : ""
@@ -134,11 +145,11 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     return metric;
   };
   useEffect(() => {
-    const newgraphdata = cost_data.per_day.map((day: any) => {
-      const result_list = day.cost_data.map((metric: any) => ({
+    const newgraphdata = cost_data.per_day.map((day) => {
+      const result_list = day.cost_data.map((metric) => ({
         date: day.date,
         amount: metric.cost,
-        metric: metric.metric.billable_metric_name,
+        metric: metric.metric.metric_name,
         type: "cost",
       }));
 
@@ -170,6 +181,8 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
       case "4":
         start_date = dayjs().startOf("year").format("YYYY-MM-DD");
         break;
+      default:
+        break;
     }
 
     onDateChange(start_date, end_date);
@@ -183,8 +196,9 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     isStack: true,
     seriesField: "metric",
     groupField: "type",
+    legend: false as const,
     colorField: "type", // or seriesField in some cases
-    color: ["#33658A", "#C3986B", "#D9D9D9", "#171412", "#547AA5"],
+    color: ["#E4D5C5", "#C3986B", "#D9D9D9", "#171412", "#547AA5"],
   };
 
   return (
@@ -224,10 +238,10 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   )}
                 </div>
               </div>
-              <Divider className="mt-[3.53px]" />
+              <Divider className="mt-[3.60px]" />
             </CustomerCard.Heading>
             <CustomerCard.Container className="grid gap-72  items-center grid-cols-1 md:grid-cols-2">
-              <CustomerCard.Block className="text-[13px] justify-between w-full">
+              <CustomerCard.Block className="text-[14px] p-2 -mt-4 justify-between w-full">
                 <CustomerCard.Item>
                   <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
                     Name
@@ -367,7 +381,9 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                           className="w-full bg-white border border-black p-4"
                           name="timezone"
                           id="timezone"
-                          onChange={(e) => setTimezone(e.target.value)}
+                          onChange={(e) =>
+                            setTimezone(e.target.value as typeof timezone)
+                          }
                           defaultValue={data.timezone ? timezone : timezone}
                         >
                           {timezones.map((tz) => (
@@ -381,19 +397,26 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   </div>
                 </CustomerCard.Item>
               </CustomerCard.Block>
-              <CustomerCard.Block className="w-full ml-auto text-[13px] justify-between">
+              <CustomerCard.Block className="w-full p-2 -mt-4 ml-auto text-[14px] justify-between">
                 <CustomerCard.Item>
                   <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
                     Email
                   </div>
                   <div className="flex gap-1">
                     {" "}
-                    <div
-                      className={`Inter ${
-                        data.email.length > 36 ? "break-all text-[10px]" : ""
-                      } `}
-                    >
-                      {data.email}
+                    <div className="flex gap-1 !text-card-grey font-menlo">
+                      {" "}
+                      <div>
+                        {createShortenedText(
+                          data.email as string,
+                          windowWidth >= 2500
+                        )}
+                      </div>
+                      <CopyText
+                        showIcon
+                        onlyIcon
+                        textToCopy={data.email as string}
+                      />
                     </div>
                   </div>
                 </CustomerCard.Item>
@@ -456,20 +479,33 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
                     Payment Method Connected
                   </div>
-                  <div className="flex gap-1">
-                    {" "}
-                    <div className="Inter">
-                      {data.payment_provider ? (
-                        <img
-                          width={25}
-                          src="https://cdn.neverbounce.com/images/integrations/square/stripe-square.png"
-                          alt="stripe logo"
-                        />
-                      ) : (
-                        "N/A"
-                      )}
+                  {data.payment_provider ? (
+                    <Tooltip title={data.payment_provider_id}>
+                      <div className="flex gap-1">
+                        <div className="Inter">
+                          {data.payment_provider === "stripe" ? (
+                            <img
+                              width={25}
+                              src={integrationsMap.stripe.icon}
+                              alt="stripe logo"
+                            />
+                          ) : data.payment_provider === "braintree" ? (
+                            <img
+                              width={25}
+                              src={integrationsMap.braintree.icon}
+                              alt="braintree logo"
+                            />
+                          ) : (
+                            "N/A"
+                          )}
+                        </div>
+                      </div>
+                    </Tooltip>
+                  ) : (
+                    <div className="flex gap-1">
+                      <div className="Inter">N/A</div>
                     </div>
-                  </div>
+                  )}
                 </CustomerCard.Item>
               </CustomerCard.Block>
             </CustomerCard.Container>
@@ -526,7 +562,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   </div>
                   <div className="Inter text-card-grey">
                     {data.default_currency.symbol}
-                    {data.invoices[0].cost_due.toFixed(2)}
+                    {data.invoices[0]?.cost_due.toFixed(2)}
                   </div>
                 </CustomerCard.Item>
               </CustomerCard.Block>
@@ -545,7 +581,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                 <div className="flex gap-4 items-center">
                   <div>
                     <Badge className="bg-transparent">
-                      <Badge.Dot className="text-sky-800" />
+                      <Badge.Dot className="text-[#E4D5C5]" />
                       <Badge.Content>Cost</Badge.Content>
                     </Badge>
                   </div>
@@ -567,9 +603,8 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                 </div>
               </div>
             </div>
-            <Divider />
           </CustomerCard.Heading>
-          <CustomerCard.Container>
+          <CustomerCard.Container className=" mt-8">
             <CustomerCard.Block>
               <Column {...config} />
             </CustomerCard.Block>

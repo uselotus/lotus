@@ -2,11 +2,13 @@ import logging
 from collections.abc import Iterable
 from decimal import Decimal
 
+import sentry_sdk
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from django.db.models.query import QuerySet
-from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+
+from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.utils import (
     calculate_end_date,
     convert_to_datetime,
@@ -44,29 +46,47 @@ def generate_invoice(
     """
     Generate an invoice for a subscription.
     """
-    from metering_billing.models import Invoice
+    from metering_billing.models import Invoice, PricingUnit
     from metering_billing.tasks import generate_invoice_pdf_async
 
     if not issue_date:
         issue_date = now_utc()
     if not isinstance(subscription_records, (QuerySet, Iterable)):
         subscription_records = [subscription_records]
+
     if len(subscription_records) == 0:
         return None
 
-    customer = subscription_records[0].customer
-    assert all(
-        sr.customer == customer for sr in subscription_records
+    try:
+        customers = subscription_records.values("customer").distinct().count()
+    except AttributeError:
+        customers = len({x.customer for x in subscription_records})
+    assert (
+        customers == 1
     ), "All subscription records must belong to the same customer when invoicing."
-    organization = subscription_records[0].organization
-    assert all(
-        sr.organization == organization for sr in subscription_records
+    try:
+        organizations = subscription_records.values("organization").distinct().count()
+    except AttributeError:
+        organizations = len({x.organization for x in subscription_records})
+    assert (
+        organizations == 1
     ), "All subscription records must belong to the same organization when invoicing."
+    organization = subscription_records[0].organization
+    customer = subscription_records[0].customer
     due_date = calculate_due_date(issue_date, organization)
 
-    distinct_currencies = set(
-        [sr.billing_plan.pricing_unit for sr in subscription_records]
-    )
+    try:
+        distinct_currencies_pks = (
+            subscription_records.order_by()
+            .values_list("billing_plan__pricing_unit", flat=True)
+            .distinct()
+        )
+        distinct_currencies = PricingUnit.objects.filter(pk__in=distinct_currencies_pks)
+    except AttributeError:
+        distinct_currencies = {
+            x.billing_plan.pricing_unit for x in subscription_records
+        }
+
     invoices = {}
     for currency in distinct_currencies:
         # create kwargs for invoice
@@ -123,7 +143,11 @@ def generate_invoice(
                 if subscription_record.end_date <= now_utc():
                     subscription_record.fully_billed = True
                     subscription_record.save()
-            generate_invoice_pdf_async.delay(invoice.pk)
+            try:
+                generate_invoice_pdf_async.delay(invoice.pk)
+            except Exception as e:
+                sentry_sdk.capture_exception(e)
+
             invoice_created_webhook(invoice, organization)
 
     return list(invoices.values())
@@ -260,6 +284,7 @@ def charge_next_plan_flat_fee(
     subscription_record, next_subscription_record, next_bp, invoice
 ):
     from metering_billing.models import InvoiceLineItem, RecurringCharge
+
     timezone = subscription_record.customer.timezone
     for recurring_charge in next_bp.recurring_charges.all():
         charge_in_advance = (
@@ -493,7 +518,10 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
 
     if not draft:
         generate_external_payment_obj(invoice)
-        generate_invoice_pdf_async.delay(invoice.pk)
+        try:
+            generate_invoice_pdf_async.delay(invoice.pk)
+        except Exception as e:
+            sentry_sdk.capture_exception(e)
         invoice_created_webhook(invoice, organization)
 
     return invoice
@@ -505,18 +533,17 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
 def generate_external_payment_obj(invoice):
     customer = invoice.customer
     for pp in customer.integrations.keys():
-        if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
-            pp_connector = PAYMENT_PROVIDER_MAP[pp]
+        if pp in PAYMENT_PROCESSOR_MAP and PAYMENT_PROCESSOR_MAP[pp].working():
+            pp_connector = PAYMENT_PROCESSOR_MAP[pp]
             customer_conn = pp_connector.customer_connected(customer)
             org_conn = pp_connector.organization_connected(invoice.organization)
             if customer_conn and org_conn:
-                invoice.external_payment_obj_id = pp_connector.create_payment_object(
-                    invoice
-                )
-                invoice.external_payment_obj_type = pp
-                invoice.save()
-
-                break
+                external_id = pp_connector.create_payment_object(invoice)
+                if external_id:
+                    invoice.external_payment_obj_id = external_id
+                    invoice.external_payment_obj_type = pp
+                    invoice.save()
+                    break
 
 
 def calculate_due_date(issue_date, organization):
@@ -532,6 +559,7 @@ def calculate_due_date(issue_date, organization):
         due_date += relativedelta(
             days=int(grace_period_setting.setting_values["value"])
         )
+        return due_date
 
 
 def finalize_cost_due(invoice, draft):

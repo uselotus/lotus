@@ -10,37 +10,7 @@ from itertools import chain
 from typing import Optional
 
 import posthog
-from dateutil import parser
-from dateutil.relativedelta import relativedelta
-from django.conf import settings
-from django.db.models import (
-    Count,
-    DecimalField,
-    F,
-    OuterRef,
-    Prefetch,
-    Q,
-    Subquery,
-    Sum,
-    Value,
-)
-from django.db.models.functions import Coalesce
-from django.db.utils import IntegrityError
-from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from drf_spectacular.utils import extend_schema, inline_serializer
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import (
-    action,
-    api_view,
-    authentication_classes,
-    permission_classes,
-)
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
+import pytz
 from api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
     AddonSubscriptionRecordFilterSerializer,
@@ -76,6 +46,27 @@ from api.serializers.nonmodel_serializers import (
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
 )
+from dateutil import parser
+from dateutil.relativedelta import relativedelta
+from django.conf import settings
+from django.db.models import (
+    Count,
+    DecimalField,
+    F,
+    Max,
+    Min,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
+from django.db.utils import IntegrityError
+from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
 from metering_billing.exceptions import (
     DuplicateCustomer,
@@ -99,6 +90,7 @@ from metering_billing.models import (
     Plan,
     PlanComponent,
     PriceTier,
+    RecurringCharge,
     SubscriptionRecord,
 )
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
@@ -130,6 +122,17 @@ from metering_billing.utils.enums import (
     USAGE_BILLING_BEHAVIOR,
     USAGE_BILLING_FREQUENCY,
 )
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import (
+    action,
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -173,14 +176,19 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         qs = Customer.objects.filter(organization=organization)
         qs = qs.select_related("default_currency")
         qs = qs.prefetch_related(
+            "organization",
             Prefetch(
                 "subscription_records",
                 queryset=SubscriptionRecord.base_objects.active(now)
                 .filter(
                     organization=organization,
                 )
-                .select_related("customer", "billing_plan")
-                .prefetch_related("filters", "addon_subscription_records"),
+                .select_related("customer", "billing_plan", "billing_plan__plan")
+                .prefetch_related(
+                    "filters",
+                    "addon_subscription_records",
+                    "organization",
+                ),
                 to_attr="active_subscription_records",
             ),
             Prefetch(
@@ -188,24 +196,30 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 queryset=Invoice.objects.filter(
                     organization=organization,
                     payment_status__in=[
-                        Invoice.PaymentStatus.UNPAID,
                         Invoice.PaymentStatus.PAID,
+                        Invoice.PaymentStatus.UNPAID,
                     ],
                 )
                 .order_by("-issue_date")
-                .select_related("currency", "organization")
+                .select_related("currency")
                 .prefetch_related(
+                    "organization",
                     Prefetch(
                         "line_items",
-                        queryset=InvoiceLineItem.objects.select_related(
-                            "organization",
+                        queryset=InvoiceLineItem.objects.all()
+                        .select_related(
                             "pricing_unit",
                             "associated_subscription_record",
                             "associated_plan_version",
                             "associated_recurring_charge",
                             "associated_plan_component",
-                        ),
-                    )
+                        )
+                        .prefetch_related("organization"),
+                    ),
+                )
+                .annotate(
+                    min_date=Min("line_items__start_date"),
+                    max_date=Max("line_items__end_date"),
                 ),
                 to_attr="active_invoices",
             ),
@@ -384,7 +398,11 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
         now = now_utc()
         organization = self.request.organization
-        qs = Plan.objects.filter(organization=organization, status=PLAN_STATUS.ACTIVE)
+        qs = (
+            Plan.objects.all()
+            .order_by(F("created_on").desc(nulls_last=False), F("plan_name"))
+            .filter(organization=organization, status=PLAN_STATUS.ACTIVE)
+        )
         # first go for the ones that are one away (FK) and not nested
         qs = qs.select_related(
             "organization",
@@ -405,7 +423,6 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             end_date__gte=now,
         ).annotate(active_subscriptions=Count("*"))
         qs = qs.prefetch_related(
-            "organization",
             Prefetch(
                 "versions",
                 queryset=PlanVersion.objects.filter(
@@ -424,7 +441,6 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 )
                 .select_related("price_adjustment", "created_by", "pricing_unit")
                 .prefetch_related(
-                    "subscription_records",
                     "usage_alerts",
                     "features",
                 )
@@ -435,8 +451,13 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                             organization=organization,
                         )
                         .select_related("pricing_unit")
-                        .prefetch_related("tiers")
                         .prefetch_related(
+                            Prefetch(
+                                "tiers",
+                                queryset=PriceTier.objects.filter(
+                                    organization=organization
+                                ),
+                            ),
                             Prefetch(
                                 "billable_metric",
                                 queryset=Metric.objects.filter(
@@ -449,7 +470,16 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                             ),
                         ),
                     ),
-                ),
+                    Prefetch(
+                        "recurring_charges",
+                        queryset=RecurringCharge.objects.filter(
+                            organization=organization,
+                        ).select_related("pricing_unit", "organization"),
+                        to_attr="recurring_charges_prefetched",
+                    ),
+                )
+                .order_by("version"),
+                to_attr="versions_prefetched",
             ),
         )
         return qs
@@ -1743,11 +1773,12 @@ def track_event(request):
         if not time_created:
             bad_events[idempotency_id] = "Invalid time_created"
             continue
-        if not (
-            now - relativedelta(days=30)
-            <= parser.parse(time_created)
-            <= now + relativedelta(days=1)
-        ):
+        tc = parser.parse(time_created)
+        # Check if the datetime object is naive
+        if tc.tzinfo is None or tc.tzinfo.utcoffset(tc) is None:
+            # If the datetime object is naive, replace its tzinfo with UTC
+            tc = tc.replace(tzinfo=pytz.UTC)
+        if not (now - relativedelta(days=30) <= tc <= now + relativedelta(days=1)):
             bad_events[
                 idempotency_id
             ] = "Time created too far in the past or future. Events must be within 30 days before or 1 day ahead of current time."

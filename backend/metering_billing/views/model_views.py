@@ -33,6 +33,7 @@ from metering_billing.models import (
     User,
     WebhookEndpoint,
 )
+from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import ValidOrganization
 from metering_billing.serializers.backtest_serializers import (
     BacktestCreateSerializer,
@@ -51,6 +52,7 @@ from metering_billing.serializers.model_serializers import (
     ExternalPlanLinkSerializer,
     FeatureCreateSerializer,
     FeatureSerializer,
+    InvoiceSerializer,
     MetricCreateSerializer,
     MetricSerializer,
     MetricUpdateSerializer,
@@ -89,7 +91,7 @@ from metering_billing.tasks import run_backtest
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     METRIC_STATUS,
-    PAYMENT_PROVIDERS,
+    PAYMENT_PROCESSORS,
     WEBHOOK_TRIGGER_EVENTS,
 )
 from rest_framework import mixins, serializers, status, viewsets
@@ -712,7 +714,6 @@ class PlanViewSet(api_views.PlanViewSet):
     serializer_class = PlanDetailSerializer
     lookup_field = "plan_id"
     http_method_names = ["get", "post", "patch", "head"]
-    queryset = Plan.objects.all()
     permission_classes_per_method = {
         "create": [IsAuthenticated & ValidOrganization],
         "partial_update": [IsAuthenticated & ValidOrganization],
@@ -730,6 +731,15 @@ class PlanViewSet(api_views.PlanViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         return qs
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def get_serializer_class(self):
         if self.action == "partial_update":
@@ -778,7 +788,28 @@ class SubscriptionViewSet(api_views.SubscriptionViewSet):
 
 
 class InvoiceViewSet(api_views.InvoiceViewSet):
-    pass
+    http_method_names = ["get", "patch", "head", "post"]
+
+    def get_serializer_class(self):
+        if self.action == "send":
+            return InvoiceSerializer
+        return super().get_serializer_class()
+
+    @extend_schema(request=None)
+    @action(detail=True, methods=["post"])
+    def send(self, request, *args, **kwargs):
+        invoice = self.get_object()
+        customer = invoice.customer
+        if customer.payment_provider and invoice.external_payment_obj_type is None:
+            connector = PAYMENT_PROCESSOR_MAP.get(customer.payment_provider)
+            if connector:
+                external_id = connector.create_payment_object(invoice)
+                if external_id:
+                    invoice.external_payment_obj_id = external_id
+                    invoice.external_payment_obj_type = customer.payment_provider
+                    invoice.save()
+        serializer = self.get_serializer(invoice)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -972,7 +1003,9 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
             inline_serializer(
                 name="SourceSerializer",
                 fields={
-                    "source": serializers.ChoiceField(choices=PAYMENT_PROVIDERS.choices)
+                    "source": serializers.ChoiceField(
+                        choices=PAYMENT_PROCESSORS.choices
+                    )
                 },
             ),
         ],
@@ -1217,4 +1250,5 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
+        return context
         return context

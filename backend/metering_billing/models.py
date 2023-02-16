@@ -10,10 +10,11 @@ from typing import Literal, Optional, TypedDict, Union
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import Count, F, FloatField, Q, Sum
+from django.db.models import Count, F, FloatField, Prefetch, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
@@ -53,7 +54,7 @@ from metering_billing.utils.enums import (
     NUMERIC_FILTER_OPERATORS,
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
-    PAYMENT_PROVIDERS,
+    PAYMENT_PROCESSORS,
     PLAN_DURATION,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
@@ -151,13 +152,21 @@ class Organization(models.Model):
 
     def save(self, *args, **kwargs):
         for k, v in self.payment_provider_ids.items():
-            if k not in PAYMENT_PROVIDERS:
+            if k not in PAYMENT_PROCESSORS:
                 raise ExternalConnectionInvalid(
-                    f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
+                    f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROCESSORS}"
                 )
         new = self.pk is None
         if self.timezone != self.__original_timezone and self.pk:
-            self.customers.filter(timezone_set=False).update(timezone=self.timezone)
+            num_updated = self.customers.filter(timezone_set=False).update(
+                timezone=self.timezone
+            )
+            if num_updated > 0:
+                customer_ids = self.customers.filter(timezone_set=False).values_list(
+                    "id", flat=True
+                )
+                customer_cache_keys = [f"tz_customer_{id}" for id in customer_ids]
+                cache.delete_many(customer_cache_keys)
         if self.team is None:
             self.team = Team.objects.create(name=self.organization_name)
         super(Organization, self).save(*args, **kwargs)
@@ -424,18 +433,6 @@ class Product(models.Model):
 
 
 class Customer(models.Model):
-    """
-    Customer Model
-
-    This model represents a customer.
-
-    Attributes:
-        name (str): The name of the customer.
-        customer_id (str): A :model:`metering_billing.Organization`'s internal designation for the customer.
-        payment_provider_id (str): The id of the payment provider the customer is using.
-        properties (dict): An extendable dictionary of properties, useful for filtering, etc.
-    """
-
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="customers"
     )
@@ -456,7 +453,7 @@ class Customer(models.Model):
         help_text="The id provided when creating the customer, we suggest matching with your internal customer id in your backend",
     )
     payment_provider = models.CharField(
-        blank=True, choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True
+        blank=True, choices=PAYMENT_PROCESSORS.choices, max_length=40, null=True
     )
     integrations = models.JSONField(default=dict, blank=True)
     properties = models.JSONField(
@@ -497,9 +494,9 @@ class Customer(models.Model):
 
     def save(self, *args, **kwargs):
         for k, v in self.integrations.items():
-            if k not in PAYMENT_PROVIDERS:
+            if k not in PAYMENT_PROCESSORS:
                 raise ExternalConnectionInvalid(
-                    f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
+                    f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROCESSORS}"
                 )
             id = v.get("id")
             if id is None:
@@ -583,6 +580,9 @@ class Customer(models.Model):
         )
         total_amount_due = unpaid_invoice_amount_due or 0
         return total_amount_due
+
+    def get_address(self):
+        return self.address
 
 
 class CustomerBalanceAdjustment(models.Model):
@@ -816,6 +816,32 @@ class CustomerBalanceAdjustment(models.Model):
         return total_balance
 
 
+class IdempotenceCheck(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.SET_NULL, related_name="+", null=True, blank=True
+    )
+    time_created = models.DateTimeField(
+        help_text="The time that the event occured, represented as a datetime in ISO 8601 in the UTC timezome."
+    )
+    idempotency_id = models.SlugField(
+        max_length=255,
+        default=event_uuid,
+        help_text="A unique identifier for the specific event being passed in. Passing in a unique id allows Lotus to make sure no double counting occurs. We recommend using a UUID4. You can use the same idempotency_id again after 45 days.",
+        primary_key=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "idempotency_id"],
+                name="unique_idempotency_id_per_org_raw",
+            )
+        ]
+
+    def __str__(self):
+        return +str(self.time_created)[:10] + "-" + str(self.idempotency_id)[:6]
+
+
 class Event(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.SET_NULL, related_name="+", null=True, blank=True
@@ -942,6 +968,22 @@ class CategoricalFilter(models.Model):
 
     def __str__(self):
         return f"{self.property_name} {self.operator} {self.comparison_value}"
+
+    @staticmethod
+    def overlaps(filters1, filters2):
+        # Convert the inputs to sets of primary keys
+        if isinstance(filters1, (set, list)):
+            if all(isinstance(f, CategoricalFilter) for f in filters1):
+                filters1 = {f.pk for f in filters1}
+        if isinstance(filters2, (set, list)):
+            if all(isinstance(f, CategoricalFilter) for f in filters2):
+                filters2 = {f.pk for f in filters2}
+        if isinstance(filters1, QuerySet):
+            filters1 = set(filters1.values_list("pk", flat=True))
+        if isinstance(filters2, QuerySet):
+            filters2 = set(filters2.values_list("pk", flat=True))
+        # Check if there is an overlap between the sets
+        return filters1.issubset(filters2) or filters2.issubset(filters1)
 
 
 class Metric(models.Model):
@@ -1426,7 +1468,7 @@ class Invoice(models.Model):
     invoice_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     external_payment_obj_id = models.CharField(max_length=100, blank=True, null=True)
     external_payment_obj_type = models.CharField(
-        choices=PAYMENT_PROVIDERS.choices, max_length=40, blank=True, null=True
+        choices=PAYMENT_PROCESSORS.choices, max_length=40, blank=True, null=True
     )
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="invoices", null=True
@@ -2053,7 +2095,7 @@ class ExternalPlanLink(models.Model):
     plan = models.ForeignKey(
         Plan, on_delete=models.CASCADE, related_name="external_links"
     )
-    source = models.CharField(choices=PAYMENT_PROVIDERS.choices, max_length=40)
+    source = models.CharField(choices=PAYMENT_PROCESSORS.choices, max_length=40)
     external_plan_id = models.CharField(max_length=100)
 
     def __str__(self):
@@ -2248,14 +2290,18 @@ class SubscriptionRecord(models.Model):
                 organization=self.organization,
                 customer=self.customer,
                 billing_plan=self.billing_plan,
+            ).prefetch_related(
+                Prefetch(
+                    "filters",
+                    queryset=CategoricalFilter.objects.filter(
+                        organization=self.organization
+                    ),
+                    to_attr="filters_lst",
+                )
             )
             for subscription in overlapping_subscriptions:
-                old_filters = subscription.filters.all()
-                if (
-                    len(old_filters) == 0
-                    or len(new_filters) == 0
-                    or set(old_filters) == set(new_filters)
-                ):
+                old_filters = subscription.filters_lst
+                if CategoricalFilter.overlaps(old_filters, new_filters):
                     raise OverlappingPlans(
                         f"Overlapping subscriptions with the same filters are not allowed. \n Plan: {self.billing_plan} \n Customer: {self.customer}. \n New dates: ({self.start_date, self.end_date}) \n New subscription_filters: {new_filters} \n Old dates: ({self.start_date, self.end_date}) \n Old subscription_filters: {list(old_filters)}"
                     )

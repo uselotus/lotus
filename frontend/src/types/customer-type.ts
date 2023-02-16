@@ -2,6 +2,7 @@ import { PlanDisplay, PlanVersionType } from "./plan-type";
 import { SubscriptionType } from "./subscription-type";
 import { InvoiceType } from "./invoice-type";
 import { CurrencyType } from "./pricing-unit-type";
+import { PaymentProcessorType } from "./payment-processor-type";
 
 export interface CustomerType {
   customer_id: string;
@@ -21,7 +22,8 @@ export interface CustomerType {
   integrations: object;
   default_currency: CurrencyType;
   has_payment_method: boolean;
-  payment_provider: string;
+  payment_provider?: PaymentProcessorType;
+  payment_provider_id?: string;
   tax_rate?: number;
   timezone: string;
 }
