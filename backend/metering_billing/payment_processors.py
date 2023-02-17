@@ -14,6 +14,9 @@ import stripe
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import F, Prefetch, Q
+from rest_framework import serializers, status
+from rest_framework.response import Response
+
 from metering_billing.serializers.payment_processor_serializers import (
     PaymentProcesorPostResponseSerializer,
 )
@@ -28,8 +31,6 @@ from metering_billing.utils.enums import (
     PAYMENT_PROCESSORS,
     PLAN_STATUS,
 )
-from rest_framework import serializers, status
-from rest_framework.response import Response
 
 logger = logging.getLogger("django.server")
 
@@ -295,7 +296,7 @@ class BraintreeConnector(PaymentProcesor):
         if organization.organization_type == Organization.OrganizationType.PRODUCTION:
             return "braintree"
         else:
-            return "test-btree-sbox"
+            return "braintree-sandbox"
 
     def _get_access_token(self, organization) -> str:
         connection_id = self.get_connection_id(organization)

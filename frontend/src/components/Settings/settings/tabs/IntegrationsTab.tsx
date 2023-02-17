@@ -46,7 +46,7 @@ const IntegrationsTab: FC = () => {
         toast.error("Braintree is not supported in production environment.");
         return;
       } else {
-        unique_config_key = "test-btree-sbox";
+        unique_config_key = "braintree-sandbox";
       }
       nango
         .auth(unique_config_key, item.connection_id)
