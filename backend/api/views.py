@@ -244,7 +244,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         instance = self.perform_create(serializer)
         customer_data = CustomerSerializer(instance).data
-        # customerCreatedWebhook(customer_data, organization)
+        customerCreatedWebhook(customer_data)
         return Response(customer_data, status=status.HTTP_201_CREATED)
 
     # @extend_schema(
