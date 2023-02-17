@@ -56,6 +56,7 @@ ruff = "*"
 "ruamel.yaml" = "*"
 django-timezone-field = "*"
 braintree = "*"
+pycountry = "*"
 
 [dev-packages]
 platformdirs = "*"

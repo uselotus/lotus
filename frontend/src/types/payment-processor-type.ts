@@ -18,12 +18,18 @@ export interface PaymentProcessorConnectionResponseType {
 
 export interface PaymentProcessorConnectionRequestType {
   payment_processor: PaymentProcessorType;
-  data: StripeConnectionRequestType;
+  data: StripeConnectionRequestType | BraintreeConnectionRequestType;
 }
 
 export interface StripeConnectionRequestType {
   authorization_code: string;
 }
+
+export interface BraintreeConnectionRequestType {
+  merchant_id?: string;
+  nango_connnected: boolean;
+}
+
 export interface PaymentProcessorImportCustomerResponse {
   status: string;
   detail: string;
