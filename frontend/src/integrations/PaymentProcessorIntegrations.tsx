@@ -6,7 +6,6 @@ import {
   PaymentProcessorConnectionRequestType,
   PaymentProcessorConnectionResponseType,
   StripeConnectionRequestType,
-  BraintreeConnectionRequestType,
 } from "../types/payment-processor-type";
 
 const StripeRedirect: FC = () => {

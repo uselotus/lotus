@@ -24,18 +24,8 @@ from django.db.models import Count, F, FloatField, Prefetch, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
-
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
-    ExternalConnectionInvalid,
     NotEditable,
     OverlappingPlans,
 )
@@ -87,6 +77,14 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -112,7 +110,7 @@ class Address(models.Model):
         max_length=2,
         help_text="Two-letter country code (ISO 3166-1 alpha-2)",
         validators=[MinLengthValidator(2), MaxLengthValidator(2)],
-        choices=list([x.alpha_2 for x in pycountry.countries]),
+        choices=list([(x.alpha_2, x.name) for x in pycountry.countries]),
     )
     line1 = models.TextField(
         max_length=100,
@@ -145,7 +143,6 @@ class Organization(models.Model):
     )
     organization_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     organization_name = models.CharField(max_length=100, blank=False, null=False)
-    payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateField(default=now_utc)
     organization_type = models.PositiveSmallIntegerField(
         choices=OrganizationType.choices, default=OrganizationType.DEVELOPMENT
@@ -176,7 +173,7 @@ class Organization(models.Model):
     address = models.ForeignKey(
         "Address",
         on_delete=models.SET_NULL,
-        related_name="shipping_customers",
+        related_name="+",
         null=True,
         blank=True,
         help_text="The primary origin address for the organization",
@@ -231,11 +228,6 @@ class Organization(models.Model):
         return self.organization_name
 
     def save(self, *args, **kwargs):
-        for k, v in self.payment_provider_ids.items():
-            if k not in PAYMENT_PROCESSORS:
-                raise ExternalConnectionInvalid(
-                    f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROCESSORS}"
-                )
         new = self.pk is None
         if self.timezone != self.__original_timezone and self.pk:
             num_updated = self.customers.filter(timezone_set=False).update(
@@ -273,6 +265,7 @@ class Organization(models.Model):
                 cache.set(
                     f"stripe_account_{self.stripe_integration.stripe_account_id}",
                     acct_dict,
+                    60 * 60 * 24,
                 )
             address = acct_dict.get("company", {}).get("address")
             addy = Address(
@@ -296,6 +289,7 @@ class Organization(models.Model):
                 cache.set(
                     f"braintree_account_{self.braintree_integration.braintree_merchant_id}",
                     acct_dict,
+                    60 * 60 * 24,
                 )
             address = acct_dict.get("business_details", {}).get("address_details", {})
             addy = Address(
@@ -635,7 +629,6 @@ class Customer(models.Model):
     payment_provider = models.CharField(
         blank=True, choices=PAYMENT_PROCESSORS.choices, max_length=40, null=True
     )
-    integrations = models.JSONField(default=dict, blank=True)
     stripe_integration = models.ForeignKey(
         "StripeCustomerIntegration",
         on_delete=models.SET_NULL,
@@ -666,16 +659,6 @@ class Customer(models.Model):
         return str(self.customer_name) + " " + str(self.customer_id)
 
     def save(self, *args, **kwargs):
-        for k, v in self.integrations.items():
-            if k not in PAYMENT_PROCESSORS:
-                raise ExternalConnectionInvalid(
-                    f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROCESSORS}"
-                )
-            id = v.get("id")
-            if id is None:
-                raise ExternalConnectionInvalid(
-                    f"Payment provider {k} id was not provided"
-                )
         if not self.default_currency:
             try:
                 self.default_currency = (
@@ -769,6 +752,7 @@ class Customer(models.Model):
                 cache.set(
                     f"stripe_customer_{self.stripe_integration.stripe_customer_id}",
                     cust_dict,
+                    60 * 60 * 24,
                 )
             address = cust_dict.get("address")
             addy = Address(
@@ -794,6 +778,7 @@ class Customer(models.Model):
                 cache.set(
                     f"braintree_customer_{self.braintree_integration.braintree_customer_id}",
                     cust_dict,
+                    60 * 60 * 24,
                 )
             address = next(iter(cust_dict["addresses"]), {})
             addy = Address(
@@ -823,6 +808,7 @@ class Customer(models.Model):
                 cache.set(
                     f"stripe_customer_{self.stripe_integration.stripe_customer_id}",
                     cust_dict,
+                    60 * 60 * 24,
                 )
             address = cust_dict.get("shipping", {})
             addy = Address(
@@ -848,6 +834,7 @@ class Customer(models.Model):
                 cache.set(
                     f"braintree_customer_{self.braintree_integration.braintree_customer_id}",
                     cust_dict,
+                    60 * 60 * 24,
                 )
             address = next(iter(cust_dict["addresses"]), {})
             addy = Address(
@@ -3030,7 +3017,7 @@ class BraintreeCustomerIntegration(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="braintree_customer_links"
     )
-    braintree_customer_id = models.CharField()
+    braintree_customer_id = models.TextField()
     created = models.DateTimeField(default=now_utc)
 
     class Meta:
@@ -3064,7 +3051,7 @@ class BraintreeOrganizationIntegration(models.Model):
         on_delete=models.CASCADE,
         related_name="braintree_organization_links",
     )
-    braintree_merchant_id = models.CharField()
+    braintree_merchant_id = models.TextField()
     created = models.DateTimeField(default=now_utc)
 
     class Meta:

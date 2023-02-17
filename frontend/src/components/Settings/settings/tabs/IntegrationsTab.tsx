@@ -7,6 +7,9 @@ import {
   PaymentProcessorStatusType,
   integrationsMap,
   PaymentProcessorType,
+  PaymentProcessorConnectionRequestType,
+  BraintreeConnectionRequestType,
+  PaymentProcessorConnectionResponseType,
 } from "../../../../types/payment-processor-type";
 import { AppCard } from "../components/AppCard";
 import useGlobalStore from "../../../../stores/useGlobalstore";
@@ -24,11 +27,6 @@ const IntegrationsTab: FC = () => {
       )
   );
   const org = useGlobalStore((state) => state.org);
-  const [connectionId, setConnectionId] = useState("");
-  const [connectionIdName, setConnectionIdName] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [paymentProcessor, setPaymentProvider] =
-    useState<PaymentProcessorType | null>(null);
 
   var nango = new Nango({ publicKey: (import.meta as any).env.VITE_NANGO_PK }); // Nango Cloud
 
@@ -56,37 +54,27 @@ const IntegrationsTab: FC = () => {
           toast.success(
             `OAuth flow succeeded for provider "${result.providerConfigKey}"!`
           );
-          Organization.updateOrganizationPaymentProvider({
-            org_id: org.organization_id,
-            payment_provider: item.payment_provider_name,
-            payment_provider_id: result.connectionId,
-            nango_connected: true,
-          });
+          const inner_data: BraintreeConnectionRequestType = {
+            nango_connnected: true,
+          };
+          const request_data: PaymentProcessorConnectionRequestType = {
+            payment_processor: "braintree",
+            data: inner_data,
+          };
+
+          PaymentProcessorIntegration.connectPaymentProcessor(request_data)
+            .then((data: PaymentProcessorConnectionResponseType) => {
+              toast.success(data.details);
+            })
+            .catch((error) => {
+              toast.error(error.details);
+            });
           refetch();
         })
         .catch((error) => {
           toast.error(
             `There was an error in the OAuth flow for integration: ${error.message}`
           );
-        });
-    }
-  };
-
-  const handleUpdatePaymentProviderId = () => {
-    if (paymentProcessor !== null && connectionId !== "") {
-      Organization.updateOrganizationPaymentProvider({
-        org_id: org.organization_id,
-        payment_provider: paymentProcessor,
-        payment_provider_id: connectionId,
-      })
-        .then((res) => {
-          setShowModal(false);
-          setConnectionId("");
-          toast.success(`${connectionIdName} updated successfully.`);
-          refetch();
-        })
-        .catch((err) => {
-          toast.error("Something went wrong.");
         });
     }
   };
@@ -118,16 +106,6 @@ const IntegrationsTab: FC = () => {
                 }
                 idValue={item.connection_id}
                 working={item.working}
-                handleClickId={() => {
-                  if (item.self_hosted === false) {
-                    setShowModal(true);
-                    setConnectionIdName(
-                      integrationsMap[item.payment_provider_name]
-                        .connection_id_name
-                    );
-                    setPaymentProvider(item.payment_provider_name);
-                  }
-                }}
               />
             </Col>
           ))}
@@ -155,19 +133,6 @@ const IntegrationsTab: FC = () => {
         </Col>
       </Row>
       <Divider />
-      {showModal && (
-        <Modal
-          title={`Enter ${connectionIdName}`}
-          onOk={handleUpdatePaymentProviderId}
-          onCancel={() => setShowModal(false)}
-          visible={showModal}
-        >
-          <Input
-            value={connectionId}
-            onChange={(e) => setConnectionId(e.target.value)}
-          />
-        </Modal>
-      )}
     </div>
   );
 };

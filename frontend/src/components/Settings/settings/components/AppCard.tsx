@@ -9,7 +9,6 @@ type Props = {
   connected: boolean;
   icon: React.ReactNode;
   handleClickConnect: () => void;
-  handleClickId: () => void;
   isNew?: boolean;
   selfHosted?: boolean;
   idName?: string;
@@ -20,7 +19,6 @@ type Props = {
 export function AppCard({
   title,
   handleClickConnect,
-  handleClickId,
   description,
   connected,
   icon,
@@ -47,28 +45,24 @@ export function AppCard({
         size="small"
         extra={
           <>
-            {(idValue || selfHosted) && connected ? (
+            {working && (idValue || selfHosted) && connected ? (
               <Tag color="success">Connected</Tag>
-            ) : !selfHosted && !idValue ? null : !selfHosted || working ? (
+            ) : !selfHosted ? (
               <Tag
                 color="default"
                 onClick={
-                  idValue
-                    ? title.includes("Stripe") || title.includes("Braintree")
-                      ? handleClickConnect
-                      : () => {
-                          console.log("title", title);
-                          toast.error(
-                            "Upgrade to get access to this integration"
-                          );
-                        }
+                  title.includes("Stripe") || title.includes("Braintree")
+                    ? handleClickConnect
                     : () => {
-                        toast.error("Account Not Linked");
+                        console.log("title", title);
+                        toast.error(
+                          "Upgrade to get access to this integration"
+                        );
                       }
                 }
                 style={{ cursor: "pointer" }}
               >
-                {idValue ? "Connect" : "Not Linked"}
+                Connect
               </Tag>
             ) : (
               <Tag color="default">No API Key</Tag>
@@ -86,7 +80,7 @@ export function AppCard({
         />
         {idName ? (
           <div className="flex justify-end pt-4">
-            <Tag onClick={handleClickId} style={{ cursor: "pointer" }}>
+            <Tag style={{ cursor: "pointer" }}>
               <b>{idName}:</b> {idValue || "-"}
             </Tag>
           </div>

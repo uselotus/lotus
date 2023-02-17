@@ -1,11 +1,14 @@
 import logging
 from decimal import Decimal
 
-import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import DecimalField, Q, Sum
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
+import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -34,7 +37,6 @@ from metering_billing.models import (
     WebhookEndpoint,
     WebhookTrigger,
 )
-from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.serializers.serializer_utils import (
     OrganizationSettingUUIDField,
     OrganizationUUIDField,
@@ -64,8 +66,6 @@ from metering_billing.utils.enums import (
     TAG_GROUP,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -185,7 +185,6 @@ class OrganizationSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         fields = (
             "organization_id",
             "organization_name",
-            "payment_provider_ids",
             "users",
             "default_currency",
             "available_currencies",
@@ -198,6 +197,8 @@ class OrganizationSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
             "team_name",
             "subscription_filter_keys",
             "timezone",
+            "stripe_account_id",
+            "braintree_merchant_id",
         )
 
     organization_id = OrganizationUUIDField()
@@ -212,6 +213,22 @@ class OrganizationSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     team_name = serializers.SerializerMethodField()
     subscription_filter_keys = serializers.SerializerMethodField()
     timezone = TimeZoneSerializerField(use_pytz=True)
+    stripe_account_id = serializers.SerializerMethodField()
+    braintree_merchant_id = serializers.SerializerMethodField()
+
+    def get_stripe_account_id(
+        self, obj
+    ) -> serializers.CharField(required=True, allow_null=True):
+        if obj.stripe_integration:
+            return obj.stripe_integration.stripe_account_id
+        return None
+
+    def get_braintree_merchant_id(
+        self, obj
+    ) -> serializers.CharField(required=True, allow_null=True):
+        if obj.braintree_integration:
+            return obj.braintree_integration.braintree_merchant_id
+        return None
 
     def get_subscription_filter_keys(
         self, obj
@@ -420,29 +437,6 @@ class OrganizationUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializ
             type(validated_data.get("default_currency")) == PricingUnit
             or validated_data.get("default_currency") is None
         )
-        if validated_data.get("payment_provider") is not None:
-            provider = validated_data.get("payment_provider")
-            pp_dict = instance.payment_provider_ids.get(provider)
-            if pp_dict is None:
-                connected = validated_data.get("nango_connected") or False
-                new_dict = {
-                    "id": validated_data.get("payment_provider_id"),
-                    "connected": connected,
-                }
-            elif not isinstance(pp_dict, dict):
-                connected = validated_data.get(
-                    "nango_connected"
-                ) or pp_dict == validated_data.get("payment_provider_id")
-                new_dict = {"id": pp_dict, "connected": connected}
-            else:
-                connected = validated_data.get("nango_connected") or pp_dict.get(
-                    "id"
-                ) == validated_data.get("payment_provider_id")
-                new_dict = pp_dict
-                new_dict["id"] = validated_data.get("payment_provider_id")
-                new_dict["connected"] = connected
-            instance.payment_provider_ids[provider] = new_dict
-            PAYMENT_PROCESSOR_MAP[provider].initialize_settings(instance)
         instance.default_currency = validated_data.get(
             "default_currency", instance.default_currency
         )
@@ -707,12 +701,6 @@ class CustomerSerializer(api_serializers.CustomerSerializer):
             if behavior == "merge"
             else validated_data.get("properties", {})
         )
-        if "payment_provider_id" in validated_data:
-            if instance.payment_provider not in instance.integrations:
-                instance.integrations[instance.payment_provider] = {}
-            instance.integrations[instance.payment_provider]["id"] = validated_data.get(
-                "payment_provider_id"
-            )
         return instance
 
 

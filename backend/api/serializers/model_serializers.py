@@ -113,10 +113,12 @@ class AddressCreateSerializer(serializers.ModelSerializer):
         model = Address
         fields = ("city", "country", "line1", "line2", "postal_code", "state")
 
+
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
         fields = ("city", "country", "line1", "line2", "postal_code", "state")
+
     extra_kwargs = {
         "city": {"required": True, "allow_null": True},
         "country": {"required": True, "allow_null": True},
@@ -125,6 +127,7 @@ class AddressSerializer(serializers.ModelSerializer):
         "postal_code": {"required": True, "allow_null": True},
         "state": {"required": True, "allow_null": True},
     }
+
 
 class LightweightCustomerSerializerForInvoice(LightweightCustomerSerializer):
     class Meta(LightweightCustomerSerializer.Meta):
@@ -627,24 +630,26 @@ class CustomerSerializer(
             > 0,
         }
 
-    def get_integrations(self, obj) -> CustomerIntegrationsSerializer:
-        d = obj.integrations
-        if PAYMENT_PROCESSORS.STRIPE in d:
-            try:
-                d[PAYMENT_PROCESSORS.STRIPE] = self._format_stripe_integration(
-                    d[PAYMENT_PROCESSORS.STRIPE]
-                )
-            except (KeyError, TypeError):
-                d[PAYMENT_PROCESSORS.STRIPE] = None
+    def get_integrations(self, customer) -> CustomerIntegrationsSerializer:
+        d = {}
+        if customer.stripe_integration:
+            d[PAYMENT_PROCESSORS.STRIPE] = {
+                "stripe_id": customer.stripe_integration.stripe_customer_id,
+                "has_payment_method": PAYMENT_PROCESSOR_MAP[
+                    PAYMENT_PROCESSORS.STRIPE
+                ].has_payment_method(customer),
+            }
         else:
             d[PAYMENT_PROCESSORS.STRIPE] = None
-        if PAYMENT_PROCESSORS.BRAINTREE in d:
-            try:
-                d[PAYMENT_PROCESSORS.BRAINTREE] = self._format_braintree_integration(
-                    d[PAYMENT_PROCESSORS.BRAINTREE]
-                )
-            except (KeyError, TypeError):
-                d[PAYMENT_PROCESSORS.BRAINTREE] = None
+        if customer.braintree_integration:
+            d[PAYMENT_PROCESSORS.BRAINTREE] = {
+                "braintree_id": customer.braintree_integration.braintree_customer_id,
+                "has_payment_method": PAYMENT_PROCESSOR_MAP[
+                    PAYMENT_PROCESSORS.BRAINTREE
+                ].has_payment_method(customer),
+            }
+        else:
+            d[PAYMENT_PROCESSORS.BRAINTREE] = None
         return d
 
     def get_subscriptions(self, obj) -> SubscriptionRecordSerializer(many=True):
@@ -749,6 +754,13 @@ class CustomerCreateSerializer(
 
     def create(self, validated_data):
         pp_id = validated_data.pop("payment_provider_id", None)
+        payment_provider = validated_data.pop("payment_provider", None)
+        if payment_provider:
+            payment_provider_valid = PAYMENT_PROCESSOR_MAP[
+                payment_provider
+            ].organization_connected(self.context["organization"])
+        else:
+            payment_provider_valid = False
         address = validated_data.pop("address", None)
         if address:
             validated_data["properties"] = {
@@ -756,17 +768,15 @@ class CustomerCreateSerializer(
                 "address": address,
             }
         customer = Customer.objects.create(**validated_data)
-        if pp_id:
-            customer_integrations = customer.integrations
-            customer_integrations[validated_data["payment_provider"]] = {}
-            customer_integrations[validated_data["payment_provider"]]["id"] = pp_id
-            customer.integrations = customer_integrations
-            customer.save()
+        if payment_provider and payment_provider_valid:
+            PAYMENT_PROCESSOR_MAP[payment_provider].connect_customer(customer, pp_id)
         else:
-            if "payment_provider" in validated_data:
-                PAYMENT_PROCESSOR_MAP[
-                    validated_data["payment_provider"]
-                ].create_customer_flow(customer)
+            for pp in PAYMENT_PROCESSORS:
+                if PAYMENT_PROCESSOR_MAP[pp].organization_connected(
+                    self.context["organization"]
+                ):
+                    PAYMENT_PROCESSOR_MAP[pp].create_customer_flow(customer)
+
         return customer
 
 
