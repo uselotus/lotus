@@ -131,6 +131,47 @@ class Address(models.Model):
     )
 
 
+class TaxProviderListField(models.Field):
+    description = "List of Tax Provider choices"
+
+    def __init__(self, *args, **kwargs):
+        self.choices = TAX_PROVIDER.choices
+        super().__init__(*args, **kwargs)
+
+    def from_db_value(self, value, expression, connection):
+        if value is None:
+            return []
+
+        # Ensure that all values in the list are valid tax provider choices
+        choices_set = set(dict(TAX_PROVIDER.choices).keys())
+        for val in value:
+            if val not in choices_set:
+                raise ValidationError(f"{val} is not a valid tax provider choice.")
+
+        return value
+
+    def to_python(self, value):
+        if isinstance(value, list):
+            return value
+        elif value is None:
+            return []
+        else:
+            return [int(val) for val in value.split(",")]
+
+    def get_prep_value(self, value):
+        if value is None:
+            return ""
+        else:
+            return ",".join(str(val) for val in value)
+
+    def get_choices(self, include_blank=True, blank_choice=None, limit_choices_to=None):
+        return self.choices
+
+    def value_to_string(self, obj):
+        value = self.value_from_object(obj)
+        return self.get_prep_value(value)
+
+
 class Organization(models.Model):
     class OrganizationType(models.IntegerChoices):
         PRODUCTION = (1, "Production")
@@ -198,9 +239,7 @@ class Organization(models.Model):
         help_text="Tax rate as percentage. For example, 10.5 for 10.5%",
         null=True,
     )
-    tax_provider = models.PositiveSmallIntegerField(
-        choices=TAX_PROVIDER.choices, default=TAX_PROVIDER.LOTUS
-    )
+    tax_providers = TaxProviderListField(default=[TAX_PROVIDER.LOTUS])
 
     # TIMEZONE RELATED FIELDS
     timezone = TimeZoneField(default="UTC", use_pytz=True)
@@ -251,6 +290,13 @@ class Organization(models.Model):
             )
             self.save()
         self.provision_subscription_filter_settings()
+
+    def get_tax_provider_values(self):
+        return self.tax_providers
+
+    def get_readable_tax_providers(self):
+        choices_dict = dict(TAX_PROVIDER.choices)
+        return [choices_dict.get(val) for val in self.tax_providers]
 
     def get_address(self) -> Address:
         if self.default_payment_provider == PAYMENT_PROCESSORS.STRIPE:
@@ -2202,6 +2248,7 @@ class Plan(models.Model):
     )
     tags = models.ManyToManyField("Tag", blank=True, related_name="plans")
     created_on = models.DateTimeField(default=now_utc, null=True)
+    taxjar_code = models.CharField(max_length=100, null=True, blank=True)
 
     objects = BasePlanManager()
     addons = AddOnPlanManager()
