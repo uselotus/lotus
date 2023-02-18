@@ -1,6 +1,11 @@
 import React, { useState } from "react";
 import { Button, Divider, Modal, Select, Input, message } from "antd";
-import { UseQueryResult, useQuery , useMutation, useQueryClient } from "react-query";
+import {
+  UseQueryResult,
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "react-query";
 import { FeatureType, CreateFeatureType } from "../../types/feature-type";
 import { Features } from "../../api/api";
 
@@ -22,8 +27,7 @@ function FeatureForm(props: {
     isError,
   }: UseQueryResult<FeatureType[]> = useQuery<FeatureType[]>(
     ["feature_list"],
-    () =>
-      Features.getFeatures().then((res) => res)
+    () => Features.getFeatures().then((res) => res)
   );
 
   const addExistingFeatureToList = (feature_add_list: string[]) => {
@@ -93,18 +97,18 @@ function FeatureForm(props: {
           />
         </div>
         <Divider />
-        <div className="flex flex-col space-y-3">
-          <h3>Create new feature</h3>
+        <div className="flex flex-col space-y-4">
+          <h3>Create New Feature</h3>
           <Input
             placeholder="Feature Name"
             value={createdFeatureName}
             onChange={(e) => setCreatedFeatureName(e.target.value)}
-           />
+          />
           <Input
             placeholder="Feature Description"
             value={createdFeatureDescription}
             onChange={(e) => setCreatedFeatureDescription(e.target.value)}
-           />
+          />
 
           <Button onClick={addnewFeatureToList}> Create</Button>
         </div>

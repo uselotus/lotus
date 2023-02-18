@@ -149,7 +149,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
       const result_list = day.cost_data.map((metric) => ({
         date: day.date,
         amount: metric.cost,
-        metric: metric.metric.metric_name,
+        metric: metric.metric.billable_metric_name,
         type: "cost",
       }));
 
@@ -161,6 +161,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
       });
       return result_list;
     });
+    console.log(newgraphdata);
     setTransformedGraphData(newgraphdata.flat(1));
   }, [cost_data]);
 
@@ -196,6 +197,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     isStack: true,
     seriesField: "metric",
     groupField: "type",
+    legend: false as const,
     colorField: "type", // or seriesField in some cases
     color: ["#E4D5C5", "#C3986B", "#D9D9D9", "#171412", "#547AA5"],
   };
