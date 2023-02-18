@@ -196,7 +196,6 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     isStack: true,
     seriesField: "metric",
     groupField: "type",
-    legend: false as const,
     colorField: "type", // or seriesField in some cases
     color: ["#E4D5C5", "#C3986B", "#D9D9D9", "#171412", "#547AA5"],
   };

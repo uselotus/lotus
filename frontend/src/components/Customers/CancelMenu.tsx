@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React from "react";
 import { Radio } from "antd";
 import { CancelSubscriptionBody } from "../../types/subscription-type";
 
-int usageBehavior = CancelSubscriptionBody["usage_behavior"];
+type usageBehavior = CancelSubscriptionBody["usage_behavior"];
 type recurringBehavior = CancelSubscriptionBody["flat_fee_behavior"];
 type invoiceBehavior = CancelSubscriptionBody["invoicing_behavior"];
 
@@ -11,9 +11,9 @@ const CancelMenuComponent = ({
   setRecurringBehavior,
   setInvoiceBehavior,
 }: {
-  setUsageBehavior: (usageBehavior) => void;
-  setRecurringBehavior: (recurringBehavior) => void;
-  setInvoiceBehavior: (invoiceBehavior) => void;
+  setUsageBehavior: (e: usageBehavior) => void;
+  setRecurringBehavior: (e: recurringBehavior) => void;
+  setInvoiceBehavior: (e: invoiceBehavior) => void;
 }) => (
   <div className=" space-y-10">
     <p className="text-base Inter">
@@ -26,12 +26,13 @@ const CancelMenuComponent = ({
       onChange={(e) => setRecurringBehavior(e.target.value)}
       buttonStyle="solid"
       style={{ width: "100%" }}
+      defaultValue="charge_full"
     >
       <div className="flex flex-row items-center gap-4">
         <Radio.Button value="refund">Refund As Credit</Radio.Button>
 
         <Radio.Button value="charge_prorated">Prorated Amount</Radio.Button>
-        <Radio.Button value="invoice_now">Full Amount</Radio.Button>
+        <Radio.Button value="charge_full">Full Amount</Radio.Button>
       </div>
     </Radio.Group>
     <h3 className="mt-10">Usage Behavior</h3>
@@ -40,6 +41,7 @@ const CancelMenuComponent = ({
       onChange={(e) => setUsageBehavior(e.target.value)}
       buttonStyle="solid"
       style={{ width: "100%" }}
+      defaultValue="bill_full"
     >
       <div className="flex flex-row items-center gap-4">
         <Radio.Button value="bill_full">Bill Usage</Radio.Button>
@@ -53,7 +55,7 @@ const CancelMenuComponent = ({
       onChange={(e) => setInvoiceBehavior(e.target.value)}
       buttonStyle="solid"
       style={{ width: "100%" }}
-      value="add_to_next_invoice"
+      defaultValue="invoice_now"
     >
       <div className="flex flex-row items-center gap-4">
         <Radio.Button value="add_to_next_invoice">
