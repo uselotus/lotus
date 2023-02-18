@@ -93,6 +93,7 @@ from metering_billing.models import (
     PriceTier,
     RecurringCharge,
     SubscriptionRecord,
+    Tag,
 )
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.serializer_utils import (
@@ -413,7 +414,10 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             "display_version",
         )
         # then for many to many / reverse FK but still have
-        qs = qs.prefetch_related("tags", "tags__tag_name", "external_links")
+        qs = qs.prefetch_related(
+            "external_links",
+            Prefetch("tags", queryset=Tag.objects.filter(organization=organization)),
+        )
         # then come the really deep boys
         # we need to construct the prefetch objects so that we are prefetching the more
         # deeply nested objectsd as part of the call:
