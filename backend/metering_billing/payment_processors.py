@@ -14,6 +14,9 @@ import stripe
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import F, Prefetch, Q
+from rest_framework import serializers, status
+from rest_framework.response import Response
+
 from metering_billing.serializers.payment_processor_serializers import (
     PaymentProcesorPostResponseSerializer,
 )
@@ -28,8 +31,6 @@ from metering_billing.utils.enums import (
     PAYMENT_PROCESSORS,
     PLAN_STATUS,
 )
-from rest_framework import serializers, status
-from rest_framework.response import Response
 
 logger = logging.getLogger("django.server")
 
@@ -869,7 +870,7 @@ class StripeConnector(PaymentProcesor):
                 cust_dict,
                 60 * 60 * 24,
             )
-        address = cust_dict.get(key, {})
+        address = cust_dict.get(key, {}) or {}
         addy = Address(
             city=address.get("city"),
             country=address.get("country"),

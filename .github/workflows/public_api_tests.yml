@@ -66,6 +66,9 @@ jobs:
         with:
           python-version: "3.9"
 
+      - name: List files in current directory
+        run: ls
+
       - name: Install pipenv
         run: |
           python -m pip install --upgrade pipenv wheel && pipenv update
@@ -123,6 +126,10 @@ jobs:
 
       - name: Run server
         run: |
+          pipenv run python manage.py generate_schema
+
+      - name: Run server
+        run: |
           pipenv run python manage.py runserver &
 
       - name: Run Postman
@@ -146,7 +153,7 @@ jobs:
       - name: Install pipenv for lotus-python
         run: |
           cd ../lotus-python
-          python -m pip install --upgrade pipenv wheel && pipenv update
+          python -m pip install --upgrade pipenv wheel datamodel-code-generator && pipenv update
 
       - name: Install dependencies for lotus-python
         if: steps.cache-pipenv.outputs.cache-hit != 'true'
@@ -154,7 +161,14 @@ jobs:
           cd ../lotus-python
           pipenv install --deploy --dev
 
+      - name: copy file
+        run: |
+          cp ../docs/openapi.yaml ../lotus-python
+
+      - name: generate models
+        run: |
+          cd ../lotus-python && datamodel-codegen --input openapi.yaml --output ./lotus/models.py --strict-nullable
+
       - name: Test Pytest for lotus-python
         run: |
-          cd ../lotus-python
-          pipenv run pytest
+          cd ../lotus-python && pipenv run pytest
