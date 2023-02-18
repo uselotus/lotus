@@ -66,6 +66,9 @@ jobs:
         with:
           python-version: "3.9"
 
+      - name: List files in current directory
+        run: ls
+
       - name: Install pipenv
         run: |
           python -m pip install --upgrade pipenv wheel && pipenv update
