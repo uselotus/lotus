@@ -381,12 +381,10 @@ class SellerSerializer(
     address = serializers.SerializerMethodField(required=False, allow_null=True)
 
     def get_address(self, obj) -> AddressSerializer(allow_null=True, required=False):
-        d = obj.get_address()
-        try:
-            data = AddressSerializer(d).data
-        except KeyError:
-            data = None
-        return data
+        billing_address = obj.get_billing_address()
+        if billing_address:
+            return AddressSerializer(billing_address).data
+        return None
 
 
 class InvoiceSerializer(
