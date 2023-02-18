@@ -2,7 +2,7 @@ import React, { FC, useState } from "react";
 import { useQuery } from "react-query";
 import { useNavigate } from "react-router-dom";
 import { Divider, Typography, Row, Col, Modal, Input } from "antd";
-// import Nango from "@nangohq/frontend";
+import Nango from "@nangohq/frontend";
 import { toast } from "react-toastify";
 import { PaymentProcessorIntegration, Organization } from "../../../../api/api";
 import {
@@ -30,7 +30,7 @@ const IntegrationsTab: FC = () => {
   const [paymentProcessor, setPaymentProvider] =
     useState<PaymentProcessorType | null>(null);
 
-  // var nango = new Nango({ publicKey: (import.meta as any).env.VITE_NANGO_PK }); // Nango Cloud
+  var nango = new Nango({ publicKey: (import.meta as any).env.VITE_NANGO_PK }); // Nango Cloud
 
   const handleConnectWithPaymentProcessorClick = (
     item: PaymentProcessorStatusType
