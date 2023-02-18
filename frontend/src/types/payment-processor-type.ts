@@ -8,6 +8,7 @@ export interface PaymentProcessorStatusType {
   self_hosted: boolean;
   connection_id: string;
   working: boolean;
+  account_id: string;
 }
 
 export interface PaymentProcessorConnectionResponseType {
@@ -66,14 +67,14 @@ export const integrationsMap = {
     icon: "https://cdn.neverbounce.com/images/integrations/square/stripe-square.png",
     description:
       "Charge and invoice your customers through your Stripe account",
-    connection_id_name: "Account ID",
+    account_id_name: "Account ID",
   },
   braintree: {
     name: "Braintree",
-    icon: "https://cdn-icons-png.flaticon.com/512/3096/3096985.png",
+    icon: "https://pbs.twimg.com/profile_images/1146433479091118081/Yn29TbtJ_400x400.png",
     description:
       "Charge and invoice your customers through your Braintree account",
-    connection_id_name: "Merchant ID",
+    account_id_name: "Merchant ID",
   },
   snowflake: {
     name: "Snowflake",

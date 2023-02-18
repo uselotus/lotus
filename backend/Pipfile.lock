@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "682a7a012f6bd9597e43a2dff71e24ab27af19344ba2268f0054a0aa1922d7f1"
+            "sha256": "a6bf7205b554717ece7969769b5086cdc6a592a0ec0a8fe283045693e19ab689"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -89,19 +89,19 @@
         },
         "boto3": {
             "hashes": [
-                "sha256:5d6e19d148c4a9d5d85f0d96570d11264f23db610f1e3c9a8b7e8b6898424691",
-                "sha256:990997248716f12b296d7d30b3119a93347d73b7a4831c015e53aaebbd074a77"
+                "sha256:98efcc8472c58060856bf42e9afe10eefb60c0e52680db0a43daf96e7a1216de",
+                "sha256:bd92def38355ea055c6c29bd599832878eecc19cad21dab34ade38280e1b403b"
             ],
             "index": "pypi",
-            "version": "==1.26.72"
+            "version": "==1.26.73"
         },
         "botocore": {
             "hashes": [
-                "sha256:77fff109e1bdbf030d8400ccab9d28454c03c7be62c1696a239b21792b0873df",
-                "sha256:8710f53af0e20f08f36a3bf434d18bc7ceba5d9835495b02aedbedd35df5de9a"
+                "sha256:a9f0e006b3342424d59d5e23dc1ca0c6972c909a727dcd0811c9b20966d4adf8",
+                "sha256:df467573a96d2e1ba1196b5a30b0a5e4a83fd960d27b5c2f8f128c9148dc120e"
             ],
             "markers": "python_version >= '3.7'",
-            "version": "==1.29.72"
+            "version": "==1.29.73"
         },
         "braintree": {
             "hashes": [
@@ -689,6 +689,13 @@
             ],
             "index": "pypi",
             "version": "==3.1.0"
+        },
+        "jsonobject": {
+            "hashes": [
+                "sha256:5298a379503e43efc0ab4002d742c0fcbba1a9628eddacc4ea547b7138514466",
+                "sha256:de0595f94e010d4c3118615bc14b63aa5cb0475a4f38734d873a9e0c0ba2b37a"
+            ],
+            "version": "==2.1.0"
         },
         "jsonschema": {
             "hashes": [
@@ -1327,6 +1334,13 @@
             ],
             "index": "pypi",
             "version": "==0.80.0"
+        },
+        "taxjar": {
+            "hashes": [
+                "sha256:d8539a4b57199c00d91c08b2a6b26b5f5221f477823e4eb10386bfc8a297b969"
+            ],
+            "index": "pypi",
+            "version": "==2.0.0"
         },
         "toml": {
             "hashes": [

@@ -54,8 +54,10 @@ const IntegrationsTab: FC = () => {
           toast.success(
             `OAuth flow succeeded for provider "${result.providerConfigKey}"!`
           );
+          console.log("RESULT FROM OAUTH: ", result);
           const inner_data: BraintreeConnectionRequestType = {
             nango_connnected: true,
+            merchant_id: result.metadata.merchantId,
           };
           const request_data: PaymentProcessorConnectionRequestType = {
             payment_processor: "braintree",
@@ -102,9 +104,9 @@ const IntegrationsTab: FC = () => {
                 }
                 selfHosted={item.self_hosted}
                 idName={
-                  integrationsMap[item.payment_provider_name].connection_id_name
+                  integrationsMap[item.payment_provider_name].account_id_name
                 }
-                idValue={item.connection_id}
+                idValue={item.account_id}
                 working={item.working}
               />
             </Col>

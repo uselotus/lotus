@@ -26,6 +26,7 @@ from api.serializers.model_serializers import (
     InvoiceListFilterSerializer,
     InvoiceSerializer,
     InvoiceUpdateSerializer,
+    ListPlansFilterSerializer,
     ListSubscriptionRecordFilter,
     PlanSerializer,
     SubscriptionRecordCancelSerializer,
@@ -92,6 +93,7 @@ from metering_billing.models import (
     PriceTier,
     RecurringCharge,
     SubscriptionRecord,
+    Tag,
 )
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.serializer_utils import (
@@ -412,7 +414,10 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             "display_version",
         )
         # then for many to many / reverse FK but still have
-        qs = qs.prefetch_related("tags", "external_links")
+        qs = qs.prefetch_related(
+            "external_links",
+            Prefetch("tags", queryset=Tag.objects.filter(organization=organization)),
+        )
         # then come the really deep boys
         # we need to construct the prefetch objects so that we are prefetching the more
         # deeply nested objectsd as part of the call:
@@ -482,6 +487,39 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 to_attr="versions_prefetched",
             ),
         )
+
+        plan_filter_serializer = ListPlansFilterSerializer(
+            data=self.request.query_params
+        )
+
+        if not plan_filter_serializer.is_valid():
+            return qs
+
+        include_tags = plan_filter_serializer.validated_data.get("include_tags")
+        include_tags_all = plan_filter_serializer.validated_data.get("include_tags_all")
+        exclude_tags = plan_filter_serializer.validated_data.get("exclude_tags")
+
+        if include_tags:
+            # Filter to plans that have any of the tags in this list
+            q_objects = Q()
+            for tag in include_tags:
+                q_objects |= Q(tags__tag_name__iexact=tag)
+            qs = qs.filter(q_objects)
+
+        if include_tags_all:
+            # Filter to plans that have all of the tags in this list
+            q_objects = Q()
+            for tag in include_tags_all:
+                q_objects &= Q(tags__tag_name__iexact=tag)
+            qs = qs.filter(q_objects)
+
+        if exclude_tags:
+            # Filter to plans that do not have any of the tags in this list
+            q_objects = Q()
+            for tag in exclude_tags:
+                q_objects &= ~Q(tags__tag_name__iexact=tag)
+            qs = qs.filter(q_objects)
+
         return qs
 
     def dispatch(self, request, *args, **kwargs):
@@ -514,6 +552,12 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             user = None
         context.update({"organization": organization, "user": user})
         return context
+
+    @extend_schema(
+        parameters=[ListPlansFilterSerializer],
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request)
 
 
 class SubscriptionViewSet(
