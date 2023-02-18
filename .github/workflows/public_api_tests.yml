@@ -153,7 +153,7 @@ jobs:
       - name: Install pipenv for lotus-python
         run: |
           cd ../lotus-python
-          python -m pip install --upgrade pipenv wheel && pipenv update
+          python -m pip install --upgrade pipenv wheel datamodel-code-generator && pipenv update
 
       - name: Install dependencies for lotus-python
         if: steps.cache-pipenv.outputs.cache-hit != 'true'
