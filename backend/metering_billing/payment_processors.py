@@ -14,9 +14,6 @@ import stripe
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import F, Prefetch, Q
-from rest_framework import serializers, status
-from rest_framework.response import Response
-
 from metering_billing.serializers.payment_processor_serializers import (
     PaymentProcesorPostResponseSerializer,
 )
@@ -31,6 +28,8 @@ from metering_billing.utils.enums import (
     PAYMENT_PROCESSORS,
     PLAN_STATUS,
 )
+from rest_framework import serializers, status
+from rest_framework.response import Response
 
 logger = logging.getLogger("django.server")
 
@@ -90,8 +89,13 @@ class PaymentProcesor(abc.ABC):
     @abc.abstractmethod
     def get_connection_id(self, organization) -> str:
         """
-        This method returns for an organization what the connection id is for the payment provider.For stripe, this is teh stripe_account found in
+        This method is used for Nango for determining which unique key to use for the connection. Usually a good strategy is to use the organization's organization_idid.
         """
+        pass
+
+    @abc.abstractmethod
+    def get_account_id(self, organization) -> str:
+        """This method is used to see the id of the connected account."""
         pass
 
     ## IMPORT METHODS
@@ -245,6 +249,9 @@ class BraintreeConnector(PaymentProcesor):
             setting.save()
 
     def get_connection_id(self, organization) -> str:
+        return organization.organization_id.hex
+
+    def get_account_id(self, organization) -> str:
         from metering_billing.models import (
             BraintreeOrganizationIntegration,
             Organization,
@@ -567,7 +574,7 @@ class BraintreeConnector(PaymentProcesor):
                 cust_dict,
                 60 * 60 * 24,
             )
-        address = next(iter(cust_dict["addresses"]), {})
+        address = next(iter(cust_dict.get("addresses", [])), {})
         addy = Address(
             city=address.get("locality"),
             country=address.get("country_code_alpha2"),
@@ -730,7 +737,11 @@ class StripeConnector(PaymentProcesor):
         else:
             return id_in
 
-    def get_connection_id(self, organization):
+    def get_connection_id(self, organization) -> str:
+        # Since stripe doesn't use Nango, this doesn't truly matter, but we pass back anyway
+        return organization.organization_id.hex
+
+    def get_account_id(self, organization):
         from metering_billing.models import StripeOrganizationIntegration
 
         integration = organization.stripe_integration
@@ -858,7 +869,7 @@ class StripeConnector(PaymentProcesor):
                 cust_dict,
                 60 * 60 * 24,
             )
-        address = cust_dict.get(key)
+        address = cust_dict.get(key, {})
         addy = Address(
             city=address.get("city"),
             country=address.get("country"),
@@ -1308,12 +1319,14 @@ PAYMENT_PROCESSOR_MAP = {}
 try:
     PAYMENT_PROCESSOR_MAP[PAYMENT_PROCESSORS.STRIPE] = StripeConnector()
 except Exception as e:
+    print("ERROR: ", e)
     logger.error(e)
     sentry_sdk.capture_exception(e)
     pass
 try:
     PAYMENT_PROCESSOR_MAP[PAYMENT_PROCESSORS.BRAINTREE] = BraintreeConnector()
 except Exception as e:
+    print("ERROR: ", e)
     logger.error(e)
     sentry_sdk.capture_exception(e)
     pass
