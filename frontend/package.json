@@ -14,6 +14,9 @@
   "dependencies": {
     "@ant-design/plots": "1.2.1",
     "@ant-design/pro-components": "1.1.16",
+    "@dnd-kit/core": "^6.0.7",
+    "@dnd-kit/sortable": "^7.0.2",
+    "@dnd-kit/utilities": "^3.2.1",
     "@nangohq/frontend": "^0.8.0",
     "@tanstack/react-query": "4.3.9",
     "@tremor/react": "^1.0.7",
