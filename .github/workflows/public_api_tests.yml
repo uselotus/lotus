@@ -154,6 +154,10 @@ jobs:
           cd ../lotus-python
           pipenv install --deploy --dev
 
+      - name: update codegen
+        run: |
+          cd ../lotus-python datamodel-codegen  --output ./lotus/models.py --strict-nullable
+
       - name: Test Pytest for lotus-python
         run: |
           cd ../lotus-python
