@@ -86,6 +86,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
         obj.customer_id,
         obj.default_currency_code,
         obj.address,
+        obj.address,
         obj.tax_rate,
         obj.timezone
       ),

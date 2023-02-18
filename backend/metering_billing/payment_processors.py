@@ -3,7 +3,7 @@ import base64
 import datetime
 import logging
 from decimal import Decimal
-from typing import Optional
+from typing import Literal, Optional
 from urllib.parse import urlencode
 
 import braintree
@@ -90,7 +90,7 @@ class PaymentProcesor(abc.ABC):
     @abc.abstractmethod
     def get_connection_id(self, organization) -> str:
         """
-        THis method returns for an organization what the connection id is for the payment provider.For stripe, this is teh stripe_account found in
+        This method returns for an organization what the connection id is for the payment provider.For stripe, this is teh stripe_account found in
         """
         pass
 
@@ -128,6 +128,19 @@ class PaymentProcesor(abc.ABC):
     @abc.abstractmethod
     def connect_customer(self, customer, external_id) -> bool:
         """This method will be caleld to check if the customer has a payment method attached to their account."""
+        pass
+
+    @abc.abstractmethod
+    def get_customer_address(self, customer, type: Literal["shipping", "billing"]):
+        """This method will be called to get the address of a customer."""
+        pass
+
+    @abc.abstractmethod
+    def get_organization_address(
+        self,
+        organization,
+    ):
+        """This method will be called to get the address of a customer."""
         pass
 
     # EXPORT METHODS
@@ -306,7 +319,6 @@ class BraintreeConnector(PaymentProcesor):
         url = f"https://api.nango.dev/connection/{connection_id}?provider_config_key={self._get_config_key(organization)}"
 
         resp = requests.get(url, headers=headers).json()
-        print(resp)
         access_token = resp["access_token"]
         return access_token
 
@@ -538,6 +550,61 @@ class BraintreeConnector(PaymentProcesor):
             logger.error(e)
             return False
 
+    def get_customer_address(self, customer, type: Literal["shipping", "billing"]):
+        from metering_billing.models import Address
+
+        # ignore type for now
+        cust_dict = cache.get(
+            f"braintree_customer_{customer.braintree_integration.braintree_customer_id}"
+        )
+        if cust_dict is None:
+            customer_obj = self.retrieve_customer_by_external_id(
+                customer.organization, customer.stripe_integration.stripe_customer_id
+            )
+            cust_dict = parse_nested_response(customer_obj)
+            cache.set(
+                f"braintree_customer_{customer.braintree_integration.braintree_customer_id}",
+                cust_dict,
+                60 * 60 * 24,
+            )
+        address = next(iter(cust_dict["addresses"]), {})
+        addy = Address(
+            city=address.get("locality"),
+            country=address.get("country_code_alpha2"),
+            line1=address.get("street_address"),
+            line2=address.get("extended_address"),
+            postal_code=address.get("postal_code"),
+            state=address.get("region"),
+        )
+        return addy
+
+    def get_organization_address(
+        self,
+        organization,
+    ):
+        from metering_billing.models import Address
+
+        braintree_id = organization.braintree_integration.braintree_merchant_id
+        acct_dict = cache.get(f"braintree_account_{braintree_id}")
+        if acct_dict is None:
+            acct_obj = self.retrieve_account(organization)
+            acct_dict = parse_nested_response(acct_obj)
+            cache.set(
+                f"braintree_account_{braintree_id}",
+                acct_dict,
+                60 * 60 * 24,
+            )
+        address = acct_dict.get("business_details", {}).get("address_details", {})
+        addy = Address(
+            city=address.get("locality"),
+            country=address.get("country_code_alpha2"),
+            line1=address.get("street_address"),
+            line2=address.get("extended_address"),
+            postal_code=address.get("postal_code"),
+            state=address.get("region"),
+        )
+        return addy
+
     def retrieve_account(self, organization):
         gateway = self._get_gateway(organization)
         result = gateway.merchant_account.all()
@@ -634,7 +701,7 @@ class StripeConnector(PaymentProcesor):
                 res = stripe.Account.retrieve()
                 self.stripe_account_id = res.id
             except Exception as e:
-                print(e)
+                logger.error(e)
 
     def working(self) -> bool:
         return self.live_secret_key is not None or self.test_secret_key is not None
@@ -774,6 +841,60 @@ class StripeConnector(PaymentProcesor):
         except Exception as e:
             logger.error(e)
             return False
+
+    def get_customer_address(self, customer, type: Literal["shipping", "billing"]):
+        from metering_billing.models import Address
+
+        stripe_id = customer.stripe_integration.stripe_customer_id
+        key = "address" if type == "billing" else "shipping"
+        cust_dict = cache.get(f"stripe_customer_{stripe_id}")
+        if cust_dict is None:
+            customer_obj = self.retrieve_customer_by_external_id(
+                customer.organization, stripe_id
+            )
+            cust_dict = parse_nested_response(customer_obj)
+            cache.set(
+                f"stripe_customer_{stripe_id}",
+                cust_dict,
+                60 * 60 * 24,
+            )
+        address = cust_dict.get(key)
+        addy = Address(
+            city=address.get("city"),
+            country=address.get("country"),
+            line1=address.get("line1"),
+            line2=address.get("line2"),
+            postal_code=address.get("postal_code"),
+            state=address.get("state"),
+        )
+        return addy
+
+    def get_organization_address(
+        self,
+        organization,
+    ):
+        from metering_billing.models import Address
+
+        stripe_id = organization.stripe_integration.stripe_account_id
+        acct_dict = cache.get(f"stripe_account_{stripe_id}")
+        if acct_dict is None:
+            customer_obj = self.retrieve_account(organization)
+            acct_dict = parse_nested_response(customer_obj)
+            cache.set(
+                f"stripe_account_{stripe_id}",
+                acct_dict,
+                60 * 60 * 24,
+            )
+        address = acct_dict.get("company", {}).get("address")
+        addy = Address(
+            city=address.get("city"),
+            country=address.get("country"),
+            line1=address.get("line1"),
+            line2=address.get("line2"),
+            postal_code=address.get("postal_code"),
+            state=address.get("state"),
+        )
+        return addy
 
     def retrieve_account(self, organization):
         from metering_billing.models import Organization
@@ -1187,12 +1308,12 @@ PAYMENT_PROCESSOR_MAP = {}
 try:
     PAYMENT_PROCESSOR_MAP[PAYMENT_PROCESSORS.STRIPE] = StripeConnector()
 except Exception as e:
-    print(e)
+    logger.error(e)
     sentry_sdk.capture_exception(e)
     pass
 try:
     PAYMENT_PROCESSOR_MAP[PAYMENT_PROCESSORS.BRAINTREE] = BraintreeConnector()
 except Exception as e:
-    print(e)
+    logger.error(e)
     sentry_sdk.capture_exception(e)
     pass

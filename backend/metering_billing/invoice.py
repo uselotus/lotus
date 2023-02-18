@@ -8,6 +8,7 @@ from django.conf import settings
 from django.db.models import Sum
 from django.db.models.query import QuerySet
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
+from metering_billing.taxes import get_lotus_tax_rates, get_taxjar_tax_rates
 from metering_billing.utils import (
     calculate_end_date,
     convert_to_datetime,
@@ -20,6 +21,7 @@ from metering_billing.utils.enums import (
     INVOICE_CHARGE_TIMING_TYPE,
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
+    TAX_PROVIDER,
 )
 from metering_billing.webhooks import invoice_created_webhook
 
@@ -128,7 +130,7 @@ def generate_invoice(
                 )
     for invoice in invoices.values():
         apply_plan_discounts(invoice)
-        apply_taxes(invoice, customer, organization)
+        apply_taxes(invoice, customer, organization, draft)
         apply_customer_balance_adjustments(invoice, customer, organization, draft)
         finalize_cost_due(invoice, draft)
         invoice.cost_due = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
@@ -367,30 +369,63 @@ def apply_plan_discounts(invoice):
                 )
 
 
-def apply_taxes(invoice, customer, organization):
+def apply_taxes(invoice, customer, organization, draft):
     """
     Apply taxes to an invoice
     """
-    from metering_billing.models import Invoice, InvoiceLineItem
+    from metering_billing.models import Invoice, InvoiceLineItem, Organization
 
     if invoice.payment_status == Invoice.PaymentStatus.PAID:
         return
-    if customer.tax_rate is None and organization.tax_rate is None:
+    order_of_tax_providers_to_check = (
+        customer.get_tax_provider_values() + organization.get_tax_provider_values()
+    )
+    if len(order_of_tax_providers_to_check) == 0:
         return
-    associated_subscription_records = invoice.line_items.values_list(
-        "associated_subscription_record", flat=True
-    ).distinct()
-    for sr in associated_subscription_records:
+    subscription_records = {
+        x.associated_subscription_record
+        for x in invoice.line_items.all().select_related(
+            "associated_subscription_record"
+        )
+    }
+
+    tax_rate_dict = {}
+    for sr in subscription_records:
         current_subtotal = (
             invoice.line_items.filter(associated_subscription_record=sr).aggregate(
                 tot=Sum("subtotal")
             )["tot"]
             or 0
         )
-        if customer.tax_rate is not None:
-            tax_rate = customer.tax_rate
-        elif organization.tax_rate is not None:
-            tax_rate = organization.tax_rate
+        plan = sr.billing_plan.plan
+        tax_rate = tax_rate_dict.get(plan, None)
+        if tax_rate is None or not draft:
+            for tax_provider in order_of_tax_providers_to_check:
+                if tax_provider == TAX_PROVIDER.LOTUS:
+                    txr, success = get_lotus_tax_rates(
+                        customer,
+                        organization,
+                    )  # , plan, draft, current_subtotal
+                    if success:
+                        tax_rate = txr
+                        break
+                elif (
+                    tax_provider == TAX_PROVIDER.TAXJAR
+                    and organization.organization_type
+                    == Organization.OrganizationType.PRODUCTION
+                ):
+                    txr, success = get_taxjar_tax_rates(
+                        customer, organization, plan, draft, current_subtotal
+                    )
+                    if success:
+                        tax_rate = txr
+                        break
+        tax_rate = tax_rate or Decimal(0)
+        tax_rate_dict[plan] = tax_rate
+
+        if tax_rate == 0:
+            continue
+
         name = f"Tax - {round(tax_rate, 2)}%"
         tax_amount = current_subtotal * (tax_rate / Decimal(100))
         if tax_amount > 0:
@@ -404,7 +439,7 @@ def apply_taxes(invoice, customer, organization):
                 chargeable_item_type=CHARGEABLE_ITEM_TYPE.TAX,
                 invoice=invoice,
                 organization=invoice.organization,
-                associated_subscription_record_id=sr,
+                associated_subscription_record=sr,
             )
 
 
@@ -512,7 +547,7 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
         organization=organization,
     )
 
-    apply_taxes(invoice, customer, organization)
+    apply_taxes(invoice, customer, organization, draft)
     finalize_cost_due(invoice, draft)
 
     if not draft:
