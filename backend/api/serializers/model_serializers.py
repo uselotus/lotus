@@ -7,9 +7,6 @@ from typing import Literal, Union
 from django.conf import settings
 from django.db.models import Max, Min, Sum
 from drf_spectacular.utils import extend_schema_serializer
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-
 from metering_billing.invoice import (
     generate_balance_adjustment_invoice,
     generate_invoice,
@@ -67,6 +64,8 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -1531,6 +1530,24 @@ class AddonSubscriptionRecordUpdateSerializer(
     )
     end_date = serializers.DateTimeField(
         required=False, help_text="Change the end date for the addon."
+    )
+
+
+class ListPlansFilterSerializer(serializers.Serializer):
+    include_tags = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        help_text="Filter to plans that have any of the tags in this list.",
+    )
+    include_tags_all = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        help_text="Filter to plans that have all of the tags in this list.",
+    )
+    exclude_tags = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        help_text="Filter to plans that do not have any of the tags in this list.",
     )
 
 
