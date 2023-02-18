@@ -381,7 +381,7 @@ class SellerSerializer(
     address = serializers.SerializerMethodField(required=False, allow_null=True)
 
     def get_address(self, obj) -> AddressSerializer(allow_null=True, required=False):
-        billing_address = obj.get_billing_address()
+        billing_address = obj.get_address()
         if billing_address:
             return AddressSerializer(billing_address).data
         return None
