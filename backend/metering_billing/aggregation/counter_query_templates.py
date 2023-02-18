@@ -4,7 +4,7 @@ COUNTER_CAGG_QUERY = """
 CREATE MATERIALIZED VIEW IF NOT EXISTS {{ cagg_name }}
 WITH ( timescaledb.continuous ) AS
 SELECT
-    "metering_billing_usageevent"."customer_id" AS customer_id
+    "metering_billing_usageevent"."uuidv5_customer_id" AS uuidv5_customer_id
     , time_bucket('1 {{bucket_size}}', "metering_billing_usageevent"."time_created") AS bucket
     , COUNT("metering_billing_usageevent"."idempotency_id") AS num_events
     , {%- if query_type == "count" -%}
@@ -30,7 +30,7 @@ SELECT
 FROM
     "metering_billing_usageevent"
 WHERE
-    "metering_billing_usageevent"."event_name" = '{{ event_name }}'
+    "metering_billing_usageevent"."uuidv5_event_name" = '{{ uuidv5_event_name }}'
     AND "metering_billing_usageevent"."organization_id" = {{ organization_id }}
     AND "metering_billing_usageevent"."time_created" <= NOW()
     {%- for property_name, operator, comparison in numeric_filters %}
@@ -61,7 +61,7 @@ WHERE
         )
     {%- endfor %}
 GROUP BY
-    customer_id
+    uuidv5_customer_id
     , bucket
     {%- for group_by_field in group_by %}
     , {{ group_by_field }}
@@ -71,7 +71,7 @@ GROUP BY
 # this query is used to get all the usage aggregated over the entire time period using the
 COUNTER_CAGG_TOTAL = """
 SELECT
-    customer_id
+    uuidv5_customer_id
     {%- for group_by_field in group_by %}
     , {{ group_by_field }}
     {%- endfor %}
@@ -89,7 +89,7 @@ SELECT
 FROM
     {{ cagg_name }}
 WHERE
-    customer_id = {{ customer_id }}
+    uuidv5_customer_id = '{{ uuidv5_customer_id }}'
     AND bucket >= '{{ start_date }}'::timestamptz
     AND bucket <= '{{ end_date }}'::timestamptz
     AND bucket <= NOW()
@@ -103,7 +103,7 @@ WHERE
         )
     {%- endfor %}
 GROUP BY
-    customer_id
+    uuidv5_customer_id
     {%- for group_by_field in group_by %}
     , {{ group_by_field }}
     {%- endfor %}
@@ -113,7 +113,7 @@ GROUP BY
 
 COUNTER_UNIQUE_TOTAL = """
 SELECT
-    "metering_billing_usageevent"."customer_id" AS customer_id
+    "metering_billing_usageevent"."uuidv5_customer_id" AS uuidv5_customer_id
     {%- for group_by_field in group_by %}
     , "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }}
     {%- endfor %}
@@ -122,13 +122,13 @@ SELECT
 FROM
     "metering_billing_usageevent"
 WHERE
-    "metering_billing_usageevent"."event_name" = '{{ event_name }}'
+    "metering_billing_usageevent"."uuidv5_event_name" = '{{ uuidv5_event_name }}'
     AND "metering_billing_usageevent"."organization_id" = {{ organization_id }}
     AND "metering_billing_usageevent"."time_created" <= NOW()
     AND "metering_billing_usageevent"."time_created" >= '{{ start_date }}'::timestamptz
     AND "metering_billing_usageevent"."time_created" <= '{{ end_date }}'::timestamptz
-    {%- if customer_id is not none %}
-    AND "metering_billing_usageevent"."customer_id" = {{ customer_id }}
+    {%- if uuidv5_customer_id is not none %}
+    AND "metering_billing_usageevent"."uuidv5_customer_id" = '{{ uuidv5_customer_id }}'
     {% endif %}
     {%- for property_name, property_values in filter_properties.items() %}
     AND {{ property_name }}
@@ -167,7 +167,7 @@ WHERE
         )
     {%- endfor %}
 GROUP BY
-    "metering_billing_usageevent"."customer_id"
+    "metering_billing_usageevent"."uuidv5_customer_id"
     {%- for group_by_field in group_by %}
     , "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}',
     {%- endfor %}
@@ -176,13 +176,13 @@ GROUP BY
 
 COUNTER_UNIQUE_PER_DAY = """
 SELECT DISTINCT ON (
-    "metering_billing_usageevent"."customer_id",
+    "metering_billing_usageevent"."uuidv5_customer_id",
     {%- for group_by_field in group_by %}
     "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}',
     {%- endfor %}
     "metering_billing_usageevent"."properties" ->> '{{ property_name }}'
 )
-    "metering_billing_usageevent"."customer_id" AS customer_id,
+    "metering_billing_usageevent"."uuidv5_customer_id" AS uuidv5_customer_id,
     {%- for group_by_field in group_by %}
     "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }},
     {%- endfor %}
@@ -191,16 +191,16 @@ SELECT DISTINCT ON (
 FROM
     "metering_billing_usageevent"
 WHERE
-    "metering_billing_usageevent"."event_name" = '{{ event_name }}'
+    "metering_billing_usageevent"."uuidv5_event_name" = '{{ uuidv5_event_name }}'
     AND "metering_billing_usageevent"."organization_id" = {{ organization_id }}
     AND "metering_billing_usageevent"."time_created" <= NOW()
     AND "metering_billing_usageevent"."time_created" >= '{{ start_date }}'::timestamptz
     AND "metering_billing_usageevent"."time_created" <= '{{ end_date }}'::timestamptz
-    {%- if customer_id is not none %}
-    AND "metering_billing_usageevent"."customer_id" = {{ customer_id }}
+    {%- if uuidv5_customer_id is not none %}
+    AND "metering_billing_usageevent"."uuidv5_customer_id" = '{{ uuidv5_customer_id }}'
     {% endif %}
 ORDER BY
-    "metering_billing_usageevent"."customer_id"
+    "metering_billing_usageevent"."uuidv5_customer_id"
     {%- for group_by_field in group_by %}
     , "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}'
     {%- endfor %}
@@ -212,37 +212,37 @@ ORDER BY
 COUNTER_TOTAL_PER_DAY = """
 WITH per_customer AS (
     SELECT
-        customer_id
+        uuidv5_customer_id
         , time_bucket_gapfill('1 day', bucket) AS time_bucket
         , SUM(usage_qty) AS usage_qty_per_day
     FROM
         {{ cagg_name }}
     WHERE
         bucket <= NOW()
-        {% if customer_id is not none %}
-        AND customer_id = {{ customer_id }}
+        {% if uuidv5_customer_id is not none %}
+        AND uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {% endif %}
         AND bucket >= '{{ start_date }}'::timestamptz
         AND bucket <=  '{{ end_date }}'::timestamptz
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         , time_bucket
     ORDER BY
         usage_qty_per_day DESC
 ), top_n AS (
     SELECT 
-        customer_id
+        uuidv5_customer_id
         , SUM(usage_qty_per_day) AS total_usage_qty
     FROM
         per_customer
     GROUP BY
-        customer_id
+        uuidv5_customer_id
     ORDER BY
         total_usage_qty DESC
     LIMIT {{ top_n }}
 )
 SELECT 
-    COALESCE(top_n.customer_id, -1) AS customer_id
+    COALESCE(top_n.uuidv5_customer_id, uuid_nil()) AS uuidv5_customer_id
     , SUM(per_customer.usage_qty_per_day) AS usage_qty
     , per_customer.time_bucket AS time_bucket
 FROM 
@@ -250,8 +250,8 @@ FROM
 LEFT JOIN
     top_n
 ON
-    per_customer.customer_id = top_n.customer_id
+    per_customer.uuidv5_customer_id = top_n.uuidv5_customer_id
 GROUP BY
-    COALESCE(top_n.customer_id, -1)
+    COALESCE(top_n.uuidv5_customer_id, uuid_nil())
     , per_customer.time_bucket
 """
