@@ -102,13 +102,13 @@ function EditPlan({ type, plan, versionIndex }: Props) {
   useEffect(() => {
     const initialComponents: any[] = plan.versions[versionIndex].components.map(
       (component) => ({
-          metric: component.billable_metric.metric_name,
-          tiers: component.tiers,
-          proration_granularity: component.proration_granularity,
-          id: component.billable_metric.metric_id,
-          metric_id: component.billable_metric.metric_id,
-          pricing_unit: component.pricing_unit,
-        })
+        metric: component.billable_metric.metric_name,
+        tiers: component.tiers,
+        proration_granularity: component.proration_granularity,
+        id: component.billable_metric.metric_id,
+        metric_id: component.billable_metric.metric_id,
+        pricing_unit: component.pricing_unit,
+      })
     );
     setComponentsData(initialComponents);
   }, [plan.versions[versionIndex].components]);
@@ -132,7 +132,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           position: toast.POSITION.TOP_CENTER,
         });
         queryClient.invalidateQueries(["plan_list"]);
-        navigate(`/plans/${  plan.plan_id}`);
+        navigate(`/plans/${plan.plan_id}`);
       },
       onError: () => {
         toast.error("Failed to create version", {
@@ -417,21 +417,21 @@ function EditPlan({ type, plan, versionIndex }: Props) {
   function returnPageTitle(): string {
     if (type === "backtest") {
       return "Backtest Plan";
-    } if (type === "version") {
-      return `Create New Version:` + ` ${  plan.plan_name}`;
     }
-      return `Create Custom Plan:` + ` ${  plan.plan_name}`;
-
+    if (type === "version") {
+      return `Create New Version:` + ` ${plan.plan_name}`;
+    }
+    return `Create Custom Plan:` + ` ${plan.plan_name}`;
   }
 
   function returnSubmitButtonText(): string {
     if (type === "backtest") {
       return "Create new Plan";
-    } if (type === "version") {
+    }
+    if (type === "version") {
       return "Publish version";
     }
-      return "Create custom plan";
-
+    return "Create custom plan";
   }
 
   return (
@@ -644,6 +644,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
                   borderWidth: "2px",
                   borderColor: "#EAEAEB",
                   borderStyle: "solid",
+                  height: "100%",
                 }}
                 className="h-full"
                 extra={[

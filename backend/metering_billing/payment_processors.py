@@ -90,7 +90,7 @@ class PaymentProcesor(abc.ABC):
     @abc.abstractmethod
     def get_connection_id(self, organization) -> str:
         """
-        THis method returns for an organization what the connection id is for the payment provider.For stripe, this is teh stripe_account found in
+        THis method returns for an organization what the connection id is for the payment provider.For stripe, this is the stripe_account found in
         """
         pass
 
