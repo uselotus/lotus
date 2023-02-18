@@ -9,6 +9,7 @@ class SinglePaymentProcesorSerializer(serializers.Serializer):
     self_hosted = serializers.BooleanField()
     connection_id = serializers.CharField(allow_null=True)
     working = serializers.BooleanField()
+    account_id = serializers.CharField(allow_null=True, allow_blank=True)
 
 
 class PaymentProcesorGetResponseSerializer(serializers.Serializer):

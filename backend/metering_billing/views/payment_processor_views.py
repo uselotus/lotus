@@ -33,7 +33,9 @@ class PaymentProcesorView(APIView):
                 "redirect_url": pp_obj.get_redirect_url(organization),
                 "self_hosted": SELF_HOSTED,
                 "connection_id": pp_obj.get_connection_id(organization),
+                "account_id": pp_obj.get_account_id(organization),
             }
+            print(pp_response)
             response.append(pp_response)
         serializer = SinglePaymentProcesorSerializer(data=response, many=True)
         serializer.is_valid(raise_exception=True)
