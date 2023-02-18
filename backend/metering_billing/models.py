@@ -39,7 +39,6 @@ from metering_billing.utils import (
     event_uuid,
     now_plus_day,
     now_utc,
-    parse_nested_response,
     periods_bwn_twodates,
     product_uuid,
 )
@@ -130,6 +129,60 @@ class Address(models.Model):
         null=True,
     )
 
+    def __str__(self):
+        return f"Address: {self.line1}, {self.city}, {self.state}, {self.postal_code}, {self.country}"
+
+
+class TaxProviderListField(models.CharField):
+    description = "List of Tax Provider choices"
+
+    def __init__(self, *args, **kwargs):
+        self.enum = TAX_PROVIDER
+        # set the max length to 16.. no way we ever have more than 8 tax providers
+        kwargs.setdefault("max_length", 16)
+        super().__init__(*args, **kwargs)
+
+    def from_db_value(self, value, expression, connection):
+        if value is None or value == "":
+            return []
+        value = [
+            int(x) for x in value.split(",") if x != ""
+        ]  # Ensure that all values in the list are valid tax provider choices
+        choices_set = set(dict(self.enum.choices).keys())
+        for val in value:
+            if val not in choices_set:
+                raise ValidationError(f"{val} is not a valid tax provider choice.")
+
+        return value
+
+    def to_python(self, value):
+        if isinstance(value, list):
+            return value
+        elif value is None:
+            return []
+        else:
+            return [int(val) for val in value.split(",")]
+
+    def get_prep_value(self, value):
+        if value is None or value == []:
+            return ""
+        else:
+            if all(isinstance(v, int) for v in value):
+                return ",".join(str(val) for val in value)
+            else:
+                enum_dict = dict(self.enum.choices)
+                reverse_enum_dict = {v: k for k, v in enum_dict.items()}
+                int_list = [str(reverse_enum_dict[val]) for val in value]
+                return ",".join(int_list)
+
+    def get_choices(self, include_blank=True, blank_choice=None, limit_choices_to=None):
+        return self.enum.choices
+
+    def value_to_string(self, obj):
+        value = self.value_from_object(obj)
+        pv = self.get_prep_value(value)
+        return pv
+
 
 class Organization(models.Model):
     class OrganizationType(models.IntegerChoices):
@@ -198,9 +251,7 @@ class Organization(models.Model):
         help_text="Tax rate as percentage. For example, 10.5 for 10.5%",
         null=True,
     )
-    tax_provider = models.PositiveSmallIntegerField(
-        choices=TAX_PROVIDER.choices, default=TAX_PROVIDER.LOTUS
-    )
+    tax_providers = TaxProviderListField(default=[TAX_PROVIDER.LOTUS])
 
     # TIMEZONE RELATED FIELDS
     timezone = TimeZoneField(default="UTC", use_pytz=True)
@@ -252,55 +303,22 @@ class Organization(models.Model):
             self.save()
         self.provision_subscription_filter_settings()
 
+    def get_tax_provider_values(self):
+        return self.tax_providers
+
+    def get_readable_tax_providers(self):
+        choices_dict = dict(TAX_PROVIDER.choices)
+        return [choices_dict.get(val) for val in self.tax_providers]
+
     def get_address(self) -> Address:
         if self.default_payment_provider == PAYMENT_PROCESSORS.STRIPE:
-            acct_dict = cache.get(
-                f"stripe_account_{self.stripe_integration.stripe_account_id}"
-            )
-            if acct_dict is None:
-                customer_obj = PAYMENT_PROCESSOR_MAP[
-                    PAYMENT_PROCESSORS.STRIPE
-                ].retrieve_account(self)
-                acct_dict = parse_nested_response(customer_obj)
-                cache.set(
-                    f"stripe_account_{self.stripe_integration.stripe_account_id}",
-                    acct_dict,
-                    60 * 60 * 24,
-                )
-            address = acct_dict.get("company", {}).get("address")
-            addy = Address(
-                city=address.get("city"),
-                country=address.get("country"),
-                line1=address.get("line1"),
-                line2=address.get("line2"),
-                postal_code=address.get("postal_code"),
-                state=address.get("state"),
-            )
-            return addy
+            return PAYMENT_PROCESSOR_MAP[
+                PAYMENT_PROCESSORS.STRIPE
+            ].get_organization_address(self)
         elif self.default_payment_provider == PAYMENT_PROCESSORS.BRAINTREE:
-            acct_dict = cache.get(
-                f"braintree_account_{self.braintree_integration.braintree_merchant_id}"
-            )
-            if acct_dict is None:
-                customer_obj = PAYMENT_PROCESSOR_MAP[
-                    PAYMENT_PROCESSORS.BRAINTREE
-                ].retrieve_account(self)
-                acct_dict = parse_nested_response(customer_obj)
-                cache.set(
-                    f"braintree_account_{self.braintree_integration.braintree_merchant_id}",
-                    acct_dict,
-                    60 * 60 * 24,
-                )
-            address = acct_dict.get("business_details", {}).get("address_details", {})
-            addy = Address(
-                city=address.get("locality"),
-                country=address.get("country_code_alpha2"),
-                line1=address.get("street_address"),
-                line2=address.get("extended_address"),
-                postal_code=address.get("postal_code"),
-                state=address.get("region"),
-            )
-            return addy
+            return PAYMENT_PROCESSOR_MAP[
+                PAYMENT_PROCESSORS.BRAINTREE
+            ].get_organization_address(self)
         else:
             return self.address
 
@@ -607,9 +625,7 @@ class Customer(models.Model):
     )
 
     # TAX RELATED FIELDS
-    tax_provider = models.PositiveSmallIntegerField(
-        choices=TAX_PROVIDER.choices, null=True, blank=True
-    )
+    tax_providers = TaxProviderListField(default=[])
     tax_rate = models.DecimalField(
         max_digits=7,
         decimal_places=4,
@@ -682,6 +698,13 @@ class Customer(models.Model):
         )
         return active_subscription_records
 
+    def get_tax_provider_values(self):
+        return self.tax_providers
+
+    def get_readable_tax_providers(self):
+        choices_dict = dict(TAX_PROVIDER.choices)
+        return [choices_dict.get(val) for val in self.tax_providers]
+
     def get_usage_and_revenue(self):
         customer_subscriptions = (
             SubscriptionRecord.objects.active()
@@ -739,113 +762,25 @@ class Customer(models.Model):
 
     def get_billing_address(self) -> Address:
         if self.payment_provider == PAYMENT_PROCESSORS.STRIPE:
-            cust_dict = cache.get(
-                f"stripe_customer_{self.stripe_integration.stripe_customer_id}"
-            )
-            if cust_dict is None:
-                customer_obj = PAYMENT_PROCESSOR_MAP[
-                    PAYMENT_PROCESSORS.STRIPE
-                ].retrieve_customer_by_external_id(
-                    self.organization, self.stripe_integration.stripe_customer_id
-                )
-                cust_dict = parse_nested_response(customer_obj)
-                cache.set(
-                    f"stripe_customer_{self.stripe_integration.stripe_customer_id}",
-                    cust_dict,
-                    60 * 60 * 24,
-                )
-            address = cust_dict.get("address")
-            addy = Address(
-                city=address.get("city"),
-                country=address.get("country"),
-                line1=address.get("line1"),
-                line2=address.get("line2"),
-                postal_code=address.get("postal_code"),
-                state=address.get("state"),
-            )
-            return addy
+            return PAYMENT_PROCESSOR_MAP[
+                PAYMENT_PROCESSORS.STRIPE
+            ].get_customer_address(self, type="billing")
         elif self.payment_provider == PAYMENT_PROCESSORS.BRAINTREE:
-            cust_dict = cache.get(
-                f"braintree_customer_{self.braintree_integration.braintree_customer_id}"
-            )
-            if cust_dict is None:
-                customer_obj = PAYMENT_PROCESSOR_MAP[
-                    PAYMENT_PROCESSORS.BRAINTREE
-                ].retrieve_customer_by_external_id(
-                    self.organization, self.stripe_integration.stripe_customer_id
-                )
-                cust_dict = parse_nested_response(customer_obj)
-                cache.set(
-                    f"braintree_customer_{self.braintree_integration.braintree_customer_id}",
-                    cust_dict,
-                    60 * 60 * 24,
-                )
-            address = next(iter(cust_dict["addresses"]), {})
-            addy = Address(
-                city=address.get("locality"),
-                country=address.get("country_code_alpha2"),
-                line1=address.get("street_address"),
-                line2=address.get("extended_address"),
-                postal_code=address.get("postal_code"),
-                state=address.get("region"),
-            )
-            return addy
+            return PAYMENT_PROCESSOR_MAP[
+                PAYMENT_PROCESSORS.BRAINTREE
+            ].get_customer_address(self, type="billing")
         else:
             return self.billing_address
 
     def get_shipping_address(self) -> Address:
         if self.payment_provider == PAYMENT_PROCESSORS.STRIPE:
-            cust_dict = cache.get(
-                f"stripe_customer_{self.stripe_integration.stripe_customer_id}"
-            )
-            if cust_dict is None:
-                customer_obj = PAYMENT_PROCESSOR_MAP[
-                    PAYMENT_PROCESSORS.STRIPE
-                ].retrieve_customer_by_external_id(
-                    self.organization, self.stripe_integration.stripe_customer_id
-                )
-                cust_dict = parse_nested_response(customer_obj)
-                cache.set(
-                    f"stripe_customer_{self.stripe_integration.stripe_customer_id}",
-                    cust_dict,
-                    60 * 60 * 24,
-                )
-            address = cust_dict.get("shipping", {})
-            addy = Address(
-                city=address.get("city"),
-                country=address.get("country"),
-                line1=address.get("line1"),
-                line2=address.get("line2"),
-                postal_code=address.get("postal_code"),
-                state=address.get("state"),
-            )
-            return addy
+            return PAYMENT_PROCESSOR_MAP[
+                PAYMENT_PROCESSORS.STRIPE
+            ].get_customer_address(self, type="shipping")
         elif self.payment_provider == PAYMENT_PROCESSORS.BRAINTREE:
-            cust_dict = cache.get(
-                f"braintree_customer_{self.braintree_integration.braintree_customer_id}"
-            )
-            if cust_dict is None:
-                customer_obj = PAYMENT_PROCESSOR_MAP[
-                    PAYMENT_PROCESSORS.BRAINTREE
-                ].retrieve_customer_by_external_id(
-                    self.organization, self.stripe_integration.stripe_customer_id
-                )
-                cust_dict = parse_nested_response(customer_obj)
-                cache.set(
-                    f"braintree_customer_{self.braintree_integration.braintree_customer_id}",
-                    cust_dict,
-                    60 * 60 * 24,
-                )
-            address = next(iter(cust_dict["addresses"]), {})
-            addy = Address(
-                city=address.get("locality"),
-                country=address.get("country_code_alpha2"),
-                line1=address.get("street_address"),
-                line2=address.get("extended_address"),
-                postal_code=address.get("postal_code"),
-                state=address.get("region"),
-            )
-            return addy
+            return PAYMENT_PROCESSOR_MAP[
+                PAYMENT_PROCESSORS.BRAINTREE
+            ].get_customer_address(self, type="billing")
         else:
             return self.shipping_address
 
@@ -2202,6 +2137,7 @@ class Plan(models.Model):
     )
     tags = models.ManyToManyField("Tag", blank=True, related_name="plans")
     created_on = models.DateTimeField(default=now_utc, null=True)
+    taxjar_code = models.TextField(max_length=30, null=True, blank=True)
 
     objects = BasePlanManager()
     addons = AddOnPlanManager()

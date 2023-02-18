@@ -92,6 +92,8 @@ if BRAINTREE_TEST_PUBLIC_KEY == "change_me":
 if BRAINTREE_TEST_SECRET_KEY == "change_me":
     BRAINTREE_TEST_SECRET_KEY = None
 BRAINTREE_WEBHOOK_SECRET = config("BRAINTREE_WEBHOOK_SECRET", default="")
+# taxjar
+TAXJAR_API_KEY = config("TAXJAR_API_KEY", default=None)
 # Webhooks for Svix
 SVIX_API_KEY = config("SVIX_API_KEY", default="")
 SVIX_JWT_SECRET = config("SVIX_JWT_SECRET", default="")

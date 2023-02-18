@@ -70,7 +70,7 @@ export const integrationsMap = {
   },
   braintree: {
     name: "Braintree",
-    icon: "https://cdn-icons-png.flaticon.com/512/3096/3096985.png",
+    icon: "https://pbs.twimg.com/profile_images/1146433479091118081/Yn29TbtJ_400x400.png",
     description:
       "Charge and invoice your customers through your Braintree account",
     connection_id_name: "Merchant ID",

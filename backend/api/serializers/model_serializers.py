@@ -60,6 +60,7 @@ from metering_billing.utils.enums import (
     INVOICING_BEHAVIOR,
     PAYMENT_PROCESSORS,
     SUBSCRIPTION_STATUS,
+    TAX_PROVIDER,
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
@@ -122,7 +123,7 @@ class AddressSerializer(serializers.ModelSerializer):
         "city": {"required": True, "allow_null": True},
         "country": {"required": True, "allow_null": True},
         "line1": {"required": True, "allow_null": True},
-        "line2": {"required": True, "allow_null": True},
+        "line2": {"required": True, "allow_null": True, "allow_blank": True},
         "postal_code": {"required": True, "allow_null": True},
         "state": {"required": True, "allow_null": True},
     }
@@ -139,12 +140,10 @@ class LightweightCustomerSerializerForInvoice(LightweightCustomerSerializer):
     address = serializers.SerializerMethodField(required=False, allow_null=True)
 
     def get_address(self, obj) -> AddressSerializer(allow_null=True, required=False):
-        d = obj.properties.get("address", {})
-        try:
-            data = AddressSerializer(d).data
-        except KeyError:
-            data = None
-        return data
+        billing_address = obj.get_billing_address()
+        if billing_address:
+            return AddressSerializer(billing_address).data
+        return None
 
 
 class LightweightPlanVersionSerializer(
@@ -382,7 +381,7 @@ class SellerSerializer(
     address = serializers.SerializerMethodField(required=False, allow_null=True)
 
     def get_address(self, obj) -> AddressSerializer(allow_null=True, required=False):
-        d = obj.properties.get("address", {})
+        d = obj.get_address()
         try:
             data = AddressSerializer(d).data
         except KeyError:
@@ -509,6 +508,7 @@ class CustomerIntegrationsSerializer(serializers.Serializer):
     braintree = CustomerBraintreeIntegrationSerializer(required=False, allow_null=True)
 
 
+@extend_schema_serializer(deprecate_fields=["address"])
 class CustomerSerializer(
     ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
@@ -527,8 +527,11 @@ class CustomerSerializer(
             "payment_provider_id",
             "has_payment_method",
             "address",
+            "billing_address",
+            "shipping_address",
             "tax_rate",
             "timezone",
+            "tax_providers",
         )
         extra_kwargs = {
             "customer_id": {"required": True, "read_only": True},
@@ -571,7 +574,33 @@ class CustomerSerializer(
     payment_provider_id = serializers.SerializerMethodField()
     has_payment_method = serializers.SerializerMethodField()
     address = serializers.SerializerMethodField()
+    billing_address = serializers.SerializerMethodField()
+    shipping_address = serializers.SerializerMethodField()
     timezone = TimeZoneSerializerField(use_pytz=True)
+    tax_providers = serializers.SerializerMethodField()
+
+    def get_tax_providers(
+        self, obj
+    ) -> serializers.ListField(
+        child=serializers.ChoiceField(choices=TAX_PROVIDER.labels), required=True
+    ):
+        return obj.get_readable_tax_providers()
+
+    def get_billing_address(
+        self, obj
+    ) -> AddressSerializer(allow_null=True, required=True):
+        billing_address = obj.get_billing_address()
+        if billing_address:
+            return AddressSerializer(billing_address).data
+        return None
+
+    def get_shipping_address(
+        self, obj
+    ) -> AddressSerializer(allow_null=True, required=True):
+        shipping_address = obj.get_shipping_address()
+        if shipping_address:
+            return AddressSerializer(shipping_address).data
+        return None
 
     def get_payment_provider_id(
         self, obj
@@ -588,12 +617,10 @@ class CustomerSerializer(
         return None
 
     def get_address(self, obj) -> AddressSerializer(allow_null=True, required=True):
-        d = obj.properties.get("address", {})
-        try:
-            data = AddressSerializer(d).data
-        except KeyError:
-            data = None
-        return data
+        billing_address = obj.get_billing_address()
+        if billing_address:
+            return AddressSerializer(billing_address).data
+        return None
 
     def get_has_payment_method(self, obj) -> bool:
         d = self.get_integrations(obj)
@@ -683,6 +710,7 @@ class CustomerSerializer(
             return Decimal(0)
 
 
+@extend_schema_serializer(deprecate_fields=["address"])
 class CustomerCreateSerializer(
     ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
@@ -697,6 +725,8 @@ class CustomerCreateSerializer(
             "properties",
             "default_currency_code",
             "address",
+            "billing_address",
+            "shipping_address",
             "tax_rate",
         )
         extra_kwargs = {
@@ -728,6 +758,8 @@ class CustomerCreateSerializer(
         help_text="The currency code this customer will be invoiced in. Codes are 3 letters, e.g. 'USD'.",
     )
     address = AddressSerializer(required=False, allow_null=True)
+    billing_address = AddressSerializer(required=False, allow_null=True)
+    shipping_address = AddressSerializer(required=False, allow_null=True)
 
     def validate(self, data):
         super().validate(data)
@@ -761,12 +793,26 @@ class CustomerCreateSerializer(
         else:
             payment_provider_valid = False
         address = validated_data.pop("address", None)
-        if address:
-            validated_data["properties"] = {
-                **validated_data.get("properties", {}),
-                "address": address,
-            }
+        billing_address = validated_data.pop("billing_address", None)
+        shipping_address = validated_data.pop("shipping_address", None)
         customer = Customer.objects.create(**validated_data)
+        if address:
+            address = Address.objects.get_or_create(
+                **address, organization=self.context["organization"]
+            )
+            customer.billing_address = address
+        if billing_address:
+            billing_address = Address.objects.get_or_create(
+                **billing_address, organization=self.context["organization"]
+            )
+            customer.billing_address = billing_address
+        if shipping_address:
+            shipping_address = Address.objects.get_or_create(
+                **shipping_address, organization=self.context["organization"]
+            )
+            customer.shipping_address = shipping_address
+        if address or billing_address or shipping_address:
+            customer.save()
         if payment_provider and payment_provider_valid:
             PAYMENT_PROCESSOR_MAP[payment_provider].connect_customer(customer, pp_id)
         else:

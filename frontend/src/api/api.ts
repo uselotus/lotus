@@ -66,6 +66,7 @@ import {
   OrganizationType,
   PaginatedActionsType,
   UpdateOrganizationPPType,
+  UpdateOrganizationType,
 } from "../types/account-type";
 import { FeatureType, CreateFeatureType } from "../types/feature-type";
 import {
@@ -133,13 +134,15 @@ export const Customer = {
   updateCustomer: (
     customer_id: string,
     default_currency_code: string,
-    address: CustomerType["address"],
+    shipping_address: CustomerType["shipping_address"],
+    billing_address: CustomerType["billing_address"],
     tax_rate: number,
     timezone: string
   ): Promise<CustomerType> =>
     requests.patch(`app/customers/${customer_id}/`, {
       default_currency_code,
-      address,
+      shipping_address,
+      billing_address,
       tax_rate,
       timezone,
     }),
@@ -375,21 +378,9 @@ export const Organization = {
     requests.get("app/actions/", { params: { c: cursor } }),
   updateOrganization: (
     org_id: string,
-    default_currency_code: string,
-    tax_rate: number,
-    timezone: string,
-    payment_grace_period: number,
-    address: OrganizationType["address"],
-    subscription_filter_keys: string[]
+    input: UpdateOrganizationType
   ): Promise<OrganizationType> =>
-    requests.patch(`app/organizations/${org_id}/`, {
-      default_currency_code,
-      tax_rate,
-      timezone,
-      payment_grace_period,
-      address,
-      subscription_filter_keys,
-    }),
+    requests.patch(`app/organizations/${org_id}/`, input),
   updateOrganizationPaymentProvider: (
     data: UpdateOrganizationPPType
   ): Promise<OrganizationType> => {
