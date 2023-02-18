@@ -163,14 +163,12 @@ jobs:
 
       - name: copy file
         run: |
-          cp ../docs/openapi.yaml ../lotus-python 
-          
-      - name: generaye models
-       run: | 
+          cp ../docs/openapi.yaml ../lotus-python
+
+      - name: generate models
+        run: |
           cd ../lotus-python && datamodel-codegen --input openapi.yaml --output ./lotus/models.py --strict-nullable
 
       - name: Test Pytest for lotus-python
         run: |
-          cd ../lotus-python
-          ls 
-          pipenv run pytest
+          cd ../lotus-python && pipenv run pytest
