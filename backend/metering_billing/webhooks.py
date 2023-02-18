@@ -143,13 +143,13 @@ def usage_alert_webhook(usage_alert, alert_result, subscription_record, organiza
             )
 
 
-def customerCreatedWebhook(customer):
+def customer_created_webhook(customer):
     from metering_billing.models import WebhookEndpoint
+    from api.serializers.model_serializers import CustomerSerializer
 
     if SVIX_CONNECTOR is not None:
         endpoints = (
-            WebhookEndpoint.objects
-            .prefetch_related("triggers")
+            WebhookEndpoint.objects.prefetch_related("triggers")
             .filter(triggers__trigger_name=WEBHOOK_TRIGGER_EVENTS.CUSTOMER_CREATED)
             .distinct()
         )
@@ -158,7 +158,7 @@ def customerCreatedWebhook(customer):
             now = str(now_utc())
             response = {
                 "event_type": WEBHOOK_TRIGGER_EVENTS.CUSTOMER_CREATED,
-                "payload": customer,
+                "payload": CustomerSerializer(customer).data,
             }
             event_id = (
                 str(customer["customer_id"])
