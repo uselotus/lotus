@@ -1330,13 +1330,23 @@ class Metric(models.Model):
         return self.billable_metric_name or ""
 
     def save(self, *args, **kwargs):
+        just_deleted_mat_views = kwargs.pop("just_deleted_mat_views", False)
         super().save(*args, **kwargs)
         if (
             self.status == METRIC_STATUS.ACTIVE
             and not self.mat_views_provisioned
-            and kwargs.get("just_deleted_mat_views", False) is not True
+            and just_deleted_mat_views is not True
         ):
             self.provision_materialized_views()
+    
+    def delete_materialized_views(self):
+        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+
+        handler = METRIC_HANDLER_MAP[self.metric_type]
+        handler.archive_metric(self)
+        self.mat_views_provisioned = False
+        self.save(just_deleted_mat_views=True)
+
 
     def get_aggregation_type(self):
         return self.aggregation_type
@@ -1401,13 +1411,6 @@ class Metric(models.Model):
         self.mat_views_provisioned = True
         self.save()
 
-    def delete_materialized_views(self):
-        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
-
-        handler = METRIC_HANDLER_MAP[self.metric_type]
-        handler.archive_metric(self)
-        self.mat_views_provisioned = False
-        self.save(just_deleted_mat_views=True)
 
 
 class UsageRevenueSummary(TypedDict):
