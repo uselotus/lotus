@@ -8,19 +8,4 @@ class Migration(migrations.Migration):
         ("metering_billing", "0192_redo_metric_matviews"),
     ]
 
-    operations = [
-        migrations.RunSQL(
-            """
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN cust_id TYPE TEXT;
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN event_name TYPE TEXT;
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN idempotency_id TYPE TEXT;
-            ALTER TABLE metering_billing_usageevent DROP COLUMN customer_id;
-            """,
-            reverse_sql="""
-            ALTER TABLE metering_billing_usageevent ADD COLUMN customer_id bigint;
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN idempotency_id TYPE varchar(255);
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN event_name TYPE varchar(100);
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN cust_id TYPE varchar(50);
-            """,
-        ),
-    ]
+    operations = []
