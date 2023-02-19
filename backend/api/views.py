@@ -49,7 +49,6 @@ from api.serializers.nonmodel_serializers import (
     MetricAccessResponseSerializer,
 )
 from dateutil import parser
-from metering_billing.webhooks import customer_created_webhook
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import (
@@ -126,6 +125,7 @@ from metering_billing.utils.enums import (
     USAGE_BILLING_BEHAVIOR,
     USAGE_BILLING_FREQUENCY,
 )
+from metering_billing.webhooks import customer_created_webhook
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import (
     action,
@@ -248,7 +248,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         instance = self.perform_create(serializer)
         customer_data = CustomerSerializer(instance).data
-        customer_created_webhook(customer_data)
+        customer_created_webhook(instance, customer_data=customer_data)
         return Response(customer_data, status=status.HTTP_201_CREATED)
 
     # @extend_schema(

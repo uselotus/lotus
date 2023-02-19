@@ -1338,7 +1338,7 @@ class Metric(models.Model):
             and just_deleted_mat_views is not True
         ):
             self.provision_materialized_views()
-    
+
     def delete_materialized_views(self):
         from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 
@@ -1346,7 +1346,6 @@ class Metric(models.Model):
         handler.archive_metric(self)
         self.mat_views_provisioned = False
         self.save(just_deleted_mat_views=True)
-
 
     def get_aggregation_type(self):
         return self.aggregation_type
@@ -1410,7 +1409,6 @@ class Metric(models.Model):
         handler.create_continuous_aggregate(self)
         self.mat_views_provisioned = True
         self.save()
-
 
 
 class UsageRevenueSummary(TypedDict):

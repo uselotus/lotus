@@ -702,7 +702,6 @@ elif SVIX_API_KEY == "" and SVIX_JWT_SECRET != "":
 else:
     svix = None
 SVIX_CONNECTOR = svix
-
 if SVIX_CONNECTOR is not None:
     try:
         svix = SVIX_CONNECTOR

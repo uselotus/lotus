@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.utils.text import slugify
 from metering_billing.utils import (
     make_all_dates_times_strings,
     make_all_decimals_floats,
@@ -130,7 +131,7 @@ def usage_alert_webhook(usage_alert, alert_result, subscription_record, organiza
                 + "triggered"
             )
             svix.message.create(
-                organization.organization_id,
+                organization.organization_id.hex,
                 MessageIn(
                     event_type=WEBHOOK_TRIGGER_EVENTS.USAGE_ALERT_TRIGGERED,
                     event_id=event_id,
@@ -143,9 +144,9 @@ def usage_alert_webhook(usage_alert, alert_result, subscription_record, organiza
             )
 
 
-def customer_created_webhook(customer):
-    from metering_billing.models import WebhookEndpoint
+def customer_created_webhook(customer, customer_data=None):
     from api.serializers.model_serializers import CustomerSerializer
+    from metering_billing.models import WebhookEndpoint
 
     if SVIX_CONNECTOR is not None:
         endpoints = (
@@ -156,19 +157,24 @@ def customer_created_webhook(customer):
         if endpoints.count() > 0:
             svix = SVIX_CONNECTOR
             now = str(now_utc())
+            payload = (
+                customer_data if customer_data else CustomerSerializer(customer).data
+            )
+            payload = make_all_decimals_floats(payload)
+            payload = make_all_dates_times_strings(payload)
             response = {
                 "event_type": WEBHOOK_TRIGGER_EVENTS.CUSTOMER_CREATED,
-                "payload": CustomerSerializer(customer).data,
+                "payload": payload,
             }
             event_id = (
-                str(customer["customer_id"])
+                slugify(str(customer.customer_id))
                 + "_"
-                + str(customer["customer_name"])
+                + slugify(str(customer.customer_name))
                 + "_"
                 + "created"
             )
-            svix.message.create(
-                customer["customer_id"],
+            response = svix.message.create(
+                customer.organization.organization_id.hex,
                 MessageIn(
                     event_type=WEBHOOK_TRIGGER_EVENTS.CUSTOMER_CREATED,
                     event_id=event_id,
