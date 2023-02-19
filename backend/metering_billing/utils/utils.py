@@ -10,7 +10,6 @@ import pytz
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.db.models import Field, Model
-
 from metering_billing.exceptions.exceptions import ServerError
 from metering_billing.utils.enums import (
     METRIC_GRANULARITY,
@@ -547,4 +546,21 @@ def namedtuplefetchall(cursor):
     desc = cursor.description
     nt_result = namedtuple("Result", [col[0] for col in desc])
     return [nt_result(*row) for row in cursor.fetchall()]
-    return [nt_result(*row) for row in cursor.fetchall()]
+
+
+def customer_id_uuidv5(customer_id):
+    from django.conf import settings
+
+    return uuid.uuid5(settings.CUSTOMER_ID_NAMESPACE, customer_id)
+
+
+def event_name_uuidv5(event_name):
+    from django.conf import settings
+
+    return uuid.uuid5(settings.EVENT_NAME_NAMESPACE, event_name)
+
+
+def idempotency_id_uuidv5(idempotency_id):
+    from django.conf import settings
+
+    return uuid.uuid5(settings.IDEMPOTENCY_ID_NAMESPACE, idempotency_id)

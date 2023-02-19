@@ -5,7 +5,6 @@ import posthog
 import sentry_sdk
 from django.conf import settings
 from django.core.cache import cache
-
 from metering_billing.models import Event, Organization
 from metering_billing.utils import now_utc
 

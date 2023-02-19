@@ -816,7 +816,7 @@ class CustomHandler(MetricHandler):
         try:
             injection_dict = {
                 "filter_properties": {},
-                "uuidv5_customer_id": 1,
+                "uuidv5_customer_id": uuid.UUID("00000000-0000-0000-0000-000000000000"),
             }
             start = now_utc()
             end = now_utc()
