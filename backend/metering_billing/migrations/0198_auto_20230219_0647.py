@@ -3,12 +3,26 @@
 from django.db import migrations
 
 
+def refresh_mat_views(apps, schema_editor):
+    Metric = apps.get_model("metering_billing", "Metric")
+    from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+
+    for metric in Metric.objects.all():
+        handler = METRIC_HANDLER_MAP[metric.metric_type]
+        handler.archive_metric(metric)
+        metric.mat_views_provisioned = False
+        metric.save(just_deleted_mat_views=True)
+
+        ## INITADMIN WILL TAKE CARE OF REFRESHING THE VIEWS
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("metering_billing", "0197_trigger_on_customers"),
     ]
 
     operations = [
+        migrations.RunPython(refresh_mat_views, reverse_code=migrations.RunPython.noop),
         migrations.RunSQL(
             """
             BEGIN;
@@ -32,5 +46,5 @@ class Migration(migrations.Migration):
 
             COMMIT;
             """,
-        )
+        ),
     ]
