@@ -903,7 +903,7 @@
     hey-listen "^1.0.8"
     tslib "^2.3.1"
 
-"@nangohq/frontend@^0.8.0":
+"@nangohq/frontend@^0.8.4":
   version "0.8.4"
   resolved "https://registry.yarnpkg.com/@nangohq/frontend/-/frontend-0.8.4.tgz#21784441c2ec44f407992e271d83a6524eee4766"
   integrity sha512-Hb2+xDBNYvIzyRx9/kWgzPgW7rmq4+pvy+3Wpxl2ob7YmqPJNA8QlAAB2zXRjLRH4+aZ0K44eishC9QNLZzlCQ==
