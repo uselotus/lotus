@@ -24,6 +24,15 @@ from django.db.models import Count, F, FloatField, Prefetch, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
+
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     NotEditable,
@@ -76,18 +85,11 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
+CUSTOMER_ID_NAMESPACE = settings.CUSTOMER_ID_NAMESPACE
 
 
 class Team(models.Model):
@@ -589,10 +591,12 @@ class Customer(models.Model):
         help_text="The primary email address of the customer, must be the same as the email address used to create the customer in the payment provider",
         null=True,
     )
-    customer_id = models.SlugField(
-        max_length=50,
+    customer_id = models.TextField(
         default=customer_uuid,
         help_text="The id provided when creating the customer, we suggest matching with your internal customer id in your backend",
+    )
+    uuidv5_customer_id = models.UUIDField(
+        help_text="The v5 UUID generated from the customer_id. This is used for efficient lookups in the database, specifically for the Events table",
     )
     properties = models.JSONField(
         default=dict, null=True, help_text="Extra metadata for the customer"
@@ -685,12 +689,11 @@ class Customer(models.Model):
                 )
             except PricingUnit.DoesNotExist:
                 self.default_currency = None
+        if not self.uuidv5_customer_id:
+            self.uuidv5_customer_id = uuid.uuid5(
+                CUSTOMER_ID_NAMESPACE, self.customer_id
+            )
         super(Customer, self).save(*args, **kwargs)
-        Event.objects.filter(
-            organization=self.organization,
-            cust_id=self.customer_id,
-            customer__isnull=True,
-        ).update(customer=self)
 
     def get_active_subscription_records(self):
         active_subscription_records = self.subscription_records.active().filter(
@@ -1023,18 +1026,13 @@ class IdempotenceCheck(models.Model):
     time_created = models.DateTimeField(
         help_text="The time that the event occured, represented as a datetime in ISO 8601 in the UTC timezome."
     )
-    idempotency_id = models.SlugField(
-        max_length=255,
-        default=event_uuid,
-        help_text="A unique identifier for the specific event being passed in. Passing in a unique id allows Lotus to make sure no double counting occurs. We recommend using a UUID4. You can use the same idempotency_id again after 45 days.",
-        primary_key=True,
-    )
+    uuidv5_idempotency_id = models.UUIDField(primary_key=True)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["organization", "idempotency_id"],
-                name="unique_idempotency_id_per_org_raw",
+                fields=["organization", "uuidv5_idempotency_id"],
+                name="unique_hashed_idempotency_id_per_org_raw",
             )
         ]
 
@@ -1046,14 +1044,12 @@ class Event(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.SET_NULL, related_name="+", null=True, blank=True
     )
-    customer = models.ForeignKey(
-        Customer, on_delete=models.CASCADE, related_name="+", null=True, blank=True
-    )
-    cust_id = models.CharField(max_length=50, blank=True)
-    event_name = models.CharField(
-        max_length=100,
+    cust_id = models.TextField(blank=True)
+    uuidv5_customer_id = models.UUIDField()
+    event_name = models.TextField(
         help_text="String name of the event, corresponds to definition in metrics",
     )
+    uuidv5_event_name = models.UUIDField()
     time_created = models.DateTimeField(
         help_text="The time that the event occured, represented as a datetime in ISO 8601 in the UTC timezome."
     )
@@ -1062,34 +1058,23 @@ class Event(models.Model):
         blank=True,
         help_text="Extra metadata on the event that can be filtered and queried on in the metrics. All key value pairs should have string keys and values can be either strings or numbers. Place subscription filters in this object to specify which subscription the event should be tracked under",
     )
-    idempotency_id = models.SlugField(
-        max_length=255,
+    idempotency_id = models.TextField(
         default=event_uuid,
         help_text="A unique identifier for the specific event being passed in. Passing in a unique id allows Lotus to make sure no double counting occurs. We recommend using a UUID4. You can use the same idempotency_id again after 45 days.",
         primary_key=True,
     )
+    uuidv5_idempotency_id = models.UUIDField()
     inserted_at = models.DateTimeField(default=now_utc)
 
     class Meta:
         managed = False
         db_table = "metering_billing_usageevent"
-        constraints = [
-            models.UniqueConstraint(
-                fields=["organization", "idempotency_id"],
-                name="unique_idempotency_id_per_org",
-            )
-        ]
-        indexes = [
-            models.Index(
-                fields=["organization", "event_name", "customer", "time_created"]
-            ),
-        ]
 
     def __str__(self):
         return (
             str(self.event_name)[:6]
             + "-"
-            + str(self.customer.customer_name)[:6]
+            + str(self.cust_id)[:8]
             + "-"
             + str(self.time_created)[:10]
             + "-"

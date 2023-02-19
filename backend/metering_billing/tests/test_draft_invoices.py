@@ -69,7 +69,6 @@ def draft_invoice_test_common_setup(
         baker.make(
             Event,
             organization=org,
-            customer=customer,
             event_name="email_sent",
             time_created=now_utc() - timedelta(days=1),
             properties=itertools.cycle(event_properties),
@@ -259,7 +258,6 @@ class TestGenerateInvoice:
             baker.make(
                 Event,
                 organization=setup_dict["org"],
-                customer=setup_dict["customer"],
                 event_name="email_sent",
                 time_created=now_utc() - timedelta(days=1),
                 properties=itertools.cycle(event_properties),

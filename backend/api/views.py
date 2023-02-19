@@ -4,6 +4,7 @@ import copy
 import json
 import logging
 import operator
+import uuid
 from decimal import Decimal
 from functools import reduce
 from itertools import chain
@@ -138,7 +139,7 @@ from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
-
+IDEMPOTENCY_ID_NAMESPACE = settings.IDEMPOTENCY_ID_NAMESPACE
 
 logger = logging.getLogger("django.server")
 
@@ -1700,10 +1701,11 @@ class ConfirmIdemsReceivedView(APIView):
         ids_not_found = []
         for i in range(num_batches_idems):
             idem_batch = set(idempotency_ids[i * 1000 : (i + 1) * 1000])
+            idem_batch = {uuid.uuid5(IDEMPOTENCY_ID_NAMESPACE, x) for x in idem_batch}
             events = Event.objects.filter(
                 organization=organization,
                 time_created__gte=now_minus_lookback,
-                idempotency_id__in=idem_batch,
+                uuidv5_idempotency_id__in=idem_batch,
             )
             if request.data.get("customer_id"):
                 events = events.filter(customer_id=request.data.get("customer_id"))

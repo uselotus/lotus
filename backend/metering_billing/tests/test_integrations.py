@@ -385,7 +385,6 @@ class TestBraintreeIntegration:
         ).customer.find(
             setup_dict["customer"].braintree_integration.braintree_customer_id
         )
-        print(type(btree_cust_response), btree_cust_response.__dict__)
         assert (
             btree_cust_response.id
             == setup_dict["customer"].braintree_integration.braintree_customer_id

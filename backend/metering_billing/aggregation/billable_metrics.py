@@ -1,6 +1,7 @@
 import abc
 import datetime
 import logging
+import uuid
 from collections import namedtuple
 from decimal import Decimal
 from typing import Literal, Optional, TypedDict, Union
@@ -8,6 +9,7 @@ from typing import Literal, Optional, TypedDict, Union
 import sqlparse
 from dateutil.relativedelta import relativedelta
 from django.apps import apps
+from django.conf import settings
 from django.db import connection
 from jinja2 import Template
 
@@ -30,6 +32,8 @@ from metering_billing.utils.enums import (
 from .counter_query_templates import COUNTER_TOTAL_PER_DAY
 from .gauge_query_templates import GAUGE_DELTA_TOTAL_PER_DAY, GAUGE_TOTAL_TOTAL_PER_DAY
 from .rate_query_templates import RATE_TOTAL_PER_DAY
+
+EVENT_NAME_NAMESPACE = settings.EVENT_NAME_NAMESPACE
 
 logger = logging.getLogger("django.server")
 
@@ -142,10 +146,10 @@ class MetricHandler(abc.ABC):
         injection_dict = {
             "query_type": metric.usage_aggregation_type,
             "filter_properties": {},
-            "customer_id": customer.id if customer else None,
+            "uuidv5_customer_id": customer.uuidv5_customer_id if customer else None,
             "top_n": top_n if top_n else "ALL",
             "property_name": metric.property_name,
-            "event_name": metric.event_name,
+            "uuidv5_event_name": uuid.uuid5(EVENT_NAME_NAMESPACE, metric.event_name),
             "organization_id": organization.id,
             "numeric_filters": [
                 (x.property_name, x.operator, x.comparison_value)
@@ -188,17 +192,24 @@ class MetricHandler(abc.ABC):
             results = namedtuplefetchall(cursor)
         all_results = {}
         for result in results:
-            if result.customer_id not in all_results:
-                all_results[result.customer_id] = {}
+            if result.uuidv5_customer_id not in all_results:
+                all_results[result.uuidv5_customer_id] = {}
             time = convert_to_date(result.time_bucket)
-            all_results[result.customer_id][time] = result.usage_qty or Decimal(0)
-        customer_ids_minus_other = set(all_results.keys()) - {-1}
-        customers = Customer.objects.filter(id__in=customer_ids_minus_other)
+            all_results[result.uuidv5_customer_id][time] = result.usage_qty or Decimal(
+                0
+            )
+        nil_uuid = uuid.UUID("00000000-0000-0000-0000-000000000000")
+        customer_ids_minus_other = set(all_results.keys()) - {nil_uuid}
+        customers = Customer.objects.filter(
+            uuidv5_customer_id__in=customer_ids_minus_other
+        )
         all_results_with_customer_objects = {}
         for customer in customers:
-            all_results_with_customer_objects[customer] = all_results[customer.id]
-        if -1 in all_results:
-            all_results_with_customer_objects["Other"] = all_results[-1]
+            all_results_with_customer_objects[customer] = all_results[
+                customer.uuidv5_customer_id
+            ]
+        if nil_uuid in all_results:
+            all_results_with_customer_objects["Other"] = all_results[nil_uuid]
         return all_results_with_customer_objects
 
 
@@ -224,7 +235,7 @@ class CounterHandler(MetricHandler):
         injection_dict = {
             "query_type": metric.usage_aggregation_type,
             "filter_properties": {},
-            "customer_id": subscription_record.customer.id,
+            "uuidv5_customer_id": subscription_record.customer.uuidv5_customer_id,
         }
         try:
             sf_setting = organization.settings.get(
@@ -366,7 +377,9 @@ class CounterHandler(MetricHandler):
             injection_dict["start_date"] = start
             injection_dict["end_date"] = end
             injection_dict["property_name"] = metric.property_name
-            injection_dict["event_name"] = metric.event_name
+            injection_dict["uuidv5_event_name"] = uuid.uuid5(
+                EVENT_NAME_NAMESPACE, metric.event_name
+            )
             injection_dict["organization_id"] = organization.id
             injection_dict["numeric_filters"] = [
                 (x.property_name, x.operator, x.comparison_value)
@@ -470,7 +483,9 @@ class CounterHandler(MetricHandler):
             injection_dict["start_date"] = start
             injection_dict["end_date"] = end
             injection_dict["property_name"] = metric.property_name
-            injection_dict["event_name"] = metric.event_name
+            injection_dict["uuidv5_event_name"] = uuid.uuid5(
+                EVENT_NAME_NAMESPACE, metric.event_name
+            )
             injection_dict["organization_id"] = organization.id
             injection_dict["numeric_filters"] = [
                 (x.property_name, x.operator, x.comparison_value)
@@ -573,7 +588,7 @@ class CounterHandler(MetricHandler):
             "query_type": metric.usage_aggregation_type,
             "property_name": metric.property_name,
             "group_by": groupby,
-            "event_name": metric.event_name,
+            "uuidv5_event_name": uuid.uuid5(EVENT_NAME_NAMESPACE, metric.event_name),
             "organization_id": organization.id,
             "numeric_filters": [
                 (x.property_name, x.operator, x.comparison_value)
@@ -673,7 +688,7 @@ class CustomHandler(MetricHandler):
         )
         injection_dict = {
             "filter_properties": {},
-            "customer_id": subscription_record.customer.id,
+            "uuidv5_customer_id": subscription_record.customer.uuidv5_customer_id,
         }
         start = subscription_record.usage_start_date
         end = subscription_record.end_date
@@ -801,7 +816,7 @@ class CustomHandler(MetricHandler):
         try:
             injection_dict = {
                 "filter_properties": {},
-                "customer_id": 1,
+                "uuidv5_customer_id": uuid.UUID("00000000-0000-0000-0000-000000000000"),
             }
             start = now_utc()
             end = now_utc()
@@ -993,7 +1008,7 @@ class GaugeHandler(MetricHandler):
         sql_injection_data = {
             "property_name": metric.property_name,
             "group_by": groupby,
-            "event_name": metric.event_name,
+            "uuidv5_event_name": uuid.uuid5(EVENT_NAME_NAMESPACE, metric.event_name),
             "organization_id": organization.id,
             "numeric_filters": [
                 (x.property_name, x.operator, x.comparison_value)
@@ -1103,11 +1118,11 @@ class GaugeHandler(MetricHandler):
             ),
             "group_by": groupby,
             "filter_properties": {},
-            "customer_id": subscription_record.customer.id,
+            "uuidv5_customer_id": subscription_record.customer.uuidv5_customer_id,
             "start_date": subscription_record.usage_start_date,
             "end_date": subscription_record.end_date,
             "granularity_ratio": granularity_ratio,
-            "event_name": metric.event_name,
+            "uuidv5_event_name": uuid.uuid5(EVENT_NAME_NAMESPACE, metric.event_name),
             "organization_id": organization.id,
             "numeric_filters": [
                 (x.property_name, x.operator, x.comparison_value)
@@ -1189,11 +1204,11 @@ class GaugeHandler(MetricHandler):
             ),
             "group_by": groupby,
             "filter_properties": {},
-            "customer_id": subscription_record.customer.id,
+            "uuidv5_customer_id": subscription_record.customer.uuidv5_customer_id,
             "start_date": subscription_record.usage_start_date,
             "end_date": subscription_record.end_date,
             "granularity_ratio": granularity_ratio,
-            "event_name": metric.event_name,
+            "uuidv5_event_name": uuid.uuid5(EVENT_NAME_NAMESPACE, metric.event_name),
             "organization_id": organization.id,
             "numeric_filters": [
                 (x.property_name, x.operator, x.comparison_value)
@@ -1271,11 +1286,11 @@ class GaugeHandler(MetricHandler):
             ),
             "group_by": groupby,
             "filter_properties": {},
-            "customer_id": subscription_record.customer.id,
+            "uuidv5_customer_id": subscription_record.customer.uuidv5_customer_id,
             "start_date": subscription_record.usage_start_date,
             "end_date": subscription_record.end_date,
             "granularity_ratio": granularity_ratio,
-            "event_name": metric.event_name,
+            "uuidv5_event_name": uuid.uuid5(EVENT_NAME_NAMESPACE, metric.event_name),
             "organization_id": organization.id,
             "numeric_filters": [
                 (x.property_name, x.operator, x.comparison_value)
@@ -1437,7 +1452,7 @@ class RateHandler(MetricHandler):
             "query_type": metric.usage_aggregation_type,
             "property_name": metric.property_name,
             "group_by": groupby,
-            "event_name": metric.event_name,
+            "uuidv5_event_name": uuid.uuid5(EVENT_NAME_NAMESPACE, metric.event_name),
             "organization_id": metric.organization.id,
             "numeric_filters": [
                 (x.property_name, x.operator, x.comparison_value)
@@ -1507,7 +1522,7 @@ class RateHandler(MetricHandler):
             "query_type": metric.usage_aggregation_type,
             "organization_id": organization.id,
             "filter_properties": {},
-            "customer_id": subscription_record.customer.id,
+            "uuidv5_customer_id": subscription_record.customer.uuidv5_customer_id,
             "start_date": start.replace(microsecond=0),
             "end_date": end.replace(microsecond=0),
             "cagg_name": ("org_" + organization.organization_id.hex)[:22]
@@ -1518,7 +1533,7 @@ class RateHandler(MetricHandler):
             "lookback_qty": 1,
             "lookback_units": metric.granularity,
             "property_name": metric.property_name,
-            "event_name": metric.event_name,
+            "uuidv5_event_name": uuid.uuid5(EVENT_NAME_NAMESPACE, metric.event_name),
         }
         try:
             sf_setting = organization.settings.get(
@@ -1566,7 +1581,7 @@ class RateHandler(MetricHandler):
         injection_dict = {
             "query_type": metric.usage_aggregation_type,
             "filter_properties": {},
-            "customer_id": subscription_record.customer.id,
+            "uuidv5_customer_id": subscription_record.customer.uuidv5_customer_id,
             "start_date": start.replace(microsecond=0),
             "end_date": end.replace(microsecond=0),
             "cagg_name": ("org_" + organization.organization_id.hex)[:22]
@@ -1575,7 +1590,7 @@ class RateHandler(MetricHandler):
             + "___"
             + "second",
             "property_name": metric.property_name,
-            "event_name": metric.event_name,
+            "uuidv5_event_name": uuid.uuid5(EVENT_NAME_NAMESPACE, metric.event_name),
             "organization_id": organization.id,
             "numeric_filters": [
                 (x.property_name, x.operator, x.comparison_value)

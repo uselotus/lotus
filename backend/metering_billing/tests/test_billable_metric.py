@@ -9,7 +9,6 @@ from django.urls import reverse
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     CategoricalFilter,
-    Customer,
     Event,
     Metric,
     NumericFilter,
@@ -44,6 +43,7 @@ def billable_metric_test_common_setup(
     api_client_with_api_key_auth,
     add_product_to_org,
     add_plan_to_product,
+    add_customers_to_org,
 ):
     def do_billable_metric_test_common_setup(
         *, num_billable_metrics, auth_method, user_org_and_api_key_org_different
@@ -86,6 +86,8 @@ def billable_metric_test_common_setup(
         product = add_product_to_org(org)
         plan = add_plan_to_product(product)
         setup_dict["plan"] = plan
+        (customer,) = add_customers_to_org(org, n=1)
+        setup_dict["customer"] = customer
         return setup_dict
 
     return do_billable_metric_test_common_setup
@@ -323,16 +325,14 @@ class TestCalculateMetric:
             billable_metric
         )
         time_created = now_utc()
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="test_customer"
-        )
+        customer = setup_dict["customer"]
         baker.make(
             Event,
             event_name="test_event",
             properties={"test_property": "foo"},
             organization=setup_dict["org"],
             time_created=time_created,
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=5,
         )
         baker.make(
@@ -341,7 +341,7 @@ class TestCalculateMetric:
             properties={"test_property": "bar"},
             organization=setup_dict["org"],
             time_created=time_created,
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=5,
         )
         billing_plan = PlanVersion.objects.create(
@@ -409,9 +409,7 @@ class TestCalculateMetric:
             billable_metric
         )
         time_created = now_utc() - relativedelta(days=45)
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="foo"
-        )
+        customer = setup_dict["customer"]
         event_times = [time_created] + [
             time_created + relativedelta(days=i) for i in range(19)
         ]
@@ -430,7 +428,7 @@ class TestCalculateMetric:
             properties=iter(properties),
             organization=setup_dict["org"],
             time_created=iter(event_times),
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=19,
         )
         billing_plan = PlanVersion.objects.create(
@@ -500,9 +498,7 @@ class TestCalculateMetric:
             billable_metric
         )
         time_created = now_utc() - relativedelta(days=45)
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="foo"
-        )
+        customer = setup_dict["customer"]
         event_times = [time_created] + [
             time_created + relativedelta(days=i) for i in range(1, 19)
         ]
@@ -521,7 +517,7 @@ class TestCalculateMetric:
             properties=iter(properties),
             organization=setup_dict["org"],
             time_created=iter(event_times),
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=19,
         )
         billing_plan = PlanVersion.objects.create(
@@ -586,9 +582,7 @@ class TestCalculateMetric:
             billable_metric
         )
         time_created = now_utc() - relativedelta(days=14, hour=0)
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="foo"
-        )
+        customer = setup_dict["customer"]
         # 64 in an hour, 14 days ago
         event_times = [time_created] + [
             time_created + relativedelta(minutes=i) for i in range(1, 19)
@@ -607,7 +601,7 @@ class TestCalculateMetric:
             properties=iter(properties),
             organization=setup_dict["org"],
             time_created=iter(event_times),
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=19,
         )
         # 60 in an hour, 5 days ago
@@ -629,7 +623,7 @@ class TestCalculateMetric:
             properties=iter(properties),
             organization=setup_dict["org"],
             time_created=iter(event_times),
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=18,
         )
         billing_plan = PlanVersion.objects.create(
@@ -698,9 +692,7 @@ class TestCalculateMetric:
             billable_metric
         )
         time_created = now_utc() - relativedelta(days=45)
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="test"
-        )
+        customer = setup_dict["customer"]
         event_times = [time_created + relativedelta(days=i) for i in range(8)]
         properties = (
             1 * [{"number": 3}]
@@ -714,7 +706,7 @@ class TestCalculateMetric:
             properties=iter(properties),
             organization=setup_dict["org"],
             time_created=iter(event_times),
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=8,
         )
         billing_plan = PlanVersion.objects.create(
@@ -785,9 +777,7 @@ class TestCalculateMetricProrationForGauge:
             billable_metric
         )
         time_created = now_utc() - relativedelta(days=45)
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="foo"
-        )
+        customer = setup_dict["customer"]
         event_times = [
             time_created + relativedelta(days=1) + relativedelta(hour=23, minute=i)
             for i in range(55, 60)
@@ -811,7 +801,7 @@ class TestCalculateMetricProrationForGauge:
             properties=iter(properties),
             organization=setup_dict["org"],
             time_created=iter(event_times),
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=11,
         )
         billing_plan = PlanVersion.objects.create(
@@ -900,9 +890,7 @@ class TestCalculateMetricProrationForGauge:
             billable_metric
         )
         time_created = now_utc() - relativedelta(days=45)
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="foo"
-        )
+        customer = setup_dict["customer"]
         event_times = [
             time_created + relativedelta(days=1) + relativedelta(hour=i)
             for i in range(20, 24)
@@ -922,7 +910,7 @@ class TestCalculateMetricProrationForGauge:
             properties=iter(properties),
             organization=setup_dict["org"],
             time_created=iter(event_times),
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=11,
         )
         billing_plan = PlanVersion.objects.create(
@@ -1013,9 +1001,7 @@ class TestCalculateMetricProrationForGauge:
             billable_metric
         )
         time_created = now_utc() - relativedelta(months=3, days=21)
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="foo"
-        )
+        customer = setup_dict["customer"]
         event_times = [
             time_created
             + relativedelta(day=1)
@@ -1040,7 +1026,7 @@ class TestCalculateMetricProrationForGauge:
             properties=iter(properties),
             organization=setup_dict["org"],
             time_created=iter(event_times),
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=11,
         )
         billing_plan = PlanVersion.objects.create(
@@ -1137,16 +1123,14 @@ class TestCalculateMetricWithFilters:
         billable_metric.numeric_filters.add(numeric_filter)
         billable_metric.refresh_materialized_views()
         time_created = now_utc()
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="test_customer"
-        )
+        customer = setup_dict["customer"]
         baker.make(
             Event,
             event_name="test_event",
             properties={"test_property": "foo", "test_filter_property": 11},
             organization=setup_dict["org"],
             time_created=time_created,
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=5,
         )
         baker.make(
@@ -1155,7 +1139,7 @@ class TestCalculateMetricWithFilters:
             properties={"test_property": "bar", "test_filter_property": 11},
             organization=setup_dict["org"],
             time_created=time_created,
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=5,
         )
         baker.make(
@@ -1164,7 +1148,7 @@ class TestCalculateMetricWithFilters:
             properties={"test_property": "baz", "test_filter_property": 9},
             organization=setup_dict["org"],
             time_created=time_created,
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=5,
         )
         billing_plan = PlanVersion.objects.create(
@@ -1240,9 +1224,7 @@ class TestCalculateMetricWithFilters:
         billable_metric.numeric_filters.add(numeric_filter)
         billable_metric.refresh_materialized_views()
         time_created = now_utc() - relativedelta(days=45)
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="foo"
-        )
+        customer = setup_dict["customer"]
         event_times = [time_created] + [
             time_created + relativedelta(days=i) for i in range(20)
         ]
@@ -1262,7 +1244,7 @@ class TestCalculateMetricWithFilters:
             properties=iter(properties),
             organization=setup_dict["org"],
             time_created=iter(event_times),
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=20,
         )
         billing_plan = PlanVersion.objects.create(
@@ -1331,9 +1313,7 @@ class TestCalculateMetricWithFilters:
         billable_metric.categorical_filters.add(categorical_filter)
         billable_metric.refresh_materialized_views()
         time_created = now_utc() - relativedelta(days=31)
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="foo"
-        )
+        customer = setup_dict["customer"]
         event_times = [time_created + relativedelta(days=i) for i in range(21)]
         properties = (
             3 * [{"number": 3, "test_filter_property": "a"}]
@@ -1351,7 +1331,7 @@ class TestCalculateMetricWithFilters:
             properties=iter(properties),
             organization=setup_dict["org"],
             time_created=iter(event_times),
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=20,
         )
         billing_plan = PlanVersion.objects.create(
@@ -1427,9 +1407,7 @@ class TestCalculateMetricWithFilters:
         billable_metric.categorical_filters.add(numeric_filter)
         billable_metric.refresh_materialized_views()
         time_created = now_utc() - relativedelta(days=14, hour=0)
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="foo"
-        )
+        customer = setup_dict["customer"]
 
         # 64 in an hour, 14 days ago
         event_times = [time_created] + [
@@ -1450,7 +1428,7 @@ class TestCalculateMetricWithFilters:
             properties=iter(properties),
             organization=setup_dict["org"],
             time_created=iter(event_times),
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=20,
         )
         # 65 in an hour, 5 days ago
@@ -1470,7 +1448,7 @@ class TestCalculateMetricWithFilters:
             properties=iter(properties),
             organization=setup_dict["org"],
             time_created=iter(event_times),
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=20,
         )
         billing_plan = PlanVersion.objects.create(
@@ -1530,6 +1508,7 @@ class TestCustomSQLMetrics:
             data=json.dumps(insert_billable_metric_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
+        print(response.data)
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) > 0  # check that the response is not empty
         assert len(get_billable_metrics_in_org(setup_dict["org"])) == 1
@@ -1564,16 +1543,14 @@ class TestCustomSQLMetrics:
 
         billable_metric = Metric.objects.all().first()
         time_created = now_utc()
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="test_customer"
-        )
+        customer = setup_dict["customer"]
         baker.make(
             Event,
             event_name="test_event",
             properties={"test_property": "foo"},
             organization=setup_dict["org"],
             time_created=time_created,
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=5,
         )
         baker.make(
@@ -1582,7 +1559,7 @@ class TestCustomSQLMetrics:
             properties={"test_property": "bar"},
             organization=setup_dict["org"],
             time_created=time_created,
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=5,
         )
         billing_plan = PlanVersion.objects.create(
@@ -1678,16 +1655,14 @@ class TestCustomSQLMetrics:
 
         billable_metric = Metric.objects.all().first()
         time_created = now_utc()
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="test_customer"
-        )
+        customer = setup_dict["customer"]
         baker.make(
             Event,
             event_name="test_event",
             properties={"test_property": "foo"},
             organization=setup_dict["org"],
             time_created=time_created,
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=5,
         )
         baker.make(
@@ -1696,7 +1671,7 @@ class TestCustomSQLMetrics:
             properties={"test_property": "bar"},
             organization=setup_dict["org"],
             time_created=time_created,
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=5,
         )
         billing_plan = PlanVersion.objects.create(
@@ -1792,16 +1767,14 @@ class TestCustomSQLMetrics:
 
         billable_metric = Metric.objects.all().first()
         time_created = now_utc()
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="test_customer"
-        )
+        customer = setup_dict["customer"]
         baker.make(
             Event,
             event_name="test_event",
             properties={"test_property": "foo", "qty_property": 5},
             organization=setup_dict["org"],
             time_created=time_created,
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=5,
         )
         baker.make(
@@ -1810,7 +1783,7 @@ class TestCustomSQLMetrics:
             properties={"test_property": "bar", "qty_property": 10},
             organization=setup_dict["org"],
             time_created=time_created,
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=5,
         )
         billing_plan = PlanVersion.objects.create(
@@ -1928,16 +1901,14 @@ class TestCustomSQLMetrics:
 
         billable_metric = Metric.objects.all().first()
         time_created = now_utc()
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="test_customer"
-        )
+        customer = setup_dict["customer"]
         baker.make(
             Event,
             event_name="test_event",
             properties={"test_property": "foo", "qty_property": 5},
             organization=setup_dict["org"],
             time_created=time_created,
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=5,
         )
         baker.make(
@@ -1946,7 +1917,7 @@ class TestCustomSQLMetrics:
             properties={"test_property": "bar", "qty_property": 10},
             organization=setup_dict["org"],
             time_created=time_created,
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=5,
         )
         billing_plan = PlanVersion.objects.create(
@@ -2068,9 +2039,7 @@ class TestCustomSQLMetrics:
 
         billable_metric = Metric.objects.all().first()
         time_created = now_utc()
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="test_customer"
-        )
+        customer = setup_dict["customer"]
         baker.make(
             Event,
             event_name="test_event",
@@ -2083,7 +2052,7 @@ class TestCustomSQLMetrics:
             time_created=itertools.cycle(
                 [time_created - relativedelta(days=i) for i in range(5)]
             ),
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=5,
         )  # this one should count
         baker.make(
@@ -2098,7 +2067,7 @@ class TestCustomSQLMetrics:
             time_created=itertools.cycle(
                 [time_created - relativedelta(days=i) for i in range(2, 7)]
             ),
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=5,
         )  # this one shouldn't as it goes before the start_date
         baker.make(
@@ -2118,7 +2087,7 @@ class TestCustomSQLMetrics:
             time_created=itertools.cycle(
                 [time_created - relativedelta(days=i) for i in range(5)]
             ),
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=5,
         )  # this one should work as the failed refresh is before the start date
         baker.make(
@@ -2138,7 +2107,7 @@ class TestCustomSQLMetrics:
             time_created=itertools.cycle(
                 [time_created - relativedelta(days=i) for i in range(5)]
             ),
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=5,
         )  # this one shouldnt as it fails
         baker.make(
@@ -2158,7 +2127,7 @@ class TestCustomSQLMetrics:
             time_created=itertools.cycle(
                 [time_created - relativedelta(days=i) for i in range(5)]
             ),
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=5,
         )  # this one also shouldnt as it doesn't have the volume on one of the days in the query
         billing_plan = PlanVersion.objects.create(
@@ -2308,9 +2277,7 @@ class TestRegressions:
             billable_metric
         )
         time_created = now_utc() - relativedelta(days=45)
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="foo"
-        )
+        customer = setup_dict["customer"]
         event_times = [
             time_created + relativedelta(days=1) + relativedelta(hour=23, minute=i)
             for i in range(55, 60)
@@ -2334,7 +2301,7 @@ class TestRegressions:
             properties=iter(properties),
             organization=setup_dict["org"],
             time_created=iter(event_times),
-            customer=customer,
+            cust_id=customer.customer_id,
             _quantity=11,
         )
         billing_plan = PlanVersion.objects.create(
