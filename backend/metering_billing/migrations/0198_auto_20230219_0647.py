@@ -13,11 +13,6 @@ class Migration(migrations.Migration):
             """
             BEGIN;
 
-            -- Modify columns to be non-nullable
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN uuidv5_customer_id SET NOT NULL;
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN uuidv5_event_name SET NOT NULL;
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN uuidv5_idempotency_id SET NOT NULL;
-
             -- Modify data types and drop column
             ALTER TABLE metering_billing_usageevent ALTER COLUMN uuidv5_customer_id TYPE TEXT;
             ALTER TABLE metering_billing_usageevent ALTER COLUMN uuidv5_event_name TYPE TEXT;
@@ -34,11 +29,6 @@ class Migration(migrations.Migration):
             ALTER TABLE metering_billing_usageevent ALTER COLUMN uuidv5_idempotency_id TYPE varchar(255);
             ALTER TABLE metering_billing_usageevent ALTER COLUMN uuidv5_event_name TYPE varchar(100);
             ALTER TABLE metering_billing_usageevent ALTER COLUMN uuidv5_customer_id TYPE varchar(50);
-
-            -- Modify columns to be nullable
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN uuidv5_customer_id DROP NOT NULL;
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN uuidv5_event_name DROP NOT NULL;
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN uuidv5_idempotency_id DROP NOT NULL;
 
             COMMIT;
             """,
