@@ -13,21 +13,81 @@ In app's backend, add event tracking with the Lotus SDK or API. Tracking in Lotu
 
 Here is an example of an api email sent event we want to track.
 
-Pic
+```
+{
+    event_name: "email_sent"
+    customer_id: "customer_123"
+    idempotency_id: "def1e384-ee0d-4b57-aa63-6f9a3239c73a"
+    time_created: "2023/02/18 12:02:24"
+    properties: {
+        characters: 2322
+        size: 230 ///bytes
+    }
+}
 
-# 2. Define Usage Aggregations in the form of Metrics
+```
+
+Metering and billing are sepearate in Lotus so you can track as many events as you would like without billing on them.
+
+# 2. Define Usage Aggregations in the Form of Metrics
+
+Navigate to the /metrics page in the frontend app to create a metric. After clicking create metric, this modal pops up on your screen.
+
+In this case we want to charge based on number of emails sent in one plan and then have an enterprise plan that charges based on total size of emails sent.
+
+Therefore we would create a `counter` metric with the `count` aggregation for the number of emails sent.
+
+![title](/images/overview/createmetric1.jpg)
+
+And another `counter` metric using `sum` for the total size of all emails sent.
+
+![title](/images/overview/createmetric2.jpg)
 
 # 3. Define Pricing Plans and Add-Ons
 
+Next we will define two pricing plans, one for small startups and one for enterprises.
+
+To start navigate to /plans in the frontend and click on create a plan.
+
 # Create a Plan
+
+Creating a plan allows for ultimately flexibility on what you charge on, how much you charge, and when you want to invoice.
+
+First you can set the plan information, including the recurring charge for the plan. We also are going to set this plan to invoice at the start of every month to make life for our finance team easier.
+
+![title](/images/overview/createplaninfo.jpg)
+
+Some other options that we set were the currency of the plan and the fact that the recurring cost will be pre-paid or paid in advance for the month.
 
 ### Add Usage Components
 
+Components allow us to associate usage metrics to costs in our plan. Here's how we would set this up for our starter plan. We're going to create a free tier of up to 5000 emails and then set an overage charge of 30 cents per email.
+
+The rounding type corresponds to how to treat when units are between two numbers. In this case all emails will be whole numbers but we will put round down anyway.
+
+![title](/images/overview/createcomponent1.jpg)
+
+Here is another example of the total size metric that we would add to the enteprise plan. In this case we set the rounding to no_rounding, which then makes our pricing apply continuously to non whole number unit amounts.
+
+![title](/images/overview/createcomponent2.jpg)
+
 ### Add Boolean Feature Entitelments
+
+Next, we can add boolean entitelments to this plan. For the starter plan, we are going to add access to an analytics page, and then a dedicated support flag.
 
 # Configure Add-Ons (Optional)
 
+Add-Ons in Lotus are powerful yet simple. They are essentially mini-plans that can be attatched to existing plans. The few differences are that they can have a quantity and can be one-off charges.
+
+In this tutorial, we will create a simple one off implementation fee add-on by navigating to the /add-ons page in the frontend and choosing a Billing Frequency of One-Time. We won't add any usage based charges or features to this add-on but you can see how adding these can add new possibilities to how you can layer on pricing models.
+
+![title](/images/overview/createaddon.jpg)
+
 # 4. Lotus API/SDK: Create Customers and Subscribe Them To Plans
+
+Next, we have to dive back into the apps backend. In order for a customer to be created in Lotus we must call the create customer. The most important part of creating the customer is setting the email and picking a customer_id that is already stored in the app's backend.
+
+Then we can call the list plans api and subscribe the customer to a plan programatically.
 
 # 5. Connect to Stripe or Subscribe to Webhooks to send out Invoices.
 
