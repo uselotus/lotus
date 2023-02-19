@@ -14,9 +14,9 @@ class Migration(migrations.Migration):
             BEGIN;
 
             -- Modify data types and drop column
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN uuidv5_customer_id TYPE TEXT;
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN uuidv5_event_name TYPE TEXT;
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN uuidv5_idempotency_id TYPE TEXT;
+            ALTER TABLE metering_billing_usageevent ALTER COLUMN cust_id TYPE TEXT;
+            ALTER TABLE metering_billing_usageevent ALTER COLUMN event_name TYPE TEXT;
+            ALTER TABLE metering_billing_usageevent ALTER COLUMN idempotency_id TYPE TEXT;
             ALTER TABLE metering_billing_usageevent DROP COLUMN customer_id;
 
             COMMIT;
@@ -26,9 +26,9 @@ class Migration(migrations.Migration):
 
             -- Add column and modify data types
             ALTER TABLE metering_billing_usageevent ADD COLUMN customer_id bigint;
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN uuidv5_idempotency_id TYPE varchar(255);
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN uuidv5_event_name TYPE varchar(100);
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN uuidv5_customer_id TYPE varchar(50);
+            ALTER TABLE metering_billing_usageevent ALTER COLUMN idempotency_id TYPE varchar(255);
+            ALTER TABLE metering_billing_usageevent ALTER COLUMN event_name TYPE varchar(100);
+            ALTER TABLE metering_billing_usageevent ALTER COLUMN cust_id TYPE varchar(50);
 
             COMMIT;
             """,
