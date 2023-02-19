@@ -72,7 +72,6 @@ const EventPreview: FC = () => {
         setCursor("");
         setCurrentPage(1);
         queryClient.invalidateQueries(["preview_events", null]);
-
     }
   };
 
@@ -115,7 +114,7 @@ const EventPreview: FC = () => {
             {data?.results.map((event) => (
               <Panel
                 header={
-                  <div className="grid grid-cols-2 my-2">
+                  <div className="grid grid-cols-2 my-2 font-alliance">
                     <div className="flex align-middle text-[16px] ">
                       <p className="leading-[24px]">event_name: </p>
                       <p className="infoValue"> {event.event_name}</p>
@@ -132,7 +131,7 @@ const EventPreview: FC = () => {
                 className=" hover:bg-background"
                 key={event.id}
               >
-                <div className="grid grid-row-2">
+                <div className="grid grid-row-2 font-alliance">
                   <div className="grid grid-cols-2">
                     <div className="flex align-middle text-[16px] ">
                       <p className="leading-[24px]">ID: </p>

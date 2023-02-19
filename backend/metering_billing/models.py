@@ -7,12 +7,18 @@ from decimal import Decimal
 from typing import Literal, Optional, TypedDict, Union
 
 # import lotus_python
+import pycountry
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
-from django.core.validators import MaxValueValidator, MinValueValidator
+from django.core.validators import (
+    MaxLengthValidator,
+    MaxValueValidator,
+    MinLengthValidator,
+    MinValueValidator,
+)
 from django.db import models
 from django.db.models import Count, F, FloatField, Prefetch, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
@@ -20,10 +26,10 @@ from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
-    ExternalConnectionInvalid,
     NotEditable,
     OverlappingPlans,
 )
+from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.utils import (
     calculate_end_date,
     convert_to_date,
@@ -64,6 +70,7 @@ from metering_billing.utils.enums import (
     SUPPORTED_CURRENCIES,
     SUPPORTED_CURRENCIES_VERSION,
     TAG_GROUP,
+    TAX_PROVIDER,
     USAGE_BILLING_FREQUENCY,
     USAGE_CALC_GRANULARITY,
     WEBHOOK_TRIGGER_EVENTS,
@@ -81,6 +88,7 @@ from timezone_field import TimeZoneField
 logger = logging.getLogger("django.server")
 META = settings.META
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
+CUSTOMER_ID_NAMESPACE = settings.CUSTOMER_ID_NAMESPACE
 
 
 class Team(models.Model):
@@ -89,6 +97,92 @@ class Team(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Address(models.Model):
+    organization = models.ForeignKey(
+        "Organization", on_delete=models.CASCADE, related_name="addresses"
+    )
+    city = models.CharField(
+        max_length=50, help_text="City, district, suburb, town, or village"
+    )
+    country = models.CharField(
+        max_length=2,
+        help_text="Two-letter country code (ISO 3166-1 alpha-2)",
+        validators=[MinLengthValidator(2), MaxLengthValidator(2)],
+        choices=list([(x.alpha_2, x.name) for x in pycountry.countries]),
+    )
+    line1 = models.TextField(
+        max_length=100,
+        help_text="Address line 1 (e.g., street, PO Box, or company name)",
+    )
+    line2 = models.TextField(
+        help_text="Address line 2 (e.g., apartment, suite, unit, or building)",
+        null=True,
+    )
+    postal_code = models.CharField(
+        max_length=20,
+        help_text="ZIP or postal code",
+    )
+    state = models.CharField(
+        max_length=30,
+        help_text="State, county, province, or region",
+        null=True,
+    )
+
+    def __str__(self):
+        return f"Address: {self.line1}, {self.city}, {self.state}, {self.postal_code}, {self.country}"
+
+
+class TaxProviderListField(models.CharField):
+    description = "List of Tax Provider choices"
+
+    def __init__(self, *args, **kwargs):
+        self.enum = TAX_PROVIDER
+        # set the max length to 16.. no way we ever have more than 8 tax providers
+        kwargs.setdefault("max_length", 16)
+        super().__init__(*args, **kwargs)
+
+    def from_db_value(self, value, expression, connection):
+        if value is None or value == "":
+            return []
+        value = [
+            int(x) for x in value.split(",") if x != ""
+        ]  # Ensure that all values in the list are valid tax provider choices
+        choices_set = set(dict(self.enum.choices).keys())
+        for val in value:
+            if val not in choices_set:
+                raise ValidationError(f"{val} is not a valid tax provider choice.")
+
+        return value
+
+    def to_python(self, value):
+        if isinstance(value, list):
+            return value
+        elif value is None:
+            return []
+        else:
+            return [int(val) for val in value.split(",")]
+
+    def get_prep_value(self, value):
+        if value is None or value == []:
+            return ""
+        else:
+            if all(isinstance(v, int) for v in value):
+                return ",".join(str(val) for val in value)
+            else:
+                enum_dict = dict(self.enum.choices)
+                reverse_enum_dict = {v: k for k, v in enum_dict.items()}
+                int_list = [str(reverse_enum_dict[val]) for val in value]
+                return ",".join(int_list)
+
+    def get_choices(self, include_blank=True, blank_choice=None, limit_choices_to=None):
+        return self.enum.choices
+
+    def value_to_string(self, obj):
+        value = self.value_from_object(obj)
+        pv = self.get_prep_value(value)
+        return pv
 
 
 class Organization(models.Model):
@@ -103,10 +197,40 @@ class Organization(models.Model):
     )
     organization_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     organization_name = models.CharField(max_length=100, blank=False, null=False)
-    payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateField(default=now_utc)
     organization_type = models.PositiveSmallIntegerField(
         choices=OrganizationType.choices, default=OrganizationType.DEVELOPMENT
+    )
+    subscription_filters_setting_provisioned = models.BooleanField(default=False)
+    properties = models.JSONField(default=dict, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+
+    # BILLING RELATED FIELDS
+    default_payment_provider = models.CharField(
+        blank=True, choices=PAYMENT_PROCESSORS.choices, max_length=40, null=True
+    )
+    stripe_integration = models.ForeignKey(
+        "StripeOrganizationIntegration",
+        on_delete=models.SET_NULL,
+        related_name="organizations",
+        null=True,
+        blank=True,
+    )
+    braintree_integration = models.ForeignKey(
+        "BraintreeOrganizationIntegration",
+        on_delete=models.SET_NULL,
+        related_name="organizations",
+        null=True,
+        blank=True,
+    )
+    address = models.ForeignKey(
+        "Address",
+        on_delete=models.SET_NULL,
+        related_name="+",
+        null=True,
+        blank=True,
+        help_text="The primary origin address for the organization",
     )
     default_currency = models.ForeignKey(
         "PricingUnit",
@@ -115,12 +239,9 @@ class Organization(models.Model):
         null=True,
         blank=True,
     )
-    webhooks_provisioned = models.BooleanField(default=False)
     currencies_provisioned = models.IntegerField(default=0)
-    subscription_filters_setting_provisioned = models.BooleanField(default=False)
-    properties = models.JSONField(default=dict, blank=True, null=True)
-    email = models.EmailField(blank=True, null=True)
-    phone = models.CharField(max_length=20, blank=True, null=True)
+
+    # TAX RELATED FIELDS
     tax_rate = models.DecimalField(
         max_digits=7,
         decimal_places=4,
@@ -131,8 +252,16 @@ class Organization(models.Model):
         help_text="Tax rate as percentage. For example, 10.5 for 10.5%",
         null=True,
     )
+    tax_providers = TaxProviderListField(default=[TAX_PROVIDER.LOTUS])
+
+    # TIMEZONE RELATED FIELDS
     timezone = TimeZoneField(default="UTC", use_pytz=True)
     __original_timezone = None
+
+    # SVIX RELATED FIELDS
+    webhooks_provisioned = models.BooleanField(default=False)
+
+    # HISTORY RELATED FIELDS
     history = HistoricalRecords()
 
     def __init__(self, *args, **kwargs):
@@ -151,11 +280,6 @@ class Organization(models.Model):
         return self.organization_name
 
     def save(self, *args, **kwargs):
-        for k, v in self.payment_provider_ids.items():
-            if k not in PAYMENT_PROCESSORS:
-                raise ExternalConnectionInvalid(
-                    f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROCESSORS}"
-                )
         new = self.pk is None
         if self.timezone != self.__original_timezone and self.pk:
             num_updated = self.customers.filter(timezone_set=False).update(
@@ -179,6 +303,25 @@ class Organization(models.Model):
             )
             self.save()
         self.provision_subscription_filter_settings()
+
+    def get_tax_provider_values(self):
+        return self.tax_providers
+
+    def get_readable_tax_providers(self):
+        choices_dict = dict(TAX_PROVIDER.choices)
+        return [choices_dict.get(val) for val in self.tax_providers]
+
+    def get_address(self) -> Address:
+        if self.default_payment_provider == PAYMENT_PROCESSORS.STRIPE:
+            return PAYMENT_PROCESSOR_MAP[
+                PAYMENT_PROCESSORS.STRIPE
+            ].get_organization_address(self)
+        elif self.default_payment_provider == PAYMENT_PROCESSORS.BRAINTREE:
+            return PAYMENT_PROCESSOR_MAP[
+                PAYMENT_PROCESSORS.BRAINTREE
+            ].get_organization_address(self)
+        else:
+            return self.address
 
     def provision_subscription_filter_settings(self):
         if not self.subscription_filters_setting_provisioned:
@@ -447,18 +590,18 @@ class Customer(models.Model):
         help_text="The primary email address of the customer, must be the same as the email address used to create the customer in the payment provider",
         null=True,
     )
-    customer_id = models.SlugField(
-        max_length=50,
+    customer_id = models.TextField(
         default=customer_uuid,
         help_text="The id provided when creating the customer, we suggest matching with your internal customer id in your backend",
     )
-    payment_provider = models.CharField(
-        blank=True, choices=PAYMENT_PROCESSORS.choices, max_length=40, null=True
+    uuidv5_customer_id = models.UUIDField(
+        help_text="The v5 UUID generated from the customer_id. This is used for efficient lookups in the database, specifically for the Events table",
     )
-    integrations = models.JSONField(default=dict, blank=True)
     properties = models.JSONField(
         default=dict, null=True, help_text="Extra metadata for the customer"
     )
+
+    # BILLING RELATED FIELDS
     default_currency = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
@@ -467,6 +610,25 @@ class Customer(models.Model):
         blank=True,
         help_text="The currency the customer will be invoiced in",
     )
+    shipping_address = models.ForeignKey(
+        "Address",
+        on_delete=models.SET_NULL,
+        related_name="shipping_customers",
+        null=True,
+        blank=True,
+        help_text="The shipping address for the customer",
+    )
+    billing_address = models.ForeignKey(
+        "Address",
+        on_delete=models.SET_NULL,
+        related_name="billing_customers",
+        null=True,
+        blank=True,
+        help_text="The billing address for the customer",
+    )
+
+    # TAX RELATED FIELDS
+    tax_providers = TaxProviderListField(default=[])
     tax_rate = models.DecimalField(
         max_digits=7,
         decimal_places=4,
@@ -477,8 +639,31 @@ class Customer(models.Model):
         help_text="Tax rate as percentage. For example, 10.5 for 10.5%",
         null=True,
     )
+
+    # TIMEZONE FIELDS
     timezone = TimeZoneField(default="UTC", use_pytz=True)
     timezone_set = models.BooleanField(default=False)
+
+    # PAYMENT PROCESSOR FIELDS
+    payment_provider = models.CharField(
+        blank=True, choices=PAYMENT_PROCESSORS.choices, max_length=40, null=True
+    )
+    stripe_integration = models.ForeignKey(
+        "StripeCustomerIntegration",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="customers",
+    )
+    braintree_integration = models.ForeignKey(
+        "BraintreeCustomerIntegration",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="customers",
+    )
+
+    # HISTORY FIELDS
     history = HistoricalRecords()
 
     class Meta:
@@ -493,16 +678,6 @@ class Customer(models.Model):
         return str(self.customer_name) + " " + str(self.customer_id)
 
     def save(self, *args, **kwargs):
-        for k, v in self.integrations.items():
-            if k not in PAYMENT_PROCESSORS:
-                raise ExternalConnectionInvalid(
-                    f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROCESSORS}"
-                )
-            id = v.get("id")
-            if id is None:
-                raise ExternalConnectionInvalid(
-                    f"Payment provider {k} id was not provided"
-                )
         if not self.default_currency:
             try:
                 self.default_currency = (
@@ -513,18 +688,24 @@ class Customer(models.Model):
                 )
             except PricingUnit.DoesNotExist:
                 self.default_currency = None
+        if not self.uuidv5_customer_id:
+            self.uuidv5_customer_id = uuid.uuid5(
+                CUSTOMER_ID_NAMESPACE, self.customer_id
+            )
         super(Customer, self).save(*args, **kwargs)
-        Event.objects.filter(
-            organization=self.organization,
-            cust_id=self.customer_id,
-            customer__isnull=True,
-        ).update(customer=self)
 
     def get_active_subscription_records(self):
         active_subscription_records = self.subscription_records.active().filter(
             fully_billed=False,
         )
         return active_subscription_records
+
+    def get_tax_provider_values(self):
+        return self.tax_providers
+
+    def get_readable_tax_providers(self):
+        choices_dict = dict(TAX_PROVIDER.choices)
+        return [choices_dict.get(val) for val in self.tax_providers]
 
     def get_usage_and_revenue(self):
         customer_subscriptions = (
@@ -581,8 +762,29 @@ class Customer(models.Model):
         total_amount_due = unpaid_invoice_amount_due or 0
         return total_amount_due
 
-    def get_address(self):
-        return self.address
+    def get_billing_address(self) -> Address:
+        if self.payment_provider == PAYMENT_PROCESSORS.STRIPE:
+            return PAYMENT_PROCESSOR_MAP[
+                PAYMENT_PROCESSORS.STRIPE
+            ].get_customer_address(self, type="billing")
+        elif self.payment_provider == PAYMENT_PROCESSORS.BRAINTREE:
+            return PAYMENT_PROCESSOR_MAP[
+                PAYMENT_PROCESSORS.BRAINTREE
+            ].get_customer_address(self, type="billing")
+        else:
+            return self.billing_address
+
+    def get_shipping_address(self) -> Address:
+        if self.payment_provider == PAYMENT_PROCESSORS.STRIPE:
+            return PAYMENT_PROCESSOR_MAP[
+                PAYMENT_PROCESSORS.STRIPE
+            ].get_customer_address(self, type="shipping")
+        elif self.payment_provider == PAYMENT_PROCESSORS.BRAINTREE:
+            return PAYMENT_PROCESSOR_MAP[
+                PAYMENT_PROCESSORS.BRAINTREE
+            ].get_customer_address(self, type="billing")
+        else:
+            return self.shipping_address
 
 
 class CustomerBalanceAdjustment(models.Model):
@@ -823,18 +1025,13 @@ class IdempotenceCheck(models.Model):
     time_created = models.DateTimeField(
         help_text="The time that the event occured, represented as a datetime in ISO 8601 in the UTC timezome."
     )
-    idempotency_id = models.SlugField(
-        max_length=255,
-        default=event_uuid,
-        help_text="A unique identifier for the specific event being passed in. Passing in a unique id allows Lotus to make sure no double counting occurs. We recommend using a UUID4. You can use the same idempotency_id again after 45 days.",
-        primary_key=True,
-    )
+    uuidv5_idempotency_id = models.UUIDField(primary_key=True)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["organization", "idempotency_id"],
-                name="unique_idempotency_id_per_org_raw",
+                fields=["organization", "uuidv5_idempotency_id"],
+                name="unique_hashed_idempotency_id_per_org_raw",
             )
         ]
 
@@ -846,14 +1043,12 @@ class Event(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.SET_NULL, related_name="+", null=True, blank=True
     )
-    customer = models.ForeignKey(
-        Customer, on_delete=models.CASCADE, related_name="+", null=True, blank=True
-    )
-    cust_id = models.CharField(max_length=50, blank=True)
-    event_name = models.CharField(
-        max_length=100,
+    cust_id = models.TextField(blank=True)
+    uuidv5_customer_id = models.UUIDField()
+    event_name = models.TextField(
         help_text="String name of the event, corresponds to definition in metrics",
     )
+    uuidv5_event_name = models.UUIDField()
     time_created = models.DateTimeField(
         help_text="The time that the event occured, represented as a datetime in ISO 8601 in the UTC timezome."
     )
@@ -862,34 +1057,23 @@ class Event(models.Model):
         blank=True,
         help_text="Extra metadata on the event that can be filtered and queried on in the metrics. All key value pairs should have string keys and values can be either strings or numbers. Place subscription filters in this object to specify which subscription the event should be tracked under",
     )
-    idempotency_id = models.SlugField(
-        max_length=255,
+    idempotency_id = models.TextField(
         default=event_uuid,
         help_text="A unique identifier for the specific event being passed in. Passing in a unique id allows Lotus to make sure no double counting occurs. We recommend using a UUID4. You can use the same idempotency_id again after 45 days.",
         primary_key=True,
     )
+    uuidv5_idempotency_id = models.UUIDField()
     inserted_at = models.DateTimeField(default=now_utc)
 
     class Meta:
         managed = False
         db_table = "metering_billing_usageevent"
-        constraints = [
-            models.UniqueConstraint(
-                fields=["organization", "idempotency_id"],
-                name="unique_idempotency_id_per_org",
-            )
-        ]
-        indexes = [
-            models.Index(
-                fields=["organization", "event_name", "customer", "time_created"]
-            ),
-        ]
 
     def __str__(self):
         return (
             str(self.event_name)[:6]
             + "-"
-            + str(self.customer.customer_name)[:6]
+            + str(self.cust_id)[:8]
             + "-"
             + str(self.time_created)[:10]
             + "-"
@@ -1146,9 +1330,23 @@ class Metric(models.Model):
         return self.billable_metric_name or ""
 
     def save(self, *args, **kwargs):
+        just_deleted_mat_views = kwargs.pop("just_deleted_mat_views", False)
         super().save(*args, **kwargs)
-        if self.status == METRIC_STATUS.ACTIVE and not self.mat_views_provisioned:
+        if (
+            self.status == METRIC_STATUS.ACTIVE
+            and not self.mat_views_provisioned
+            and just_deleted_mat_views is not True
+        ):
             self.provision_materialized_views()
+    
+    def delete_materialized_views(self):
+        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+
+        handler = METRIC_HANDLER_MAP[self.metric_type]
+        handler.archive_metric(self)
+        self.mat_views_provisioned = False
+        self.save(just_deleted_mat_views=True)
+
 
     def get_aggregation_type(self):
         return self.aggregation_type
@@ -1213,13 +1411,6 @@ class Metric(models.Model):
         self.mat_views_provisioned = True
         self.save()
 
-    def delete_materialized_views(self):
-        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
-
-        handler = METRIC_HANDLER_MAP[self.metric_type]
-        handler.archive_metric(self)
-        self.mat_views_provisioned = False
-        self.save()
 
 
 class UsageRevenueSummary(TypedDict):
@@ -1937,6 +2128,7 @@ class Plan(models.Model):
     )
     tags = models.ManyToManyField("Tag", blank=True, related_name="plans")
     created_on = models.DateTimeField(default=now_utc, null=True)
+    taxjar_code = models.TextField(max_length=30, null=True, blank=True)
 
     objects = BasePlanManager()
     addons = AddOnPlanManager()
@@ -2730,3 +2922,69 @@ class UsageAlertResult(models.Model):
         self.last_run_value = new_value
         self.last_run_timestamp = now
         self.save()
+
+
+class StripeCustomerIntegration(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="stripe_customer_links"
+    )
+    stripe_customer_id = models.TextField()
+    created = models.DateTimeField(default=now_utc)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["organization", "stripe_customer_id"],
+                name="unique_stripe_customer_id",
+            ),
+        ]
+
+
+class BraintreeCustomerIntegration(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="braintree_customer_links"
+    )
+    braintree_customer_id = models.TextField()
+    created = models.DateTimeField(default=now_utc)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["organization", "braintree_customer_id"],
+                name="unique_braintree_customer_id",
+            ),
+        ]
+
+
+class StripeOrganizationIntegration(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="stripe_organization_links"
+    )
+    stripe_account_id = models.TextField()
+    created = models.DateTimeField(default=now_utc)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["organization", "stripe_account_id"],
+                name="unique_stripe_account_id",
+            ),
+        ]
+
+
+class BraintreeOrganizationIntegration(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="braintree_organization_links",
+    )
+    braintree_merchant_id = models.TextField()
+    created = models.DateTimeField(default=now_utc)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["organization", "braintree_merchant_id"],
+                name="unique_braintree_merchant_id",
+            ),
+        ]

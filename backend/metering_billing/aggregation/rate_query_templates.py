@@ -1,6 +1,6 @@
 RATE_GET_CURRENT_USAGE = """
 SELECT
-    "metering_billing_usageevent"."customer_id" AS customer_id,
+    "metering_billing_usageevent"."uuidv5_customer_id" AS uuidv5_customer_id,
     "metering_billing_usageevent"."time_created" AS time_created,
     {% if query_type == "count" -%}
     COUNT(
@@ -29,7 +29,7 @@ SELECT
 FROM
     "metering_billing_usageevent"
 WHERE
-    "metering_billing_usageevent"."event_name" = '{{ event_name }}'
+    "metering_billing_usageevent"."uuidv5_event_name" = '{{ uuidv5_event_name }}'
     AND "metering_billing_usageevent"."organization_id" = {{ organization_id }}
     AND "metering_billing_usageevent"."time_created" <= NOW()
     {%- for property_name, operator, comparison in numeric_filters %}
@@ -59,7 +59,7 @@ WHERE
             {%- endfor %}
         )
     {%- endfor %}
-    AND "metering_billing_usageevent"."customer_id" = {{ customer_id }}
+    AND "metering_billing_usageevent"."uuidv5_customer_id" = '{{ uuidv5_customer_id }}'
     AND "metering_billing_usageevent"."time_created" <= '{{ reference_time }}'::timestamp
     AND "metering_billing_usageevent"."time_created" >= '{{ reference_time }}'::timestamp + INTERVAL '-1 {{ lookback_units }}' * {{ lookback_qty }}
     {%- for property_name, property_values in filter_properties.items() %}
@@ -72,7 +72,7 @@ WHERE
         )
     {%- endfor %}
 GROUP BY
-    "metering_billing_usageevent"."customer_id"
+    "metering_billing_usageevent"."uuidv5_customer_id"
     {%- for group_by_field in group_by %}
     , {{ group_by_field }}
     {%- endfor %}
@@ -82,7 +82,7 @@ RATE_CAGG_QUERY = """
 CREATE MATERIALIZED VIEW IF NOT EXISTS {{ cagg_name }}
 WITH (timescaledb.continuous) AS
 SELECT
-    "metering_billing_usageevent"."customer_id" AS customer_id,
+    "metering_billing_usageevent"."uuidv5_customer_id" AS uuidv5_customer_id,
     time_bucket('1 second', "metering_billing_usageevent"."time_created") AS bucket,
     COUNT(
         "metering_billing_usageevent"."idempotency_id"
@@ -114,7 +114,7 @@ SELECT
 FROM
     "metering_billing_usageevent"
 WHERE
-    "metering_billing_usageevent"."event_name" = '{{ event_name }}'
+    "metering_billing_usageevent"."uuidv5_event_name" = '{{ uuidv5_event_name }}'
     AND "metering_billing_usageevent"."organization_id" = {{ organization_id }}
     AND "metering_billing_usageevent"."time_created" <= NOW()
     {%- for property_name, operator, comparison in numeric_filters %}
@@ -145,7 +145,7 @@ WHERE
         )
     {%- endfor %}
 GROUP BY
-    "metering_billing_usageevent"."customer_id"
+    "metering_billing_usageevent"."uuidv5_customer_id"
     {%- for group_by_field in group_by %}
     , {{ group_by_field }}
     {%- endfor %}
@@ -155,7 +155,7 @@ GROUP BY
 RATE_CAGG_TOTAL = """
 WITH rate_per_bucket AS (
     SELECT 
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -170,7 +170,7 @@ WITH rate_per_bucket AS (
         , MAX(second_usage)
         {% endif %}
         OVER (
-            PARTITION BY customer_id
+            PARTITION BY uuidv5_customer_id
             {%- for group_by_field in group_by %}
             , {{ group_by_field }}
             {%- endfor %}
@@ -180,7 +180,7 @@ WITH rate_per_bucket AS (
     FROM
         {{ cagg_name }}
     WHERE
-        customer_id = {{ customer_id }}
+        uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         AND bucket >= '{{ start_date }}'::timestamptz - INTERVAL '{{ lookback_qty }} {{ lookback_units }}'
         AND bucket <= '{{ end_date }}'::timestamptz
         AND bucket <= NOW()
@@ -195,12 +195,12 @@ WITH rate_per_bucket AS (
         {%- endfor %}
     )
 SELECT DISTINCT ON (
-    customer_id
+    uuidv5_customer_id
     {%- for group_by_field in group_by %}
     , {{ group_by_field }}
     {%- endfor %}
 )
-    customer_id
+    uuidv5_customer_id
     {%- for group_by_field in group_by %}
     , {{ group_by_field }}
     {%- endfor %}
@@ -209,7 +209,7 @@ SELECT DISTINCT ON (
 FROM
     rate_per_bucket
 WHERE
-    customer_id = {{ customer_id }}
+    uuidv5_customer_id = '{{ uuidv5_customer_id }}'
     AND bucket <= NOW()
     AND bucket >= '{{ start_date }}'::timestamptz
     AND bucket <= '{{ end_date }}'::timestamptz
@@ -223,7 +223,7 @@ WHERE
         )
     {%- endfor %}
 ORDER BY
-    customer_id
+    uuidv5_customer_id
     {%- for group_by_field in group_by %}
     , {{ group_by_field }}
     {%- endfor %}
@@ -234,7 +234,7 @@ ORDER BY
 RATE_TOTAL_PER_DAY = """
 WITH rate_per_bucket AS (
     SELECT 
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -249,7 +249,7 @@ WITH rate_per_bucket AS (
         , MAX(second_usage)
         {% endif %}
         OVER (
-            PARTITION BY customer_id
+            PARTITION BY uuidv5_customer_id
             {%- for group_by_field in group_by %}
             , {{ group_by_field }}
             {%- endfor %}
@@ -262,13 +262,13 @@ WITH rate_per_bucket AS (
         bucket >= '{{ start_date }}'::timestamptz - INTERVAL '{{ lookback_qty }} {{ lookback_units }}'
         AND bucket <= '{{ end_date }}'::timestamptz
         AND bucket <= NOW()
-        {% if customer_id is not none %}
-        AND customer_id = {{ customer_id }}
+        {% if uuidv5_customer_id is not none %}
+        AND uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {% endif %}
 )
 , per_groupby AS (   
     SELECT
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -278,13 +278,13 @@ WITH rate_per_bucket AS (
         rate_per_bucket
     WHERE
         time_bucket <= NOW()
-        {% if customer_id is not none %}
-            AND customer_id = {{ customer_id }}
+        {% if uuidv5_customer_id is not none %}
+            AND uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {% endif %}
         AND time_bucket >= '{{ start_date }}'::timestamptz
         AND time_bucket <= '{{ end_date }}'::timestamptz
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -292,38 +292,38 @@ WITH rate_per_bucket AS (
 )
 , per_customer AS (
     SELECT
-        customer_id
+        uuidv5_customer_id
         , time_bucket_gapfill('1 day', time_bucket) AS time_bucket
         , SUM(usage_qty) AS usage_qty_per_day
     FROM
         per_groupby
     WHERE
         time_bucket <= NOW()
-        {% if customer_id is not none %}
-        AND customer_id = {{ customer_id }}
+        {% if uuidv5_customer_id is not none %}
+        AND uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {% endif %}
         AND time_bucket >= '{{ start_date }}'::timestamptz
         AND time_bucket <=  '{{ end_date }}'::timestamptz
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         , time_bucket_gapfill('1 day', time_bucket)
     ORDER BY
         usage_qty_per_day DESC
 )
 , top_n AS (
     SELECT 
-        customer_id
+        uuidv5_customer_id
         , SUM(usage_qty_per_day) AS total_usage_qty
     FROM
         per_customer
     GROUP BY
-        customer_id
+        uuidv5_customer_id
     ORDER BY
         total_usage_qty DESC
     LIMIT {{ top_n }}
 )
 SELECT 
-    COALESCE(top_n.customer_id, -1) AS customer_id
+    COALESCE(top_n.uuidv5_customer_id, uuid_nil()) AS uuidv5_customer_id
     , SUM(per_customer.usage_qty_per_day) AS usage_qty
     , per_customer.time_bucket AS time_bucket
 FROM 
@@ -331,8 +331,8 @@ FROM
 LEFT JOIN
     top_n
 ON
-    per_customer.customer_id = top_n.customer_id
+    per_customer.uuidv5_customer_id = top_n.uuidv5_customer_id
 GROUP BY
-    COALESCE(top_n.customer_id, -1)
+    COALESCE(top_n.uuidv5_customer_id, uuid_nil())
     , per_customer.time_bucket
 """

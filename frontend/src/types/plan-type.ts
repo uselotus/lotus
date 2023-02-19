@@ -19,6 +19,7 @@ export interface PlanType {
   num_versions: number;
   active_subscriptions: number;
   tags: { tag_color: string; tag_hex: string; tag_name: string }[];
+  taxjar_code?: string;
 }
 
 export interface PlanDetailType extends PlanType {
@@ -215,4 +216,5 @@ export interface UpdatePlanType {
   status?: "active" | "archived";
   plan_duration?: "monthly" | "quarterly" | "yearly";
   tags?: PlanType["tags"];
+  taxjar_code?: string;
 }

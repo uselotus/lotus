@@ -5,7 +5,7 @@ import posthog
 import sentry_sdk
 from django.conf import settings
 from django.core.cache import cache
-from metering_billing.models import Customer, Event, Organization
+from metering_billing.models import Event, Organization
 from metering_billing.utils import now_utc
 
 from .singleton import Singleton
@@ -64,22 +64,7 @@ def write_batch_events_to_db(buffer):
         ### Match Customer pk with customer_id amd fill in customer pk
         events_to_insert = []
         for event in events_list:
-            customer_pk = cache.get(f"customer_pk_{org_pk}_{event['cust_id']}")
-            if not customer_pk:
-                try:
-                    customer_pk = Customer.objects.get(
-                        organization_id=org_pk, customer_id=event["cust_id"]
-                    ).pk
-                    cache.set(
-                        f"customer_pk_{org_pk}_{event['cust_id']}",
-                        customer_pk,
-                        60 * 60 * 24,
-                    )
-                except Customer.DoesNotExist:
-                    pass
-            events_to_insert.append(
-                Event(**{**event, "customer_id": customer_pk, "inserted_at": now})
-            )
+            events_to_insert.append(Event(**{**event, "inserted_at": now}))
         ## now insert events
         events = Event.objects.bulk_create(events_to_insert, ignore_conflicts=True)
         organization_name = cache.get(f"organization_name_{org_pk}")

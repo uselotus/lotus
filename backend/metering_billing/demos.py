@@ -566,7 +566,6 @@ def setup_demo3(
                         tc = tc
                     Event.objects.create(
                         organization=organization,
-                        customer=customer,
                         event_name="generate_text",
                         time_created=tc,
                         idempotency_id=str(uuid.uuid4().hex),
@@ -580,7 +579,6 @@ def setup_demo3(
                     )
                     Event.objects.create(
                         organization=organization,
-                        customer=customer,
                         event_name="computation",
                         time_created=tc,
                         idempotency_id=str(uuid.uuid4().hex),
@@ -600,7 +598,6 @@ def setup_demo3(
                 baker.make(
                     Event,
                     organization=organization,
-                    customer=customer,
                     event_name="log_num_seats",
                     properties=gaussian_users(n, users_mean, users_sd, max_users),
                     time_created=random_date(sr.start_date, sr.end_date, n),
@@ -1139,7 +1136,6 @@ def setup_demo4(
                         page = np.random.randint(1, 100, n_analytics)
                         e = Event(
                             organization=organization,
-                            customer=customer,
                             event_name="analytics_event",
                             properties={
                                 "user_id": user_ids[i].item(),
@@ -1162,7 +1158,6 @@ def setup_demo4(
                         recording_lengths = np.random.randint(1, 3600, n_recordings)
                         e = Event(
                             organization=organization,
-                            customer=customer,
                             event_name="session_recording",
                             properties={
                                 "user_id": user_ids[i].item(),
@@ -1179,7 +1174,6 @@ def setup_demo4(
                 baker.make(
                     Event,
                     organization=organization,
-                    customer=customer,
                     event_name="server_cost_logging",
                     properties=itertools.cycle(
                         [
@@ -1206,7 +1200,6 @@ def setup_demo4(
                 baker.make(
                     Event,
                     organization=organization,
-                    customer=customer,
                     event_name="log_num_seats",
                     properties=gaussian_users(n, users_mean, users_sd, max_users),
                     time_created=random_date(sr.start_date, sr.end_date, n),

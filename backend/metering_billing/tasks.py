@@ -7,6 +7,7 @@ from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
+
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
@@ -467,18 +468,16 @@ def run_generate_invoice(subscription_record_pk_set, **kwargs):
     generate_invoice(subscription_record_set, **kwargs)
 
 
-def do_refresh_braintree_tokens():
+def import_customers_from_payment_processor_inner(payment_processor, organization_pk):
     from metering_billing.models import Organization
-    from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
-    from metering_billing.utils.enums import PAYMENT_PROCESSORS
 
-    for org in Organization.objects.filter(
-        payment_provider_ids__braintree__id__isnull=False
-    ):
-        payment_provider = PAYMENT_PROCESSOR_MAP[PAYMENT_PROCESSORS.BRAINTREE]
-        payment_provider.refresh_tokens(org)
+    organization = Organization.objects.get(pk=organization_pk)
+    connector = PAYMENT_PROCESSOR_MAP[payment_processor]
+    n = connector.import_customers(organization)
+
+    return n
 
 
 @shared_task
-def refresh_braintree_tokens():
-    do_refresh_braintree_tokens()
+def import_customers_from_payment_processor(payment_processor, organization_pk):
+    import_customers_from_payment_processor_inner(payment_processor, organization_pk)

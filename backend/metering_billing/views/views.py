@@ -1,17 +1,11 @@
 import logging
 from decimal import Decimal
 
+import api.views as api_views
 import pytz
 from django.conf import settings
 from django.db.models import Count, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
-from rest_framework import serializers, status
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
-import api.views as api_views
 from metering_billing.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
@@ -49,6 +43,7 @@ from metering_billing.serializers.response_serializers import (
     PeriodSubscriptionsResponseSerializer,
 )
 from metering_billing.serializers.serializer_utils import OrganizationUUIDField
+from metering_billing.tasks import import_customers_from_payment_processor
 from metering_billing.utils import (
     convert_to_date,
     convert_to_datetime,
@@ -67,6 +62,11 @@ from metering_billing.utils.enums import (
     USAGE_CALC_GRANULARITY,
 )
 from metering_billing.views.model_views import CustomerViewSet
+from rest_framework import serializers, status
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -634,15 +634,15 @@ class ImportCustomersView(APIView):
         source = request.data["source"]
         if source not in [choice[0] for choice in PAYMENT_PROCESSORS.choices]:
             raise ExternalConnectionInvalid(f"Invalid source: {source}")
-        connector = PAYMENT_PROCESSOR_MAP[source]
+
         try:
-            num = connector.import_customers(organization)
+            import_customers_from_payment_processor.delay(source, organization.id)
         except Exception as e:
             raise ExternalConnectionFailure(f"Error importing customers: {e}")
         return Response(
             {
                 "status": "success",
-                "detail": f"Customers succesfully imported {num} customers from {source}.",
+                "detail": f"Started customer transfer from {source}.",
             },
             status=status.HTTP_201_CREATED,
         )

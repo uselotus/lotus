@@ -274,3 +274,8 @@ class ORGANIZATION_SETTING_GROUPS(models.TextChoices):
     STRIPE = ("stripe", _("Stripe"))
     BRAINTREE = ("braintree", _("Braintree"))
     BILLING = ("billing", _("Billing"))
+
+
+class TAX_PROVIDER(models.IntegerChoices):
+    TAXJAR = (1, _("taxjar"))
+    LOTUS = (2, _("lotus"))

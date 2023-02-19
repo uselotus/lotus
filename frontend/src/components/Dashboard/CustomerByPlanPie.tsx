@@ -8,8 +8,7 @@ import LoadingSpinner from "../LoadingSpinner";
 export function CustomerByPlanPie(props: any) {
   const { data, isLoading }: UseQueryResult<any> = useQuery<any>(
     ["customer_by_plan_pie"],
-    () =>
-      PlansByCustomer.getPlansByCustomer().then((res) => res)
+    () => PlansByCustomer.getPlansByCustomer().then((res) => res)
   );
 
   const config = {
@@ -59,7 +58,7 @@ export function CustomerByPlanPie(props: any) {
         <LoadingSpinner />
       ) : (
         <div className="">
-          <h2>Current Plan Distribution</h2>
+          <h2>Current Subscriptions Per Plan</h2>
           <div className="h-[390px]">
             <Pie {...config} />
           </div>

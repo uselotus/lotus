@@ -4,6 +4,7 @@ import copy
 import json
 import logging
 import operator
+import uuid
 from decimal import Decimal
 from functools import reduce
 from itertools import chain
@@ -26,6 +27,7 @@ from api.serializers.model_serializers import (
     InvoiceListFilterSerializer,
     InvoiceSerializer,
     InvoiceUpdateSerializer,
+    ListPlansFilterSerializer,
     ListSubscriptionRecordFilter,
     PlanSerializer,
     SubscriptionRecordCancelSerializer,
@@ -93,6 +95,7 @@ from metering_billing.models import (
     PriceTier,
     RecurringCharge,
     SubscriptionRecord,
+    Tag,
 )
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.serializer_utils import (
@@ -137,7 +140,7 @@ from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
-
+IDEMPOTENCY_ID_NAMESPACE = settings.IDEMPOTENCY_ID_NAMESPACE
 
 logger = logging.getLogger("django.server")
 
@@ -414,7 +417,10 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             "display_version",
         )
         # then for many to many / reverse FK but still have
-        qs = qs.prefetch_related("tags", "external_links")
+        qs = qs.prefetch_related(
+            "external_links",
+            Prefetch("tags", queryset=Tag.objects.filter(organization=organization)),
+        )
         # then come the really deep boys
         # we need to construct the prefetch objects so that we are prefetching the more
         # deeply nested objectsd as part of the call:
@@ -484,6 +490,39 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 to_attr="versions_prefetched",
             ),
         )
+
+        plan_filter_serializer = ListPlansFilterSerializer(
+            data=self.request.query_params
+        )
+
+        if not plan_filter_serializer.is_valid():
+            return qs
+
+        include_tags = plan_filter_serializer.validated_data.get("include_tags")
+        include_tags_all = plan_filter_serializer.validated_data.get("include_tags_all")
+        exclude_tags = plan_filter_serializer.validated_data.get("exclude_tags")
+
+        if include_tags:
+            # Filter to plans that have any of the tags in this list
+            q_objects = Q()
+            for tag in include_tags:
+                q_objects |= Q(tags__tag_name__iexact=tag)
+            qs = qs.filter(q_objects)
+
+        if include_tags_all:
+            # Filter to plans that have all of the tags in this list
+            q_objects = Q()
+            for tag in include_tags_all:
+                q_objects &= Q(tags__tag_name__iexact=tag)
+            qs = qs.filter(q_objects)
+
+        if exclude_tags:
+            # Filter to plans that do not have any of the tags in this list
+            q_objects = Q()
+            for tag in exclude_tags:
+                q_objects &= ~Q(tags__tag_name__iexact=tag)
+            qs = qs.filter(q_objects)
+
         return qs
 
     def dispatch(self, request, *args, **kwargs):
@@ -516,6 +555,12 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             user = None
         context.update({"organization": organization, "user": user})
         return context
+
+    @extend_schema(
+        parameters=[ListPlansFilterSerializer],
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request)
 
 
 class SubscriptionViewSet(
@@ -621,7 +666,7 @@ class SubscriptionViewSet(
             else:
                 raise Exception("Invalid action")
             serializer.is_valid(raise_exception=True)
-            # unpack whats in teh serialized data
+            # unpack whats in the serialized data
 
             customer = serializer.validated_data.get("customer")
             subscription_filters = serializer.validated_data.get("subscription_filters")
@@ -1658,10 +1703,11 @@ class ConfirmIdemsReceivedView(APIView):
         ids_not_found = []
         for i in range(num_batches_idems):
             idem_batch = set(idempotency_ids[i * 1000 : (i + 1) * 1000])
+            idem_batch = {uuid.uuid5(IDEMPOTENCY_ID_NAMESPACE, x) for x in idem_batch}
             events = Event.objects.filter(
                 organization=organization,
                 time_created__gte=now_minus_lookback,
-                idempotency_id__in=idem_batch,
+                uuidv5_idempotency_id__in=idem_batch,
             )
             if request.data.get("customer_id"):
                 events = events.filter(customer_id=request.data.get("customer_id"))

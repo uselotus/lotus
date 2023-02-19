@@ -13,6 +13,7 @@ import datetime
 import logging
 import os
 import re
+import uuid
 from datetime import timedelta, timezone
 from json import loads
 from pathlib import Path
@@ -102,11 +103,17 @@ if BRAINTREE_TEST_PUBLIC_KEY == "change_me":
 if BRAINTREE_TEST_SECRET_KEY == "change_me":
     BRAINTREE_TEST_SECRET_KEY = None
 BRAINTREE_WEBHOOK_SECRET = config("BRAINTREE_WEBHOOK_SECRET", default="")
+# taxjar
+TAXJAR_API_KEY = config("TAXJAR_API_KEY", default=None)
 # Webhooks for Svix
 SVIX_API_KEY = config("SVIX_API_KEY", default="")
 SVIX_JWT_SECRET = config("SVIX_JWT_SECRET", default="")
 # Optional Observalility Services
 CRONITOR_API_KEY = config("CRONITOR_API_KEY", default="")
+# uuidv5 namespaces
+CUSTOMER_ID_NAMESPACE = uuid.UUID("D1337E57-E6A0-4650-B1C3-D6487AFFB8CA")
+EVENT_NAME_NAMESPACE = uuid.UUID("843D7005-63DE-4B72-B731-77E2866DCCFF")
+IDEMPOTENCY_ID_NAMESPACE = uuid.UUID("904C0FFB-7005-414E-9B7D-8E3C5DDE266D")
 
 if SENTRY_DSN != "":
     sentry_sdk.init(
