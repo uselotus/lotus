@@ -5,6 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	_ "github.com/lib/pq"
+	"github.com/uselotus/lotus/go/eventtracker/config"
 )
 
 func Middleware(db *sql.DB) echo.MiddlewareFunc {
@@ -18,7 +19,7 @@ func Middleware(db *sql.DB) echo.MiddlewareFunc {
 }
 
 func New() (*sql.DB, error) {
-	db, err := sql.Open("postgres", "postgres://postgres:postgrespw@localhost:5432/postgres?sslmode=disable")
+	db, err := sql.Open("postgres", config.Conf.DatabaseURL)
 
 	if err != nil {
 		return nil, err

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/uselotus/lotus/go/eventtracker/config"
 	"github.com/uselotus/lotus/go/eventtracker/types"
 )
 
@@ -26,7 +27,7 @@ func Produce(ctx context.Context, cl *kgo.Client, event types.IngestedEvent) err
 	}
 
 	record := &kgo.Record{
-		Topic: "test-topic",
+		Topic: config.Conf.KafkaTopic,
 		Value: value,
 		Key:   []byte(event.OrganizationID),
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	_ "github.com/lib/pq"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/uselotus/lotus/go/eventtracker/config"
 	"github.com/uselotus/lotus/go/eventtracker/database"
 	"github.com/uselotus/lotus/go/eventtracker/kafka"
 	"github.com/uselotus/lotus/go/eventtracker/types"
@@ -32,12 +33,12 @@ func main() {
 
 	defer db.Close()
 
-	seeds := []string{"localhost:9092"}
+	seeds := []string{config.Conf.KafkaURL}
 
 	cl, err := kgo.NewClient(
 		kgo.SeedBrokers(seeds...),
 		kgo.ConsumerGroup("default"),
-		kgo.ConsumeTopics("test-topic"),
+		kgo.ConsumeTopics(config.Conf.KafkaTopic),
 		kgo.DisableAutoCommit(),
 	)
 
@@ -102,5 +103,5 @@ func main() {
 		})
 	})
 
-	e.Logger.Fatal(e.Start(":8080"))
+	e.Logger.Fatal(e.Start(fmt.Sprintf(":%d", config.Conf.Port)))
 }

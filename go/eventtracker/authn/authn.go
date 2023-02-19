@@ -46,4 +46,3 @@ func Middleware() echo.MiddlewareFunc {
 		}
 	}
 }
-
