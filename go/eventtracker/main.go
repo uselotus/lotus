@@ -1,78 +1,70 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"log"
 	"net/http"
-	"time"
+	_ "net/http"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	_ "github.com/lib/pq"
+	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/uselotus/lotus/go/eventtracker/database"
+	"github.com/uselotus/lotus/go/eventtracker/kafka"
+	"github.com/uselotus/lotus/go/eventtracker/types"
 )
-
-type Event struct {
-	CustomerID    string                 `json:"customer_id"`
-	IdempotencyID string                 `json:"idempotency_id"`
-	TimeCreated   time.Time              `json:"time_created"`
-	Properties    map[string]interface{} `json:"properties"`
-	EventName     string                 `json:"event_name"`
-}
-
-type IngestedEvent struct {
-	OrganizationID string                 `json:"organization_id"`
-	CustID         string                 `json:"customer_id"`
-	IdempotencyID  string                 `json:"idempotency_id"`
-	TimeCreated    time.Time              `json:"time_created"`
-	Properties     map[string]interface{} `json:"properties"`
-	EventName      string                 `json:"event_name"`
-}
 
 type TrackEventResponse struct {
 	Success      string            `json:"success"`
 	FailedEvents map[string]string `json:"failed_events"`
 }
 
-func (e Event) isValid() (bool, string) {
-	if e.IdempotencyID == "" {
-		return false, "No idempotency_id provided"
-	}
-
-	if e.CustomerID == "" {
-		return false, "No customer_id provided"
-	}
-
-	if e.TimeCreated.IsZero() {
-		return false, "Invalid time_created"
-	}
-
-	return true, ""
-}
-
-func (e Event) transform(organizationID string) IngestedEvent {
-	return IngestedEvent{
-		OrganizationID: organizationID,
-		CustID:         e.CustomerID,
-		IdempotencyID:  e.IdempotencyID,
-		TimeCreated:    e.TimeCreated,
-		Properties:     e.Properties,
-		EventName:      e.EventName,
-	}
-}
-
 func main() {
+	db, err := database.New()
+
+	if err != nil {
+		log.Fatalf("Error connecting to database: %v", err)
+	}
+
+	fmt.Println("Connect to database successfully!")
+
+	defer db.Close()
+
+	seeds := []string{"localhost:9092"}
+
+	cl, err := kgo.NewClient(
+		kgo.SeedBrokers(seeds...),
+		kgo.ConsumerGroup("default"),
+		kgo.ConsumeTopics("test-topic"),
+		kgo.DisableAutoCommit(),
+	)
+
+	ctx := context.Background()
+
+	if err != nil {
+		log.Fatalf("Error creating kafka client: %v", err)
+	}
+
+	defer cl.Close()
+
 	e := echo.New()
 
 	e.Use(middleware.Logger())
+	e.Use(database.Middleware(db))
 
-	badEvents := make(map[string]string)
-
-	e.POST("/events", func(c echo.Context) error {
-		events := &[]Event{}
+	e.POST("/", func(c echo.Context) error {
+		events := &[]types.Event{}
 
 		if err := c.Bind(events); err != nil {
 			return err
 		}
 
+		badEvents := make(map[string]string)
+
 		for _, event := range *events {
-			if valid, reason := event.isValid(); !valid {
+			if valid, reason := event.IsValid(); !valid {
 				if event.IdempotencyID != "" {
 					badEvents[event.IdempotencyID] = reason
 				} else {
@@ -82,9 +74,13 @@ func main() {
 				continue
 			}
 
-			// TODO Soham: Check if the event is a future event or past event
-			transformedEvent := event.transform("org_id")
+			organization := c.Get("organization").(string)
 
+			transformedEvent := event.Transform(organization)
+
+			if err := kafka.Produce(ctx, cl, transformedEvent); err != nil {
+				badEvents[event.IdempotencyID] = fmt.Sprintf("Failed to produce event to kafka: %v", err)
+			}
 		}
 
 		if len(badEvents) == len(*events) {
@@ -102,8 +98,9 @@ func main() {
 		}
 
 		return c.JSON(http.StatusCreated, TrackEventResponse{
-			Success:      "all",
-			FailedEvents: badEvents,
+			Success: "all",
 		})
 	})
+
+	e.Logger.Fatal(e.Start(":8080"))
 }
