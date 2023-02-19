@@ -25,7 +25,7 @@ const CustomPagination: FC<CustomPaginationProps> = ({
     if (currentPage === 1) {
       handleMovements("START");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage]);
   return (
     <div className="flex justify-center space-x-4">
@@ -40,7 +40,7 @@ const CustomPagination: FC<CustomPaginationProps> = ({
       <button
         type="button"
         className="movementButton"
-        disabled={previous === "null"}
+        disabled={previous === "null" || cursor === "EMPTY"}
         onClick={() => handleMovements("LEFT")}
       >
         <LeftOutlined />
@@ -49,7 +49,7 @@ const CustomPagination: FC<CustomPaginationProps> = ({
       <button
         type="button"
         className="movementButton"
-        disabled={next === "null"}
+        disabled={next === "null" || cursor === "EMPTY"}
         onClick={() => handleMovements("RIGHT")}
       >
         <RightOutlined />

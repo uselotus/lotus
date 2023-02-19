@@ -313,10 +313,7 @@ const SubscriptionView: FC<Props> = ({
         setCursor(previous);
         setCurrentPage(currentPage - 1);
         setPaginatedSubscriptions(
-          subscriptions.slice(
-            Number(previous) - 1 - limit,
-            Number(next) - 1 - limit
-          )
+          subscriptions.slice(Number(previous) - limit, Number(previous))
         );
         setPrev(String(Number(previous) - 1 - limit));
         setNext(String(Number(next) - 1 - limit));
@@ -330,8 +327,8 @@ const SubscriptionView: FC<Props> = ({
           setPaginatedSubscriptions(
             subscriptions.slice(Number(previous), Number(next))
           );
-          setNext(String(Number(next) * 2 + 1));
-          setPrev(String(Number(previous) - 1));
+          setNext(String(Number(next) + limit));
+          setPrev(String(Number(next)));
         } else {
           const newPage = currentPage + 1;
           setCursor(next);
@@ -341,15 +338,15 @@ const SubscriptionView: FC<Props> = ({
           );
           setNext(String(subscriptions.length - 1));
           setPrev(previous);
-          setCursor(next);
+          setCursor("");
         }
         break;
       case "START":
         setCursor("");
         setCurrentPage(1);
         setPaginatedSubscriptions(subscriptions.slice(0, limit));
-        setNext(String(limit * 2 + 1));
-        setPrev(String(Number(limit - 1)));
+        setNext(String(limit + limit));
+        setPrev(String(Number(limit)));
         break;
       default:
         break;
@@ -866,7 +863,7 @@ const SubscriptionView: FC<Props> = ({
             : paginatedSubscriptions.map((subPlan) => (
                 <>
                   <CustomerCard
-                    className="shadow-none h-[262px]"
+                    className="shadow-none h-[270px]"
                     key={subPlan.end_date}
                   >
                     <CustomerCard.Heading>
