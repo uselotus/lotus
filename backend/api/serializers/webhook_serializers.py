@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from api.serializers.model_serializers import (
+    CustomerSerializer,
     InvoiceSerializer,
     LightweightSubscriptionRecordSerializer,
     UsageAlertSerializer,
@@ -34,3 +35,10 @@ class UsageAlertTriggeredSerializer(serializers.Serializer):
         default=WEBHOOK_TRIGGER_EVENTS.USAGE_ALERT_TRIGGERED, read_only=True
     )
     payload = UsageAlertPayload()
+
+
+class CustomerCreatedSerializer(serializers.Serializer):
+    payload = CustomerSerializer()
+    eventType = serializers.CharField(
+        default=WEBHOOK_TRIGGER_EVENTS.CUSTOMER_CREATED, read_only=True
+    )

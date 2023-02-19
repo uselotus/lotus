@@ -73,6 +73,16 @@ if STRIPE_LIVE_CLIENT is None:
 STRIPE_TEST_SECRET_KEY = config("STRIPE_TEST_SECRET_KEY", default=None)
 STRIPE_TEST_CLIENT = config("STRIPE_TEST_CLIENT", default="")
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="whsec_")
+if STRIPE_LIVE_SECRET_KEY == "change_me":
+    STRIPE_LIVE_SECRET_KEY = None
+if STRIPE_LIVE_CLIENT == "change_me":
+    STRIPE_LIVE_CLIENT = None
+if STRIPE_TEST_CLIENT == "change_me":
+    STRIPE_TEST_CLIENT = None
+if STRIPE_TEST_SECRET_KEY == "change_me":
+    STRIPE_TEST_SECRET_KEY = None
+if STRIPE_WEBHOOK_SECRET == "change_me":
+    STRIPE_WEBHOOK_SECRET = None
 # Braintree
 BRAINTREE_LIVE_MERCHANT_ID = config("BRAINTREE_LIVE_MERCHANT_ID", default=None)
 BRAINTREE_LIVE_PUBLIC_KEY = config("BRAINTREE_LIVE_PUBLIC_KEY", default=None)
@@ -692,7 +702,6 @@ elif SVIX_API_KEY == "" and SVIX_JWT_SECRET != "":
 else:
     svix = None
 SVIX_CONNECTOR = svix
-
 if SVIX_CONNECTOR is not None:
     try:
         svix = SVIX_CONNECTOR
@@ -719,6 +728,14 @@ if SVIX_CONNECTOR is not None:
                     description="Usage alert is triggered",
                     archived=False,
                     name="usage_alert.triggered",
+                )
+            )
+        if "customer.created" not in list_response_event_type_out:
+            event_type_out = svix.event_type.create(
+                EventTypeIn(
+                    description="Customer is created",
+                    archived=False,
+                    name="customer.created",
                 )
             )
     except Exception:
