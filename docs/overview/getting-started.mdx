@@ -75,6 +75,8 @@ Here is another example of the total size metric that we would add to the entepr
 
 Next, we can add boolean entitelments to this plan. For the starter plan, we are going to add access to an analytics page, and then a dedicated support flag.
 
+![title](/images/overview/createfeature.jpg)
+
 # Configure Add-Ons (Optional)
 
 Add-Ons in Lotus are powerful yet simple. They are essentially mini-plans that can be attatched to existing plans. The few differences are that they can have a quantity and can be one-off charges.
@@ -91,8 +93,16 @@ Then we can call the list plans api and subscribe the customer to a plan program
 
 # 5. Connect to Stripe or Subscribe to Webhooks to send out Invoices.
 
-## Invoicing Flow
+Lastly, when a customer is scheduled to be invoiced, Lotus will convert their draft invoiced into a finalized invoice that is ready to be paid.
+
+Lotus generates an invoice PDF for you so you can manually send out invoices if you choose. This can be accessed through this [endpoint](/api-reference/invoices/get-invoice-pdf) or in the invoices tab for a certain customer.
 
 ## Stripe & Other Payment Processors
 
+Currently we support Stripe and Braintree as native integrations. For an in depth understanding of how to instrument the Stripe integration, please head over to the diagram [here](/external-integrations/stripe).
+
+You can connect to Stripe and Braintree on the frontend /settings/integrations page through OAuth or through putting your secret key in an env variable if you are self hosting.
+
 ## Manual Invoicing With Webhooks
+
+Our native integrations shouldn't stop you from using whatever payment processor you want. If you travel to the /settings/developer-settings page in the frontend, you can add webhook urls and subscribe to invoice.created webhooks (more [here](/webhooks/webhooks)).
