@@ -36,11 +36,6 @@ class Migration(migrations.Migration):
             SET uuidv5_idempotency_id = uuid_generate_v5('904C0FFB-7005-414E-9B7D-8E3C5DDE266D'::uuid,idempotency_id)
             WHERE idempotency_id IS NOT NULL;
 
-            -- Modify columns to be non-nullable
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN uuidv5_customer_id SET NOT NULL;
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN uuidv5_event_name SET NOT NULL;
-            ALTER TABLE metering_billing_usageevent ALTER COLUMN uuidv5_idempotency_id SET NOT NULL;
-
             -- Create index
             DROP INDEX IF EXISTS metering_billing_usageevent_time_created_idx;
             CREATE INDEX metering_billing_usageevent_time_created_idx ON metering_billing_usageevent (time_created DESC, uuidv5_event_name, uuidv5_customer_id);
