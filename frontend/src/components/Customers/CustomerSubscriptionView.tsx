@@ -81,7 +81,12 @@ interface PlanOption {
   disabled?: boolean;
 }
 
-const dropDownOptions = ["Switch Plan", "Attach Add-On", "Cancel Subscription"];
+const dropDownOptions = [
+  "Switch Plan",
+  "Attach Add-On",
+  "Cancel Renewal",
+  "Cancel Now",
+];
 
 const limit = 6;
 const SubscriptionView: FC<Props> = ({
@@ -115,9 +120,11 @@ const SubscriptionView: FC<Props> = ({
     plan_id: string;
     subscriptionFilters: SubscriptionType["subscription_filters"];
   }>();
-  const [cancelSubType, setCancelSubType] = useState<
-    "bill_now" | "remove_renewal"
-  >("bill_now");
+  const [cancelBody, setCancelBody] = useState<CancelSubscriptionBody>({
+    usage_behavior: "bill_full",
+    flat_fee_behavior: "charge_full",
+    invoicing_behavior: "invoice_now",
+  });
   const indexRef = useRef(0);
   const windowWidth = useMediaQuery();
   const [idtoPlan, setIDtoPlan] = useState<{ [key: string]: PlanType }>({});
@@ -155,6 +162,14 @@ const SubscriptionView: FC<Props> = ({
       },
     }
   );
+
+  const cancelSubscription = (plan_id, subscription_filters) => {
+    const query_params: CancelSubscriptionQueryParams = {
+      customer_id,
+    };
+    onCancel(cancelBody, query_params);
+    setShowModal(false);
+  };
 
   const cancelAllSubscriptions = () => {
     const query_params: CancelSubscriptionQueryParams = {
@@ -545,6 +560,13 @@ const SubscriptionView: FC<Props> = ({
                                         setShowModal(true);
                                         indexRef.current = index;
                                         break;
+                                      case 2:
+                                        setTitle("Cancel Renewal");
+
+                                        setShowModal(true);
+                                        indexRef.current = index;
+                                        break;
+
                                       default:
                                         setTitle("Are you sure?");
 
@@ -649,6 +671,28 @@ const SubscriptionView: FC<Props> = ({
                                 key="back"
                                 onClick={() => setShowModal(false)}
                               >
+                                Cancel
+                              </Button>,
+                              <Button
+                                key="submit"
+                                type="primary"
+                                className="hover:!bg-primary-700"
+                                onClick={() => {
+                                  turnAutoRenewOff(
+                                    subPlan.billing_plan.plan_id,
+                                    subPlan.subscription_filters
+                                  );
+                                }}
+                              >
+                                Cancel Renewal
+                              </Button>,
+                            ]
+                          : indexRef.current === 3
+                          ? [
+                              <Button
+                                key="back"
+                                onClick={() => setShowModal(false)}
+                              >
                                 Back
                               </Button>,
                               <Button
@@ -656,17 +700,10 @@ const SubscriptionView: FC<Props> = ({
                                 type="primary"
                                 className="!bg-rose-600 border !border-rose-600"
                                 onClick={() => {
-                                  if (cancelSubType === "bill_now") {
-                                    cancelAndBill(
-                                      subPlan.billing_plan.plan_id,
-                                      subPlan.subscription_filters
-                                    );
-                                  } else {
-                                    turnAutoRenewOff(
-                                      subPlan.billing_plan.plan_id,
-                                      subPlan.subscription_filters
-                                    );
-                                  }
+                                  cancelSubscription(
+                                    subPlan.billing_plan.plan_id,
+                                    subPlan.subscription_filters
+                                  );
                                 }}
                               >
                                 Cancel Plan
@@ -740,7 +777,24 @@ const SubscriptionView: FC<Props> = ({
                         ) : indexRef.current === 6 ? null : indexRef.current ===
                           2 ? (
                           <CancelMenu
-                            setCancelSubType={(e) => setCancelSubType(e)}
+                            setRecurringBehavior={(e) =>
+                              setCancelBody({
+                                ...cancelBody,
+                                flat_fee_behavior: e,
+                              })
+                            }
+                            setUsageBehavior={(e) =>
+                              setCancelBody({
+                                ...cancelBody,
+                                usage_behavior: e,
+                              })
+                            }
+                            setInvoiceBehavior={(e) =>
+                              setCancelBody({
+                                ...cancelBody,
+                                invoicing_behavior: e,
+                              })
+                            }
                           />
                         ) : (
                           <Form.Provider>
@@ -1051,17 +1105,32 @@ const SubscriptionView: FC<Props> = ({
                                 type="primary"
                                 className="!bg-rose-600 border !border-rose-600"
                                 onClick={() => {
-                                  if (cancelSubType === "bill_now") {
-                                    cancelAndBill(
-                                      subPlan.billing_plan.plan_id,
-                                      subPlan.subscription_filters
-                                    );
-                                  } else {
-                                    turnAutoRenewOff(
-                                      subPlan.billing_plan.plan_id,
-                                      subPlan.subscription_filters
-                                    );
-                                  }
+                                  turnAutoRenewOff(
+                                    subPlan.billing_plan.plan_id,
+                                    subPlan.subscription_filters
+                                  );
+                                }}
+                              >
+                                Cancel Renewal
+                              </Button>,
+                            ]
+                          : indexRef.current === 3
+                          ? [
+                              <Button
+                                key="back"
+                                onClick={() => setShowModal(false)}
+                              >
+                                Back
+                              </Button>,
+                              <Button
+                                key="submit"
+                                type="primary"
+                                className="!bg-rose-600 border !border-rose-600"
+                                onClick={() => {
+                                  cancelSubscription(
+                                    subPlan.billing_plan.plan_id,
+                                    subPlan.subscription_filters
+                                  );
                                 }}
                               >
                                 Cancel Plan
@@ -1132,10 +1201,27 @@ const SubscriptionView: FC<Props> = ({
                           >
                             {" "}
                           </Select>
-                        ) : indexRef.current === 6 ? null : indexRef.current ===
-                          2 ? (
+                        ) : indexRef.current === 2 ? null : indexRef.current ===
+                          6 ? null : indexRef.current === 3 ? (
                           <CancelMenu
-                            setCancelSubType={(e) => setCancelSubType(e)}
+                            setRecurringBehavior={(e) =>
+                              setCancelBody({
+                                ...cancelBody,
+                                flat_fee_behavior: e,
+                              })
+                            }
+                            setUsageBehavior={(e) =>
+                              setCancelBody({
+                                ...cancelBody,
+                                usage_behavior: e,
+                              })
+                            }
+                            setInvoiceBehavior={(e) =>
+                              setCancelBody({
+                                ...cancelBody,
+                                invoicing_behavior: e,
+                              })
+                            }
                           />
                         ) : (
                           <Form.Provider>

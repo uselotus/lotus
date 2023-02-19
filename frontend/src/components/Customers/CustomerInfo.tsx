@@ -150,7 +150,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
       const result_list = day.cost_data.map((metric) => ({
         date: day.date,
         amount: metric.cost,
-        metric: metric.metric.metric_name,
+        metric: metric.metric.billable_metric_name,
         type: "cost",
       }));
 
@@ -162,6 +162,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
       });
       return result_list;
     });
+    console.log(newgraphdata);
     setTransformedGraphData(newgraphdata.flat(1));
   }, [cost_data]);
 

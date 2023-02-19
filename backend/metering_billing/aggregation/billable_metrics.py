@@ -108,7 +108,7 @@ class MetricHandler(abc.ABC):
         """This method returns the current usage of a susbcription record. The result from this method will be used to calculate whether the customer has access to the event represented by the metric. It sounds similar, but there are some key subtleties to note:
         Counter: In this case, subscription record current_usage and total_billable_usage are the same.
         Gauge: These metrics are not billed on a per-event bases, but on the peak usage within some specified granularity period. That means that the billable usage is the normalized peak usage, where the current usage is the value of the underlying state at the time of the request.
-        Rate: Even though the billable usage would be the maximum rate over teh subscription_record period, the current usage is simply the current rate.
+        Rate: Even though the billable usage would be the maximum rate over the subscription_record period, the current usage is simply the current rate.
         """
         pass
 

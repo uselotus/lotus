@@ -2353,7 +2353,7 @@ components:
           enum:
           - stripe
           - braintree
-          - 
+          -
           type: string
           nullable: true
         payment_provider_id:
@@ -4124,7 +4124,7 @@ components:
           - quarterly
           - end_of_period
           - ''
-          - 
+          -
           type: string
           writeOnly: true
           nullable: true
@@ -4203,7 +4203,7 @@ components:
           enum:
           - stripe
           - braintree
-          - 
+          -
           type: string
           nullable: true
         line_items:
@@ -4286,7 +4286,7 @@ components:
           - in_arrears
           - in_advance
           - one_time
-          - 
+          -
           type: string
           nullable: true
         metadata:
@@ -4346,7 +4346,7 @@ components:
           - in_arrears
           - in_advance
           - one_time
-          - 
+          -
           type: string
           nullable: true
         metadata:
@@ -4380,7 +4380,7 @@ components:
           enum:
           - stripe
           - braintree
-          - 
+          -
           type: string
           nullable: true
         line_items:
@@ -4580,7 +4580,7 @@ components:
           enum:
           - stripe
           - braintree
-          - 
+          -
           type: string
           nullable: true
         start_date:
@@ -4627,7 +4627,7 @@ components:
           - in_arrears
           - in_advance
           - one_time
-          - 
+          -
           type: string
           nullable: true
         plan:
@@ -4922,7 +4922,7 @@ components:
           - quarters
           - years
           - total
-          - 
+          -
           type: string
           readOnly: true
           nullable: true
@@ -4932,7 +4932,7 @@ components:
           enum:
           - delta
           - total
-          - 
+          -
           type: string
           readOnly: true
           nullable: true
@@ -4979,7 +4979,7 @@ components:
           - quarters
           - years
           - total
-          - 
+          -
           type: string
           readOnly: true
           nullable: true
@@ -5092,7 +5092,7 @@ components:
           - unique
           - latest
           - average
-          - 
+          -
           type: string
           writeOnly: true
           nullable: true
@@ -5107,7 +5107,7 @@ components:
           - unique
           - latest
           - average
-          - 
+          -
           type: string
           writeOnly: true
           nullable: true
@@ -5121,7 +5121,7 @@ components:
           - quarters
           - years
           - total
-          - 
+          -
           type: string
           writeOnly: true
           nullable: true
@@ -5131,7 +5131,7 @@ components:
           enum:
           - delta
           - total
-          - 
+          -
           type: string
           writeOnly: true
           nullable: true
@@ -5160,7 +5160,7 @@ components:
           - quarters
           - years
           - total
-          - 
+          -
           type: string
           writeOnly: true
           nullable: true
@@ -7059,7 +7059,7 @@ components:
           - monthly
           - quarterly
           - yearly
-          - 
+          -
           type: string
           nullable: true
           description: Duration of the plan
@@ -7155,7 +7155,7 @@ components:
           - monthly
           - quarterly
           - yearly
-          - 
+          -
           type: string
           writeOnly: true
           nullable: true
@@ -7200,7 +7200,7 @@ components:
           - monthly
           - quarterly
           - yearly
-          - 
+          -
           type: string
           nullable: true
           description: Duration of the plan
@@ -7356,7 +7356,7 @@ components:
           - monthly
           - quarterly
           - end_of_period
-          - 
+          -
           type: string
           readOnly: true
           nullable: true
@@ -7423,7 +7423,7 @@ components:
           - quarterly
           - end_of_period
           - ''
-          - 
+          -
           type: string
           writeOnly: true
           nullable: true
@@ -7505,7 +7505,7 @@ components:
           - monthly
           - quarterly
           - end_of_period
-          - 
+          -
           type: string
           readOnly: true
           nullable: true
@@ -7688,7 +7688,7 @@ components:
           - round_down
           - round_nearest
           - no_rounding
-          - 
+          -
           nullable: true
           readOnly: true
       required:
@@ -7740,7 +7740,7 @@ components:
           - round_down
           - round_nearest
           - no_rounding
-          - 
+          -
           type: string
           nullable: true
           default: no_rounding
@@ -8251,7 +8251,7 @@ components:
           - refund
           - charge_prorated
           - charge_full
-          - 
+          -
           type: string
           nullable: true
           description: When canceling a subscription, the behavior used to calculate
