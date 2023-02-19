@@ -664,7 +664,7 @@ class SubscriptionViewSet(
             else:
                 raise Exception("Invalid action")
             serializer.is_valid(raise_exception=True)
-            # unpack whats in teh serialized data
+            # unpack whats in the serialized data
 
             customer = serializer.validated_data.get("customer")
             subscription_filters = serializer.validated_data.get("subscription_filters")

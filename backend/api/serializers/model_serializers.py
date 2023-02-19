@@ -1593,7 +1593,7 @@ class SubscriptionRecordCancelSerializer(serializers.Serializer):
         allow_null=True,
         required=False,
         default=None,
-        help_text="When canceling a subscription, the behavior used to calculate the flat fee. If null or not provided, the charge's default behavior will be used according to the subscription's start and end dates. If charge_full, the full flat fee will be charged, regardless of the duration of teh subscription. If refund, the flat fee will not be charged. If charge_prorated, the prorated flat fee will be charged.",
+        help_text="When canceling a subscription, the behavior used to calculate the flat fee. If null or not provided, the charge's default behavior will be used according to the subscription's start and end dates. If charge_full, the full flat fee will be charged, regardless of the duration of the subscription. If refund, the flat fee will not be charged. If charge_prorated, the prorated flat fee will be charged.",
     )
     usage_behavior = serializers.ChoiceField(
         choices=USAGE_BILLING_BEHAVIOR.choices,

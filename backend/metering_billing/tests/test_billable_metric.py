@@ -2069,7 +2069,7 @@ class TestCustomSQLMetrics:
             ),
             cust_id=customer.customer_id,
             _quantity=5,
-        )  # this one shouldn't as it goes before teh start_date
+        )  # this one shouldn't as it goes before the start_date
         baker.make(
             Event,
             event_name="test_event",
