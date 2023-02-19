@@ -259,7 +259,7 @@ class InvoicePDF:
         """Add the Organization/Seller Details"""
 
         org = self.invoice.organization
-        addr = org.properties.get("address")
+        addr = org.address
 
         self.fontSize(FONT_S, bold=True)
         self.PDF.drawString(
@@ -271,16 +271,16 @@ class InvoicePDF:
         x = 160
 
         if addr:
-            self.PDF.drawString(75, 145, self.floor_string(addr["line1"]))
+            self.PDF.drawString(75, 145, self.floor_string(addr.line1))
 
-            if addr["city"] and addr["state"] and addr["postal_code"]:
+            if addr.city and addr.state and addr.postal_code:
                 self.PDF.drawString(
-                    75, x, f'{addr["city"]}, {addr["state"]}, {addr["postal_code"]}'
+                    75, x, f"{addr.city}, {addr.state}, {addr.postal_code}"
                 )
                 x += 15
 
-            if addr["country"]:
-                self.PDF.drawString(75, x, self.shortenStrings(addr["country"], 18))
+            if addr.country:
+                self.PDF.drawString(75, x, self.shortenStrings(addr.country, 18))
                 x += 15
 
         self.PDF.drawString(
@@ -291,7 +291,7 @@ class InvoicePDF:
         """Add the customers details"""
 
         customer = self.invoice.customer
-        addr = customer.properties.get("address")
+        addr = customer.get_billing_address()
 
         self.fontSize(FONT_S, bold=True)
         self.PDF.drawString(250, 127, "Billed To")
@@ -304,16 +304,16 @@ class InvoicePDF:
         x = 175
 
         if addr:
-            self.PDF.drawString(250, 160, self.floor_string(addr["line1"]))
+            self.PDF.drawString(250, 160, self.floor_string(addr.line1))
 
-            if addr["city"] and addr["state"] and addr["postal_code"]:
+            if addr.city and addr.state and addr.postal_code:
                 self.PDF.drawString(
-                    250, x, f'{addr["city"]}, {addr["state"]}, {addr["postal_code"]}'
+                    250, x, f"{addr.city}, {addr.state}, {addr.postal_code}"
                 )
                 x += 15
 
-            if addr["country"]:
-                self.PDF.drawString(250, x, self.shortenStrings(addr["country"], 18))
+            if addr.country:
+                self.PDF.drawString(250, x, self.shortenStrings(addr.country, 18))
                 x += 15
 
         self.PDF.drawString(
@@ -412,15 +412,24 @@ class InvoicePDF:
                 for line_item in grouped_line_items[group]
                 if line_item.chargeable_item_type != CHARGEABLE_ITEM_TYPE.TAX
             )
+            # Subscription title
             pt1 = group[2]
-            pt2 = group[0]
-            if pt2 is not None:
-                pt2 = pt2[0]
-            pt3 = group[0]
-            if pt3 is not None:
-                pt3 = pt3[1]
+            # Subscription filter
+            subscription_filters = group[0]
+            if (
+                subscription_filters is not None
+                and len(subscription_filters) > 0
+                and subscription_filters[0] is not None
+            ):
+                pt2 = subscription_filters[0][0]
+                pt3 = subscription_filters[0][1]
+            else:
+                pt2 = None
+                pt3 = None
+
             if not pt2 and not pt3 and pt1:
                 subscription_title = pt1
+            # If there is no plan name
             elif not pt1:
                 subscription_title = "Credit"
             else:

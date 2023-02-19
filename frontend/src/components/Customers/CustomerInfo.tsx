@@ -5,6 +5,7 @@
 import React, { FC, useEffect } from "react";
 import { Column } from "@ant-design/plots";
 import { useQueryClient, useMutation } from "react-query";
+import { Tooltip } from "antd";
 
 import { Select, Form, Typography, Input } from "antd";
 import dayjs from "dayjs";
@@ -13,6 +14,7 @@ import { DraftInvoiceType } from "../../types/invoice-type";
 
 import { Customer } from "../../api/api";
 import { country_json } from "../../assets/country_codes";
+import { integrationsMap } from "../../types/payment-processor-type";
 
 import { CustomerType } from "../../types/customer-type";
 import { CustomerCostType } from "../../types/revenue-type";
@@ -84,6 +86,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
         obj.customer_id,
         obj.default_currency_code,
         obj.address,
+        obj.address,
         obj.tax_rate,
         obj.timezone
       ),
@@ -147,7 +150,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
       const result_list = day.cost_data.map((metric) => ({
         date: day.date,
         amount: metric.cost,
-        metric: metric.metric.metric_name,
+        metric: metric.metric.billable_metric_name,
         type: "cost",
       }));
 
@@ -159,6 +162,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
       });
       return result_list;
     });
+    console.log(newgraphdata);
     setTransformedGraphData(newgraphdata.flat(1));
   }, [cost_data]);
 
@@ -477,20 +481,33 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
                     Payment Method Connected
                   </div>
-                  <div className="flex gap-1">
-                    {" "}
-                    <div className="Inter">
-                      {data.payment_provider ? (
-                        <img
-                          width={25}
-                          src="https://cdn.neverbounce.com/images/integrations/square/stripe-square.png"
-                          alt="stripe logo"
-                        />
-                      ) : (
-                        "N/A"
-                      )}
+                  {data.payment_provider ? (
+                    <Tooltip title={data.payment_provider_id}>
+                      <div className="flex gap-1">
+                        <div className="Inter">
+                          {data.payment_provider === "stripe" ? (
+                            <img
+                              width={25}
+                              src={integrationsMap.stripe.icon}
+                              alt="stripe logo"
+                            />
+                          ) : data.payment_provider === "braintree" ? (
+                            <img
+                              width={25}
+                              src={integrationsMap.braintree.icon}
+                              alt="braintree logo"
+                            />
+                          ) : (
+                            "N/A"
+                          )}
+                        </div>
+                      </div>
+                    </Tooltip>
+                  ) : (
+                    <div className="flex gap-1">
+                      <div className="Inter">N/A</div>
                     </div>
-                  </div>
+                  )}
                 </CustomerCard.Item>
               </CustomerCard.Block>
             </CustomerCard.Container>

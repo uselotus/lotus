@@ -2,16 +2,19 @@ import React, { FC, useState } from "react";
 import { useQuery } from "react-query";
 import { useNavigate } from "react-router-dom";
 import { Divider, Typography, Row, Col, Modal, Input } from "antd";
+import Nango from "@nangohq/frontend";
+import { toast } from "react-toastify";
 import { PaymentProcessorIntegration, Organization } from "../../../../api/api";
 import {
   PaymentProcessorStatusType,
   integrationsMap,
   PaymentProcessorType,
+  PaymentProcessorConnectionRequestType,
+  BraintreeConnectionRequestType,
+  PaymentProcessorConnectionResponseType,
 } from "../../../../types/payment-processor-type";
 import { AppCard } from "../components/AppCard";
 import useGlobalStore from "../../../../stores/useGlobalstore";
-import { toast } from "react-toastify";
-import Nango from "@nangohq/frontend";
 
 const IntegrationsTab: FC = () => {
   const navigate = useNavigate();
@@ -24,11 +27,7 @@ const IntegrationsTab: FC = () => {
       )
   );
   const org = useGlobalStore((state) => state.org);
-  const [connectionId, setConnectionId] = useState("");
-  const [connectionIdName, setConnectionIdName] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [paymentProcessor, setPaymentProvider] =
-    useState<PaymentProcessorType | null>(null);
+
   var nango = new Nango({ publicKey: (import.meta as any).env.VITE_NANGO_PK }); // Nango Cloud
 
   const handleConnectWithPaymentProcessorClick = (
@@ -47,7 +46,7 @@ const IntegrationsTab: FC = () => {
         toast.error("Braintree is not supported in production environment.");
         return;
       } else {
-        unique_config_key = "test-btree-sbox";
+        unique_config_key = "braintree-sandbox";
       }
       nango
         .auth(unique_config_key, item.connection_id)
@@ -55,37 +54,29 @@ const IntegrationsTab: FC = () => {
           toast.success(
             `OAuth flow succeeded for provider "${result.providerConfigKey}"!`
           );
-          Organization.updateOrganizationPaymentProvider({
-            org_id: org.organization_id,
-            payment_provider: item.payment_provider_name,
-            payment_provider_id: result.connectionId,
-            nango_connected: true,
-          });
+          console.log("RESULT FROM OAUTH: ", result);
+          const inner_data: BraintreeConnectionRequestType = {
+            nango_connnected: true,
+            merchant_id: result.metadata.merchantId,
+          };
+          const request_data: PaymentProcessorConnectionRequestType = {
+            payment_processor: "braintree",
+            data: inner_data,
+          };
+
+          PaymentProcessorIntegration.connectPaymentProcessor(request_data)
+            .then((data: PaymentProcessorConnectionResponseType) => {
+              toast.success(data.details);
+            })
+            .catch((error) => {
+              toast.error(error.details);
+            });
           refetch();
         })
         .catch((error) => {
           toast.error(
             `There was an error in the OAuth flow for integration: ${error.message}`
           );
-        });
-    }
-  };
-
-  const handleUpdatePaymentProviderId = () => {
-    if (paymentProcessor !== null && connectionId !== "") {
-      Organization.updateOrganizationPaymentProvider({
-        org_id: org.organization_id,
-        payment_provider: paymentProcessor,
-        payment_provider_id: connectionId,
-      })
-        .then((res) => {
-          setShowModal(false);
-          setConnectionId("");
-          toast.success(`${connectionIdName} updated successfully.`);
-          refetch();
-        })
-        .catch((err) => {
-          toast.error("Something went wrong.");
         });
     }
   };
@@ -113,20 +104,10 @@ const IntegrationsTab: FC = () => {
                 }
                 selfHosted={item.self_hosted}
                 idName={
-                  integrationsMap[item.payment_provider_name].connection_id_name
+                  integrationsMap[item.payment_provider_name].account_id_name
                 }
-                idValue={item.connection_id}
+                idValue={item.account_id}
                 working={item.working}
-                handleClickId={() => {
-                  if (item.self_hosted === false) {
-                    setShowModal(true);
-                    setConnectionIdName(
-                      integrationsMap[item.payment_provider_name]
-                        .connection_id_name
-                    );
-                    setPaymentProvider(item.payment_provider_name);
-                  }
-                }}
               />
             </Col>
           ))}
@@ -154,19 +135,6 @@ const IntegrationsTab: FC = () => {
         </Col>
       </Row>
       <Divider />
-      {showModal && (
-        <Modal
-          title={`Enter ${connectionIdName}`}
-          onOk={handleUpdatePaymentProviderId}
-          onCancel={() => setShowModal(false)}
-          visible={showModal}
-        >
-          <Input
-            value={connectionId}
-            onChange={(e) => setConnectionId(e.target.value)}
-          />
-        </Modal>
-      )}
     </div>
   );
 };

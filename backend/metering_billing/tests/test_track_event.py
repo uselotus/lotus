@@ -106,7 +106,6 @@ class TestTrackEvent:
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-
         assert response.status_code == status.HTTP_201_CREATED
         # test batch insert after
         events_list = []
@@ -118,7 +117,7 @@ class TestTrackEvent:
                     "properties": event["properties"],
                     "time_created": event["time_created"],
                     "organization": setup_dict["org"],
-                    "cust_id": setup_dict["customer"].customer_id,
+                    "cust_id": setup_dict["customer_id"],
                 }
             )
         write_batch_events_to_db({setup_dict["org"].pk: events_list})
@@ -153,7 +152,6 @@ class TestTrackEvent:
             data=json.dumps(batch_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-
         assert response.status_code == status.HTTP_201_CREATED
 
         # test batch insert after

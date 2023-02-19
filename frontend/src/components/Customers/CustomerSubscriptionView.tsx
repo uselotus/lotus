@@ -48,6 +48,7 @@ import { AddonType } from "../../types/addon-type";
 import ChevronDown from "../base/ChevronDown";
 import CancelMenu from "./CancelMenu";
 import SwitchMenu from "./SwitchMenu";
+import CustomPagination from "../CustomPagination/CustomPagination";
 
 interface Props {
   customer_id: string;
@@ -80,8 +81,14 @@ interface PlanOption {
   disabled?: boolean;
 }
 
-const dropDownOptions = ["Switch Plan", "Attach Add-On", "Cancel Subscription"];
+const dropDownOptions = [
+  "Switch Plan",
+  "Attach Add-On",
+  "Cancel Renewal",
+  "Cancel Now",
+];
 
+const limit = 6;
 const SubscriptionView: FC<Props> = ({
   customer_id,
   subscriptions,
@@ -91,7 +98,13 @@ const SubscriptionView: FC<Props> = ({
   onPlanChange,
   onCreate,
 }) => {
+  const [cursor, setCursor] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [next, setNext] = useState<string>("");
+  const [previous, setPrev] = useState<string>("");
   const [selectedPlan, setSelectedPlan] = useState<string>();
+  const [paginatedSubscriptions, setPaginatedSubscriptions] =
+    useState<SubscriptionType[]>(subscriptions);
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const [addOnId, setAddOnId] = useState("");
@@ -107,9 +120,11 @@ const SubscriptionView: FC<Props> = ({
     plan_id: string;
     subscriptionFilters: SubscriptionType["subscription_filters"];
   }>();
-  const [cancelSubType, setCancelSubType] = useState<
-    "bill_now" | "remove_renewal"
-  >("bill_now");
+  const [cancelBody, setCancelBody] = useState<CancelSubscriptionBody>({
+    usage_behavior: "bill_full",
+    flat_fee_behavior: "charge_full",
+    invoicing_behavior: "invoice_now",
+  });
   const indexRef = useRef(0);
   const windowWidth = useMediaQuery();
   const [idtoPlan, setIDtoPlan] = useState<{ [key: string]: PlanType }>({});
@@ -147,6 +162,14 @@ const SubscriptionView: FC<Props> = ({
       },
     }
   );
+
+  const cancelSubscription = (plan_id, subscription_filters) => {
+    const query_params: CancelSubscriptionQueryParams = {
+      customer_id,
+    };
+    onCancel(cancelBody, query_params);
+    setShowModal(false);
+  };
 
   const cancelAllSubscriptions = () => {
     const query_params: CancelSubscriptionQueryParams = {
@@ -284,7 +307,51 @@ const SubscriptionView: FC<Props> = ({
           .includes(searchQuery.toLowerCase())
     );
   }, [subscriptions, searchQuery]);
-
+  const handleMovements = (direction: "LEFT" | "RIGHT" | "START") => {
+    switch (direction) {
+      case "LEFT":
+        setCursor(previous);
+        setCurrentPage(currentPage - 1);
+        setPaginatedSubscriptions(
+          subscriptions.slice(Number(previous) - limit, Number(previous))
+        );
+        setPrev(String(Number(previous) - 1 - limit));
+        setNext(String(Number(next) - 1 - limit));
+        setCursor(next);
+        return;
+      case "RIGHT":
+        if (Number(next) <= subscriptions.length) {
+          const newPage = currentPage + 1;
+          setCursor(next);
+          setCurrentPage(newPage);
+          setPaginatedSubscriptions(
+            subscriptions.slice(Number(previous), Number(next))
+          );
+          setNext(String(Number(next) + limit));
+          setPrev(String(Number(next)));
+        } else {
+          const newPage = currentPage + 1;
+          setCursor(next);
+          setCurrentPage(newPage);
+          setPaginatedSubscriptions(
+            subscriptions.slice(Number(previous), subscriptions.length - 1)
+          );
+          setNext(String(subscriptions.length - 1));
+          setPrev(previous);
+          setCursor("");
+        }
+        break;
+      case "START":
+        setCursor("");
+        setCurrentPage(1);
+        setPaginatedSubscriptions(subscriptions.slice(0, limit));
+        setNext(String(limit + limit));
+        setPrev(String(Number(limit)));
+        break;
+      default:
+        break;
+    }
+  };
   if (subscriptions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center">
@@ -361,383 +428,874 @@ const SubscriptionView: FC<Props> = ({
         </div>
       </div>
       <div className="flex flex-col justify-center">
-        <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-          {getFilteredSubscriptions().map((subPlan) => (
-            <>
-              <CustomerCard className="shadow-none" key={subPlan.end_date}>
-                <CustomerCard.Heading>
-                  <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
-                    <div>
-                      <div> {subPlan.billing_plan.plan_name}</div>
-                      {subPlan.subscription_filters ? (
-                        subPlan.subscription_filters.length > 0 ? (
-                          <p>
-                            {subPlan.subscription_filters.map((filter) => (
-                              <span key={filter.property_name}>
-                                {filter.property_name}: {filter.value}
-                              </span>
+        <div className="grid gap-20 min-h-[564px]  grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+          {searchQuery
+            ? getFilteredSubscriptions().map((subPlan) => (
+                <>
+                  <CustomerCard className="shadow-none" key={subPlan.end_date}>
+                    <CustomerCard.Heading>
+                      <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
+                        <div>
+                          <div> {subPlan.billing_plan.plan_name}</div>
+                          {subPlan.subscription_filters ? (
+                            subPlan.subscription_filters.length > 0 ? (
+                              <p>
+                                {subPlan.subscription_filters.map((filter) => (
+                                  <span key={filter.property_name}>
+                                    {filter.property_name}: {filter.value}
+                                  </span>
+                                ))}
+                              </p>
+                            ) : null
+                          ) : null}
+                        </div>
+                      </Typography.Title>
+                      <Divider />
+                      <CustomerCard.Container>
+                        <CustomerCard.Block>
+                          <CustomerCard.Item>
+                            <div className="font-normal text-card-text font-alliance whitespace-nowrap leading-4">
+                              Plan ID
+                            </div>
+                            <div className="flex gap-1 !text-card-grey font-menlo">
+                              {" "}
+                              <div>
+                                {createShortenedText(
+                                  subPlan.billing_plan.plan_id as string,
+                                  windowWidth >= 2500
+                                )}
+                              </div>
+                              <CopyText
+                                showIcon
+                                onlyIcon
+                                textToCopy={
+                                  subPlan.billing_plan.plan_id as string
+                                }
+                              />
+                            </div>
+                          </CustomerCard.Item>
+                          <CustomerCard.Item>
+                            <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                              Start Date
+                            </div>
+                            <div className="flex gap-1">
+                              {" "}
+                              <div className="Inter">
+                                {dayjs(subPlan.start_date).format("YYYY/MM/DD")}
+                              </div>
+                            </div>
+                          </CustomerCard.Item>
+                          <CustomerCard.Item>
+                            <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                              End Date
+                            </div>
+                            <div className="flex gap-1">
+                              {" "}
+                              <div className="Inter">
+                                {dayjs(subPlan.end_date).format("YYYY/MM/DD")}
+                              </div>
+                            </div>
+                          </CustomerCard.Item>
+                          <CustomerCard.Item>
+                            <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                              Renews
+                            </div>
+                            <div className="flex gap-1">
+                              {" "}
+                              <div className="Inter">
+                                <Badge
+                                  className={` ${
+                                    !subPlan.auto_renew
+                                      ? "bg-rose-700 text-white"
+                                      : "bg-emerald-100"
+                                  }`}
+                                >
+                                  <Badge.Content>
+                                    {String(subPlan.auto_renew)}
+                                  </Badge.Content>
+                                </Badge>
+                              </div>
+                            </div>
+                          </CustomerCard.Item>
+                        </CustomerCard.Block>
+                        <Divider />
+                        <div className="flex gap-4 items-center">
+                          <DropdownComponent>
+                            <DropdownComponent.Trigger>
+                              <button
+                                type="button"
+                                className="relative w-full min-w-[151px] flex items-center gap-4  cursor-default p-6 mt-4 bg-[#fff4e9] rounded-md border border-[#fff4e9]  py-2 pl-3 pr-10 text-left shadow-sm  focus:outline-none  sm:text-sm hover:text-black hover:bg-[#f8e8d7]"
+                                aria-haspopup="listbox"
+                                aria-expanded="true"
+                                aria-labelledby="listbox-label"
+                              >
+                                <span className="block truncate">
+                                  Plan Actions
+                                </span>
+                                <ChevronDown />
+                              </button>
+                            </DropdownComponent.Trigger>
+                            <DropdownComponent.Container className="!bg-[#fff4e9] ">
+                              {dropDownOptions.map((key, index) => (
+                                <DropdownComponent.MenuItem
+                                  className="hover:text-black hover:bg-[#f8e8d7] whitespace-nowrap"
+                                  // eslint-disable-next-line react/no-array-index-key
+                                  key={index}
+                                  onSelect={() => {
+                                    switch (index) {
+                                      case 0:
+                                        setTitle("Switch Plan");
+
+                                        setShowModal(true);
+                                        indexRef.current = index;
+                                        break;
+                                      case 1:
+                                        setTitle(
+                                          `Attach Add-On to ${subPlan.billing_plan.plan_name}`
+                                        );
+
+                                        setShowModal(true);
+                                        indexRef.current = index;
+                                        break;
+                                      case 2:
+                                        setTitle("Cancel Renewal");
+
+                                        setShowModal(true);
+                                        indexRef.current = index;
+                                        break;
+
+                                      default:
+                                        setTitle("Are you sure?");
+
+                                        setShowModal(true);
+                                        indexRef.current = index;
+                                    }
+                                  }}
+                                >
+                                  {key}
+                                </DropdownComponent.MenuItem>
+                              ))}
+                            </DropdownComponent.Container>
+                          </DropdownComponent>
+                          <div className=" flex-row flex font-alliance  items-center border-inherit w-full">
+                            {subPlan.addons.map((addon) => (
+                              <div
+                                aria-hidden
+                                onClick={() => {
+                                  navigate(`/add-ons/${addon.addon.addon_id}`);
+                                }}
+                                key={addon.addon.addon_id}
+                                className="flex gap-2 items-center p-2 mt-4 bg-dark rounded-md border text-white border-[#fff4e9] py-2 pl-3 pr-10 text-left shadow-sm  focus:outline-none "
+                              >
+                                {addon.addon.addon_name}
+                              </div>
                             ))}
-                          </p>
-                        ) : null
-                      ) : null}
-                    </div>
-                  </Typography.Title>
-                  <Divider />
-                  <CustomerCard.Container>
-                    <CustomerCard.Block>
-                      <CustomerCard.Item>
-                        <div className="font-normal text-card-text font-alliance whitespace-nowrap leading-4">
-                          Plan ID
-                        </div>
-                        <div className="flex gap-1 !text-card-grey font-menlo">
-                          {" "}
-                          <div>
-                            {createShortenedText(
-                              subPlan.billing_plan.plan_id as string,
-                              windowWidth >= 2500
-                            )}
                           </div>
-                          <CopyText
-                            showIcon
-                            onlyIcon
-                            textToCopy={subPlan.billing_plan.plan_id as string}
+                        </div>
+                      </CustomerCard.Container>
+                    </CustomerCard.Heading>
+                  </CustomerCard>
+                  {showModal ? (
+                    <Modal
+                      transitionName=""
+                      maskTransitionName=""
+                      className="font-alliance"
+                      title={title}
+                      visible={showModal}
+                      cancelButtonProps={{ hidden: true }}
+                      closeIcon={
+                        <div style={{ display: "none" }} className="hidden" />
+                      }
+                      onCancel={() => {
+                        setShowModal(false);
+                        setTitle("");
+                      }}
+                      footer={
+                        indexRef.current === 0
+                          ? [
+                              <Button
+                                key="back"
+                                onClick={() => setShowModal(false)}
+                              >
+                                Cancel
+                              </Button>,
+                              <Button
+                                key="switch_plan"
+                                type="primary"
+                                className="hover:!bg-primary-700 "
+                                style={{
+                                  background: "#C3986B",
+                                  borderColor: "#C3986B",
+                                }}
+                                onClick={() => {
+                                  onChange(
+                                    cascaderOptions?.value as string,
+                                    cascaderOptions?.plan_id as string,
+                                    cascaderOptions!.subscriptionFilters
+                                  );
+                                  setShowModal(false);
+                                }}
+                              >
+                                Switch
+                              </Button>,
+                            ]
+                          : indexRef.current === 1
+                          ? [
+                              <Button
+                                key="back"
+                                onClick={() => setShowModal(false)}
+                              >
+                                Cancel
+                              </Button>,
+
+                              <Button
+                                key="submit"
+                                type="primary"
+                                className="hover:!bg-primary-700"
+                                style={{
+                                  background: "#C3986B",
+                                  borderColor: "#C3986B",
+                                }}
+                                disabled={addOnId.length < 1}
+                                onClick={submitAddOns}
+                              >
+                                Add
+                              </Button>,
+                            ]
+                          : indexRef.current === 2
+                          ? [
+                              <Button
+                                key="back"
+                                onClick={() => setShowModal(false)}
+                              >
+                                Cancel
+                              </Button>,
+                              <Button
+                                key="submit"
+                                type="primary"
+                                className="hover:!bg-primary-700"
+                                onClick={() => {
+                                  turnAutoRenewOff(
+                                    subPlan.billing_plan.plan_id,
+                                    subPlan.subscription_filters
+                                  );
+                                }}
+                              >
+                                Cancel Renewal
+                              </Button>,
+                            ]
+                          : indexRef.current === 3
+                          ? [
+                              <Button
+                                key="back"
+                                onClick={() => setShowModal(false)}
+                              >
+                                Back
+                              </Button>,
+                              <Button
+                                key="submit"
+                                type="primary"
+                                className="!bg-rose-600 border !border-rose-600"
+                                onClick={() => {
+                                  cancelSubscription(
+                                    subPlan.billing_plan.plan_id,
+                                    subPlan.subscription_filters
+                                  );
+                                }}
+                              >
+                                Cancel Plan
+                              </Button>,
+                            ]
+                          : indexRef.current === 5
+                          ? [
+                              <Button
+                                key="back"
+                                onClick={() => setShowModal(false)}
+                              >
+                                Back
+                              </Button>,
+                              <Button
+                                key="submit"
+                                type="primary"
+                                className="hover:!bg-primary-700"
+                                onClick={() => {
+                                  handleAttachPlanSubmit();
+                                  setShowModal(false);
+                                }}
+                              >
+                                Start Subscription
+                              </Button>,
+                            ]
+                          : indexRef.current === 6
+                          ? [
+                              <Button
+                                key="back"
+                                onClick={() => setShowModal(false)}
+                              >
+                                Back
+                              </Button>,
+                              <Button
+                                key="submit"
+                                type="primary"
+                                className="!bg-rose-600 border !border-rose-600"
+                                onClick={() => {
+                                  cancelAllSubscriptions();
+                                }}
+                              >
+                                Cancel All Subscriptions
+                              </Button>,
+                            ]
+                          : null
+                      }
+                    >
+                      <div className="flex flex-col justify-center items-center gap-4">
+                        {indexRef.current === 0 ? (
+                          <SwitchMenu
+                            plan_id={subPlan.billing_plan.plan_id}
+                            subscription_filters={subPlan.subscription_filters}
+                            subscriptions={subscriptions}
+                            plansWithSwitchOptions={(plan_id) =>
+                              plansWithSwitchOptions(plan_id)
+                            }
+                            setCascaderOptions={(args) =>
+                              setCascaderOptions(args)
+                            }
                           />
-                        </div>
-                      </CustomerCard.Item>
-                      <CustomerCard.Item>
-                        <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
-                          Start Date
-                        </div>
-                        <div className="flex gap-1">
-                          {" "}
-                          <div className="Inter">
-                            {dayjs(subPlan.start_date).format("YYYY/MM/DD")}
-                          </div>
-                        </div>
-                      </CustomerCard.Item>
-                      <CustomerCard.Item>
-                        <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
-                          End Date
-                        </div>
-                        <div className="flex gap-1">
-                          {" "}
-                          <div className="Inter">
-                            {dayjs(subPlan.end_date).format("YYYY/MM/DD")}
-                          </div>
-                        </div>
-                      </CustomerCard.Item>
-                      <CustomerCard.Item>
-                        <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
-                          Renews
-                        </div>
-                        <div className="flex gap-1">
-                          {" "}
-                          <div className="Inter">
-                            <Badge
-                              className={` ${
-                                !subPlan.auto_renew
-                                  ? "bg-rose-700 text-white"
-                                  : "bg-emerald-100"
-                              }`}
-                            >
-                              <Badge.Content>
-                                {String(subPlan.auto_renew)}
-                              </Badge.Content>
-                            </Badge>
-                          </div>
-                        </div>
-                      </CustomerCard.Item>
-                    </CustomerCard.Block>
-                    <Divider />
-                    <div className="flex gap-4 items-center">
-                      <DropdownComponent>
-                        <DropdownComponent.Trigger>
-                          <button
-                            type="button"
-                            className="relative w-full min-w-[151px] flex items-center gap-4  cursor-default p-6 mt-4 bg-[#fff4e9] rounded-md border border-[#fff4e9]  py-2 pl-3 pr-10 text-left shadow-sm  focus:outline-none  sm:text-sm hover:text-black hover:bg-[#f8e8d7]"
-                            aria-haspopup="listbox"
-                            aria-expanded="true"
-                            aria-labelledby="listbox-label"
+                        ) : indexRef.current === 5 ? (
+                          <Select
+                            showSearch
+                            placeholder="Select a plan"
+                            onChange={selectPlan}
+                            options={planList}
+                            optionLabelProp="label"
                           >
-                            <span className="block truncate">Plan Actions</span>
-                            <ChevronDown />
-                          </button>
-                        </DropdownComponent.Trigger>
-                        <DropdownComponent.Container className="!bg-[#fff4e9] ">
-                          {dropDownOptions.map((key, index) => (
-                            <DropdownComponent.MenuItem
-                              className="hover:text-black hover:bg-[#f8e8d7] whitespace-nowrap"
-                              // eslint-disable-next-line react/no-array-index-key
-                              key={index}
-                              onSelect={() => {
-                                switch (index) {
-                                  case 0:
-                                    setTitle("Switch Plan");
-
-                                    setShowModal(true);
-                                    indexRef.current = index;
-                                    break;
-                                  case 1:
-                                    setTitle(
-                                      `Attach Add-On to ${subPlan.billing_plan.plan_name}`
+                            {" "}
+                          </Select>
+                        ) : indexRef.current === 6 ? null : indexRef.current ===
+                          2 ? (
+                          <CancelMenu
+                            setRecurringBehavior={(e) =>
+                              setCancelBody({
+                                ...cancelBody,
+                                flat_fee_behavior: e,
+                              })
+                            }
+                            setUsageBehavior={(e) =>
+                              setCancelBody({
+                                ...cancelBody,
+                                usage_behavior: e,
+                              })
+                            }
+                            setInvoiceBehavior={(e) =>
+                              setCancelBody({
+                                ...cancelBody,
+                                invoicing_behavior: e,
+                              })
+                            }
+                          />
+                        ) : (
+                          <Form.Provider>
+                            <Form
+                              form={form}
+                              name="create_subscriptions_addons"
+                            >
+                              <Form.Item name="addon_id">
+                                <label
+                                  htmlFor="addon_id"
+                                  className="mb-4 required"
+                                >
+                                  Select Add-On
+                                </label>
+                                <Select
+                                  id="addon_id"
+                                  placeholder="Select An Option"
+                                  onChange={(e) => {
+                                    setAttachToPlanId(
+                                      subPlan.billing_plan.plan_id
                                     );
+                                    setAddOnId(e);
+                                    const filters =
+                                      subPlan.subscription_filters;
 
-                                    setShowModal(true);
-                                    indexRef.current = index;
-                                    break;
-                                  default:
-                                    setTitle("Are you sure?");
-
-                                    setShowModal(true);
-                                    indexRef.current = index;
-                                }
-                              }}
-                            >
-                              {key}
-                            </DropdownComponent.MenuItem>
-                          ))}
-                        </DropdownComponent.Container>
-                      </DropdownComponent>
-                      <div className=" flex-row flex font-alliance  items-center border-inherit w-full">
-                        {subPlan.addons.map((addon) => (
-                          <div
-                            aria-hidden
-                            onClick={() => {
-                              navigate(`/add-ons/${addon.addon.addon_id}`);
-                            }}
-                            key={addon.addon.addon_id}
-                            className="flex gap-2 items-center p-2 mt-4 bg-dark rounded-md border text-white border-[#fff4e9] py-2 pl-3 pr-10 text-left shadow-sm  focus:outline-none "
-                          >
-                            {addon.addon.addon_name}
-                          </div>
-                        ))}
+                                    if (filters && filters.length > 0) {
+                                      setAttachToSubscriptionFilters(filters);
+                                    } else {
+                                      setAttachToSubscriptionFilters(undefined);
+                                    }
+                                  }}
+                                  style={{ width: "100%" }}
+                                >
+                                  {addOns && !isLoading
+                                    ? addOns.map((addOn) => (
+                                        <Select.Option
+                                          key={addOn.addon_id}
+                                          value={addOn.addon_id}
+                                        >
+                                          {addOn.addon_name}
+                                        </Select.Option>
+                                      ))
+                                    : null}
+                                </Select>
+                              </Form.Item>
+                              <Form.Item name="quantity">
+                                <label htmlFor="quantity" className="mb-4">
+                                  Quantity
+                                </label>
+                                <InputNumber
+                                  id="quantity"
+                                  style={{ width: "100%" }}
+                                  type="number"
+                                  onChange={(e) => {
+                                    setQuantity(e!);
+                                  }}
+                                  defaultValue={1}
+                                  controls
+                                />
+                              </Form.Item>
+                            </Form>
+                          </Form.Provider>
+                        )}
                       </div>
-                    </div>
-                  </CustomerCard.Container>
-                </CustomerCard.Heading>
-              </CustomerCard>
-              {showModal ? (
-                <Modal
-                  transitionName=""
-                  maskTransitionName=""
-                  className="font-alliance"
-                  title={title}
-                  visible={showModal}
-                  cancelButtonProps={{ hidden: true }}
-                  closeIcon={
-                    <div style={{ display: "none" }} className="hidden" />
-                  }
-                  onCancel={() => {
-                    setShowModal(false);
-                    setTitle("");
-                  }}
-                  footer={
-                    indexRef.current === 0
-                      ? [
-                          <Button
-                            key="back"
-                            onClick={() => setShowModal(false)}
-                          >
-                            Cancel
-                          </Button>,
-                          <Button
-                            key="switch_plan"
-                            type="primary"
-                            className="hover:!bg-primary-700 "
-                            style={{
-                              background: "#C3986B",
-                              borderColor: "#C3986B",
-                            }}
-                            onClick={() => {
-                              onChange(
-                                cascaderOptions?.value as string,
-                                cascaderOptions?.plan_id as string,
-                                cascaderOptions!.subscriptionFilters
-                              );
-                              setShowModal(false);
-                            }}
-                          >
-                            Switch
-                          </Button>,
-                        ]
-                      : indexRef.current === 1
-                      ? [
-                          <Button
-                            key="back"
-                            onClick={() => setShowModal(false)}
-                          >
-                            Cancel
-                          </Button>,
-
-                          <Button
-                            key="submit"
-                            type="primary"
-                            className="hover:!bg-primary-700"
-                            style={{
-                              background: "#C3986B",
-                              borderColor: "#C3986B",
-                            }}
-                            disabled={addOnId.length < 1}
-                            onClick={submitAddOns}
-                          >
-                            Add
-                          </Button>,
-                        ]
-                      : indexRef.current === 2
-                      ? [
-                          <Button
-                            key="back"
-                            onClick={() => setShowModal(false)}
-                          >
-                            Back
-                          </Button>,
-                          <Button
-                            key="submit"
-                            type="primary"
-                            className="!bg-rose-600 border !border-rose-600"
-                            onClick={() => {
-                              if (cancelSubType === "bill_now") {
-                                cancelAndBill(
-                                  subPlan.billing_plan.plan_id,
-                                  subPlan.subscription_filters
-                                );
-                              } else {
-                                turnAutoRenewOff(
-                                  subPlan.billing_plan.plan_id,
-                                  subPlan.subscription_filters
-                                );
-                              }
-                            }}
-                          >
-                            Cancel Plan
-                          </Button>,
-                        ]
-                      : indexRef.current === 5
-                      ? [
-                          <Button
-                            key="back"
-                            onClick={() => setShowModal(false)}
-                          >
-                            Back
-                          </Button>,
-                          <Button
-                            key="submit"
-                            type="primary"
-                            className="hover:!bg-primary-700"
-                            onClick={() => {
-                              handleAttachPlanSubmit();
-                              setShowModal(false);
-                            }}
-                          >
-                            Start Subscription
-                          </Button>,
-                        ]
-                      : indexRef.current === 6
-                      ? [
-                          <Button
-                            key="back"
-                            onClick={() => setShowModal(false)}
-                          >
-                            Back
-                          </Button>,
-                          <Button
-                            key="submit"
-                            type="primary"
-                            className="!bg-rose-600 border !border-rose-600"
-                            onClick={() => {
-                              cancelAllSubscriptions();
-                            }}
-                          >
-                            Cancel All Subscriptions
-                          </Button>,
-                        ]
-                      : null
-                  }
-                >
-                  <div className="flex flex-col justify-center items-center gap-4">
-                    {indexRef.current === 0 ? (
-                      <SwitchMenu
-                        plan_id={subPlan.billing_plan.plan_id}
-                        subscription_filters={subPlan.subscription_filters}
-                        subscriptions={subscriptions}
-                        plansWithSwitchOptions={(plan_id) =>
-                          plansWithSwitchOptions(plan_id)
-                        }
-                        setCascaderOptions={(args) => setCascaderOptions(args)}
-                      />
-                    ) : indexRef.current === 5 ? (
-                      <Select
-                        showSearch
-                        placeholder="Select a plan"
-                        onChange={selectPlan}
-                        options={planList}
-                        optionLabelProp="label"
-                      >
-                        {" "}
-                      </Select>
-                    ) : indexRef.current === 6 ? null : indexRef.current ===
-                      2 ? (
-                      <CancelMenu
-                        setCancelSubType={(e) => setCancelSubType(e)}
-                      />
-                    ) : (
-                      <Form.Provider>
-                        <Form form={form} name="create_subscriptions_addons">
-                          <Form.Item name="addon_id">
-                            <label htmlFor="addon_id" className="mb-4 required">
-                              Select Add-On
-                            </label>
-                            <Select
-                              id="addon_id"
-                              placeholder="Select An Option"
-                              onChange={(e) => {
-                                setAttachToPlanId(subPlan.billing_plan.plan_id);
-                                setAddOnId(e);
-                                const filters = subPlan.subscription_filters;
-
-                                if (filters && filters.length > 0) {
-                                  setAttachToSubscriptionFilters(filters);
-                                } else {
-                                  setAttachToSubscriptionFilters(undefined);
+                    </Modal>
+                  ) : null}
+                </>
+              ))
+            : paginatedSubscriptions.map((subPlan) => (
+                <>
+                  <CustomerCard
+                    className="shadow-none h-[270px]"
+                    key={subPlan.end_date}
+                  >
+                    <CustomerCard.Heading>
+                      <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
+                        <div>
+                          <div> {subPlan.billing_plan.plan_name}</div>
+                          {subPlan.subscription_filters ? (
+                            subPlan.subscription_filters.length > 0 ? (
+                              <p>
+                                {subPlan.subscription_filters.map((filter) => (
+                                  <span key={filter.property_name}>
+                                    {filter.property_name}: {filter.value}
+                                  </span>
+                                ))}
+                              </p>
+                            ) : null
+                          ) : null}
+                        </div>
+                      </Typography.Title>
+                      <Divider />
+                      <CustomerCard.Container>
+                        <CustomerCard.Block>
+                          <CustomerCard.Item>
+                            <div className="font-normal text-card-text font-alliance whitespace-nowrap leading-4">
+                              Plan ID
+                            </div>
+                            <div className="flex gap-1 !text-card-grey font-menlo">
+                              {" "}
+                              <div>
+                                {createShortenedText(
+                                  subPlan.billing_plan.plan_id as string,
+                                  windowWidth >= 2500
+                                )}
+                              </div>
+                              <CopyText
+                                showIcon
+                                onlyIcon
+                                textToCopy={
+                                  subPlan.billing_plan.plan_id as string
                                 }
-                              }}
-                              style={{ width: "100%" }}
+                              />
+                            </div>
+                          </CustomerCard.Item>
+                          <CustomerCard.Item>
+                            <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                              Start Date
+                            </div>
+                            <div className="flex gap-1">
+                              {" "}
+                              <div className="Inter">
+                                {dayjs(subPlan.start_date).format("YYYY/MM/DD")}
+                              </div>
+                            </div>
+                          </CustomerCard.Item>
+                          <CustomerCard.Item>
+                            <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                              End Date
+                            </div>
+                            <div className="flex gap-1">
+                              {" "}
+                              <div className="Inter">
+                                {dayjs(subPlan.end_date).format("YYYY/MM/DD")}
+                              </div>
+                            </div>
+                          </CustomerCard.Item>
+                          <CustomerCard.Item>
+                            <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                              Renews
+                            </div>
+                            <div className="flex gap-1">
+                              {" "}
+                              <div className="Inter">
+                                <Badge
+                                  className={` ${
+                                    !subPlan.auto_renew
+                                      ? "bg-rose-700 text-white"
+                                      : "bg-emerald-100"
+                                  }`}
+                                >
+                                  <Badge.Content>
+                                    {String(subPlan.auto_renew)}
+                                  </Badge.Content>
+                                </Badge>
+                              </div>
+                            </div>
+                          </CustomerCard.Item>
+                        </CustomerCard.Block>
+                        <Divider />
+                        <div className="flex gap-4 items-center">
+                          <DropdownComponent>
+                            <DropdownComponent.Trigger>
+                              <button
+                                type="button"
+                                className="relative w-full min-w-[151px] flex items-center gap-4  cursor-default p-6 mt-4 bg-[#fff4e9] rounded-md border border-[#fff4e9]  py-2 pl-3 pr-10 text-left shadow-sm  focus:outline-none  sm:text-sm hover:text-black hover:bg-[#f8e8d7]"
+                                aria-haspopup="listbox"
+                                aria-expanded="true"
+                                aria-labelledby="listbox-label"
+                              >
+                                <span className="block truncate">
+                                  Plan Actions
+                                </span>
+                                <ChevronDown />
+                              </button>
+                            </DropdownComponent.Trigger>
+                            <DropdownComponent.Container className="!bg-[#fff4e9] ">
+                              {dropDownOptions.map((key, index) => (
+                                <DropdownComponent.MenuItem
+                                  className="hover:text-black hover:bg-[#f8e8d7] whitespace-nowrap"
+                                  // eslint-disable-next-line react/no-array-index-key
+                                  key={index}
+                                  onSelect={() => {
+                                    switch (index) {
+                                      case 0:
+                                        setTitle("Switch Plan");
+
+                                        setShowModal(true);
+                                        indexRef.current = index;
+                                        break;
+                                      case 1:
+                                        setTitle(
+                                          `Attach Add-On to ${subPlan.billing_plan.plan_name}`
+                                        );
+
+                                        setShowModal(true);
+                                        indexRef.current = index;
+                                        break;
+                                      default:
+                                        setTitle("Are you sure?");
+
+                                        setShowModal(true);
+                                        indexRef.current = index;
+                                    }
+                                  }}
+                                >
+                                  {key}
+                                </DropdownComponent.MenuItem>
+                              ))}
+                            </DropdownComponent.Container>
+                          </DropdownComponent>
+                          <div className=" flex-row flex font-alliance  items-center border-inherit w-full">
+                            {subPlan.addons.map((addon) => (
+                              <div
+                                aria-hidden
+                                onClick={() => {
+                                  navigate(`/add-ons/${addon.addon.addon_id}`);
+                                }}
+                                key={addon.addon.addon_id}
+                                className="flex gap-2 items-center p-2 mt-4 bg-dark rounded-md border text-white border-[#fff4e9] py-2 pl-3 pr-10 text-left shadow-sm  focus:outline-none "
+                              >
+                                {addon.addon.addon_name}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </CustomerCard.Container>
+                    </CustomerCard.Heading>
+                  </CustomerCard>
+
+                  {showModal ? (
+                    <Modal
+                      transitionName=""
+                      maskTransitionName=""
+                      className="font-alliance"
+                      title={title}
+                      visible={showModal}
+                      cancelButtonProps={{ hidden: true }}
+                      closeIcon={
+                        <div style={{ display: "none" }} className="hidden" />
+                      }
+                      onCancel={() => {
+                        setShowModal(false);
+                        setTitle("");
+                      }}
+                      footer={
+                        indexRef.current === 0
+                          ? [
+                              <Button
+                                key="back"
+                                onClick={() => setShowModal(false)}
+                              >
+                                Cancel
+                              </Button>,
+                              <Button
+                                key="switch_plan"
+                                type="primary"
+                                className="hover:!bg-primary-700 "
+                                style={{
+                                  background: "#C3986B",
+                                  borderColor: "#C3986B",
+                                }}
+                                onClick={() => {
+                                  onChange(
+                                    cascaderOptions?.value as string,
+                                    cascaderOptions?.plan_id as string,
+                                    cascaderOptions!.subscriptionFilters
+                                  );
+                                  setShowModal(false);
+                                }}
+                              >
+                                Switch
+                              </Button>,
+                            ]
+                          : indexRef.current === 1
+                          ? [
+                              <Button
+                                key="back"
+                                onClick={() => setShowModal(false)}
+                              >
+                                Cancel
+                              </Button>,
+
+                              <Button
+                                key="submit"
+                                type="primary"
+                                className="hover:!bg-primary-700"
+                                style={{
+                                  background: "#C3986B",
+                                  borderColor: "#C3986B",
+                                }}
+                                disabled={addOnId.length < 1}
+                                onClick={submitAddOns}
+                              >
+                                Add
+                              </Button>,
+                            ]
+                          : indexRef.current === 2
+                          ? [
+                              <Button
+                                key="back"
+                                onClick={() => setShowModal(false)}
+                              >
+                                Back
+                              </Button>,
+                              <Button
+                                key="submit"
+                                type="primary"
+                                className="!bg-rose-600 border !border-rose-600"
+                                onClick={() => {
+                                  turnAutoRenewOff(
+                                    subPlan.billing_plan.plan_id,
+                                    subPlan.subscription_filters
+                                  );
+                                }}
+                              >
+                                Cancel Renewal
+                              </Button>,
+                            ]
+                          : indexRef.current === 3
+                          ? [
+                              <Button
+                                key="back"
+                                onClick={() => setShowModal(false)}
+                              >
+                                Back
+                              </Button>,
+                              <Button
+                                key="submit"
+                                type="primary"
+                                className="!bg-rose-600 border !border-rose-600"
+                                onClick={() => {
+                                  cancelSubscription(
+                                    subPlan.billing_plan.plan_id,
+                                    subPlan.subscription_filters
+                                  );
+                                }}
+                              >
+                                Cancel Plan
+                              </Button>,
+                            ]
+                          : indexRef.current === 5
+                          ? [
+                              <Button
+                                key="back"
+                                onClick={() => setShowModal(false)}
+                              >
+                                Back
+                              </Button>,
+                              <Button
+                                key="submit"
+                                type="primary"
+                                className="hover:!bg-primary-700"
+                                onClick={() => {
+                                  handleAttachPlanSubmit();
+                                  setShowModal(false);
+                                }}
+                              >
+                                Start Subscription
+                              </Button>,
+                            ]
+                          : indexRef.current === 6
+                          ? [
+                              <Button
+                                key="back"
+                                onClick={() => setShowModal(false)}
+                              >
+                                Back
+                              </Button>,
+                              <Button
+                                key="submit"
+                                type="primary"
+                                className="!bg-rose-600 border !border-rose-600"
+                                onClick={() => {
+                                  cancelAllSubscriptions();
+                                }}
+                              >
+                                Cancel All Subscriptions
+                              </Button>,
+                            ]
+                          : null
+                      }
+                    >
+                      <div className="flex flex-col justify-center items-center gap-4">
+                        {indexRef.current === 0 ? (
+                          <SwitchMenu
+                            plan_id={subPlan.billing_plan.plan_id}
+                            subscription_filters={subPlan.subscription_filters}
+                            subscriptions={subscriptions}
+                            plansWithSwitchOptions={(plan_id) =>
+                              plansWithSwitchOptions(plan_id)
+                            }
+                            setCascaderOptions={(args) =>
+                              setCascaderOptions(args)
+                            }
+                          />
+                        ) : indexRef.current === 5 ? (
+                          <Select
+                            showSearch
+                            placeholder="Select a plan"
+                            onChange={selectPlan}
+                            options={planList}
+                            optionLabelProp="label"
+                          >
+                            {" "}
+                          </Select>
+                        ) : indexRef.current === 2 ? null : indexRef.current ===
+                          6 ? null : indexRef.current === 3 ? (
+                          <CancelMenu
+                            setRecurringBehavior={(e) =>
+                              setCancelBody({
+                                ...cancelBody,
+                                flat_fee_behavior: e,
+                              })
+                            }
+                            setUsageBehavior={(e) =>
+                              setCancelBody({
+                                ...cancelBody,
+                                usage_behavior: e,
+                              })
+                            }
+                            setInvoiceBehavior={(e) =>
+                              setCancelBody({
+                                ...cancelBody,
+                                invoicing_behavior: e,
+                              })
+                            }
+                          />
+                        ) : (
+                          <Form.Provider>
+                            <Form
+                              form={form}
+                              name="create_subscriptions_addons"
                             >
-                              {addOns && !isLoading
-                                ? addOns.map((addOn) => (
-                                    <Select.Option
-                                      key={addOn.addon_id}
-                                      value={addOn.addon_id}
-                                    >
-                                      {addOn.addon_name}
-                                    </Select.Option>
-                                  ))
-                                : null}
-                            </Select>
-                          </Form.Item>
-                          <Form.Item name="quantity">
-                            <label htmlFor="quantity" className="mb-4">
-                              Quantity
-                            </label>
-                            <InputNumber
-                              id="quantity"
-                              style={{ width: "100%" }}
-                              type="number"
-                              onChange={(e) => {
-                                setQuantity(e!);
-                              }}
-                              defaultValue={1}
-                              controls
-                            />
-                          </Form.Item>
-                        </Form>
-                      </Form.Provider>
-                    )}
-                  </div>
-                </Modal>
-              ) : null}
-            </>
-          ))}
+                              <Form.Item name="addon_id">
+                                <label
+                                  htmlFor="addon_id"
+                                  className="mb-4 required"
+                                >
+                                  Select Add-On
+                                </label>
+                                <Select
+                                  id="addon_id"
+                                  placeholder="Select An Option"
+                                  onChange={(e) => {
+                                    setAttachToPlanId(
+                                      subPlan.billing_plan.plan_id
+                                    );
+                                    setAddOnId(e);
+                                    const filters =
+                                      subPlan.subscription_filters;
+
+                                    if (filters && filters.length > 0) {
+                                      setAttachToSubscriptionFilters(filters);
+                                    } else {
+                                      setAttachToSubscriptionFilters(undefined);
+                                    }
+                                  }}
+                                  style={{ width: "100%" }}
+                                >
+                                  {addOns && !isLoading
+                                    ? addOns.map((addOn) => (
+                                        <Select.Option
+                                          key={addOn.addon_id}
+                                          value={addOn.addon_id}
+                                        >
+                                          {addOn.addon_name}
+                                        </Select.Option>
+                                      ))
+                                    : null}
+                                </Select>
+                              </Form.Item>
+                              <Form.Item name="quantity">
+                                <label htmlFor="quantity" className="mb-4">
+                                  Quantity
+                                </label>
+                                <InputNumber
+                                  id="quantity"
+                                  style={{ width: "100%" }}
+                                  type="number"
+                                  onChange={(e) => {
+                                    setQuantity(e!);
+                                  }}
+                                  defaultValue={1}
+                                  controls
+                                />
+                              </Form.Item>
+                            </Form>
+                          </Form.Provider>
+                        )}
+                      </div>
+                    </Modal>
+                  ) : null}
+                </>
+              ))}
+        </div>
+        <div className="mt-4">
+          <CustomPagination
+            cursor={cursor}
+            previous={previous}
+            next={next}
+            currentPage={currentPage}
+            handleMovements={handleMovements}
+          />
         </div>
         <DraftInvoice customer_id={customer_id} />
       </div>

@@ -66,6 +66,7 @@ import {
   OrganizationType,
   PaginatedActionsType,
   UpdateOrganizationPPType,
+  UpdateOrganizationType,
 } from "../types/account-type";
 import { FeatureType, CreateFeatureType } from "../types/feature-type";
 import {
@@ -75,6 +76,7 @@ import {
 } from "../types/experiment-type";
 import {
   DraftInvoiceType,
+  InvoiceType,
   MarkPaymentStatusAsPaid,
 } from "../types/invoice-type";
 import { CreateCreditType, CreditType } from "../types/balance-adjustment";
@@ -132,13 +134,15 @@ export const Customer = {
   updateCustomer: (
     customer_id: string,
     default_currency_code: string,
-    address: CustomerType["address"],
+    shipping_address: CustomerType["shipping_address"],
+    billing_address: CustomerType["billing_address"],
     tax_rate: number,
     timezone: string
   ): Promise<CustomerType> =>
     requests.patch(`app/customers/${customer_id}/`, {
       default_currency_code,
-      address,
+      shipping_address,
+      billing_address,
       tax_rate,
       timezone,
     }),
@@ -374,21 +378,9 @@ export const Organization = {
     requests.get("app/actions/", { params: { c: cursor } }),
   updateOrganization: (
     org_id: string,
-    default_currency_code: string,
-    tax_rate: number,
-    timezone: string,
-    payment_grace_period: number,
-    address: OrganizationType["address"],
-    subscription_filter_keys: string[]
+    input: UpdateOrganizationType
   ): Promise<OrganizationType> =>
-    requests.patch(`app/organizations/${org_id}/`, {
-      default_currency_code,
-      tax_rate,
-      timezone,
-      payment_grace_period,
-      address,
-      subscription_filter_keys,
-    }),
+    requests.patch(`app/organizations/${org_id}/`, input),
   updateOrganizationPaymentProvider: (
     data: UpdateOrganizationPPType
   ): Promise<OrganizationType> => {
@@ -544,6 +536,8 @@ export const Invoices = {
     requests.patch(`app/invoices/${data.invoice_id}/`, {
       payment_status: data.payment_status,
     }),
+  sendToPaymentProcessor: (invoice_id: string): Promise<InvoiceType> =>
+    requests.post(`app/invoices/${invoice_id}/send`, {}),
   getDraftInvoice: (customer_id: string): Promise<DraftInvoiceType> =>
     requests.get("app/draft_invoice/", { params: { customer_id } }),
   getInvoiceUrl: (invoice_id: string): Promise<{ url: string }> =>

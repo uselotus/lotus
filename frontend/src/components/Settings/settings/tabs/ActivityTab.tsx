@@ -79,7 +79,6 @@ export default function ActivityStream() {
         setCursor(null);
         setCurrentPage(1);
         queryClient.invalidateQueries(["preview_events", null]);
-
     }
   };
 
@@ -92,7 +91,7 @@ export default function ActivityStream() {
             {activityItems?.map((activityItem) => (
               <li key={activityItem.id} className="py-4">
                 <div className="flex space-x-3">
-                  <div className="flex-1 space-y-3">
+                  <div className="flex-1 space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="font-bold">
                         User<b> {activityItem.actor?.string_repr}</b>

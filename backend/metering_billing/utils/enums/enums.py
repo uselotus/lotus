@@ -186,6 +186,7 @@ class WEBHOOK_TRIGGER_EVENTS(models.TextChoices):
     INVOICE_CREATED = ("invoice.created", _("invoice.created"))
     INVOICE_PAID = ("invoice.paid", _("invoice.paid"))
     USAGE_ALERT_TRIGGERED = ("usage_alert.triggered", _("usage_alert.triggered"))
+    CUSTOMER_CREATED = ("customer.created", _("customer.created"))
 
 
 class FLAT_FEE_BEHAVIOR(models.TextChoices):
@@ -273,3 +274,8 @@ class ORGANIZATION_SETTING_GROUPS(models.TextChoices):
     STRIPE = ("stripe", _("Stripe"))
     BRAINTREE = ("braintree", _("Braintree"))
     BILLING = ("billing", _("Billing"))
+
+
+class TAX_PROVIDER(models.IntegerChoices):
+    TAXJAR = (1, _("taxjar"))
+    LOTUS = (2, _("lotus"))

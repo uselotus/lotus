@@ -142,7 +142,7 @@ const BraintreeIntegrationView: FC = () => {
             className="w-4/12"
             onClick={() => {
               const promise = importCustomersMutation.mutateAsync({
-                source: "stripe",
+                source: "braintree",
               });
               toast.promise(promise, {
                 pending: "Importing Customers From Braintree",

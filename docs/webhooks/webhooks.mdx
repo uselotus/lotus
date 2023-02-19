@@ -20,6 +20,10 @@ This webhook is generated when a payment through a payment provider integration 
 
 This webhook is generated when a usage alert is triggered. This is useful for notifying your users when they are approaching their usage limit.
 
+### customer.created
+
+This webhook is generated when a customer is created.
+
 ## Creating Webhooks
 
 You can create webhooks from the Developer Settings tab of the Settings page. After creating a webhook, you will be able to see the folloowing information, including the webhook secret, which is used for verifying the authenticity of the request.
@@ -28,7 +32,7 @@ You can create webhooks from the Developer Settings tab of the Settings page. Af
 
 ## Consuming Webhooks
 
-Lotus uses a service called Svix to handle the complexity behind webhooks, most importantly the signature verification so you can have peace of mind that the webhooks you receive are authentic. Once you have your webhook secret in hand, [head over to this page](https://docs.svix.com/receiving/verifying-payloads/how) to learn how to verify and webhooks, with examples for all the most popular frameworks including Django, Next, Gin, Ruby, and more!.
+Lotus uses a service called Svix to handle the complexity behind webhooks, most importantly the signature verification so you can have peace of mind that the webhooks you receive are authentic. Once you have your webhook secret in hand, [head over to this page](https://docs.svix.com/receiving/verifying-payloads/how) to learn how to verify webhooks, with examples for all the most popular frameworks including Django, Next, Gin, Ruby, and more!.
 
 ## Webhook Response Schema
 
@@ -50,10 +54,11 @@ Lotus uses a service called Svix to handle the complexity behind webhooks, most 
 
 <ParamField body="payload" type="object" required>
   The payload of the webhook. The structure of the payload depends on the event
-  type. In the case of `invoice.*`, the response will be an invoice (you can
-  check the schema in the [invoice section](/docs/api/invoice)). In the case of
-  `usage_alert.triggered`, the response will be a `UsageAlertPayload`, explained
-  below.
+  type. For `invoice.*`, the response will be an
+  [invoice](../api-reference/invoices/get-invoice). For `customer.created`, the
+  response will be a [customer](../api-reference/customers/retrieve-customer).
+  For `usage_alert.triggered`, the response will be a `UsageAlertPayload`,
+  explained below.
 </ParamField>
 
 ### UsageAlertPayload

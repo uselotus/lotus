@@ -2,7 +2,7 @@ import uuid
 
 import posthog
 import pytest
-from metering_billing.utils import now_utc
+from metering_billing.utils import customer_id_uuidv5, now_utc
 from metering_billing.utils.enums import (
     PLAN_DURATION,
     PLAN_STATUS,
@@ -80,10 +80,14 @@ def add_customers_to_org():
             Customer,
             _quantity=n,
             organization=organization,
-            customer_id=uuid.uuid4,
+            customer_id=iter([uuid.uuid4().hex for _ in range(n)]),
             customer_name="test_customer",
             tax_rate=None,
         )
+        for customer in customer_set:
+            customer.uuidv5_customer_id = customer_id_uuidv5(customer.customer_id)
+            customer.save()
+
         return customer_set
 
     return do_add_customers_to_org
@@ -116,7 +120,7 @@ def create_events_with_org_customer():
 
     def do_create_events_with_org_customer(organization, customer, n):
         event_set = baker.make(
-            Event, _quantity=n, organization=organization, customer=customer
+            Event, _quantity=n, organization=organization, cust_id=customer.customer_id
         )
         return event_set
 
@@ -125,11 +129,15 @@ def create_events_with_org_customer():
 
 @pytest.fixture
 def get_events_with_org_customer_id():
+    import uuid
+
+    from django.conf import settings
     from metering_billing.models import Event
 
     def do_get_events_with_org_customer_id(organization, customer_id):
+        hashed_customer_id = uuid.uuid5(settings.CUSTOMER_ID_NAMESPACE, customer_id)
         event_set = Event.objects.filter(
-            organization=organization, customer__customer_id=customer_id
+            organization=organization, uuidv5_customer_id=hashed_customer_id
         )
         return event_set
 
@@ -291,4 +299,5 @@ def add_plan_version_to_plan():
         )
         return plan_version
 
+    return do_add_planversion_to_plan
     return do_add_planversion_to_plan

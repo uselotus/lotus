@@ -106,9 +106,9 @@ class TestStripeIntegration:
         assert Customer.objects.all().count() == 1
         stripe_connector.create_customer_flow(setup_dict["customer"])
         assert Customer.objects.all().count() == 1
-        assert setup_dict["customer"].integrations["stripe"]["id"]
+        assert setup_dict["customer"].stripe_integration
         assert stripe.Customer.retrieve(
-            setup_dict["customer"].integrations["stripe"]["id"]
+            setup_dict["customer"].stripe_integration.stripe_customer_id
         )
         assert stripe_connector.customer_connected(setup_dict["customer"])
 
@@ -126,7 +126,7 @@ class TestStripeIntegration:
         )
         assert stripe_connector.import_customers(setup_dict["org"]) > 0
         Customer.objects.filter(
-            ~Q(integrations__stripe__id=stripe_customer.id)
+            ~Q(stripe_integration__stripe_customer_id=stripe_customer.id)
         ).delete()
         assert Customer.objects.all().count() == 1
         assert Customer.objects.all()[0].organization == setup_dict["org"]
@@ -147,7 +147,7 @@ class TestStripeIntegration:
             invoice_settings={"default_payment_method": "pm_card_visa"},
         )
         Customer.objects.filter(
-            ~Q(integrations__stripe__id=stripe_customer.id)
+            ~Q(stripe_integration__stripe_customer_id=stripe_customer.id)
         ).delete()
         assert stripe_connector.import_customers(setup_dict["org"]) > 0
         new_cust = Customer.objects.get(email=stripe_customer.email)
@@ -181,7 +181,7 @@ class TestStripeIntegration:
             invoice_settings={"default_payment_method": "pm_card_visa"},
         )
         Customer.objects.filter(
-            ~Q(integrations__stripe__id=stripe_customer.id)
+            ~Q(stripe_integration__stripe_customer_id=stripe_customer.id)
         ).delete()
         assert stripe_connector.import_customers(setup_dict["org"]) > 0
         new_cust = Customer.objects.get(email=stripe_customer.email)
@@ -229,7 +229,7 @@ class TestStripeIntegration:
         )
         assert stripe_connector.import_customers(setup_dict["org"]) > 0
         Customer.objects.filter(
-            ~Q(integrations__stripe__id=stripe_customer.id)
+            ~Q(stripe_integration__stripe_customer_id=stripe_customer.id)
         ).delete()
         new_cust = Customer.objects.get(email=stripe_customer.email)
 
@@ -241,7 +241,7 @@ class TestStripeIntegration:
             .count()
         )
         stripe.InvoiceItem.create(
-            customer=new_cust.integrations["stripe"]["id"],
+            customer=new_cust.stripe_integration.stripe_customer_id,
             amount=1000,
             currency="usd",
             description="Bogus Invoice Item",
@@ -249,7 +249,7 @@ class TestStripeIntegration:
         stripe.Invoice.create(
             currency="usd",
             # payment_method="pm_card_visa",
-            customer=new_cust.integrations["stripe"]["id"],
+            customer=new_cust.stripe_integration.stripe_customer_id,
         )
         stripe_connector.import_payment_objects(setup_dict["org"])
         pi_after = (
@@ -273,7 +273,7 @@ class TestStripeIntegration:
         )
         assert stripe_connector.import_customers(setup_dict["org"]) > 0
         Customer.objects.filter(
-            ~Q(integrations__stripe__id=stripe_customer.id)
+            ~Q(stripe_integration__stripe_customer_id=stripe_customer.id)
         ).delete()
         new_cust = Customer.objects.get(email=stripe_customer.email)
 
@@ -285,7 +285,7 @@ class TestStripeIntegration:
             product=product.id,
             recurring={"interval": "month"},
         )
-        assert new_cust.integrations["stripe"]["id"] == stripe_customer.id
+        assert new_cust.stripe_integration.stripe_customer_id == stripe_customer.id
         stripe_sub = stripe.Subscription.create(
             customer=stripe_customer.id,
             items=[
@@ -379,14 +379,15 @@ class TestBraintreeIntegration:
         assert Customer.objects.all().count() == 1
         braintree_connector.create_customer_flow(setup_dict["customer"])
         assert Customer.objects.all().count() == 1
-        assert setup_dict["customer"].integrations["braintree"]["id"]
+        assert setup_dict["customer"].braintree_integration.braintree_customer_id
         btree_cust_response = braintree_connector._get_gateway(
             setup_dict["org"]
-        ).customer.find(setup_dict["customer"].integrations["braintree"]["id"])
-        print(type(btree_cust_response), btree_cust_response.__dict__)
+        ).customer.find(
+            setup_dict["customer"].braintree_integration.braintree_customer_id
+        )
         assert (
             btree_cust_response.id
-            == setup_dict["customer"].integrations[PAYMENT_PROCESSORS.BRAINTREE]["id"]
+            == setup_dict["customer"].braintree_integration.braintree_customer_id
         )
         assert braintree_connector.customer_connected(setup_dict["customer"])
 
@@ -410,7 +411,7 @@ class TestBraintreeIntegration:
         braintree_customer = braintree_customer_response.customer
         assert braintree_connector.import_customers(setup_dict["org"]) > 0
         Customer.objects.filter(
-            ~Q(integrations__braintree__id=braintree_customer.id)
+            ~Q(braintree_integration__braintree_customer_id=braintree_customer.id)
         ).delete()
         assert Customer.objects.all().count() == 1
         assert Customer.objects.all()[0].organization == setup_dict["org"]

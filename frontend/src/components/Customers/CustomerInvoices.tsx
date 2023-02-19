@@ -32,9 +32,10 @@ const lotusUrl = new URL("./lotusIcon.svg", import.meta.url).href;
 
 interface Props {
   invoices: InvoiceType[] | undefined;
+  paymentMethod: string;
 }
 
-const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
+const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
   const [selectedRecord, setSelectedRecord] = React.useState();
   const changeStatus = useMutation(
     (post: MarkPaymentStatusAsPaid) => Invoices.changeStatus(post),
@@ -48,6 +49,24 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
       },
       onError: () => {
         toast.error("Failed to Changed Invoice Status", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
+    }
+  );
+
+  const sendToPaymentProcessor = useMutation(
+    (invoice_id: string) => Invoices.sendToPaymentProcessor(invoice_id),
+    {
+      onSuccess: (data) => {
+        toast.success("Successfully sent to payment processor", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+        selectedRecord.external_payment_obj_type =
+          data.external_payment_obj_type;
+      },
+      onError: () => {
+        toast.error("Failed to send to payment processor", {
           position: toast.POSITION.TOP_CENTER,
         });
       },
@@ -72,13 +91,21 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
       render: (_, record) => (
         <div className="flex">
           <Tooltip
-            title={record.external_payment_obj_type ? "Stripe" : "Lotus"}
+            title={
+              record.external_payment_obj_type === "stripe"
+                ? "Stripe"
+                : record.external_payment_obj_type === "braintree"
+                ? "Braintree"
+                : "Lotus"
+            }
           >
             <img
               className="sourceIcon"
               src={
-                record.external_payment_obj_type
+                record.external_payment_obj_type === "stripe"
                   ? integrationsMap.stripe.icon
+                  : record.external_payment_obj_type === "braintree"
+                  ? integrationsMap.braintree.icon
                   : lotusUrl
               }
               alt="Source icon"
@@ -151,6 +178,22 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
                       </div>
                     </Menu.Item>
                   )}
+                  {!record.external_payment_obj_type &&
+                    paymentMethod &&
+                    record.payment_status === "unpaid" && (
+                      <Menu.Item
+                        key="2"
+                        onClick={() => {
+                          if (selectedRecord === record) {
+                            sendToPaymentProcessor.mutate(record.invoice_id);
+                          } else {
+                            setSelectedRecord(record);
+                          }
+                        }}
+                      >
+                        <div className="archiveLabel">Send to Processor</div>
+                      </Menu.Item>
+                    )}
                 </Menu>
               }
               trigger={["click"]}

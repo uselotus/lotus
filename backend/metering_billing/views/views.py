@@ -43,6 +43,7 @@ from metering_billing.serializers.response_serializers import (
     PeriodSubscriptionsResponseSerializer,
 )
 from metering_billing.serializers.serializer_utils import OrganizationUUIDField
+from metering_billing.tasks import import_customers_from_payment_processor
 from metering_billing.utils import (
     convert_to_date,
     convert_to_datetime,
@@ -585,6 +586,7 @@ class DraftInvoiceView(APIView):
                 "billing_plan__plan_components",
                 "billing_plan__plan_components__billable_metric",
                 "billing_plan__plan_components__tiers",
+                "billing_plan__pricing_unit",
             )
             invoices = generate_invoice(
                 sub_records,
@@ -632,15 +634,15 @@ class ImportCustomersView(APIView):
         source = request.data["source"]
         if source not in [choice[0] for choice in PAYMENT_PROCESSORS.choices]:
             raise ExternalConnectionInvalid(f"Invalid source: {source}")
-        connector = PAYMENT_PROCESSOR_MAP[source]
+
         try:
-            num = connector.import_customers(organization)
+            import_customers_from_payment_processor.delay(source, organization.id)
         except Exception as e:
             raise ExternalConnectionFailure(f"Error importing customers: {e}")
         return Response(
             {
                 "status": "success",
-                "detail": f"Customers succesfully imported {num} customers from {source}.",
+                "detail": f"Started customer transfer from {source}.",
             },
             status=status.HTTP_201_CREATED,
         )

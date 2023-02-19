@@ -3,6 +3,7 @@ import api.views as api_views
 import posthog
 from actstream.models import Action
 from api.serializers.webhook_serializers import (
+    CustomerCreatedSerializer,
     InvoiceCreatedSerializer,
     InvoicePaidSerializer,
     UsageAlertTriggeredSerializer,
@@ -33,6 +34,7 @@ from metering_billing.models import (
     User,
     WebhookEndpoint,
 )
+from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import ValidOrganization
 from metering_billing.serializers.backtest_serializers import (
     BacktestCreateSerializer,
@@ -51,6 +53,7 @@ from metering_billing.serializers.model_serializers import (
     ExternalPlanLinkSerializer,
     FeatureCreateSerializer,
     FeatureSerializer,
+    InvoiceSerializer,
     MetricCreateSerializer,
     MetricSerializer,
     MetricUpdateSerializer,
@@ -301,6 +304,14 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 extend_schema(
                     description="Usage alert triggered webhook",
                     responses={200: UsageAlertTriggeredSerializer},
+                ),
+            ),
+            OpenApiCallback(
+                WEBHOOK_TRIGGER_EVENTS.CUSTOMER_CREATED.value,
+                "{$request.body#/webhook_url}",
+                extend_schema(
+                    description="Customer created webhook",
+                    responses={200: CustomerCreatedSerializer},
                 ),
             ),
         ]
@@ -786,7 +797,28 @@ class SubscriptionViewSet(api_views.SubscriptionViewSet):
 
 
 class InvoiceViewSet(api_views.InvoiceViewSet):
-    pass
+    http_method_names = ["get", "patch", "head", "post"]
+
+    def get_serializer_class(self):
+        if self.action == "send":
+            return InvoiceSerializer
+        return super().get_serializer_class()
+
+    @extend_schema(request=None)
+    @action(detail=True, methods=["post"])
+    def send(self, request, *args, **kwargs):
+        invoice = self.get_object()
+        customer = invoice.customer
+        if customer.payment_provider and invoice.external_payment_obj_type is None:
+            connector = PAYMENT_PROCESSOR_MAP.get(customer.payment_provider)
+            if connector:
+                external_id = connector.create_payment_object(invoice)
+                if external_id:
+                    invoice.external_payment_obj_id = external_id
+                    invoice.external_payment_obj_type = customer.payment_provider
+                    invoice.save()
+        serializer = self.get_serializer(invoice)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
