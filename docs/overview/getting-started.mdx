@@ -1,0 +1,155 @@
+---
+title: "Quickstart"
+description: "Deploy your business's flexible pricing infrastructure with a few quick steps."
+---
+
+# 1. Grab Your API Key and Start Tracking Usage
+
+First, make sure you can log in to your dashboard. Then the next step is getting access to an API key.
+
+## Tracking Events
+
+In the app's backend, add event tracking with the Lotus SDK or API. Tracking in Lotus is almost identical to product analytics software like Mixpanel or Segment.
+
+Here is an example of an API email sent event we want to track.
+
+```
+{
+    event_name: "email_sent"
+    customer_id: "customer_123"
+    idempotency_id: "def1e384-ee0d-4b57-aa63-6f9a3239c73a"
+    time_created: "2023/02/18 12:02:24"
+    properties: {
+        characters: 2322
+        size: 230 ///bytes
+    }
+}
+
+```
+
+Metering and billing are separate in Lotus, so you can track as many events as you want without billing them.
+
+# 2. Define Usage Aggregations in the Form of Metrics
+
+Navigate to the /metrics page in the frontend app to create a metric. After clicking create metric, this modal pops up on your screen.
+
+In this case, we want to charge based on the number of emails sent in one plan and then have an enterprise plan that charges based on the total size of emails sent.
+
+Therefore we would create a `counter` metric with the `count` aggregation for the number of emails sent.
+
+![title](/images/overview/createmetric1.jpg)
+
+And another `counter` metric using `sum` for the total size of all emails sent.
+
+![title](/images/overview/createmetric2.jpg)
+
+# 3. Define Pricing Plans and Add-Ons
+
+Next, we will define two pricing plans, one for small startups and one for enterprises.
+
+To start, navigate to /plans in the frontend and click on create a plan.
+
+## Create a Plan
+
+Creating a plan allows for ultimate flexibility in what you charge on, how much you charge, and when you want to invoice.
+
+First, you can set the plan information, including the recurring charge for the plan. We will also set this plan to invoice at the start of every month to make life for our finance team easier.
+
+![title](/images/overview/createplaninfo.jpg)
+
+Some other options that we set were the currency of the plan and the fact that the recurring cost will be pre-paid or paid in advance for the month.
+
+### Add Usage Components
+
+Components allow us to associate usage metrics with costs in our plan. Here's how we would set this up for our starter plan. We will create a free tier of up to 5000 emails and then set an overage charge of 30 cents per email.
+
+The rounding type corresponds to how to treat when units are between two numbers. In this case, all emails will be whole numbers, but we will put round down anyway.
+
+![title](/images/overview/createcomponent1.jpg)
+
+Here is another example of the total size metric that we would add to the enterprise plan. In this case we set the rounding to no_rounding, which then makes our pricing apply continuously to non-whole number unit amounts.
+
+![title](/images/overview/createcomponent2.jpg)
+
+### Add Boolean Feature Entitlements
+
+Next, we can add boolean entitlements to this plan. For the starter plan, we are going to add access to an analytics page and then a dedicated support flag.
+
+![title](/images/overview/createfeature.jpg)
+
+## Configure Add-Ons (Optional)
+
+Add-Ons in Lotus are powerful yet simple. They are essentially mini-plans that can be attatched to existing plans. The few differences are that they can have a quantity and can be one-off charges.
+
+In this tutorial, we will create a simple one-off implementation fee add-on by navigating to the /add-ons page in the frontend and choosing a Billing Frequency of One-Time. We won't add any usage-based charges or features to this add-on, but you can see how adding these can add new possibilities to how you can layer on pricing models.
+
+![title](/images/overview/createaddon.jpg)
+
+# 4. Lotus API/SDK: Create Customers and Subscribe Them To Plans
+
+Next, we have to dive back into the app's backend. For a customer to be created in Lotus, we must call the create customer endpoint. The most important part of creating the customer is setting the email and picking a customer_id that is already stored in the app's backend.
+
+Then we can call the list plans api and subscribe the customer to a plan programmatically.
+
+Here are the steps we would take to do this using the python SDK.
+
+```python
+
+###Customer Signs Up For Plan
+  lotus.create_customer(
+      customer_id='customer_123',
+      email="corporation@outlook.com",
+      name='Corporation Inc.',
+  )
+
+  plans = lotus.list_plans()
+
+  starter_plan_id = plan[0]["plan_id"]
+
+  lotus.create_subscription(
+    customer_id='customer_123',
+    plan_id=starter_plan_id,
+    start_date='2023-01-01',
+  )
+
+```
+
+Then when a customer wants to upgrade or cancel a plan, we can use the API commands for those actions. Here is another example in python.
+
+```python
+
+###Customer Cancels A Plan
+  lotus.cancel_subscription(
+    customer_id='customer_123',
+    flat_fee_behavior='charge_prorated',
+    bill_usage=True,
+    invoicing_behavior='add_to_next_invoice',
+)
+
+```
+
+# 5. Connect to Stripe or Subscribe to Webhooks to send out Invoices.
+
+Lastly, when a customer is scheduled to be invoiced, Lotus will convert their draft invoice into a finalized invoice that is ready to be paid.
+
+Lotus generates an invoice PDF for you so you can manually send out invoices if you choose. This can be accessed through this [endpoint](/api-reference/invoices/get-invoice-pdf) or in the invoices tab for a particular customer.
+
+## Stripe & Other Payment Processors
+
+Currently, we support Stripe and Braintree as native integrations. For an in-depth understanding of how to instrument the Stripe integration, please head over to the diagram [here](/external-integrations/stripe).
+
+You can connect to Stripe and Braintree on the frontend /settings/integrations page through OAuth or by putting your secret key in an env variable if you are self-hosting.
+
+![title](/images/overview/paymentprocessors.jpg)
+
+For this tutorial we will simply connect Stripe and have Stripe send out the invoices to our customers.
+
+## Manual Invoicing With Webhooks
+
+Our native integrations shouldn't stop you from using whatever payment processor you want. If you travel to the /settings/developer-settings page in the frontend, you can add webhook urls and subscribe to invoice.created webhooks (more [here](/webhooks/webhooks)).
+
+From these webhooks, you can build your own payment processor integrations or custom collection workflows to email customers.
+
+## Next steps
+
+This quickstart is just enough to get started with the basics but by no means covers the full extent of Lotus's capabilities. Explore the rest of the docs to understand versioning plans, issuing usage alerts, and managing entitlements.
