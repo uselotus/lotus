@@ -2,18 +2,20 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
 	"github.com/twmb/franz-go/pkg/kgo"
-	"github.com/twmb/franz-go/pkg/sasl/plain"
+	"github.com/twmb/franz-go/pkg/sasl/scram"
 )
 
 const batchSize = 1000
@@ -32,6 +34,28 @@ type StreamEvents struct {
 	Events         *[]Event `json:"events"`
 	OrganizationID int64    `json:"organization_id"`
 	Event          *Event   `json:"event"`
+}
+
+func (t *Event) UnmarshalJSON(data []byte) error {
+	type Alias Event
+	aux := &struct {
+		TimeCreated string `json:"time_created"`
+		*Alias
+	}{
+		Alias: (*Alias)(t),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	parsedTime, err := time.Parse(time.RFC3339, aux.TimeCreated)
+	if err != nil {
+		parsedTime, err = time.Parse("2006-01-02 15:04:05.999999-07:00", aux.TimeCreated)
+		if err != nil {
+			return err
+		}
+	}
+	t.TimeCreated = parsedTime
+	return nil
 }
 
 type batch struct {
@@ -95,11 +119,13 @@ func main() {
 		kgo.DisableAutoCommit(),
 	}
 	if saslUsername != "" && saslPassword != "" {
-		log.Printf("Using SASL authentication with username: %s, password: %s", saslUsername, saslPassword)
-		opts = append(opts, kgo.SASL(plain.Auth{
+		opts = append(opts, kgo.SASL(scram.Auth{
 			User: saslUsername,
 			Pass: saslPassword,
-		}.AsMechanism()))
+		}.AsSha512Mechanism()))
+		// Configure TLS. Uses SystemCertPool for RootCAs by default.
+		tlsDialer := &tls.Dialer{NetDialer: &net.Dialer{Timeout: 10 * time.Second}}
+		opts = append(opts, kgo.Dialer(tlsDialer.DialContext))
 	}
 	cl, err := kgo.NewClient(opts...)
 
@@ -144,9 +170,10 @@ func main() {
 		panic(err)
 	}
 	defer insertStatement.Close()
-	log.Printf("Connected to database: %s", dbURL)
+
 	for {
 		fetches := cl.PollFetches(ctx)
+		log.Print("Polling for messages...")
 		if fetches == nil {
 			continue
 		}
