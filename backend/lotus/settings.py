@@ -738,5 +738,13 @@ if SVIX_CONNECTOR is not None:
                     name="customer.created",
                 )
             )
+        if "invoice.past_due" not in list_response_event_type_out:
+            event_type_out = svix.event_type.create(
+                EventTypeIn(
+                    description="Invoice is past due",
+                    archived=False,
+                    name="invoice.past_due",
+                )
+            )
     except Exception:
         SVIX_CONNECTOR = None

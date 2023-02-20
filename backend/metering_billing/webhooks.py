@@ -89,6 +89,45 @@ def invoice_paid_webhook(invoice, organization):
             )
 
 
+def invoice_past_due_webhook(invoice, organization):
+    from api.serializers.model_serializers import InvoiceSerializer
+    from metering_billing.models import WebhookEndpoint
+
+    if SVIX_CONNECTOR is not None:
+        endpoints = (
+            WebhookEndpoint.objects.filter(organization=organization)
+            .prefetch_related("triggers")
+            .filter(triggers__trigger_name=WEBHOOK_TRIGGER_EVENTS.INVOICE_PAST_DUE)
+            .distinct()
+        )
+        if endpoints.count() > 0:
+            svix = SVIX_CONNECTOR
+            now = str(now_utc())
+            invoice_data = InvoiceSerializer(invoice).data
+            invoice_data = make_all_decimals_floats(invoice_data)
+            invoice_data = make_all_dates_times_strings(invoice_data)
+            response = {
+                "event_type": WEBHOOK_TRIGGER_EVENTS.INVOICE_PAST_DUE,
+                "payload": invoice_data,
+            }
+            svix.message.create(
+                organization.organization_id.hex,
+                MessageIn(
+                    event_type=WEBHOOK_TRIGGER_EVENTS.INVOICE_PAST_DUE,
+                    event_id=str(organization.organization_id.hex)
+                    + "_"
+                    + str(invoice_data["invoice_number"])
+                    + "_"
+                    + "paid",
+                    payload={
+                        "attempt": 5,
+                        "created_at": now,
+                        "properties": response,
+                    },
+                ),
+            )
+
+
 def usage_alert_webhook(usage_alert, alert_result, subscription_record, organization):
     from api.serializers.model_serializers import (
         LightweightSubscriptionRecordSerializer,

@@ -1680,6 +1680,7 @@ class Invoice(models.Model):
     subscription_records = models.ManyToManyField(
         "SubscriptionRecord", related_name="invoices"
     )
+    invoice_past_due_webhook_sent = models.BooleanField(default=False)
     history = HistoricalRecords()
 
     class Meta:

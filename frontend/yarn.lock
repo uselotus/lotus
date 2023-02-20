@@ -904,9 +904,9 @@
     tslib "^2.3.1"
 
 "@nangohq/frontend@^0.8.4":
-  version "0.8.4"
-  resolved "https://registry.yarnpkg.com/@nangohq/frontend/-/frontend-0.8.4.tgz#21784441c2ec44f407992e271d83a6524eee4766"
-  integrity sha512-Hb2+xDBNYvIzyRx9/kWgzPgW7rmq4+pvy+3Wpxl2ob7YmqPJNA8QlAAB2zXRjLRH4+aZ0K44eishC9QNLZzlCQ==
+  version "0.8.7"
+  resolved "https://registry.yarnpkg.com/@nangohq/frontend/-/frontend-0.8.7.tgz#d7b7141d1eb7d77126630404bc88b1018fa6bad6"
+  integrity sha512-VKGdcweUm/IZGvDMg+Sf7OJRu7p/9I52kKsDr8743nmiksoomByXIr4kXEClB2YCZ/rlqQFZc2wp/b9hZRrGRg==
 
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"
