@@ -1,4 +1,4 @@
-module github.com/uselotus/lotus/golang
+module github.com/uselotus/lotus/go/eventingestor
 
 go 1.19
 
