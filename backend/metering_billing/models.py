@@ -593,9 +593,11 @@ class Customer(models.Model):
     customer_id = models.TextField(
         default=customer_uuid,
         help_text="The id provided when creating the customer, we suggest matching with your internal customer id in your backend",
+        null=True,
     )
     uuidv5_customer_id = models.UUIDField(
         help_text="The v5 UUID generated from the customer_id. This is used for efficient lookups in the database, specifically for the Events table",
+        null=True,
     )
     properties = models.JSONField(
         default=dict, null=True, help_text="Extra metadata for the customer"
@@ -1326,14 +1328,7 @@ class Metric(models.Model):
         return self.billable_metric_name or ""
 
     def save(self, *args, **kwargs):
-        just_deleted_mat_views = kwargs.pop("just_deleted_mat_views", False)
         super().save(*args, **kwargs)
-        if (
-            self.status == METRIC_STATUS.ACTIVE
-            and not self.mat_views_provisioned
-            and just_deleted_mat_views is not True
-        ):
-            self.provision_materialized_views()
 
     def delete_materialized_views(self):
         from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
@@ -1341,13 +1336,16 @@ class Metric(models.Model):
         handler = METRIC_HANDLER_MAP[self.metric_type]
         handler.archive_metric(self)
         self.mat_views_provisioned = False
-        self.save(just_deleted_mat_views=True)
+        self.save()
 
     def get_aggregation_type(self):
         return self.aggregation_type
 
     def get_subscription_record_total_billable_usage(self, subscription_record):
         from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+
+        if self.status == METRIC_STATUS.ACTIVE and not self.mat_views_provisioned:
+            self.provision_materialized_views()
 
         handler = METRIC_HANDLER_MAP[self.metric_type]
         usage = handler.get_subscription_record_total_billable_usage(
@@ -1359,6 +1357,9 @@ class Metric(models.Model):
     def get_subscription_record_daily_billable_usage(self, subscription_record):
         from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 
+        if self.status == METRIC_STATUS.ACTIVE and not self.mat_views_provisioned:
+            self.provision_materialized_views()
+
         handler = METRIC_HANDLER_MAP[self.metric_type]
         usage = handler.get_subscription_record_daily_billable_usage(
             self, subscription_record
@@ -1368,6 +1369,9 @@ class Metric(models.Model):
 
     def get_subscription_record_current_usage(self, subscription_record):
         from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+
+        if self.status == METRIC_STATUS.ACTIVE and not self.mat_views_provisioned:
+            self.provision_materialized_views()
 
         handler = METRIC_HANDLER_MAP[self.metric_type]
         usage = handler.get_subscription_record_current_usage(self, subscription_record)
@@ -1382,6 +1386,9 @@ class Metric(models.Model):
         top_n: Optional[int] = None,
     ) -> dict[Union[Customer, Literal["Other"]], dict[datetime.date, Decimal]]:
         from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+
+        if self.status == METRIC_STATUS.ACTIVE and not self.mat_views_provisioned:
+            self.provision_materialized_views()
 
         handler = METRIC_HANDLER_MAP[self.metric_type]
         usage = handler.get_daily_total_usage(

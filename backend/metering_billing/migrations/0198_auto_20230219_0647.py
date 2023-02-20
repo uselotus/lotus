@@ -11,7 +11,7 @@ def refresh_mat_views(apps, schema_editor):
         handler = METRIC_HANDLER_MAP[metric.metric_type]
         handler.archive_metric(metric)
         metric.mat_views_provisioned = False
-        metric.save(just_deleted_mat_views=True)
+        metric.save()
 
         ## INITADMIN WILL TAKE CARE OF REFRESHING THE VIEWS
 
