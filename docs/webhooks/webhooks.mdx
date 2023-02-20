@@ -16,6 +16,10 @@ This webhook is generated when a subscription ends and an invoice is generated.
 
 This webhook is generated when a payment through a payment provider integration is successful (i.e. a payment through Stripe).
 
+### invoice.past_due
+
+This webhook is generated when the due date of an invoice has passed and the invoice is still unpaid.
+
 ### usage_alert.triggered
 
 This webhook is generated when a usage alert is triggered. This is useful for notifying your users when they are approaching their usage limit.
@@ -49,7 +53,8 @@ Lotus uses a service called Svix to handle the complexity behind webhooks, most 
 ```
 
 <ParamField body="event_type" type="string (WebhookTriggerEventEnum)" required>
-  Enum: `"invoice.created"` `"invoice.paid"` `"usage_alert.triggered"`
+  Enum: `"invoice.created"` `"invoice.past_due"` `"invoice.paid"`
+  `"usage_alert.triggered"` `"customer.created"`
 </ParamField>
 
 <ParamField body="payload" type="object" required>

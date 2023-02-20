@@ -6,6 +6,7 @@ from api.serializers.webhook_serializers import (
     CustomerCreatedSerializer,
     InvoiceCreatedSerializer,
     InvoicePaidSerializer,
+    InvoicePastDueSerializer,
     UsageAlertTriggeredSerializer,
 )
 from django.conf import settings
@@ -312,6 +313,14 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 extend_schema(
                     description="Customer created webhook",
                     responses={200: CustomerCreatedSerializer},
+                ),
+            ),
+            OpenApiCallback(
+                WEBHOOK_TRIGGER_EVENTS.INVOICE_PAST_DUE.value,
+                "{$request.body#/webhook_url}",
+                extend_schema(
+                    description="Invoice Past Due webhook",
+                    responses={200: InvoicePastDueSerializer},
                 ),
             ),
         ]
