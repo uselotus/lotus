@@ -1,6 +1,6 @@
-module github.com/uselotus/lotus/golang
+module github.com/uselotus/lotus/go/eventingestor
 
-go 1.19
+go 1.20
 
 require github.com/twmb/franz-go v1.12.1
 
