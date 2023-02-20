@@ -82,8 +82,8 @@ func main() {
 	if kafkaTopic = os.Getenv("EVENTS_TOPIC"); kafkaTopic == "" {
 		kafkaTopic = "test-topic"
 	}
-	saslUsername := os.Getenv("SASL_USERNAME")
-	saslPassword := os.Getenv("SASL_PASSWORD")
+	saslUsername := os.Getenv("KAFKA_SASL_USERNAME")
+	saslPassword := os.Getenv("KAFKA_SASL_PASSWORD")
 	seeds := []string{kafkaURL}
 	ctx := context.Background()
 
