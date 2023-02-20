@@ -12,6 +12,7 @@ dump.rdb
 # Distribution / packaging
 .Python
 build/
+!/golang/build
 develop-eggs/
 dist/
 downloads/
@@ -185,3 +186,11 @@ load_testing/
 
 !env/.env.dev.example
 !env/.env.prod.example
+
+golang/bin
+golang/.go
+golang/.push-*
+golang/.container-*
+golang/.dockerfile-*
+golang/.licenses*
+golang/.buildx-initialized

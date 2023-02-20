@@ -3,7 +3,7 @@ services:
     image: timescale/timescaledb-ha:pg14-latest
     restart: on-failure
     ports:
-      - 5433:5432
+      - 5432:5432
     volumes:
       - ./pgdata_dev:/var/lib/postgresql/data
     env_file:
@@ -70,11 +70,20 @@ services:
       - redis
       - redpanda
 
-  event_consumer:
-    <<: *backend
+  event-ingestion:
+    env_file:
+      - ./env/.env.dev
+    build:
+      context: ./golang
+      dockerfile: Dockerfile
     ports:
       - 7999:7999
-    command: sh -c "./scripts/start_consumer.sh"
+    depends_on:
+      - db
+      - redis
+      - redpanda
+      - backend
+    restart: "on-failure:15"
 
   frontend:
     restart: always
