@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -100,6 +102,9 @@ func main() {
 			User: saslUsername,
 			Pass: saslPassword,
 		}.AsMechanism()))
+		// Configure TLS. Uses SystemCertPool for RootCAs by default.
+		tlsDialer := &tls.Dialer{NetDialer: &net.Dialer{Timeout: 10 * time.Second}}
+		opts = append(opts, kgo.Dialer(tlsDialer.DialContext))
 	}
 	cl, err := kgo.NewClient(opts...)
 
