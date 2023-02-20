@@ -234,9 +234,11 @@ class CounterHandler(MetricHandler):
         from metering_billing.models import OrganizationSetting
 
         customer = subscription_record.customer
-        uuidv5_customer_id = customer.uuidv5_customer_id or customer_id_uuidv5(
-            customer.customer_id
-        )
+        uuidv5_customer_id = customer.uuidv5_customer_id
+        if uuidv5_customer_id is None:
+            uuidv5_customer_id = customer_id_uuidv5(customer.customer_id)
+            customer.uuidv5_customer_id = uuidv5_customer_id
+            customer.save()
         injection_dict = {
             "query_type": metric.usage_aggregation_type,
             "filter_properties": {},
