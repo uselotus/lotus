@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"time"
 
@@ -11,6 +13,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	_ "github.com/lib/pq"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/twmb/franz-go/pkg/sasl/scram"
 	"github.com/uselotus/lotus/go/eventtracker/authn"
 	"github.com/uselotus/lotus/go/eventtracker/config"
 	"github.com/uselotus/lotus/go/eventtracker/database"
@@ -36,11 +39,28 @@ func main() {
 
 	seeds := []string{config.Conf.KafkaURL}
 
-	cl, err := kgo.NewClient(
+	opts := []kgo.Opt{
 		kgo.SeedBrokers(seeds...),
 		kgo.ConsumerGroup("default"),
 		kgo.ConsumeTopics(config.Conf.KafkaTopic),
 		kgo.DisableAutoCommit(),
+	}
+
+	saslUsername := config.Conf.KafkaSASLUsername
+	saslPassword := config.Conf.KafkaSASLPassword
+
+	if saslUsername != "" && saslPassword != "" {
+		opts = append(opts, kgo.SASL(scram.Auth{
+			User: saslUsername,
+			Pass: saslPassword,
+		}.AsSha512Mechanism()))
+		// Configure TLS. Uses SystemCertPool for RootCAs by default.
+		tlsDialer := &tls.Dialer{NetDialer: &net.Dialer{Timeout: 10 * time.Second}}
+		opts = append(opts, kgo.Dialer(tlsDialer.DialContext))
+	}
+
+	cl, err := kgo.NewClient(
+		opts...,
 	)
 
 	ctx := context.Background()
