@@ -15,6 +15,12 @@ class UserNoOrganization(APIException):
     default_code = "authentication_failure"
 
 
+class RepeatedOperation(APIException):
+    status_code = 401
+    default_detail = "repeated_operation"
+    default_code = "repeated_operation"
+
+
 class NoMatchingAPIKey(APIException):
     status_code = 401
     default_detail = "API Key not known"

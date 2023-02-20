@@ -1,5 +1,3 @@
-from rest_framework import serializers
-
 from api.serializers.model_serializers import (
     FeatureSerializer,
     LightweightCustomerSerializer,
@@ -19,6 +17,7 @@ from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganizationPK,
     TimezoneFieldMixin,
 )
+from rest_framework import serializers
 
 
 class GetInvoicePdfURLRequestSerializer(serializers.Serializer):
@@ -284,7 +283,12 @@ class GetCustomerFeatureAccessRequestSerializer(serializers.Serializer):
         data["customer"] = data.pop("customer_id", None)
 
         return data
-        return data
-        return data
-        return data
-        return data
+
+
+class CustomerDeleteResponseSerializer(serializers.Serializer):
+    customer_id = serializers.CharField()
+    deleted = serializers.DateTimeField()
+    email = serializers.EmailField(allow_blank=True, allow_null=True)
+    num_events_deleted = serializers.IntegerField()
+    num_subscriptions_deleted = serializers.IntegerField()
+    num_addons_deleted = serializers.IntegerField()
