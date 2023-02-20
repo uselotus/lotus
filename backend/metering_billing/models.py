@@ -575,6 +575,11 @@ class Product(models.Model):
         return f"{self.name}"
 
 
+class BaseCustomerManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(deleted__isnull=True)
+
+
 class Customer(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="customers"
@@ -601,6 +606,9 @@ class Customer(models.Model):
     )
     properties = models.JSONField(
         default=dict, null=True, help_text="Extra metadata for the customer"
+    )
+    deleted = models.DateTimeField(
+        null=True, help_text="The date the customer was deleted"
     )
 
     # BILLING RELATED FIELDS
@@ -667,6 +675,7 @@ class Customer(models.Model):
 
     # HISTORY FIELDS
     history = HistoricalRecords()
+    objects = BaseCustomerManager()
 
     class Meta:
         constraints = [

@@ -95,7 +95,7 @@ func main() {
 		kgo.DisableAutoCommit(),
 	}
 	if saslUsername != "" && saslPassword != "" {
-		log.Printf("Using SASL authentication with username: %s, password: %s", saslUsername, saslPassword)
+		log.Printf("Using SASL authentication with url: %s, username: %s, password: %s", kafkaURL, saslUsername, saslPassword)
 		opts = append(opts, kgo.SASL(plain.Auth{
 			User: saslUsername,
 			Pass: saslPassword,
@@ -147,6 +147,7 @@ func main() {
 	log.Printf("Connected to database: %s", dbURL)
 	for {
 		fetches := cl.PollFetches(ctx)
+		log.Print("Polling for messages...")
 		if fetches == nil {
 			continue
 		}
