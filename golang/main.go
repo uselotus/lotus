@@ -15,7 +15,7 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/twmb/franz-go/pkg/kgo"
-	"github.com/twmb/franz-go/pkg/sasl/plain"
+	"github.com/twmb/franz-go/pkg/sasl/scram"
 )
 
 const batchSize = 1000
@@ -98,10 +98,10 @@ func main() {
 	}
 	if saslUsername != "" && saslPassword != "" {
 		log.Printf("Using SASL authentication with url: %s, username: %s, password: %s", kafkaURL, saslUsername, saslPassword)
-		opts = append(opts, kgo.SASL(plain.Auth{
+		opts = append(opts, kgo.SASL(scram.Auth{
 			User: saslUsername,
 			Pass: saslPassword,
-		}.AsMechanism()))
+		}.AsSha512Mechanism()))
 		// Configure TLS. Uses SystemCertPool for RootCAs by default.
 		tlsDialer := &tls.Dialer{NetDialer: &net.Dialer{Timeout: 10 * time.Second}}
 		opts = append(opts, kgo.Dialer(tlsDialer.DialContext))
