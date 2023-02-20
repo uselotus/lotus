@@ -35,6 +35,7 @@ import TargetCustomerForm from "../components/Plans/TargetCustomerForm";
 import VersionActiveForm from "../components/Plans/VersionActiveForm";
 import { CurrencyType } from "../types/pricing-unit-type";
 import { CreateRecurringCharge } from "../types/plan-type";
+import moment from "moment";
 
 interface CustomizedState {
   plan: PlanType;
@@ -86,6 +87,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
       name: "",
     }
   );
+  const months = moment.months();
 
   const queryClient = useQueryClient();
 
@@ -328,17 +330,16 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           usage_billing_frequency: values.usage_billing_frequency,
           currency_code: values.plan_currency.code,
         };
-        if (values.align_plan == "calendar_aligned") {
-          if (values.plan_duration === "yearly") {
-            initialPlanVersion.day_anchor = 1;
-            initialPlanVersion.month_anchor = 1;
+        if (values.align_plan === "calendar_aligned") {
+          if (
+            values.plan_duration === "yearly" ||
+            values.plan_duration === "quarterly"
+          ) {
+            initialPlanVersion.day_anchor = values.day_of_month;
+            initialPlanVersion.month_anchor = values.month_of_year;
           }
           if (values.plan_duration === "monthly") {
-            initialPlanVersion.day_anchor = 1;
-          }
-          if (values.plan_duration === "quarterly") {
-            initialPlanVersion.day_anchor = 1;
-            initialPlanVersion.month_anchor = 1;
+            initialPlanVersion.day_anchor = values.day_of_month;
           }
         }
         if (
@@ -557,12 +558,39 @@ function EditPlan({ type, plan, versionIndex }: Props) {
                     >
                       <Radio.Group>
                         <Radio value="calendar_aligned">
-                          Start of Every{" "}
-                          {
-                            durationConversion[
-                              form.getFieldValue("plan_duration")
-                            ]
-                          }
+                          Every{" "}
+                          <Form.Item name="day_of_month" noStyle>
+                            <InputNumber
+                              min={1}
+                              max={31}
+                              size="small"
+                              style={{ width: "50px" }}
+                              placeholder="Day"
+                            />
+                          </Form.Item>{" "}
+                          {["quarterly", "yearly"].includes(
+                            form.getFieldValue("plan_duration")
+                          ) && (
+                            <>
+                              of{" "}
+                              <Form.Item name="month_of_year" noStyle>
+                                <Select
+                                  style={{ width: "120px" }}
+                                  size="small"
+                                  placeholder="Month"
+                                >
+                                  {months.map((month, i) => (
+                                    <Select.Option value={i + 1} key={month}>
+                                      {month}
+                                    </Select.Option>
+                                  ))}
+                                </Select>
+                              </Form.Item>
+                            </>
+                          )}
+                          {["monthly"].includes(
+                            form.getFieldValue("plan_duration")
+                          ) && "of the Month"}
                         </Radio>
                         <Radio value="subscription_aligned">
                           Start of Subscription
