@@ -154,7 +154,9 @@ const SideBar: FC = () => {
       }}
     >
       <div>
-        <img src={imgUrl} alt="lotus" className="mb-4" />
+        <div className=" p-8">
+          <img src={imgUrl} alt="lotus" className="mb-4 max-w-full" />
+        </div>
         <Menu
           mode="inline"
           selectedKeys={[location.pathname]}

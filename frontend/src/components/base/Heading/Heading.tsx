@@ -29,7 +29,7 @@ const Heading: React.FC<HeadingProps> = ({
       ? "Welcome To The Lotus Cloud Demo"
       : "";
   return (
-    <div className="mt-16">
+    <div className=" mt-16">
       <div className="flex cursor-pointer justify-end">
         {/* <div className="bg-red">
           <input
