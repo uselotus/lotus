@@ -30,10 +30,31 @@ type Event struct {
 	InsertedAt     time.Time              `json:"inserted_at,omitempty"`
 }
 
-type StreamEvents struct {
-	Events         *[]Event `json:"events"`
-	OrganizationID int64    `json:"organization_id"`
-	Event          *Event   `json:"event"`
+type StreamEvent struct {
+	OrganizationID int64  `json:"organization_id"`
+	Event          *Event `json:"event"`
+}
+
+func (t *Event) UnmarshalJSON(data []byte) error {
+	type Alias Event
+	aux := &struct {
+		TimeCreated string `json:"time_created"`
+		*Alias
+	}{
+		Alias: (*Alias)(t),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	parsedTime, err := time.Parse(time.RFC3339, aux.TimeCreated)
+	if err != nil {
+		parsedTime, err = time.Parse("2006-01-02 15:04:05.999999-07:00", aux.TimeCreated)
+		if err != nil {
+			return err
+		}
+	}
+	t.TimeCreated = parsedTime
+	return nil
 }
 
 type batch struct {
@@ -97,7 +118,6 @@ func main() {
 		kgo.DisableAutoCommit(),
 	}
 	if saslUsername != "" && saslPassword != "" {
-		log.Printf("Using SASL authentication with url: %s, username: %s, password: %s", kafkaURL, saslUsername, saslPassword)
 		opts = append(opts, kgo.SASL(scram.Auth{
 			User: saslUsername,
 			Pass: saslPassword,
@@ -149,7 +169,6 @@ func main() {
 		panic(err)
 	}
 	defer insertStatement.Close()
-	log.Printf("Connected to database: %s", dbURL)
 	for {
 		fetches := cl.PollFetches(ctx)
 		log.Print("Polling for messages...")
@@ -178,29 +197,20 @@ func main() {
 
 		fetches.EachRecord(func(r *kgo.Record) {
 			log.Printf("Received record: %s\n", r.Value)
-			var streamEvents StreamEvents
-			err := json.Unmarshal(r.Value, &streamEvents)
+			var streamEvent StreamEvent
+			err := json.Unmarshal(r.Value, &streamEvent)
 			if err != nil {
 				log.Printf("Error unmarshalling event: %s\n", err)
 				// since we check in the prevuious statement that the event has the correct format, an error unmarshalling should be a fatal error
 				panic(err)
 			}
 
-			if streamEvents.Event == nil {
-				if streamEvents.Events != nil {
-					if len(*streamEvents.Events) > 0 {
-						streamEvents.Event = &(*streamEvents.Events)[0]
-					} else {
-						log.Println("Error: event is nil and events is empty")
-						panic(fmt.Errorf("event is nil and events is empty"))
-					}
-				} else {
-					log.Println("Error: both event and events fields are missing from stream_events")
-					panic(fmt.Errorf("both event and events fields are missing from stream_events"))
-				}
+			if streamEvent.Event == nil {
+				log.Println("the event field is missing from stream_event")
+				panic(fmt.Errorf("the event field is missing from stream_event"))
 			}
 
-			event := streamEvents.Event
+			event := streamEvent.Event
 			event.InsertedAt = time.Now()
 
 			if committed, err := batch.addRecord(event); err != nil {
