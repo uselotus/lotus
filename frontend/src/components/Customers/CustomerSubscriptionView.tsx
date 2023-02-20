@@ -1,3 +1,4 @@
+/* eslint-disable no-case-declarations */
 /* eslint-disable no-shadow */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-nested-ternary */
@@ -99,6 +100,7 @@ const SubscriptionView: FC<Props> = ({
   onCreate,
 }) => {
   const [cursor, setCursor] = useState<string>("");
+  const [rightCursor, setRightCursor] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [next, setNext] = useState<string>("");
   const [previous, setPrev] = useState<string>("");
@@ -318,6 +320,7 @@ const SubscriptionView: FC<Props> = ({
         setPrev(String(Number(previous) - 1 - limit));
         setNext(String(Number(next) - 1 - limit));
         setCursor(next);
+        setRightCursor("");
         return;
       case "RIGHT":
         if (Number(next) <= subscriptions.length) {
@@ -338,15 +341,19 @@ const SubscriptionView: FC<Props> = ({
           );
           setNext(String(subscriptions.length - 1));
           setPrev(previous);
-          setCursor("");
+          setRightCursor("RIGHT-END");
         }
         break;
       case "START":
         setCursor("");
         setCurrentPage(1);
         setPaginatedSubscriptions(subscriptions.slice(0, limit));
+        // const next = limit + limit;
         setNext(String(limit + limit));
         setPrev(String(Number(limit)));
+        if (limit + limit > subscriptions.length) {
+          setRightCursor("RIGHT-END");
+        }
         break;
       default:
         break;
@@ -863,7 +870,9 @@ const SubscriptionView: FC<Props> = ({
             : paginatedSubscriptions.map((subPlan) => (
                 <>
                   <CustomerCard
-                    className="shadow-none h-[270px]"
+                    className={`shadow-none ${
+                      windowWidth > 2500 ? `h-[290px]` : "h-[270px]"
+                    } `}
                     key={subPlan.end_date}
                   >
                     <CustomerCard.Heading>
@@ -1292,6 +1301,7 @@ const SubscriptionView: FC<Props> = ({
           <CustomPagination
             cursor={cursor}
             previous={previous}
+            rightCursor={rightCursor}
             next={next}
             currentPage={currentPage}
             handleMovements={handleMovements}

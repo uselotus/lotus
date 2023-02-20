@@ -8,6 +8,7 @@ import "./CustomPagination.css";
 
 interface CustomPaginationProps {
   cursor: string;
+  rightCursor?: string;
   previous: string;
   next: string;
   currentPage: number;
@@ -16,6 +17,7 @@ interface CustomPaginationProps {
 
 const CustomPagination: FC<CustomPaginationProps> = ({
   cursor,
+  rightCursor,
   currentPage,
   handleMovements,
   previous,
@@ -40,7 +42,7 @@ const CustomPagination: FC<CustomPaginationProps> = ({
       <button
         type="button"
         className="movementButton"
-        disabled={previous === "null" || cursor === "EMPTY"}
+        disabled={previous === "null" || cursor === ""}
         onClick={() => handleMovements("LEFT")}
       >
         <LeftOutlined />
@@ -49,7 +51,7 @@ const CustomPagination: FC<CustomPaginationProps> = ({
       <button
         type="button"
         className="movementButton"
-        disabled={next === "null" || cursor === "EMPTY"}
+        disabled={next === "null" || rightCursor === "RIGHT-END"}
         onClick={() => handleMovements("RIGHT")}
       >
         <RightOutlined />
