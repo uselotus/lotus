@@ -16,6 +16,7 @@ from jinja2 import Template
 from metering_billing.exceptions import MetricValidationFailed
 from metering_billing.utils import (
     convert_to_date,
+    customer_id_uuidv5,
     dates_bwn_two_dts,
     get_granularity_ratio,
     namedtuplefetchall,
@@ -232,10 +233,14 @@ class CounterHandler(MetricHandler):
     ) -> dict:
         from metering_billing.models import OrganizationSetting
 
+        customer = subscription_record.customer
+        uuidv5_customer_id = customer.uuidv5_customer_id or customer_id_uuidv5(
+            customer.customer_id
+        )
         injection_dict = {
             "query_type": metric.usage_aggregation_type,
             "filter_properties": {},
-            "uuidv5_customer_id": subscription_record.customer.uuidv5_customer_id,
+            "uuidv5_customer_id": uuidv5_customer_id,
         }
         try:
             sf_setting = organization.settings.get(
