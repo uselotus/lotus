@@ -3,44 +3,53 @@ package authn
 import (
 	"database/sql"
 	"net/http"
-	"time"
+	"strings"
 
 	"github.com/labstack/echo/v4"
+	"github.com/uselotus/lotus/go/eventtracker/types"
 )
-
-type APIKey struct {
-	ID           string    `json:"id"`
-	Organization string    `json:"organization"`
-	Created      time.Time `json:"created"`
-	Name         string    `json:"name"`
-	Revoked      bool      `json:"revoked"`
-	ExpiryDate   time.Time `json:"expiry_date"`
-	HashedKey    string    `json:"hashed_key"`
-	Prefix       string    `json:"prefix"`
-}
 
 func Middleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			key := c.Request().Header.Get("HTTP_X_API_KEY")
+			key := c.Request().Header.Get("HTTP-X-API-KEY")
 
 			if key == "" {
-				key = c.Request().Header.Get("http_x_api_key")
+				key = c.Request().Header.Get("http-x-api-key")
 			}
 
 			if key == "" {
 				return echo.NewHTTPError(http.StatusBadRequest, "No API key found in request")
 			}
 
+			prefix, _, _ := strings.Cut(key, ".")
+
 			db := c.Get("db").(*sql.DB)
 
-			var apiKey APIKey
+			var apiKey types.APIKey
 
-			if err := db.QueryRow("SELECT * FROM api_keys WHERE hashed_key = ?", key).Scan(&apiKey); err != nil {
-				return echo.NewHTTPError(http.StatusBadRequest, "Invalid API key")
+			if err := db.QueryRow("SELECT id, organization_id, created, name, revoked, expiry_date, hashed_key, prefix FROM metering_billing_apitoken WHERE prefix = $1 AND revoked = 'false' LIMIT 1", prefix).Scan(
+				&apiKey.ID,
+				&apiKey.OrganizationID,
+				&apiKey.Created,
+				&apiKey.Name,
+				&apiKey.Revoked,
+				&apiKey.ExpiryDate,
+				&apiKey.HashedKey,
+				&apiKey.Prefix,
+			); err != nil {
+				if err == sql.ErrNoRows {
+					return echo.NewHTTPError(http.StatusBadRequest, "Invalid API key")
+				}
+
+				return echo.NewHTTPError(http.StatusInternalServerError, err)
 			}
 
-			// TODO: Soham - Check if the key is revoked or expired
+			if err := apiKey.Validate(); err != nil {
+				return echo.NewHTTPError(http.StatusBadRequest, err)
+			}
+
+			c.Set("apiKey", apiKey)
 
 			return next(c)
 		}

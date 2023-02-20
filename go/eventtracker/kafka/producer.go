@@ -12,6 +12,7 @@ import (
 type StreamEvents struct {
 	OrganizationID string                `json:"organization_id"`
 	Events         []types.IngestedEvent `json:"events"`
+	Event          types.Event           `json:"event"`
 }
 
 func Produce(ctx context.Context, cl *kgo.Client, event types.IngestedEvent) error {

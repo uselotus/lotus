@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	_ "net/http"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	_ "github.com/lib/pq"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/uselotus/lotus/go/eventtracker/authn"
 	"github.com/uselotus/lotus/go/eventtracker/config"
 	"github.com/uselotus/lotus/go/eventtracker/database"
 	"github.com/uselotus/lotus/go/eventtracker/kafka"
@@ -54,8 +55,11 @@ func main() {
 
 	e.Use(middleware.Logger())
 	e.Use(database.Middleware(db))
+	e.Use(authn.Middleware())
 
 	e.POST("/", func(c echo.Context) error {
+		now := time.Now()
+
 		events := &[]types.Event{}
 
 		if err := c.Bind(events); err != nil {
@@ -65,7 +69,7 @@ func main() {
 		badEvents := make(map[string]string)
 
 		for _, event := range *events {
-			if valid, reason := event.IsValid(); !valid {
+			if valid, reason := event.IsValid(now); !valid {
 				if event.IdempotencyID != "" {
 					badEvents[event.IdempotencyID] = reason
 				} else {
@@ -75,9 +79,9 @@ func main() {
 				continue
 			}
 
-			organization := c.Get("organization").(string)
+			key := c.Get("apiKey").(types.APIKey)
 
-			transformedEvent := event.Transform(organization)
+			transformedEvent := event.Transform(key.OrganizationID)
 
 			if err := kafka.Produce(ctx, cl, transformedEvent); err != nil {
 				badEvents[event.IdempotencyID] = fmt.Sprintf("Failed to produce event to kafka: %v", err)
