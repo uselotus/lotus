@@ -30,9 +30,10 @@ type Event struct {
 	InsertedAt     time.Time              `json:"inserted_at,omitempty"`
 }
 
-type StreamEvent struct {
-	OrganizationID int64  `json:"organization_id"`
-	Event          *Event `json:"event"`
+type StreamEvents struct {
+	Events         *[]Event `json:"events"`
+	OrganizationID int64    `json:"organization_id"`
+	Event          *Event   `json:"event"`
 }
 
 func (t *Event) UnmarshalJSON(data []byte) error {
@@ -169,6 +170,7 @@ func main() {
 		panic(err)
 	}
 	defer insertStatement.Close()
+
 	for {
 		fetches := cl.PollFetches(ctx)
 		log.Print("Polling for messages...")
@@ -197,20 +199,29 @@ func main() {
 
 		fetches.EachRecord(func(r *kgo.Record) {
 			log.Printf("Received record: %s\n", r.Value)
-			var streamEvent StreamEvent
-			err := json.Unmarshal(r.Value, &streamEvent)
+			var streamEvents StreamEvents
+			err := json.Unmarshal(r.Value, &streamEvents)
 			if err != nil {
 				log.Printf("Error unmarshalling event: %s\n", err)
 				// since we check in the prevuious statement that the event has the correct format, an error unmarshalling should be a fatal error
 				panic(err)
 			}
 
-			if streamEvent.Event == nil {
-				log.Println("the event field is missing from stream_event")
-				panic(fmt.Errorf("the event field is missing from stream_event"))
+			if streamEvents.Event == nil {
+				if streamEvents.Events != nil {
+					if len(*streamEvents.Events) > 0 {
+						streamEvents.Event = &(*streamEvents.Events)[0]
+					} else {
+						log.Println("Error: event is nil and events is empty")
+						panic(fmt.Errorf("event is nil and events is empty"))
+					}
+				} else {
+					log.Println("Error: both event and events fields are missing from stream_events")
+					panic(fmt.Errorf("both event and events fields are missing from stream_events"))
+				}
 			}
 
-			event := streamEvent.Event
+			event := streamEvents.Event
 			event.InsertedAt = time.Now()
 
 			if committed, err := batch.addRecord(event); err != nil {
