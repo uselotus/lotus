@@ -6,19 +6,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/twmb/franz-go/pkg/sasl/plain"
 )
 
 const batchSize = 1000
 
 type Event struct {
 	OrganizationID int                    `json:"organization_id,omitempty"`
-	CustomerID     *int                   `json:"customer_id,omitempty"`
 	CustID         string                 `json:"cust_id,omitempty"`
 	EventName      string                 `json:"event_name,omitempty"`
 	TimeCreated    time.Time              `json:"time_created,omitempty"`
@@ -28,40 +29,48 @@ type Event struct {
 }
 
 type StreamEvents struct {
-	Events         []Event `json:"events"`
-	OrganizationID int64   `json:"organization_id"`
-	Event          *Event  `json:"event"`
+	Events         *[]Event `json:"events"`
+	OrganizationID int64    `json:"organization_id"`
+	Event          *Event   `json:"event"`
 }
 
 type batch struct {
-	tx         *sql.Tx
-	insertStmt *sql.Stmt
-	count      int
+	tx              *sql.Tx
+	insertStatement *sql.Stmt
+	count           int
 }
 
-func (b *batch) addRecord(event *Event) error {
+func (b *batch) addRecord(event *Event) (bool, error) {
 	propertiesJSON, errJSON := json.Marshal(event.Properties)
 	if errJSON != nil {
-		fmt.Printf("Error encoding properties to JSON: %s\n", errJSON)
-		return errJSON
+		log.Printf("Error encoding properties to JSON: %s\n", errJSON)
+		return false, errJSON
 	}
 
-	_, err := b.insertStmt.Exec(event.OrganizationID, event.CustomerID, event.CustID, event.EventName, event.TimeCreated, propertiesJSON, event.IdempotencyID, event.InsertedAt)
+	_, err := b.insertStatement.Exec(
+		event.OrganizationID,
+		event.CustID,
+		event.EventName,
+		event.TimeCreated,
+		propertiesJSON,
+		event.IdempotencyID,
+		event.InsertedAt,
+	)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	b.count++
 	if b.count >= batchSize {
 		if err := b.tx.Commit(); err != nil {
-			return err
+			return false, err
 		}
 		b.count = 0
+		return true, nil
 	}
 
-	return nil
+	return false, nil
 }
-
 func main() {
 	var kafkaURL string
 	if kafkaURL = os.Getenv("KAFKA_URL"); kafkaURL == "" {
@@ -71,51 +80,68 @@ func main() {
 	if kafkaTopic = os.Getenv("EVENTS_TOPIC"); kafkaTopic == "" {
 		kafkaTopic = "test-topic"
 	}
+	saslUsername := os.Getenv("SASL_USERNAME")
+	saslPassword := os.Getenv("SASL_PASSWORD")
 	seeds := []string{kafkaURL}
 	ctx := context.Background()
 
 	// Setup kafka consumer
-	cl, err := kgo.NewClient(
+	opts := []kgo.Opt{
 		kgo.SeedBrokers(seeds...),
 		kgo.ConsumerGroup("default"),
 		kgo.ConsumeTopics(kafkaTopic),
 		kgo.DisableAutoCommit(),
-	)
+	}
+	if saslUsername != "" && saslPassword != "" {
+		log.Printf("Using SASL authentication with username: %s, password: %s", saslUsername, saslPassword)
+		opts = append(opts, kgo.SASL(plain.Auth{
+			User: saslUsername,
+			Pass: saslPassword,
+		}.AsMechanism()))
+	}
+	cl, err := kgo.NewClient(opts...)
+
 	if err != nil {
 		panic(err)
 	}
+
 	defer cl.Close()
 
 	var dbURL string
 	if dbURL = os.Getenv("DATABASE_URL"); dbURL == "" {
 		host := "localhost"
-		dockerized := os.Getenv("DOCKERIZED")
-		if dockerized != "" && dockerized != "0" && strings.ToLower(dockerized) != "false" {
+		dockerized := strings.ToLower(os.Getenv("DOCKERIZED"))
+		if !(dockerized == "false" || dockerized == "0" || dockerized == "no" || dockerized == "f" || dockerized == "") {
 			host = "db"
 		}
-		if os.Getenv("POSTGRES_USER") == "" {
-			os.Setenv("POSTGRES_USER", "lotus")
+
+		pgUser := os.Getenv("POSTGRES_USER")
+		if pgUser == "" {
+			pgUser = "lotus"
 		}
-		if os.Getenv("POSTGRES_PASSWORD") == "" {
-			os.Setenv("POSTGRES_PASSWORD", "lotus")
+		pgPassword := os.Getenv("POSTGRES_PASSWORD")
+		if pgPassword == "" {
+			pgPassword = "lotus"
 		}
-		if os.Getenv("POSTGRES_DB") == "" {
-			os.Setenv("POSTGRES_DB", "lotus")
+		pgDB := os.Getenv("POSTGRES_DB")
+		if pgDB == "" {
+			pgDB = "lotus"
 		}
 
-		dbURL = fmt.Sprintf("postgres://%s:%s@%s:5432/%s?sslmode=disable", os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD"), host, os.Getenv("POSTGRES_DB"))
+		dbURL = fmt.Sprintf("postgres://%s:%s@%s:5432/%s?sslmode=disable", pgUser, pgPassword, host, pgDB)
 	}
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
+		log.Printf("Error opening database url: %s", dbURL)
 		panic(err)
 	}
 	defer db.Close()
 
-	insertStmt, err := db.Prepare("INSERT INTO metering_billing_usageevent (organization_id, customer_id, cust_id, event_name, time_created, properties, idempotency_id, inserted_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING")
+	insertStatement, err := db.Prepare("INSERT INTO metering_billing_usageevent (organization_id, cust_id, event_name, time_created, properties, idempotency_id, inserted_at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING")
 	if err != nil {
 		panic(err)
 	}
-	defer insertStmt.Close()
+	defer insertStatement.Close()
 
 	for {
 		fetches := cl.PollFetches(ctx)
@@ -128,56 +154,78 @@ func main() {
 		if errs := fetches.Errors(); len(errs) > 0 {
 			// All errors are retried internally when fetching, but non-retriable errors are
 			// returned from polls so that users can notice and take action.
+			log.Printf("Error fetching: %v\n", errs)
 			panic(fmt.Sprint(errs))
 		}
 
 		tx, err := db.Begin()
 		if err != nil {
-			fmt.Printf("Error starting transaction: %s\n", err)
-			continue
+			log.Printf("Error starting transaction: %s\n", err)
+			panic(err)
 		}
 		batch := &batch{
-			tx:         tx,
-			insertStmt: insertStmt,
+			tx:              tx,
+			insertStatement: insertStatement,
 		}
 
 		fetches.EachRecord(func(r *kgo.Record) {
-			fmt.Printf("Received record: %s", r.Value)
+			log.Printf("Received record: %s\n", r.Value)
 			var streamEvents StreamEvents
 			err := json.Unmarshal(r.Value, &streamEvents)
 			if err != nil {
-				fmt.Printf("Error unmarshalling event: %s\n", err)
-				return
+				log.Printf("Error unmarshalling event: %s\n", err)
+				// since we check in the prevuious statement that the event has the correct format, an error unmarshalling should be a fatal error
+				panic(err)
 			}
 
 			if streamEvents.Event == nil {
-				if len(streamEvents.Events) > 0 {
-					streamEvents.Event = &streamEvents.Events[0]
+				if streamEvents.Events != nil {
+					if len(*streamEvents.Events) > 0 {
+						streamEvents.Event = &(*streamEvents.Events)[0]
+					} else {
+						log.Println("Error: event is nil and events is empty")
+						panic(fmt.Errorf("event is nil and events is empty"))
+					}
 				} else {
-					fmt.Println("Error: both event and events fields are missing from stream_events")
-					return
+					log.Println("Error: both event and events fields are missing from stream_events")
+					panic(fmt.Errorf("both event and events fields are missing from stream_events"))
 				}
 			}
 
 			event := streamEvents.Event
-			event.CustomerID = nil
 			event.InsertedAt = time.Now()
 
-			if err := batch.addRecord(event); err != nil {
-				fmt.Printf("Error inserting event: %s\n", err)
-				return
+			if committed, err := batch.addRecord(event); err != nil {
+				//only thing that can go wrong in batch is either bugs in the code or a serious database failure/network partition of some kind. Because the usual referential integrity issues are already dealt with (on conflict do nothing), all that's left is bad stuff.
+				log.Printf("Error inserting event: %s\n", err)
+				panic(err)
+			} else if committed {
+				if err := cl.CommitUncommittedOffsets(context.Background()); err != nil {
+					// this is a fatal error
+					log.Printf("commit records failed: %v", err)
+					panic(fmt.Errorf("commit records failed: %w", err))
+				}
 			}
 		})
 
 		if batch.count > 0 {
 			if err := tx.Commit(); err != nil {
-				fmt.Printf("Error inserting events into database: %s\n", err)
-				return
+				// again, this should be a fatal error
+				log.Printf("Error inserting events into database: %s\n", err)
+				panic(err)
 			}
 			if err := cl.CommitUncommittedOffsets(context.Background()); err != nil {
-				fmt.Printf("commit records failed: %v", err)
+				// this is a fatal error
+				log.Printf("commit records failed: %v", err)
 				panic(fmt.Errorf("commit records failed: %w", err))
 			}
+		} else {
+			if err := tx.Rollback(); err != nil {
+				// again, this should be a fatal error
+				log.Printf("Error rolling back transaction: %s\n", err)
+				panic(err)
+			}
 		}
+
 	}
 }

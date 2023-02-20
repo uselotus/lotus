@@ -82,7 +82,8 @@ services:
       - db
       - redis
       - redpanda
-    restart: "on-failure:5"
+      - backend
+    restart: "on-failure:15"
 
   frontend:
     restart: always

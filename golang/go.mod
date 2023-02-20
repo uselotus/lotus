@@ -2,7 +2,7 @@ module github.com/uselotus/lotus/golang
 
 go 1.19
 
-require github.com/twmb/franz-go v1.12.0
+require github.com/twmb/franz-go v1.12.1
 
 require (
 	github.com/klauspost/compress v1.15.15 // indirect

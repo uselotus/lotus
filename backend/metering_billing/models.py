@@ -688,10 +688,6 @@ class Customer(models.Model):
                 )
             except PricingUnit.DoesNotExist:
                 self.default_currency = None
-        if not self.uuidv5_customer_id:
-            self.uuidv5_customer_id = uuid.uuid5(
-                CUSTOMER_ID_NAMESPACE, self.customer_id
-            )
         super(Customer, self).save(*args, **kwargs)
 
     def get_active_subscription_records(self):
