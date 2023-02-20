@@ -7,7 +7,6 @@ from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
-
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
@@ -26,6 +25,7 @@ from metering_billing.utils.enums import (
     BACKTEST_STATUS,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
 )
+from metering_billing.webhooks import invoice_past_due_webhook
 
 logger = logging.getLogger("django.server")
 EVENT_CACHE_FLUSH_COUNT = settings.EVENT_CACHE_FLUSH_COUNT
@@ -481,3 +481,23 @@ def import_customers_from_payment_processor_inner(payment_processor, organizatio
 @shared_task
 def import_customers_from_payment_processor(payment_processor, organization_pk):
     import_customers_from_payment_processor_inner(payment_processor, organization_pk)
+
+
+def check_past_due_invoices_inner():
+    from metering_billing.models import Invoice
+
+    now = now_utc()
+    incomplete_invoices = Invoice.objects.filter(
+        Q(payment_status=Invoice.PaymentStatus.UNPAID),
+        due_date__lt=now,
+        invoice_past_due_webhook_sent=False,
+    )
+    for invoice in incomplete_invoices:
+        invoice_past_due_webhook(invoice, invoice.organization)
+        invoice.invoice_past_due_webhook_sent = True
+        invoice.save()
+
+
+@shared_task
+def check_past_due_invoices():
+    check_past_due_invoices_inner()

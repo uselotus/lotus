@@ -5,7 +5,7 @@ GAUGE_DELTA_CUMULATIVE_SUM = """
 CREATE MATERIALIZED VIEW IF NOT EXISTS {{ cagg_name }}
 WITH (timescaledb.continuous) AS
 SELECT
-    "metering_billing_usageevent"."customer_id" AS customer_id
+    "metering_billing_usageevent"."uuidv5_customer_id" AS uuidv5_customer_id
     {%- for group_by_field in group_by %}
     ,"metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }}
     {%- endfor %}
@@ -16,7 +16,7 @@ SELECT
 FROM
     "metering_billing_usageevent"
 WHERE
-    "metering_billing_usageevent"."event_name" = '{{ event_name }}'
+    "metering_billing_usageevent"."uuidv5_event_name" = '{{ uuidv5_event_name }}'
     AND "metering_billing_usageevent"."organization_id" = {{ organization_id }}
     AND "metering_billing_usageevent"."time_created" <= NOW()
     {%- for property_name, operator, comparison in numeric_filters %}
@@ -47,7 +47,7 @@ WHERE
         )
     {%- endfor %}
 GROUP BY
-    "metering_billing_usageevent"."customer_id"
+    "metering_billing_usageevent"."uuidv5_customer_id"
     {%- for group_by_field in group_by %}
     , "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}'
     {%- endfor %}
@@ -61,7 +61,7 @@ GROUP BY
 GAUGE_DELTA_GET_TOTAL_USAGE_WITH_PRORATION = """
 WITH cumsum_cagg_daily AS (
     SELECT
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -69,7 +69,7 @@ WITH cumsum_cagg_daily AS (
     FROM
         {{ cumsum_cagg }}
     WHERE
-        customer_id = {{ customer_id }}
+        uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {%- for property_name, property_values in filter_properties.items() %}
         AND {{ property_name }}
             IN (
@@ -82,13 +82,13 @@ WITH cumsum_cagg_daily AS (
         AND time_bucket < date_trunc('day', '{{ start_date }}'::timestamptz)
         AND time_bucket <= CURRENT_DATE
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
 ), current_day_sum AS (
     SELECT
-        "metering_billing_usageevent"."customer_id" AS customer_id
+        "metering_billing_usageevent"."uuidv5_customer_id" AS uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }}
         {%- endfor %}
@@ -98,7 +98,7 @@ WITH cumsum_cagg_daily AS (
     FROM
         "metering_billing_usageevent"
     WHERE
-        "metering_billing_usageevent"."event_name" = '{{ event_name }}'
+        "metering_billing_usageevent"."uuidv5_event_name" = '{{ uuidv5_event_name }}'
         AND "metering_billing_usageevent"."organization_id" = {{ organization_id }}
         AND "metering_billing_usageevent"."time_created" <= NOW()
         AND "metering_billing_usageevent"."time_created" < '{{ start_date }}'::timestamptz
@@ -131,13 +131,13 @@ WITH cumsum_cagg_daily AS (
             )
         {%- endfor %}
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}'
         {%- endfor %}
 ), prev_value AS (
     SELECT
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -146,17 +146,17 @@ WITH cumsum_cagg_daily AS (
         cumsum_cagg_daily
     LEFT JOIN
         current_day_sum
-    USING (customer_id {%- for group_by_field in group_by %}, {{ group_by_field }}{% endfor %})
+    USING (uuidv5_customer_id {%- for group_by_field in group_by %}, {{ group_by_field }}{% endfor %})
 ),
 cumulative_sum_per_event AS (
     SELECT
-        event_table.customer_id AS customer_id
+        event_table.uuidv5_customer_id AS uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , event_table.properties ->> '{{ group_by_field }}' AS {{ group_by_field }}
         {%- endfor %}
         , COALESCE(prev_value.prev_usage_qty,0) + SUM(cast(event_table.properties ->> '{{ property_name }}' AS decimal))
             OVER (
-                PARTITION BY event_table.customer_id
+                PARTITION BY event_table.uuidv5_customer_id
                 {%- for group_by_field in group_by %}
                 , event_table.properties ->> '{{ group_by_field }}'
                 {%- endfor %}
@@ -167,9 +167,9 @@ cumulative_sum_per_event AS (
     FROM
         "metering_billing_usageevent" AS event_table
     LEFT JOIN prev_value
-        ON event_table.customer_id = prev_value.customer_id
+        ON event_table.uuidv5_customer_id = prev_value.uuidv5_customer_id
     WHERE
-       event_table.event_name = '{{ event_name }}'
+       event_table.uuidv5_event_name = '{{ uuidv5_event_name }}'
         AND event_table.organization_id = {{ organization_id }}
         AND event_table.time_created <= NOW()
         AND event_table.time_created >= '{{ start_date }}'::timestamptz
@@ -204,7 +204,7 @@ cumulative_sum_per_event AS (
 ),
 proration_level_query AS (
     SELECT
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -226,7 +226,7 @@ proration_level_query AS (
     FROM
         cumulative_sum_per_event
     WHERE
-        customer_id = {{ customer_id }}
+        uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {%- for property_name, property_values in filter_properties.items() %}
         AND {{ property_name }}
             IN (
@@ -240,7 +240,7 @@ proration_level_query AS (
         AND time_bucket >= '{{ start_date }}'::timestamptz
         AND time_bucket <= '{{ end_date }}'::timestamptz
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -301,7 +301,7 @@ SELECT
 GAUGE_DELTA_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY = """
 WITH cumsum_cagg_daily AS (
     SELECT
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -309,7 +309,7 @@ WITH cumsum_cagg_daily AS (
     FROM
         {{ cumsum_cagg }}
     WHERE
-        customer_id = {{ customer_id }}
+        uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {%- for property_name, property_values in filter_properties.items() %}
         AND {{ property_name }}
             IN (
@@ -322,13 +322,13 @@ WITH cumsum_cagg_daily AS (
         AND time_bucket < date_trunc('day', '{{ start_date }}'::timestamptz)
         AND time_bucket <= CURRENT_DATE
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
 ), current_day_sum AS (
     SELECT
-        "metering_billing_usageevent"."customer_id" AS customer_id
+        "metering_billing_usageevent"."uuidv5_customer_id" AS uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }}
         {%- endfor %}
@@ -338,7 +338,7 @@ WITH cumsum_cagg_daily AS (
     FROM
         "metering_billing_usageevent"
     WHERE
-        "metering_billing_usageevent"."event_name" = '{{ event_name }}'
+        "metering_billing_usageevent"."uuidv5_event_name" = '{{ uuidv5_event_name }}'
         AND "metering_billing_usageevent"."organization_id" = {{ organization_id }}
         AND "metering_billing_usageevent"."time_created" <= NOW()
         AND "metering_billing_usageevent"."time_created" < '{{ start_date }}'::timestamptz
@@ -371,13 +371,13 @@ WITH cumsum_cagg_daily AS (
             )
         {%- endfor %}
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}'
         {%- endfor %}
 ), prev_value AS (
     SELECT
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -386,17 +386,17 @@ WITH cumsum_cagg_daily AS (
         cumsum_cagg_daily
     LEFT JOIN
         current_day_sum
-    USING (customer_id {%- for group_by_field in group_by %}, {{ group_by_field }}{% endfor %})
+    USING (uuidv5_customer_id {%- for group_by_field in group_by %}, {{ group_by_field }}{% endfor %})
 ),
 cumulative_sum_per_event AS (
     SELECT
-        event_table.customer_id AS customer_id
+        event_table.uuidv5_customer_id AS uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , event_table.properties ->> '{{ group_by_field }}' AS {{ group_by_field }}
         {%- endfor %}
         , COALESCE(prev_value.prev_usage_qty,0) + SUM(cast(event_table.properties ->> '{{ property_name }}' AS decimal))
             OVER (
-                PARTITION BY event_table.customer_id
+                PARTITION BY event_table.uuidv5_customer_id
                 {%- for group_by_field in group_by %}
                 , event_table.properties ->> '{{ group_by_field }}'
                 {%- endfor %}
@@ -407,9 +407,9 @@ cumulative_sum_per_event AS (
     FROM
         "metering_billing_usageevent" AS event_table
     LEFT JOIN prev_value
-        ON event_table.customer_id = prev_value.customer_id
+        ON event_table.uuidv5_customer_id = prev_value.uuidv5_customer_id
     WHERE
-       event_table.event_name = '{{ event_name }}'
+       event_table.uuidv5_event_name = '{{ uuidv5_event_name }}'
         AND event_table.organization_id = {{ organization_id }}
         AND event_table.time_created <= NOW()
         AND event_table.time_created >= '{{ start_date }}'::timestamptz
@@ -444,7 +444,7 @@ cumulative_sum_per_event AS (
 ),
 proration_level_query AS (
     SELECT
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -466,7 +466,7 @@ proration_level_query AS (
     FROM
         cumulative_sum_per_event
     WHERE
-        customer_id = {{ customer_id }}
+        uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {%- for property_name, property_values in filter_properties.items() %}
         AND {{ property_name }}
             IN (
@@ -480,7 +480,7 @@ proration_level_query AS (
         AND time_bucket >= '{{ start_date }}'::timestamptz
         AND time_bucket <= '{{ end_date }}'::timestamptz
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -541,7 +541,7 @@ DROP FUNCTION IF EXISTS tg_refresh_{{ cagg_name }};
 GAUGE_DELTA_GET_CURRENT_USAGE = """
 WITH cumsum_cagg_daily AS (
     SELECT
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -549,7 +549,7 @@ WITH cumsum_cagg_daily AS (
     FROM
         {{ cumsum_cagg }}
     WHERE
-        customer_id = {{ customer_id }}
+        uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {%- for property_name, property_values in filter_properties.items() %}
         AND {{ property_name }}
             IN (
@@ -561,13 +561,13 @@ WITH cumsum_cagg_daily AS (
         {%- endfor %}
         AND time_bucket < CURRENT_DATE
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
 ), current_day_sum AS (
     SELECT
-        "metering_billing_usageevent"."customer_id" AS customer_id
+        "metering_billing_usageevent"."uuidv5_customer_id" AS uuidv5_customer_id
         {%- for group_by_field in group_by %}
         ,"metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }}
         {%- endfor %}
@@ -578,7 +578,7 @@ WITH cumsum_cagg_daily AS (
     FROM
         "metering_billing_usageevent"
     WHERE
-        "metering_billing_usageevent"."event_name" = '{{ event_name }}'
+        "metering_billing_usageevent"."uuidv5_event_name" = '{{ uuidv5_event_name }}'
         AND "metering_billing_usageevent"."organization_id" = {{ organization_id }}
         AND "metering_billing_usageevent"."time_created" <= NOW()
         AND date_trunc("day", "metering_billing_usageevent"."time_created") = CURRENT_DATE
@@ -609,14 +609,14 @@ WITH cumsum_cagg_daily AS (
                 {%- endfor %}
             )
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
         , "metering_billing_usageevent"."time_created"
 )
 SELECT
-    customer_id
+    uuidv5_customer_id
     {%- for group_by_field in group_by %}
     , {{ group_by_field }}
     {%- endfor %}
@@ -625,13 +625,13 @@ FROM
     cumsum_cagg_daily
 FULL OUTER JOIN
     current_day_sum
-USING (customer_id {%- for group_by_field in group_by %}, {{ group_by_field }}{% endfor %});
+USING (uuidv5_customer_id {%- for group_by_field in group_by %}, {{ group_by_field }}{% endfor %});
 """
 
 GAUGE_DELTA_TOTAL_PER_DAY = """
 WITH prev_value AS (
     SELECT
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -640,25 +640,25 @@ WITH prev_value AS (
         {{ cagg_name }}
     WHERE
         time_bucket <= CURRENT_DATE
-        {% if customer_id is not none %}
-        AND customer_id = {{ customer_id }}
+        {% if uuidv5_customer_id is not none %}
+        AND uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {% endif %}
         AND time_bucket < '{{ start_date }}'::timestamptz
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
 )
 , cumulative_sum_per_event AS (
     SELECT
-        event_table.customer_id AS customer_id
+        event_table.uuidv5_customer_id AS uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , event_table.properties ->> '{{ group_by_field }}' AS {{ group_by_field }}
         {%- endfor %}
         , COALESCE(prev_value.prev_usage_qty,0) + SUM(cast(event_table.properties ->> '{{ property_name }}' AS decimal))
             OVER (
-                PARTITION BY event_table.customer_id
+                PARTITION BY event_table.uuidv5_customer_id
                 {%- for group_by_field in group_by %}
                 , event_table.properties ->> '{{ group_by_field }}'
                 {%- endfor %}
@@ -669,12 +669,12 @@ WITH prev_value AS (
     FROM
         "metering_billing_usageevent" AS event_table
     LEFT JOIN prev_value
-        ON event_table.customer_id = prev_value.customer_id
+        ON event_table.uuidv5_customer_id = prev_value.uuidv5_customer_id
         {%- for group_by_field in group_by %}
         AND event_table.properties ->> '{{ group_by_field }}' = prev_value.{{ group_by_field }}
         {%- endfor %}
     WHERE
-        event_table.event_name = '{{ event_name }}'
+        event_table.uuidv5_event_name = '{{ uuidv5_event_name }}'
         AND event_table.organization_id = {{ organization_id }}
         AND event_table.time_created <= NOW()
         AND event_table.time_created >= '{{ start_date }}'::timestamptz
@@ -709,7 +709,7 @@ WITH prev_value AS (
 )
 , proration_level_query AS (
     SELECT
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -729,8 +729,8 @@ WITH prev_value AS (
         time_bucket <= NOW()
         AND time_bucket >= '{{ start_date }}'::timestamptz
         AND time_bucket <= '{{ end_date }}'::timestamptz
-        {%- if customer_id is not none %}
-        customer_id = {{ customer_id }}
+        {%- if uuidv5_customer_id is not none %}
+        uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {%- endif %}
         {%- for property_name, property_values in filter_properties.items() %}
         AND {{ property_name }}
@@ -742,7 +742,7 @@ WITH prev_value AS (
             )
         {%- endfor %} 
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -750,37 +750,37 @@ WITH prev_value AS (
 )
 , per_customer AS (
     SELECT
-        customer_id
+        uuidv5_customer_id
         , time_bucket
         , SUM(usage_qty) AS usage_qty_per_day
     FROM
         proration_level_query
     WHERE
         time_bucket <= NOW()
-        {% if customer_id is not none %}
-        AND customer_id = {{ customer_id }}
+        {% if uuidv5_customer_id is not none %}
+        AND uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {% endif %}
         AND time_bucket >= '{{ start_date }}'::timestamptz
         AND time_bucket <= '{{ end_date }}'::timestamptz
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         , time_bucket
     ORDER BY
         usage_qty_per_day DESC
 ), top_n AS (
     SELECT 
-        customer_id
+        uuidv5_customer_id
         , SUM(usage_qty_per_day) AS total_usage_qty
     FROM
         per_customer
     GROUP BY
-        customer_id
+        uuidv5_customer_id
     ORDER BY
         total_usage_qty DESC
     LIMIT {{ top_n }}
 )
 SELECT 
-    COALESCE(top_n.customer_id, -1) AS customer_id
+    COALESCE(top_n.uuidv5_customer_id, uuid_nil()) AS uuidv5_customer_id
     , SUM(per_customer.usage_qty_per_day) AS usage_qty
     , per_customer.time_bucket AS time_bucket
 FROM 
@@ -788,9 +788,9 @@ FROM
 LEFT JOIN
     top_n
 ON
-    per_customer.customer_id = top_n.customer_id
+    per_customer.uuidv5_customer_id = top_n.uuidv5_customer_id
 GROUP BY
-    COALESCE(top_n.customer_id, -1)
+    COALESCE(top_n.uuidv5_customer_id, uuid_nil())
     , per_customer.time_bucket
 """
 
@@ -799,7 +799,7 @@ GAUGE_TOTAL_CUMULATIVE_SUM = """
 CREATE MATERIALIZED VIEW IF NOT EXISTS {{ cagg_name }}
 WITH (timescaledb.continuous) AS
 SELECT
-    "metering_billing_usageevent"."customer_id" AS customer_id
+    "metering_billing_usageevent"."uuidv5_customer_id" AS uuidv5_customer_id
     {%- for group_by_field in group_by %}
     ,"metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }}
     {%- endfor %}
@@ -810,7 +810,7 @@ SELECT
 FROM
     "metering_billing_usageevent"
 WHERE
-    "metering_billing_usageevent"."event_name" = '{{ event_name }}'
+    "metering_billing_usageevent"."uuidv5_event_name" = '{{ uuidv5_event_name }}'
     AND "metering_billing_usageevent"."organization_id" = {{ organization_id }}
     AND "metering_billing_usageevent"."time_created" <= NOW()
     {%- for property_name, operator, comparison in numeric_filters %}
@@ -841,7 +841,7 @@ WHERE
         )
     {%- endfor %}
 GROUP BY
-    customer_id
+    uuidv5_customer_id
     {%- for group_by_field in group_by %}
     , "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}'
     {%- endfor %}
@@ -850,7 +850,7 @@ GROUP BY
 
 GAUGE_TOTAL_GET_CURRENT_USAGE = """
 SELECT
-    customer_id
+    uuidv5_customer_id
     {%- for group_by_field in group_by %}
     , {{ group_by_field }}
     {%- endfor %}
@@ -858,7 +858,7 @@ SELECT
 FROM
     {{ cumsum_cagg }}
 WHERE
-    customer_id = {{ customer_id }}
+    uuidv5_customer_id = '{{ uuidv5_customer_id }}'
     {%- for property_name, property_values in filter_properties.items() %}
     AND {{ property_name }}
         IN (
@@ -870,7 +870,7 @@ WHERE
     {%- endfor %}
     AND time_bucket <= NOW()
 GROUP BY
-    customer_id
+    uuidv5_customer_id
     {%- for group_by_field in group_by %}
     , {{ group_by_field }}
     {%- endfor %}
@@ -879,7 +879,7 @@ GROUP BY
 GAUGE_TOTAL_GET_TOTAL_USAGE_WITH_PRORATION = """
 WITH prev_state AS (
     SELECT
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -887,7 +887,7 @@ WITH prev_state AS (
     FROM
         {{ cumsum_cagg }}
     WHERE
-        customer_id = {{ customer_id }}
+        uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {%- for property_name, property_values in filter_properties.items() %}
         AND {{ property_name }}
             IN (
@@ -899,7 +899,7 @@ WITH prev_state AS (
         {%- endfor %}
         AND time_bucket < '{{ start_date }}'::timestamptz
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -916,7 +916,7 @@ prev_value AS (
 ),
 proration_level_query AS (
     SELECT
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -938,7 +938,7 @@ proration_level_query AS (
     FROM
         {{ cumsum_cagg }}
     WHERE
-        customer_id = {{ customer_id }}
+        uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {%- for property_name, property_values in filter_properties.items() %}
         AND {{ property_name }}
             IN (
@@ -952,7 +952,7 @@ proration_level_query AS (
         AND time_bucket >= '{{ start_date }}'::timestamptz
         AND time_bucket <= '{{ end_date }}'::timestamptz
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -1012,7 +1012,7 @@ SELECT
 GAUGE_TOTAL_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY = """
 WITH prev_state AS (
     SELECT
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -1020,7 +1020,7 @@ WITH prev_state AS (
     FROM
         {{ cumsum_cagg }}
     WHERE
-        customer_id = {{ customer_id }}
+        uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {%- for property_name, property_values in filter_properties.items() %}
         AND {{ property_name }}
             IN (
@@ -1032,7 +1032,7 @@ WITH prev_state AS (
         {%- endfor %}
         AND time_bucket < '{{ start_date }}'::timestamptz
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -1049,7 +1049,7 @@ prev_value AS (
 ),
 proration_level_query AS (
     SELECT
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -1071,7 +1071,7 @@ proration_level_query AS (
     FROM
         {{ cumsum_cagg }}
     WHERE
-        customer_id = {{ customer_id }}
+        uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {%- for property_name, property_values in filter_properties.items() %}
         AND {{ property_name }}
             IN (
@@ -1085,7 +1085,7 @@ proration_level_query AS (
         AND time_bucket >= '{{ start_date }}'::timestamptz
         AND time_bucket <= '{{ end_date }}'::timestamptz
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -1137,7 +1137,7 @@ FROM
 GAUGE_TOTAL_TOTAL_PER_DAY = """
 WITH prev_value AS (
     SELECT
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -1146,19 +1146,19 @@ WITH prev_value AS (
         {{ cagg_name }}
     WHERE
         time_bucket <= CURRENT_DATE
-        {% if customer_id is not none %}
-        AND customer_id = {{ customer_id }}
+        {% if uuidv5_customer_id is not none %}
+        AND uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {% endif %}
         AND time_bucket < '{{ start_date }}'::timestamptz
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
 )
 , proration_level_query AS (
     SELECT
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -1173,7 +1173,7 @@ WITH prev_value AS (
                     from 
                         prev_value 
                     where 
-                        customer_id = {{ cagg_name }}.customer_id
+                        uuidv5_customer_id = {{ cagg_name }}.uuidv5_customer_id
                         {%- for group_by_field in group_by %}
                         AND {{ group_by_field }} = {{ cagg_name }}.{{ group_by_field }}
                         {%- endfor %}
@@ -1189,8 +1189,8 @@ WITH prev_value AS (
         time_bucket <= NOW()
         AND time_bucket >= '{{ start_date }}'::timestamptz
         AND time_bucket <= '{{ end_date }}'::timestamptz
-        {% if customer_id is not none %}
-        customer_id = {{ customer_id }}
+        {% if uuidv5_customer_id is not none %}
+        uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {%- endif %}
         {%- for property_name, property_values in filter_properties.items() %}
         AND {{ property_name }}
@@ -1202,7 +1202,7 @@ WITH prev_value AS (
             )
         {%- endfor %}
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
@@ -1210,37 +1210,37 @@ WITH prev_value AS (
 )
 , per_customer AS (
     SELECT
-        customer_id
+        uuidv5_customer_id
         , time_bucket
         , SUM(usage_qty) AS usage_qty_per_day
     FROM
         proration_level_query
     WHERE
         time_bucket <= NOW()
-        {% if customer_id is not none %}
-        AND customer_id = {{ customer_id }}
+        {% if uuidv5_customer_id is not none %}
+        AND uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {% endif %}
         AND time_bucket >= '{{ start_date }}'::timestamptz
         AND time_bucket <= '{{ end_date }}'::timestamptz
     GROUP BY
-        customer_id
+        uuidv5_customer_id
         , time_bucket
     ORDER BY
         usage_qty_per_day DESC
 ), top_n AS (
     SELECT 
-        customer_id
+        uuidv5_customer_id
         , SUM(usage_qty_per_day) AS total_usage_qty
     FROM
         per_customer
     GROUP BY
-        customer_id
+        uuidv5_customer_id
     ORDER BY
         total_usage_qty DESC
     LIMIT {{ top_n }}
 )
 SELECT 
-    COALESCE(top_n.customer_id, -1) AS customer_id
+    COALESCE(top_n.uuidv5_customer_id, uuid_nil()) AS uuidv5_customer_id
     , SUM(per_customer.usage_qty_per_day) AS usage_qty
     , per_customer.time_bucket AS time_bucket
 FROM 
@@ -1248,8 +1248,8 @@ FROM
 LEFT JOIN
     top_n
 ON
-    per_customer.customer_id = top_n.customer_id
+    per_customer.uuidv5_customer_id = top_n.uuidv5_customer_id
 GROUP BY
-    COALESCE(top_n.customer_id, -1)
+    COALESCE(top_n.uuidv5_customer_id, uuid_nil())
     , per_customer.time_bucket
 """

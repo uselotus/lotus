@@ -10,7 +10,7 @@ WITH events AS
     FROM "metering_billing_usageevent"
     WHERE
         "metering_billing_usageevent"."organization_id" = {{ organization_id }}
-        AND "metering_billing_usageevent"."customer_id" = {{ customer_id }}
+        AND "metering_billing_usageevent"."uuidv5_customer_id" = '{{ uuidv5_customer_id }}'
         {%- for property_name, property_values in filter_properties.items() %}
             AND {{ property_name }}
                 IN (

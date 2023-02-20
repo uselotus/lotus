@@ -63,11 +63,19 @@ services:
       - redpanda
     restart: on-failure
 
-  event_consumer:
-    <<: *backend
-    expose:
-      - 7999
-    command: sh -c "./scripts/start_consumer.sh"
+  event-ingestion:
+    env_file:
+      - ./env/.env.dev
+    build:
+      context: ./go/eventingestor
+      dockerfile: Dockerfile
+    ports:
+      - 7999:7999
+    depends_on:
+      - db
+      - redis
+      - redpanda
+    restart: "on-failure:15"
 
   frontend:
     restart: always

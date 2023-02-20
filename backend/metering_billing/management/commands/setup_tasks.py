@@ -55,3 +55,9 @@ class Command(BaseCommand):
             task="metering_billing.tasks.prune_guard_table",
             defaults={"interval": every_15_mins, "crontab": None},
         )
+
+        PeriodicTask.objects.update_or_create(
+            name="Invoices past due",
+            task="metering_billing.tasks.check_past_due_invoices",
+            defaults={"interval": every_15_mins, "crontab": None},
+        )

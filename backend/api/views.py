@@ -4,6 +4,7 @@ import copy
 import json
 import logging
 import operator
+import uuid
 from decimal import Decimal
 from functools import reduce
 from itertools import chain
@@ -37,6 +38,7 @@ from api.serializers.model_serializers import (
     SubscriptionRecordUpdateSerializer,
 )
 from api.serializers.nonmodel_serializers import (
+    CustomerDeleteResponseSerializer,
     FeatureAccessRequestSerialzier,
     FeatureAccessResponseSerializer,
     GetCustomerEventAccessRequestSerializer,
@@ -72,6 +74,7 @@ from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
 from metering_billing.exceptions import (
     DuplicateCustomer,
     MethodNotAllowed,
+    RepeatedOperation,
     ServerError,
     SwitchPlanDurationMismatch,
     SwitchPlanSamePlanException,
@@ -124,6 +127,7 @@ from metering_billing.utils.enums import (
     USAGE_BILLING_BEHAVIOR,
     USAGE_BILLING_FREQUENCY,
 )
+from metering_billing.webhooks import customer_created_webhook
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import (
     action,
@@ -138,7 +142,7 @@ from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
-
+IDEMPOTENCY_ID_NAMESPACE = settings.IDEMPOTENCY_ID_NAMESPACE
 
 logger = logging.getLogger("django.server")
 
@@ -165,6 +169,10 @@ class PermissionPolicyMixin:
             pass
 
         super().check_permissions(request)
+
+
+class EmptySerializer(serializers.Serializer):
+    pass
 
 
 class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -238,6 +246,8 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "create":
             return CustomerCreateSerializer
+        elif self.action == "archive":
+            return EmptySerializer
         return CustomerSerializer
 
     @extend_schema(responses=CustomerSerializer)
@@ -246,7 +256,52 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         instance = self.perform_create(serializer)
         customer_data = CustomerSerializer(instance).data
+        customer_created_webhook(instance, customer_data=customer_data)
         return Response(customer_data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        responses=CustomerDeleteResponseSerializer,
+    )
+    @action(detail=True, methods=["post"], url_path="delete")
+    def archive(self, request, customer_id=None):
+        organization = request.organization
+        customer = self.get_object()
+        if customer.deleted:
+            raise RepeatedOperation("Customer already deleted")
+        now = now_utc()
+
+        return_data = {
+            "customer_id": customer.customer_id,
+            "email": customer.email,
+            "deleted": now,
+        }
+
+        n_objs, _ = Event.objects.filter(
+            cust_id=customer.customer_id, organization=organization
+        ).delete()
+        return_data["num_events_deleted"] = n_objs
+        customer.deleted = now
+        customer.customer_id = None
+        customer.uuidv5_customer_id = None
+        customer.save()
+        subscription_records = customer.subscription_records.active().all()
+        n_subs = subscription_records.filter(
+            billing_plan__plan__addon_spec__isnull=True
+        ).count()
+        return_data["num_subscriptions_deleted"] = n_subs
+        n_addons = subscription_records.filter(
+            billing_plan__plan__addon_spec__isnull=False
+        ).count()
+        return_data["num_addons_deleted"] = n_addons
+        subscription_records.update(
+            flat_fee_behavior=FLAT_FEE_BEHAVIOR.REFUND,
+            invoice_usage_charges=False,
+            auto_renew=False,
+            end_date=now,
+            fully_billed=True,
+        )
+        CustomerDeleteResponseSerializer().validate(return_data)
+        return Response(return_data, status=status.HTTP_200_OK)
 
     # @extend_schema(
     #     request=inline_serializer(
@@ -663,7 +718,7 @@ class SubscriptionViewSet(
             else:
                 raise Exception("Invalid action")
             serializer.is_valid(raise_exception=True)
-            # unpack whats in teh serialized data
+            # unpack whats in the serialized data
 
             customer = serializer.validated_data.get("customer")
             subscription_filters = serializer.validated_data.get("subscription_filters")
@@ -1238,10 +1293,6 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return super().list(request)
 
 
-class EmptySerializer(serializers.Serializer):
-    pass
-
-
 class CustomerBalanceAdjustmentViewSet(
     PermissionPolicyMixin,
     mixins.CreateModelMixin,
@@ -1700,10 +1751,11 @@ class ConfirmIdemsReceivedView(APIView):
         ids_not_found = []
         for i in range(num_batches_idems):
             idem_batch = set(idempotency_ids[i * 1000 : (i + 1) * 1000])
+            idem_batch = {uuid.uuid5(IDEMPOTENCY_ID_NAMESPACE, x) for x in idem_batch}
             events = Event.objects.filter(
                 organization=organization,
                 time_created__gte=now_minus_lookback,
-                idempotency_id__in=idem_batch,
+                uuidv5_idempotency_id__in=idem_batch,
             )
             if request.data.get("customer_id"):
                 events = events.filter(customer_id=request.data.get("customer_id"))
@@ -1832,6 +1884,7 @@ def track_event(request):
             stream_events = {
                 "events": [transformed_event],
                 "organization_id": organization_pk,
+                "event": transformed_event,
             }
             kafka_producer.produce(customer_id, stream_events)
         except Exception as e:

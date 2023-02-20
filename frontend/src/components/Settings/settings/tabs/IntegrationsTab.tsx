@@ -28,7 +28,10 @@ const IntegrationsTab: FC = () => {
   );
   const org = useGlobalStore((state) => state.org);
 
-  var nango = new Nango({ publicKey: (import.meta as any).env.VITE_NANGO_PK }); // Nango Cloud
+  var nango = new Nango({
+    publicKey: (import.meta as any).env.VITE_NANGO_PK,
+    debug: true,
+  }); // Nango Cloud
 
   const handleConnectWithPaymentProcessorClick = (
     item: PaymentProcessorStatusType

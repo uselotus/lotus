@@ -417,7 +417,6 @@ class TestUpdateSub:
         baker.make(
             Event,
             organization=setup_dict["org"],
-            customer=setup_dict["customer"],
             cust_id=setup_dict["customer"].customer_id,
             event_name="email_sent",
             time_created=now_utc() - timedelta(days=3),
@@ -490,7 +489,6 @@ class TestUpdateSub:
         baker.make(
             Event,
             organization=setup_dict["org"],
-            customer=setup_dict["customer"],
             cust_id=setup_dict["customer"].customer_id,
             event_name="emails_sent",
             time_created=now_utc() - timedelta(days=3),
@@ -571,7 +569,6 @@ class TestUpdateSub:
         baker.make(
             Event,
             organization=setup_dict["org"],
-            customer=setup_dict["customer"],
             cust_id=setup_dict["customer"].customer_id,
             event_name="email_sent",
             time_created=now_utc() - timedelta(days=3),

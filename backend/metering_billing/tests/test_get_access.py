@@ -3,6 +3,10 @@ import itertools
 import pytest
 from dateutil.relativedelta import relativedelta
 from django.urls import reverse
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     Event,
@@ -15,9 +19,6 @@ from metering_billing.models import (
 )
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import EVENT_TYPE, METRIC_AGGREGATION, METRIC_TYPE
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -60,7 +61,7 @@ def get_access_test_common_setup(
         baker.make(
             Event,
             organization=org,
-            customer=customer,
+            cust_id=customer.customer_id,
             event_name="email_sent",
             time_created=now_utc() - relativedelta(days=1),
             _quantity=5,
@@ -81,7 +82,7 @@ def get_access_test_common_setup(
         baker.make(
             Event,
             organization=org,
-            customer=customer,
+            cust_id=customer.customer_id,
             event_name="api_call",
             time_created=now_utc() - relativedelta(days=1),
             _quantity=5,
@@ -325,7 +326,6 @@ class TestGetAccess:
         # initial value, just 1 user
         Event.objects.create(
             organization=setup_dict["org"],
-            customer=setup_dict["customer"],
             event_name="log_num_users",
             properties={"num_users": 1},
             time_created=now_utc() - relativedelta(days=2),
@@ -334,7 +334,6 @@ class TestGetAccess:
         # now we suddenly have 10!
         Event.objects.create(
             organization=setup_dict["org"],
-            customer=setup_dict["customer"],
             event_name="log_num_users",
             properties={"num_users": 10},
             time_created=now_utc() - relativedelta(days=1),
@@ -343,7 +342,6 @@ class TestGetAccess:
         # now we go back to 1, so should still have access
         Event.objects.create(
             organization=setup_dict["org"],
-            customer=setup_dict["customer"],
             event_name="log_num_users",
             properties={"num_users": 1},
             time_created=now_utc() - relativedelta(hours=6),
@@ -515,7 +513,6 @@ class TestGetAccessOld:
         # initial value, just 1 user
         Event.objects.create(
             organization=setup_dict["org"],
-            customer=setup_dict["customer"],
             event_name="log_num_users",
             properties={"num_users": 1},
             time_created=now_utc() - relativedelta(days=2),
@@ -524,7 +521,6 @@ class TestGetAccessOld:
         # now we suddenly have 10!
         Event.objects.create(
             organization=setup_dict["org"],
-            customer=setup_dict["customer"],
             event_name="log_num_users",
             properties={"num_users": 10},
             time_created=now_utc() - relativedelta(days=1),
@@ -533,7 +529,6 @@ class TestGetAccessOld:
         # now we go back to 1, so should still have access
         Event.objects.create(
             organization=setup_dict["org"],
-            customer=setup_dict["customer"],
             event_name="log_num_users",
             properties={"num_users": 1},
             time_created=now_utc() - relativedelta(hours=6),
@@ -684,7 +679,6 @@ class TestGetAccessWithMetricIDOld:
         # initial value, just 1 user
         Event.objects.create(
             organization=setup_dict["org"],
-            customer=setup_dict["customer"],
             event_name="log_num_users",
             properties={"num_users": 1},
             time_created=now_utc() - relativedelta(days=2),
@@ -693,7 +687,6 @@ class TestGetAccessWithMetricIDOld:
         # now we suddenly have 10!
         Event.objects.create(
             organization=setup_dict["org"],
-            customer=setup_dict["customer"],
             event_name="log_num_users",
             properties={"num_users": 10},
             time_created=now_utc() - relativedelta(days=1),
@@ -702,7 +695,6 @@ class TestGetAccessWithMetricIDOld:
         # now we go back to 1, so should still have access
         Event.objects.create(
             organization=setup_dict["org"],
-            customer=setup_dict["customer"],
             event_name="log_num_users",
             properties={"num_users": 1},
             time_created=now_utc() - relativedelta(hours=6),

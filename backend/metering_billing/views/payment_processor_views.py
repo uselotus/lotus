@@ -1,5 +1,10 @@
 from django.conf import settings
 from drf_spectacular.utils import extend_schema
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import ValidOrganization
 from metering_billing.serializers.payment_processor_serializers import (
@@ -7,10 +12,6 @@ from metering_billing.serializers.payment_processor_serializers import (
     PaymentProcesorPostResponseSerializer,
     SinglePaymentProcesorSerializer,
 )
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 SELF_HOSTED = settings.SELF_HOSTED
 
@@ -35,7 +36,6 @@ class PaymentProcesorView(APIView):
                 "connection_id": pp_obj.get_connection_id(organization),
                 "account_id": pp_obj.get_account_id(organization),
             }
-            print(pp_response)
             response.append(pp_response)
         serializer = SinglePaymentProcesorSerializer(data=response, many=True)
         serializer.is_valid(raise_exception=True)

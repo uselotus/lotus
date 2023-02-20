@@ -13,6 +13,7 @@ import datetime
 import logging
 import os
 import re
+import uuid
 from datetime import timedelta, timezone
 from json import loads
 from pathlib import Path
@@ -72,6 +73,16 @@ if STRIPE_LIVE_CLIENT is None:
 STRIPE_TEST_SECRET_KEY = config("STRIPE_TEST_SECRET_KEY", default=None)
 STRIPE_TEST_CLIENT = config("STRIPE_TEST_CLIENT", default="")
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="whsec_")
+if STRIPE_LIVE_SECRET_KEY == "change_me":
+    STRIPE_LIVE_SECRET_KEY = None
+if STRIPE_LIVE_CLIENT == "change_me":
+    STRIPE_LIVE_CLIENT = None
+if STRIPE_TEST_CLIENT == "change_me":
+    STRIPE_TEST_CLIENT = None
+if STRIPE_TEST_SECRET_KEY == "change_me":
+    STRIPE_TEST_SECRET_KEY = None
+if STRIPE_WEBHOOK_SECRET == "change_me":
+    STRIPE_WEBHOOK_SECRET = None
 # Braintree
 BRAINTREE_LIVE_MERCHANT_ID = config("BRAINTREE_LIVE_MERCHANT_ID", default=None)
 BRAINTREE_LIVE_PUBLIC_KEY = config("BRAINTREE_LIVE_PUBLIC_KEY", default=None)
@@ -99,6 +110,10 @@ SVIX_API_KEY = config("SVIX_API_KEY", default="")
 SVIX_JWT_SECRET = config("SVIX_JWT_SECRET", default="")
 # Optional Observalility Services
 CRONITOR_API_KEY = config("CRONITOR_API_KEY", default="")
+# uuidv5 namespaces
+CUSTOMER_ID_NAMESPACE = uuid.UUID("D1337E57-E6A0-4650-B1C3-D6487AFFB8CA")
+EVENT_NAME_NAMESPACE = uuid.UUID("843D7005-63DE-4B72-B731-77E2866DCCFF")
+IDEMPOTENCY_ID_NAMESPACE = uuid.UUID("904C0FFB-7005-414E-9B7D-8E3C5DDE266D")
 
 if SENTRY_DSN != "":
     sentry_sdk.init(
@@ -547,7 +562,7 @@ SPECTACULAR_SETTINGS = {
         "Lotus is an open-core pricing and billing engine. We enable API companies to"
         " automate and optimize their custom usage-based pricing for any metric."
     ),
-    "VERSION": "0.9.1",
+    "VERSION": "0.9.3",
     "SERVE_INCLUDE_SCHEMA": False,
     "APPEND_COMPONENTS": {
         "securitySchemes": {
@@ -687,7 +702,6 @@ elif SVIX_API_KEY == "" and SVIX_JWT_SECRET != "":
 else:
     svix = None
 SVIX_CONNECTOR = svix
-
 if SVIX_CONNECTOR is not None:
     try:
         svix = SVIX_CONNECTOR
@@ -714,6 +728,22 @@ if SVIX_CONNECTOR is not None:
                     description="Usage alert is triggered",
                     archived=False,
                     name="usage_alert.triggered",
+                )
+            )
+        if "customer.created" not in list_response_event_type_out:
+            event_type_out = svix.event_type.create(
+                EventTypeIn(
+                    description="Customer is created",
+                    archived=False,
+                    name="customer.created",
+                )
+            )
+        if "invoice.past_due" not in list_response_event_type_out:
+            event_type_out = svix.event_type.create(
+                EventTypeIn(
+                    description="Invoice is past due",
+                    archived=False,
+                    name="invoice.past_due",
                 )
             )
     except Exception:

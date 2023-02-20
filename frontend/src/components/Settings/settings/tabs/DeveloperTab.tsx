@@ -47,6 +47,7 @@ export function DeveloperTab() {
   const [apiKeyExpire, setAPIKeyExpire] = useState<string>("");
   const [webhookSelected, setWebhookSelected] = useState<WebhookEndpoint>();
   const [apiKeySelected, setApiKeySelected] = useState<APIKeyType>();
+  const [isCustomerCreated, setIsCustomerCreated] = useState<boolean>(false);
   const [isInvoiceGenerated, setIsInvoiceGenerated] = useState<boolean>(false);
   const [isInvoicePaid, setIsInvoicePaid] = useState<boolean>(false);
   const [isUsageAlertTriggered, setIsUsageAlertTriggered] =
@@ -116,6 +117,7 @@ export function DeveloperTab() {
         refetchWebhook();
         setWebhookUrl("");
         setWebhookName("");
+        setIsCustomerCreated(false);
         setIsInvoiceGenerated(false);
         setIsInvoicePaid(false);
         setIsUsageAlertTriggered(false);
@@ -159,12 +161,15 @@ export function DeveloperTab() {
       return;
     }
 
-    if (!isInvoiceGenerated && !isInvoicePaid && !isUsageAlertTriggered) {
+    if (!isCustomerCreated && !isInvoiceGenerated && !isInvoicePaid && !isUsageAlertTriggered) {
       toast.error("Please select at-least one trigger");
       return;
     }
 
     const triggers: string[] = [];
+    if (isCustomerCreated) {
+      triggers.push("customer.created");
+    }
     if (isInvoiceGenerated) {
       triggers.push("invoice.created");
     }
@@ -417,6 +422,12 @@ export function DeveloperTab() {
            />
           <p className="text-lg font-main">Events Subscribed To:</p>
           <div className="grid grid-cols-2">
+            <Checkbox
+              onChange={(e) => setIsCustomerCreated(e.target.checked)}
+              value={isCustomerCreated}
+            >
+              <p className="text-lg font-main">customer.created</p>
+            </Checkbox>
             <Checkbox
               onChange={(e) => setIsInvoiceGenerated(e.target.checked)}
               value={isInvoiceGenerated}

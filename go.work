@@ -1,3 +1,6 @@
-go 1.19
+go 1.20
 
-use ./go/eventtracker
+use (
+	./go/eventtracker
+	./go/eventingestor
+)
