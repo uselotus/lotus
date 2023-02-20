@@ -72,6 +72,8 @@ func (b *batch) addRecord(event *Event) (bool, error) {
 	return false, nil
 }
 func main() {
+	log.SetOutput(os.Stdout)
+
 	var kafkaURL string
 	if kafkaURL = os.Getenv("KAFKA_URL"); kafkaURL == "" {
 		kafkaURL = "localhost:9092"
@@ -142,7 +144,7 @@ func main() {
 		panic(err)
 	}
 	defer insertStatement.Close()
-
+	log.Printf("Connected to database: %s", dbURL)
 	for {
 		fetches := cl.PollFetches(ctx)
 		if fetches == nil {
