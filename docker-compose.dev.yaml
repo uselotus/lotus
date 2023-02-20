@@ -74,7 +74,7 @@ services:
     env_file:
       - ./env/.env.dev
     build:
-      context: ./golang
+      context: ./go/eventingestor
       dockerfile: Dockerfile
     ports:
       - 7999:7999
