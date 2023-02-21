@@ -77,6 +77,7 @@ const IntegrationsTab: FC = () => {
           refetch();
         })
         .catch((error) => {
+          console.log("ERROR FROM OAUTH: ", error);
           toast.error(
             `There was an error in the OAuth flow for integration: ${error.message}`
           );

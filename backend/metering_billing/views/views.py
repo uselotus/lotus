@@ -27,7 +27,7 @@ from metering_billing.serializers.model_serializers import (
     CustomerSummarySerializer,
     CustomerWithRevenueSerializer,
     DraftInvoiceSerializer,
-    MetricSerializer,
+    MetricDetailSerializer,
 )
 from metering_billing.serializers.request_serializers import (
     CostAnalysisRequestSerializer,
@@ -263,7 +263,7 @@ class CostAnalysisView(APIView):
                         not in per_day_dict[date]["cost_data"]
                     ):
                         per_day_dict[date]["cost_data"][metric.billable_metric_name] = {
-                            "metric": MetricSerializer(metric).data,
+                            "metric": MetricDetailSerializer(metric).data,
                             "cost": Decimal(0),
                         }
                     per_day_dict[date]["cost_data"][metric.billable_metric_name][
