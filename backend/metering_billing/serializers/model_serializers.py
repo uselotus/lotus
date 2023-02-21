@@ -802,7 +802,7 @@ class MetricUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         return instance
 
 
-class MetricSerializer(api_serializers.MetricSerializer):
+class MetricDetailSerializer(api_serializers.MetricSerializer):
     class Meta(api_serializers.MetricSerializer.Meta):
         fields = tuple(
             set(api_serializers.MetricSerializer.Meta.fields) - {"aggregation_type"}
@@ -1774,10 +1774,10 @@ class PlanActionSerializer(PlanDetailSerializer):
         return "Plan"
 
 
-class MetricActionSerializer(MetricSerializer):
-    class Meta(MetricSerializer.Meta):
+class MetricActionSerializer(MetricDetailSerializer):
+    class Meta(MetricDetailSerializer.Meta):
         model = Metric
-        fields = MetricSerializer.Meta.fields + ("string_repr", "object_type")
+        fields = MetricDetailSerializer.Meta.fields + ("string_repr", "object_type")
 
     string_repr = serializers.SerializerMethodField()
     object_type = serializers.SerializerMethodField()

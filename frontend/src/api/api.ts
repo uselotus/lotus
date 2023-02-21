@@ -58,7 +58,11 @@ import {
   CancelCreateSubscriptionAddOnBody,
   CancelCreateSubscriptionAddOnQueryParams,
 } from "../types/subscription-type";
-import { MetricUsage, MetricType } from "../types/metric-type";
+import {
+  MetricUsage,
+  MetricType,
+  CreateMetricType,
+} from "../types/metric-type";
 import { EventPages } from "../types/event-type";
 import { DemoSignupProps } from "../pages/DemoSignup";
 import {
@@ -444,7 +448,7 @@ export const Metrics = {
       params: { start_date, end_date, top_n_customers },
     }),
   getMetrics: (): Promise<MetricType[]> => requests.get("app/metrics/"),
-  createMetric: (post: MetricType): Promise<MetricType> =>
+  createMetric: (post: CreateMetricType): Promise<MetricType> =>
     requests.post("app/metrics/", post),
   deleteMetric: (id: number): Promise<{}> =>
     requests.delete(`app/metrics/${id}`),
