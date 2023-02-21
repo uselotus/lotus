@@ -584,13 +584,13 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                   <div> {component.billable_metric.metric_name}</div>
                 </div>
                 <div>
-                  <div className=" w-full h-[1.5px] mt-4 bg-card-divider mb-2" />
+                  <div className=" w-full h-[1.5px] mt-4 bg-card-divider mb-4" />
                   <Table
                     dataSource={component.tiers}
                     pagination={false}
                     showHeader={false}
                     bordered={false}
-                    className="noborderTable mb-10"
+                    className="noborderTable mb-12"
                     size="middle"
                     columns={[
                       {
