@@ -15,6 +15,11 @@ import {
   Input,
 } from "antd";
 import {
+  RightOutlined,
+  LeftOutlined,
+  DoubleLeftOutlined,
+} from "@ant-design/icons";
+import {
   useMutation,
   useQuery,
   useQueryClient,
@@ -99,8 +104,11 @@ const SubscriptionView: FC<Props> = ({
   onPlanChange,
   onCreate,
 }) => {
+  const [offset, setOffset] = useState(6);
+  const [startingPoint, setStartingPoint] = useState(0);
   const [cursor, setCursor] = useState<string>("");
   const [rightCursor, setRightCursor] = useState<string>("");
+  const [leftCursor, setLeftCursor] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [next, setNext] = useState<string>("");
   const [previous, setPrev] = useState<string>("");
@@ -312,53 +320,89 @@ const SubscriptionView: FC<Props> = ({
   const handleMovements = (direction: "LEFT" | "RIGHT" | "START") => {
     switch (direction) {
       case "LEFT":
-        setCursor(previous);
+        setCursor("NON-EMPTY");
         setCurrentPage(currentPage - 1);
-        setPaginatedSubscriptions(
-          subscriptions.slice(Number(previous) - limit, Number(previous))
-        );
-        setPrev(String(Number(previous) - 1 - limit));
-        setNext(String(Number(next) - 1 - limit));
-        setCursor(next);
         setRightCursor("");
+        if (
+          subscriptions.length % limit === 0 &&
+          offset !== subscriptions.length
+        ) {
+          setStartingPoint((prevStartingPoint) => prevStartingPoint - limit);
+          setOffset((prevOffset) => prevOffset - limit);
+        } else {
+          setOffset(startingPoint);
+          setStartingPoint((prevStartingPoint) => prevStartingPoint - limit);
+        }
         return;
       case "RIGHT":
-        if (Number(next) <= subscriptions.length) {
+        setLeftCursor("");
+        setCursor("NON-EMPTY");
+        if (offset <= subscriptions.length) {
           const newPage = currentPage + 1;
-          setCursor(next);
           setCurrentPage(newPage);
-          setPaginatedSubscriptions(
-            subscriptions.slice(Number(previous), Number(next))
-          );
-          setNext(String(Number(next) + limit));
-          setPrev(String(Number(next)));
+          setStartingPoint(offset);
+          setOffset((prevOffset) => prevOffset + limit);
         } else {
-          const newPage = currentPage + 1;
-          setCursor(next);
-          setCurrentPage(newPage);
-          setPaginatedSubscriptions(
-            subscriptions.slice(Number(previous), subscriptions.length - 1)
-          );
-          setNext(String(subscriptions.length - 1));
-          setPrev(previous);
+          setOffset(subscriptions.length);
           setRightCursor("RIGHT-END");
         }
+        // if (Number(next) <= subscriptions.length) {
+        //   const newPage = currentPage + 1;
+        //   setCursor(next);
+        //   setCurrentPage(newPage);
+        //   setPaginatedSubscriptions(
+        //     subscriptions.slice(Number(previous), Number(next))
+        //   );
+        //   setNext(String(Number(next) + limit));
+        //   setPrev(String(Number(next)));
+        // } else {
+        //   const newPage = currentPage + 1;
+        //   setCursor(next);
+        //   setCurrentPage(newPage);
+        //   setPaginatedSubscriptions(
+        //     subscriptions.slice(Number(previous), subscriptions.length - 1)
+        //   );
+        //   setNext(String(subscriptions.length - 1));
+        //   setPrev(previous);
+        //   setRightCursor("RIGHT-END");
+        // }
         break;
       case "START":
         setCursor("");
+        setLeftCursor("LEFT-END");
         setCurrentPage(1);
-        setPaginatedSubscriptions(subscriptions.slice(0, limit));
-        // const next = limit + limit;
-        setNext(String(limit + limit));
-        setPrev(String(Number(limit)));
-        if (limit + limit > subscriptions.length) {
+        setOffset(6);
+        setStartingPoint(0);
+        if (offset > subscriptions.length) {
           setRightCursor("RIGHT-END");
+        } else {
+          setRightCursor("");
         }
+        // setPaginatedSubscriptions(subscriptions.slice(0, limit));
+        // // const next = limit + limit;
+        // setNext(String(limit + limit));
+        // setPrev(String(Number(limit)));
+        // if (limit + limit > subscriptions.length) {
+        //   setRightCursor("RIGHT-END");
+        // }
         break;
       default:
         break;
     }
   };
+  React.useLayoutEffect(() => {
+    if (currentPage === 1) {
+      handleMovements("START");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, subscriptions]);
+  React.useLayoutEffect(() => {
+    if (offset >= subscriptions.length) {
+      setRightCursor("RIGHT-END");
+    } else {
+      setRightCursor("");
+    }
+  }, [offset, subscriptions]);
   if (subscriptions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center">
@@ -867,7 +911,7 @@ const SubscriptionView: FC<Props> = ({
                   ) : null}
                 </>
               ))
-            : paginatedSubscriptions.map((subPlan) => (
+            : subscriptions.slice(startingPoint, offset).map((subPlan) => (
                 <>
                   <CustomerCard
                     className={`shadow-none ${
@@ -1298,14 +1342,33 @@ const SubscriptionView: FC<Props> = ({
               ))}
         </div>
         <div className="mt-4">
-          <CustomPagination
-            cursor={cursor}
-            previous={previous}
-            rightCursor={rightCursor}
-            next={next}
-            currentPage={currentPage}
-            handleMovements={handleMovements}
-          />
+          <div className="flex justify-center space-x-4">
+            <button
+              type="button"
+              disabled={!cursor || currentPage === 1}
+              className="movementButton"
+              onClick={() => handleMovements("START")}
+            >
+              <DoubleLeftOutlined />
+            </button>
+            <button
+              type="button"
+              className="movementButton"
+              disabled={leftCursor === "LEFT-END"}
+              onClick={() => handleMovements("LEFT")}
+            >
+              <LeftOutlined />
+            </button>
+            <div className="currentPageNumber"> {currentPage} </div>
+            <button
+              type="button"
+              className="movementButton"
+              disabled={rightCursor === "RIGHT-END"}
+              onClick={() => handleMovements("RIGHT")}
+            >
+              <RightOutlined />
+            </button>
+          </div>
         </div>
         <DraftInvoice customer_id={customer_id} />
       </div>

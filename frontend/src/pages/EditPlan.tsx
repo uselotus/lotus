@@ -61,6 +61,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     useState<boolean>(false);
   const [activeVersion, setActiveVersion] = useState<boolean>(false);
   const [activeVersionType, setActiveVersionType] = useState<string>();
+  const [month, setMonth] = useState(1);
   const [allCurrencies, setAllCurrencies] = useState<CurrencyType[]>([]);
   const navigate = useNavigate();
   const [componentsData, setComponentsData] = useState<any>([]);
@@ -336,7 +337,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
             values.plan_duration === "quarterly"
           ) {
             initialPlanVersion.day_anchor = values.day_of_month;
-            initialPlanVersion.month_anchor = values.month_of_year;
+            initialPlanVersion.month_anchor = month;
           }
           if (values.plan_duration === "monthly") {
             initialPlanVersion.day_anchor = values.day_of_month;
@@ -371,7 +372,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           const newVersion: CreatePlanVersionType = {
             plan_id: plan.plan_id,
             description: values.description,
-            recurring_charges: recurring_charges,
+            recurring_charges,
             transition_to_plan_id: values.transition_to_plan_id,
             components: usagecomponentslist,
             features: featureIdList,
@@ -380,7 +381,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
             make_active_type: activeVersionType,
             currency_code: values.plan_currency.code,
           };
-          if (values.align_plan == "calendar_aligned") {
+          if (values.align_plan === "calendar_aligned") {
             if (values.plan_duration === "yearly") {
               newVersion.day_anchor = 1;
               newVersion.month_anchor = 1;
@@ -574,17 +575,20 @@ function EditPlan({ type, plan, versionIndex }: Props) {
                             <>
                               of{" "}
                               <Form.Item name="month_of_year" noStyle>
-                                <Select
-                                  style={{ width: "120px" }}
-                                  size="small"
-                                  placeholder="Month"
+                                <select
+                                  className="border border-black rounded-sm outline-none"
+                                  onChange={(e) =>
+                                    setMonth(Number(e.target.value))
+                                  }
+                                  name="month_of_year"
+                                  id="month_of_year"
                                 >
                                   {months.map((month, i) => (
-                                    <Select.Option value={i + 1} key={month}>
+                                    <option value={i + 1} key={month}>
                                       {month}
-                                    </Select.Option>
+                                    </option>
                                   ))}
-                                </Select>
+                                </select>
                               </Form.Item>
                             </>
                           )}

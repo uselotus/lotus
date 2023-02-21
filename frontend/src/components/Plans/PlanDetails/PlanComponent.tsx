@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable camelcase */
 // @ts-ignore
 import React, { FC, useEffect, useRef, useState } from "react";
 import "./PlanDetails.css";
@@ -10,6 +12,7 @@ import {
   Button,
   InputNumber,
   Dropdown,
+  Divider,
 } from "antd";
 import {
   CheckCircleOutlined,
@@ -574,20 +577,20 @@ const PlanComponents: FC<PlanComponentsProps> = ({
           <div className="grid gap-6 grid-cols-1 xl:grid-cols-4">
             {components.map((component) => (
               <div
-                className="pt-2 pb-4 bg-primary-50 mt-2  mb-2 p-4 min-h-[152px] min-w-[270px]"
+                className="pt-2 pb-4 bg-primary-50 mt-2 relative  mb-2 p-4 min-h-[152px] min-w-[270px]"
                 key={component.id}
               >
                 <div className="text-base text-card-text align-middle">
                   <div> {component.billable_metric.metric_name}</div>
                 </div>
                 <div>
-                  <div className=" w-full h-[1.5px] mt-4 bg-card-divider mb-2" />
+                  <div className=" w-full h-[1.5px] mt-4 bg-card-divider mb-4" />
                   <Table
                     dataSource={component.tiers}
                     pagination={false}
                     showHeader={false}
                     bordered={false}
-                    className="noborderTable"
+                    className="noborderTable mb-12"
                     size="middle"
                     columns={[
                       {
@@ -597,7 +600,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                         align: "left",
                         width: "50%",
                         className: "bg-primary-50 pointer-events-none",
-                        render: (value: any, record: any) => (
+                        render: (value, record) => (
                           <span>
                             From {value} to{" "}
                             {record.range_end == null ? "∞" : record.range_end}
@@ -611,7 +614,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                         key: "cost_per_batch",
                         className:
                           "bg-primary-50 pointer-events-none !text-card-grey arr",
-                        render: (value: any, record: any) => (
+                        render: (_, record) => (
                           <div>
                             {renderCost(record, component.pricing_unit)}
                           </div>
@@ -620,11 +623,11 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                     ]}
                   />
                 </div>
-                <div className=" w-full h-[1.5px] mt-4 bg-card-divider mb-2" />
-
-                <div className="mt-4 self-end">
+                <div className=" w-[96%] h-[1.5px] mt-8 mb-4 absolute bottom-16 bg-card-divider" />
+                <div className=" absolute bottom-[-4px] self-end">
                   <div
                     className="flex"
+                    aria-hidden
                     onClick={() => {
                       if (component.billable_metric.metric_type !== "counter") {
                         toast.error("Only counter metrics can create alerts");
@@ -637,7 +640,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                             alerts
                           );
                           setIsCreateAlert(false);
-                          setAlertThreshold(alert?.threshold);
+                          setAlertThreshold(alert!.threshold);
                           setCurrentAlertId(alert?.usage_alert_id);
                         } else {
                           setIsCreateAlert(true);
@@ -660,7 +663,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                     {findAlertForComponent(component, alerts) !== undefined ? (
                       <p className="align-middle">
                         Reaches:{" "}
-                        {findAlertForComponent(component, alerts).threshold}
+                        {findAlertForComponent(component, alerts)?.threshold}
                       </p>
                     ) : (
                       <p className=" text-small align-middle self-center">
