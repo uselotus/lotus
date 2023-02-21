@@ -1,3 +1,6 @@
+/* eslint-disable no-shadow */
+/* eslint-disable camelcase */
+/* eslint-disable no-plusplus */
 import {
   Button,
   Card,
@@ -64,6 +67,7 @@ function CreatePlan() {
   const [componentsData, setComponentsData] = useState<CreateComponent[]>([]);
   const [form] = Form.useForm();
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>([]);
+  const [month, setMonth] = useState(1);
   const [editComponentItem, setEditComponentsItem] =
     useState<CreateComponent>();
   const [availableBillingTypes, setAvailableBillingTypes] = useState<
@@ -138,7 +142,9 @@ function CreatePlan() {
     );
   };
 
-  const onFinishFailed = (errorInfo: any) => {};
+  const onFinishFailed = () => {
+    //
+  };
 
   const hideComponentModal = () => {
     setcomponentVisible(false);
@@ -267,7 +273,7 @@ function CreatePlan() {
             values.plan_duration === "quarterly"
           ) {
             initialPlanVersion.day_anchor = values.day_of_month;
-            initialPlanVersion.month_anchor = values.month_of_year;
+            initialPlanVersion.month_anchor = month;
           }
           if (values.plan_duration === "monthly") {
             initialPlanVersion.day_anchor = values.day_of_month;
@@ -422,7 +428,21 @@ function CreatePlan() {
                             <>
                               of{" "}
                               <Form.Item name="month_of_year" noStyle>
-                                <Select
+                                <select
+                                  className="border border-black rounded-sm outline-none"
+                                  onChange={(e) =>
+                                    setMonth(Number(e.target.value))
+                                  }
+                                  name="month_of_year"
+                                  id="month_of_year"
+                                >
+                                  {months.map((month, i) => (
+                                    <option value={i + 1} key={month}>
+                                      {month}
+                                    </option>
+                                  ))}
+                                </select>
+                                {/* <Select
                                   style={{ width: "120px" }}
                                   size="small"
                                   placeholder="Month"
@@ -432,7 +452,7 @@ function CreatePlan() {
                                       {month}
                                     </Select.Option>
                                   ))}
-                                </Select>
+                                </Select> */}
                               </Form.Item>
                             </>
                           )}

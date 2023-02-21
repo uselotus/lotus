@@ -2,7 +2,7 @@ import React, { FC, useState } from "react";
 import { useQuery } from "react-query";
 import { useNavigate } from "react-router-dom";
 import { Divider, Typography, Row, Col, Modal, Input } from "antd";
-import Nango from "@nangohq/frontend";
+// import Nango from "@nangohq/frontend";
 import { toast } from "react-toastify";
 import { PaymentProcessorIntegration, Organization } from "../../../../api/api";
 import {
@@ -28,10 +28,10 @@ const IntegrationsTab: FC = () => {
   );
   const org = useGlobalStore((state) => state.org);
 
-  var nango = new Nango({
-    publicKey: (import.meta as any).env.VITE_NANGO_PK,
-    debug: true,
-  }); // Nango Cloud
+  // var nango = new Nango({
+  //   publicKey: (import.meta as any).env.VITE_NANGO_PK,
+  //   debug: true,
+  // }); // Nango Cloud
 
   const handleConnectWithPaymentProcessorClick = (
     item: PaymentProcessorStatusType
@@ -51,49 +51,49 @@ const IntegrationsTab: FC = () => {
       } else {
         unique_config_key = "braintree-sandbox";
       }
-      nango
-        .auth(unique_config_key, item.connection_id)
-        .then((result) => {
-          toast.success(
-            `OAuth flow succeeded for provider "${result.providerConfigKey}"!`
-          );
-          console.log("RESULT FROM OAUTH: ", result);
-          const inner_data: BraintreeConnectionRequestType = {
-            nango_connected: true,
-          };
-          const request_data: PaymentProcessorConnectionRequestType = {
-            payment_processor: "braintree",
-            data: inner_data,
-          };
+      // nango
+      //   .auth(unique_config_key, item.connection_id)
+      //   .then((result) => {
+      //     toast.success(
+      //       `OAuth flow succeeded for provider "${result.providerConfigKey}"!`
+      //     );
+      //     console.log("RESULT FROM OAUTH: ", result);
+      //     const inner_data: BraintreeConnectionRequestType = {
+      //       nango_connected: true,
+      //     };
+      //     const request_data: PaymentProcessorConnectionRequestType = {
+      //       payment_processor: "braintree",
+      //       data: inner_data,
+      //     };
 
-          PaymentProcessorIntegration.connectPaymentProcessor(request_data)
-            .then((data: PaymentProcessorConnectionResponseType) => {
-              toast.success(data.details);
-            })
-            .catch((error) => {
-              toast.error(error.details);
-            });
-          refetch();
-        })
-        .catch((error) => {
-          const inner_data: BraintreeConnectionRequestType = {
-            nango_connected: true,
-          };
-          const request_data: PaymentProcessorConnectionRequestType = {
-            payment_processor: "braintree",
-            data: inner_data,
-          };
-          PaymentProcessorIntegration.connectPaymentProcessor(request_data)
-            .then((data: PaymentProcessorConnectionResponseType) => {
-              toast.success(data.details);
-              refetch();
-            })
-            .catch((inner_error) => {
-              toast.error(
-                `There was an error in the OAuth flow for integration: ${error.message}`
-              );
-            });
-        });
+      //     PaymentProcessorIntegration.connectPaymentProcessor(request_data)
+      //       .then((data: PaymentProcessorConnectionResponseType) => {
+      //         toast.success(data.details);
+      //       })
+      //       .catch((error) => {
+      //         toast.error(error.details);
+      //       });
+      //     refetch();
+      //   })
+      //   .catch((error) => {
+      //     const inner_data: BraintreeConnectionRequestType = {
+      //       nango_connected: true,
+      //     };
+      //     const request_data: PaymentProcessorConnectionRequestType = {
+      //       payment_processor: "braintree",
+      //       data: inner_data,
+      //     };
+      //     PaymentProcessorIntegration.connectPaymentProcessor(request_data)
+      //       .then((data: PaymentProcessorConnectionResponseType) => {
+      //         toast.success(data.details);
+      //         refetch();
+      //       })
+      //       .catch((inner_error) => {
+      //         toast.error(
+      //           `There was an error in the OAuth flow for integration: ${error.message}`
+      //         );
+      //       });
+      //   });
     }
   };
 
