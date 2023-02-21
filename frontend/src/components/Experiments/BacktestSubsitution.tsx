@@ -25,7 +25,7 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
   const [revenuePerMetric, setRevenuePerMetric] = React.useState<any>([]);
   const categories = [
     substitution.original_plan.plan_name,
-    `[new]${  substitution.new_plan.plan_name}`,
+    `[new]${substitution.new_plan.plan_name}`,
   ];
 
   const pieConfigNew = {
@@ -115,8 +115,7 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
       for (let i = 0; i < newRevLineGraph.length; i++) {
         newRevLineGraph[i][categories[0]] =
           newRevLineGraph[i].original_plan_revenue;
-        newRevLineGraph[i][categories[1]] =
-          newRevLineGraph[i].new_plan_revenue;
+        newRevLineGraph[i][categories[1]] = newRevLineGraph[i].new_plan_revenue;
       }
       setRevenueLineGraph(newRevLineGraph);
 
@@ -137,7 +136,7 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
 
   return (
     <div>
-      <div className="border-2 bg-white px-4 py-5 sm:px-6 my-7 ">
+      <div className="border-2 bg-white px-4 py-6 sm:px-6 my-6 ">
         <h2>Revenue Over Time</h2>
         <LineChart
           data={revenueLineGraph}
@@ -157,7 +156,7 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
           marginTop="mt-0"
         />
       </div>
-      <div className="border-2 bg-white px-4 py-5 sm:px-6 my-7 ">
+      <div className="border-2 bg-white px-4 py-6 sm:px-6 my-6 ">
         <h2>Revenue By Metric</h2>
         <ColGrid numColsMd={2}>
           <div>
@@ -171,7 +170,7 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
         </ColGrid>
       </div>
 
-      <div className="border-2 bg-white px-4 py-5 sm:px-6 my-7 ">
+      <div className="border-2 bg-white px-4 py-6 sm:px-6 my-6 ">
         <h2>Top Customers</h2>
 
         <ColGrid numColsMd={4} gapX="gap-x-8" gapY="gap-y-2">

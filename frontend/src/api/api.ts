@@ -363,6 +363,8 @@ export const Authentication = {
 export const Organization = {
   invite: (email: string): Promise<{ email: string }> =>
     requests.post("app/organization/invite/", { email }),
+  invite_link: (email: string): Promise<{ email: string }> =>
+    requests.post("app/organization/invite_link/", { email }),
   get: (): Promise<OrganizationType[]> => requests.get("app/organizations/"),
   createOrg: (
     organization_name: string,
