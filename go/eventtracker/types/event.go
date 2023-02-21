@@ -3,7 +3,7 @@ package types
 import "time"
 
 type (
-	Event struct {
+	RawEvent struct {
 		CustomerID    string                 `json:"customer_id,omitempty"`
 		IdempotencyID string                 `json:"idempotency_id,omitempty"`
 		TimeCreated   time.Time              `json:"time_created,omitempty"`
@@ -11,8 +11,8 @@ type (
 		EventName     string                 `json:"event_name,omitempty"`
 	}
 
-	IngestedEvent struct {
-		OrganizationID string                 `json:"organization_id,omitempty"`
+	VerifiedEvent struct {
+		OrganizationID int                    `json:"organization_id,omitempty"`
 		CustID         string                 `json:"customer_id,omitempty"`
 		IdempotencyID  string                 `json:"idempotency_id,omitempty"`
 		TimeCreated    time.Time              `json:"time_created,omitempty"`
@@ -21,7 +21,7 @@ type (
 	}
 )
 
-func (e Event) IsValid(now time.Time) (bool, string) {
+func (e RawEvent) IsValid(now time.Time) (bool, string) {
 	if e.IdempotencyID == "" {
 		return false, "No idempotency_id provided"
 	}
@@ -51,8 +51,8 @@ func (e Event) IsValid(now time.Time) (bool, string) {
 	return true, ""
 }
 
-func (e Event) Transform(organizationID string) IngestedEvent {
-	return IngestedEvent{
+func (e RawEvent) Transform(organizationID int) VerifiedEvent {
+	return VerifiedEvent{
 		OrganizationID: organizationID,
 		CustID:         e.CustomerID,
 		IdempotencyID:  e.IdempotencyID,

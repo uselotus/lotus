@@ -69,12 +69,27 @@ services:
     build:
       context: ./go/eventingestor
       dockerfile: Dockerfile
-    ports:
-      - 7999:7999
+    expose:
+      - 7999
     depends_on:
       - db
       - redis
       - redpanda
+    restart: "on-failure:15"
+
+  event-tracker:
+    env_file:
+      - ./env/.env.dev
+    build:
+      context: ./go/eventtracker
+      dockerfile: Dockerfile
+    expose:
+      - 7998
+    depends_on:
+      - db
+      - redis
+      - redpanda
+      - backend
     restart: "on-failure:15"
 
   frontend:

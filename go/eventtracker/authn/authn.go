@@ -12,10 +12,14 @@ import (
 func Middleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			key := c.Request().Header.Get("HTTP-X-API-KEY")
-
+			key := c.Request().Header.Get("X-API-KEY")
 			if key == "" {
-				key = c.Request().Header.Get("http-x-api-key")
+				for k, v := range c.Request().Header {
+					if strings.ToLower(k) == "x-api-key" {
+						key = v[0]
+						break
+					}
+				}
 			}
 
 			if key == "" {
@@ -28,8 +32,7 @@ func Middleware() echo.MiddlewareFunc {
 
 			var apiKey types.APIKey
 
-			if err := db.QueryRow("SELECT id, organization_id, created, name, revoked, expiry_date, hashed_key, prefix FROM metering_billing_apitoken WHERE prefix = $1 AND revoked = 'false' LIMIT 1", prefix).Scan(
-				&apiKey.ID,
+			if err := db.QueryRow("SELECT organization_id, created, name, revoked, expiry_date, hashed_key, prefix FROM metering_billing_apitoken WHERE prefix = $1 AND revoked = 'false' LIMIT 1", prefix).Scan(
 				&apiKey.OrganizationID,
 				&apiKey.Created,
 				&apiKey.Name,

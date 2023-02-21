@@ -80,7 +80,7 @@ func main() {
 	e.POST("/", func(c echo.Context) error {
 		now := time.Now()
 
-		events := &[]types.Event{}
+		events := &[]types.RawEvent{}
 
 		if err := c.Bind(events); err != nil {
 			return err

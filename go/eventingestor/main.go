@@ -20,24 +20,23 @@ import (
 
 const batchSize = 1000
 
-type Event struct {
+type VerifiedEvent struct {
 	OrganizationID int                    `json:"organization_id,omitempty"`
-	CustID         string                 `json:"cust_id,omitempty"`
-	EventName      string                 `json:"event_name,omitempty"`
+	CustID         string                 `json:"customer_id,omitempty"`
+	IdempotencyID  string                 `json:"idempotency_id,omitempty"`
 	TimeCreated    time.Time              `json:"time_created,omitempty"`
 	Properties     map[string]interface{} `json:"properties,omitempty"`
-	IdempotencyID  string                 `json:"idempotency_id,omitempty"`
-	InsertedAt     time.Time              `json:"inserted_at,omitempty"`
+	EventName      string                 `json:"event_name,omitempty"`
 }
 
 type StreamEvents struct {
-	Events         *[]Event `json:"events"`
-	OrganizationID int64    `json:"organization_id"`
-	Event          *Event   `json:"event"`
+	Events         *[]VerifiedEvent `json:"events"`
+	OrganizationID int64            `json:"organization_id"`
+	Event          *VerifiedEvent   `json:"event"`
 }
 
-func (t *Event) UnmarshalJSON(data []byte) error {
-	type Alias Event
+func (t *VerifiedEvent) UnmarshalJSON(data []byte) error {
+	type Alias VerifiedEvent
 	aux := &struct {
 		TimeCreated string `json:"time_created"`
 		*Alias
@@ -69,7 +68,7 @@ type batch struct {
 	count           int
 }
 
-func (b *batch) addRecord(event *Event) (bool, error) {
+func (b *batch) addRecord(event *VerifiedEvent) (bool, error) {
 	propertiesJSON, errJSON := json.Marshal(event.Properties)
 	if errJSON != nil {
 		log.Printf("Error encoding properties to JSON: %s\n", errJSON)
@@ -226,7 +225,6 @@ func main() {
 			}
 
 			event := streamEvents.Event
-			event.InsertedAt = time.Now()
 
 			if committed, err := batch.addRecord(event); err != nil {
 				//only thing that can go wrong in batch is either bugs in the code or a serious database failure/network partition of some kind. Because the usual referential integrity issues are already dealt with (on conflict do nothing), all that's left is bad stuff.
