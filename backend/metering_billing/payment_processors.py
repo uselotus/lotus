@@ -14,9 +14,6 @@ import stripe
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import F, Prefetch, Q
-from rest_framework import serializers, status
-from rest_framework.response import Response
-
 from metering_billing.serializers.payment_processor_serializers import (
     PaymentProcesorPostResponseSerializer,
 )
@@ -31,6 +28,8 @@ from metering_billing.utils.enums import (
     PAYMENT_PROCESSORS,
     PLAN_STATUS,
 )
+from rest_framework import serializers, status
+from rest_framework.response import Response
 
 logger = logging.getLogger("django.server")
 
@@ -327,7 +326,18 @@ class BraintreeConnector(PaymentProcesor):
         url = f"https://api.nango.dev/connection/{connection_id}?provider_config_key={self._get_config_key(organization)}"
 
         resp = requests.get(url, headers=headers).json()
-        access_token = resp["access_token"]
+        access_token = resp["credentials"]["access_token"]
+        return access_token
+
+    def _get_merchant_id(self, organization) -> str:
+        connection_id = self.get_connection_id(organization)
+
+        headers = {"Authorization": f"Bearer {NANGO_SECRET}"}
+
+        url = f"https://api.nango.dev/connection/{connection_id}?provider_config_key={self._get_config_key(organization)}"
+
+        resp = requests.get(url, headers=headers).json()
+        access_token = resp["metadata"]["merchantId"]
         return access_token
 
     def _get_gateway(self, organization) -> braintree.BraintreeGateway:
@@ -622,23 +632,13 @@ class BraintreeConnector(PaymentProcesor):
     def get_post_data_serializer(self) -> serializers.Serializer:
         class BraintreePostRequestDataSerializer(serializers.Serializer):
             nango_connected = serializers.BooleanField()
-            merchant_id = serializers.CharField(required=False)
 
         return BraintreePostRequestDataSerializer
 
     def handle_post(self, data, organization) -> None:
         from metering_billing.models import BraintreeOrganizationIntegration
 
-        # if organization.organization_type == Organization.OrganizationType.PRODUCTION:
-        #     stripe.api_key = self.live_secret_key
-        # else:
-        #     stripe.api_key = self.test_secret_key
-        # response = stripe.OAuth.token(
-        #     grant_type="authorization_code",
-        #     code=data["authorization_code"],
-        # )
         nango_connected = data.get("nango_connected", False)
-
         if not nango_connected:
             return Response(
                 {
@@ -648,7 +648,18 @@ class BraintreeConnector(PaymentProcesor):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        stored_id = data.get("merchant_id") or organization.organization_id
+        try:
+            stored_id = data.get("merchant_id") or self._get_merchant_id(organization)
+        except Exception as e:
+            logger.error(e)
+            return Response(
+                {
+                    "payment_processor": PAYMENT_PROCESSORS.BRAINTREE,
+                    "success": False,
+                    "details": "Failed to connect to Braintree",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         integration = BraintreeOrganizationIntegration.objects.create(
             organization=organization,
             braintree_merchant_id=stored_id,
