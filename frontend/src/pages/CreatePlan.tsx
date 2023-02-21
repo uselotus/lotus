@@ -693,6 +693,7 @@ function CreatePlan() {
             editComponentItem={editComponentItem}
             setEditComponentsItem={setEditComponentsItem}
             currency={selectedCurrency}
+            planDuration={form.getFieldValue("plan_duration")}
           />
         )}
         {featureVisible && (

@@ -43,7 +43,8 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
 
       if (!["flat", "free", "per_unit"].includes(tier.type)) {
         return { isValid: false, message: "Tiers are not valid" };
-      } if (tier.type === "per_unit") {
+      }
+      if (tier.type === "per_unit") {
         return typeof tier.batch_rounding_type === "string" &&
           typeof tier.cost_per_batch === "number" &&
           typeof tier.metric_units_per_batch === "number" &&
@@ -51,7 +52,8 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
           tier.cost_per_batch >= 0 === true
           ? { isValid: true, message: "" }
           : { isValid: false, message: "Unit is not valid." };
-      } if (tier.type === "flat") {
+      }
+      if (tier.type === "flat") {
         return {
           isValid:
             typeof tier.cost_per_batch === "number" && tier.cost_per_batch >= 0,
@@ -71,27 +73,27 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
       ) {
         return { isValid: false, message: "Range is not valid." };
       }
-        currentStart = tier.range_start;
-        currentEnd = tier.range_end;
+      currentStart = tier.range_start;
+      currentEnd = tier.range_end;
 
-        if (!["flat", "free", "per_unit"].includes(tier.type)) {
-          return { isValid: false, message: "Tiers are not valid" };
-        } if (tier.type === "per_unit") {
-          return typeof tier.cost_per_batch === "number" &&
-            typeof tier.metric_units_per_batch === "number" &&
-            tier.metric_units_per_batch > 0 &&
-            tier.cost_per_batch >= 0 === true
-            ? { isValid: true, message: "" }
-            : { isValid: false, message: "Unit is not valid." };
-        } if (tier.type === "flat") {
-          return {
-            isValid:
-              typeof tier.cost_per_batch === "number" &&
-              tier.cost_per_batch >= 0,
-            message: "",
-          };
-        }
-
+      if (!["flat", "free", "per_unit"].includes(tier.type)) {
+        return { isValid: false, message: "Tiers are not valid" };
+      }
+      if (tier.type === "per_unit") {
+        return typeof tier.cost_per_batch === "number" &&
+          typeof tier.metric_units_per_batch === "number" &&
+          tier.metric_units_per_batch > 0 &&
+          tier.cost_per_batch >= 0 === true
+          ? { isValid: true, message: "" }
+          : { isValid: false, message: "Unit is not valid." };
+      }
+      if (tier.type === "flat") {
+        return {
+          isValid:
+            typeof tier.cost_per_batch === "number" && tier.cost_per_batch >= 0,
+          message: "",
+        };
+      }
     }
     return { isValid: true, message: "" };
   });
@@ -262,6 +264,7 @@ type Props = {
   editComponentItem: any;
   setEditComponentsItem: (s: any) => void;
   currency: CurrencyType;
+  planDuration: string;
 };
 function UsageComponentForm({
   handleComponentAdd,
@@ -270,9 +273,11 @@ function UsageComponentForm({
   editComponentItem,
   setEditComponentsItem,
   currency,
+  planDuration,
 }: Props) {
   const [form] = Form.useForm();
   const [metrics, setMetrics] = useState<string[]>([]);
+  const [gaugeGranularity, setGaugeGranularity] = useState<string | null>(null);
   const [metricObjects, setMetricObjects] = useState<MetricType[]>([]);
   const [metricGauge, setMetricGauge] = useState<boolean>(false);
   const selectedMetricName = Form.useWatch("metric", form);
@@ -369,6 +374,21 @@ function UsageComponentForm({
     }
   };
 
+  const handleSelectMetric = (metric_name: string) => {
+    const currentMetric = metricObjects.find(
+      (metric) => metric.metric_name === metric_name
+    );
+    if (currentMetric && currentMetric.metric_type === "gauge") {
+      if (currentMetric.granularity) {
+        setGaugeGranularity(currentMetric.granularity);
+      } else {
+        setGaugeGranularity("total");
+      }
+    } else {
+      setGaugeGranularity(null);
+    }
+  };
+
   const handleSave = (row: Tier) => {
     const newData = [...currentTiers];
     const index = newData.findIndex(
@@ -424,8 +444,7 @@ function UsageComponentForm({
         if (record.range_end === undefined || record.range_end === null) {
           return "∞";
         }
-          return record.range_end;
-
+        return record.range_end;
       },
     },
     {
@@ -452,8 +471,7 @@ function UsageComponentForm({
         if (record.type === "flat" || record.type === "free") {
           return "-";
         }
-          return record.metric_units_per_batch;
-
+        return record.metric_units_per_batch;
       },
     },
     {
@@ -466,8 +484,7 @@ function UsageComponentForm({
         if (record.type === "flat" || record.type === "free") {
           return "-";
         }
-          return <div>{record.batch_rounding_type}</div>;
-
+        return <div>{record.batch_rounding_type}</div>;
       },
     },
 
@@ -521,7 +538,6 @@ function UsageComponentForm({
       setErrorMessage("");
     }
   }, [currentTiers]);
-
   return (
     <Modal
       visible={visible}
@@ -582,7 +598,7 @@ function UsageComponentForm({
               },
             ]}
           >
-            <Select>
+            <Select onSelect={(value) => handleSelectMetric(value)}>
               {metrics?.map((metric_name) => (
                 <Option value={metric_name}>{metric_name}</Option>
               ))}
@@ -608,7 +624,18 @@ function UsageComponentForm({
             </Select>
           </Form.Item> */}
         </div>
-
+        {gaugeGranularity && gaugeGranularity !== "total" && (
+          <p className="text-darkgold mb-4">
+            When inputting the price for this metric, you will be inputting the
+            price per {gaugeGranularity.slice(0, -1)}
+          </p>
+        )}
+        {gaugeGranularity === "total" && (
+          <p className="text-darkgold mb-4">
+            When inputting the price for this metric, you will be inputting the
+            price per {planDuration.slice(0, -2)}
+          </p>
+        )}
         <Table
           components={components}
           columns={columns}
