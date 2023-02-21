@@ -1,5 +1,6 @@
 import datetime
 import itertools
+import json
 import logging
 import math
 import uuid
@@ -19,7 +20,7 @@ from django.core.validators import (
     MinLengthValidator,
     MinValueValidator,
 )
-from django.db import models
+from django.db import connection, models
 from django.db.models import Count, F, FloatField, Prefetch, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
@@ -1046,6 +1047,25 @@ class IdempotenceCheck(models.Model):
         return +str(self.time_created)[:10] + "-" + str(self.idempotency_id)[:6]
 
 
+class EventManager(models.Manager):
+    def create(self, **kwargs):
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT insert_metric(%s::integer, %s::text, %s::text, %s::timestamptz, %s::jsonb, %s::text)",
+                [
+                    kwargs.get("organization").id,
+                    str(kwargs.get("cust_id")),
+                    str(kwargs.get("event_name")),
+                    kwargs.get("time_created"),
+                    json.dumps(kwargs.get("properties", {})),
+                    str(kwargs.get("idempotency_id")),
+                ],
+            )
+            cursor.close()
+            connection.commit()
+        return self.model(**kwargs)
+
+
 class Event(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.SET_NULL, related_name="+", null=True, blank=True
@@ -1071,6 +1091,7 @@ class Event(models.Model):
     )
     uuidv5_idempotency_id = models.UUIDField()
     inserted_at = models.DateTimeField(default=now_utc)
+    objects = EventManager()
 
     class Meta:
         managed = False
@@ -1086,50 +1107,6 @@ class Event(models.Model):
             + "-"
             + str(self.idempotency_id)[:6]
         )
-
-
-class OldEvent(models.Model):
-    """
-    Event object. An explanation of the Event's fields follows:
-    event_name: The type of event that occurred.
-    time_created: The time at which the event occurred.
-    customer: The customer that the event occurred to.
-    idempotency_id: A unique identifier for the event.
-    """
-
-    organization = models.ForeignKey(
-        Organization, on_delete=models.SET_NULL, related_name="+", null=True, blank=True
-    )
-    customer = models.ForeignKey(
-        Customer, on_delete=models.CASCADE, related_name="+", null=True, blank=True
-    )
-    cust_id = models.CharField(max_length=50, null=True, blank=True)
-    event_name = models.CharField(
-        max_length=200,
-        null=False,
-        help_text="String name of the event, corresponds to definition in metrics",
-    )
-    time_created = models.DateTimeField(
-        help_text="The time that the event occured, represented as a datetime in ISO 8601 in the UTC timezome."
-    )
-    properties = models.JSONField(
-        default=dict,
-        blank=True,
-        null=True,
-        help_text="Extra metadata on the event that can be filtered and queried on in the metrics. All key value pairs should have string keys and values can be either strings or numbers. Place subscription filters in this object to specify which subscription the event should be tracked under",
-    )
-    idempotency_id = models.SlugField(
-        max_length=255,
-        default=event_uuid,
-        help_text="A unique identifier for the specific event being passed in. Passing in a unique id allows Lotus to make sure no double counting occurs. We recommend using a UUID4. You can use the same idempotency_id again after 7 days",
-    )
-    inserted_at = models.DateTimeField(default=now_utc)
-
-    class Meta:
-        ordering = ["time_created", "idempotency_id"]
-
-    def __str__(self):
-        return str(self.event_name) + "-" + str(self.idempotency_id)
 
 
 class NumericFilter(models.Model):
