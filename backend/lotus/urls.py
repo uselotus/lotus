@@ -252,6 +252,11 @@ urlpatterns = [
         organization_views.InviteView.as_view(),
         name="invite-to-organization",
     ),
+    path(
+        "app/organization/invite_link/",
+        organization_views.InviteLinkView.as_view(),
+        name="invite-to-organization-link",
+    ),
     # Stripe
     path(
         "stripe/webhook/", webhook_views.stripe_webhook_endpoint, name="stripe-webhook"
