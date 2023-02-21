@@ -59,8 +59,7 @@ const IntegrationsTab: FC = () => {
           );
           console.log("RESULT FROM OAUTH: ", result);
           const inner_data: BraintreeConnectionRequestType = {
-            nango_connnected: true,
-            merchant_id: result.metadata.merchantId,
+            nango_connected: true,
           };
           const request_data: PaymentProcessorConnectionRequestType = {
             payment_processor: "braintree",
@@ -77,9 +76,23 @@ const IntegrationsTab: FC = () => {
           refetch();
         })
         .catch((error) => {
-          toast.error(
-            `There was an error in the OAuth flow for integration: ${error.message}`
-          );
+          const inner_data: BraintreeConnectionRequestType = {
+            nango_connected: true,
+          };
+          const request_data: PaymentProcessorConnectionRequestType = {
+            payment_processor: "braintree",
+            data: inner_data,
+          };
+          PaymentProcessorIntegration.connectPaymentProcessor(request_data)
+            .then((data: PaymentProcessorConnectionResponseType) => {
+              toast.success(data.details);
+              refetch();
+            })
+            .catch((inner_error) => {
+              toast.error(
+                `There was an error in the OAuth flow for integration: ${error.message}`
+              );
+            });
         });
     }
   };

@@ -56,7 +56,7 @@ from metering_billing.serializers.model_serializers import (
     FeatureSerializer,
     InvoiceSerializer,
     MetricCreateSerializer,
-    MetricSerializer,
+    MetricDetailSerializer,
     MetricUpdateSerializer,
     OrganizationCreateSerializer,
     OrganizationSerializer,
@@ -501,7 +501,7 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             return MetricUpdateSerializer
         elif self.action == "create":
             return MetricCreateSerializer
-        return MetricSerializer
+        return MetricDetailSerializer
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -530,12 +530,12 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             )
         return response
 
-    @extend_schema(responses=MetricSerializer)
+    @extend_schema(responses=MetricDetailSerializer)
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = self.perform_create(serializer)
-        metric_data = MetricSerializer(instance).data
+        metric_data = MetricDetailSerializer(instance).data
         return Response(metric_data, status=status.HTTP_201_CREATED)
 
     def perform_create(self, serializer):
@@ -1268,5 +1268,6 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
+        return context
         return context
         return context

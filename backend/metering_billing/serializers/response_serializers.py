@@ -1,6 +1,5 @@
+from metering_billing.serializers.model_serializers import MetricDetailSerializer
 from rest_framework import serializers
-
-from metering_billing.serializers.model_serializers import MetricSerializer
 
 
 class PeriodSubscriptionsResponseSerializer(serializers.Serializer):
@@ -55,7 +54,7 @@ class SubscriptionUsageResponseSerializer(serializers.Serializer):
 
 
 class SingleMetricCostSerializer(serializers.Serializer):
-    metric = MetricSerializer()
+    metric = MetricDetailSerializer()
     cost = serializers.DecimalField(decimal_places=10, max_digits=20)
 
 

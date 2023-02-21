@@ -51,7 +51,12 @@ func (t *Event) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		parsedTime, err = time.Parse("2006-01-02 15:04:05.999999-07:00", aux.TimeCreated)
 		if err != nil {
-			return err
+			parsedTime, err = time.Parse("2006-01-02 15:04:05.999999", aux.TimeCreated)
+			if err != nil {
+				return err
+			}
+			// Set timezone offset to UTC
+			parsedTime = parsedTime.UTC()
 		}
 	}
 	t.TimeCreated = parsedTime
@@ -78,7 +83,6 @@ func (b *batch) addRecord(event *Event) (bool, error) {
 		event.TimeCreated,
 		propertiesJSON,
 		event.IdempotencyID,
-		event.InsertedAt,
 	)
 	if err != nil {
 		return false, err
@@ -165,7 +169,7 @@ func main() {
 	}
 	defer db.Close()
 
-	insertStatement, err := db.Prepare("INSERT INTO metering_billing_usageevent (organization_id, cust_id, event_name, time_created, properties, idempotency_id, inserted_at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING")
+	insertStatement, err := db.Prepare("SELECT insert_metric($1, $2, $3, $4, $5, $6)")
 	if err != nil {
 		panic(err)
 	}

@@ -1,0 +1,6 @@
+---
+name: Delete and Rebuild All Dev Containers & Volumes
+command: docker stop $(docker ps -aq) && docker system prune -a --volumes && rm -r ~/pgdata_dev
+tags:
+  - docker
+author: Mikael Nida

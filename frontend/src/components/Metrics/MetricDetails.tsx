@@ -116,7 +116,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
             </p>
             <p>
               <b className="mr-2">Per Time Unit:</b>{" "}
-              {metric.granularity === "total" ? "none" : metric.granularity}
+              {metric.granularity === "total" ? "-" : metric.granularity}
             </p>
             <p>
               <b className="mr-2">Proration:</b>{" "}
@@ -130,7 +130,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
                 {metric.usage_aggregation_type}
               </Tag>
             </p>
-            {metric.metric_type === "rate" && (
+            {/* {metric.metric_type === "rate" && (
               <p>
                 <b className="mr-2">Aggregation Type:</b>
                 {metric.billable_aggregation_type ? (
@@ -139,7 +139,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
                   "N/A"
                 )}
               </p>
-            )}
+            )} */}
             {metric.metric_type === "gauge" && (
               <p>
                 <b className="mr-2">Event Type:</b>
@@ -155,10 +155,8 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
                 {metric.numeric_filters?.map((filter, index) => (
                   <Tag color="" key={filter.property_name}>
                     {<b>{filter.property_name}</b>}{" "}
-                    {operatorDisplayMap.get(filter.operator)} "
-                    "
-                    {filter.comparison_value}
-                    "
+                    {operatorDisplayMap.get(filter.operator)} " "
+                    {filter.comparison_value}"
                   </Tag>
                 ))}
               </div>
@@ -168,8 +166,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
                   <Tag color="" key={filter.property_name}>
                     {<b>{filter.property_name}</b>}{" "}
                     {operatorDisplayMap.get(filter.operator)} "
-                    {filter.comparison_value}
-                    "
+                    {filter.comparison_value}"
                   </Tag>
                 ))}
               </div>

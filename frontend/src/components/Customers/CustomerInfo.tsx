@@ -162,7 +162,6 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
       });
       return result_list;
     });
-    console.log(newgraphdata);
     setTransformedGraphData(newgraphdata.flat(1));
   }, [cost_data]);
 
@@ -200,7 +199,22 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     groupField: "type",
     legend: false as const,
     colorField: "type", // or seriesField in some cases
-    color: ["#E4D5C5", "#C3986B", "#D9D9D9", "#171412", "#547AA5"],
+    color: (type) => {
+      switch (type.metric) {
+        case "cost":
+          return "#E4D5C5";
+        case "Revenue":
+          return "#C3986B";
+        case "type3":
+          return "#D9D9D9";
+        case "type4":
+          return "#171412";
+        case "type5":
+          return "#547AA5";
+        default:
+          return "#E4D5C5"; // fallback color
+      }
+    },
   };
 
   return (
