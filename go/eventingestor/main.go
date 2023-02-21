@@ -51,7 +51,12 @@ func (t *Event) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		parsedTime, err = time.Parse("2006-01-02 15:04:05.999999-07:00", aux.TimeCreated)
 		if err != nil {
-			return err
+			parsedTime, err = time.Parse("2006-01-02 15:04:05.999999", aux.TimeCreated)
+			if err != nil {
+				return err
+			}
+			// Set timezone offset to UTC
+			parsedTime = parsedTime.UTC()
 		}
 	}
 	t.TimeCreated = parsedTime
