@@ -119,11 +119,11 @@ const ExperimentResults: FC = () => {
               </div>
             </div>
             <div className="col-span-2 flex flex-col border-2 col border-solid rounded border-[#EAEAEB] px-6 py-6 bg-white ">
-              <div className="flex flex-row space-x-8 content-center	 ">
+              <div className="flex flex-row space-x-8  justify-between">
                 <h2> Substitutions</h2>
                 <Select
                   defaultValue="Select a substitution"
-                  className=" w-full"
+                  className=""
                   onChange={changeSubstitution}
                   value={selectedSubstitution?.substitution_name}
                   showArrow={false}
@@ -143,7 +143,7 @@ const ExperimentResults: FC = () => {
 
               <div className="">
                 {selectedSubstitution && (
-                  <div className="grid grid-cols-3 gap-3 justify-between m-3">
+                  <div className="grid grid-cols-3 gap-3 justify-between m-4">
                     <div className="w-full mt-6">
                       <Card key={234}>
                         <div className="justify-center">
@@ -183,7 +183,7 @@ const ExperimentResults: FC = () => {
                           >
                             {`${(
                               selectedSubstitution.pct_revenue_change * 100
-                            ).toFixed(2)  }%`}
+                            ).toFixed(2)}%`}
                           </h3>
                         </Flex>
                         <Metric>

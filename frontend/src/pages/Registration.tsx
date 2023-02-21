@@ -2,10 +2,14 @@ import { Button, Steps } from "antd";
 import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "react-query";
-import CreateOrganization, { Organizaton } from "../components/Registration/CreateOrganization";
+import { toast } from "react-toastify";
+import CreateOrganization, {
+  Organizaton,
+} from "../components/Registration/CreateOrganization";
 import { Authentication } from "../api/api";
 import { CreateOrgAccountType } from "../types/account-type";
 import SignUp from "../components/Registration/SignUp";
+import { QueryErrors } from "../types/error-response-types";
 // import sjcl from "sjcl";
 
 const { Step } = Steps;
@@ -53,6 +57,9 @@ const Register: React.FC = () => {
       onSuccess: () => {
         queryClient.invalidateQueries("session");
         navigate("/login");
+      },
+      onError: (error: QueryErrors) => {
+        toast.error(error.response.data.title);
       },
     }
   );
