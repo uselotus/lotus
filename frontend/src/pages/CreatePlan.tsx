@@ -442,17 +442,6 @@ function CreatePlan() {
                                     </option>
                                   ))}
                                 </select>
-                                {/* <Select
-                                  style={{ width: "120px" }}
-                                  size="small"
-                                  placeholder="Month"
-                                >
-                                  {months.map((month, i) => (
-                                    <Select.Option value={i + 1} key={month}>
-                                      {month}
-                                    </Select.Option>
-                                  ))}
-                                </Select> */}
                               </Form.Item>
                             </>
                           )}
