@@ -5,7 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	_ "github.com/lib/pq"
-	"github.com/uselotus/lotus/go/eventtracker/config"
+	"github.com/uselotus/lotus/go/event-ingestion/config"
 )
 
 func Middleware(db *sql.DB) echo.MiddlewareFunc {

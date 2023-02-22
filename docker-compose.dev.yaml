@@ -71,11 +71,11 @@ services:
       - redis
       - redpanda
 
-  event-ingestion:
+  event-guidance:
     env_file:
       - ./env/.env.dev
     build:
-      context: ./go/eventingestor
+      context: ./go/event-guidance
       dockerfile: Dockerfile
     ports:
       - 7999:7999
@@ -86,11 +86,11 @@ services:
       - backend
     restart: "on-failure:15"
 
-  event-tracker:
+  event-ingestion:
     env_file:
       - ./env/.env.dev
     build:
-      context: ./go/eventtracker
+      context: ./go/event-ingestion
       dockerfile: Dockerfile
     ports:
       - 7998:7998

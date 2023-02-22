@@ -1,4 +1,4 @@
-module github.com/uselotus/lotus/go/eventtracker
+module github.com/uselotus/lotus/go/event-ingestion
 
 go 1.19
 

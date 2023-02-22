@@ -14,16 +14,20 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/pkg/sasl/scram"
-	"github.com/uselotus/lotus/go/eventtracker/authn"
-	"github.com/uselotus/lotus/go/eventtracker/config"
-	"github.com/uselotus/lotus/go/eventtracker/database"
-	"github.com/uselotus/lotus/go/eventtracker/kafka"
-	"github.com/uselotus/lotus/go/eventtracker/types"
+	"github.com/uselotus/lotus/go/event-ingestion/authn"
+	"github.com/uselotus/lotus/go/event-ingestion/config"
+	"github.com/uselotus/lotus/go/event-ingestion/database"
+	"github.com/uselotus/lotus/go/event-ingestion/kafka"
+	"github.com/uselotus/lotus/go/event-ingestion/types"
 )
 
 type TrackEventResponse struct {
 	Success      string            `json:"success"`
 	FailedEvents map[string]string `json:"failed_events"`
+}
+
+type RawEventBatch struct {
+	Batch []types.RawEvent `json:"batch"`
 }
 
 func main() {
@@ -32,8 +36,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error connecting to database: %v", err)
 	}
-
-	fmt.Println("Connect to database successfully!")
 
 	defer db.Close()
 
@@ -76,19 +78,26 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(database.Middleware(db))
 	e.Use(authn.Middleware())
-
-	e.POST("/", func(c echo.Context) error {
+	e.POST("/api/track/", func(c echo.Context) error {
 		now := time.Now()
 
-		events := &[]types.RawEvent{}
+		events := RawEventBatch{}
 
-		if err := c.Bind(events); err != nil {
-			return err
+		if err := c.Bind(&events); err != nil {
+			singleEvent := types.RawEvent{}
+			if err := c.Bind(&singleEvent); err != nil {
+				return c.JSON(http.StatusBadRequest, TrackEventResponse{
+					Success:      "none",
+					FailedEvents: map[string]string{"no_idempotency_id": "Invalid JSON"},
+				})
+			} else {
+				events.Batch = append(events.Batch, singleEvent)
+			}
 		}
 
 		badEvents := make(map[string]string)
 
-		for _, event := range *events {
+		for _, event := range events.Batch {
 			if valid, reason := event.IsValid(now); !valid {
 				if event.IdempotencyID != "" {
 					badEvents[event.IdempotencyID] = reason
@@ -108,7 +117,7 @@ func main() {
 			}
 		}
 
-		if len(badEvents) == len(*events) {
+		if len(badEvents) == len(events.Batch) {
 			return c.JSON(http.StatusBadRequest, TrackEventResponse{
 				Success:      "none",
 				FailedEvents: badEvents,

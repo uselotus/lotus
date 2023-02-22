@@ -63,11 +63,11 @@ services:
       - redpanda
     restart: on-failure
 
-  event-ingestion:
+  event-guidance:
     env_file:
       - ./env/.env.dev
     build:
-      context: ./go/eventingestor
+      context: ./go/event-guidance
       dockerfile: Dockerfile
     expose:
       - 7999
@@ -77,11 +77,11 @@ services:
       - redpanda
     restart: "on-failure:15"
 
-  event-tracker:
+  event-ingestion:
     env_file:
       - ./env/.env.dev
     build:
-      context: ./go/eventtracker
+      context: ./go/event-ingestion
       dockerfile: Dockerfile
     expose:
       - 7998

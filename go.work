@@ -1,6 +1,6 @@
 go 1.20
 
 use (
-	./go/eventtracker
-	./go/eventingestor
+	./go/event-ingestion
+	./go/event-guidance
 )

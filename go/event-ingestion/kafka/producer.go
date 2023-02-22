@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 
 	"github.com/twmb/franz-go/pkg/kgo"
-	"github.com/uselotus/lotus/go/eventtracker/config"
-	"github.com/uselotus/lotus/go/eventtracker/types"
+	"github.com/uselotus/lotus/go/event-ingestion/config"
+	"github.com/uselotus/lotus/go/event-ingestion/types"
 )
 
 type StreamEvent struct {
