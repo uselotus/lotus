@@ -1,7 +1,6 @@
 import logging
 from decimal import Decimal
 
-import api.views as api_views
 import pytz
 from django.conf import settings
 from django.db.models import Count, F, Q, Sum
@@ -20,6 +19,7 @@ from metering_billing.models import (
     Organization,
     SubscriptionRecord,
 )
+from metering_billing.netsuite_csv import generate_invoices_csv
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.model_serializers import (
@@ -686,10 +686,6 @@ class TransferSubscriptionsView(APIView):
         )
 
 
-class GetInvoicePdfURL(api_views.GetInvoicePdfURL):
-    pass
-
-
 class PlansByNumCustomersView(APIView):
     permission_classes = [IsAuthenticated | ValidOrganization]
 
@@ -737,6 +733,34 @@ class PlansByNumCustomersView(APIView):
             {
                 "status": "success",
                 "results": plans,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class NetsuiteInvoiceCSVView(APIView):
+    permission_classes = [IsAuthenticated | ValidOrganization]
+
+    @extend_schema(
+        request=inline_serializer(
+            name="PlansByNumCustomersRequest",
+            fields={},
+        ),
+        responses={
+            200: inline_serializer(
+                name="NetsuiteInvoiceCSVView",
+                fields={
+                    "url": serializers.URLField(),
+                },
+            ),
+        },
+    )
+    def get(self, request, format=None):
+        organization = request.organization
+        url = generate_invoices_csv(organization)
+        return Response(
+            {
+                "url": url,
             },
             status=status.HTTP_200_OK,
         )

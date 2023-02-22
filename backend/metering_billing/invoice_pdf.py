@@ -7,17 +7,16 @@ import boto3
 from botocore.exceptions import ClientError
 from django.conf import settings
 from django.forms.models import model_to_dict
+from metering_billing.models import Invoice, Organization
+from metering_billing.serializers.serializer_utils import PlanUUIDField
+from metering_billing.utils import make_hashable
+from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
 from reportlab.lib.colors import Color, HexColor
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.rl_config import TTFSearchPath
-
-from metering_billing.models import Invoice
-from metering_billing.serializers.serializer_utils import PlanUUIDField
-from metering_billing.utils import make_hashable
-from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
 
 logger = logging.getLogger("django.server")
 
@@ -545,7 +544,11 @@ def generate_invoice_pdf(invoice: Invoice, buffer):
     organization = invoice.organization
 
     # If the organization is not an external demo organization
-    if not settings.DEBUG and organization.organization_type != 3:
+    if (
+        not settings.DEBUG
+        and organization.organization_type
+        != Organization.OrganizationType.EXTERNAL_DEMO
+    ):
         try:
             # Upload the file to s3
             invoice_number = invoice.invoice_number
