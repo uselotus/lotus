@@ -1803,7 +1803,7 @@ class CustomerSummarySerializer(TimezoneFieldMixin, serializers.ModelSerializer)
     def get_subscriptions(
         self, obj
     ) -> SubscriptionCustomerSummarySerializer(many=True, required=False):
-        sub_obj = obj.subscription_records_filtered
+        sub_obj = obj.active_subscription_records
         return SubscriptionCustomerSummarySerializer(sub_obj, many=True).data
 
 

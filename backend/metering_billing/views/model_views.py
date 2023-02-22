@@ -1,4 +1,6 @@
 # import lotus_python
+import logging
+
 import api.views as api_views
 import posthog
 from actstream.models import Action
@@ -49,7 +51,9 @@ from metering_billing.serializers.model_serializers import (
     AddOnSerializer,
     APITokenSerializer,
     CustomerSerializer,
+    CustomerSummarySerializer,
     CustomerUpdateSerializer,
+    CustomerWithRevenueSerializer,
     EventSerializer,
     ExternalPlanLinkSerializer,
     FeatureCreateSerializer,
@@ -90,7 +94,7 @@ from metering_billing.serializers.serializer_utils import (
     WebhookEndpointUUIDField,
 )
 from metering_billing.tasks import run_backtest
-from metering_billing.utils import now_utc
+from metering_billing.utils import make_all_decimals_floats, now_utc
 from metering_billing.utils.enums import (
     METRIC_STATUS,
     PAYMENT_PROCESSORS,
@@ -104,6 +108,7 @@ from rest_framework.response import Response
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
+logger = logging.getLogger("django.server")
 
 
 class CustomPagination(CursorPagination):
@@ -453,10 +458,11 @@ class CustomerViewSet(api_views.CustomerViewSet):
     http_method_names = ["get", "post", "head", "patch"]
 
     def get_serializer_class(self):
-        sc = super().get_serializer_class()
         if self.action == "partial_update":
             return CustomerUpdateSerializer
-        return sc
+        elif self.action == "summary":
+            return CustomerSummarySerializer
+        return super().get_serializer_class()
 
     @extend_schema(responses=PlanVersionDetailSerializer)
     def update(self, request, *args, **kwargs):
@@ -473,6 +479,27 @@ class CustomerViewSet(api_views.CustomerViewSet):
             CustomerSerializer(customer, context=self.get_serializer_context()).data,
             status=status.HTTP_200_OK,
         )
+
+    @extend_schema(request=None, responses=CustomerSummarySerializer)
+    @action(detail=False, methods=["get"], url_path="summary")
+    def summary(self, request):
+        """
+        Get the current settings for the organization.
+        """
+        customers = self.get_queryset()
+        serializer = CustomerSummarySerializer(customers, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(request=None, responses=CustomerWithRevenueSerializer)
+    @action(detail=False, methods=["get"], url_path="totals")
+    def totals(self, request, pk=None):
+        """
+        Get the current settings for the organization.
+        """
+        customers = self.get_queryset()
+        cust = CustomerWithRevenueSerializer(customers, many=True).data
+        cust = make_all_decimals_floats(cust)
+        return Response(cust, status=status.HTTP_200_OK)
 
 
 class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -1268,6 +1295,14 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
+        return context
+        return context
+        return context
+        return context
+        return context
+        return context
+        return context
+        return context
         return context
         return context
         return context

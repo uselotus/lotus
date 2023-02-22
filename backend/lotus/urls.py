@@ -47,8 +47,6 @@ from metering_billing.views.payment_processor_views import PaymentProcesorView
 from metering_billing.views.views import (  # MergeCustomersView,; ExperimentalToActiveView,
     ChangeUserOrganizationView,
     CostAnalysisView,
-    CustomersSummaryView,
-    CustomersWithRevenueView,
     DraftInvoiceView,
     GetInvoicePdfURL,
     ImportCustomersView,
@@ -152,11 +150,6 @@ urlpatterns = [
     path("app/", include(router.urls)),
     path("app/invoice_url/", GetInvoicePdfURL.as_view(), name="invoice_url"),
     path(
-        "app/customer_summary/",
-        CustomersSummaryView.as_view(),
-        name="customer_summary",
-    ),
-    path(
         "app/cost_analysis/",
         CostAnalysisView.as_view(),
         name="cost_analysis",
@@ -165,11 +158,6 @@ urlpatterns = [
         "app/switch_organization/",
         ChangeUserOrganizationView.as_view(),
         name="switch_organization",
-    ),
-    path(
-        "app/customer_totals/",
-        CustomersWithRevenueView.as_view(),
-        name="customer_totals",
     ),
     path(
         "app/plans_by_customer/",
