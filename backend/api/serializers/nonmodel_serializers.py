@@ -292,3 +292,7 @@ class CustomerDeleteResponseSerializer(serializers.Serializer):
     num_events_deleted = serializers.IntegerField()
     num_subscriptions_deleted = serializers.IntegerField()
     num_addons_deleted = serializers.IntegerField()
+
+
+class GetInvoicePdfURLResponseSerializer(serializers.Serializer):
+    url = serializers.URLField()
