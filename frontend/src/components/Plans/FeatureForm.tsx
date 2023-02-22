@@ -1,3 +1,5 @@
+/* eslint-disable no-plusplus */
+/* eslint-disable camelcase */
 import React, { useState } from "react";
 import { Button, Divider, Modal, Select, Input, message } from "antd";
 import {

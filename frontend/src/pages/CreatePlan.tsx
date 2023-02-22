@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/label-has-associated-control */
 /* eslint-disable no-shadow */
 /* eslint-disable camelcase */
 /* eslint-disable no-plusplus */
@@ -26,6 +27,7 @@ import {
   CreatePlanType,
   PlanType,
 } from "../types/plan-type";
+import SelectComponent from "../components/base/Select/Select";
 import { Plan, Organization } from "../api/api";
 import { CreateFeatureType, FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
@@ -35,7 +37,9 @@ import { ComponentDisplay } from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import { CurrencyType } from "../types/pricing-unit-type";
 import { CreateRecurringCharge } from "../types/plan-type";
-
+import { PlusOutlined } from "@ant-design/icons";
+import capitalize from "../helpers/capitalize";
+import RecurringChargesForm from "../components/Plans/PlanCreate/RecurringChargesForm";
 interface ComponentDisplay {
   metric: string;
   cost_per_batch: number;
@@ -61,6 +65,8 @@ function CreatePlan() {
     name: "",
   });
   const [featureVisible, setFeatureVisible] = useState<boolean>(false);
+  const [discountVisible, setDiscountVisible] = useState(false);
+  const [recurringChargesVisible, setRecurringChargesVisible] = useState(false);
   const [priceAdjustmentType, setPriceAdjustmentType] =
     useState<string>("none");
   const navigate = useNavigate();
@@ -334,9 +340,11 @@ function CreatePlan() {
             <Col span={10}>
               <Row gutter={[24, 24]}>
                 <Col span="24">
-                  <Card title="Plan Information">
+                  <Card
+                    className="!bg-card !font-alliance"
+                    title="Plan Information"
+                  >
                     <Form.Item
-                      label="Plan Name"
                       name="name"
                       rules={[
                         {
@@ -345,10 +353,20 @@ function CreatePlan() {
                         },
                       ]}
                     >
-                      <Input placeholder="Ex: Starter Plan" />
-                    </Form.Item>
-                    <Form.Item label="Description" name="description">
+                      <label className="font-alliance mb-4 required">
+                        Plan Name
+                      </label>
                       <Input
+                        className="w-full"
+                        placeholder="Ex: Starter Plan"
+                      />
+                    </Form.Item>
+                    <Form.Item name="description">
+                      <label className="font-alliance mb-4 required">
+                        Description
+                      </label>
+                      <Input
+                        className="w-full"
                         type="textarea"
                         placeholder="Ex: Cheapest plan for small scale businesses"
                       />
@@ -455,44 +473,103 @@ function CreatePlan() {
                       </Radio.Group>
                     </Form.Item>
 
-                    <Form.Item name="flat_rate" label="Base Cost">
-                      <InputNumber
-                        controls={false}
-                        addonBefore={
-                          selectedCurrency ? selectedCurrency.symbol : "-"
-                        }
-                        defaultValue={0}
-                        precision={2}
-                      />
-                    </Form.Item>
-                    <Form.Item
-                      name="flat_fee_billing_type"
-                      label="Base Billing Type"
-                    >
-                      <Select>
-                        <Select.Option value="in_advance">
-                          Pay in advance
-                        </Select.Option>
-                        <Select.Option value="in_arrears">
-                          Pay in arrears
-                        </Select.Option>
-                      </Select>
-                    </Form.Item>
-                    <Form.Item
-                      name="transition_to_plan_id"
-                      label="Plan on next cycle"
-                    >
-                      <Select>
-                        {allPlans.map((plan) => (
-                          <Select.Option
-                            key={plan.plan_id}
-                            value={plan.plan_id}
-                          >
-                            {plan.plan_name}
+                    <div className="flex gap-56">
+                      <Form.Item
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please Add A Billing Type",
+                          },
+                        ]}
+                        name="flat_fee_billing_type"
+                      >
+                        <label className="font-alliance  required whitespace-nowrap">
+                          Recurring Billing Type
+                        </label>
+                        <Select className="!mt-4 !w-[170%]">
+                          <Select.Option value="in_advance">
+                            Pay in advance
                           </Select.Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
+                          <Select.Option value="in_arrears">
+                            Pay in arrears
+                          </Select.Option>
+                        </Select>
+                      </Form.Item>
+                      <Form.Item
+                        name="transition_to_plan_id"
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please Add a Next Plan",
+                          },
+                        ]}
+                      >
+                        <label className="font-alliance whitespace-nowrap mb-4 required">
+                          Plan On Next Cycle
+                        </label>
+                        <Select className="mt-4 w-full">
+                          {allPlans.map((plan) => (
+                            <Select.Option
+                              key={plan.plan_id}
+                              value={plan.plan_id}
+                            >
+                              {plan.plan_name}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </div>
+                    <div className="flex">
+                      <Form.Item
+                        name="flat_rate"
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please Add a Base Cost",
+                          },
+                        ]}
+                      >
+                        <label className="font-alliance whitespace-nowrap mb-4 required">
+                          {" "}
+                          Base Cost
+                        </label>
+                        <InputNumber
+                          className="mt-4"
+                          controls={false}
+                          addonBefore={
+                            selectedCurrency ? selectedCurrency.symbol : "-"
+                          }
+                          defaultValue={0}
+                          precision={2}
+                        />
+                      </Form.Item>
+                      <Form.Item name="plan_currency">
+                        <label className="mb-4 required whitespace-nowrap">
+                          Plan Currency
+                        </label>
+                        <Select
+                          className="mt-4 w-full"
+                          onChange={(value) => {
+                            const selectedCurrency = allCurrencies.find(
+                              (currency) => currency.code === value
+                            );
+                            if (selectedCurrency) {
+                              setSelectedCurrency(selectedCurrency);
+                            }
+                          }}
+                          value={selectedCurrency?.symbol}
+                        >
+                          {allCurrencies.map((currency) => (
+                            <Select.Option
+                              key={currency.code}
+                              value={currency.code}
+                            >
+                              {currency.name} {currency.symbol}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </div>
                     <Form.Item
                       name="initial_external_links"
                       label="Link External IDs"
@@ -502,28 +579,6 @@ function CreatePlan() {
                         setExternalLinks={setExternalLinks}
                       />
                     </Form.Item>
-                    <Form.Item name="plan_currency" label="Plan Currency">
-                      <Select
-                        onChange={(value) => {
-                          const selectedCurrency = allCurrencies.find(
-                            (currency) => currency.code === value
-                          );
-                          if (selectedCurrency) {
-                            setSelectedCurrency(selectedCurrency);
-                          }
-                        }}
-                        value={selectedCurrency?.symbol}
-                      >
-                        {allCurrencies.map((currency) => (
-                          <Select.Option
-                            key={currency.code}
-                            value={currency.code}
-                          >
-                            {currency.name} {currency.symbol}
-                          </Select.Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
                   </Card>
                 </Col>
               </Row>
@@ -532,20 +587,16 @@ function CreatePlan() {
             <Col span={14}>
               <Card
                 title="Added Components"
-                className="h-full"
-                style={{
-                  borderRadius: "0.5rem",
-                  borderWidth: "2px",
-                  borderColor: "#EAEAEB",
-                  borderStyle: "solid",
-                }}
+                className=" !bg-card !font-alliance"
                 extra={[
                   <Button
                     key="add-component"
                     htmlType="button"
+                    className="!bg-transparent !border-none !text-gold"
                     onClick={() => showComponentModal()}
                   >
-                    Add Component
+                    <PlusOutlined />
+                    Add
                   </Button>,
                 ]}
               >
@@ -561,51 +612,40 @@ function CreatePlan() {
                     deleteComponent={deleteComponent}
                     pricing_unit={selectedCurrency}
                   />
-                </Form.Item>
-                {/* <div className="inset-x-0 bottom-0 justify-center self-end">
-                  <div className="w-full border-t border-gray-300 py-2" />
-                  <div className="mx-4">
-                    <Form.Item
-                      label="Billing Frequency"
-                      name="usage_billing_frequency"
-                      shouldUpdate={(prevValues, currentValues) =>
-                        prevValues.plan_duration !== currentValues.plan_duration
-                      }
-                      rules={[
-                        {
-                          required: true,
-                          message: "Please select an interval",
-                        },
-                      ]}
-                    >
-                      <Radio.Group>
-                        {availableBillingTypes.map((type) => (
-                          <Radio value={type.name}>{type.label}</Radio>
-                        ))}
-                      </Radio.Group>
-                    </Form.Item>
+                  <div className="mt-4">
+                    <SelectComponent>
+                      <SelectComponent.Label className="">
+                        Billing Frequency
+                      </SelectComponent.Label>
+                      <SelectComponent.Select
+                        disabled
+                        className="!w-1/4"
+                        onChange={() => {
+                          //
+                        }}
+                      >
+                        <SelectComponent.Option selected>
+                          {form.getFieldValue("plan_duration")
+                            ? capitalize(form.getFieldValue("plan_duration"))
+                            : form.getFieldValue("plan_duration")}
+                        </SelectComponent.Option>
+                      </SelectComponent.Select>
+                    </SelectComponent>
                   </div>
-                </div> */}
+                </Form.Item>
               </Card>
-            </Col>
-
-            <Col span="24">
               <Card
-                className="w-full my-6"
+                className="w-full !mt-6 !bg-card !font-alliance"
                 title="Added Features"
-                style={{
-                  borderRadius: "0.5rem",
-                  borderWidth: "2px",
-                  borderColor: "#EAEAEB",
-                  borderStyle: "solid",
-                }}
                 extra={[
                   <Button
                     key="add-feature"
                     htmlType="button"
+                    className="!bg-transparent !border-none !text-gold"
                     onClick={showFeatureModal}
                   >
-                    Add Feature
+                    <PlusOutlined />
+                    Add
                   </Button>,
                 ]}
               >
@@ -622,72 +662,116 @@ function CreatePlan() {
                   />
                 </Form.Item>
               </Card>
-            </Col>
-            <Col span="24">
+
               <Card
-                className="w-6/12 mb-20"
+                className="w-full !bg-card font-alliance !mt-6"
                 title="Discount"
-                style={{
-                  borderRadius: "0.5rem",
-                  borderWidth: "2px",
-                  borderColor: "#EAEAEB",
-                  borderStyle: "solid",
-                }}
-              >
-                <div className="grid grid-cols-2">
-                  <Form.Item
-                    wrapperCol={{ span: 20 }}
-                    label="Type"
-                    name="price_adjustment_type"
+                extra={[
+                  <Button
+                    key="add-discount"
+                    htmlType="button"
+                    className="!bg-transparent !border-none !text-gold"
+                    onClick={() => setDiscountVisible(!discountVisible)}
                   >
-                    <Select
-                      onChange={(value) => {
-                        setPriceAdjustmentType(value);
-                      }}
+                    {!discountVisible ? (
+                      <>
+                        {" "}
+                        <PlusOutlined />
+                        Add
+                      </>
+                    ) : (
+                      <div>Hide</div>
+                    )}
+                  </Button>,
+                ]}
+              >
+                {discountVisible ? (
+                  <div className="grid grid-cols-2">
+                    <Form.Item
+                      wrapperCol={{ span: 20 }}
+                      label="Type"
+                      name="price_adjustment_type"
                     >
-                      <Select.Option value="none">None</Select.Option>
-                      {/* <Select.Option value="price_override">
+                      <Select
+                        onChange={(value) => {
+                          setPriceAdjustmentType(value);
+                        }}
+                      >
+                        <Select.Option value="none">None</Select.Option>
+                        {/* <Select.Option value="price_override">
                         Overwrite Price
                       </Select.Option> */}
-                      <Select.Option value="percentage">
-                        Percentage Off
-                      </Select.Option>
-                      <Select.Option value="fixed">Flat Discount</Select.Option>
-                    </Select>
-                  </Form.Item>
-
-                  {priceAdjustmentType !== "none" && (
-                    <Form.Item
-                      name="price_adjustment_amount"
-                      wrapperCol={{ span: 24, offset: 4 }}
-                      shouldUpdate={(prevValues, curValues) =>
-                        prevValues.price_adjustment_type !==
-                        curValues.price_adjustment_type
-                      }
-                      rules={[
-                        {
-                          required:
-                            priceAdjustmentType !== undefined ||
-                            priceAdjustmentType !== "none",
-                          message: "Please enter a price adjustment value",
-                        },
-                      ]}
-                    >
-                      <InputNumber
-                        addonAfter={
-                          priceAdjustmentType === "percentage" ? "%" : null
-                        }
-                        addonBefore={
-                          (priceAdjustmentType === "fixed" ||
-                            priceAdjustmentType === "price_override") &&
-                          selectedCurrency
-                            ? selectedCurrency.symbol
-                            : null
-                        }
-                      />
+                        <Select.Option value="percentage">
+                          Percentage Off
+                        </Select.Option>
+                        <Select.Option value="fixed">
+                          Flat Discount
+                        </Select.Option>
+                      </Select>
                     </Form.Item>
-                  )}
-                </div>
+
+                    {priceAdjustmentType !== "none" && (
+                      <Form.Item
+                        name="price_adjustment_amount"
+                        wrapperCol={{ span: 24, offset: 4 }}
+                        shouldUpdate={(prevValues, curValues) =>
+                          prevValues.price_adjustment_type !==
+                          curValues.price_adjustment_type
+                        }
+                        rules={[
+                          {
+                            required:
+                              priceAdjustmentType !== undefined ||
+                              priceAdjustmentType !== "none",
+                            message: "Please enter a price adjustment value",
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          addonAfter={
+                            priceAdjustmentType === "percentage" ? "%" : null
+                          }
+                          addonBefore={
+                            (priceAdjustmentType === "fixed" ||
+                              priceAdjustmentType === "price_override") &&
+                            selectedCurrency
+                              ? selectedCurrency.symbol
+                              : null
+                          }
+                        />
+                      </Form.Item>
+                    )}
+                  </div>
+                ) : (
+                  <div className="Inter text-card-grey text-base">
+                    No discount added yet
+                  </div>
+                )}
+              </Card>
+              <Card
+                className="w-full !bg-card font-alliance !mt-6"
+                title="Recurring Charges"
+                extra={[
+                  <Button
+                    key="add-discount"
+                    htmlType="button"
+                    className="!bg-transparent !border-none !text-gold"
+                    onClick={() =>
+                      setRecurringChargesVisible(!recurringChargesVisible)
+                    }
+                  >
+                    <PlusOutlined />
+                    Add
+                  </Button>,
+                ]}
+              >
+                {recurringChargesVisible ? (
+                  <div className="grid grid-cols-2">for nw</div>
+                ) : (
+                  <div className="Inter text-card-grey text-base">
+                    No added recurring charges yet
+                  </div>
+                )}
               </Card>
             </Col>
           </Row>
@@ -710,6 +794,16 @@ function CreatePlan() {
             visible={featureVisible}
             onCancel={hideFeatureModal}
             onAddFeatures={addFeatures}
+          />
+        )}
+        {recurringChargesVisible && (
+          <RecurringChargesForm
+            visible={recurringChargesVisible}
+            onClose={() => setRecurringChargesVisible(false)}
+            preferredCurrency={selectedCurrency.symbol}
+            submitHandler={() => {
+              //
+            }}
           />
         )}
       </Form.Provider>
