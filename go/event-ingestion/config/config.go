@@ -1,9 +1,6 @@
 package config
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/spf13/viper"
 )
 
@@ -14,28 +11,10 @@ type Config struct {
 	KafkaTopic        string
 	KafkaSASLUsername string
 	KafkaSASLPassword string
+	RedisURL          string
 }
 
 var Conf Config
-
-func GetDatabaseURL(v *viper.Viper) string {
-	if v.GetString("database_url") != "" {
-		return v.GetString("database_url")
-	}
-
-	host := "localhost"
-	dockerized := strings.ToLower(v.GetString("dockerized"))
-
-	if !(dockerized == "false" || dockerized == "0" || dockerized == "no" || dockerized == "f" || dockerized == "") {
-		host = "db"
-	}
-
-	postgresUser := v.GetString("postgres_user")
-	postgresPassword := v.GetString("postgres_password")
-	postgresDB := v.GetString("postgres_db")
-
-	return fmt.Sprintf("postgres://%s:%s@%s:5432/%s?sslmode=disable", postgresUser, postgresPassword, host, postgresDB)
-}
 
 func GetConfig() Config {
 	v := viper.New()
@@ -64,6 +43,7 @@ func GetConfig() Config {
 	v.BindEnv("kafka_topic", "EVENTS_TOPIC")
 	v.BindEnv("kafka_sasl_username", "KAFKA_SASL_USERNAME")
 	v.BindEnv("kafka_sasl_password", "KAFKA_SASL_PASSWORD")
+	v.BindEnv("redis_url", "REDIS_TLS_URL", "REDIS_URL")
 
 	conf := Config{
 		DatabaseURL:       GetDatabaseURL(v),
@@ -72,6 +52,7 @@ func GetConfig() Config {
 		KafkaTopic:        v.GetString("kafka_topic"),
 		KafkaSASLUsername: v.GetString("kafka_sasl_username"),
 		KafkaSASLPassword: v.GetString("kafka_sasl_password"),
+		RedisURL:          GetRedisURL(v),
 	}
 
 	return conf

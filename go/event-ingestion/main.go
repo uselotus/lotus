@@ -15,6 +15,7 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/pkg/sasl/scram"
 	"github.com/uselotus/lotus/go/event-ingestion/authn"
+	"github.com/uselotus/lotus/go/event-ingestion/cache"
 	"github.com/uselotus/lotus/go/event-ingestion/config"
 	"github.com/uselotus/lotus/go/event-ingestion/database"
 	"github.com/uselotus/lotus/go/event-ingestion/kafka"
@@ -38,6 +39,12 @@ func main() {
 	}
 
 	defer db.Close()
+
+	cacheClient, err := cache.New(config.Conf)
+
+	if err != nil {
+		log.Fatalf("Error connecting to cache: %v", err)
+	}
 
 	seeds := []string{config.Conf.KafkaURL}
 
@@ -77,7 +84,8 @@ func main() {
 
 	e.Use(middleware.Logger())
 	e.Use(database.Middleware(db))
-	e.Use(authn.Middleware())
+	e.Use(authn.Middleware(cacheClient))
+
 	e.POST("/api/track/", func(c echo.Context) error {
 		now := time.Now()
 
@@ -85,14 +93,15 @@ func main() {
 
 		if err := c.Bind(&events); err != nil {
 			singleEvent := types.RawEvent{}
+
 			if err := c.Bind(&singleEvent); err != nil {
 				return c.JSON(http.StatusBadRequest, TrackEventResponse{
 					Success:      "none",
 					FailedEvents: map[string]string{"no_idempotency_id": "Invalid JSON"},
 				})
-			} else {
-				events.Batch = append(events.Batch, singleEvent)
 			}
+
+			events.Batch = append(events.Batch, singleEvent)
 		}
 
 		badEvents := make(map[string]string)

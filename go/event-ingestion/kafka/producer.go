@@ -28,6 +28,7 @@ func Produce(ctx context.Context, cl *kgo.Client, event types.VerifiedEvent) err
 	}
 
 	keyBytes := make([]byte, 4)
+
 	binary.BigEndian.PutUint32(keyBytes, uint32(event.OrganizationID))
 
 	record := &kgo.Record{

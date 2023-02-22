@@ -5,11 +5,14 @@ go 1.19
 require (
 	github.com/labstack/echo/v4 v4.10.0
 	github.com/lib/pq v1.10.7
+	github.com/redis/go-redis/v9 v9.0.2
 	github.com/spf13/viper v1.15.0
 	github.com/twmb/franz-go v1.12.1
 )
 
 require (
+	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
