@@ -176,6 +176,8 @@ const SubscriptionView: FC<Props> = ({
   const cancelSubscription = (plan_id, subscription_filters) => {
     const query_params: CancelSubscriptionQueryParams = {
       customer_id,
+      plan_id,
+      subscription_filters,
     };
     onCancel(cancelBody, query_params);
     setShowModal(false);
