@@ -1,9 +1,10 @@
 function createShortenedText(plan: string, isXL: boolean) {
-  length = plan.split("").length;
+  const { length } = plan.split("");
   const front = plan.split("").splice(0, 4);
   if (isXL && length < 17) {
     return plan;
-  } else if (!isXL && length < 14) {
+  }
+  if (!isXL && length < 14) {
     return plan;
   }
   const back = isXL

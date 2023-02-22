@@ -801,8 +801,8 @@ function CreatePlan() {
             visible={recurringChargesVisible}
             onClose={() => setRecurringChargesVisible(false)}
             preferredCurrency={selectedCurrency.symbol}
-            submitHandler={() => {
-              //
+            submitHandler={(...values) => {
+              console.log(values);
             }}
           />
         )}
