@@ -196,27 +196,24 @@ function CreateMetricForm(props: {
           filters.forEach((filter) => {
             if (
               (filter.operator === "isin" || filter.operator === "isnotin") &&
-              Number(filter.comparison_value) >= 0
+              !filter.comparison_value.some((el) => Number(el) >= 0 === true)
             ) {
-              console.log(errorMessages);
-              errorMessages.current = errorMessages.current.concat([
-                `${filter.operator} requires string conversion type`,
-              ]);
-            } else if (
-              (filter.operator !== "isin" || filter.operator !== "isnotin") &&
-              Number(filter.comparison_value) < 0
-            ) {
-              errorMessages.current = errorMessages.current.concat([
-                `${filter.operator} requires number conversion type`,
-              ]);
+              errorMessages.current = [];
             } else if (
               (filter.operator !== "isin" || filter.operator !== "isnotin") &&
               Number(filter.comparison_value) >= 0
             ) {
               errorMessages.current = [];
             } else if (
+              (filter.operator !== "isin" || filter.operator !== "isnotin") &&
+              Number(filter.comparison_value) < 0 === false
+            ) {
+              errorMessages.current = errorMessages.current.concat([
+                `${filter.operator} requires number conversion type`,
+              ]);
+            } else if (
               (filter.operator === "isin" || filter.operator === "isnotin") &&
-              Number(filter.comparison_value) >= 0 === false
+              filter.comparison_value.every((el) => Number(el) >= 0 === false)
             ) {
               errorMessages.current = [];
             }
@@ -233,7 +230,6 @@ function CreateMetricForm(props: {
                 values.filters[i].operator === "isin" ||
                 values.filters[i].operator === "isnotin"
               ) {
-                console.log(values.filters[i].comparison_value);
                 categoricalFilters.push({
                   property_name: values.filters[i].property_name,
                   operator: values.filters[i].operator,
