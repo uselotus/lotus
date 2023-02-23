@@ -130,7 +130,7 @@ def get_csv_presigned_url(organization, start_date=None, end_date=None):
         return {"exists": False, "url": ""}
 
     else:
-        bucket_name = "dev-" + BUCKET_NAME
+        bucket_name = BUCKET_NAME
         key = get_key(organization, CSV_FOLDER, csv_filename)
         exists = s3_file_exists(bucket_name=bucket_name, key=key)
         if not exists:
