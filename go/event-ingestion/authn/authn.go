@@ -59,8 +59,10 @@ func Middleware(cacheClient cache.Cache) echo.MiddlewareFunc {
 
 			apiKey := &types.APIKey{}
 
-			if fromCache, err := cacheClient.Get(prefix); err == nil {
-				if err = json.Unmarshal([]byte(fromCache), &apiKey); err != nil {
+			if fromCache, err := cacheClient.Get(key); err == nil {
+				if fromCache == "" {
+					apiKey = nil
+				} else if err = json.Unmarshal([]byte(fromCache), apiKey); err != nil {
 					apiKey = nil
 				}
 			}
@@ -81,13 +83,13 @@ func Middleware(cacheClient cache.Cache) echo.MiddlewareFunc {
 				return echo.NewHTTPError(http.StatusBadRequest, err)
 			}
 
-			toCache, err := json.Marshal(apiKey)
+			toCache, err := json.Marshal(*apiKey)
 
 			if err != nil {
-				cacheClient.Set(prefix, toCache)
+				cacheClient.Set(key, toCache)
 			}
 
-			c.Set("apiKey", apiKey)
+			c.Set("apiKey", *apiKey)
 
 			return next(c)
 		}
