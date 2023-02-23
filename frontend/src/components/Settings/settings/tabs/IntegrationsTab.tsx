@@ -149,6 +149,17 @@ const IntegrationsTab: FC = () => {
             }
           />
         </Col>
+        <Col span={6} className="h-full">
+          <AppCard
+            connected={true}
+            title="Netsuite"
+            idValue="not_necessary"
+            description="Sync your invoices + products to Netsuite"
+            icon={integrationsMap.netsuite.icon}
+            working={true}
+            handleClickConnect={() => {}}
+          />
+        </Col>
       </Row>
       <Divider />
     </div>

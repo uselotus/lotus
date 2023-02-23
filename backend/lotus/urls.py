@@ -48,9 +48,9 @@ from metering_billing.views.views import (  # MergeCustomersView,; ExperimentalT
     ChangeUserOrganizationView,
     CostAnalysisView,
     DraftInvoiceView,
-    GetInvoicePdfURL,
     ImportCustomersView,
     ImportPaymentObjectsView,
+    NetsuiteInvoiceCSVView,
     PeriodEventsView,
     PeriodMetricRevenueView,
     PeriodMetricUsageView,
@@ -148,7 +148,6 @@ urlpatterns = [
     ),
     # App views
     path("app/", include(router.urls)),
-    path("app/invoice_url/", GetInvoicePdfURL.as_view(), name="invoice_url"),
     path(
         "app/cost_analysis/",
         CostAnalysisView.as_view(),
@@ -193,6 +192,11 @@ urlpatterns = [
     path(
         "app/import_payment_objects/",
         ImportPaymentObjectsView.as_view(),
+        name="import_payment_objects",
+    ),
+    path(
+        "app/netsuite_invoices/",
+        NetsuiteInvoiceCSVView.as_view(),
         name="import_payment_objects",
     ),
     path(
@@ -255,4 +259,5 @@ if PROFILER_ENABLED:
     urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
 
 if DEBUG:
+    urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]
     urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]
