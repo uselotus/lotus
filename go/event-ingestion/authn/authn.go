@@ -2,7 +2,6 @@ package authn
 
 import (
 	"database/sql"
-	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -47,27 +46,22 @@ func getFromDB(db *sql.DB, prefix string) (*types.APIKey, error) {
 func Middleware(cacheClient cache.Cache) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			var err error
-
 			key := getAPIKeyFromHeader(c.Request().Header)
 
 			if key == "" {
 				return echo.NewHTTPError(http.StatusBadRequest, "No API key found in request")
 			}
 
-			prefix, _, _ := strings.Cut(key, ".")
-
-			apiKey := &types.APIKey{}
-
-			if fromCache, err := cacheClient.Get(prefix); err == nil {
-				if err = json.Unmarshal([]byte(fromCache), &apiKey); err != nil {
-					apiKey = nil
-				}
+			if organizationID, err := cacheClient.Get(key); err == nil {
+				c.Set("organization", organizationID)
+				return next(c)
 			}
 
 			db := c.Get("db").(*sql.DB)
 
-			apiKey, err = getFromDB(db, prefix)
+			prefix, _, _ := strings.Cut(key, ".")
+
+			apiKey, err := getFromDB(db, prefix)
 
 			if err == sql.ErrNoRows {
 				return echo.NewHTTPError(http.StatusBadRequest, "Invalid API key")
@@ -81,13 +75,9 @@ func Middleware(cacheClient cache.Cache) echo.MiddlewareFunc {
 				return echo.NewHTTPError(http.StatusBadRequest, err)
 			}
 
-			toCache, err := json.Marshal(apiKey)
-
-			if err != nil {
-				cacheClient.Set(prefix, toCache)
-			}
-
-			c.Set("apiKey", apiKey)
+			cacheClient.Set(key, apiKey.OrganizationID)
+			
+			c.Set("organization", apiKey.OrganizationID)
 
 			return next(c)
 		}

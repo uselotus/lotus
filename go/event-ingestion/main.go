@@ -117,9 +117,9 @@ func main() {
 				continue
 			}
 
-			key := c.Get("apiKey").(types.APIKey)
+			organizationID := c.Get("organizationID").(int)
 
-			transformedEvent := event.Transform(key.OrganizationID)
+			transformedEvent := event.Transform(organizationID)
 
 			if err := kafka.Produce(ctx, cl, transformedEvent); err != nil {
 				badEvents[event.IdempotencyID] = fmt.Sprintf("Failed to produce event to kafka: %v", err)

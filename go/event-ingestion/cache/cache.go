@@ -15,8 +15,8 @@ type Cache interface {
 }
 
 type RedisCache struct {
-	rdb        *redis.Client
-	expiration time.Duration
+	rdb               *redis.Client
+	defaultExpiration time.Duration
 }
 
 var ctx = context.Background()
@@ -36,7 +36,7 @@ func (c *RedisCache) Get(key string) (string, error) {
 }
 
 func (c *RedisCache) Set(key string, value interface{}) error {
-	return c.rdb.Set(ctx, key, value, c.expiration).Err()
+	return c.rdb.Set(ctx, key, value, c.defaultExpiration).Err()
 }
 
 func New(config config.Config) (Cache, error) {
@@ -54,8 +54,8 @@ func New(config config.Config) (Cache, error) {
 	)
 
 	cache := &RedisCache{
-		rdb:        rdb,
-		expiration: 5 * time.Hour,
+		rdb:               rdb,
+		defaultExpiration: 5 * time.Hour,
 	}
 
 	return cache, nil
