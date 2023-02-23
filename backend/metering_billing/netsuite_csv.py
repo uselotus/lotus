@@ -7,7 +7,7 @@ import boto3
 from botocore.exceptions import ClientError
 from django.conf import settings
 from metering_billing.invoice_pdf import s3_bucket_exists, s3_file_exists
-from metering_billing.models import Invoice
+from metering_billing.models import Invoice, Organization
 from metering_billing.utils import convert_to_datetime, now_utc
 
 logger = logging.getLogger("django.server")
@@ -88,12 +88,11 @@ def generate_invoices_csv(organization, start_date=None, end_date=None):
 
 def upload_csv(organization, csv_buffer, csv_folder, csv_filename):
     # If the organization is not an external demo organization
-    # if (
-    #     not settings.DEBUG
-    #     and organization.organization_type
-    #     != Organization.OrganizationType.EXTERNAL_DEMO
-    # ):
-    if True:
+    if (
+        not settings.DEBUG
+        and organization.organization_type
+        != Organization.OrganizationType.EXTERNAL_DEMO
+    ):
         try:
             # Upload the file to s3
 
@@ -123,7 +122,10 @@ def get_csv_presigned_url(organization, start_date=None, end_date=None):
     csv_filename = get_csv_filename(organization, start_date, end_date)
 
     # if settings.DEBUG:
-    if False:
+    if (
+        settings.DEBUG
+        or organization.organization_type == Organization.OrganizationType.EXTERNAL_DEMO
+    ):
         bucket_name = "dev-" + BUCKET_NAME
         return {"exists": False, "url": ""}
 
