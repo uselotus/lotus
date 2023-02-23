@@ -290,6 +290,14 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     @extend_schema(
         callbacks=[
             OpenApiCallback(
+                WEBHOOK_TRIGGER_EVENTS.CUSTOMER_CREATED.value,
+                "{$request.body#/webhook_url}",
+                extend_schema(
+                    description="Customer created webhook",
+                    responses={200: CustomerCreatedSerializer},
+                ),
+            ),
+            OpenApiCallback(
                 WEBHOOK_TRIGGER_EVENTS.INVOICE_CREATED.value,
                 "{$request.body#/webhook_url}",
                 extend_schema(
@@ -306,22 +314,6 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 ),
             ),
             OpenApiCallback(
-                WEBHOOK_TRIGGER_EVENTS.USAGE_ALERT_TRIGGERED.value,
-                "{$request.body#/webhook_url}",
-                extend_schema(
-                    description="Usage alert triggered webhook",
-                    responses={200: UsageAlertTriggeredSerializer},
-                ),
-            ),
-            OpenApiCallback(
-                WEBHOOK_TRIGGER_EVENTS.CUSTOMER_CREATED.value,
-                "{$request.body#/webhook_url}",
-                extend_schema(
-                    description="Customer created webhook",
-                    responses={200: CustomerCreatedSerializer},
-                ),
-            ),
-            OpenApiCallback(
                 WEBHOOK_TRIGGER_EVENTS.INVOICE_PAST_DUE.value,
                 "{$request.body#/webhook_url}",
                 extend_schema(
@@ -335,6 +327,14 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 extend_schema(
                     description="Subscription created webhook",
                     responses={200: SubscriptionCreatedSerializer},
+                ),
+            ),
+            OpenApiCallback(
+                WEBHOOK_TRIGGER_EVENTS.USAGE_ALERT_TRIGGERED.value,
+                "{$request.body#/webhook_url}",
+                extend_schema(
+                    description="Usage alert triggered webhook",
+                    responses={200: UsageAlertTriggeredSerializer},
                 ),
             ),
         ]
