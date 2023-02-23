@@ -1,6 +1,5 @@
 import logging
 from decimal import Decimal, InvalidOperation
-from io import BytesIO
 
 import pytz
 from celery import shared_task
@@ -49,7 +48,6 @@ def generate_invoice_pdf_async(invoice_pk):
     invoice = Invoice.objects.get(pk=invoice_pk)
     pdf_url = generate_invoice_pdf(
         invoice,
-        BytesIO(),
     )
     invoice.invoice_pdf = pdf_url
     invoice.save()
