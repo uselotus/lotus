@@ -2,7 +2,7 @@
 /* eslint-disable react/no-array-index-key */
 /* eslint-disable no-shadow */
 /* eslint-disable use-isnan */
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   Modal,
   Form,
@@ -14,6 +14,7 @@ import {
   Collapse,
   Button,
   Tag,
+  InputNumber,
 } from "antd";
 import {
   CreateMetricType,
@@ -45,7 +46,7 @@ function CreateMetricForm(props: {
   const [preset, setPreset] = useState("none");
   const errorMessages = useRef([]);
   const [errors, setErrors] = useState<string[]>();
-  const [showTag, setShowTag] = useState(false);
+  const [showTags, setShowTags] = useState({});
   type MixedFilterType = CategoricalFilterType | NumericFilterType;
   const [filters, setFilters] = useState<MixedFilterType[]>([]);
   const [customSQL, setCustomSQL] = useState<null | string>(
@@ -226,10 +227,9 @@ function CreateMetricForm(props: {
           const categoricalFilters: CategoricalFilterType[] = [];
           if (values.filters && values.filters.length > 0) {
             for (let i = 0; i < values.filters.length; i++) {
-              if (
-                values.filters[i].operator === "isin" ||
-                values.filters[i].operator === "isnotin"
-              ) {
+              const comparisonValue = values.filters[i].comparison_value;
+              if (["isin", "isnotin"].includes(values.filters[i].operator)) {
+                //comparisonValue will be a list of strings
                 categoricalFilters.push({
                   property_name: values.filters[i].property_name,
                   operator: values.filters[i].operator,
@@ -668,7 +668,7 @@ function CreateMetricForm(props: {
                                 required: true,
                                 whitespace: true,
                                 message:
-                                  "Please input a property name name or delete this filter.",
+                                  "Please input a property name or delete this filter.",
                               },
                             ]}
                             noStyle
@@ -685,22 +685,27 @@ function CreateMetricForm(props: {
                                 required: true,
                                 whitespace: true,
                                 message:
-                                  "Please input a property name name or delete this filter.",
+                                  "Please input an operator or delete this filter.",
                               },
                             ]}
                           >
                             <Select
                               onChange={(e) => {
+                                let tagsShown = false;
                                 if (e === "isin" || e === "isnotin") {
-                                  setShowTag(true);
+                                  tagsShown = true;
                                 } else {
-                                  setShowTag(false);
+                                  tagsShown = false;
                                 }
+                                setShowTags({
+                                  ...showTags,
+                                  [field.name]: tagsShown,
+                                });
                               }}
                               style={{ width: "50%" }}
                             >
-                              <Option value="isin">is (string)</Option>
-                              <Option value="isnotin">is not (string)</Option>
+                              <Option value="isin">is one of</Option>
+                              <Option value="isnotin">is not one of</Option>
                               <Option value="eq">= </Option>
                               <Option value="gte">&#8805;</Option>
                               <Option value="gt"> &#62; </Option>
@@ -713,16 +718,57 @@ function CreateMetricForm(props: {
                             <Form.Item
                               name={[field.name, "comparison_value"]}
                               style={{ alignSelf: "middle" }}
+                              dependencies={[field.name, "operator"]}
+                              validateTrigger={["onChange", "onBlur"]}
+                              rules={[
+                                ({ getFieldValue }) => ({
+                                  validator(_, value) {
+                                    console.log("VALUE", value);
+                                    console.log(
+                                      "showTag",
+                                      showTags[field.name] || false
+                                    );
+                                    if (showTags[field.name] || false) {
+                                      if (
+                                        Array.isArray(value) &&
+                                        value.length >= 1
+                                      ) {
+                                        return Promise.resolve();
+                                      }
+                                      return Promise.reject(
+                                        "Please select at least one value for this filter."
+                                      );
+                                    } else if (
+                                      value === undefined ||
+                                      value === null ||
+                                      value === "" ||
+                                      (Array.isArray(value) &&
+                                        value.length === 0)
+                                    ) {
+                                      return Promise.reject(
+                                        "Please input a comparison value or delete this filter."
+                                      );
+                                    }
+                                    return Promise.resolve();
+                                  },
+                                }),
+                              ]}
                             >
-                              {!showTag ? (
-                                <Input />
+                              {!showTags[field.name] || false ? (
+                                <InputNumber
+                                  placeholder="comparison value"
+                                  style={{ width: "100%" }}
+                                />
                               ) : (
                                 <Select
                                   mode="tags"
-                                  placeholder="Comparison Value"
+                                  style={{ width: "100%" }}
+                                  placeholder="Input 1...n values"
+                                  options={[]}
                                 />
                               )}
                             </Form.Item>
+
                             {fields.length > 0 ? (
                               <MinusCircleOutlined
                                 className="hover:bg-background place-self-center p-4"
