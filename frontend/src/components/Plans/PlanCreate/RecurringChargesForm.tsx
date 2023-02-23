@@ -1,19 +1,21 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import React, { useState } from "react";
-import { Button, Modal, Select, Input, InputNumber } from "antd";
+import { Modal, Select, Input, InputNumber } from "antd";
 import { constructBillType } from "../../Addons/AddonsDetails/AddOnInfo";
 import capitalize from "../../../helpers/capitalize";
 import { fourDP } from "../../../helpers/fourDP";
+import { RecurringCharge } from "../../../types/plan-type";
 
 interface RecurringChargesFormProps {
   visible: boolean;
   onClose: VoidFunction;
   preferredCurrency: string;
+  recurringCharge: RecurringCharge | undefined;
   submitHandler: (
     name: string,
     charge_timing: string,
     amount: number,
-    charge_behaviour: string
+    charge_behavior: string
   ) => void;
 }
 const RecurringChargesForm = ({
@@ -21,11 +23,20 @@ const RecurringChargesForm = ({
   onClose,
   preferredCurrency,
   submitHandler,
+  recurringCharge,
 }: RecurringChargesFormProps) => {
-  const [chargeName, setChargeName] = useState("");
-  const [amount, setAmount] = useState(0.0);
-  const [chargeTiming, setChargeTiming] = useState("");
-  const [chargeBehavior, setChargeBehaviour] = useState("");
+  const [chargeName, setChargeName] = useState(
+    recurringCharge ? recurringCharge.name : ""
+  );
+  const [amount, setAmount] = useState(
+    recurringCharge ? recurringCharge.amount : 0.0
+  );
+  const [chargeTiming, setChargeTiming] = useState(
+    recurringCharge ? recurringCharge.charge_timing : ""
+  );
+  const [chargeBehavior, setChargeBehaviour] = useState(
+    recurringCharge ? recurringCharge.charge_behavior : ""
+  );
   return (
     <Modal
       visible={visible}
@@ -34,11 +45,12 @@ const RecurringChargesForm = ({
       okType="default"
       cancelText="Cancel"
       okButtonProps={{
-        className: "!bg-gold !text-white !border-none",
+        className: `!bg-gold !text-white !border-none`,
+        disabled: chargeName.length === 0,
       }}
       onCancel={onClose}
       onOk={() => {
-        submitHandler(chargeName, chargeTiming, amount, chargeBehavior);
+        submitHandler(chargeName, chargeTiming, fourDP(amount), chargeBehavior);
         onClose();
       }}
     >

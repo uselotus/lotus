@@ -40,6 +40,7 @@ import { CreateRecurringCharge } from "../types/plan-type";
 import { PlusOutlined } from "@ant-design/icons";
 import capitalize from "../helpers/capitalize";
 import RecurringChargesForm from "../components/Plans/PlanCreate/RecurringChargesForm";
+import RecurringChargesCard from "../components/Plans/PlanCreate/RecurringChargesCard";
 interface ComponentDisplay {
   metric: string;
   cost_per_batch: number;
@@ -73,6 +74,11 @@ function CreatePlan() {
   const [componentsData, setComponentsData] = useState<CreateComponent[]>([]);
   const [form] = Form.useForm();
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>([]);
+  const [recurringCharges, setRecurringCharges] = useState<
+    PlanType["display_version"]["recurring_charges"]
+  >([]);
+  const [currentRecurringCharge, setCurrentRecurringCharge] =
+    useState<PlanType["display_version"]["recurring_charges"][0]>();
   const [month, setMonth] = useState(1);
   const [editComponentItem, setEditComponentsItem] =
     useState<CreateComponent>();
@@ -212,96 +218,93 @@ function CreatePlan() {
   };
 
   const submitPricingPlan = () => {
-    form
-      .validateFields()
-      .then((values) => {
-        const usagecomponentslist: CreateComponent[] = [];
-        const components: any = Object.values(componentsData);
-        if (components) {
-          for (let i = 0; i < components.length; i++) {
-            const usagecomponent: CreateComponent = {
-              metric_id: components[i].metric_id,
-              tiers: components[i].tiers,
-              proration_granularity: components[i].proration_granularity,
-            };
-            usagecomponentslist.push(usagecomponent);
-          }
-        }
-
-        const featureIdList: string[] = [];
-        const features: any = Object.values(planFeatures);
-        if (features) {
-          for (let i = 0; i < features.length; i++) {
-            featureIdList.push(features[i].feature_id);
-          }
-        }
-        const recurring_charges: CreateRecurringCharge[] = [];
-        recurring_charges.push({
-          amount: values.flat_rate,
-          charge_behavior: "prorate",
-          charge_timing: values.flat_fee_billing_type,
-          name: "Flat Fee",
-        });
-
-        if (values.usage_billing_frequency === "yearly") {
-          values.usage_billing_frequency = "end_of_period";
-        }
-        const initialPlanVersion: CreateInitialVersionType = {
-          description: values.description,
-          recurring_charges: recurring_charges,
-          transition_to_plan_id: values.transition_to_plan_id,
-          components: usagecomponentslist,
-          features: featureIdList,
-          usage_billing_frequency: values.usage_billing_frequency,
-          currency_code: values.plan_currency,
-        };
-        if (
-          values.price_adjustment_type !== undefined &&
-          values.price_adjustment_type !== "none"
-        ) {
-          if (
-            values.price_adjustment_type === "percentage" ||
-            values.price_adjustment_type === "fixed"
-          ) {
-            values.price_adjustment_amount =
-              Math.abs(values.price_adjustment_amount) * -1;
-          }
-
-          initialPlanVersion.price_adjustment = {
-            price_adjustment_type: values.price_adjustment_type,
-            price_adjustment_amount: values.price_adjustment_amount,
+    form.validateFields().then((values) => {
+      const usagecomponentslist: CreateComponent[] = [];
+      const components: any = Object.values(componentsData);
+      if (components) {
+        for (let i = 0; i < components.length; i++) {
+          const usagecomponent: CreateComponent = {
+            metric_id: components[i].metric_id,
+            tiers: components[i].tiers,
+            proration_granularity: components[i].proration_granularity,
           };
+          usagecomponentslist.push(usagecomponent);
+        }
+      }
+
+      const featureIdList: string[] = [];
+      const features: any = Object.values(planFeatures);
+      if (features) {
+        for (let i = 0; i < features.length; i++) {
+          featureIdList.push(features[i].feature_id);
+        }
+      }
+      const recurring_charges: CreateRecurringCharge[] = [];
+      recurring_charges.push({
+        amount: values.flat_rate,
+        charge_behavior: "prorate",
+        charge_timing: values.flat_fee_billing_type,
+        name: "Flat Fee",
+      });
+
+      if (values.usage_billing_frequency === "yearly") {
+        values.usage_billing_frequency = "end_of_period";
+      }
+      const initialPlanVersion: CreateInitialVersionType = {
+        description: values.description,
+        recurring_charges: recurringCharges,
+        transition_to_plan_id: values.transition_to_plan_id,
+        components: usagecomponentslist,
+        features: featureIdList,
+        usage_billing_frequency: values.usage_billing_frequency,
+        currency_code: values.plan_currency,
+      };
+      if (
+        values.price_adjustment_type !== undefined &&
+        values.price_adjustment_type !== "none"
+      ) {
+        if (
+          values.price_adjustment_type === "percentage" ||
+          values.price_adjustment_type === "fixed"
+        ) {
+          values.price_adjustment_amount =
+            Math.abs(values.price_adjustment_amount) * -1;
         }
 
-        if (values.align_plan === "calendar_aligned") {
-          if (
-            values.plan_duration === "yearly" ||
-            values.plan_duration === "quarterly"
-          ) {
-            initialPlanVersion.day_anchor = values.day_of_month;
-            initialPlanVersion.month_anchor = month;
-          }
-          if (values.plan_duration === "monthly") {
-            initialPlanVersion.day_anchor = values.day_of_month;
-          }
-        }
-        const plan: CreatePlanType = {
-          plan_name: values.name,
-          plan_duration: values.plan_duration,
-          initial_version: initialPlanVersion,
+        initialPlanVersion.price_adjustment = {
+          price_adjustment_type: values.price_adjustment_type,
+          price_adjustment_amount: values.price_adjustment_amount,
         };
-        const links = values.initial_external_links;
-        if (links?.length) {
-          plan.initial_external_links = links.map((link) => ({
-            source: "stripe",
-            external_plan_id: link,
-          }));
-        }
-        mutation.mutate(plan);
-      })
-      .catch((info) => {});
-  };
+      }
 
+      if (values.align_plan === "calendar_aligned") {
+        if (
+          values.plan_duration === "yearly" ||
+          values.plan_duration === "quarterly"
+        ) {
+          initialPlanVersion.day_anchor = values.day_of_month;
+          initialPlanVersion.month_anchor = month;
+        }
+        if (values.plan_duration === "monthly") {
+          initialPlanVersion.day_anchor = values.day_of_month;
+        }
+      }
+      const plan: CreatePlanType = {
+        plan_name: values.name,
+        plan_duration: values.plan_duration,
+        initial_version: initialPlanVersion,
+      };
+      const links = values.initial_external_links;
+      if (links?.length) {
+        plan.initial_external_links = links.map((link) => ({
+          source: "stripe",
+          external_plan_id: link,
+        }));
+      }
+      mutation.mutate(plan);
+    });
+  };
+  console.log(recurringCharges);
   return (
     <PageLayout
       title="Create Plan"
@@ -765,8 +768,23 @@ function CreatePlan() {
                   </Button>,
                 ]}
               >
-                {recurringChargesVisible ? (
-                  <div className="grid grid-cols-2">for nw</div>
+                {recurringCharges.length ? (
+                  <RecurringChargesCard
+                    recurringCharges={recurringCharges}
+                    makeEditable={(name) => {
+                      setRecurringChargesVisible(true);
+                      setCurrentRecurringCharge(
+                        recurringCharges.find((el) => el.name === name)
+                      );
+                    }}
+                    deleteHandler={(name) => {
+                      const newArray = recurringCharges.filter(
+                        (el) => el.name !== name
+                      );
+                      setCurrentRecurringCharge(undefined);
+                      setRecurringCharges(newArray);
+                    }}
+                  />
                 ) : (
                   <div className="Inter text-card-grey text-base">
                     No added recurring charges yet
@@ -798,11 +816,41 @@ function CreatePlan() {
         )}
         {recurringChargesVisible && (
           <RecurringChargesForm
+            recurringCharge={currentRecurringCharge}
             visible={recurringChargesVisible}
             onClose={() => setRecurringChargesVisible(false)}
             preferredCurrency={selectedCurrency.symbol}
-            submitHandler={(...values) => {
-              console.log(values);
+            submitHandler={(name, charge_timing, amount, charge_behavior) => {
+              if (currentRecurringCharge !== undefined) {
+                const newArray = recurringCharges.filter(
+                  (el) => el.name !== currentRecurringCharge.name
+                );
+                const obj: PlanType["display_version"]["recurring_charges"][0] =
+                  {
+                    amount,
+                    charge_timing: charge_timing as "in_advance" | "in_arrears",
+                    charge_behavior: charge_behavior as "prorate" | "full",
+                    name,
+                    pricing_unit: selectedCurrency,
+                  };
+
+                newArray.push(obj);
+                setRecurringCharges(newArray);
+                setCurrentRecurringCharge(undefined);
+              } else {
+                const obj: PlanType["display_version"]["recurring_charges"][0] =
+                  {
+                    amount,
+                    charge_timing: charge_timing as "in_advance" | "in_arrears",
+                    charge_behavior: charge_behavior as "prorate" | "full",
+                    name,
+                    pricing_unit: selectedCurrency,
+                  };
+
+                setRecurringCharges((prevRecurringCharges) =>
+                  prevRecurringCharges.concat([obj])
+                );
+              }
             }}
           />
         )}
