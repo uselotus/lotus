@@ -19,7 +19,7 @@ from metering_billing.models import (
     Organization,
     SubscriptionRecord,
 )
-from metering_billing.netsuite_csv import generate_invoices_csv
+from metering_billing.netsuite_csv import get_csv_presigned_url
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.model_serializers import (
@@ -757,10 +757,8 @@ class NetsuiteInvoiceCSVView(APIView):
     )
     def get(self, request, format=None):
         organization = request.organization
-        url = generate_invoices_csv(organization)
+        url = get_csv_presigned_url(organization)
         return Response(
-            {
-                "url": url,
-            },
+            url,
             status=status.HTTP_200_OK,
         )

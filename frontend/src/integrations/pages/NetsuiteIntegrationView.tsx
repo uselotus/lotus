@@ -13,6 +13,7 @@ const downloadFile = async (s3link) => {
     toast.error("No file to download");
     return;
   }
+  console.log("s3link", s3link);
   window.open(s3link);
 };
 
@@ -25,7 +26,9 @@ const NetsuiteIntegrationView: FC = () => {
   const getInvoicesCSV = async () => {
     try {
       const response = await Netsuite.invoices();
+      console.log("response", response);
       const csvUrl = response.url;
+      console.log("csvUrl", csvUrl);
       downloadFile(csvUrl);
     } catch (err) {
       toast.error("Error downloading file");
@@ -44,9 +47,7 @@ const NetsuiteIntegrationView: FC = () => {
       extra={<Button onClick={returnToDashboard}>Back to Integrations</Button>}
     >
       <div className="w-6/12">
-        <h3 className="text-16px mb-10">
-          Charge and invoice your customers through your Braintree account
-        </h3>
+        <h3 className="text-16px mb-10">Generate Invoice CSVs for Netsuite</h3>
         <div className="grid grid-cols-2 justify-start items-center gap-6 border-2 border-solid rounded border-[#EAEAEB] px-6 py-10">
           <h3>Download Invoices CSV:</h3>
           <Button

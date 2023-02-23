@@ -21,9 +21,20 @@ try:
 except ClientError:
     pass
 
+BUCKET_NAME = "lotus-invoice-csvs-d8d79027"
+CSV_FOLDER = "invoice_csvs"
+
+
+def get_key(organization, csv_folder, csv_filename):
+    organization_id = organization.organization_id.hex
+    team = organization.team
+    team_id = team.team_id.hex
+
+    key = f"{team_id}/{organization_id}/{csv_folder}/{csv_filename}.csv"
+    return key
+
 
 def generate_invoices_csv(organization, start_date=None, end_date=None):
-    csv_folder = "invoices"
     # Format start and end dates as YYMMDD
     csv_filename = get_csv_filename(organization, start_date, end_date)
 
@@ -72,7 +83,7 @@ def generate_invoices_csv(organization, start_date=None, end_date=None):
                 amount_remaining,
             ]
         )
-    upload_csv(organization, csv_buffer, csv_folder, csv_filename)
+    upload_csv(organization, csv_buffer, CSV_FOLDER, csv_filename)
 
 
 def upload_csv(organization, csv_buffer, csv_folder, csv_filename):
@@ -85,58 +96,50 @@ def upload_csv(organization, csv_buffer, csv_folder, csv_filename):
     if True:
         try:
             # Upload the file to s3
-            organization_id = organization.organization_id.hex
-            team = organization.team
-            team_id = team.team_id.hex
 
             if settings.DEBUG:
-                bucket_name = "dev-" + team_id
+                bucket_name = "dev-" + BUCKET_NAME
             else:
-                bucket_name = "lotus-" + team_id
+                bucket_name = BUCKET_NAME
 
             if s3_bucket_exists(bucket_name):
-                logger.debug("Bucket exists")
+                logger.error("Bucket exists")
             else:
                 s3.create_bucket(Bucket=bucket_name, ACL="private")
-                logger.debug("Created bucket", bucket_name)
+                logger.error("Created bucket", bucket_name)
 
-            key = f"{organization_id}/{csv_folder}/{csv_filename}.csv"
-            csv_buffer.seek(0)
-            s3.Bucket(bucket_name).upload_fileobj(csv_buffer, key)
-
-            s3.Object(bucket_name, key)
+            key = get_key(organization, csv_folder, csv_filename)
+            csv_bytes = csv_buffer.getvalue().encode()
+            print("uploading", key)
+            s3.Bucket(bucket_name).upload_fileobj(io.BytesIO(csv_bytes), key)
+            print("uploaded", key)
 
         except Exception as e:
             print(e)
 
 
-def get_csv_presigned_url(organization, start_date, end_date):
-    organization_id = organization.organization_id.hex
-    team_id = organization.team.team_id.hex
-    csv_folder = "invoices"
+def get_csv_presigned_url(organization, start_date=None, end_date=None):
     # Format start and end dates as YYMMDD
     csv_filename = get_csv_filename(organization, start_date, end_date)
 
     # if settings.DEBUG:
     if False:
-        bucket_name = "dev-" + team_id
+        bucket_name = "dev-" + BUCKET_NAME
         return {"exists": False, "url": ""}
 
     else:
-        bucket_name = "dev-" + team_id
-
-        # bucket_name = "lotus-" + team_id
-        key = f"{organization_id}/{csv_folder}/{csv_filename}.csv"
-
-        if not s3_file_exists(bucket_name=bucket_name, key=key):
+        bucket_name = "dev-" + BUCKET_NAME
+        key = get_key(organization, CSV_FOLDER, csv_filename)
+        exists = s3_file_exists(bucket_name=bucket_name, key=key)
+        if not exists:
             generate_invoices_csv(organization, start_date, end_date)
-
-        s3_client = boto3.client("s3")
-
-        url = s3_client.generate_presigned_url(
+        s3_resource = boto3.resource("s3")
+        bucket = s3_resource.Bucket(bucket_name)
+        object = bucket.Object(key)
+        url = object.meta.client.generate_presigned_url(
             ClientMethod="get_object",
             Params={"Bucket": bucket_name, "Key": key},
-            ExpiresIn=3600,  # URL will expire in 1 hour
+            ExpiresIn=3600,
         )
     return {"exists": True, "url": url}
 
@@ -204,9 +207,4 @@ def get_csv_filename(organization, start_date, end_date):
 #                     row[1] = initial_term
 #                 writer.writerow(row)
 #                 i += 1
-#     return buffer
-
-#     return buffer
-
-#     return buffer
 #     return buffer
