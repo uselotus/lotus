@@ -37,18 +37,18 @@ class InvoicePastDueSerializer(serializers.Serializer):
     )
 
 
-class UsageAlertPayload(serializers.Serializer):
-    subscription = LightweightSubscriptionRecordSerializer()
-    usage_alert = UsageAlertSerializer()
-    usage = serializers.DecimalField(max_digits=20, decimal_places=10)
-    time_triggered = serializers.DateTimeField()
-
-
 class SubscriptionCreatedSerializer(serializers.Serializer):
     payload = SubscriptionRecordSerializer()
     eventType = serializers.CharField(
         default=WEBHOOK_TRIGGER_EVENTS.SUBSCRIPTION_CREATED, read_only=True
     )
+
+
+class UsageAlertPayload(serializers.Serializer):
+    subscription = LightweightSubscriptionRecordSerializer()
+    usage_alert = UsageAlertSerializer()
+    usage = serializers.DecimalField(max_digits=20, decimal_places=10)
+    time_triggered = serializers.DateTimeField()
 
 
 class UsageAlertTriggeredSerializer(serializers.Serializer):
