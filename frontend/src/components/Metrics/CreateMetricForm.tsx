@@ -192,8 +192,8 @@ function CreateMetricForm(props: {
       onCancel={props.onCancel}
       onOk={() => {
         form.validateFields().then((values) => {
-          const { filters } = values;
-
+          var { filters } = values;
+          filters = filters || [];
           filters.forEach((filter) => {
             if (
               (filter.operator === "isin" || filter.operator === "isnotin") &&
@@ -723,11 +723,6 @@ function CreateMetricForm(props: {
                               rules={[
                                 ({ getFieldValue }) => ({
                                   validator(_, value) {
-                                    console.log("VALUE", value);
-                                    console.log(
-                                      "showTag",
-                                      showTags[field.name] || false
-                                    );
                                     if (showTags[field.name] || false) {
                                       if (
                                         Array.isArray(value) &&

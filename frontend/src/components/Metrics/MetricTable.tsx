@@ -147,7 +147,6 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
             record.numeric_filters,
             record.categorical_filters
           );
-          console.log("filters", filters);
           if (filters) {
             return (
               <div className="space-y-2">
