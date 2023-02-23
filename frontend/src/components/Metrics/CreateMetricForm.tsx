@@ -45,6 +45,7 @@ function CreateMetricForm(props: {
   const [preset, setPreset] = useState("none");
   const errorMessages = useRef([]);
   const [errors, setErrors] = useState<string[]>();
+  const [showTag, setShowTag] = useState(false);
   type MixedFilterType = CategoricalFilterType | NumericFilterType;
   const [filters, setFilters] = useState<MixedFilterType[]>([]);
   const [customSQL, setCustomSQL] = useState<null | string>(
@@ -232,16 +233,19 @@ function CreateMetricForm(props: {
                 values.filters[i].operator === "isin" ||
                 values.filters[i].operator === "isnotin"
               ) {
+                console.log(values.filters[i].comparison_value);
                 categoricalFilters.push({
                   property_name: values.filters[i].property_name,
                   operator: values.filters[i].operator,
-                  comparison_value: [values.filters[i].comparison_value],
+                  comparison_value: [...values.filters[i].comparison_value],
                 });
               } else {
                 numericFilters.push({
                   property_name: values.filters[i].property_name,
                   operator: values.filters[i].operator,
-                  comparison_value: parseFloat(values.filters[i].comparison_value),
+                  comparison_value: parseFloat(
+                    values.filters[i].comparison_value
+                  ),
                 });
               }
             }
@@ -689,7 +693,16 @@ function CreateMetricForm(props: {
                               },
                             ]}
                           >
-                            <Select style={{ width: "50%" }}>
+                            <Select
+                              onChange={(e) => {
+                                if (e === "isin" || e === "isnotin") {
+                                  setShowTag(true);
+                                } else {
+                                  setShowTag(false);
+                                }
+                              }}
+                              style={{ width: "50%" }}
+                            >
                               <Option value="isin">is (string)</Option>
                               <Option value="isnotin">is not (string)</Option>
                               <Option value="eq">= </Option>
@@ -705,7 +718,14 @@ function CreateMetricForm(props: {
                               name={[field.name, "comparison_value"]}
                               style={{ alignSelf: "middle" }}
                             >
-                              <Input />
+                              {!showTag ? (
+                                <Input />
+                              ) : (
+                                <Select
+                                  mode="tags"
+                                  placeholder="Comparison Value"
+                                />
+                              )}
                             </Form.Item>
                             {fields.length > 0 ? (
                               <MinusCircleOutlined
