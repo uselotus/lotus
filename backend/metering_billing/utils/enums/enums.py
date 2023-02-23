@@ -188,6 +188,7 @@ class WEBHOOK_TRIGGER_EVENTS(models.TextChoices):
     INVOICE_PAST_DUE = ("invoice.past_due", _("invoice.past_due"))
     USAGE_ALERT_TRIGGERED = ("usage_alert.triggered", _("usage_alert.triggered"))
     CUSTOMER_CREATED = ("customer.created", _("customer.created"))
+    SUBSCRIPTION_CREATED = ("subscription.created", _("subscription.created"))
 
 
 class FLAT_FEE_BEHAVIOR(models.TextChoices):
