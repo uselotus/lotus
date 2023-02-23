@@ -177,7 +177,6 @@ const SubscriptionView: FC<Props> = ({
   );
 
   const cancelSubscription = (plan_id, subscription_filters) => {
-    console.log(plan_id, subscription_filters);
     const query_params: CancelSubscriptionQueryParams = {
       customer_id,
       plan_id,
@@ -249,7 +248,6 @@ const SubscriptionView: FC<Props> = ({
         [] as { label: string; value: string }[]
       );
       setPlanList(newplanList);
-      console.log(newplanList);
     }
   }, [customer_id, plans]);
 
@@ -560,7 +558,6 @@ const SubscriptionView: FC<Props> = ({
                         key={index}
                         onSelect={() => {
                           setSelectedSubPlan(subPlan);
-                          console.log(selectedSubPlan);
                           switch (index) {
                             case 0:
                               setTitle("Switch Plan");

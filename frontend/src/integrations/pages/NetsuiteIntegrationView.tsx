@@ -13,7 +13,6 @@ const downloadFile = async (s3link) => {
     toast.error("No file to download");
     return;
   }
-  console.log("s3link", s3link);
   window.open(s3link);
 };
 
@@ -26,9 +25,7 @@ const NetsuiteIntegrationView: FC = () => {
   const getInvoicesCSV = async () => {
     try {
       const response = await Netsuite.invoices();
-      console.log("response", response);
       const csvUrl = response.url;
-      console.log("csvUrl", csvUrl);
       downloadFile(csvUrl);
     } catch (err) {
       toast.error("Error downloading file");

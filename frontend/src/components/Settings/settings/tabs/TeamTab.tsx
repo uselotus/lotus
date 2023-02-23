@@ -65,14 +65,12 @@ const TeamTab: FC = () => {
       onSuccess: (response: any) => {
         const link = response.link;
         setInviteLink(link);
-        console.log(link);
         if (link) {
           setVisibleInviteLink(true);
         }
         refetch();
       },
       onError: (error: any) => {
-        console.log(error.response);
         if (error.response.data.detail) {
           toast.error(error.response.data.detail);
         } else {
