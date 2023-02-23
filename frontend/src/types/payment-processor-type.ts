@@ -86,4 +86,9 @@ export const integrationsMap = {
     icon: "https://cdn-icons-png.flaticon.com/512/5968/5968914.png",
     description: "Sync data to your Salesforce account",
   },
+  netsuite: {
+    name: "NetSuite",
+    icon: "https://pbs.twimg.com/profile_images/1159567930020941824/Xmp1cwhV_400x400.jpg",
+    description: "Sync invoice + plan data to your NetSuite account",
+  },
 };

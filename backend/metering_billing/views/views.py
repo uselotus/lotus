@@ -1,10 +1,9 @@
 import logging
 from decimal import Decimal
 
-import api.views as api_views
 import pytz
 from django.conf import settings
-from django.db.models import Count, F, Prefetch, Q, Sum
+from django.db.models import Count, F, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.exceptions import (
     ExternalConnectionFailure,
@@ -18,14 +17,12 @@ from metering_billing.models import (
     Invoice,
     Metric,
     Organization,
-    PlanVersion,
     SubscriptionRecord,
 )
+from metering_billing.netsuite_csv import get_csv_presigned_url
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.model_serializers import (
-    CustomerSummarySerializer,
-    CustomerWithRevenueSerializer,
     DraftInvoiceSerializer,
     MetricDetailSerializer,
 )
@@ -52,7 +49,6 @@ from metering_billing.utils import (
     date_as_min_dt,
     make_all_dates_times_strings,
     make_all_decimals_floats,
-    now_utc,
     periods_bwn_twodates,
 )
 from metering_billing.utils.enums import (
@@ -61,7 +57,6 @@ from metering_billing.utils.enums import (
     PAYMENT_PROCESSORS,
     USAGE_CALC_GRANULARITY,
 )
-from metering_billing.views.model_views import CustomerViewSet
 from rest_framework import serializers, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -476,58 +471,6 @@ class ChangeUserOrganizationView(APIView):
         return Response(status=status.HTTP_200_OK)
 
 
-class CustomersSummaryView(APIView):
-    permission_classes = [IsAuthenticated | ValidOrganization]
-
-    @extend_schema(
-        request=None,
-        responses={200: CustomerSummarySerializer(many=True)},
-    )
-    def get(self, request, format=None):
-        """
-        Get the current settings for the organization.
-        """
-        organization = request.organization
-        logger.debug(f"CustomersSummaryView: {organization}, {request.user}")
-        now = now_utc()
-        customers = Customer.objects.filter(organization=organization).prefetch_related(
-            Prefetch(
-                "subscription_records",
-                queryset=SubscriptionRecord.base_objects.filter(
-                    organization=organization,
-                    end_date__gte=now,
-                    start_date__lte=now,
-                ),
-                to_attr="subscription_records_filtered",
-            ),
-            Prefetch(
-                "subscription_records__billing_plan",
-                queryset=PlanVersion.objects.filter(organization=organization),
-                to_attr="billing_plans",
-            ),
-        )
-        serializer = CustomerSummarySerializer(customers, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-class CustomersWithRevenueView(APIView):
-    permission_classes = [IsAuthenticated | ValidOrganization]
-
-    @extend_schema(
-        request=None,
-        responses={200: CustomerWithRevenueSerializer(many=True)},
-    )
-    def get(self, request, format=None):
-        """
-        Return current usage for a customer during a given billing period.
-        """
-        request.organization
-        customers = CustomerViewSet.get_queryset(self)
-        cust = CustomerWithRevenueSerializer(customers, many=True).data
-        cust = make_all_decimals_floats(cust)
-        return Response(cust, status=status.HTTP_200_OK)
-
-
 class TimezonesView(APIView):
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
@@ -743,10 +686,6 @@ class TransferSubscriptionsView(APIView):
         )
 
 
-class GetInvoicePdfURL(api_views.GetInvoicePdfURL):
-    pass
-
-
 class PlansByNumCustomersView(APIView):
     permission_classes = [IsAuthenticated | ValidOrganization]
 
@@ -795,5 +734,31 @@ class PlansByNumCustomersView(APIView):
                 "status": "success",
                 "results": plans,
             },
+            status=status.HTTP_200_OK,
+        )
+
+
+class NetsuiteInvoiceCSVView(APIView):
+    permission_classes = [IsAuthenticated | ValidOrganization]
+
+    @extend_schema(
+        request=inline_serializer(
+            name="PlansByNumCustomersRequest",
+            fields={},
+        ),
+        responses={
+            200: inline_serializer(
+                name="NetsuiteInvoiceCSVView",
+                fields={
+                    "url": serializers.URLField(),
+                },
+            ),
+        },
+    )
+    def get(self, request, format=None):
+        organization = request.organization
+        url = get_csv_presigned_url(organization)
+        return Response(
+            url,
             status=status.HTTP_200_OK,
         )

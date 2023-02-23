@@ -71,8 +71,7 @@ def fast_api_key_validation_and_cache(request):
             key = meta_dict["http_x_api_key"]
         else:
             return HttpResponseBadRequest("No API key found in request"), False
-    prefix, _, _ = key.partition(".")
-    organization_pk = cache.get(prefix)
+    organization_pk = cache.get(key)
     if not organization_pk:
         try:
             api_key = APIToken.objects.get_from_key(key)
@@ -85,5 +84,5 @@ def fast_api_key_validation_and_cache(request):
             if expiry_date is None
             else (expiry_date - now_utc()).total_seconds()
         )
-        cache.set(prefix, organization_pk, timeout)
+        cache.set(key, organization_pk, timeout)
     return organization_pk, True

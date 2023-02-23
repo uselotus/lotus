@@ -93,8 +93,8 @@ Then we can call the list plans api and subscribe the customer to a plan program
 
 Here are the steps we would take to do this using the python SDK.
 
-```python
-
+<CodeGroup>
+```python Python
 ###Customer Signs Up For Plan
   lotus.create_customer(
       customer_id='customer_123',
@@ -111,8 +111,31 @@ Here are the steps we would take to do this using the python SDK.
     plan_id=starter_plan_id,
     start_date='2023-01-01',
   )
-
 ```
+
+
+    
+```ts Typescript
+    ###Customer Signs Up For Plan
+  lotus.createCustomer({
+      customer_id='customer_123',
+      email="corporation@outlook.com",
+      name='Corporation Inc.',
+    }
+  );
+
+  plans = lotus.listPlans();
+
+  starterPlanId = plan[0]["plan_id"];
+
+  lotus.createUsbscription({
+    customerId='customer_123',
+    planId=starterPlanId,
+    startDate='2023-01-01',
+  });
+```
+
+</CodeGroup>
 
 Then when a customer wants to upgrade or cancel a plan, we can use the API commands for those actions. Here is another example in python.
 

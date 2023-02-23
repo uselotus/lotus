@@ -7,17 +7,15 @@ import boto3
 from botocore.exceptions import ClientError
 from django.conf import settings
 from django.forms.models import model_to_dict
+from metering_billing.serializers.serializer_utils import PlanUUIDField
+from metering_billing.utils import make_hashable
+from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
 from reportlab.lib.colors import Color, HexColor
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.rl_config import TTFSearchPath
-
-from metering_billing.models import Invoice
-from metering_billing.serializers.serializer_utils import PlanUUIDField
-from metering_billing.utils import make_hashable
-from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
 
 logger = logging.getLogger("django.server")
 
@@ -524,57 +522,21 @@ class InvoicePDF:
         )
 
 
-def s3_bucket_exists(bucket_name) -> bool:
-    try:
-        s3_client = boto3.client("s3")
-        s3_client.head_bucket(Bucket=bucket_name)
-        return True
-    except ClientError as e:
-        int(e.response["Error"]["Code"])
-        return False
+def get_invoice_pdf_key(invoice):
+    organization_id = invoice.organization.organization_id.hex
+    customer_id = invoice.customer.customer_id
+    invoice_number = invoice.invoice_number
+    key = f"{organization_id}/{customer_id}/invoice_pdf_{invoice_number}.pdf"
+    return key
 
 
-def generate_invoice_pdf(invoice: Invoice, buffer):
-    # init class
-    inv = InvoicePDF(invoice, buffer)
-
-    # build invoice (calls pdf.save())
-    _ = inv.build(buffer)
-
-    customer = invoice.customer
-    organization = invoice.organization
-
-    # If the organization is not an external demo organization
-    if not settings.DEBUG and organization.organization_type != 3:
-        try:
-            # Upload the file to s3
-            invoice_number = invoice.invoice_number
-            organization_id = organization.organization_id.hex
-            customer_id = customer.customer_id
-            team = organization.team
-            team_id = team.team_id.hex
-
-            if settings.DEBUG:
-                bucket_name = "dev-" + team_id
-            else:
-                bucket_name = "lotus-" + team_id
-
-            if s3_bucket_exists(bucket_name):
-                logger.debug("Bucket exists")
-            else:
-                s3.create_bucket(Bucket=bucket_name, ACL="private")
-                logger.debug("Created bucket", bucket_name)
-
-            key = f"{organization_id}/{customer_id}/invoice_pdf_{invoice_number}.pdf"
-            buffer.seek(0)
-            s3.Bucket(bucket_name).upload_fileobj(buffer, key)
-
-            s3.Object(bucket_name, key)
-
-        except Exception as e:
-            print(e)
-
-    return ""
+def get_invoice_pdf_bucket_name(debug, team_id):
+    bucket_name = "lotus-invoice-pdfs-2f7d6d16"
+    if debug:
+        bucket_name = "dev-" + bucket_name
+    else:
+        bucket_name = "lotus-" + team_id
+    return bucket_name
 
 
 def s3_file_exists(bucket_name, key):
@@ -589,31 +551,64 @@ def s3_file_exists(bucket_name, key):
         return True
 
 
-def get_invoice_presigned_url(invoice: Invoice):
-    organization_id = invoice.organization.organization_id.hex
-    team_id = invoice.organization.team.team_id.hex
-    invoice_number = invoice.invoice_number
-
-    customer_id = invoice.customer.customer_id
-
-    if settings.DEBUG:
-        bucket_name = "dev-" + team_id
-        return {"exists": False, "url": ""}
-
-    else:
-        bucket_name = "dev-" + team_id
-
-        # bucket_name = "lotus-" + team_id
-        key = f"{organization_id}/{customer_id}/invoice_pdf_{invoice_number}.pdf"
-
-        if not s3_file_exists(bucket_name=bucket_name, key=key):
-            generate_invoice_pdf(invoice, BytesIO())
-
+def s3_bucket_exists(bucket_name) -> bool:
+    try:
         s3_client = boto3.client("s3")
+        s3_client.head_bucket(Bucket=bucket_name)
+        return True
+    except ClientError as e:
+        int(e.response["Error"]["Code"])
+        return False
 
-        url = s3_client.generate_presigned_url(
-            ClientMethod="get_object",
-            Params={"Bucket": bucket_name, "Key": key},
-            ExpiresIn=3600,  # URL will expire in 1 hour
-        )
+
+def generate_invoice_pdf(invoice):
+    buffer = BytesIO()
+    # init class
+    inv = InvoicePDF(invoice, buffer)
+
+    # build invoice (calls pdf.save())
+    _ = inv.build(buffer)
+
+    return buffer
+
+
+def upload_invoice_pdf_to_s3(invoice, team_id, bucket_name):
+    try:
+        key = get_invoice_pdf_key(invoice)
+        buffer = generate_invoice_pdf(invoice)
+
+        if s3_bucket_exists(bucket_name):
+            logger.debug("Bucket exists")
+        else:
+            s3.create_bucket(Bucket=bucket_name, ACL="private")
+            logger.debug("Created bucket", bucket_name)
+
+        buffer.seek(0)
+        s3.Bucket(bucket_name).upload_fileobj(buffer, key)
+
+        s3.Object(bucket_name, key)
+
+    except Exception as e:
+        print(e)
+
+    return key
+
+
+def get_invoice_presigned_url(invoice):
+    debug = settings.DEBUG
+    team_id = invoice.organization.team.team_id.hex
+
+    bucket_name = get_invoice_pdf_bucket_name(debug, team_id)
+    key = get_invoice_pdf_key(invoice)
+
+    if not s3_file_exists(bucket_name=bucket_name, key=key):
+        upload_invoice_pdf_to_s3(invoice, team_id, bucket_name)
+
+    s3_client = boto3.client("s3")
+
+    url = s3_client.generate_presigned_url(
+        ClientMethod="get_object",
+        Params={"Bucket": bucket_name, "Key": key},
+        ExpiresIn=3600,  # URL will expire in 1 hour
+    )
     return {"exists": True, "url": url}

@@ -15,6 +15,7 @@ import ExperimentResults from "../pages/ExperimentResults";
 import PlanDetails from "../components/Plans/PlanDetails/PlanDetails";
 import EditPlanLoader from "../pages/EditPlanLoader";
 import StripeIntegrationView from "../integrations/pages/StripeIntegrationView";
+import NetsuiteIntegrationView from "../integrations/pages/NetsuiteIntegrationView";
 import BraintreeIntegrationView from "../integrations/pages/BraintreeIntegrationView";
 import CreateCredit from "../pages/CreateBalanceAdjustment";
 import ViewAddOns from "../pages/ViewAddOns";
@@ -103,6 +104,10 @@ const AppRoutes: FC = () => {
             <Route
               path="settings/integrations/braintree"
               element={getSettingsTab(<BraintreeIntegrationView />)}
+            />
+            <Route
+              path="settings/integrations/netsuite"
+              element={getSettingsTab(<NetsuiteIntegrationView />)}
             />
             <Route path="/redirectstripe" element={<StripeRedirect />} />
             <Route path="/experiments" element={<ViewExperiments />} />

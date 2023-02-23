@@ -4,6 +4,7 @@ import copy
 import json
 import logging
 import operator
+import re
 import uuid
 from decimal import Decimal
 from functools import reduce
@@ -46,6 +47,7 @@ from api.serializers.nonmodel_serializers import (
     GetEventAccessSerializer,
     GetFeatureAccessSerializer,
     GetInvoicePdfURLRequestSerializer,
+    GetInvoicePdfURLResponseSerializer,
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
 )
@@ -69,7 +71,7 @@ from django.db.models.functions import Coalesce
 from django.db.utils import IntegrityError
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from drf_spectacular.utils import extend_schema, inline_serializer
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
 from metering_billing.exceptions import (
     DuplicateCustomer,
@@ -1215,10 +1217,21 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     }
 
     def get_object(self):
-        string_uuid = self.kwargs[self.lookup_field]
-        uuid = InvoiceUUIDField().to_internal_value(string_uuid)
-        self.kwargs[self.lookup_field] = uuid
-        return super().get_object()
+        lookup_field = "invoice_id"
+        string_id = self.kwargs[lookup_field]
+        # Check if the string_id matches the invoice number format YYMMDD-000001
+        if re.match(r"\d{6}-\d{6}", string_id):
+            lookup_field = "invoice_number"
+        else:
+            # Check if the string_id starts with "invoice_"
+            if string_id.startswith("invoice_"):
+                string_id = string_id[8:]
+            # Replace dashes in the string_id if any
+            string_id = InvoiceUUIDField().to_internal_value(string_id.replace("-", ""))
+        self.kwargs[lookup_field] = string_id
+        # Log the lookup value using drf-spectacular
+        self.instance = super().get_object()
+        return self.instance
 
     def get_queryset(self):
         args = [
@@ -1291,6 +1304,25 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     )
     def list(self, request):
         return super().list(request)
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="invoice_id",
+                required=True,
+                location=OpenApiParameter.PATH,
+                description="Either an invoice ID (in the format `invoice_<uuid>`) or an invoice number (in the format `YYMMDD-000001`)",
+            )
+        ]
+    )
+    @action(detail=True, methods=["get"])
+    def pdf_url(self, request, *args, **kwargs):
+        invoice = self.get_object()
+        url = get_invoice_presigned_url(invoice).get("url")
+        return Response(
+            {"url": url},
+            status=status.HTTP_200_OK,
+        )
 
 
 class CustomerBalanceAdjustmentViewSet(
@@ -1676,14 +1708,8 @@ class GetInvoicePdfURL(APIView):
 
     @extend_schema(
         parameters=[GetInvoicePdfURLRequestSerializer],
-        responses={
-            200: inline_serializer(
-                name="GetInvoicePdfURLResponse",
-                fields={
-                    "url": serializers.URLField(),
-                },
-            ),
-        },
+        responses=GetInvoicePdfURLResponseSerializer,
+        exclude=True,
     )
     def get(self, request, format=None):
         organization = request.organization

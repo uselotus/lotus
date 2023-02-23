@@ -128,13 +128,13 @@ const requests = {
 
 export const Customer = {
   getCustomers: (): Promise<CustomerSummary[]> =>
-    requests.get("app/customer_summary/"),
+    requests.get("app/customers/summary/"),
   getCustomerDetail: (customer_id: string): Promise<CustomerType> =>
     requests.get(`app/customers/${customer_id}/`),
   createCustomer: (post: CustomerCreateType): Promise<CustomerType> =>
     requests.post("app/customers/", post),
   getCustomerTotals: (): Promise<CustomerTotal[]> =>
-    requests.get("app/customer_totals/"),
+    requests.get("app/customers/totals/"),
   updateCustomer: (
     customer_id: string,
     default_currency_code: string,
@@ -547,7 +547,7 @@ export const Invoices = {
   getDraftInvoice: (customer_id: string): Promise<DraftInvoiceType> =>
     requests.get("app/draft_invoice/", { params: { customer_id } }),
   getInvoiceUrl: (invoice_id: string): Promise<{ url: string }> =>
-    requests.get(`app/invoice_url/`, { params: { invoice_id } }),
+    requests.get(`app/invoices/${invoice_id}/pdf_url/`),
 };
 
 export const Credits = {
@@ -575,4 +575,8 @@ export const PricingUnits = {
     requests.post("app/pricing_units/", post),
 
   list: (): Promise<CurrencyType[]> => requests.get(`app/pricing_units/`),
+};
+
+export const Netsuite = {
+  invoices: (): Promise<{ url: URL }> => requests.get("app/netsuite_invoices/"),
 };

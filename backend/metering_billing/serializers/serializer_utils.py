@@ -31,23 +31,33 @@ class ConvertEmptyStringToNullMixin:
 
 
 class TimezoneFieldMixin:
+    customer_cache = {}
+    organization_cache = {}
+
     def get_timezone(self, instance):
         from metering_billing.models import Customer, Organization
 
         customer_id = getattr(instance, "customer_id", None)
         if customer_id is not None:
-            customer_cache_key = f"tz_customer_{customer_id}"
-            tz_string = cache.get(customer_cache_key)
-            if tz_string is None:
-                customer_tz = Customer.objects.get(pk=customer_id).timezone
-                cache.set(customer_cache_key, customer_tz.zone, 60 * 60 * 24 * 7)
-                tz_string = customer_tz.zone
+            if customer_id in self.customer_cache:
+                tz_string = self.customer_cache[customer_id]
+            else:
+                customer_cache_key = f"tz_customer_{customer_id}"
+                tz_string = cache.get(customer_cache_key)
+                if tz_string is None:
+                    customer_tz = Customer.objects.get(pk=customer_id).timezone
+                    cache.set(customer_cache_key, customer_tz.zone, 60 * 60 * 24 * 7)
+                    tz_string = customer_tz.zone
+                self.customer_cache[customer_id] = tz_string
             try:
                 timezone = pytz.timezone(tz_string)
+                return timezone
             except pytz.UnknownTimeZoneError:
-                timezone = pytz.UTC
+                pass
+        organization_id = getattr(instance, "organization_id", None)
+        if organization_id in self.organization_cache:
+            tz_string = self.organization_cache[organization_id]
         else:
-            organization_id = getattr(instance, "organization_id", None)
             organization_cache_key = f"tz_organization_{organization_id}"
             tz_string = cache.get(organization_cache_key)
             if tz_string is None:
@@ -56,10 +66,11 @@ class TimezoneFieldMixin:
                     organization_cache_key, organization_tz.zone, 60 * 60 * 24 * 7
                 )
                 tz_string = organization_tz.zone
-            try:
-                timezone = pytz.timezone(tz_string)
-            except pytz.UnknownTimeZoneError:
-                timezone = pytz.UTC
+            self.organization_cache[organization_id] = tz_string
+        try:
+            timezone = pytz.timezone(tz_string)
+        except pytz.UnknownTimeZoneError:
+            timezone = pytz.UTC
         return timezone
 
     def to_representation(self, instance):

@@ -22,8 +22,7 @@ class OrganizationInsertMiddleware:
                 if api_key is None:
                     organization = None
                 else:
-                    prefix, _, _ = api_key.partition(".")
-                    organization_pk = cache.get(prefix)
+                    organization_pk = cache.get(api_key)
                     if not organization_pk:
                         try:
                             api_token = APIToken.objects.get_from_key(api_key)
@@ -35,7 +34,7 @@ class OrganizationInsertMiddleware:
                                 if expiry_date is None
                                 else (expiry_date - now_utc()).total_seconds()
                             )
-                            cache.set(prefix, organization_pk, timeout)
+                            cache.set(api_key, organization_pk, timeout)
                         except Exception:
                             organization = None
                     else:
