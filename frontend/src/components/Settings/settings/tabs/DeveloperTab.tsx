@@ -50,6 +50,7 @@ export function DeveloperTab() {
   const [isCustomerCreated, setIsCustomerCreated] = useState<boolean>(false);
   const [isInvoiceGenerated, setIsInvoiceGenerated] = useState<boolean>(false);
   const [isInvoicePaid, setIsInvoicePaid] = useState<boolean>(false);
+  const [isSubscriptionCreated, setIsSubscriptionCreated] = useState<boolean>(false);
   const [isUsageAlertTriggered, setIsUsageAlertTriggered] =
     useState<boolean>(false);
   const closeModal = () => {
@@ -120,6 +121,7 @@ export function DeveloperTab() {
         setIsCustomerCreated(false);
         setIsInvoiceGenerated(false);
         setIsInvoicePaid(false);
+        setIsSubscriptionCreated(false);
         setIsUsageAlertTriggered(false);
         toast.success("Webhook URL added successfully");
         setVisibleWebhook(false);
@@ -161,7 +163,7 @@ export function DeveloperTab() {
       return;
     }
 
-    if (!isCustomerCreated && !isInvoiceGenerated && !isInvoicePaid && !isUsageAlertTriggered) {
+    if (!isCustomerCreated && !isInvoiceGenerated && !isInvoicePaid && !isSubscriptionCreated && !isUsageAlertTriggered) {
       toast.error("Please select at-least one trigger");
       return;
     }
@@ -175,6 +177,9 @@ export function DeveloperTab() {
     }
     if (isInvoicePaid) {
       triggers.push("invoice.paid");
+    }
+    if (isSubscriptionCreated) {
+      triggers.push("subscription.created");
     }
     if (isUsageAlertTriggered) {
       triggers.push("usage_alert.triggered");
@@ -439,6 +444,12 @@ export function DeveloperTab() {
               value={isInvoicePaid}
             >
               <p className="text-lg font-main">invoice.paid</p>
+            </Checkbox>
+            <Checkbox
+              onChange={(e) => setIsSubscriptionCreated(e.target.checked)}
+              value={isSubscriptionCreated}
+            >
+              <p className="text-lg font-main">subscription.created</p>
             </Checkbox>
             <Checkbox
               onChange={(e) => setIsUsageAlertTriggered(e.target.checked)}
