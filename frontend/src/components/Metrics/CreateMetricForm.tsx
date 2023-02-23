@@ -1,4 +1,8 @@
-import React, { Fragment, useState } from "react";
+/* eslint-disable no-plusplus */
+/* eslint-disable react/no-array-index-key */
+/* eslint-disable no-shadow */
+/* eslint-disable use-isnan */
+import React, { useRef, useState } from "react";
 import {
   Modal,
   Form,
@@ -39,6 +43,8 @@ function CreateMetricForm(props: {
   const [form] = Form.useForm();
   const [eventType, setEventType] = useState("counter");
   const [preset, setPreset] = useState("none");
+  const errorMessages = useRef([]);
+  const [errors, setErrors] = useState<string[]>();
   type MixedFilterType = CategoricalFilterType | NumericFilterType;
   const [filters, setFilters] = useState<MixedFilterType[]>([]);
   const [customSQL, setCustomSQL] = useState<null | string>(
@@ -167,6 +173,9 @@ function CreateMetricForm(props: {
           billable_aggregation_type: "max",
           rate_granularity: "minutes",
         });
+        break;
+      default:
+        break;
     }
   };
 
@@ -180,99 +189,132 @@ function CreateMetricForm(props: {
       width={800}
       onCancel={props.onCancel}
       onOk={() => {
-        form
-          .validateFields()
-          .then((values) => {
-            const numericFilters: NumericFilterType[] = [];
-            const categoricalFilters: CategoricalFilterType[] = [];
-            if (filters && filters.length > 0) {
-              for (let i = 0; i < filters.length; i++) {
-                if (
-                  filters[i].operator === "isin" ||
-                  filters[i].operator === "isnotin"
-                ) {
-                  categoricalFilters.push({
-                    property_name: filters[i].property_name,
-                    operator: filters[i].operator,
-                    comparison_value: [filters[i].comparison_value],
-                  });
-                } else {
-                  numericFilters.push({
-                    property_name: filters[i].property_name,
-                    operator: filters[i].operator,
-                    comparison_value: parseFloat(filters[i].comparison_value),
-                  });
-                }
+        form.validateFields().then((values) => {
+          const { filters } = values;
+
+          filters.forEach((filter) => {
+            if (
+              (filter.operator === "isin" || filter.operator === "isnotin") &&
+              Number(filter.comparison_value) >= 0
+            ) {
+              console.log(errorMessages);
+              errorMessages.current = errorMessages.current.concat([
+                `${filter.operator} requires string conversion type`,
+              ]);
+            } else if (
+              (filter.operator !== "isin" || filter.operator !== "isnotin") &&
+              Number(filter.comparison_value) < 0
+            ) {
+              errorMessages.current = errorMessages.current.concat([
+                `${filter.operator} requires number conversion type`,
+              ]);
+            } else if (
+              (filter.operator !== "isin" || filter.operator !== "isnotin") &&
+              Number(filter.comparison_value) >= 0
+            ) {
+              errorMessages.current = [];
+            } else if (
+              (filter.operator === "isin" || filter.operator === "isnotin") &&
+              Number(filter.comparison_value) >= 0 === false
+            ) {
+              errorMessages.current = [];
+            }
+          });
+          setErrors(errorMessages.current);
+          if (errorMessages.current.length) {
+            return;
+          }
+          const numericFilters: NumericFilterType[] = [];
+          const categoricalFilters: CategoricalFilterType[] = [];
+          if (values.filters && values.filters.length > 0) {
+            for (let i = 0; i < values.filters.length; i++) {
+              if (
+                values.filters[i].operator === "isin" ||
+                values.filters[i].operator === "isnotin"
+              ) {
+                categoricalFilters.push({
+                  property_name: values.filters[i].property_name,
+                  operator: values.filters[i].operator,
+                  comparison_value: [values.filters[i].comparison_value],
+                });
+              } else {
+                numericFilters.push({
+                  property_name: values.filters[i].property_name,
+                  operator: values.filters[i].operator,
+                  comparison_value: parseFloat(values.filters[i].comparison_value),
+                });
               }
             }
+          }
+          if (values.metric_type === "custom" && customSQL) {
+            values.custom_sql = format(customSQL, {
+              language: "postgresql",
+            });
+          }
 
-            if (values.metric_type === "custom" && customSQL) {
-              values.custom_sql = format(customSQL, {
-                language: "postgresql",
-              });
-            }
-            console.log("VALUES", values);
-            var newMetric: CreateMetricType;
-            if (values.metric_type === "counter") {
-              newMetric = {
-                event_name: values.event_name,
-                usage_aggregation_type: values.usage_aggregation_type,
-                metric_type: "counter",
-                metric_name: values.metric_name,
-                numeric_filters: numericFilters,
-                categorical_filters: categoricalFilters,
-                is_cost_metric: values.is_cost_metric,
-                ...(values.property_name
-                  ? { property_name: values.property_name }
-                  : {}),
-              };
-            } else if (values.metric_type === "gauge") {
-              newMetric = {
-                event_name: values.event_name,
-                property_name: values.property_name,
-                usage_aggregation_type: "max",
-                metric_type: "gauge",
-                metric_name: values.metric_name,
-                event_type: values.event_type,
-                numeric_filters: numericFilters,
-                categorical_filters: categoricalFilters,
-                granularity: values.gauge_granularity,
-                proration: values.proration,
-                is_cost_metric: false,
-              };
-            } else if (values.metric_type === "rate") {
-              newMetric = {
-                event_name: values.event_name,
-                metric_name: values.metric_name,
-                usage_aggregation_type: values.usage_aggregation_type,
-                granularity: values.rate_granularity,
-                metric_type: "rate",
-                billable_aggregation_type: "max",
-                numeric_filters: numericFilters,
-                categorical_filters: categoricalFilters,
-                ...(values.property_name
-                  ? { property_name: values.property_name }
-                  : {}),
-                is_cost_metric: false,
-              };
-            } else {
-              newMetric = {
-                metric_name: values.metric_name,
-                metric_type: "custom",
-                custom_sql: values.custom_sql,
-                is_cost_metric: false,
-                numeric_filters: [],
-                categorical_filters: [],
-              };
-            }
+          var newMetric: CreateMetricType;
+          if (values.metric_type === "counter") {
+            newMetric = {
+              event_name: values.event_name,
+              usage_aggregation_type: values.usage_aggregation_type,
+              metric_type: "counter",
+              metric_name: values.metric_name,
+              numeric_filters: numericFilters,
+              categorical_filters: categoricalFilters,
+              is_cost_metric: values.is_cost_metric,
+              ...(values.property_name
+                ? { property_name: values.property_name }
+                : {}),
+            };
+          } else if (values.metric_type === "gauge") {
+            newMetric = {
+              event_name: values.event_name,
+              property_name: values.property_name,
+              usage_aggregation_type: "max",
+              metric_type: "gauge",
+              metric_name: values.metric_name,
+              event_type: values.event_type,
+              numeric_filters: numericFilters,
+              categorical_filters: categoricalFilters,
+              granularity: values.gauge_granularity,
+              proration: values.proration,
+              is_cost_metric: false,
+            };
+          } else if (values.metric_type === "rate") {
+            newMetric = {
+              event_name: values.event_name,
+              metric_name: values.metric_name,
+              usage_aggregation_type: values.usage_aggregation_type,
+              granularity: values.rate_granularity,
+              metric_type: "rate",
+              billable_aggregation_type: "max",
+              numeric_filters: numericFilters,
+              categorical_filters: categoricalFilters,
+              ...(values.property_name
+                ? { property_name: values.property_name }
+                : {}),
+              is_cost_metric: false,
+            };
+          } else {
+            newMetric = {
+              metric_name: values.metric_name,
+              metric_type: "custom",
+              custom_sql: values.custom_sql,
+              is_cost_metric: false,
+              numeric_filters: [],
+              categorical_filters: [],
+            };
+          }
+          props.onSave(newMetric);
+          setCustomSQL("SELECT COUNT(*) as usage_qty FROM events");
+          form.resetFields();
+          setEventType("counter");
+          setPreset("none");
+        });
 
-            props.onSave(newMetric);
-            setCustomSQL("SELECT COUNT(*) as usage_qty FROM events");
-            form.resetFields();
-            setEventType("counter");
-            setPreset("none");
-          })
-          .catch((info) => {});
+        // form.validateFields().then((values) => {
+
+        // });
       }}
     >
       <div className="grid grid-cols-8 my-4 gap-4 items-center">
@@ -689,6 +731,15 @@ function CreateMetricForm(props: {
                   </>
                 )}
               </Form.List>
+              {errors?.length && errors.length > 0 ? (
+                <div>
+                  {errors.map((el, idx) => (
+                    <div className="text-red-700" key={idx}>
+                      {el}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </Panel>
             <Panel header="Advanced Settings" key="2">
               {eventType === "gauge" && (
