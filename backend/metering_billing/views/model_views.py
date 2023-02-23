@@ -10,6 +10,7 @@ from api.serializers.webhook_serializers import (
     InvoicePaidSerializer,
     InvoicePastDueSerializer,
     UsageAlertTriggeredSerializer,
+    SubscriptionCreatedSerializer
 )
 from django.conf import settings
 from django.core.cache import cache
@@ -326,6 +327,14 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 extend_schema(
                     description="Invoice Past Due webhook",
                     responses={200: InvoicePastDueSerializer},
+                ),
+            ),
+            OpenApiCallback(
+                WEBHOOK_TRIGGER_EVENTS.SUBSCRIPTION_CREATED.value,
+                "{$request.body#/webhook_url}",
+                extend_schema(
+                    description="Subscription created webhook",
+                    responses={200: SubscriptionCreatedSerializer},
                 ),
             ),
         ]
