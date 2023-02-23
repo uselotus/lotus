@@ -16,12 +16,12 @@ interface MetricDetailsProps {
 }
 const operatorDisplayMap = new Map<string, string>([
   ["eq", "="],
-  ["isin", "is"],
+  ["isin", "in"],
   ["gt", ">"],
   ["gte", ">="],
   ["lt", "<"],
   ["lte", "<="],
-  ["isnotin", "is not"],
+  ["isnotin", "not in"],
 ]);
 
 const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
@@ -154,9 +154,9 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
               <div>
                 {metric.numeric_filters?.map((filter, index) => (
                   <Tag color="" key={filter.property_name}>
-                    {<b>{filter.property_name}</b>}{" "}
-                    {operatorDisplayMap.get(filter.operator)} " "
-                    {filter.comparison_value}"
+                    <b>{filter.property_name}</b>{" "}
+                    {operatorDisplayMap.get(filter.operator)}{" "}
+                    {`${filter.comparison_value}`}
                   </Tag>
                 ))}
               </div>
@@ -165,8 +165,12 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
                 {metric.categorical_filters?.map((filter, index) => (
                   <Tag color="" key={filter.property_name}>
                     {<b>{filter.property_name}</b>}{" "}
-                    {operatorDisplayMap.get(filter.operator)} "
-                    {filter.comparison_value}"
+                    {operatorDisplayMap.get(filter.operator)}{" "}
+                    {Array.isArray(filter.comparison_value)
+                      ? `[${filter.comparison_value
+                          .map((value) => `"${value}"`)
+                          .join(", ")}]`
+                      : `${filter.comparison_value}`}
                   </Tag>
                 ))}
               </div>

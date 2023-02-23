@@ -21,12 +21,12 @@ export const colorMap = new Map<string, string>([
 
 const operatorDisplayMap = new Map<string, string>([
   ["eq", "="],
-  ["isin", "is"],
+  ["isin", "in"],
   ["gt", ">"],
   ["gte", ">="],
   ["lt", "<"],
   ["lte", "<="],
-  ["isnotin", "is not"],
+  ["isnotin", "not in"],
 ]);
 
 interface Props {
@@ -147,14 +147,26 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
             record.numeric_filters,
             record.categorical_filters
           );
-
+          console.log("filters", filters);
           if (filters) {
             return (
               <div className="space-y-2">
                 {filters.map((filter) => (
                   <Tag color="" key={filter.property_name}>
-                    <b>{filter.property_name}</b> {filter.operator} "
-                    {filter.comparison_value}"
+                    <b>{filter.property_name}</b> {filter.operator}{" "}
+                    {Array.isArray(filter.comparison_value)
+                      ? "[" +
+                        filter.comparison_value
+                          .map((v) => `"${v}"`)
+                          .join(", ") +
+                        "]"
+                      : filter.operator === "=" ||
+                        filter.operator === ">=" ||
+                        filter.operator === "<=" ||
+                        filter.operator === ">" ||
+                        filter.operator === "<"
+                      ? filter.comparison_value
+                      : `"${filter.comparison_value}"`}
                   </Tag>
                 ))}
               </div>
