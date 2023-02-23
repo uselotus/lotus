@@ -1,5 +1,3 @@
-/* eslint-disable react/jsx-props-no-spreading */
-/* eslint-disable no-plusplus */
 import React, { Fragment, useState } from "react";
 import {
   Modal,
@@ -12,7 +10,6 @@ import {
   Collapse,
   Button,
   Tag,
-  InputNumber,
 } from "antd";
 import {
   CreateMetricType,
@@ -33,12 +30,7 @@ import { format } from "sql-formatter";
 const { Option } = Select;
 const { Panel } = Collapse;
 
-function CreateMetricForm({
-  state,
-  visible,
-  onSave,
-  onCancel,
-}: {
+function CreateMetricForm(props: {
   state: CreateMetricType;
   visible: boolean;
   onSave: (state: CreateMetricType) => void;
@@ -175,118 +167,112 @@ function CreateMetricForm({
           billable_aggregation_type: "max",
           rate_granularity: "minutes",
         });
-        break;
-      default:
-        break;
     }
   };
 
   return (
     <Modal
-      visible={visible}
+      visible={props.visible}
       title="Create Metric"
       okText="Create"
       okType="primary"
       cancelText="Cancel"
       width={800}
-      onCancel={onCancel}
+      onCancel={props.onCancel}
       onOk={() => {
-        form.validateFields().then((values) => {
-          console.log(values);
-          const numericFilters: NumericFilterType[] = [];
-          const categoricalFilters: CategoricalFilterType[] = [];
-          if (values.filters && values.filters.length > 0) {
-            for (let i = 0; i < values.filters.length; i++) {
-              if (
-                values.filters[i].operator_categorical &&
-                values.filters[i].operator_categorical.length
-              ) {
-                categoricalFilters.push({
-                  property_name: values.filters[i].property_name_categorical,
-                  operator: values.filters[i].operator_categorical,
-                  comparison_value: [
-                    values.filters[i].comparison_value_categorical,
-                  ],
-                });
-              }
-              if (values.filters[i].operator_number) {
-                numericFilters.push({
-                  property_name: values.filters[i].property_name_number,
-                  operator: values.filters[i].operator_number,
-                  comparison_value: Number(
-                    values.filters[i].comparison_value_number
-                  ),
-                });
+        form
+          .validateFields()
+          .then((values) => {
+            const numericFilters: NumericFilterType[] = [];
+            const categoricalFilters: CategoricalFilterType[] = [];
+            if (filters && filters.length > 0) {
+              for (let i = 0; i < filters.length; i++) {
+                if (
+                  filters[i].operator === "isin" ||
+                  filters[i].operator === "isnotin"
+                ) {
+                  categoricalFilters.push({
+                    property_name: filters[i].property_name,
+                    operator: filters[i].operator,
+                    comparison_value: [filters[i].comparison_value],
+                  });
+                } else {
+                  numericFilters.push({
+                    property_name: filters[i].property_name,
+                    operator: filters[i].operator,
+                    comparison_value: parseFloat(filters[i].comparison_value),
+                  });
+                }
               }
             }
-          }
 
-          if (values.metric_type === "custom" && customSQL) {
-            values.custom_sql = format(customSQL, {
-              language: "postgresql",
-            });
-          }
+            if (values.metric_type === "custom" && customSQL) {
+              values.custom_sql = format(customSQL, {
+                language: "postgresql",
+              });
+            }
+            console.log("VALUES", values);
+            var newMetric: CreateMetricType;
+            if (values.metric_type === "counter") {
+              newMetric = {
+                event_name: values.event_name,
+                usage_aggregation_type: values.usage_aggregation_type,
+                metric_type: "counter",
+                metric_name: values.metric_name,
+                numeric_filters: numericFilters,
+                categorical_filters: categoricalFilters,
+                is_cost_metric: values.is_cost_metric,
+                ...(values.property_name
+                  ? { property_name: values.property_name }
+                  : {}),
+              };
+            } else if (values.metric_type === "gauge") {
+              newMetric = {
+                event_name: values.event_name,
+                property_name: values.property_name,
+                usage_aggregation_type: "max",
+                metric_type: "gauge",
+                metric_name: values.metric_name,
+                event_type: values.event_type,
+                numeric_filters: numericFilters,
+                categorical_filters: categoricalFilters,
+                granularity: values.gauge_granularity,
+                proration: values.proration,
+                is_cost_metric: false,
+              };
+            } else if (values.metric_type === "rate") {
+              newMetric = {
+                event_name: values.event_name,
+                metric_name: values.metric_name,
+                usage_aggregation_type: values.usage_aggregation_type,
+                granularity: values.rate_granularity,
+                metric_type: "rate",
+                billable_aggregation_type: "max",
+                numeric_filters: numericFilters,
+                categorical_filters: categoricalFilters,
+                ...(values.property_name
+                  ? { property_name: values.property_name }
+                  : {}),
+                is_cost_metric: false,
+              };
+            } else {
+              newMetric = {
+                metric_name: values.metric_name,
+                metric_type: "custom",
+                custom_sql: values.custom_sql,
+                is_cost_metric: false,
+                numeric_filters: [],
+                categorical_filters: [],
+              };
+            }
 
-          let newMetric: CreateMetricType;
-          if (values.metric_type === "counter") {
-            newMetric = {
-              event_name: values.event_name,
-              usage_aggregation_type: values.usage_aggregation_type,
-              metric_type: "counter",
-              metric_name: values.metric_name,
-              numeric_filters: numericFilters,
-              categorical_filters: categoricalFilters,
-              is_cost_metric: values.is_cost_metric,
-              ...(values.property_name
-                ? { property_name: values.property_name }
-                : {}),
-            };
-          } else if (values.metric_type === "gauge") {
-            newMetric = {
-              event_name: values.event_name,
-              property_name: values.property_name,
-              usage_aggregation_type: "max",
-              metric_type: "gauge",
-              metric_name: values.metric_name,
-              event_type: values.event_type,
-              numeric_filters: numericFilters,
-              categorical_filters: categoricalFilters,
-              granularity: values.gauge_granularity,
-              proration: values.proration,
-              is_cost_metric: false,
-            };
-          } else if (values.metric_type === "rate") {
-            newMetric = {
-              event_name: values.event_name,
-              metric_name: values.metric_name,
-              usage_aggregation_type: values.usage_aggregation_type,
-              granularity: values.rate_granularity,
-              metric_type: "rate",
-              billable_aggregation_type: "max",
-              numeric_filters: numericFilters,
-              categorical_filters: categoricalFilters,
-              ...(values.property_name
-                ? { property_name: values.property_name }
-                : {}),
-              is_cost_metric: false,
-            };
-          } else {
-            newMetric = {
-              metric_name: values.metric_name,
-              metric_type: "custom",
-              custom_sql: values.custom_sql,
-              is_cost_metric: false,
-              numeric_filters: [],
-              categorical_filters: [],
-            };
-          }
-
-          onSave(newMetric);
-          setCustomSQL("SELECT COUNT(*) as usage_qty FROM events");
-          form.resetFields();
-          setEventType("counter");
-          setPreset("none");
-        });
+            props.onSave(newMetric);
+            setCustomSQL("SELECT COUNT(*) as usage_qty FROM events");
+            form.resetFields();
+            setEventType("counter");
+            setPreset("none");
+          })
+          .catch((info) => {});
       }}
     >
       <div className="grid grid-cols-8 my-4 gap-4 items-center">
@@ -624,129 +610,70 @@ function CreateMetricForm({
                 {(fields, { add, remove }, { errors }) => (
                   <>
                     {fields.map((field, index) => (
-                      <div key={field.key}>
-                        <Form.Item
-                          rules={[
-                            {
-                              required: true,
-                              message:
-                                "Please input a filter or delete this filter.",
-                            },
-                          ]}
-                        >
-                          <div className="flex gap-8">
-                            <div>
-                              <div className="mt-2">Numeric Filters</div>
-                              <Form.Item
-                                required={false}
-                                label={index === 0 ? "" : "and"}
-                                className="mt-4"
-                              >
-                                <div className="flex flex-col space-y-4">
-                                  <Form.Item
-                                    {...field}
-                                    name={[field.name, "property_name_number"]}
-                                    validateTrigger={["onChange", "onBlur"]}
-                                    noStyle
-                                  >
-                                    <Input
-                                      placeholder="property name"
-                                      style={{ width: "50%" }}
-                                    />
-                                  </Form.Item>
-                                  <Form.Item
-                                    name={[field.name, "operator_number"]}
-                                  >
-                                    <Select style={{ width: "50%" }}>
-                                      <Option value="eq">= </Option>
-                                      <Option value="gte">&#8805;</Option>
-                                      <Option value="gt"> &#62; </Option>
-                                      <Option value="lt"> &#60;</Option>
-                                      <Option value="lte">&#8804;</Option>
-                                    </Select>
-                                  </Form.Item>
+                      <Form.Item
+                        required={false}
+                        key={field.key}
+                        label={index === 0 ? "" : "and"}
+                        className="mt-4"
+                      >
+                        <div className="flex flex-col space-y-4">
+                          <Form.Item
+                            {...field}
+                            name={[field.name, "property_name"]}
+                            validateTrigger={["onChange", "onBlur"]}
+                            rules={[
+                              {
+                                required: true,
+                                whitespace: true,
+                                message:
+                                  "Please input a property name name or delete this filter.",
+                              },
+                            ]}
+                            noStyle
+                          >
+                            <Input
+                              placeholder="property name"
+                              style={{ width: "30%" }}
+                            />
+                          </Form.Item>
+                          <Form.Item
+                            name={[field.name, "operator"]}
+                            rules={[
+                              {
+                                required: true,
+                                whitespace: true,
+                                message:
+                                  "Please input a property name name or delete this filter.",
+                              },
+                            ]}
+                          >
+                            <Select style={{ width: "50%" }}>
+                              <Option value="isin">is (string)</Option>
+                              <Option value="isnotin">is not (string)</Option>
+                              <Option value="eq">= </Option>
+                              <Option value="gte">&#8805;</Option>
+                              <Option value="gt"> &#62; </Option>
+                              <Option value="lt"> &#60;</Option>
+                              <Option value="lte">&#8804;</Option>
+                            </Select>
+                          </Form.Item>
 
-                                  <div className="grid grid-cols-2 w-6/12">
-                                    <Form.Item
-                                      name={[
-                                        field.name,
-                                        "comparison_value_number",
-                                      ]}
-                                      style={{ alignSelf: "middle" }}
-                                    >
-                                      <InputNumber style={{ width: "130%" }} />
-                                    </Form.Item>
-                                    {fields.length > 0 ? (
-                                      <MinusCircleOutlined
-                                        className="hover:bg-background place-self-center p-4"
-                                        onClick={() => remove(field.name)}
-                                      />
-                                    ) : null}
-                                  </div>
-                                </div>
-                              </Form.Item>
-                            </div>
-
-                            <div>
-                              <div className="mt-2">Categorical Filters</div>
-                              <Form.Item
-                                required={false}
-                                label={index === 0 ? "" : "and"}
-                                className="mt-4"
-                              >
-                                <div className="flex flex-col space-y-4">
-                                  <Form.Item
-                                    {...field}
-                                    name={[
-                                      field.name,
-                                      "property_name_categorical",
-                                    ]}
-                                    validateTrigger={["onChange", "onBlur"]}
-                                    noStyle
-                                  >
-                                    <Input
-                                      placeholder="property name"
-                                      style={{ width: "50%" }}
-                                    />
-                                  </Form.Item>
-                                  <Form.Item
-                                    name={[field.name, "operator_categorical"]}
-                                  >
-                                    <Select
-                                      mode="multiple"
-                                      allowClear
-                                      style={{ width: "50%" }}
-                                    >
-                                      <Option value="isin">is (string)</Option>
-                                      <Option value="isnotin">
-                                        is not (string)
-                                      </Option>
-                                    </Select>
-                                  </Form.Item>
-
-                                  <div className="grid grid-cols-2 w-6/12">
-                                    <Form.Item
-                                      name={[
-                                        field.name,
-                                        "comparison_value_categorical",
-                                      ]}
-                                      style={{ alignSelf: "middle" }}
-                                    >
-                                      <Input style={{ width: "130%" }} />
-                                    </Form.Item>
-                                    {fields.length > 0 ? (
-                                      <MinusCircleOutlined
-                                        className="hover:bg-background place-self-center p-4"
-                                        onClick={() => remove(field.name)}
-                                      />
-                                    ) : null}
-                                  </div>
-                                </div>
-                              </Form.Item>
-                            </div>
+                          <div className="grid grid-cols-2 w-6/12">
+                            <Form.Item
+                              name={[field.name, "comparison_value"]}
+                              style={{ alignSelf: "middle" }}
+                            >
+                              <Input />
+                            </Form.Item>
+                            {fields.length > 0 ? (
+                              <MinusCircleOutlined
+                                className="hover:bg-background place-self-center p-4"
+                                onClick={() => remove(field.name)}
+                              />
+                            ) : null}
                           </div>
-                        </Form.Item>
-                      </div>
+                        </div>
+                      </Form.Item>
                     ))}
                     <Form.Item>
                       <Button
