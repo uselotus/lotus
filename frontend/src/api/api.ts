@@ -576,3 +576,7 @@ export const PricingUnits = {
 
   list: (): Promise<CurrencyType[]> => requests.get(`app/pricing_units/`),
 };
+
+export const Netsuite = {
+  invoices: (): Promise<{ url: URL }> => requests.get("app/netsuite_invoices/"),
+};

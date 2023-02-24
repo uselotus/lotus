@@ -2136,7 +2136,7 @@ class Plan(models.Model):
         constraints = [
             models.CheckConstraint(
                 check=(Q(parent_plan__isnull=True) & Q(target_customer__isnull=True))
-                | Q(parent_plan__isnull=False) & Q(target_customer__isnull=False),
+                | (Q(parent_plan__isnull=False) & Q(target_customer__isnull=False)),
                 name="both_null_or_both_not_null",
             ),
         ]

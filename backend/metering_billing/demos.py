@@ -8,8 +8,6 @@ import uuid
 import numpy as np
 import pytz
 from dateutil.relativedelta import relativedelta
-from model_bakery import baker
-
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     APIToken,
@@ -54,6 +52,7 @@ from metering_billing.utils.enums import (
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
 )
+from model_bakery import baker
 
 logger = logging.getLogger("django.server")
 
@@ -98,6 +97,9 @@ def setup_demo3(
         WebhookEndpoint.objects.filter(organization=organization).delete()
         WebhookTrigger.objects.filter(organization=organization).delete()
         PlanVersion.objects.filter(organization=organization).delete()
+        Plan.objects.filter(
+            organization=organization, parent_plan__isnull=False
+        ).delete()
         Plan.objects.filter(organization=organization).delete()
         Customer.objects.filter(organization=organization).delete()
         Event.objects.filter(organization=organization).delete()

@@ -54,7 +54,6 @@ export function AppCard({
                   title.includes("Stripe") || title.includes("Braintree")
                     ? handleClickConnect
                     : () => {
-                        console.log("title", title);
                         toast.error(
                           "Upgrade to get access to this integration"
                         );

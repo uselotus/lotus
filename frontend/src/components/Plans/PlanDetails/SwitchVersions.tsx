@@ -36,7 +36,7 @@ function getPriceAdjustmentEnding(
 ) {
   switch (type) {
     case "percentage":
-      return `${amount  }%`;
+      return `${amount}%`;
     case "fixed":
       return `${code} ${amount}`;
     case "price_override":
@@ -113,7 +113,6 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         {versions.map((version) => (
           <div
             onClick={(e) => {
-              console.log(e.target);
               refetch();
               setSelectedVersion(version);
             }}
@@ -131,7 +130,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         ))}
         <Link
           type="text"
-          to={`/create-version/${  selectedVersion?.plan_id}`}
+          to={`/create-version/${selectedVersion?.plan_id}`}
           className="mx-4"
         >
           <div className="flex items-center justify-center px-2 py-2 rounded-[20px] hover:bg-[#EAEAEB]">

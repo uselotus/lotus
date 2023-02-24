@@ -57,7 +57,6 @@ const IntegrationsTab: FC = () => {
           toast.success(
             `OAuth flow succeeded for provider "${result.providerConfigKey}"!`
           );
-          console.log("RESULT FROM OAUTH: ", result);
           const inner_data: BraintreeConnectionRequestType = {
             nango_connected: true,
           };
@@ -147,6 +146,17 @@ const IntegrationsTab: FC = () => {
             handleClickConnect={() =>
               navigate("/settings/integrations/snowflake")
             }
+          />
+        </Col>
+        <Col span={6} className="h-full">
+          <AppCard
+            connected={true}
+            title="Netsuite"
+            idValue="not_necessary"
+            description="Sync your invoices + products to Netsuite"
+            icon={integrationsMap.netsuite.icon}
+            working={true}
+            handleClickConnect={() => {}}
           />
         </Col>
       </Row>
