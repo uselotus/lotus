@@ -122,11 +122,12 @@ Pricing your SaaS product is never easy, and often isn't directly related to the
 Tech Stack:
 
 - React Typescript
-- Postgres (Timescaledb)
+- Postgres (TimescaleDB)
 - Redpanda
 - Redis
-- Python (Django/Fast API)
+- Python (Django)
 - Celery (background jobs)
+- Go (Microservices)
 
 ### Features
 
