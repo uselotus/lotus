@@ -44,14 +44,15 @@ services:
     ports:
       - "8071:8071"
     depends_on:
-    - db
-    - redis
+      - db
+      - redis
     links:
-    - db
-    - redis
+      - db
+      - redis
     restart: on-failure
 
-  backend: &backend
+  backend:
+    &backend
     env_file:
       - ./env/.env.dev
     build:
@@ -70,14 +71,29 @@ services:
       - redis
       - redpanda
 
+  event-guidance:
+    env_file:
+      - ./env/.env.dev
+    build:
+      context: ./go/event-guidance
+      dockerfile: Dockerfile
+    ports:
+      - 7999:7999
+    depends_on:
+      - db
+      - redis
+      - redpanda
+      - backend
+    restart: "on-failure:15"
+
   event-ingestion:
     env_file:
       - ./env/.env.dev
     build:
-      context: ./go/eventingestor
+      context: ./go/event-ingestion
       dockerfile: Dockerfile
     ports:
-      - 7999:7999
+      - 7998:7998
     depends_on:
       - db
       - redis

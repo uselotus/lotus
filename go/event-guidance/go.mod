@@ -1,4 +1,4 @@
-module github.com/uselotus/lotus/go/eventingestor
+module github.com/uselotus/lotus/go/event-guidance
 
 go 1.20
 

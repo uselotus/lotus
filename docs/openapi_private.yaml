@@ -360,8 +360,8 @@ paths:
             - inactive
             type: string
           default:
-          - active
           - inactive
+          - active
         description: Filter to a specific set of adjustment statuses. Defaults to
           both active and inactive.
       tags:
@@ -1249,6 +1249,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MetricUpdate'
+          description: ''
+  /app/netsuite_invoices/:
+    get:
+      operationId: app_netsuite_invoices_retrieve
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetsuiteInvoiceCSVView'
           description: ''
   /app/organization/invite/:
     post:
@@ -3818,34 +3834,34 @@ components:
     BacktestDetail:
       type: object
       properties:
-        end_date:
+        start_date:
           type: string
           format: date
-        kpis:
-          type: object
-          additionalProperties: {}
+        backtest_results:
+          $ref: '#/components/schemas/AllSubstitutionResults'
         backtest_substitutions:
           type: array
           items:
             $ref: '#/components/schemas/BacktestSubstitution'
+        backtest_id:
+          type: string
+        time_created:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date
+        backtest_name:
+          type: string
+          maxLength: 100
+        kpis:
+          type: object
+          additionalProperties: {}
         status:
           enum:
           - running
           - completed
           - failed
-          type: string
-        time_created:
-          type: string
-          format: date-time
-        backtest_results:
-          $ref: '#/components/schemas/AllSubstitutionResults'
-        backtest_name:
-          type: string
-          maxLength: 100
-        start_date:
-          type: string
-          format: date
-        backtest_id:
           type: string
       required:
       - backtest_id
@@ -3923,15 +3939,6 @@ components:
       - backtest_name
       - end_date
       - start_date
-    BatchEventRequest:
-      type: object
-      properties:
-        batch:
-          type: array
-          items:
-            $ref: '#/components/schemas/EventRequest'
-      required:
-      - batch
     CategoricalFilter:
       type: object
       properties:
@@ -5972,24 +5979,12 @@ components:
     DraftInvoice:
       type: object
       properties:
-        end_date:
+        start_date:
           type: string
           format: date
           readOnly: true
-        due_date:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
-        issue_date:
-          type: string
-          format: date-time
-          readOnly: true
-        line_items:
-          type: array
-          items:
-            $ref: '#/components/schemas/GroupedLineItem'
-          readOnly: true
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
         cost_due:
           type: number
           format: double
@@ -6000,12 +5995,24 @@ components:
           readOnly: true
         invoice_id:
           type: string
-        start_date:
+        end_date:
           type: string
           format: date
           readOnly: true
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
+        line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroupedLineItem'
+          readOnly: true
+        due_date:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        issue_date:
+          type: string
+          format: date-time
+          readOnly: true
       required:
       - cost_due
       - currency
@@ -6048,51 +6055,14 @@ components:
           type: string
           format: date-time
           description: The time that the event occured, represented as a datetime
-            in ISO 8601 in the UTC timezome.
+            in RFC3339 in the UTC timezome.
         idempotency_id:
           type: string
           description: A unique identifier for the specific event being passed in.
             Passing in a unique id allows Lotus to make sure no double counting occurs.
-            We recommend using a UUID4. You can use the same idempotency_id again
-            after 7 days
+            We recommend using a UUID4.
         customer_id:
           type: string
-          description: The id of the customer that this event is associated with,
-            usually the customer id in your backend
-      required:
-      - customer_id
-      - event_name
-      - idempotency_id
-      - time_created
-    EventRequest:
-      type: object
-      properties:
-        event_name:
-          type: string
-          minLength: 1
-          description: String name of the event, corresponds to definition in metrics
-        properties:
-          type: object
-          additionalProperties: {}
-          description: Extra metadata on the event that can be filtered and queried
-            on in the metrics. All key value pairs should have string keys and values
-            can be either strings or numbers. Place subscription filters in this object
-            to specify which subscription the event should be tracked under
-        time_created:
-          type: string
-          format: date-time
-          description: The time that the event occured, represented as a datetime
-            in ISO 8601 in the UTC timezome.
-        idempotency_id:
-          type: string
-          minLength: 1
-          description: A unique identifier for the specific event being passed in.
-            Passing in a unique id allows Lotus to make sure no double counting occurs.
-            We recommend using a UUID4. You can use the same idempotency_id again
-            after 7 days
-        customer_id:
-          type: string
-          minLength: 1
           description: The id of the customer that this event is associated with,
             usually the customer id in your backend
       required:
@@ -6391,27 +6361,45 @@ components:
     InitialPlanVersionRequest:
       type: object
       properties:
+        description:
+          type: string
+          writeOnly: true
+          nullable: true
+        transition_to_plan_id:
+          type: string
+          format: uuid
+        currency_code:
+          type: string
+          minLength: 1
+        recurring_charges:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecurringChargeCreateRequest'
+          nullable: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustmentRequest'
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponentCreateRequest'
+          nullable: true
         features:
           type: array
           items:
             type: string
             format: uuid
             nullable: true
-        transition_to_plan_id:
-          type: string
-          format: uuid
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustmentRequest'
         day_anchor:
           type: integer
           maximum: 31
           minimum: 1
           writeOnly: true
           nullable: true
-        recurring_charges:
-          type: array
-          items:
-            $ref: '#/components/schemas/RecurringChargeCreateRequest'
+        month_anchor:
+          type: integer
+          maximum: 12
+          minimum: 1
+          writeOnly: true
           nullable: true
         usage_billing_frequency:
           enum:
@@ -6421,24 +6409,6 @@ components:
           - ''
           - 
           type: string
-          writeOnly: true
-          nullable: true
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponentCreateRequest'
-          nullable: true
-        currency_code:
-          type: string
-          minLength: 1
-        description:
-          type: string
-          writeOnly: true
-          nullable: true
-        month_anchor:
-          type: integer
-          maximum: 12
-          minimum: 1
           writeOnly: true
           nullable: true
     InviteLinkResponse:
@@ -6859,28 +6829,39 @@ components:
     LightweightInvoice:
       type: object
       properties:
-        end_date:
+        start_date:
           type: string
           format: date
           readOnly: true
-        due_date:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
-        issue_date:
-          type: string
-          format: date-time
-          readOnly: true
+        seller:
+          $ref: '#/components/schemas/Seller'
         external_payment_obj_id:
           type: string
           readOnly: true
           nullable: true
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
         invoice_pdf:
           type: string
           format: uri
           readOnly: true
           nullable: true
+        invoice_number:
+          type: string
+          readOnly: true
+        external_payment_obj_type:
+          enum:
+          - stripe
+          - braintree
+          - 
+          type: string
+          nullable: true
+        invoice_id:
+          type: string
+        end_date:
+          type: string
+          format: date
+          readOnly: true
         payment_status:
           enum:
           - draft
@@ -6896,25 +6877,14 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           readOnly: true
-        invoice_id:
+        due_date:
           type: string
-        start_date:
-          type: string
-          format: date
+          format: date-time
           readOnly: true
-        seller:
-          $ref: '#/components/schemas/Seller'
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
-        external_payment_obj_type:
-          enum:
-          - stripe
-          - braintree
-          - 
-          type: string
           nullable: true
-        invoice_number:
+        issue_date:
           type: string
+          format: date-time
           readOnly: true
       required:
       - cost_due
@@ -6936,23 +6906,9 @@ components:
         name:
           type: string
           maxLength: 100
-        end_date:
+        start_date:
           type: string
           format: date-time
-        billing_type:
-          enum:
-          - in_arrears
-          - in_advance
-          - one_time
-          - 
-          type: string
-          nullable: true
-        subscription_filters:
-          type: array
-          items:
-            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
-          nullable: true
-          readOnly: true
         quantity:
           type: number
           format: double
@@ -6967,14 +6923,28 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        start_date:
-          type: string
-          format: date-time
+        subscription_filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
+          nullable: true
+          readOnly: true
         plan:
           allOf:
           - $ref: '#/components/schemas/LightweightPlanVersion'
           nullable: true
           readOnly: true
+        billing_type:
+          enum:
+          - in_arrears
+          - in_advance
+          - one_time
+          - 
+          type: string
+          nullable: true
+        end_date:
+          type: string
+          format: date-time
       required:
       - billing_type
       - end_date
@@ -7056,13 +7026,17 @@ components:
     LightweightSubscriptionRecord:
       type: object
       properties:
-        end_date:
+        start_date:
           type: string
           format: date-time
           description: The time the subscription starts. This will be a string in
             yyyy-mm-dd HH:mm:ss format in UTC time.
-        billing_plan:
-          $ref: '#/components/schemas/LightweightPlanVersion'
+        customer:
+          $ref: '#/components/schemas/LightweightCustomer'
+        is_new:
+          type: boolean
+          description: Whether this subscription came from a renewal or from a first-time.
+            Defaults to true on creation.
         auto_renew:
           type: boolean
           description: Whether the subscription automatically renews. Defaults to
@@ -7072,28 +7046,24 @@ components:
           items:
             $ref: '#/components/schemas/SubscriptionCategoricalFilter'
           readOnly: true
-        is_new:
-          type: boolean
-          description: Whether this subscription came from a renewal or from a first-time.
-            Defaults to true on creation.
+        billing_plan:
+          $ref: '#/components/schemas/LightweightPlanVersion'
         fully_billed:
           type: boolean
           description: Whether the subscription has been fully billed and finalized.
-        customer:
-          $ref: '#/components/schemas/LightweightCustomer'
-        start_date:
+        end_date:
           type: string
           format: date-time
           description: The time the subscription starts. This will be a string in
             yyyy-mm-dd HH:mm:ss format in UTC time.
-        addons:
-          type: array
-          items:
-            $ref: '#/components/schemas/LightweightAddonSubscriptionRecord'
         plan_detail:
           allOf:
           - $ref: '#/components/schemas/LightweightPlanVersion'
           readOnly: true
+        addons:
+          type: array
+          items:
+            $ref: '#/components/schemas/LightweightAddonSubscriptionRecord'
       required:
       - addons
       - auto_renew
@@ -7108,25 +7078,25 @@ components:
     LightweightSubscriptionRecordRequest:
       type: object
       properties:
-        end_date:
+        start_date:
           type: string
           format: date-time
           description: The time the subscription starts. This will be a string in
             yyyy-mm-dd HH:mm:ss format in UTC time.
-        billing_plan:
-          $ref: '#/components/schemas/LightweightPlanVersionRequest'
-        auto_renew:
-          type: boolean
-          description: Whether the subscription automatically renews. Defaults to
-            true.
         is_new:
           type: boolean
           description: Whether this subscription came from a renewal or from a first-time.
             Defaults to true on creation.
+        auto_renew:
+          type: boolean
+          description: Whether the subscription automatically renews. Defaults to
+            true.
+        billing_plan:
+          $ref: '#/components/schemas/LightweightPlanVersionRequest'
         fully_billed:
           type: boolean
           description: Whether the subscription has been fully billed and finalized.
-        start_date:
+        end_date:
           type: string
           format: date-time
           description: The time the subscription starts. This will be a string in
@@ -7508,6 +7478,61 @@ components:
     MetricDetail:
       type: object
       properties:
+        proration:
+          enum:
+          - seconds
+          - minutes
+          - hours
+          - days
+          - months
+          - quarters
+          - years
+          - total
+          - 
+          type: string
+          readOnly: true
+          nullable: true
+          description: The proration of the metric. Only applies to metrics of type
+            'gauge'.
+        property_name:
+          type: string
+          readOnly: true
+          nullable: true
+          description: The name of the property of the event that should be used for
+            this metric. Doesn't apply if the metric is of type 'counter' with an
+            aggregation of count.
+        metric_id:
+          type: string
+        custom_sql:
+          type: string
+          readOnly: true
+          nullable: true
+          description: A custom SQL query that can be used to define the metric. Please
+            refer to our documentation for more information.
+        event_name:
+          type: string
+          readOnly: true
+          description: Name of the event that this metric is tracking.
+        metric_type:
+          enum:
+          - counter
+          - rate
+          - custom
+          - gauge
+          type: string
+          readOnly: true
+          description: The type of metric that this is. Please refer to our documentation
+            for an explanation of the different types.
+        event_type:
+          enum:
+          - delta
+          - total
+          - 
+          type: string
+          readOnly: true
+          nullable: true
+          description: Used only for metrics of type 'gauge'. Please refer to our
+            documentation for an explanation of the different types.
         granularity:
           enum:
           - seconds
@@ -7528,72 +7553,17 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CategoricalFilter'
-        property_name:
+        numeric_filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/NumericFilter'
+        metric_name:
           type: string
-          readOnly: true
-          nullable: true
-          description: The name of the property of the event that should be used for
-            this metric. Doesn't apply if the metric is of type 'counter' with an
-            aggregation of count.
         is_cost_metric:
           type: boolean
           readOnly: true
           description: Whether or not this metric is a cost metric (used to track
             costs to your business).
-        numeric_filters:
-          type: array
-          items:
-            $ref: '#/components/schemas/NumericFilter'
-        proration:
-          enum:
-          - seconds
-          - minutes
-          - hours
-          - days
-          - months
-          - quarters
-          - years
-          - total
-          - 
-          type: string
-          readOnly: true
-          nullable: true
-          description: The proration of the metric. Only applies to metrics of type
-            'gauge'.
-        event_type:
-          enum:
-          - delta
-          - total
-          - 
-          type: string
-          readOnly: true
-          nullable: true
-          description: Used only for metrics of type 'gauge'. Please refer to our
-            documentation for an explanation of the different types.
-        metric_type:
-          enum:
-          - counter
-          - rate
-          - custom
-          - gauge
-          type: string
-          readOnly: true
-          description: The type of metric that this is. Please refer to our documentation
-            for an explanation of the different types.
-        event_name:
-          type: string
-          readOnly: true
-          description: Name of the event that this metric is tracking.
-        custom_sql:
-          type: string
-          readOnly: true
-          nullable: true
-          description: A custom SQL query that can be used to define the metric. Please
-            refer to our documentation for more information.
-        metric_name:
-          type: string
-        metric_id:
-          type: string
         usage_aggregation_type:
           enum:
           - count
@@ -7684,6 +7654,14 @@ components:
           - active
           - archived
           type: string
+    NetsuiteInvoiceCSVView:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+      required:
+      - url
     NumericFilter:
       type: object
       properties:
@@ -10907,33 +10885,6 @@ components:
       - biggest_pct_increase
       - new_plan_revenue
       - original_plan_revenue
-    TrackEventFailure:
-      type: object
-      properties:
-        success:
-          enum:
-          - none
-          type: string
-        failed_events:
-          type: object
-          additionalProperties: {}
-      required:
-      - failed_events
-      - success
-    TrackEventSuccess:
-      type: object
-      properties:
-        success:
-          enum:
-          - all
-          - some
-          type: string
-        failed_events:
-          type: object
-          additionalProperties: {}
-      required:
-      - failed_events
-      - success
     TransferSubscriptionsFailure:
       type: object
       properties:
