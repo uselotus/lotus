@@ -100,6 +100,7 @@ func (b *batch) addRecord(event *VerifiedEvent) (bool, error) {
 }
 func main() {
 	log.SetOutput(os.Stdout)
+	fmt.Printf("Starting event-guidance\n")
 
 	var kafkaURL string
 	if kafkaURL = os.Getenv("KAFKA_URL"); kafkaURL == "" {
@@ -173,7 +174,7 @@ func main() {
 		panic(err)
 	}
 	defer insertStatement.Close()
-
+	fmt.Printf("Starting event fetching\n")
 	for {
 		fetches := cl.PollFetches(ctx)
 		log.Print("Polling for messages...")
