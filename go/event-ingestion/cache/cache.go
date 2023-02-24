@@ -23,7 +23,6 @@ var ctx = context.Background()
 
 func (c *RedisCache) Get(key string) (string, error) {
 	val, err := c.rdb.Get(ctx, key).Result()
-
 	if err == redis.Nil {
 		return "", nil
 	}
@@ -47,11 +46,12 @@ func New(config config.Config) (Cache, error) {
 		return nil, errors.New("redis url is empty")
 	}
 
-	rdb := redis.NewClient(
-		&redis.Options{
-			Addr: address,
-		},
-	)
+	opt, err := redis.ParseURL(address)
+	if err != nil {
+		return nil, err
+	}
+
+	rdb := redis.NewClient(opt)
 
 	cache := &RedisCache{
 		rdb:               rdb,

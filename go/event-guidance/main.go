@@ -21,7 +21,7 @@ import (
 const batchSize = 1000
 
 type VerifiedEvent struct {
-	OrganizationID int                    `json:"organization_id,omitempty"`
+	OrganizationID int64                  `json:"organization_id,omitempty"`
 	CustID         string                 `json:"customer_id,omitempty"`
 	IdempotencyID  string                 `json:"idempotency_id,omitempty"`
 	TimeCreated    time.Time              `json:"time_created,omitempty"`

@@ -65,7 +65,7 @@ services:
 
   event-guidance:
     env_file:
-      - ./env/.env.dev
+      - ./env/.env.prod
     build:
       context: ./go/event-guidance
       dockerfile: Dockerfile
@@ -79,7 +79,7 @@ services:
 
   event-ingestion:
     env_file:
-      - ./env/.env.dev
+      - ./env/.env.prod
     build:
       context: ./go/event-ingestion
       dockerfile: Dockerfile

@@ -15,7 +15,7 @@ func GetRedisURL(v *viper.Viper) string {
 
 	if !(dockerized == "false" || dockerized == "0" || dockerized == "no" || dockerized == "f" || dockerized == "") {
 		return "redis://redis:6379"
+	} else {
+		return "redis://localhost:6379"
 	}
-
-	return ""
 }

@@ -12,7 +12,7 @@ type (
 	}
 
 	VerifiedEvent struct {
-		OrganizationID int                    `json:"organization_id,omitempty"`
+		OrganizationID int64                  `json:"organization_id,omitempty"`
 		CustID         string                 `json:"customer_id,omitempty"`
 		IdempotencyID  string                 `json:"idempotency_id,omitempty"`
 		TimeCreated    time.Time              `json:"time_created,omitempty"`
@@ -51,7 +51,7 @@ func (e RawEvent) IsValid(now time.Time) (bool, string) {
 	return true, ""
 }
 
-func (e RawEvent) Transform(organizationID int) VerifiedEvent {
+func (e RawEvent) Transform(organizationID int64) VerifiedEvent {
 	return VerifiedEvent{
 		OrganizationID: organizationID,
 		CustID:         e.CustomerID,

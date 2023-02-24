@@ -7,7 +7,7 @@ import (
 )
 
 type APIKey struct {
-	OrganizationID int          `json:"organization_id"`
+	OrganizationID int64        `json:"organization_id"`
 	Created        time.Time    `json:"created"`
 	Name           string       `json:"name"`
 	Revoked        bool         `json:"revoked"`

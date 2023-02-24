@@ -11,7 +11,7 @@ import (
 )
 
 type StreamEvent struct {
-	OrganizationID int                 `json:"organization_id"`
+	OrganizationID int64               `json:"organization_id"`
 	Event          types.VerifiedEvent `json:"event"`
 }
 
@@ -27,9 +27,9 @@ func Produce(ctx context.Context, cl *kgo.Client, event types.VerifiedEvent) err
 		return err
 	}
 
-	keyBytes := make([]byte, 4)
+	keyBytes := make([]byte, 8)
 
-	binary.BigEndian.PutUint32(keyBytes, uint32(event.OrganizationID))
+	binary.BigEndian.PutUint64(keyBytes, uint64(event.OrganizationID))
 
 	record := &kgo.Record{
 		Topic: config.Conf.KafkaTopic,

@@ -3,6 +3,7 @@ package authn
 import (
 	"database/sql"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/labstack/echo/v4"
@@ -28,7 +29,7 @@ func getAPIKeyFromHeader(h http.Header) string {
 func getFromDB(db *sql.DB, prefix string) (*types.APIKey, error) {
 	var apiKey types.APIKey
 
-	if err := db.QueryRow("SELECT organization_id, created, name, revoked, expiry_date, hashed_key, prefix FROM metering_billing_apitoken WHERE prefix = $1 AND revoked = 'false' LIMIT 1", prefix).Scan(
+	if err := db.QueryRow("SELECT organization_id, created, name, revoked, expiry_date, hashed_key, prefix FROM metering_billing_apitoken WHERE prefix = $1 AND revoked = false LIMIT 1", prefix).Scan(
 		&apiKey.OrganizationID,
 		&apiKey.Created,
 		&apiKey.Name,
@@ -47,16 +48,21 @@ func Middleware(cacheClient cache.Cache) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			key := getAPIKeyFromHeader(c.Request().Header)
-
 			if key == "" {
 				return echo.NewHTTPError(http.StatusBadRequest, "No API key found in request")
 			}
 
-			if organizationID, err := cacheClient.Get(key); err == nil {
-				c.Set("organization", organizationID)
+			organizationIDStr, err := cacheClient.Get(key)
+			if err == nil && organizationIDStr != "" {
+				organizationID, err := strconv.ParseInt(organizationIDStr, 10, 64)
+				if err != nil {
+					return echo.NewHTTPError(http.StatusInternalServerError, err)
+				}
+				c.Set("organizationID", organizationID)
 				return next(c)
+			} else if err != nil {
+				panic(err)
 			}
-
 			db := c.Get("db").(*sql.DB)
 
 			prefix, _, _ := strings.Cut(key, ".")
@@ -75,9 +81,10 @@ func Middleware(cacheClient cache.Cache) echo.MiddlewareFunc {
 				return echo.NewHTTPError(http.StatusBadRequest, err)
 			}
 
-			cacheClient.Set(key, apiKey.OrganizationID)
-			
-			c.Set("organization", apiKey.OrganizationID)
+			organizationID := apiKey.OrganizationID
+			cacheClient.Set(key, strconv.FormatInt(organizationID, 10))
+
+			c.Set("organizationID", organizationID)
 
 			return next(c)
 		}

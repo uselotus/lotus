@@ -36,6 +36,7 @@ func main() {
 
 	if err != nil {
 		log.Fatalf("Error connecting to database: %v", err)
+		panic(err)
 	}
 
 	defer db.Close()
@@ -44,6 +45,7 @@ func main() {
 
 	if err != nil {
 		log.Fatalf("Error connecting to cache: %v", err)
+		panic(err)
 	}
 
 	seeds := []string{config.Conf.KafkaURL}
@@ -71,6 +73,10 @@ func main() {
 	cl, err := kgo.NewClient(
 		opts...,
 	)
+	if err != nil {
+		log.Fatalf("Error creating kafka client: %v", err)
+		panic(err)
+	}
 
 	ctx := context.Background()
 
@@ -117,12 +123,15 @@ func main() {
 				continue
 			}
 
-			organizationID := c.Get("organizationID").(int)
+			organizationID := c.Get("organizationID").(int64)
 
 			transformedEvent := event.Transform(organizationID)
 
-			if err := kafka.Produce(ctx, cl, transformedEvent); err != nil {
+			err := kafka.Produce(ctx, cl, transformedEvent)
+			if err != nil {
 				badEvents[event.IdempotencyID] = fmt.Sprintf("Failed to produce event to kafka: %v", err)
+			} else {
+				fmt.Printf("Produced event %v to kafka", transformedEvent)
 			}
 		}
 
