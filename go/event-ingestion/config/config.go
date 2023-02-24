@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/viper"
 )
@@ -58,7 +57,6 @@ func GetConfig() Config {
 		RedisURL:          GetRedisURL(v),
 	}
 	fmt.Printf("Config: %+v", conf)
-	fmt.Printf("well, here actual %s", os.Getenv("EVENTS_TOPIC"))
 
 	return conf
 }
