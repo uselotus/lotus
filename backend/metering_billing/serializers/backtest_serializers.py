@@ -1,9 +1,7 @@
-from django.db.models import Q
-from rest_framework import serializers
-
 from metering_billing.models import Backtest, BacktestSubstitution, PlanVersion
 from metering_billing.serializers.model_serializers import PlanVersionDetailSerializer
-from metering_billing.utils.enums import BACKTEST_KPI, PLAN_VERSION_STATUS
+from metering_billing.utils.enums import BACKTEST_KPI
+from rest_framework import serializers
 
 from .serializer_utils import (
     BacktestUUIDField,
@@ -15,7 +13,7 @@ from .serializer_utils import (
 class BacktestSubstitutionMultiSerializer(serializers.Serializer):
     new_plan = SlugRelatedFieldWithOrganization(
         slug_field="version_id",
-        queryset=PlanVersion.objects.filter(~Q(status=PLAN_VERSION_STATUS.ARCHIVED)),
+        queryset=PlanVersion.objects.active(),
         read_only=False,
     )
     original_plans = serializers.ListSerializer(

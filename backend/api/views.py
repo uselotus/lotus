@@ -123,7 +123,6 @@ from metering_billing.utils.enums import (
     METRIC_STATUS,
     ORGANIZATION_SETTING_NAMES,
     PLAN_STATUS,
-    PLAN_VERSION_STATUS,
     SUBSCRIPTION_STATUS,
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
@@ -287,13 +286,9 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         customer.uuidv5_customer_id = None
         customer.save()
         subscription_records = customer.subscription_records.active().all()
-        n_subs = subscription_records.filter(
-            billing_plan__plan__addon_spec__isnull=True
-        ).count()
+        n_subs = subscription_records.filter(billing_plan__is_addon=False).count()
         return_data["num_subscriptions_deleted"] = n_subs
-        n_addons = subscription_records.filter(
-            billing_plan__plan__addon_spec__isnull=False
-        ).count()
+        n_addons = subscription_records.filter(billing_plan__is_addon=True).count()
         return_data["num_addons_deleted"] = n_addons
         subscription_records.update(
             flat_fee_behavior=FLAT_FEE_BEHAVIOR.REFUND,
@@ -487,8 +482,8 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         qs = qs.prefetch_related(
             Prefetch(
                 "versions",
-                queryset=PlanVersion.objects.filter(
-                    ~Q(status=PLAN_VERSION_STATUS.ARCHIVED),
+                queryset=PlanVersion.objects.active()
+                .filter(
                     organization=organization,
                 )
                 .annotate(
@@ -1010,9 +1005,7 @@ class SubscriptionViewSet(
         turn_off_auto_renew = serializer.validated_data.get("turn_off_auto_renew")
         end_date = serializer.validated_data.get("end_date")
         if replace_billing_plan:
-            qs = qs.filter(
-                billing_plan__plan__addon_spec__isnull=True
-            )  # no addons in replace
+            qs = qs.filter(billing_plan__is_addon=False)  # no addons in replace
             now = now_utc()
             keep_separate = usage_behavior == USAGE_BEHAVIOR.KEEP_SEPARATE
             replace_plan_metrics = {
@@ -1549,9 +1542,7 @@ class MetricAccessView(APIView):
             "access": False,
             "access_per_subscription": [],
         }
-        for sr in subscription_records.filter(
-            billing_plan__plan__addon_spec__isnull=True
-        ):
+        for sr in subscription_records.filter(billing_plan__is_addon=False):
             if subscription_filters_set:
                 sr_filters_set = {(x.property_name, x.value) for x in sr.filters.all()}
                 if not subscription_filters_set.issubset(sr_filters_set):
@@ -1653,9 +1644,7 @@ class FeatureAccessView(APIView):
             "access": False,
             "access_per_subscription": [],
         }
-        for sr in subscription_records.filter(
-            billing_plan__plan__addon_spec__isnull=True
-        ):
+        for sr in subscription_records.filter(billing_plan__is_addon=False):
             if subscription_filters_set:
                 sr_filters_set = {(x.property_name, x.value) for x in sr.filters.all()}
                 if not subscription_filters_set.issubset(sr_filters_set):

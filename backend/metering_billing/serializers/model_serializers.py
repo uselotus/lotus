@@ -774,8 +774,7 @@ class MetricUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         data = super().validate(data)
         active_plan_versions_with_metric = []
         if data.get("status") == METRIC_STATUS.ARCHIVED:
-            all_active_plan_versions = PlanVersion.objects.filter(
-                ~Q(status=PLAN_VERSION_STATUS.ARCHIVED),
+            all_active_plan_versions = PlanVersion.objects.active().filter(
                 organization=self.context["organization"],
                 plan__in=Plan.objects.filter(
                     organization=self.context["organization"], status=PLAN_STATUS.ACTIVE

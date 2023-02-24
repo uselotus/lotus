@@ -1560,7 +1560,7 @@ class SubscriptionRecordFilterSerializer(serializers.Serializer):
     plan_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
         source="billing_plan.plan",
-        queryset=Plan.objects.filter(addon_spec__isnull=True),
+        queryset=Plan.objects.filter(is_addon=False),
         required=True,
         help_text="Filter to a specific plan.",
     )
@@ -1581,7 +1581,7 @@ class SubscriptionRecordFilterSerializerDelete(SubscriptionRecordFilterSerialize
     plan_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
         source="billing_plan.plan",
-        queryset=Plan.objects.filter(addon_spec__isnull=True),
+        queryset=Plan.objects.filter(is_addon=False),
         required=False,
         help_text="Filter to a specific plan. If not specified, all plans will be included in the cancellation request.",
     )
@@ -1617,7 +1617,7 @@ class ListSubscriptionRecordFilter(SubscriptionRecordFilterSerializer):
     plan_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
         source="billing_plan.plan",
-        queryset=Plan.objects.filter(addon_spec__isnull=True),
+        queryset=Plan.objects.filter(is_addon=False),
         required=False,
         help_text="Filter to a specific plan.",
     )
@@ -1645,7 +1645,7 @@ class AddonSubscriptionRecordFilterSerializer(serializers.Serializer):
     )
     attached_plan_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
-        queryset=Plan.objects.filter(addon_spec__isnull=True),
+        queryset=Plan.objects.filter(is_addon=False),
         required=True,
         help_text="Filter to a specific plan.",
     )
