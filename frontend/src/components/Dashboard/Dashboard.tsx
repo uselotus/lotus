@@ -1,6 +1,6 @@
-import React, { FC } from "react";
-import { Col, Row } from "antd";
-import dayjs from "dayjs";
+import React, { FC, useRef } from "react";
+import { Col, Row, Typography } from "antd";
+import dayjs, { Dayjs } from "dayjs";
 import duration from "dayjs/plugin/duration";
 import dayjsGenerateConfig from "rc-picker/lib/generate/dayjs";
 import generatePicker from "antd/es/date-picker/generatePicker";
@@ -19,6 +19,10 @@ import { SubscriptionTotals } from "../../types/subscription-type";
 import { PageLayout } from "../base/PageLayout";
 import { CustomerByPlanPie } from "./CustomerByPlanPie";
 import NumberDisplay from "./NumberDisplay";
+import Select from "../base/Select/Select";
+import MMRMovementChart from "./MRRMovementChart";
+import MRRARRLineChart from "./MRRARRLineChart";
+import LTVLineChart from "./LTVLineChart";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(advancedFormat);
@@ -36,8 +40,13 @@ const dateFormat = "YYYY/MM/DD";
 const defaultDate = [dayjs().subtract(1, "months").add(1, "day"), dayjs()];
 
 const Dashboard: FC = () => {
-  const [dateRange, setDateRange] = React.useState<any>(defaultDate);
-
+  const [dateRange, setDateRange] = React.useState(defaultDate);
+  const [selection, setSelection] = React.useState<
+    "MRR Movement" | "Realized LTV per Customer" | "MRR / ARR"
+  >("MRR Movement");
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const selectRef = useRef<HTMLSelectElement | null>(null!);
+  let selectedChart: React.ReactNode;
   const { data, isLoading }: UseQueryResult<RevenueType, RevenueType> =
     useQuery<RevenueType, RevenueType>(["total_revenue", dateRange], () =>
       GetRevenue.getMonthlyRevenue(
@@ -62,19 +71,23 @@ const Dashboard: FC = () => {
       ).then((res) => res)
     );
 
-  const { data: eventData, isLoading: eventLoading } = useQuery(
-    ["event_count", dateRange],
-    () =>
-      Events.getEventCount(
-        dateRange[0].format("YYYY-MM-DD"),
-        dateRange[1].format("YYYY-MM-DD"),
-        dateRange[0]
-          .subtract(dayjs.duration(dateRange[1].diff(dateRange[0])))
-          .format("YYYY-MM-DD"),
-        dateRange[1].subtract(1, "month").format("YYYY-MM-DD")
-      ).then((res) => res)
+  const { data: eventData } = useQuery(["event_count", dateRange], () =>
+    Events.getEventCount(
+      dateRange[0].format("YYYY-MM-DD"),
+      dateRange[1].format("YYYY-MM-DD"),
+      dateRange[0]
+        .subtract(dayjs.duration(dateRange[1].diff(dateRange[0])))
+        .format("YYYY-MM-DD"),
+      dateRange[1].subtract(1, "month").format("YYYY-MM-DD")
+    ).then((res) => res)
   );
-
+  if (selection === "MRR Movement") {
+    selectedChart = <MMRMovementChart />;
+  } else if (selection === "MRR / ARR") {
+    selectedChart = <MRRARRLineChart />;
+  } else {
+    selectedChart = <LTVLineChart />;
+  }
   return (
     <PageLayout
       title="Dashboard"
@@ -93,9 +106,9 @@ const Dashboard: FC = () => {
             "This year": [dayjs().startOf("year"), dayjs().endOf("year")],
             "All time": [dayjs().subtract(10, "years"), dayjs()],
           }}
-          defaultValue={dateRange}
+          defaultValue={dateRange as [Dayjs, Dayjs]}
           onCalendarChange={(dates) => {
-            setDateRange(dates);
+            setDateRange(dates as Dayjs[]);
           }}
         />,
       ]}
@@ -136,6 +149,40 @@ const Dashboard: FC = () => {
                 title="New Subscriptions"
               />{" "}
             </div>
+          </div>
+        </Col>
+        <Col span="24">
+          <div>
+            <div className="flex mt-4">
+              <Typography.Title className="pt-4 flex font-alliance">
+                {selection}
+              </Typography.Title>
+              <span className="ml-auto">
+                <Select>
+                  <Select.Label className="">Billing Frequency</Select.Label>
+                  <Select.Select
+                    onChange={() => {
+                      setSelection(
+                        selectRef.current?.value as typeof selection
+                      );
+                    }}
+                    className="!w-full !border !border-black"
+                    ref={selectRef}
+                  >
+                    {/* <Select.Option selected>{selection}</Select.Option> */}
+                    {[
+                      "MRR Movement",
+                      "Realized LTV per Customer",
+                      "MRR / ARR",
+                    ].map((el) => (
+                      <Select.Option key={el}>{el}</Select.Option>
+                    ))}
+                  </Select.Select>
+                </Select>
+              </span>
+            </div>
+
+            {selectedChart}
           </div>
         </Col>
         <Col span="24">
