@@ -1,6 +1,6 @@
 /* eslint-disable camelcase */
 import React, { useState } from "react";
-import { Tabs, Button } from "antd";
+import { Tabs, Button, Modal } from "antd";
 import {
   useMutation,
   useQueryClient,
@@ -31,12 +31,15 @@ import CustomerInfoView from "./CustomerInfo";
 import { CurrencyType } from "../../types/pricing-unit-type";
 import { PageLayout } from "../base/PageLayout";
 import { QueryErrors } from "../../types/error-response-types";
+import { DeleteOutlined } from "@ant-design/icons";
 
 type CustomerDetailsParams = {
   customerId: string;
 };
 function CustomerDetail() {
   const { customerId: customer_id } = useParams<CustomerDetailsParams>();
+
+  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -67,6 +70,20 @@ function CustomerDetail() {
         total_revenue: 0,
         total_cost: 0,
         margin: 0,
+      },
+    }
+  );
+
+  const deleteCustomerMutation = useMutation(
+    (id: string) => Customer.deleteCustomer(id),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(["customer_list"]);
+        navigate("/customers");
+        toast.success("Customer deleted successfully");
+      },
+      onError: (error: QueryErrors) => {
+        toast.error(error.response.data.title);
       },
     }
   );
@@ -188,6 +205,23 @@ function CustomerDetail() {
       hasBackButton
       aboveTitle
       mx={false}
+      extra={[
+        <Button
+          onClick={() => setShowDeleteModal(true)}
+          type="primary"
+          size="large"
+          key="create-plan"
+          className="hover:!bg-primary-700"
+          style={{ background: "#C3986B", borderColor: "#C3986B" }}
+        >
+          <div className="flex items-center  justify-between text-white">
+            <div>
+              <DeleteOutlined className="!text-white w-12 h-12 cursor-pointer" />
+              Delete Customer
+            </div>
+          </div>
+        </Button>,
+      ]}
       backButton={
         <div>
           <Button
@@ -257,6 +291,41 @@ function CustomerDetail() {
             <CustomerBalancedAdjustments customerId={customer_id as string} />
           </Tabs.TabPane>
         </Tabs>
+      )}
+      {showDeleteModal && (
+        <Modal
+          title="Delete Customer"
+          visible={showDeleteModal}
+          onCancel={() => setShowDeleteModal(false)}
+          footer={[
+            <Button
+              key="back"
+              onClick={() => setShowDeleteModal(false)}
+              style={{ background: "#F5F5F5", borderColor: "#F5F5F5" }}
+            >
+              Cancel
+            </Button>,
+            <Button
+              key="submit"
+              type="primary"
+              onClick={() => {
+                if (customer_id) {
+                  setShowDeleteModal(false);
+                  deleteCustomerMutation.mutate(customer_id);
+                }
+              }}
+              style={{ background: "#C3986B", borderColor: "#C3986B" }}
+            >
+              Confirm Delete
+            </Button>,
+          ]}
+        >
+          <p>
+            Are you sure you want to delete this customer? This action cannot be
+            undone and will cancel all of the customer's current subscriptions
+            without billing.
+          </p>
+        </Modal>
       )}
     </PageLayout>
   );
