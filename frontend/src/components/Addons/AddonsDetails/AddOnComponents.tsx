@@ -3,7 +3,7 @@ import { QueryClient, useMutation } from "react-query";
 import { toast } from "react-toastify";
 import { Table, Typography, Modal, Button, InputNumber } from "antd";
 import { Plan } from "../../../api/api";
-import { AddonType } from "../../../types/addon-type";
+import { AddOnType } from "../../../types/addon-type";
 import { AlertType, CreateAlertType } from "../../../types/alert-type";
 import { Component, Tier } from "../../../types/plan-type";
 import Select from "../../base/Select/Select";
@@ -11,7 +11,7 @@ import { CurrencyType } from "../../../types/pricing-unit-type";
 
 interface AddOnsComponentsProps {
   components?: Component[];
-  plan: AddonType;
+  plan: AddOnType;
   refetch: VoidFunction;
   alerts?: AlertType[];
   plan_version_id?: string;
@@ -23,7 +23,9 @@ const findAlertForComponent = (
   if (alerts === undefined) {
     return undefined;
   }
-  return alerts.find((alert) => alert.metric.metric_id === component.billable_metric.metric_id);
+  return alerts.find(
+    (alert) => alert.metric.metric_id === component.billable_metric.metric_id
+  );
 };
 
 const renderCost = (record: Tier, pricing_unit: CurrencyType) => {

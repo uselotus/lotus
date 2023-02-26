@@ -123,8 +123,9 @@ class PLAN_VERSION_STATUS(models.TextChoices):
     ACTIVE = ("active", _("Active"))
     RETIRING = ("retiring", _("Retiring"))
     GRANDFATHERED = ("grandfathered", _("Grandfathered"))
-    ARCHIVED = ("archived", _("Archived"))
+    DELETED = ("deleted", _("Deleted"))
     INACTIVE = ("inactive", _("Inactive"))
+    NOT_STARTED = ("not_started", _("Not Started"))
 
 
 class PLAN_STATUS(models.TextChoices):

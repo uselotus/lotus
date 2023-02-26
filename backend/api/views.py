@@ -15,9 +15,9 @@ import posthog
 import pytz
 from api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
-    AddonSubscriptionRecordFilterSerializer,
+    AddOnSubscriptionRecordFilterSerializer,
     AddOnSubscriptionRecordSerializer,
-    AddonSubscriptionRecordUpdateSerializer,
+    AddOnSubscriptionRecordUpdateSerializer,
     CustomerBalanceAdjustmentCreateSerializer,
     CustomerBalanceAdjustmentFilterSerializer,
     CustomerBalanceAdjustmentSerializer,
@@ -71,6 +71,7 @@ from django.db.models.functions import Coalesce
 from django.db.utils import IntegrityError
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
 from metering_billing.exceptions import (
@@ -102,7 +103,7 @@ from metering_billing.models import (
 )
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.serializer_utils import (
-    AddonUUIDField,
+    AddOnUUIDField,
     BalanceAdjustmentUUIDField,
     InvoiceUUIDField,
     MetricUUIDField,
@@ -247,7 +248,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "create":
             return CustomerCreateSerializer
-        elif self.action == "archive":
+        elif self.action == "delete":
             return EmptySerializer
         return CustomerSerializer
 
@@ -264,7 +265,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         responses=CustomerDeleteResponseSerializer,
     )
     @action(detail=True, methods=["post"], url_path="delete")
-    def archive(self, request, customer_id=None):
+    def delete(self, request, customer_id=None):
         organization = request.organization
         customer = self.get_object()
         if customer.deleted:
@@ -297,6 +298,9 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             end_date=now,
             fully_billed=True,
         )
+        versions = customer.plan_versions.all()
+        for version in versions:
+            version.target_customers.remove(customer)
         CustomerDeleteResponseSerializer().validate(return_data)
         return Response(return_data, status=status.HTTP_200_OK)
 
@@ -443,7 +447,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         if "plan_" in string_uuid:
             uuid = PlanUUIDField().to_internal_value(string_uuid)
         else:
-            uuid = AddonUUIDField().to_internal_value(string_uuid)
+            uuid = AddOnUUIDField().to_internal_value(string_uuid)
         self.kwargs[self.lookup_field] = uuid
         return super().get_object()
 
@@ -641,7 +645,7 @@ class SubscriptionViewSet(
         elif self.action == "attach_addon":
             return AddOnSubscriptionRecordCreateSerializer
         elif self.action == "update_addon":
-            return AddonSubscriptionRecordUpdateSerializer
+            return AddOnSubscriptionRecordUpdateSerializer
         else:
             return SubscriptionRecordSerializer
 
@@ -782,7 +786,7 @@ class SubscriptionViewSet(
                 "attached_plan_id": dict_params.get("attached_plan_id"),
                 "addon_id": dict_params.get("addon_id"),
             }
-            serializer = AddonSubscriptionRecordFilterSerializer(
+            serializer = AddOnSubscriptionRecordFilterSerializer(
                 data=data, context=context
             )
             serializer.is_valid(raise_exception=True)
@@ -1083,7 +1087,7 @@ class SubscriptionViewSet(
         )
 
     @extend_schema(
-        parameters=[AddonSubscriptionRecordFilterSerializer],
+        parameters=[AddOnSubscriptionRecordFilterSerializer],
         responses=AddOnSubscriptionRecordSerializer(many=True),
     )
     @action(detail=False, methods=["post"], url_path="addons/update")
@@ -1128,7 +1132,7 @@ class SubscriptionViewSet(
         )
 
     @extend_schema(
-        parameters=[AddonSubscriptionRecordFilterSerializer],
+        parameters=[AddOnSubscriptionRecordFilterSerializer],
         responses=AddOnSubscriptionRecordSerializer(many=True),
     )
     @action(detail=False, methods=["post"], url_path="addons/cancel")
@@ -1433,7 +1437,17 @@ class CustomerBalanceAdjustmentViewSet(
     def list(self, request):
         return super().list(request)
 
-    @extend_schema(responses=CustomerBalanceAdjustmentSerializer)
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="credit_id",
+                location=OpenApiParameter.PATH,
+                type=OpenApiTypes.STR,
+                description="The ID of the credit to retrieve or update.",
+            )
+        ],
+        responses=CustomerBalanceAdjustmentSerializer,
+    )
     @action(detail=True, methods=["post"])
     def void(self, request, credit_id=None):
         adjustment = self.get_object()
@@ -1449,7 +1463,17 @@ class CustomerBalanceAdjustmentViewSet(
             status=status.HTTP_200_OK,
         )
 
-    @extend_schema(responses=CustomerBalanceAdjustmentSerializer)
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="credit_id",
+                location=OpenApiParameter.PATH,
+                type=OpenApiTypes.STR,
+                description="The ID of the credit to retrieve or update.",
+            )
+        ],
+        responses=CustomerBalanceAdjustmentSerializer,
+    )
     @action(detail=True, methods=["post"], url_path="update")
     def edit(self, request, credit_id=None):
         adjustment = self.get_object()
@@ -1467,6 +1491,19 @@ class CustomerBalanceAdjustmentViewSet(
             ).data,
             status=status.HTTP_200_OK,
         )
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="credit_id",
+                location=OpenApiParameter.PATH,
+                type=OpenApiTypes.STR,
+                description="The ID of the credit to retrieve or update.",
+            )
+        ]
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
 
     def dispatch(self, request, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)

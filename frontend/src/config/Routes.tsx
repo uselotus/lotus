@@ -20,7 +20,7 @@ import BraintreeIntegrationView from "../integrations/pages/BraintreeIntegration
 import CreateCredit from "../pages/CreateBalanceAdjustment";
 import ViewAddOns from "../pages/ViewAddOns";
 import CreateAddOns from "../pages/CreateAddOns";
-import AddonDetails from "../components/Addons/AddonsDetails/AddonDetails";
+import AddOnDetails from "../components/AddOns/AddOnsDetails/AddOnDetails";
 import CustomerDetail from "../components/Customers/CustomerDetail";
 
 const { Sider } = Layout;
@@ -71,7 +71,7 @@ const AppRoutes: FC = () => {
             <Route path="create-plan" element={<CreatePlan />} />
             <Route path="create-addons" element={<CreateAddOns />} />
             <Route path="/add-ons" element={<ViewAddOns />} />
-            <Route path="/add-ons/:addOnId" element={<AddonDetails />} />
+            <Route path="/add-ons/:addOnId" element={<AddOnDetails />} />
             <Route
               path="create-version/:planId"
               element={<EditPlanLoader type="version" />}

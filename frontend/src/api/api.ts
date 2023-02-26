@@ -6,7 +6,7 @@ import {
   CustomerCreateType,
   CustomerSummary,
 } from "../types/customer-type";
-import { AddonType, CreateAddonType } from "../types/addon-type";
+import { AddOnType, CreateAddOnType } from "../types/addon-type";
 import {
   WebhookEndpoint,
   WebhookEndpointCreate,
@@ -208,11 +208,11 @@ export const Customer = {
     requests.post(`app/subscriptions/addons/cancel/`, body, params),
 };
 
-export const Addon = {
-  getAddons: (): Promise<AddonType[]> => requests.get("app/addons/"),
-  getAddon: (addon_id: string): Promise<AddonType> =>
+export const AddOn = {
+  getAddOns: (): Promise<AddOnType[]> => requests.get("app/addons/"),
+  getAddOn: (addon_id: string): Promise<AddOnType> =>
     requests.get(`app/addons/${addon_id}/`),
-  createAddon: (post: CreateAddonType): Promise<AddonType> =>
+  createAddOn: (post: CreateAddOnType): Promise<AddOnType> =>
     requests.post("app/addons/", post),
 };
 

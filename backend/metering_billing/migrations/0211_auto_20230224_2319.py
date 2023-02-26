@@ -3,16 +3,6 @@
 from django.db import migrations
 
 
-def populate_features_and_metrics(apps, schema_editor):
-    Plan = apps.get_model("metering_billing", "Plan")
-    for plan in Plan.objects.all():
-        for plan_version in plan.versions.all():
-            for feature in plan_version.features.all():
-                plan.features.add(feature)
-            for pc in plan_version.plan_components.all():
-                plan.metrics.add(pc.billable_metric)
-
-
 def set_not_before(apps, schema_editor):
     PlanVersion = apps.get_model("metering_billing", "PlanVersion")
     for version in PlanVersion.objects.all():
@@ -57,7 +47,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(populate_features_and_metrics),
         migrations.RunPython(set_not_before),
         migrations.RunPython(set_not_after),
     ]

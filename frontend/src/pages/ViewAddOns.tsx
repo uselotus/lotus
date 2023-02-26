@@ -3,26 +3,21 @@ import { Button } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useQuery, UseQueryResult } from "react-query";
-import { Addon } from "../api/api";
+import { AddOn } from "../api/api";
 import DBSVG from "../components/base/db-svg";
 import { PageLayout } from "../components/base/PageLayout";
 import LoadingSpinner from "../components/LoadingSpinner";
-import AddOnsCard from "../components/Addons/AddonsCard/AddOnCard";
-import { AddonType } from "../types/addon-type";
+import AddOnsCard from "../components/AddOns/AddOnsCard/AddOnCard";
+import { AddOnType } from "../types/addon-type";
 
 const ViewAddOns: FC = () => {
   const navigate = useNavigate();
 
-  const { data: addOns, isLoading }: UseQueryResult<AddonType[]> = useQuery<
-    AddonType[]
-  >(
-    ["add-ons"],
-    () =>
-      Addon.getAddons().then((res) => res),
-    {
-      refetchOnMount: "always",
-    }
-  );
+  const { data: addOns, isLoading }: UseQueryResult<AddOnType[]> = useQuery<
+    AddOnType[]
+  >(["add-ons"], () => AddOn.getAddOns().then((res) => res), {
+    refetchOnMount: "always",
+  });
 
   const navigateCreatePlan = () => {
     navigate("/create-addons");

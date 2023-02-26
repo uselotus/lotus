@@ -1,4 +1,4 @@
-import { AddonSubscriptionType, AddonType } from "./addon-type";
+import { AddOnSubscriptionType, AddOnType } from "./addon-type";
 import { LightweightCustomerType } from "./customer-type";
 import { LightweightPlanVersionType } from "./plan-type";
 
@@ -13,7 +13,7 @@ export interface SubscriptionType {
   start_date: string;
   end_date: string;
   auto_renew: boolean;
-  addons: AddonSubscriptionType[];
+  addons: AddOnSubscriptionType[];
   is_new: boolean;
   subscription_filters: {
     value: string;
@@ -82,7 +82,7 @@ export interface CancelCreateSubscriptionAddOnBody {
 }
 export interface CreateSubscriptionAddOnType
   extends Omit<SubscriptionType, "start_date" | "end_date" | "customer"> {
-  addon: AddonType;
+  addon: AddOnType;
   fully_billed: boolean;
   parent: SubscriptionType;
 }

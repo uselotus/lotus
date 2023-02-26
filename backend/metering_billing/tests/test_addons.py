@@ -7,10 +7,6 @@ from decimal import Decimal
 import pytest
 from dateutil import parser
 from django.urls import reverse
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
-
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
@@ -29,6 +25,9 @@ from metering_billing.models import (
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PLAN_VERSION_STATUS
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -242,7 +241,7 @@ def addon_test_common_setup(
 
 
 @pytest.mark.django_db(transaction=True)
-class TestAttachAddon:
+class TestAttachAddOn:
     def test_can_attach_flat_addon(
         self,
         addon_test_common_setup,
@@ -793,7 +792,7 @@ class TestAttachAddon:
 
 
 @pytest.mark.django_db(transaction=True)
-class TestUpdateAddon:
+class TestUpdateAddOn:
     def test_update_end_date_auto_renew_works(self, addon_test_common_setup):
         num_subscriptions = 0
         setup_dict = addon_test_common_setup(
@@ -1112,7 +1111,7 @@ class TestUpdateAddon:
 
 
 @pytest.mark.django_db(transaction=True)
-class TestCancelAddon:
+class TestCancelAddOn:
     def test_cancel_and_bill_now_works(self, addon_test_common_setup):
         num_subscriptions = 0
         setup_dict = addon_test_common_setup(

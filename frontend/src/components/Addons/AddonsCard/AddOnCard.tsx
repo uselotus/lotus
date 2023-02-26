@@ -7,11 +7,11 @@ import CopyText from "../../base/CopytoClipboard";
 import createShortenedText from "../../../helpers/createShortenedText";
 import capitalize from "../../../helpers/capitalize";
 import useMediaQuery from "../../../hooks/useWindowQuery";
-import { AddonType } from "../../../types/addon-type";
-import { constructBillType } from "../AddonsDetails/AddOnInfo";
+import { AddOnType } from "../../../types/addon-type";
+import { constructBillType } from "../AddOnsDetails/AddOnInfo";
 
 interface AddOnCardProps {
-  add_on: AddonType;
+  add_on: AddOnType;
 }
 
 const AddOnsCard: FC<AddOnCardProps> = ({ add_on }) => {
@@ -52,7 +52,7 @@ const AddOnsCard: FC<AddOnCardProps> = ({ add_on }) => {
   //   );
 
   const goToAddOnDetail = () => {
-    navigate(`/add-ons/${  add_on.addon_id}`);
+    navigate(`/add-ons/${add_on.addon_id}`);
   };
 
   return (

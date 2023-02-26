@@ -9,6 +9,12 @@ class OrganizationMismatch(APIException):
     default_code = "authentication_failure"
 
 
+class InvalidOperation(APIException):
+    status_code = 400
+    default_detail = "Invalid operation"
+    default_code = "invalid_operation"
+
+
 class UserNoOrganization(APIException):
     status_code = 401
     default_detail = "User does not have an organization"

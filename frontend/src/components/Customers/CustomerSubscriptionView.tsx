@@ -48,8 +48,8 @@ import createShortenedText from "../../helpers/createShortenedText";
 import useMediaQuery from "../../hooks/useWindowQuery";
 import Badge from "../base/Badges/Badges";
 import DropdownComponent from "../base/Dropdown/Dropdown";
-import { Addon, Customer } from "../../api/api";
-import { AddonType } from "../../types/addon-type";
+import { AddOn, Customer } from "../../api/api";
+import { AddOnType } from "../../types/addon-type";
 
 import ChevronDown from "../base/ChevronDown";
 import CancelMenu from "./CancelMenu";
@@ -150,9 +150,9 @@ const SubscriptionView: FC<Props> = ({
     setSelectedPlan(plan_id);
   };
 
-  const { data: addOns, isLoading }: UseQueryResult<AddonType[]> = useQuery<
-    AddonType[]
-  >(["add-ons"], () => Addon.getAddons().then((res) => res), {
+  const { data: addOns, isLoading }: UseQueryResult<AddOnType[]> = useQuery<
+    AddOnType[]
+  >(["add-ons"], () => AddOn.getAddOns().then((res) => res), {
     refetchOnMount: "always",
   });
   const mutation = useMutation(

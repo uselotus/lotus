@@ -5,6 +5,10 @@ import api.views as api_views
 import posthog
 import sentry_sdk
 from actstream.models import Action
+from api.serializers.nonmodel_serializers import (
+    AddFeatureToAddOnSerializer,
+    AddFeatureToPlanSerializer,
+)
 from api.serializers.webhook_serializers import (
     CustomerCreatedSerializer,
     InvoiceCreatedSerializer,
@@ -19,6 +23,7 @@ from drf_spectacular.utils import OpenApiCallback, extend_schema, inline_seriali
 from metering_billing.exceptions import (
     DuplicateMetric,
     DuplicateWebhookEndpoint,
+    InvalidOperation,
     ServerError,
 )
 from metering_billing.models import (
@@ -34,6 +39,7 @@ from metering_billing.models import (
     PlanVersion,
     PricingUnit,
     Product,
+    SubscriptionRecord,
     UsageAlert,
     User,
     WebhookEndpoint,
@@ -49,17 +55,20 @@ from metering_billing.serializers.backtest_serializers import (
 from metering_billing.serializers.model_serializers import (
     ActionSerializer,
     AddOnCreateSerializer,
-    AddOnSerializer,
+    AddOnDetailSerializer,
+    AddOnVersionCreateSerializer,
+    AddOnVersionDetailSerializer,
+    AddOnVersionUpdateSerializer,
     APITokenSerializer,
-    CustomerSerializer,
+    CustomerDetailSerializer,
     CustomerSummarySerializer,
     CustomerUpdateSerializer,
     CustomerWithRevenueSerializer,
-    EventSerializer,
+    EventDetailSerializer,
     ExternalPlanLinkSerializer,
     FeatureCreateSerializer,
-    FeatureSerializer,
-    InvoiceSerializer,
+    FeatureDetailSerializer,
+    InvoiceDetailSerializer,
     MetricCreateSerializer,
     MetricDetailSerializer,
     MetricUpdateSerializer,
@@ -74,18 +83,23 @@ from metering_billing.serializers.model_serializers import (
     PlanVersionCreateSerializer,
     PlanVersionDetailSerializer,
     PlanVersionUpdateSerializer,
-    PricingUnitSerializer,
+    PricingUnitDetailSerializer,
     ProductSerializer,
+    TagSerializer,
     UsageAlertCreateSerializer,
     UsageAlertSerializer,
     UserSerializer,
     WebhookEndpointSerializer,
 )
 from metering_billing.serializers.request_serializers import (
+    AddReplaceWithSerializer,
     OrganizationSettingFilterSerializer,
+    SetReplaceWithSerializer,
+    TargetCustomersSerializer,
 )
 from metering_billing.serializers.serializer_utils import (
-    AddonUUIDField,
+    AddOnUUIDField,
+    AddOnVersionUUIDField,
     MetricUUIDField,
     OrganizationSettingUUIDField,
     OrganizationUUIDField,
@@ -415,7 +429,7 @@ class EventViewSet(
     """
 
     queryset = Event.objects.all()
-    serializer_class = EventSerializer
+    serializer_class = EventDetailSerializer
     pagination_class = CursorSetPagination
     permission_classes = [IsAuthenticated & ValidOrganization]
     http_method_names = [
@@ -485,7 +499,9 @@ class CustomerViewSet(api_views.CustomerViewSet):
             customer._prefetched_objects_cache = {}
 
         return Response(
-            CustomerSerializer(customer, context=self.get_serializer_context()).data,
+            CustomerDetailSerializer(
+                customer, context=self.get_serializer_context()
+            ).data,
             status=status.HTTP_200_OK,
         )
 
@@ -596,7 +612,7 @@ class FeatureViewSet(
     mixins.CreateModelMixin,
     viewsets.GenericViewSet,
 ):
-    serializer_class = FeatureSerializer
+    serializer_class = FeatureDetailSerializer
     http_method_names = ["get", "post", "head"]
     permission_classes_per_method = {
         "create": [IsAuthenticated & ValidOrganization],
@@ -607,7 +623,7 @@ class FeatureViewSet(
     def get_serializer_class(self):
         if self.action == "create":
             return FeatureCreateSerializer
-        return FeatureSerializer
+        return FeatureDetailSerializer
 
     def get_queryset(self):
         organization = self.request.organization
@@ -641,12 +657,12 @@ class FeatureViewSet(
             )
         return response
 
-    @extend_schema(responses=FeatureSerializer)
+    @extend_schema(responses=FeatureDetailSerializer)
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = self.perform_create(serializer)
-        feature_data = FeatureSerializer(instance).data
+        feature_data = FeatureDetailSerializer(instance).data
         return Response(feature_data, status=status.HTTP_201_CREATED)
 
     def perform_create(self, serializer):
@@ -759,6 +775,225 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         #     )
         return instance
 
+    @extend_schema(
+        request=TargetCustomersSerializer,
+        responses=inline_serializer(
+            "AddTargetCustomerResponse",
+            fields={
+                "success": serializers.BooleanField(),
+                "message": serializers.CharField(),
+            },
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="target_customers/add")
+    def add_target_customer(self, request, *args, **kwargs):
+        plan_version = self.get_object()
+        serializer = TargetCustomersSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        customers = serializer.validated_data["customers"]
+        ct_before = plan_version.target_customers.all().count()
+        if ct_before == 0 and plan_version.is_custom is False:
+            # check there's no subscriptions where this plan version is active
+            # and teh customer is not in the target customers list
+            current_subscriptions = plan_version.susbcription_records.active().exclude(
+                customer__in=customers
+            )
+            if current_subscriptions.exists():
+                return Response(
+                    {
+                        "success": False,
+                        "message": "Cannot add target customers to this plan version. There are active subscriptions for this plan version whose customers are not in the target customers list.",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        for customer in customers:
+            plan_version.target_customers.add(customer)
+        ct_after = plan_version.target_customers.all().count()
+        if plan_version.is_custom is False and ct_after > 0:
+            plan_version.is_custom = True
+            plan_version.save()
+        return Response(
+            {
+                "success": True,
+                "message": f"Added {ct_after - ct_before} new customers to plan version. Total customers: {ct_after}.",
+            }
+        )
+
+    @extend_schema(
+        request=TargetCustomersSerializer,
+        responses=inline_serializer(
+            "RemoveTargetCustomerResponse",
+            fields={
+                "success": serializers.BooleanField(),
+                "message": serializers.CharField(),
+            },
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="target_customers/remove")
+    def remove_target_customer(self, request, *args, **kwargs):
+        plan_version = self.get_object()
+        serializer = TargetCustomersSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        customers = serializer.validated_data["customers"]
+        for customer in customers:
+            cust_subs = plan_version.subscription_records.active().filter(
+                customer=customer
+            )
+            if cust_subs.count() > 0:
+                raise InvalidOperation(
+                    f"Customer {customer} has active subscriptions with this plan version. Cannot remove from plan version."
+                )
+        ct_before = plan_version.target_customers.all().count()
+        for customer in customers:
+            plan_version.target_customers.remove(customer)
+        ct_after = plan_version.target_customers.all().count()
+        return Response(
+            {
+                "success": True,
+                "message": f"Removed {ct_before - ct_after} customers from plan version. Total customers: {ct_after}.",
+            }
+        )
+
+    @extend_schema(
+        request=None,
+        responses=inline_serializer(
+            "MakePublicResponse",
+            fields={
+                "success": serializers.BooleanField(),
+                "message": serializers.CharField(),
+            },
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="make_public")
+    def make_public(self, request, *args, **kwargs):
+        plan_version = self.get_object()
+        if plan_version.is_custom is True:
+            plan_version.is_custom = False
+            plan_version.save()
+            plan_version.target_customers.clear()
+        return Response(
+            {
+                "success": True,
+                "message": f"Plan version {str(plan_version)} made public.",
+            }
+        )
+
+    @extend_schema(
+        parameters=None,
+        request=None,
+        responses=inline_serializer(
+            "DeletePlanVersionSerializer",
+            fields={
+                "success": serializers.BooleanField(),
+                "message": serializers.CharField(),
+            },
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="delete")
+    def delete(self, request, *args, **kwargs):
+        organization = self.request.organization
+        now = now_utc()
+        plan_version = self.get_object()
+        num_active_subscriptions = SubscriptionRecord.objects.active().filter(
+            organization=organization,
+            billing_plan=plan_version,
+        )
+        if num_active_subscriptions > 0:
+            raise InvalidOperation(
+                "Cannot delete plan version with active subscriptions"
+            )
+        plan_version.deleted = now
+        plan_version.save()
+        return Response(
+            {
+                "success": True,
+                "message": f"Deleted  plan version {str(plan_version)}",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        parameters=None,
+        request=AddReplaceWithSerializer,
+        responses=inline_serializer(
+            "SetReplaceWithResponse",
+            fields={
+                "success": serializers.BooleanField(),
+                "message": serializers.CharField(),
+            },
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="replacement/add")
+    def add_replacement(self, request, *args, **kwargs):
+        plan_version = self.get_object()
+        serializer = AddReplaceWithSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        replacement = serializer.validated_data["replacement"]
+        if replacement == plan_version:
+            raise InvalidOperation("Cannot set plan version as its own replacement")
+        if replacement.is_custom is True and plan_version.is_custom is False:
+            raise InvalidOperation(
+                "Cannot set custom plan version as replacement for public plan version"
+            )
+        if replacement.is_custom is True:
+            replacement_target_customers = set(replacement.target_customers.all())
+            plan_version_target_customers = set(plan_version.target_customers.all())
+            if not plan_version_target_customers.issubset(replacement_target_customers):
+                raise InvalidOperation(
+                    "There are target customers in the plan version that are not in the replacement plan version. Please add them to the replacement plan version or remove them from the original plan version first."
+                )
+        plan_version.replace_with = replacement
+        plan_version.save()
+        return Response(
+            {
+                "success": True,
+                "message": f"Added replacement plan version {str(replacement)} to {str(plan_version)}",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        parameters=None,
+        request=SetReplaceWithSerializer,
+        responses=inline_serializer(
+            "SetReplaceWithResponse",
+            fields={
+                "success": serializers.BooleanField(),
+                "message": serializers.CharField(),
+            },
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="replacement/set")
+    def set_replacement(self, request, *args, **kwargs):
+        plan_version = self.get_object()
+        serializer = SetReplaceWithSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        versions_to_replace = serializer.validated_data["versions_to_replace"]
+        for to_replace_v in versions_to_replace:
+            if to_replace_v == plan_version:
+                raise InvalidOperation("Cannot set plan version as its own replacement")
+            if to_replace_v.is_custom is False and plan_version.is_custom is True:
+                raise InvalidOperation(
+                    "Cannot set custom plan version as replacement for public plan version"
+                )
+            if to_replace_v.is_custom is True:
+                to_replace_target_customers = set(to_replace_v.target_customers.all())
+                plan_version_target_customers = set(plan_version.target_customers.all())
+                if not to_replace_target_customers.issubset(
+                    plan_version_target_customers
+                ):
+                    raise InvalidOperation(
+                        "There are target customers in the plan version that are not in the replacement plan version. Please add them to the replacement plan version or remove them from the original plan version first."
+                    )
+        versions_to_replace.update(replace_with=plan_version)
+        return Response(
+            {
+                "success": True,
+                "message": f"Set plan version {str(plan_version)} as replacement for {len(versions_to_replace)} plan versions",
+            },
+            status=status.HTTP_200_OK,
+        )
+
 
 class PlanViewSet(api_views.PlanViewSet):
     """
@@ -778,7 +1013,7 @@ class PlanViewSet(api_views.PlanViewSet):
         if "plan_" in string_uuid:
             uuid = PlanUUIDField().to_internal_value(string_uuid)
         else:
-            uuid = AddonUUIDField().to_internal_value(string_uuid)
+            uuid = AddOnUUIDField().to_internal_value(string_uuid)
         self.kwargs[self.lookup_field] = uuid
         return super().get_object()
 
@@ -836,6 +1071,200 @@ class PlanViewSet(api_views.PlanViewSet):
         )
         return instance
 
+    @extend_schema(
+        parameters=None,
+        request=None,
+        responses=inline_serializer(
+            "DeletePlanSerializer",
+            fields={
+                "success": serializers.BooleanField(),
+                "message": serializers.CharField(),
+            },
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="delete")
+    def delete(self, request, *args, **kwargs):
+        organization = self.request.organization
+        now = now_utc()
+        plan = self.get_object()
+        num_active_subscriptions = SubscriptionRecord.objects.active().filter(
+            organization=organization,
+            billing_plan__plan=plan,
+        )
+        if num_active_subscriptions > 0:
+            raise InvalidOperation("Cannot delete plan with active subscriptions")
+        versions = plan.versions.filter(deleted__isnull=True)
+        num_versions = versions.count()
+        versions.update(deleted=now)
+        plan.deleted = now
+        plan.save()
+        return Response(
+            {
+                "success": True,
+                "message": f"Deleted {num_versions} versions of plan {plan.name}",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        parameters=None,
+        request=inline_serializer(
+            "AddPlanTags",
+            fields={
+                "tags": serializers.ListField(child=TagSerializer(), required=False),
+            },
+        ),
+        responses=inline_serializer(
+            "AddPlanTags",
+            fields={
+                "tags": serializers.ListField(child=TagSerializer(), required=False),
+                "success": serializers.BooleanField(),
+                "message": serializers.CharField(),
+            },
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="tags/add")
+    def add_tags(self, request, *args, **kwargs):
+        plan = self.get_object()
+        tags = request.data.get("tags", [])
+        if not tags:
+            return Response(
+                {
+                    "success": False,
+                    "message": "No tags provided",
+                    "tags": TagSerializer(plan.tags.all(), many=True).data,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        old_tags_ct = plan.tags.all().count()
+        plan.add_tags(tags)
+        new_tags = plan.tags.all()
+        new_tags_data = TagSerializer(new_tags, many=True).data
+        return Response(
+            {
+                "tags": new_tags_data,
+                "success": True,
+                "message": f"Added {len(new_tags_data) - old_tags_ct} tags to plan {str(plan)}",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        parameters=None,
+        request=inline_serializer(
+            "RemovePlanTags",
+            fields={
+                "tags": serializers.ListField(child=TagSerializer(), required=False),
+            },
+        ),
+        responses=inline_serializer(
+            "RemovePlanTags",
+            fields={
+                "tags": serializers.ListField(child=TagSerializer(), required=False),
+                "success": serializers.BooleanField(),
+                "message": serializers.CharField(),
+            },
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="tags/remove")
+    def remove_tags(self, request, *args, **kwargs):
+        plan = self.get_object()
+        tags = request.data.get("tags", [])
+        if not tags:
+            return Response(
+                {
+                    "success": False,
+                    "message": "No tags provided",
+                    "tags": TagSerializer(plan.tags.all(), many=True).data,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        old_tags_ct = plan.tags.all().count()
+        plan.remove_tags(tags)
+        new_tags = plan.tags.all()
+        new_tags_data = TagSerializer(new_tags, many=True).data
+        return Response(
+            {
+                "tags": new_tags_data,
+                "success": True,
+                "message": f"Removed {old_tags_ct - len(new_tags_data)} tags from plan {str(plan)}",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        parameters=None,
+        request=inline_serializer(
+            "SetPlanTags",
+            fields={
+                "tags": serializers.ListField(child=TagSerializer(), required=False),
+            },
+        ),
+        responses=inline_serializer(
+            "SetPlanTagsResponse",
+            fields={
+                "tags": serializers.ListField(child=TagSerializer(), required=False),
+                "success": serializers.BooleanField(),
+                "message": serializers.CharField(),
+            },
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="tags/set")
+    def set_tags(self, request, *args, **kwargs):
+        plan = self.get_object()
+        tags = request.data.get("tags", [])
+        if not tags:
+            return Response(
+                {
+                    "success": False,
+                    "message": "No tags provided",
+                    "tags": TagSerializer(plan.tags.all(), many=True).data,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        plan.set_tags(tags)
+        new_tags = plan.tags.all()
+        new_tags_data = TagSerializer(new_tags, many=True).data
+        return Response(
+            {
+                "tags": new_tags_data,
+                "success": True,
+                "message": f"Set {len(new_tags_data)} tags on plan {str(plan)}",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        parameters=None,
+        request=AddFeatureToPlanSerializer,
+        responses=inline_serializer(
+            "AddFeatureToPlanResponse",
+            fields={
+                "success": serializers.BooleanField(),
+                "message": serializers.CharField(),
+            },
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="features/add")
+    def add_feature(self, request, *args, **kwargs):
+        plan = self.get_object()
+        serializer = AddFeatureToPlanSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        feature = serializer.validated_data["feature_id"]
+        if serializer.validated_data["all_versions"] is True:
+            plan_versions = plan.versions.get_queryset()
+        else:
+            plan_versions = serializer.validated_data["version_ids"]
+        for pv in plan_versions:
+            pv.features.add(feature)
+        return Response(
+            {
+                "success": True,
+                "message": f"Added feature {feature.name} to {len(plan_versions)} versions of plan {plan.plan_name}",
+            },
+            status=status.HTTP_200_OK,
+        )
+
 
 class SubscriptionViewSet(api_views.SubscriptionViewSet):
     pass
@@ -846,7 +1275,7 @@ class InvoiceViewSet(api_views.InvoiceViewSet):
 
     def get_serializer_class(self):
         if self.action == "send":
-            return InvoiceSerializer
+            return InvoiceDetailSerializer
         return super().get_serializer_class()
 
     @extend_schema(request=None)
@@ -1129,7 +1558,7 @@ class OrganizationSettingViewSet(viewsets.ModelViewSet):
 class PricingUnitViewSet(
     mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet
 ):
-    serializer_class = PricingUnitSerializer
+    serializer_class = PricingUnitDetailSerializer
     permission_classes = [IsAuthenticated & ValidOrganization]
     http_method_names = ["get", "post", "head"]
 
@@ -1238,14 +1667,14 @@ class AddOnViewSet(viewsets.ModelViewSet):
 
     def get_object(self):
         string_uuid = self.kwargs[self.lookup_url_kwarg]
-        uuid = AddonUUIDField().to_internal_value(string_uuid)
+        uuid = AddOnUUIDField().to_internal_value(string_uuid)
         self.kwargs[self.lookup_url_kwarg] = uuid
         return super().get_object()
 
     def get_serializer_class(self):
         if self.action == "create":
             return AddOnCreateSerializer
-        return AddOnSerializer
+        return AddOnDetailSerializer
 
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
@@ -1262,13 +1691,222 @@ class AddOnViewSet(viewsets.ModelViewSet):
         qs = self.queryset
         return qs.filter(**filter_kwargs)
 
-    @extend_schema(responses=AddOnSerializer)
+    @extend_schema(responses=AddOnDetailSerializer)
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = self.perform_create(serializer)
-        addon_data = AddOnSerializer(instance).data
+        addon_data = AddOnDetailSerializer(instance).data
         return Response(addon_data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        parameters=None,
+        request=AddFeatureToAddOnSerializer,
+        responses=inline_serializer(
+            "AddFeatureToAddOnResponse",
+            fields={
+                "success": serializers.BooleanField(),
+                "message": serializers.CharField(),
+            },
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="features/add")
+    def add_feature(self, request, *args, **kwargs):
+        addon = self.get_object()
+        serializer = AddFeatureToAddOnSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        feature = serializer.validated_data["feature_id"]
+        if serializer.validated_data["all_versions"] is True:
+            addon_versions = addon.versions.get_queryset()
+        else:
+            addon_versions = serializer.validated_data["version_ids"]
+        for aov in addon_versions:
+            aov.features.add(feature)
+        return Response(
+            {
+                "success": True,
+                "message": f"Added feature {feature.name} to {len(addon_versions)} versions of plan {addon.plan_name}",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        parameters=None,
+        request=None,
+        responses=inline_serializer(
+            "DeleteAddOnSerializer",
+            fields={
+                "success": serializers.BooleanField(),
+                "message": serializers.CharField(),
+            },
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="delete")
+    def delete(self, request, *args, **kwargs):
+        organization = self.request.organization
+        now = now_utc()
+        addon = self.get_object()
+        num_active_subscriptions = SubscriptionRecord.objects.active().filter(
+            organization=organization,
+            billing_plan__plan=addon,
+        )
+        if num_active_subscriptions > 0:
+            raise InvalidOperation("Cannot delete plan with active subscriptions")
+        versions = addon.versions.filter(deleted__isnull=True)
+        num_versions = versions.count()
+        versions.update(deleted=now)
+        addon.deleted = now
+        addon.save()
+        return Response(
+            {
+                "success": True,
+                "message": f"Deleted {num_versions} versions of addon {addon.plan_name}",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class AddOnVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
+    serializer_class = AddOnVersionDetailSerializer
+    lookup_field = "version_id"
+    http_method_names = [
+        "post",
+        "head",
+        "patch",
+    ]
+    permission_classes_per_method = {
+        "create": [IsAuthenticated & ValidOrganization],
+        "partial_update": [IsAuthenticated & ValidOrganization],
+    }
+    queryset = PlanVersion.addons.all()
+
+    def get_object(self):
+        string_uuid = self.kwargs[self.lookup_field]
+        uuid = AddOnVersionUUIDField().to_internal_value(string_uuid)
+        self.kwargs[self.lookup_field] = uuid
+        return super().get_object()
+
+    def get_serializer_class(self):
+        if self.action == "partial_update":
+            return AddOnVersionUpdateSerializer
+        elif self.action == "create":
+            return AddOnVersionCreateSerializer
+        return AddOnVersionDetailSerializer
+
+    def get_queryset(self):
+        organization = self.request.organization
+        qs = PlanVersion.objects.filter(
+            organization=organization,
+        )
+        return qs
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        organization = self.request.organization
+        if self.request.user.is_authenticated:
+            user = self.request.user
+        else:
+            user = None
+        context.update({"organization": organization, "user": user})
+        return context
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            try:
+                username = self.request.user.username
+            except Exception:
+                username = None
+            organization = self.request.organization
+            posthog.capture(
+                POSTHOG_PERSON
+                if POSTHOG_PERSON
+                else (
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
+                ),
+                event=f"{self.action}_plan_version",
+                properties={"organization": organization.organization_name},
+            )
+        return response
+
+    @extend_schema(responses=AddOnVersionDetailSerializer)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = self.perform_create(serializer)
+        plan_version_data = AddOnVersionDetailSerializer(instance).data
+        return Response(plan_version_data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(responses=AddOnVersionDetailSerializer)
+    def update(self, request, *args, **kwargs):
+        pv = self.get_object()
+        serializer = self.get_serializer(pv, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        if getattr(pv, "_prefetched_objects_cache", None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            pv._prefetched_objects_cache = {}
+
+        return Response(
+            AddOnVersionDetailSerializer(
+                pv, context=self.get_serializer_context()
+            ).data,
+            status=status.HTTP_200_OK,
+        )
+
+    def perform_create(self, serializer):
+        if self.request.user.is_authenticated:
+            user = self.request.user
+        else:
+            user = None
+        instance = serializer.save(
+            organization=self.request.organization, created_by=user
+        )
+        # if user:
+        #     action.send(
+        #         user,
+        #         verb="created",
+        #         action_object=instance,
+        #         target=instance.plan,
+        #     )
+        return instance
+
+    @extend_schema(
+        parameters=None,
+        request=None,
+        responses=inline_serializer(
+            "DeleteAddOnVersionSerializer",
+            fields={
+                "success": serializers.BooleanField(),
+                "message": serializers.CharField(),
+            },
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="delete")
+    def delete(self, request, *args, **kwargs):
+        organization = self.request.organization
+        now = now_utc()
+        addon_version = self.get_object()
+        num_active_subscriptions = SubscriptionRecord.objects.active().filter(
+            organization=organization,
+            billing_plan=addon_version,
+        )
+        if num_active_subscriptions > 0:
+            raise InvalidOperation(
+                "Cannot delete plan version with active subscriptions"
+            )
+        addon_version.deleted = now
+        addon_version.save()
+        return Response(
+            {
+                "success": True,
+                "message": f"Deleted  plan version {str(addon_version)}",
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class UsageAlertViewSet(viewsets.ModelViewSet):
@@ -1305,14 +1943,9 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
         organization = self.request.organization
         context.update({"organization": organization})
         return context
-        return context
-        return context
-        return context
-        return context
-        return context
-        return context
-        return context
-        return context
+        context = super().get_serializer_context()
+        organization = self.request.organization
+        context.update({"organization": organization})
         return context
         return context
         return context

@@ -16,12 +16,11 @@ class BacktestSubstitutionMultiSerializer(serializers.Serializer):
         queryset=PlanVersion.objects.active(),
         read_only=False,
     )
-    original_plans = serializers.ListSerializer(
-        child=SlugRelatedFieldWithOrganization(
-            slug_field="version_id",
-            queryset=PlanVersion.objects.all(),
-            read_only=False,
-        ),
+    original_plans = SlugRelatedFieldWithOrganization(
+        slug_field="version_id",
+        queryset=PlanVersion.objects.all(),
+        read_only=False,
+        many=True,
     )
 
 

@@ -8,14 +8,14 @@ import {
   CreateRecurringCharge,
   PlanType,
 } from "../types/plan-type";
-import { Plan, Organization, Addon } from "../api/api";
+import { Plan, Organization, AddOn } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
 import { PageLayout } from "../components/base/PageLayout";
 import { ComponentDisplay } from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import { CurrencyType } from "../types/pricing-unit-type";
-import { AddonTypeOption, CreateAddonType } from "../types/addon-type";
+import { AddOnTypeOption, CreateAddOnType } from "../types/addon-type";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
 
 interface ComponentDisplay {
@@ -49,12 +49,12 @@ function CreateAddOns() {
   const navigate = useNavigate();
   const [componentsData, setComponentsData] = useState<CreateComponent[]>([]);
   const [form] = Form.useForm();
-  const [addon_name, setAddonName] = useState<string | null>(null!);
+  const [addon_name, setAddOnName] = useState<string | null>(null!);
   const [description, setDescription] = useState<string | null>(null);
   const [billing_frequency, setBillingFrequency] = useState<string | null>(
     null
   );
-  const [addon_type, setAddonType] = useState<AddonTypeOption>("flat_fee");
+  const [addon_type, setAddOnType] = useState<AddOnTypeOption>("flat_fee");
   const [base_cost, setBaseCost] = useState<number | null>(0.0);
   const [recurring_flat_fee_timing, setRecurringFlatFeeTiming] = useState<
     "in_advance" | "in_arrears"
@@ -87,7 +87,7 @@ function CreateAddOns() {
   }, []);
 
   const mutation = useMutation(
-    (add_on: CreateAddonType) => Addon.createAddon(add_on),
+    (add_on: CreateAddOnType) => AddOn.createAddOn(add_on),
     {
       onSuccess: () => {
         toast.success("Successfully created Add-on", {
@@ -189,7 +189,7 @@ function CreateAddOns() {
     navigate(-1);
   };
 
-  const submitAddons = () => {
+  const submitAddOns = () => {
     const usagecomponentslist: CreateComponent[] = [];
     const components: any = Object.values(componentsData);
     if (components) {
@@ -218,7 +218,7 @@ function CreateAddOns() {
       charge_behavior: "prorate",
     });
 
-    const addons: CreateAddonType = {
+    const addons: CreateAddOnType = {
       addon_name: addon_name,
       description: description,
       addon_type: addon_type,
@@ -310,7 +310,7 @@ function CreateAddOns() {
         <Form
           form={form}
           name="create_addons"
-          onFinish={submitAddons}
+          onFinish={submitAddOns}
           onFinishFailed={onFinishFailed}
           autoComplete="off"
           labelCol={{ span: 8 }}
@@ -333,7 +333,7 @@ function CreateAddOns() {
                 <Input
                   className="w-full"
                   placeholder="Ex: words count"
-                  onChange={(e) => setAddonName(e.target.value)}
+                  onChange={(e) => setAddOnName(e.target.value)}
                 />
               </Form.Item>
               <Form.Item name="description">
@@ -355,7 +355,7 @@ function CreateAddOns() {
                     } else {
                       setShowInvoicing(true);
                     }
-                    setAddonType(e);
+                    setAddOnType(e);
                   }}
                   className="w-full"
                 >

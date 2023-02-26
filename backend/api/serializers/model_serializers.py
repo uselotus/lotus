@@ -1,6 +1,5 @@
 import datetime
 import logging
-import re
 from decimal import Decimal
 from typing import Literal, Union
 
@@ -38,7 +37,7 @@ from metering_billing.models import (
 )
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.serializers.serializer_utils import (
-    AddonUUIDField,
+    AddOnUUIDField,
     BalanceAdjustmentUUIDField,
     ConvertEmptyStringToNullMixin,
     FeatureUUIDField,
@@ -59,6 +58,7 @@ from metering_billing.utils.enums import (
     INVOICE_STATUS_ENUM,
     INVOICING_BEHAVIOR,
     PAYMENT_PROCESSORS,
+    PLAN_VERSION_STATUS,
     SUBSCRIPTION_STATUS,
     TAX_PROVIDER,
     USAGE_BEHAVIOR,
@@ -71,16 +71,10 @@ SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
 
 
-class TagSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
+class TagNameSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Tag
-        fields = ("tag_name", "tag_hex", "tag_color")
-
-    def validate(self, data):
-        match = re.search(r"^#(?:[0-9a-fA-F]{3}){1,2}$", data["tag_hex"])
-        if not match:
-            raise serializers.ValidationError("Invalid hex code")
-        return data
+        fields = ("tag_name",)
 
 
 class PricingUnitSerializer(
@@ -146,6 +140,7 @@ class LightweightCustomerSerializerForInvoice(LightweightCustomerSerializer):
         return None
 
 
+@extend_schema_serializer(deprecate_fields=["version"])
 class LightweightPlanVersionSerializer(
     ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
@@ -155,13 +150,16 @@ class LightweightPlanVersionSerializer(
         extra_kwargs = {
             "plan_id": {"required": True, "read_only": True},
             "plan_name": {"required": True, "read_only": True},
-            "version": {"required": True, "read_only": True},
+            "version": {"required": False, "read_only": True},
             "version_id": {"required": True, "read_only": True},
         }
 
-    plan_name = serializers.CharField(source="plan.plan_name")
+    plan_name = serializers.SerializerMethodField()
     plan_id = PlanUUIDField(source="plan.plan_id")
     version_id = PlanVersionUUIDField(read_only=True)
+
+    def get_plan_name(self, obj) -> str:
+        return obj.get_name()
 
 
 class CategoricalFilterSerializer(
@@ -225,7 +223,7 @@ class SubscriptionCustomerDetailSerializer(SubscriptionCustomerSummarySerializer
         fields = SubscriptionCustomerSummarySerializer.Meta.fields + ("start_date",)
 
 
-class LightweightAddonSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
+class LightweightAddOnSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Plan
         fields = ("addon_name", "addon_id", "addon_type", "billing_frequency")
@@ -240,7 +238,7 @@ class LightweightAddonSerializer(TimezoneFieldMixin, serializers.ModelSerializer
         help_text="The name of the add-on plan.",
         source="plan_name",
     )
-    addon_id = AddonUUIDField(
+    addon_id = AddOnUUIDField(
         source="plan_id",
         help_text="The ID of the add-on plan.",
     )
@@ -258,7 +256,7 @@ class LightweightAddonSerializer(TimezoneFieldMixin, serializers.ModelSerializer
         return obj.addon_spec.get_billing_frequency_display()
 
 
-class LightweightAddonSubscriptionRecordSerializer(
+class LightweightAddOnSubscriptionRecordSerializer(
     ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
@@ -276,7 +274,7 @@ class LightweightAddonSubscriptionRecordSerializer(
             "fully_billed": {"required": True},
         }
 
-    addon = LightweightAddonSerializer(source="billing_plan.plan")
+    addon = LightweightAddOnSerializer(source="billing_plan.plan")
 
 
 class SubscriptionRecordSerializer(
@@ -311,7 +309,7 @@ class SubscriptionRecordSerializer(
     )
     customer = LightweightCustomerSerializer()
     billing_plan = LightweightPlanVersionSerializer()
-    addons = LightweightAddonSubscriptionRecordSerializer(
+    addons = LightweightAddOnSubscriptionRecordSerializer(
         many=True, source="addon_subscription_records"
     )
 
@@ -1075,21 +1073,18 @@ class PlanVersionSerializer(
     class Meta:
         model = PlanVersion
         fields = (
-            "description",
             "flat_fee_billing_type",
             "flat_rate",
             "recurring_charges",
             "components",
             "features",
             "price_adjustment",
-            "usage_billing_frequency",
             "version",
             "status",
             "plan_name",
             "currency",
         )
         extra_kwargs = {
-            "description": {"required": True, "read_only": True},
             "flat_fee_billing_type": {"required": True, "read_only": True},
             "flat_rate": {"required": True, "read_only": True},
             "components": {"required": True, "read_only": True},
@@ -1100,10 +1095,9 @@ class PlanVersionSerializer(
                 "allow_null": True,
                 "read_only": True,
             },
-            "usage_billing_frequency": {"required": True, "read_only": True},
             "version": {"required": True, "read_only": True},
-            "status": {"required": True, "read_only": True},
             "plan_name": {"required": True, "read_only": True},
+            "status": {"required": True, "read_only": True},
         }
 
     flat_rate = serializers.SerializerMethodField()
@@ -1115,6 +1109,12 @@ class PlanVersionSerializer(
 
     plan_name = serializers.CharField(source="plan.plan_name")
     currency = PricingUnitSerializer(source="pricing_unit")
+    status = serializers.SerializerMethodField()
+
+    def get_status(
+        self, obj
+    ) -> serializers.ChoiceField(choices=PLAN_VERSION_STATUS.choices):
+        return obj.get_status()
 
     def get_recurring_charges(self, obj) -> RecurringChargeSerializer(many=True):
         try:
@@ -1162,12 +1162,6 @@ class PlanVersionSerializer(
     def get_replace_with(self, obj) -> Union[int, None]:
         if obj.replace_with is not None:
             return obj.replace_with.version
-        else:
-            return None
-
-    def get_transition_to(self, obj) -> Union[str, None]:
-        if obj.transition_to is not None:
-            return str(obj.transition_to.display_version)
         else:
             return None
 
@@ -1233,42 +1227,41 @@ class InitialExternalPlanLinkSerializer(
         fields = ("source", "external_plan_id")
 
 
+@extend_schema_serializer(deprecate_fields=["display_version"])
 class PlanSerializer(
     ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = Plan
         fields = (
+            "plan_id",
             "plan_name",
             "plan_duration",
-            "status",
+            "plan_description",
             "external_links",
-            "plan_id",
-            "parent_plan",
-            "target_customer",
             "display_version",
             "num_versions",
             "active_subscriptions",
             "tags",
+            "versions",
         )
         extra_kwargs = {
             "plan_name": {"required": True},
             "plan_duration": {"required": True},
-            "status": {"required": True},
+            "plan_description": {"required": True},
             "external_links": {"required": True},
             "plan_id": {"required": True},
-            "parent_plan": {"required": True, "allow_null": True},
-            "target_customer": {"required": True, "allow_null": True},
             "display_version": {"required": True},
             "num_versions": {"required": True},
             "active_subscriptions": {"required": True},
             "tags": {"required": True},
+            "versions": {"required": True},
         }
 
     plan_id = PlanUUIDField()
-    parent_plan = PlanNameAndIDSerializer(allow_null=True)
-    target_customer = LightweightCustomerSerializer(allow_null=True)
-    display_version = PlanVersionSerializer()
+    display_version = PlanVersionSerializer(
+        help_text="Display version has been deprecated. Use 'versions' instead. We will still return this field for now with some heuristics for figuring out what the desired version is, but it will be removed in the near future."
+    )
     num_versions = serializers.SerializerMethodField(
         help_text="The number of versions that this plan has."
     )
@@ -1279,6 +1272,7 @@ class PlanSerializer(
         many=True, help_text="The external links that this plan has."
     )
     tags = serializers.SerializerMethodField(help_text="The tags that this plan has.")
+    versions = PlanVersionSerializer(many=True, help_text="This plan's versions.")
 
     def get_num_versions(self, obj) -> int:
         try:
@@ -1303,8 +1297,8 @@ class PlanSerializer(
                 or 0
             )
 
-    def get_tags(self, obj) -> TagSerializer(many=True):
-        data = TagSerializer(obj.tags.all(), many=True).data
+    def get_tags(self, obj) -> TagNameSerializer(many=True):
+        data = TagNameSerializer(obj.tags.all(), many=True).data
         return data
 
 
@@ -1329,6 +1323,7 @@ class EventSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     )
 
 
+@extend_schema_serializer(deprecate_fields=["plan_id"])
 class SubscriptionRecordCreateSerializer(
     ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
@@ -1342,6 +1337,7 @@ class SubscriptionRecordCreateSerializer(
             "subscription_filters",
             "customer_id",
             "plan_id",
+            "version_id",
         )
 
     start_date = serializers.DateTimeField(
@@ -1372,21 +1368,44 @@ class SubscriptionRecordCreateSerializer(
     )
     plan_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
-        source="billing_plan.plan",
         queryset=Plan.objects.all(),
         write_only=True,
-        help_text="The Lotus plan_id, found in the billing plan object",
+        required=False,
+        help_text="The Lotus plan_id, found in the billing plan object. This field has been deprecated in favor of version_id for the sake of being explicit. If used, a best effort will be made to find the correct plan version (matching preferred currencies, prioritizing custom plans), but if more than one plan versions matches this criteria this will return an error.",
+    )
+    version_id = SlugRelatedFieldWithOrganization(
+        slug_field="version_id",
+        queryset=PlanVersion.objects.all(),
+        write_only=True,
+        required=False,
+        help_text="The Lotus version_id, found in the billing plan object. This is the preferred way to specify the plan version.",
     )
 
     def validate(self, data):
         # extract the plan version from the plan
-        data["billing_plan"] = data["billing_plan"]["plan"].display_version
-        # check that if the plan is designed for a specific customer, that the customer is that customer
-        tc = data["billing_plan"].plan.target_customer
-        if tc is not None and tc != data["customer"]:
-            raise serializers.ValidationError(
-                f"This plan is for a customer with customer_id {tc.customer_id}, not {data['customer'].customer_id}"
+        if "version_id" in data:
+            data["billing_plan"] = data.pop("version_id")
+        elif "plan_id" in data:
+            data["billing_plan"] = data.pop("plan_id").get_version_for_customer(
+                data["customer"]
             )
+            if data["billing_plan"] is None:
+                raise serializers.ValidationError(
+                    "Unable to find a singular pla n version that matches the plan_id. Please specify a version_id instead."
+                )
+        else:
+            raise serializers.ValidationError(
+                "Either plan_id or version_id must be specified"
+            )
+        if not data["billing_plan"].is_active():
+            raise serializers.ValidationError(
+                "The plan version you are trying to subscribe to is not active"
+            )
+        if data["billing_plan"].is_custom:
+            if data["customer"] not in data["billing_plan"].target_customers.all():
+                raise serializers.ValidationError(
+                    "The plan version you are trying to create a subscription for is a custom plan that is not available to this customer."
+                )
         return data
 
     def create(self, validated_data):
@@ -1501,7 +1520,7 @@ class SubscriptionRecordUpdateSerializer(
         return data
 
 
-class AddonSubscriptionRecordUpdateSerializer(
+class AddOnSubscriptionRecordUpdateSerializer(
     ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
@@ -1636,7 +1655,7 @@ class ListSubscriptionRecordFilter(SubscriptionRecordFilterSerializer):
         return data
 
 
-class AddonSubscriptionRecordFilterSerializer(serializers.Serializer):
+class AddOnSubscriptionRecordFilterSerializer(serializers.Serializer):
     attached_customer_id = SlugRelatedFieldWithOrganization(
         slug_field="customer_id",
         queryset=Customer.objects.all(),
@@ -1923,17 +1942,96 @@ class UsageAlertSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     plan_version = LightweightPlanVersionSerializer()
     metric = MetricSerializer()
     plan_version = LightweightPlanVersionSerializer()
-    plan_version = LightweightPlanVersionSerializer()
-    plan_version = LightweightPlanVersionSerializer()
 
 
+class AddOnVersionSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
+    class Meta:
+        model = PlanVersion
+        fields = (
+            "recurring_charges",
+            "components",
+            "features",
+            "status",
+            "currency",
+            "active_instances",
+            "invoice_when",
+            "billing_frequency",
+            "addon_type",
+        )
+        extra_kwargs = {
+            "recurring_charges": {"required": True, "read_only": True},
+            "components": {"required": True, "read_only": True},
+            "features": {"required": True, "read_only": True},
+            "status": {"required": True, "read_only": True},
+            "currency": {"required": True, "read_only": True},
+            "active_instances": {"required": True, "read_only": True},
+            "invoice_when": {"required": True, "read_only": True},
+            "billing_frequency": {"required": True, "read_only": True},
+            "addon_type": {"required": True, "read_only": True},
+        }
+
+    recurring_charges = RecurringChargeSerializer(many=True)
+    components = PlanComponentSerializer(many=True, source="plan_components")
+    features = FeatureSerializer(many=True)
+    currency = PricingUnitSerializer(
+        help_text="Currency of the plan. Can only be null if the flat fee is 0 and all components are of type free.",
+    )
+    active_instances = serializers.SerializerMethodField(
+        help_text="The number of active instances of this version of the add-on plan."
+    )
+    invoice_when = serializers.SerializerMethodField()
+    billing_frequency = serializers.SerializerMethodField()
+    addon_type = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+
+    def get_status(
+        self, obj
+    ) -> serializers.ChoiceField(choices=PLAN_VERSION_STATUS.choices):
+        return obj.get_status()
+
+    def get_invoice_when(
+        self, obj
+    ) -> serializers.ChoiceField(
+        choices=AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.labels
+    ):
+        return obj.addon_spec.get_flat_fee_invoicing_behavior_on_attach_display()
+
+    def get_addon_type(self, obj) -> Literal["usage_based", "flat"]:
+        if obj.plan_components.all().count() > 0:
+            return "usage_based"
+        return "flat"
+
+    def get_billing_frequency(
+        self, obj
+    ) -> serializers.ChoiceField(choices=AddOnSpecification.BillingFrequency.labels):
+        return obj.addon_spec.get_billing_frequency_display()
+
+    def get_active_instances(self, obj) -> int:
+        return sum(x.active_subscriptions for x in obj.active_subs_by_version())
+
+
+@extend_schema_serializer(
+    deprecate_fields=[
+        "flat_rate",
+        "components",
+        "features",
+        "currency",
+        "active_instances",
+        "invoice_when",
+        "billing_frequency",
+        "addon_type",
+    ]
+)
 class AddOnSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Plan
         fields = (
-            "addon_name",
             "addon_id",
-            "description",
+            "addon_name",
+            "addon_description",
+            "versions",
             "flat_rate",
             "components",
             "features",
@@ -1944,30 +2042,31 @@ class AddOnSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
             "addon_type",
         )
         extra_kwargs = {
-            "addon_name": {"required": True},
-            "addon_id": {"required": True},
-            "description": {"required": True},
-            "flat_rate": {"required": True},
-            "components": {"required": True},
-            "features": {"required": True},
-            "currency": {"required": True, "allow_null": True},
-            "active_instances": {"required": True},
-            "invoice_when": {"required": True},
-            "billing_frequency": {"required": True},
-            "addon_type": {"required": True},
+            "addon_name": {"required": True, "read_only": True},
+            "addon_id": {"required": True, "read_only": True},
+            "addon_description": {"required": True, "read_only": True},
+            "versions": {"required": True, "read_only": True},
+            "flat_rate": {"required": True, "read_only": True},
+            "components": {"required": True, "read_only": True},
+            "features": {"required": True, "read_only": True},
+            "currency": {"required": True, "allow_null": True, "read_only": True},
+            "active_instances": {"required": True, "read_only": True},
+            "invoice_when": {"required": True, "read_only": True},
+            "billing_frequency": {"required": True, "read_only": True},
+            "addon_type": {"required": True, "read_only": True},
         }
 
+    addon_id = AddOnUUIDField(
+        source="plan_id",
+        help_text="The ID of the add-on plan.",
+    )
     addon_name = serializers.CharField(
         help_text="The name of the add-on plan.",
         source="plan_name",
     )
-    addon_id = AddonUUIDField(
-        source="plan_id",
-        help_text="The ID of the add-on plan.",
-    )
-    description = serializers.CharField(
-        source="display_version.description",
+    addon_description = serializers.CharField(
         help_text="The description of the add-on plan.",
+        source="plan_description",
     )
     flat_rate = serializers.SerializerMethodField()
     components = PlanComponentSerializer(
@@ -1984,6 +2083,7 @@ class AddOnSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     invoice_when = serializers.SerializerMethodField()
     billing_frequency = serializers.SerializerMethodField()
     addon_type = serializers.SerializerMethodField()
+    versions = AddOnVersionSerializer(many=True, help_text="This addon's versions.")
 
     def get_flat_rate(
         self, obj
@@ -2036,7 +2136,7 @@ class AddOnSubscriptionRecordSerializer(
         }
 
     customer = LightweightCustomerSerializer()
-    addon = LightweightAddonSerializer(source="billing_plan.plan")
+    addon = LightweightAddOnSerializer(source="billing_plan.plan")
     parent = LightweightSubscriptionRecordSerializer()
 
 

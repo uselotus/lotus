@@ -37,14 +37,13 @@ from metering_billing.views.model_views import (
     PlanVersionViewSet,
     PlanViewSet,
     PricingUnitViewSet,
-    ProductViewSet,
     SubscriptionViewSet,
     UsageAlertViewSet,
     UserViewSet,
     WebhookViewSet,
 )
 from metering_billing.views.payment_processor_views import PaymentProcesorView
-from metering_billing.views.views import (  # MergeCustomersView,; ExperimentalToActiveView,
+from metering_billing.views.views import (
     ChangeUserOrganizationView,
     CostAnalysisView,
     DraftInvoiceView,
@@ -74,7 +73,7 @@ router.register(r"invoices", InvoiceViewSet, basename="invoice")
 router.register(r"features", FeatureViewSet, basename="feature")
 router.register(r"webhooks", WebhookViewSet, basename="webhook")
 router.register(r"backtests", BacktestViewSet, basename="backtest")
-router.register(r"products", ProductViewSet, basename="product")
+# router.register(r"products", ProductViewSet, basename="product")
 router.register(r"plans", PlanViewSet, basename="plan")
 router.register(r"plan_versions", PlanVersionViewSet, basename="plan_version")
 router.register(r"events", EventViewSet, basename="event")

@@ -123,9 +123,12 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             try:
                 data = PlanUUIDField().to_internal_value(data)
             except ValidationError:
-                data = AddonUUIDField().to_internal_value(data)
+                data = AddOnUUIDField().to_internal_value(data)
         elif self.queryset.model is PlanVersion:
-            data = PlanVersionUUIDField().to_internal_value(data)
+            try:
+                data = PlanVersionUUIDField().to_internal_value(data)
+            except ValidationError:
+                data = AddOnVersionUUIDField().to_internal_value(data)
         elif self.queryset.model is Feature:
             data = FeatureUUIDField().to_internal_value(data)
         elif self.queryset.model is Organization:
@@ -153,7 +156,7 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
         elif isinstance(obj, Plan) and obj.addon_spec is None:
             return PlanUUIDField().to_representation(obj.plan_id)
         elif isinstance(obj, Plan) and obj.addon_spec is not None:
-            return AddonUUIDField().to_representation(obj.plan_id)
+            return AddOnUUIDField().to_representation(obj.plan_id)
         elif isinstance(obj, PlanVersion):
             return PlanVersionUUIDField().to_representation(obj.version_id)
         elif isinstance(obj, Feature):
@@ -259,6 +262,12 @@ class PlanVersionUUIDField(UUIDPrefixField):
         super().__init__("plan_version_", *args, **kwargs)
 
 
+@extend_schema_field(serializers.RegexField(regex=r"addon_version_[0-9a-f]{32}"))
+class AddOnVersionUUIDField(UUIDPrefixField):
+    def __init__(self, *args, **kwargs):
+        super().__init__("addon_version_", *args, **kwargs)
+
+
 @extend_schema_field(serializers.RegexField(regex=r"feature_[0-9a-f]{32}"))
 class FeatureUUIDField(UUIDPrefixField):
     def __init__(self, *args, **kwargs):
@@ -296,6 +305,6 @@ class WebhookSecretUUIDField(UUIDPrefixField):
 
 
 @extend_schema_field(serializers.RegexField(regex=r"addon_[0-9a-f]{32}"))
-class AddonUUIDField(UUIDPrefixField):
+class AddOnUUIDField(UUIDPrefixField):
     def __init__(self, *args, **kwargs):
         super().__init__("addon_", *args, **kwargs)

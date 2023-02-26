@@ -53,7 +53,6 @@ from metering_billing.utils.enums import (
     FLAT_FEE_BEHAVIOR,
     INVOICE_CHARGE_TIMING_TYPE,
     INVOICING_BEHAVIOR,
-    MAKE_PLAN_VERSION_ACTIVE_TYPE,
     METRIC_AGGREGATION,
     METRIC_GRANULARITY,
     METRIC_STATUS,
@@ -66,7 +65,6 @@ from metering_billing.utils.enums import (
     PLAN_VERSION_STATUS,
     PRICE_ADJUSTMENT_TYPE,
     PRODUCT_STATUS,
-    REPLACE_IMMEDIATELY_TYPE,
     SUPPORTED_CURRENCIES,
     SUPPORTED_CURRENCIES_VERSION,
     TAG_GROUP,
@@ -908,8 +906,6 @@ class CustomerBalanceAdjustment(models.Model):
                 "Child adjustment must be less than or equal to the remaining balance of "
                 "the parent adjustment"
             )
-        if not self.pricing_unit:
-            self.pricing_unit = self.customer.organization.default_currency
         if not self.organization:
             self.organization = self.customer.organization
         if self.amount_paid is None or self.amount_paid == 0:
@@ -1532,7 +1528,7 @@ class PlanComponent(models.Model):
 
     def save(self, *args, **kwargs):
         if self.pricing_unit is None and self.plan_version is not None:
-            self.pricing_unit = self.plan_version.pricing_unit
+            self.pricing_unit = self.plan_version.currency
         super().save(*args, **kwargs)
 
     def calculate_total_revenue(self, subscription_record) -> UsageRevenueSummary:
@@ -1925,6 +1921,16 @@ class PlanVersionManager(BasePlanManager):
     pass
 
 
+class RegularPlanVersionManager(PlanVersionManager):
+    def get_queryset(self):
+        return super().get_queryset().filter(addon_spec__isnull=True)
+
+
+class AddOnPlanVersionManager(PlanVersionManager):
+    def get_queryset(self):
+        return super().get_queryset().filter(addon_spec__isnull=False)
+
+
 class PlanVersion(models.Model):
     # META
     organization = models.ForeignKey(
@@ -1974,7 +1980,7 @@ class PlanVersion(models.Model):
     price_adjustment = models.ForeignKey(
         "PriceAdjustment", on_delete=models.SET_NULL, null=True, blank=True
     )
-    pricing_unit = models.ForeignKey(
+    currency = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
         related_name="versions",
@@ -1987,7 +1993,8 @@ class PlanVersion(models.Model):
     target_customers = models.ManyToManyField(Customer, related_name="plan_versions")
     version = models.PositiveSmallIntegerField()
 
-    objects = PlanVersionManager()
+    objects = RegularPlanVersionManager()
+    addons = AddOnPlanVersionManager()
 
     class Meta:
         constraints = [
@@ -2013,6 +2020,35 @@ class PlanVersion(models.Model):
     def num_active_subs(self):
         cnt = self.subscription_records.active().count()
         return cnt
+
+    def is_active(self, time=None):
+        if time is None:
+            time = now_utc()
+        return self.not_active_before <= time and (
+            self.not_active_after is None or self.not_active_after > time
+        )
+
+    def get_status(self) -> PLAN_VERSION_STATUS:
+        now = now_utc()
+        if self.deleted is not None:
+            return PLAN_VERSION_STATUS.DELETED
+        if self.not_active_before <= now:
+            if self.not_active_after is None or self.not_active_after > now:
+                return PLAN_VERSION_STATUS.ACTIVE
+            else:
+                n_active_subs = self.num_active_subs()
+                if self.replace_with is None:
+                    if n_active_subs > 0:
+                        return PLAN_VERSION_STATUS.GRANDFATHERED
+                    else:
+                        return PLAN_VERSION_STATUS.INACTIVE
+                else:
+                    if n_active_subs > 0:
+                        return PLAN_VERSION_STATUS.RETIRING
+                    else:
+                        return PLAN_VERSION_STATUS.INACTIVE
+        else:
+            return PLAN_VERSION_STATUS.NOT_STARTED
 
 
 class PriceAdjustment(models.Model):
@@ -2078,6 +2114,22 @@ class AddOnSpecification(models.Model):
         default=FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_ATTACH,
     )
 
+    @staticmethod
+    def get_billing_frequency_value(label):
+        mapping = {
+            AddOnSpecification.BillingFrequency.ONE_TIME.label: AddOnSpecification.BillingFrequency.ONE_TIME.value,
+            AddOnSpecification.BillingFrequency.RECURRING.label: AddOnSpecification.BillingFrequency.RECURRING.value,
+        }
+        return mapping.get(label, label)
+
+    @staticmethod
+    def get_flat_fee_invoicing_behavior_value(label):
+        mapping = {
+            AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_ATTACH.label: AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_ATTACH.value,
+            AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_SUBSCRIPTION_END.label: AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_SUBSCRIPTION_END.value,
+        }
+        return mapping.get(label, label)
+
 
 class Plan(models.Model):
     # META
@@ -2102,8 +2154,6 @@ class Plan(models.Model):
 
     # BILLING
     taxjar_code = models.TextField(max_length=30, null=True, blank=True)
-    metrics = models.ManyToManyField("Metric", blank=True, related_name="plans")
-    features = models.ManyToManyField("Feature", blank=True, related_name="plans")
     plan_duration = models.CharField(
         choices=PLAN_DURATION.choices,
         max_length=40,
@@ -2133,10 +2183,9 @@ class Plan(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                check=(Q(parent_plan__isnull=True) & Q(target_customer__isnull=True))
-                | (Q(parent_plan__isnull=False) & Q(target_customer__isnull=False)),
-                name="both_null_or_both_not_null",
-            ),
+                check=(Q(is_addon=True) | Q(plan_duration__isnull=False)),
+                name="addon_cant_have_duration",
+            )
         ]
         indexes = [
             models.Index(fields=["organization", "plan_id"]),
@@ -2144,6 +2193,38 @@ class Plan(models.Model):
 
     def __str__(self):
         return self.plan_name
+
+    def add_tags(self, tags):
+        existing_tags = self.tags.all()
+        existing_tag_names = [tag.tag_name.lower() for tag in existing_tags]
+        for tag in tags:
+            if tag["tag_name"].lower() not in existing_tag_names:
+                try:
+                    tag_obj = Tag.objects.get(
+                        organization=self.organization,
+                        tag_name__iexact=tag["tag_name"].lower(),
+                        tag_group=TAG_GROUP.PLAN,
+                    )
+                except Tag.DoesNotExist:
+                    tag_obj = Tag.objects.create(
+                        organization=self.organization,
+                        tag_name=tag["tag_name"],
+                        tag_group=TAG_GROUP.PLAN,
+                        tag_hex=tag["tag_hex"],
+                        tag_color=tag["tag_color"],
+                    )
+                self.tags.add(tag_obj)
+
+    def remove_tags(self, tags):
+        existing_tags = self.tags.all()
+        tags_lower = [tag["tag_name"].lower() for tag in tags]
+        for existing_tag in existing_tags:
+            if existing_tag.tag_name.lower() in tags_lower:
+                self.tags.remove(existing_tag)
+
+    def set_tags(self, tags):
+        self.tags.clear()
+        self.add_tags(tags)
 
     def active_subs_by_version(self):
         versions = self.versions.all().prefetch_related("subscription_records")
@@ -2160,107 +2241,43 @@ class Plan(models.Model):
         )
         return versions_count
 
-    def make_version_active(
-        self, plan_version, make_active_type=None, replace_immediately_type=None
-    ):
-        self._handle_existing_versions(
-            plan_version, make_active_type, replace_immediately_type
-        )
-        self.display_version = plan_version
-        self.save()
-        if plan_version.status != PLAN_VERSION_STATUS.ACTIVE:
-            plan_version.status = PLAN_VERSION_STATUS.ACTIVE
-            plan_version.save()
-
-    def _handle_existing_versions(
-        self, new_version, make_active_type, replace_immediately_type
-    ):
-        # To dos:
-        # 1. make retiring plans update to new version
-        # 2a. if on renewal, update active plan to be retiring w/ new version replacing
-        # 2b. if grandfather, grandfather currently active plan
-        # 2c. if immediataely, then go through immediate replacement flow
-        if make_active_type in [
-            MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_ON_ACTIVE_VERSION_RENEWAL,
-            MAKE_PLAN_VERSION_ACTIVE_TYPE.GRANDFATHER_ACTIVE,
-        ]:
-            # 1
-            replace_with_lst = [PLAN_VERSION_STATUS.RETIRING]
-            # 2a
-            if (
-                make_active_type
-                == MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_ON_ACTIVE_VERSION_RENEWAL
-            ):
-                replace_with_lst.append(PLAN_VERSION_STATUS.ACTIVE)
-            now = now_utc()
-            versions_to_replace = (
-                self.versions.all()
-                .filter(~Q(pk=new_version.pk), status__in=replace_with_lst)
-                .annotate(
-                    active_subscriptions=Count(
-                        "subscription_record",
-                        filter=Q(
-                            subscription_record__start_date__lte=now,
-                            subscription_record__end_date__gte=now,
-                        ),
-                        output_field=models.IntegerField(),
-                    )
-                )
-            )
-            inactive = versions_to_replace.filter(active_subscriptions=0)
-            retiring = versions_to_replace.filter(active_subscriptions__gt=0)
-            inactive.query.annotations.clear()
-            retiring.query.annotations.clear()
-            inactive.filter().update(status=PLAN_VERSION_STATUS.INACTIVE)
-            retiring.filter().update(status=PLAN_VERSION_STATUS.RETIRING)
-            # 2b
-            if make_active_type == MAKE_PLAN_VERSION_ACTIVE_TYPE.GRANDFATHER_ACTIVE:
-                prev_active = self.versions.all().get(
-                    ~Q(pk=new_version.pk), status=PLAN_VERSION_STATUS.ACTIVE
-                )
-                if prev_active.num_active_subs() > 0:
-                    prev_active.status = PLAN_VERSION_STATUS.GRANDFATHERED
-                else:
-                    prev_active.status = PLAN_VERSION_STATUS.INACTIVE
-                prev_active.save()
+    def get_version_for_customer(self, customer) -> Optional[PlanVersion]:
+        versions = self.versions.active().prefetch_related("subscription_records")
+        if versions.count() == 0:
+            return None
+        elif versions.count() == 1:
+            return versions.first()
         else:
-            # 2c
-            versions = (
-                self.versions.all()
-                .filter(
-                    ~Q(pk=new_version.pk),
-                    status__in=[
-                        PLAN_VERSION_STATUS.ACTIVE,
-                        PLAN_VERSION_STATUS.RETIRING,
-                    ],
-                )
-                .prefetch_related("subscription_records")
-            )
-            versions.update(status=PLAN_VERSION_STATUS.INACTIVE, replace_with=None)
+            # try to match based on target customer
+            target_versions = []
+            public_versions = []
             for version in versions:
-                for sub in version.subscription_records.active():
-                    if (
-                        replace_immediately_type
-                        == REPLACE_IMMEDIATELY_TYPE.CHANGE_SUBSCRIPTION_PLAN
-                    ):
-                        sub.switch_subscription_bp(billing_plan=new_version)
-                    else:
-                        bill_usage = (
-                            REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_AND_BILL
-                        )
-                        sub.end_subscription_now(
-                            bill_usage=bill_usage,
-                            flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_PRORATED,
-                        )
-                        SubscriptionRecord.objects.create(
-                            billing_plan=new_version,
-                            organization=self.organization,
-                            customer=sub.customer,
-                            start_date=sub.end_date,
-                            auto_renew=True,
-                            is_new=False,
-                            quantity=sub.quantity,
-                        )
+                if version.is_custom:
+                    if customer in version.target_customer.all():
+                        target_versions.append(version)
+                else:
+                    public_versions.append(version)
+            if len(target_versions) == 1:
+                return target_versions[0]
+            elif len(target_versions) > 1:
+                customer_currency = customer.currency
+                target_versions = [
+                    x for x in target_versions if x.currency == customer_currency
+                ]
+                if len(target_versions) == 1:
+                    return target_versions[0]
+
+            if len(public_versions) == 1:
+                return public_versions[0]
+            elif len(public_versions) > 1:
+                customer_currency = customer.currency
+                public_versions = [
+                    x for x in public_versions if x.currency == customer_currency
+                ]
+                if len(public_versions) == 1:
+                    return public_versions[0]
+
+            return None
 
 
 class ExternalPlanLink(models.Model):

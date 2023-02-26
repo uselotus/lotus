@@ -243,10 +243,16 @@ def calculate_subscription_record_usage_fees(subscription_record, invoice):
 
 
 def find_next_billing_plan(subscription_record):
-    if subscription_record.billing_plan.transition_to:
-        next_bp = subscription_record.billing_plan.transition_to.display_version
-    elif subscription_record.billing_plan.replace_with:
-        next_bp = subscription_record.billing_plan.replace_with
+    if subscription_record.billing_plan.replace_with:
+        replace_with = subscription_record.billing_plan.replace_with
+        customer = subscription_record.customer
+        if replace_with.is_custom:
+            if customer in replace_with.target_customers.all():
+                next_bp = replace_with
+            else:
+                next_bp = subscription_record.billing_plan
+        else:
+            next_bp = subscription_record.billing_plan.replace_with
     else:
         next_bp = subscription_record.billing_plan
     return next_bp

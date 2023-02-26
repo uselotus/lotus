@@ -10,6 +10,7 @@ from metering_billing.models import (
     Feature,
     Invoice,
     Metric,
+    PlanVersion,
     SubscriptionRecord,
 )
 from metering_billing.serializers.serializer_utils import (
@@ -296,3 +297,41 @@ class CustomerDeleteResponseSerializer(serializers.Serializer):
 
 class GetInvoicePdfURLResponseSerializer(serializers.Serializer):
     url = serializers.URLField()
+
+
+class AddFeatureToPlanSerializer(serializers.Serializer):
+    feature_id = SlugRelatedFieldWithOrganization(
+        slug_field="feature_id",
+        queryset=Feature.objects.all(),
+        help_text="The feature_id of the feature you want to add to the plan.",
+    )
+    version_ids = SlugRelatedFieldWithOrganization(
+        slug_field="version_id",
+        queryset=PlanVersion.objects.all(),
+        required=False,
+        many=True,
+        help_text="The version_ids of the plan versions you want to add the feature to. If you want to apply to all versions, use the all_versions parameter.",
+    )
+    all_versions = serializers.BooleanField(
+        help_text="Whether or not to apply this feature to all versions of the feature. If you want to apply to specific versions, use the version_ids parameter.",
+        required=False,
+        default=False,
+    )
+
+    def validate(self, data):
+        # make sure they don't use both version_ids and all_versions
+        if len(data.get("version_ids", [])) > 0 and data.get("all_versions") is True:
+            raise serializers.ValidationError(
+                "You cannot use both version_ids and all_versions."
+            )
+        return super().validate(data)
+
+
+class AddFeatureToAddOnSerializer(AddFeatureToPlanSerializer):
+    version_ids = SlugRelatedFieldWithOrganization(
+        slug_field="version_id",
+        queryset=PlanVersion.addons.all(),
+        required=False,
+        many=True,
+        help_text="The version_ids of the AddOn versions you want to add the feature to. If you want to apply to all versions, use the all_versions parameter.",
+    )
