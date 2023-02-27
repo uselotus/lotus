@@ -134,7 +134,6 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
         state: state === "" ? null : state,
       };
     }
-    console.log(customerName);
     await updateCustomer.mutateAsync({
       customer_id: data.customer_id,
       address: submittedAddress,
@@ -292,7 +291,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   </div>
                   <div className="flex gap-1">
                     {" "}
-                    {isEditing ? (
+                    {false ? (
                       <input
                         placeholder="Customer ID"
                         className="input-class focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
