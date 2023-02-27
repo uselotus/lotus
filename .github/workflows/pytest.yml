@@ -95,7 +95,6 @@ jobs:
             fi
             sleep 5s
           done
-          echo "${PYTEST_SUBSCRIPTIONS_SUCCEEDED}"
           if [[ "${PYTEST_SUBSCRIPTIONS_SUCCEEDED}" == "true" ]]; then
             echo "Pytest Subscriptions succeeded"
           else
@@ -109,10 +108,10 @@ jobs:
         run: |
           for i in 1 2 3; do
             if pipenv run pytest -x -k "not integrations and not subscription"; then
-              echo "PYTEST_SUCCEEDED=true"
+              export PYTEST_SUCCEEDED=true
               break
             else
-              echo "PYTEST_SUCCEEDED=false"
+              export PYTEST_SUCCEEDED=false
             fi
             sleep 5s
           done
