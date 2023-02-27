@@ -37,7 +37,7 @@ class TimezoneFieldMixin:
         serializer_context = self.context
         if "tz_organization_cache" not in serializer_context:
             serializer_context["tz_organization_cache"] = {}
-            tz_organization_cache = serializer_context["tz_organization_cache"]
+        tz_organization_cache = serializer_context["tz_organization_cache"]
         if organization_id in tz_organization_cache:
             tz_string = tz_organization_cache[organization_id]
         else:
