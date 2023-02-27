@@ -138,6 +138,16 @@ const ViewPlans: FC = () => {
     },
     []
   );
+  const { data }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
+    ["plan_list"],
+    () => Plan.getPlans().then((res) => res),
+    {
+      onSuccess: (data) => {
+        setPlans(data);
+      },
+      refetchOnMount: "always",
+    }
+  );
   const createTag = useMutation(
     ({
       plan_id,
@@ -151,69 +161,74 @@ const ViewPlans: FC = () => {
         tags,
       }),
     {
-      onSuccess: (_, { plan_id }) => {
-        queryClient.invalidateQueries("plan_list");
+      onSuccess: (newData, { plan_id }) => {
+        if (data) {
+          const oldData = [...data];
+          const index = oldData.findIndex((plan) => plan.plan_id === plan_id);
+          const changedElement = oldData.find(
+            (plan) => plan.plan_id === plan_id
+          );
+          if (index && changedElement) {
+            changedElement.tags = newData.tags as PlanType["tags"];
+            oldData[index] = changedElement;
+            setPlans(oldData);
+          }
+        }
+
         queryClient.invalidateQueries(["plan_detail", plan_id]);
         queryClient.invalidateQueries("organization");
       },
     }
   );
-  const { data }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
-    ["plan_list"],
-    () => Plan.getPlans().then((res) => res),
-    {
-      onSuccess: (data) => {
-        setPlans(data);
-      },
-      refetchOnMount: "always",
+
+  const getFilteredPlans = useCallback(() => {
+    switch (activeKey) {
+      case "0":
+        if (!searchQuery && allPlans) {
+          return allPlans;
+        }
+        return allPlans.filter(
+          (plan) =>
+            plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+      case "1":
+        if (!searchQuery) {
+          return monthlyPlans;
+        }
+        return monthlyPlans.filter(
+          (plan) =>
+            plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      case "2":
+        if (!searchQuery) {
+          return quarterlyPlans;
+        }
+        return quarterlyPlans.filter(
+          (plan) =>
+            plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      default:
+        if (!searchQuery) {
+          return yearlyPlans;
+        }
+        return yearlyPlans.filter(
+          (plan) =>
+            plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
     }
-  );
-
-  const getFilteredPlans = useCallback(
-    () => {
-      switch (activeKey) {
-        case "0":
-          if (!searchQuery && allPlans) {
-            return allPlans;
-          }
-          return allPlans.filter(
-            (plan) =>
-              plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
-          );
-
-        case "1":
-          if (!searchQuery) {
-            return monthlyPlans;
-          }
-          return monthlyPlans.filter(
-            (plan) =>
-              plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
-          );
-        case "2":
-          if (!searchQuery) {
-            return quarterlyPlans;
-          }
-          return quarterlyPlans.filter(
-            (plan) =>
-              plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
-          );
-        default:
-          if (!searchQuery) {
-            return yearlyPlans;
-          }
-          return yearlyPlans.filter(
-            (plan) =>
-              plan.plan_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase())
-          );
-      }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, searchQuery, activeKey]
-  );
+  }, [
+    activeKey,
+    searchQuery,
+    allPlans,
+    monthlyPlans,
+    quarterlyPlans,
+    yearlyPlans,
+  ]);
   const getFilteredTagsAllPlans = useCallback(
     (tagName: string) => {
       switch (activeKey) {
