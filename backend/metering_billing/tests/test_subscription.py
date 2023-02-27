@@ -23,7 +23,6 @@ from metering_billing.utils.enums import (
     FLAT_FEE_BEHAVIOR,
     INVOICING_BEHAVIOR,
     PLAN_DURATION,
-    PLAN_STATUS,
     USAGE_BEHAVIOR,
 )
 from model_bakery import baker
@@ -312,7 +311,6 @@ class TestUpdateSub:
         pv = PlanVersion.objects.create(
             organization=setup_dict["org"],
             plan=plan,
-            description="new plan",
         )
         plan.make_version_active(pv)
 
@@ -424,7 +422,6 @@ class TestUpdateSub:
             organization=setup_dict["org"],
             plan_name="yearly plan",
             plan_duration=PLAN_DURATION.YEARLY,
-            status=PLAN_STATUS.ACTIVE,
         )
         Invoice.objects.all().count()
 
@@ -493,7 +490,6 @@ class TestUpdateSub:
             organization=setup_dict["org"],
             plan_name="yearly plan",
             plan_duration=PLAN_DURATION.MONTHLY,
-            status=PLAN_STATUS.ACTIVE,
         )
         before_invoices = Invoice.objects.all().count()
 
@@ -568,7 +564,6 @@ class TestUpdateSub:
             organization=setup_dict["org"],
             plan_name="yearly plan",
             plan_duration=PLAN_DURATION.MONTHLY,
-            status=PLAN_STATUS.ACTIVE,
         )
         before_invoices = Invoice.objects.all().count()
 

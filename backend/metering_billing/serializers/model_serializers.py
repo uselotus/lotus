@@ -1457,12 +1457,14 @@ class PlanUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         model = Plan
         fields = (
             "plan_name",
+            "plan_description",
             "taxjar_code",
             "not_active_before",
             "not_active_after",
         )
         extra_kwargs = {
             "plan_name": {"required": False},
+            "plan_description": {"required": False},
             "taxjar_code": {"required": False},
         }
 
@@ -1478,6 +1480,9 @@ class PlanUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         instance.not_active_before = new_nab
         instance.not_active_after = new_naa
         instance.plan_name = validated_data.get("plan_name", instance.plan_name)
+        instance.plan_description = validated_data.get(
+            "plan_description", instance.plan_description
+        )
         instance.taxjar_code = validated_data.get("taxjar_code", instance.taxjar_code)
         instance.save()
         return instance

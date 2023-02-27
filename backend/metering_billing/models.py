@@ -1922,6 +1922,13 @@ class PlanVersionManager(BasePlanManager):
         return qs
 
 
+class DeletedPlanVersionManager(models.Manager):
+    def get_queryset(self):
+        qs = super().get_queryset()
+        qs = qs.filter(deleted__isnull=False)
+        return qs
+
+
 class RegularPlanVersionManager(PlanVersionManager):
     def get_queryset(self):
         return super().get_queryset().filter(addon_spec__isnull=True)
@@ -1996,6 +2003,7 @@ class PlanVersion(models.Model):
     objects = PlanVersionManager()
     plan_versions = RegularPlanVersionManager()
     addon_versions = AddOnPlanVersionManager()
+    deleted_objects = DeletedPlanVersionManager()
 
     class Meta:
         constraints = [
@@ -2089,6 +2097,11 @@ class PriceAdjustment(models.Model):
             return self.price_adjustment_amount
 
 
+class DeletedPlanManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(deleted__isnull=False)
+
+
 class RegularPlanManager(BasePlanManager):
     def get_queryset(self):
         return super().get_queryset().filter(is_addon=False)
@@ -2170,9 +2183,11 @@ class Plan(models.Model):
 
     # MISC
     tags = models.ManyToManyField("Tag", blank=True, related_name="plans")
+
     objects = BasePlanManager()
     plans = RegularPlanManager()
     addons = AddOnPlanManager()
+    deleted_objects = DeletedPlanManager()
 
     history = HistoricalRecords()
 
@@ -2199,20 +2214,17 @@ class Plan(models.Model):
         existing_tag_names = [tag.tag_name.lower() for tag in existing_tags]
         for tag in tags:
             if tag["tag_name"].lower() not in existing_tag_names:
-                try:
-                    tag_obj = Tag.objects.get(
-                        organization=self.organization,
-                        tag_name__iexact=tag["tag_name"].lower(),
-                        tag_group=TAG_GROUP.PLAN,
-                    )
-                except Tag.DoesNotExist:
-                    tag_obj = Tag.objects.create(
-                        organization=self.organization,
-                        tag_name=tag["tag_name"],
-                        tag_group=TAG_GROUP.PLAN,
-                        tag_hex=tag["tag_hex"],
-                        tag_color=tag["tag_color"],
-                    )
+                defaults = {
+                    "tag_group": TAG_GROUP.PLAN,
+                    "tag_hex": tag.get("tag_hex"),
+                    "tag_color": tag.get("tag_color"),
+                    "tag_name": tag["tag_name"],
+                }
+                tag_obj, _ = Tag.objects.get_or_create(
+                    organization=self.organization,
+                    tag_name__iexact=tag["tag_name"].lower(),
+                    defaults=defaults,
+                )
                 self.tags.add(tag_obj)
 
     def remove_tags(self, tags):
@@ -2223,8 +2235,26 @@ class Plan(models.Model):
                 self.tags.remove(existing_tag)
 
     def set_tags(self, tags):
-        self.tags.clear()
-        self.add_tags(tags)
+        existing_tags = self.tags.all()
+        existing_tag_names = [tag.tag_name.lower() for tag in existing_tags]
+        new_tag_names_lower = [tag["tag_name"].lower() for tag in tags]
+        for tag in tags:
+            if tag["tag_name"].lower() not in existing_tag_names:
+                defaults = {
+                    "tag_group": TAG_GROUP.PLAN,
+                    "tag_hex": tag.get("tag_hex"),
+                    "tag_color": tag.get("tag_color"),
+                    "tag_name": tag["tag_name"],
+                }
+                tag_obj, _ = Tag.objects.get_or_create(
+                    organization=self.organization,
+                    tag_name__iexact=tag["tag_name"].lower(),
+                    defaults=defaults,
+                )
+                self.tags.add(tag_obj)
+        for existing_tag in existing_tags:
+            if existing_tag.tag_name.lower() not in new_tag_names_lower:
+                self.tags.remove(existing_tag)
 
     def active_subs_by_version(self):
         versions = self.versions.all().prefetch_related("subscription_records")

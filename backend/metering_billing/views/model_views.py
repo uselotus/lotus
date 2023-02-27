@@ -786,17 +786,25 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             },
         ),
     )
-    @action(detail=True, methods=["post"], url_path="target_customers/add")
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="target_customers/add",
+        url_name="add_target_customer",
+    )
     def add_target_customer(self, request, *args, **kwargs):
         plan_version = self.get_object()
-        serializer = TargetCustomersSerializer(data=request.data)
+        organization = self.request.organization
+        serializer = TargetCustomersSerializer(
+            data=request.data, context={"organization": organization}
+        )
         serializer.is_valid(raise_exception=True)
         customers = serializer.validated_data["customers"]
         ct_before = plan_version.target_customers.all().count()
         if ct_before == 0 and plan_version.is_custom is False:
             # check there's no subscriptions where this plan version is active
             # and teh customer is not in the target customers list
-            current_subscriptions = plan_version.susbcription_records.active().exclude(
+            current_subscriptions = plan_version.subscription_records.active().exclude(
                 customer__in=customers
             )
             if current_subscriptions.exists():
@@ -830,10 +838,18 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             },
         ),
     )
-    @action(detail=True, methods=["post"], url_path="target_customers/remove")
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="target_customers/remove",
+        url_name="remove_target_customer",
+    )
     def remove_target_customer(self, request, *args, **kwargs):
         plan_version = self.get_object()
-        serializer = TargetCustomersSerializer(data=request.data)
+        organization = self.request.organization
+        serializer = TargetCustomersSerializer(
+            data=request.data, context={"organization": organization}
+        )
         serializer.is_valid(raise_exception=True)
         customers = serializer.validated_data["customers"]
         for customer in customers:
@@ -865,7 +881,9 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             },
         ),
     )
-    @action(detail=True, methods=["post"], url_path="make_public")
+    @action(
+        detail=True, methods=["post"], url_path="make_public", url_name="make_public"
+    )
     def make_public(self, request, *args, **kwargs):
         plan_version = self.get_object()
         if plan_version.is_custom is True:
@@ -1124,7 +1142,7 @@ class PlanViewSet(api_views.PlanViewSet):
             },
         ),
     )
-    @action(detail=True, methods=["post"], url_path="tags/add")
+    @action(detail=True, methods=["post"], url_path="tags/add", url_name="tags_add")
     def add_tags(self, request, *args, **kwargs):
         plan = self.get_object()
         tags = request.data.get("tags", [])
@@ -1167,7 +1185,9 @@ class PlanViewSet(api_views.PlanViewSet):
             },
         ),
     )
-    @action(detail=True, methods=["post"], url_path="tags/remove")
+    @action(
+        detail=True, methods=["post"], url_path="tags/remove", url_name="tags_remove"
+    )
     def remove_tags(self, request, *args, **kwargs):
         plan = self.get_object()
         tags = request.data.get("tags", [])
@@ -1210,7 +1230,7 @@ class PlanViewSet(api_views.PlanViewSet):
             },
         ),
     )
-    @action(detail=True, methods=["post"], url_path="tags/set")
+    @action(detail=True, methods=["post"], url_path="tags/set", url_name="tags_set")
     def set_tags(self, request, *args, **kwargs):
         plan = self.get_object()
         tags = request.data.get("tags", [])
@@ -1246,10 +1266,14 @@ class PlanViewSet(api_views.PlanViewSet):
             },
         ),
     )
-    @action(detail=True, methods=["post"], url_path="features/add")
+    @action(
+        detail=True, methods=["post"], url_path="features/add", url_name="features_add"
+    )
     def add_feature(self, request, *args, **kwargs):
         plan = self.get_object()
-        serializer = AddFeatureToPlanSerializer(data=request.data)
+        serializer = AddFeatureToPlanSerializer(
+            data=request.data, context={"organization": request.organization}
+        )
         serializer.is_valid(raise_exception=True)
         feature = serializer.validated_data["feature_id"]
         if serializer.validated_data["all_versions"] is True:
@@ -1261,7 +1285,7 @@ class PlanViewSet(api_views.PlanViewSet):
         return Response(
             {
                 "success": True,
-                "message": f"Added feature {feature.name} to {len(plan_versions)} versions of plan {plan.plan_name}",
+                "message": f"Added feature {feature.feature_name} to {len(plan_versions)} versions of plan {plan.plan_name}",
             },
             status=status.HTTP_200_OK,
         )

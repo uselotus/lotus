@@ -21,7 +21,6 @@ from metering_billing.utils.enums import (
     EVENT_TYPE,
     METRIC_TYPE,
     PLAN_DURATION,
-    PLAN_STATUS,
     PLAN_VERSION_STATUS,
 )
 
@@ -117,7 +116,6 @@ class Command(BaseCommand):
             plan_name="Free Plan",
             organization=organization,
             plan_duration=PLAN_DURATION.MONTHLY,
-            status=PLAN_STATUS.ACTIVE,
         )
         free_bp = PlanVersion.objects.create(
             organization=organization,

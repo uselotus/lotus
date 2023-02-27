@@ -58,6 +58,7 @@ from metering_billing.utils.enums import (
     INVOICE_STATUS_ENUM,
     INVOICING_BEHAVIOR,
     PAYMENT_PROCESSORS,
+    PLAN_DURATION,
     PLAN_VERSION_STATUS,
     SUBSCRIPTION_STATUS,
     TAX_PROVIDER,
@@ -1579,6 +1580,29 @@ class ListPlansFilterSerializer(serializers.Serializer):
         required=False,
         help_text="Filter to plans that do not have any of the tags in this list.",
     )
+    currency = SlugRelatedFieldWithOrganization(
+        slug_field="code",
+        queryset=PricingUnit.objects.all(),
+        required=False,
+        help_text="Filter to versions that have this currency.",
+    )
+    duration = serializers.ChoiceField(
+        choices=PLAN_DURATION.choices,
+        required=False,
+        help_text="Filter to plans that have this duration.",
+    )
+    range_start = serializers.DateTimeField(
+        required=False,
+        help_text="Filter to plans and versions whose not_active_after datetime is on or after this date + time.",
+    )
+    range_end = serializers.DateTimeField(
+        required=False,
+        help_text="Filter to plans and versions whose not_active_before datetime is on or before this date + time.",
+    )
+    active_on = serializers.DateTimeField(
+        required=False,
+        help_text="Filter to plans and versions that were active on this date + time.",
+    )
 
 
 class SubscriptionRecordFilterSerializer(serializers.Serializer):
@@ -2305,4 +2329,5 @@ class AddOnSubscriptionRecordCreateSerializer(
             sr.filters.add(sf)
         if invoice_now:
             generate_invoice(sr)
+        return sr
         return sr

@@ -62,6 +62,7 @@ class TargetCustomersSerializer(serializers.Serializer):
         queryset=Customer.objects.all(),
         required=True,
         many=True,
+        source="customers",
     )
 
 

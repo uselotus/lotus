@@ -49,7 +49,6 @@ from metering_billing.utils.enums import (
     METRIC_TYPE,
     ORGANIZATION_SETTING_NAMES,
     PLAN_DURATION,
-    PLAN_STATUS,
     PLAN_VERSION_STATUS,
 )
 from model_bakery import baker
@@ -208,7 +207,6 @@ def setup_demo3(
         plan_name="Free Plan",
         organization=organization,
         plan_duration=PLAN_DURATION.MONTHLY,
-        status=PLAN_STATUS.ACTIVE,
     )
     free_bp = PlanVersion.objects.create(
         organization=organization,
@@ -235,7 +233,6 @@ def setup_demo3(
         plan_name="10K Words Plan",
         organization=organization,
         plan_duration=PLAN_DURATION.MONTHLY,
-        status=PLAN_STATUS.ACTIVE,
     )
     bp_10_og = PlanVersion.objects.create(
         organization=organization,
@@ -265,7 +262,6 @@ def setup_demo3(
         plan_name="25K Words Plan",
         organization=organization,
         plan_duration=PLAN_DURATION.MONTHLY,
-        status=PLAN_STATUS.ACTIVE,
     )
     bp_25_og = PlanVersion.objects.create(
         organization=organization,
@@ -295,7 +291,6 @@ def setup_demo3(
         plan_name="50K Words Plan",
         organization=organization,
         plan_duration=PLAN_DURATION.MONTHLY,
-        status=PLAN_STATUS.ACTIVE,
     )
     bp_50_og = PlanVersion.objects.create(
         organization=organization,
@@ -325,7 +320,6 @@ def setup_demo3(
         plan_name="10K Words Plan - UB Compute + Seats",
         organization=organization,
         plan_duration=PLAN_DURATION.MONTHLY,
-        status=PLAN_STATUS.ACTIVE,
     )
     bp_10_compute_seats = PlanVersion.objects.create(
         organization=organization,
@@ -368,7 +362,6 @@ def setup_demo3(
         plan_name="25K Words Plan - UB Compute + Seats",
         organization=organization,
         plan_duration=PLAN_DURATION.MONTHLY,
-        status=PLAN_STATUS.ACTIVE,
     )
     bp_25_compute_seats = PlanVersion.objects.create(
         organization=organization,
@@ -411,7 +404,6 @@ def setup_demo3(
         plan_name="50K Words Plan - UB Compute + Seats",
         organization=organization,
         plan_duration=PLAN_DURATION.MONTHLY,
-        status=PLAN_STATUS.ACTIVE,
     )
     bp_50_compute_seats = PlanVersion.objects.create(
         organization=organization,
@@ -797,7 +789,6 @@ def setup_demo4(
         plan_name="Free Plan",
         organization=organization,
         plan_duration=PLAN_DURATION.MONTHLY,
-        status=PLAN_STATUS.ACTIVE,
     )
     free_bp = PlanVersion.objects.create(
         organization=organization,
@@ -828,7 +819,6 @@ def setup_demo4(
         plan_name="Events-only - Basic",
         organization=organization,
         plan_duration=PLAN_DURATION.MONTHLY,
-        status=PLAN_STATUS.ACTIVE,
     )
     bp_basic_events = PlanVersion.objects.create(
         organization=organization,
@@ -864,7 +854,6 @@ def setup_demo4(
         plan_name="Events-only - Pro",
         organization=organization,
         plan_duration=PLAN_DURATION.MONTHLY,
-        status=PLAN_STATUS.ACTIVE,
     )
     bp_pro_events = PlanVersion.objects.create(
         organization=organization,
@@ -900,7 +889,6 @@ def setup_demo4(
         plan_name="Events + Recordings - Basic",
         organization=organization,
         plan_duration=PLAN_DURATION.MONTHLY,
-        status=PLAN_STATUS.ACTIVE,
     )
     bp_basic_both = PlanVersion.objects.create(
         organization=organization,
@@ -943,7 +931,6 @@ def setup_demo4(
         plan_name="Events + Recordings - Pro",
         organization=organization,
         plan_duration=PLAN_DURATION.MONTHLY,
-        status=PLAN_STATUS.ACTIVE,
     )
     bp_pro_both = PlanVersion.objects.create(
         organization=organization,
@@ -986,7 +973,6 @@ def setup_demo4(
         plan_name="Experimental - Events + Recording Time",
         organization=organization,
         plan_duration=PLAN_DURATION.MONTHLY,
-        status=PLAN_STATUS.ACTIVE,
     )
     bp_experimental = PlanVersion.objects.create(
         organization=organization,
@@ -1336,7 +1322,6 @@ def setup_paas_demo(
         plan_name="Basic Plan",
         organization=organization,
         plan_duration=PLAN_DURATION.MONTHLY,
-        status=PLAN_STATUS.ACTIVE,
     )
     basic_plan = PlanVersion.objects.create(
         organization=organization,
@@ -1372,7 +1357,6 @@ def setup_paas_demo(
         plan_name="Professional Plan",
         organization=organization,
         plan_duration=PLAN_DURATION.MONTHLY,
-        status=PLAN_STATUS.ACTIVE,
     )
     professional_plan = PlanVersion.objects.create(
         organization=organization,

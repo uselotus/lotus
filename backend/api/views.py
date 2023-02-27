@@ -118,7 +118,6 @@ from metering_billing.utils.enums import (
     INVOICING_BEHAVIOR,
     METRIC_STATUS,
     ORGANIZATION_SETTING_NAMES,
-    PLAN_STATUS,
     SUBSCRIPTION_STATUS,
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
@@ -450,17 +449,59 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
         now = now_utc()
         organization = self.request.organization
+        plan_filter_serializer = ListPlansFilterSerializer(
+            data=self.request.query_params
+        )
+        plan_filter_serializer.is_valid(raise_exception=True)
+
+        plans_filters = []
+        versions_filters = []
+
+        include_tags = plan_filter_serializer.validated_data.get("include_tags")
+        include_tags_all = plan_filter_serializer.validated_data.get("include_tags_all")
+        exclude_tags = plan_filter_serializer.validated_data.get("exclude_tags")
+        currency = plan_filter_serializer.validated_data.get("currency")
+        duration = plan_filter_serializer.validated_data.get("duration")
+        range_start = plan_filter_serializer.validated_data.get("range_start")
+        range_end = plan_filter_serializer.validated_data.get("range_end")
+        active_on = plan_filter_serializer.validated_data.get("active_on")
+
+        if currency:
+            versions_filters.append(Q(currency=currency))
+        if duration:
+            plans_filters.append(Q(duration=duration))
+        if range_start:
+            range_start_aware = convert_to_datetime(
+                range_start, tz=organization.timezone
+            )
+            q_cond = Q(not_active_after__gte=range_start_aware) | Q(
+                not_active_after__isnull=True
+            )
+            versions_filters.append(q_cond)
+            plans_filters.append(q_cond)
+        if range_end:
+            range_end_aware = convert_to_datetime(range_end)
+            q_cond = Q(not_active_before__lte=range_end_aware)
+            versions_filters.append(q_cond)
+            plans_filters.append(q_cond)
+        if active_on:
+            active_on_aware = convert_to_datetime(active_on)
+            q_cond = Q(not_active_before__lte=active_on_aware) & (
+                Q(not_active_after__gte=active_on_aware)
+                | Q(not_active_after__isnull=True)
+            )
+            versions_filters.append(q_cond)
+            plans_filters.append(q_cond)
+
         qs = (
-            Plan.objects.all()
+            Plan.plans.all()
             .order_by(F("created_on").desc(nulls_last=False), F("plan_name"))
-            .filter(organization=organization, status=PLAN_STATUS.ACTIVE)
+            .filter(*plans_filters, organization=organization)
         )
         # first go for the ones that are one away (FK) and not nested
         qs = qs.select_related(
             "organization",
-            "target_customer",
             "created_by",
-            "parent_plan",
         )
         # then for many to many / reverse FK but still have
         qs = qs.prefetch_related(
@@ -481,6 +522,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 "versions",
                 queryset=PlanVersion.plan_versions.active()
                 .filter(
+                    *versions_filters,
                     organization=organization,
                 )
                 .annotate(
@@ -493,11 +535,8 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                         Value(0),
                     )
                 )
-                .select_related("price_adjustment", "created_by", "pricing_unit")
-                .prefetch_related(
-                    "usage_alerts",
-                    "features",
-                )
+                .select_related("price_adjustment", "created_by", "currency")
+                .prefetch_related("usage_alerts", "features", "target_customers")
                 .prefetch_related(
                     Prefetch(
                         "plan_components",
@@ -536,17 +575,6 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 to_attr="versions_prefetched",
             ),
         )
-
-        plan_filter_serializer = ListPlansFilterSerializer(
-            data=self.request.query_params
-        )
-
-        if not plan_filter_serializer.is_valid():
-            return qs
-
-        include_tags = plan_filter_serializer.validated_data.get("include_tags")
-        include_tags_all = plan_filter_serializer.validated_data.get("include_tags_all")
-        exclude_tags = plan_filter_serializer.validated_data.get("exclude_tags")
 
         if include_tags:
             # Filter to plans that have any of the tags in this list
