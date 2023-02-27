@@ -300,4 +300,3 @@ def add_plan_version_to_plan():
         return plan_version
 
     return do_add_planversion_to_plan
-    return do_add_planversion_to_plan
