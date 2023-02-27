@@ -90,6 +90,10 @@ jobs:
             pipenv run pytest -x -k "subscription" && break
             sleep 5s
           done
+          if [ $? -ne 0 ]; then
+            echo "Pytest Subscriptions failed"
+            exit 1
+          fi
         env:
           RETRY_DESCRIPTION: "Running Pytest"
 
@@ -99,6 +103,10 @@ jobs:
             pipenv run pytest -x -k "not integrations and not subscription" && break
             sleep 5s
           done
+          if [ $? -ne 0 ]; then
+            echo "Pytest failed"
+            exit 1
+          fi
         env:
           RETRY_DESCRIPTION: "Running Pytest"
 
