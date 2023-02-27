@@ -89,12 +89,14 @@ jobs:
           for i in 1 2 3; do
             if pipenv run pytest -x -k "subscription"; then
               echo "PYTEST_SUBSCRIPTIONS_SUCCEEDED=true"
+              echo $PYTEST_SUBSCRIPTIONS_SUCCEEDED
               break
             else
               echo "PYTEST_SUBSCRIPTIONS_SUCCEEDED=false"
             fi
             sleep 5s
           done
+          echo "${PYTEST_SUBSCRIPTIONS_SUCCEEDED}"
           if [[ "${PYTEST_SUBSCRIPTIONS_SUCCEEDED}" == "true" ]]; then
             echo "Pytest Subscriptions succeeded"
           else
