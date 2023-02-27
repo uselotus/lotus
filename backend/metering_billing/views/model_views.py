@@ -3,6 +3,7 @@ import logging
 
 import api.views as api_views
 import posthog
+import sentry_sdk
 from actstream.models import Action
 from api.serializers.webhook_serializers import (
     CustomerCreatedSerializer,
@@ -212,7 +213,7 @@ class APITokenViewSet(
             if expiry_date is None
             else (expiry_date - now_utc()).total_seconds()
         )
-        cache.set(api_key.prefix, api_key.organization.pk, timeout)
+        cache.set(key, api_key.organization.pk, timeout)
         headers = self.get_success_headers(serializer.data)
         return Response(
             {"api_key": serializer.data, "key": key},
@@ -221,7 +222,15 @@ class APITokenViewSet(
         )
 
     def perform_destroy(self, instance):
-        cache.delete(instance.prefix)
+        try:
+            cache.delete_pattern(f"{instance.prefix}*")
+        except Exception as e:
+            logger.error("Error deleting cache using delete pattern")
+            sentry_sdk.capture_exception(e)
+            keys_to_delete = []
+            for key in cache.keys(f"{instance.prefix}*"):
+                keys_to_delete.append(key)
+            cache.delete_many(keys_to_delete)
         return super().perform_destroy(instance)
 
     @extend_schema(
@@ -1304,6 +1313,8 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
+        return context
+        return context
         return context
         return context
         return context

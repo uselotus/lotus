@@ -428,30 +428,35 @@ export function DeveloperTab() {
           <p className="text-lg font-main">Events Subscribed To:</p>
           <div className="grid grid-cols-2">
             <Checkbox
+              style={{ marginLeft: "0px" }}
               onChange={(e) => setIsCustomerCreated(e.target.checked)}
               value={isCustomerCreated}
             >
               <p className="text-lg font-main">customer.created</p>
             </Checkbox>
             <Checkbox
+              style={{ marginLeft: "0px" }}
               onChange={(e) => setIsInvoiceGenerated(e.target.checked)}
               value={isInvoiceGenerated}
             >
               <p className="text-lg font-main">invoice.created</p>
             </Checkbox>
             <Checkbox
+              style={{ marginLeft: "0px" }}
               onChange={(e) => setIsInvoicePaid(e.target.checked)}
               value={isInvoicePaid}
             >
               <p className="text-lg font-main">invoice.paid</p>
             </Checkbox>
             <Checkbox
+              style={{ marginLeft: "0px" }}
               onChange={(e) => setIsSubscriptionCreated(e.target.checked)}
               value={isSubscriptionCreated}
             >
               <p className="text-lg font-main">subscription.created</p>
             </Checkbox>
             <Checkbox
+              style={{ marginLeft: "0px" }}
               onChange={(e) => setIsUsageAlertTriggered(e.target.checked)}
               value={isUsageAlertTriggered}
             >

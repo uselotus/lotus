@@ -1031,7 +1031,7 @@ class IdempotenceCheck(models.Model):
         Organization, on_delete=models.SET_NULL, related_name="+", null=True, blank=True
     )
     time_created = models.DateTimeField(
-        help_text="The time that the event occured, represented as a datetime in ISO 8601 in the UTC timezome."
+        help_text="The time that the event occured, represented as a datetime in RFC3339 in the UTC timezome."
     )
     uuidv5_idempotency_id = models.UUIDField(primary_key=True)
 
@@ -1077,7 +1077,7 @@ class Event(models.Model):
     )
     uuidv5_event_name = models.UUIDField()
     time_created = models.DateTimeField(
-        help_text="The time that the event occured, represented as a datetime in ISO 8601 in the UTC timezome."
+        help_text="The time that the event occured, represented as a datetime in RFC3339 in the UTC timezome."
     )
     properties = models.JSONField(
         default=dict,
