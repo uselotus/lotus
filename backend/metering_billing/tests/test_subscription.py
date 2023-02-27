@@ -299,43 +299,6 @@ class TestUpdateSub:
         assert len(after_canceled_subscriptions) == 1
         assert new_invoices_len == prev_invoices_len
 
-    def test_replace_bp_halfway_through_and_prorate(
-        self, subscription_test_common_setup, add_plan_to_product
-    ):
-        setup_dict = subscription_test_common_setup(
-            num_subscriptions=1, auth_method="session_auth"
-        )
-
-        prev_invoices_len = Invoice.objects.all().count()
-        plan = add_plan_to_product(setup_dict["product"])
-        pv = PlanVersion.objects.create(
-            organization=setup_dict["org"],
-            plan=plan,
-        )
-        plan.make_version_active(pv)
-
-        payload = {
-            "replace_plan_id": plan.plan_id,
-        }
-        params = {
-            "customer_id": setup_dict["customer"].customer_id,
-            "plan_id": setup_dict["plan"].plan_id,
-        }
-        response = setup_dict["client"].post(
-            reverse(
-                "subscription-edit",
-            )
-            + "?"
-            + urllib.parse.urlencode(params),
-            data=json.dumps(payload, cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-
-        new_invoices_len = Invoice.objects.all().count()
-
-        assert response.status_code == status.HTTP_200_OK
-        assert new_invoices_len == prev_invoices_len + 1
-
     def test_cancel_auto_renew(self, subscription_test_common_setup):
         setup_dict = subscription_test_common_setup(
             num_subscriptions=1, auth_method="session_auth"

@@ -1893,7 +1893,7 @@ class RecurringCharge(models.Model):
 class BasePlanManager(models.Manager):
     def get_queryset(self):
         qs = super().get_queryset()
-        qs.filter(deleted__isnull=True)
+        qs = qs.filter(deleted__isnull=True)
         return qs
 
     def active(self, time=None):

@@ -1601,7 +1601,9 @@ class ListPlansFilterSerializer(serializers.Serializer):
     )
     active_on = serializers.DateTimeField(
         required=False,
-        help_text="Filter to plans and versions that were active on this date + time.",
+        help_text="Filter to plans and versions that were active on this date + time. Defaults to the current date + time. Set to null to avoid filtering by this.",
+        allow_null=True,
+        default=now_utc,
     )
 
 

@@ -299,18 +299,23 @@ class GetInvoicePdfURLResponseSerializer(serializers.Serializer):
     url = serializers.URLField()
 
 
-class AddFeatureToPlanSerializer(serializers.Serializer):
+class AddFeatureSerializer(serializers.Serializer):
     feature_id = SlugRelatedFieldWithOrganization(
         slug_field="feature_id",
         queryset=Feature.objects.all(),
         help_text="The feature_id of the feature you want to add to the plan.",
+        source="feature",
     )
+
+
+class AddFeatureToPlanSerializer(AddFeatureSerializer):
     version_ids = SlugRelatedFieldWithOrganization(
         slug_field="version_id",
         queryset=PlanVersion.plan_versions.all(),
         required=False,
         many=True,
         help_text="The version_ids of the plan versions you want to add the feature to. If you want to apply to all versions, use the all_versions parameter.",
+        source="plan_versions",
     )
     all_versions = serializers.BooleanField(
         help_text="Whether or not to apply this feature to all versions of the feature. If you want to apply to specific versions, use the version_ids parameter.",

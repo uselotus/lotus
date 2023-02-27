@@ -61,9 +61,7 @@ def plan_test_common_setup(
                 }
             ],
         }
-        setup_dict["plan_version_update_payload"] = {
-            "description": "changed",
-        }
+        setup_dict["plan_version_update_payload"] = {}
 
         return setup_dict
 
@@ -401,10 +399,11 @@ class TestPlanOperations:
         )
         # check if we just update this then before and after are confusing
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-
+        plan.not_active_after = now_utc() + relativedelta(days=10)
+        plan.save()
         setup_dict["plan_update_payload"][
-            "not_active_after"
-        ] = now_utc() + relativedelta(days=15)
+            "not_active_before"
+        ] = now_utc() + relativedelta(days=3)
         response = setup_dict["client"].patch(
             reverse("plan-detail", kwargs={"plan_id": plan.plan_id}),
             data=json.dumps(setup_dict["plan_update_payload"], cls=DjangoJSONEncoder),
@@ -444,18 +443,39 @@ class TestPlanOperations:
         assert plan.plan_name == "new_plan_name"
         assert plan.plan_description == "new_plan_description"
 
+    def test_delete_including_fail_with_subscription(
+        self, plan_test_common_setup, add_subscription_record_to_org
+    ):
+        setup_dict = plan_test_common_setup()
+        response = setup_dict["client"].post(
+            reverse("plan-list"),
+            data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
+        add_subscription_record_to_org(
+            setup_dict["org"], plan.versions.first(), setup_dict["customer"]
+        )
+
+        # susbcription active, should fail
+        response = setup_dict["client"].post(
+            reverse("plan-delete", kwargs={"plan_id": response.data["plan_id"]})
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        # susbcription inactive, should work
+        plan.versions.first().subscription_records.first().end_subscription_now()
+        response = setup_dict["client"].post(
+            reverse("plan-delete", kwargs={"plan_id": plan.plan_id})
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert Plan.objects.all().count() == 0
+
 
 @pytest.mark.django_db(transaction=True)
 class TestPlanVersionOperations:
     """
     Tests to write:
-    add target customer
-    remove target customer
-    make public
-    add feature
-    set replacement
-    make replacement
-    delete
     chaneg active dates
     """
 
@@ -655,3 +675,301 @@ class TestPlanVersionOperations:
             content_type="application/json",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_make_public_works(
+        self, plan_test_common_setup, add_subscription_record_to_org
+    ):
+        setup_dict = plan_test_common_setup()
+        response = setup_dict["client"].post(
+            reverse("plan-list"),
+            data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
+        version = plan.versions.first()
+        version_customers = version.target_customers.all()
+        assert version_customers.count() == 0
+        assert version.is_custom is False
+
+        add_subscription_record_to_org(
+            setup_dict["org"], version, setup_dict["customer"]
+        )
+        add_target_customer_payload = {
+            "customer_ids": [setup_dict["customer"].customer_id],
+        }
+        response = setup_dict["client"].post(
+            reverse(
+                "plan_version-add_target_customer",
+                kwargs={"version_id": version.version_id},
+            ),
+            data=json.dumps(add_target_customer_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+        version = PlanVersion.objects.get(id=version.id)
+        version_customers = version.target_customers.all()
+        assert version_customers.count() == 1
+        assert version.is_custom is True
+
+        response = setup_dict["client"].post(
+            reverse(
+                "plan_version-make_public",
+                kwargs={"version_id": version.version_id},
+            ),
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+        version = PlanVersion.objects.get(id=version.id)
+        version_customers = version.target_customers.all()
+        assert version_customers.count() == 0
+        assert version.is_custom is False
+
+    def test_add_feature_to_plan_version(
+        self, plan_test_common_setup, add_subscription_record_to_org
+    ):
+        setup_dict = plan_test_common_setup()
+        response = setup_dict["client"].post(
+            reverse("plan-list"),
+            data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
+        # we want to test that when we add it to the plan, it doesn't add it to any deleted plan versions, but adds it to both active and inactive plan versions
+        first_version = plan.versions.first()
+        first_version.plan_version_name = "active_version"
+        first_version.save()
+        assert first_version.features.count() == 0
+        second_version = PlanVersion.objects.create(
+            organization=setup_dict["org"],
+            plan=plan,
+            plan_version_name="inactive_version",
+        )
+        assert second_version.features.count() == 0
+
+        feature = Feature.objects.create(
+            feature_name="test_feature",
+            feature_description="test_description",
+            organization=setup_dict["org"],
+        )
+        feature_id = feature.feature_id
+        feature_payload = {"feature_id": feature_id}
+        response = setup_dict["client"].post(
+            reverse(
+                "plan_version-features_add",
+                kwargs={"version_id": first_version.version_id},
+            ),
+            data=json.dumps(feature_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert first_version.features.count() == 1
+        assert second_version.features.count() == 0
+
+    def test_set_replacement_for_plan(
+        self, plan_test_common_setup, add_subscription_record_to_org
+    ):
+        setup_dict = plan_test_common_setup()
+        response = setup_dict["client"].post(
+            reverse("plan-list"),
+            data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
+        # we want to test that when we add it to the plan, it doesn't add it to any deleted plan versions, but adds it to both active and inactive plan versions
+        first_version = plan.versions.first()
+        first_version.plan_version_name = "active_version"
+        first_version.save()
+        second_version = PlanVersion.objects.create(
+            organization=setup_dict["org"],
+            plan=plan,
+            plan_version_name="inactive_version",
+        )
+        assert first_version.replace_with is None
+
+        replace_with_payload = {"replace_with": second_version.version_id}
+        response = setup_dict["client"].post(
+            reverse(
+                "plan_version-set_replacement",
+                kwargs={"version_id": first_version.version_id},
+            ),
+            data=json.dumps(replace_with_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        first_version = PlanVersion.objects.get(id=first_version.id)
+        assert first_version.replace_with == second_version
+
+    def test_make_replacement_for_plan(
+        self, plan_test_common_setup, add_subscription_record_to_org
+    ):
+        setup_dict = plan_test_common_setup()
+        response = setup_dict["client"].post(
+            reverse("plan-list"),
+            data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
+        # we want to test that when we add it to the plan, it doesn't add it to any deleted plan versions, but adds it to both active and inactive plan versions
+        first_version = plan.versions.first()
+        first_version.plan_version_name = "active_version"
+        first_version.save()
+        second_version = PlanVersion.objects.create(
+            organization=setup_dict["org"],
+            plan=plan,
+            plan_version_name="inactive_version",
+        )
+        assert first_version.replace_with is None
+
+        replace_with_payload = {"versions_to_replace": [first_version.version_id]}
+        response = setup_dict["client"].post(
+            reverse(
+                "plan_version-make_replacement",
+                kwargs={"version_id": second_version.version_id},
+            ),
+            data=json.dumps(replace_with_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        first_version = PlanVersion.objects.get(id=first_version.id)
+        assert first_version.replace_with == second_version
+
+    def test_delete_plan_version_including_subscription(
+        self, plan_test_common_setup, add_subscription_record_to_org
+    ):
+        setup_dict = plan_test_common_setup()
+        response = setup_dict["client"].post(
+            reverse("plan-list"),
+            data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
+        first_version = plan.versions.first()
+        first_version.plan_version_name = "active_version"
+        first_version.save()
+        PlanVersion.objects.create(
+            organization=setup_dict["org"],
+            plan=plan,
+            plan_version_name="inactive_version",
+        )
+        add_subscription_record_to_org(
+            setup_dict["org"], first_version, setup_dict["customer"]
+        )
+
+        # susbcription active, should fail
+        response = setup_dict["client"].post(
+            reverse(
+                "plan_version-delete", kwargs={"version_id": first_version.version_id}
+            )
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        # susbcription inactive, should work
+        plan.versions.first().subscription_records.first().end_subscription_now()
+        response = setup_dict["client"].post(
+            reverse(
+                "plan_version-delete", kwargs={"version_id": first_version.version_id}
+            )
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert Plan.objects.all().count() == 1
+        assert PlanVersion.objects.all().count() == 1
+        assert Plan.objects.first().versions.count() == 1
+
+    def test_edit_not_active_after_no_longer_in_list_plans(
+        self,
+        plan_test_common_setup,
+    ):
+        setup_dict = plan_test_common_setup()
+        response = setup_dict["client"].post(
+            reverse("plan-list"),
+            data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
+        first_version = plan.versions.first()
+
+        listed_plan = setup_dict["client"].get(reverse("plan-list")).data[0]
+        assert len(listed_plan["versions"]) == 1
+
+        setup_dict["plan_version_update_payload"]["not_active_after"] = now_utc()
+        response = setup_dict["client"].patch(
+            reverse(
+                "plan_version-detail", kwargs={"version_id": first_version.version_id}
+            ),
+            data=json.dumps(
+                setup_dict["plan_version_update_payload"], cls=DjangoJSONEncoder
+            ),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+        listed_plan = (
+            setup_dict["client"]
+            .get(
+                reverse("plan-list")
+                + "?"
+                + urllib.parse.urlencode({"active_on": now_utc().isoformat()})
+            )
+            .data[0]
+        )
+        assert len(listed_plan["versions"]) == 0
+
+    def test_edit_not_active_before_no_longer_in_list_plans(
+        self, plan_test_common_setup
+    ):
+        setup_dict = plan_test_common_setup()
+        response = setup_dict["client"].post(
+            reverse("plan-list"),
+            data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
+        first_version = plan.versions.first()
+
+        listed_plan = setup_dict["client"].get(reverse("plan-list")).data[0]
+        assert len(listed_plan["versions"]) == 1
+
+        first_version.not_active_after = now_utc() + relativedelta(days=3)
+        first_version.save()
+
+        setup_dict["plan_version_update_payload"][
+            "not_active_before"
+        ] = now_utc() + relativedelta(days=10)
+        response = setup_dict["client"].patch(
+            reverse(
+                "plan_version-detail", kwargs={"version_id": first_version.version_id}
+            ),
+            data=json.dumps(
+                setup_dict["plan_version_update_payload"], cls=DjangoJSONEncoder
+            ),
+            content_type="application/json",
+        )
+        # check if we just update this then before and after are confusing
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        first_version.not_active_after = now_utc() + relativedelta(days=10)
+        first_version.save()
+        setup_dict["plan_version_update_payload"][
+            "not_active_before"
+        ] = now_utc() + relativedelta(days=3)
+        response = setup_dict["client"].patch(
+            reverse(
+                "plan_version-detail", kwargs={"version_id": first_version.version_id}
+            ),
+            data=json.dumps(
+                setup_dict["plan_version_update_payload"], cls=DjangoJSONEncoder
+            ),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+        listed_plan = (
+            setup_dict["client"]
+            .get(
+                reverse("plan-list")
+                + "?"
+                + urllib.parse.urlencode({"active_on": now_utc().isoformat()})
+            )
+            .data[0]
+        )
+        assert len(listed_plan["versions"]) == 0

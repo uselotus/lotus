@@ -6,6 +6,7 @@ import posthog
 import sentry_sdk
 from actstream.models import Action
 from api.serializers.nonmodel_serializers import (
+    AddFeatureSerializer,
     AddFeatureToAddOnSerializer,
     AddFeatureToPlanSerializer,
 )
@@ -913,9 +914,13 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         organization = self.request.organization
         now = now_utc()
         plan_version = self.get_object()
-        num_active_subscriptions = SubscriptionRecord.objects.active().filter(
-            organization=organization,
-            billing_plan=plan_version,
+        num_active_subscriptions = (
+            SubscriptionRecord.objects.active()
+            .filter(
+                organization=organization,
+                billing_plan=plan_version,
+            )
+            .count()
         )
         if num_active_subscriptions > 0:
             raise InvalidOperation(
@@ -942,10 +947,18 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             },
         ),
     )
-    @action(detail=True, methods=["post"], url_path="replacement/set")
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="replacement/set",
+        url_name="set_replacement",
+    )
     def set_replacement(self, request, *args, **kwargs):
         plan_version = self.get_object()
-        serializer = SetReplaceWithSerializer(data=request.data)
+        organization = self.request.organization
+        serializer = SetReplaceWithSerializer(
+            data=request.data, context={"organization": organization}
+        )
         serializer.is_valid(raise_exception=True)
         replacement = serializer.validated_data["replace_with"]
         if replacement == plan_version:
@@ -975,17 +988,25 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         parameters=None,
         request=MakeReplaceWithSerializer,
         responses=inline_serializer(
-            "SetReplaceWithResponse",
+            "MakeReplaceWithResponse",
             fields={
                 "success": serializers.BooleanField(),
                 "message": serializers.CharField(),
             },
         ),
     )
-    @action(detail=True, methods=["post"], url_path="replacement/make")
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="replacement/make",
+        url_name="make_replacement",
+    )
     def make_replacement(self, request, *args, **kwargs):
         plan_version = self.get_object()
-        serializer = MakeReplaceWithSerializer(data=request.data)
+        organization = self.request.organization
+        serializer = MakeReplaceWithSerializer(
+            data=request.data, context={"organization": organization}
+        )
         serializer.is_valid(raise_exception=True)
         versions_to_replace = serializer.validated_data["versions_to_replace"]
         for to_replace_v in versions_to_replace:
@@ -1004,11 +1025,45 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                     raise InvalidOperation(
                         "There are target customers in the plan version that are not in the replacement plan version. Please add them to the replacement plan version or remove them from the original plan version first."
                     )
-        versions_to_replace.update(replace_with=plan_version)
+        PlanVersion.objects.filter(
+            id__in=[v.id for v in versions_to_replace],
+            organization=organization,
+        ).update(replace_with=plan_version)
         return Response(
             {
                 "success": True,
                 "message": f"Set plan version {str(plan_version)} as replacement for {len(versions_to_replace)} plan versions",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        request=AddFeatureSerializer,
+        responses=inline_serializer(
+            "AddFeatureResponse",
+            fields={
+                "success": serializers.BooleanField(),
+                "message": serializers.CharField(),
+            },
+        ),
+    )
+    @action(
+        detail=True, methods=["post"], url_path="features/add", url_name="features_add"
+    )
+    def add_feature(self, request, *args, **kwargs):
+        plan_version = self.get_object()
+        organization = self.request.organization
+        serializer = AddFeatureSerializer(
+            data=request.data, context={"organization": organization}
+        )
+        serializer.is_valid(raise_exception=True)
+        print(serializer.validated_data)
+        feature = serializer.validated_data["feature"]
+        plan_version.features.add(feature)
+        return Response(
+            {
+                "success": True,
+                "message": f"Added feature {str(feature)} to {str(plan_version)}",
             },
             status=status.HTTP_200_OK,
         )
@@ -1106,9 +1161,13 @@ class PlanViewSet(api_views.PlanViewSet):
         organization = self.request.organization
         now = now_utc()
         plan = self.get_object()
-        num_active_subscriptions = SubscriptionRecord.objects.active().filter(
-            organization=organization,
-            billing_plan__plan=plan,
+        num_active_subscriptions = (
+            SubscriptionRecord.objects.active()
+            .filter(
+                organization=organization,
+                billing_plan__plan=plan,
+            )
+            .count()
         )
         if num_active_subscriptions > 0:
             raise InvalidOperation("Cannot delete plan with active subscriptions")
@@ -1120,7 +1179,7 @@ class PlanViewSet(api_views.PlanViewSet):
         return Response(
             {
                 "success": True,
-                "message": f"Deleted {num_versions} versions of plan {plan.name}",
+                "message": f"Deleted {num_versions} versions of plan {plan.plan_name}",
             },
             status=status.HTTP_200_OK,
         )
@@ -1275,11 +1334,11 @@ class PlanViewSet(api_views.PlanViewSet):
             data=request.data, context={"organization": request.organization}
         )
         serializer.is_valid(raise_exception=True)
-        feature = serializer.validated_data["feature_id"]
+        feature = serializer.validated_data["feature"]
         if serializer.validated_data["all_versions"] is True:
             plan_versions = plan.versions.get_queryset()
         else:
-            plan_versions = serializer.validated_data["version_ids"]
+            plan_versions = serializer.validated_data["plan_versions"]
         for pv in plan_versions:
             pv.features.add(feature)
         return Response(
@@ -1989,6 +2048,7 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
+        return context
         return context
         return context
         return context
