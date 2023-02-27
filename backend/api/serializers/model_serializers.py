@@ -1066,7 +1066,13 @@ class RecurringChargeSerializer(
         return obj.get_charge_behavior_display()
 
 
-@extend_schema_serializer(deprecate_fields=["flat_fee_billing_type", "flat_rate"])
+@extend_schema_serializer(
+    deprecate_fields=[
+        "flat_fee_billing_type",
+        "flat_rate",
+        "version",
+    ]
+)
 class PlanVersionSerializer(
     ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
@@ -1107,9 +1113,13 @@ class PlanVersionSerializer(
     recurring_charges = serializers.SerializerMethodField()
     price_adjustment = PriceAdjustmentSerializer(allow_null=True)
 
-    plan_name = serializers.CharField(source="plan.plan_name")
-    currency = PricingUnitSerializer(source="pricing_unit")
+    plan_name = serializers.SerializerMethodField()
+    currency = PricingUnitSerializer()
     status = serializers.SerializerMethodField()
+    version = serializers.SerializerMethodField()
+
+    def get_plan_name(self, obj) -> serializers.CharField():
+        return str(obj)
 
     def get_status(
         self, obj
@@ -1164,6 +1174,9 @@ class PlanVersionSerializer(
             return str(obj.replace_with)
         else:
             return None
+
+    def get_version(self, obj) -> int:
+        return 1
 
 
 class PlanNameAndIDSerializer(

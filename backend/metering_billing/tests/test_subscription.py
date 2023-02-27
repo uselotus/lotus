@@ -92,7 +92,6 @@ def subscription_test_common_setup(
         billing_plan = baker.make(
             PlanVersion,
             organization=org,
-            description="test_plan for testing",
             plan=plan,
         )
         plan.save()
@@ -313,7 +312,6 @@ class TestUpdateSub:
         pv = PlanVersion.objects.create(
             organization=setup_dict["org"],
             plan=plan,
-            version=1,
             description="new plan",
         )
         plan.make_version_active(pv)
@@ -433,7 +431,6 @@ class TestUpdateSub:
         baker.make(
             PlanVersion,
             organization=setup_dict["org"],
-            description="test_plan for testing",
             plan=new_plan,
         )
         payload = {
@@ -503,7 +500,6 @@ class TestUpdateSub:
         baker.make(
             PlanVersion,
             organization=setup_dict["org"],
-            description="test_plan for testing",
             plan=new_plan,
         )
         new_plan.save()
@@ -579,7 +575,6 @@ class TestUpdateSub:
         baker.make(
             PlanVersion,
             organization=setup_dict["org"],
-            description="test_plan for testing",
             plan=new_plan,
         )
         new_plan.save()

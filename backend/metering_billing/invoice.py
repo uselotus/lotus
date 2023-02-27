@@ -295,14 +295,16 @@ def charge_next_plan_flat_fee(
             recurring_charge.charge_timing
             == RecurringCharge.ChargeTimingType.IN_ADVANCE
         )
-        if next_bp.plan.addon_spec:
+        if next_bp.addon_spec:
             next_bp_duration = find_next_billing_plan(
                 subscription_record.parent
             ).plan.plan_duration
-            name = f"{next_bp.plan.plan_name} ({recurring_charge.name}) - Next Period [Add-on]"
+            name = (
+                f"{str(next_bp.plan)} ({recurring_charge.name}) - Next Period [Add-on]"
+            )
         else:
             next_bp_duration = next_bp.plan.plan_duration
-            name = f"{next_bp.plan.plan_name} ({recurring_charge.name}) - Next Period"
+            name = f"{str(next_bp.plan)} ({recurring_charge.name}) - Next Period"
         if charge_in_advance and recurring_charge.amount > 0:
             new_start = date_as_min_dt(
                 subscription_record.end_date + relativedelta(days=1), timezone

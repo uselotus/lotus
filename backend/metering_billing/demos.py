@@ -213,7 +213,6 @@ def setup_demo3(
     free_bp = PlanVersion.objects.create(
         organization=organization,
         description="The free tier",
-        version=1,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
     )
@@ -241,7 +240,6 @@ def setup_demo3(
     bp_10_og = PlanVersion.objects.create(
         organization=organization,
         description="10K Words Plan",
-        version=1,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
     )
@@ -272,7 +270,6 @@ def setup_demo3(
     bp_25_og = PlanVersion.objects.create(
         organization=organization,
         description="25K words per month",
-        version=1,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
     )
@@ -303,7 +300,6 @@ def setup_demo3(
     bp_50_og = PlanVersion.objects.create(
         organization=organization,
         description="50K words per month",
-        version=1,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
     )
@@ -334,7 +330,6 @@ def setup_demo3(
     bp_10_compute_seats = PlanVersion.objects.create(
         organization=organization,
         description="10K words per month + usage based pricing on Compute Time and Seats",
-        version=1,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
     )
@@ -378,7 +373,6 @@ def setup_demo3(
     bp_25_compute_seats = PlanVersion.objects.create(
         organization=organization,
         description="25K words per month + usage based pricing on Compute Time and Seats",
-        version=1,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
     )
@@ -422,7 +416,6 @@ def setup_demo3(
     bp_50_compute_seats = PlanVersion.objects.create(
         organization=organization,
         description="50K words per month + usage based pricing on Compute Time and Seats",
-        version=1,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
     )
@@ -809,7 +802,6 @@ def setup_demo4(
     free_bp = PlanVersion.objects.create(
         organization=organization,
         description="The free tier",
-        version=1,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
     )
@@ -841,7 +833,6 @@ def setup_demo4(
     bp_basic_events = PlanVersion.objects.create(
         organization=organization,
         description="Basic plan, with access to only analytics events. $29/month flat fee + 20 cents per_usage",
-        version=1,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
     )
@@ -878,7 +869,6 @@ def setup_demo4(
     bp_pro_events = PlanVersion.objects.create(
         organization=organization,
         description="Pro plan, with access to only analytics events. $69/month flat fee + 25 cents charge for events",
-        version=1,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
     )
@@ -915,7 +905,6 @@ def setup_demo4(
     bp_basic_both = PlanVersion.objects.create(
         organization=organization,
         description="Basic plan, with access to analytics events + session recordings. $59/month flat fee + 20 cent per_usage charge for events + $0.35 per session recording",
-        version=1,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
     )
@@ -959,7 +948,6 @@ def setup_demo4(
     bp_pro_both = PlanVersion.objects.create(
         organization=organization,
         description="Pro plan, with access to analytics events + session recordings. $119/month flat fee + 25 cent per_usage charge + $0.35 per session recording",
-        version=1,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
     )
@@ -1003,7 +991,6 @@ def setup_demo4(
     bp_experimental = PlanVersion.objects.create(
         organization=organization,
         description="Experimental Plan for charging based on Recording Time instead of number of recordings",
-        version=1,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
     )
@@ -1354,7 +1341,6 @@ def setup_paas_demo(
     basic_plan = PlanVersion.objects.create(
         organization=organization,
         description="Basic Plan with access to testnet",
-        version=1,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
     )
@@ -1391,7 +1377,6 @@ def setup_paas_demo(
     professional_plan = PlanVersion.objects.create(
         organization=organization,
         description="Customizable Professional Pla",
-        version=1,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
     )

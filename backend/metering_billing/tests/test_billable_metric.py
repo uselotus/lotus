@@ -27,8 +27,6 @@ from metering_billing.utils.enums import (
     METRIC_TYPE,
     NUMERIC_FILTER_OPERATORS,
     PLAN_DURATION,
-    PLAN_STATUS,
-    PLAN_VERSION_STATUS,
 )
 from model_bakery import baker
 from rest_framework import status
@@ -230,9 +228,7 @@ class TestArchiveMetric:
         billing_plan = baker.make(
             PlanVersion,
             organization=org,
-            description="test_plan for testing",
             plan=plan,
-            status=PLAN_VERSION_STATUS.ACTIVE,
         )
         for i, (fmu, cpb, mupb) in enumerate(
             zip([50, 0, 1], [5, 0.05, 2], [100, 1, 1])
@@ -260,8 +256,6 @@ class TestArchiveMetric:
         setup_dict["billing_plan"] = billing_plan
 
         payload = {"status": METRIC_STATUS.ARCHIVED}
-        assert billing_plan.status == PLAN_VERSION_STATUS.ACTIVE
-        assert billing_plan.plan.status == PLAN_STATUS.ACTIVE
         assert billing_plan.plan_components.count() == 3
         all_pcs = billing_plan.plan_components.all()
         assert (
@@ -283,7 +277,7 @@ class TestArchiveMetric:
             response.data["type"]
             == "https://docs.uselotus.io/errors/error-responses#validation-error"
         )
-        billing_plan.status = PLAN_VERSION_STATUS.ARCHIVED
+        billing_plan.deleted = now_utc()
         billing_plan.save()
 
         response = setup_dict["client"].patch(
@@ -294,6 +288,7 @@ class TestArchiveMetric:
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
+        print(response.data)
         assert response.status_code == status.HTTP_200_OK
         assert (
             Metric.objects.get(metric_id=metric_set[0].metric_id).status
@@ -344,7 +339,6 @@ class TestCalculateMetric:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            version=1,
             plan=setup_dict["plan"],
         )
         plan_component = PlanComponent.objects.create(
@@ -431,7 +425,6 @@ class TestCalculateMetric:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            version=1,
             plan=setup_dict["plan"],
         )
         plan_component = PlanComponent.objects.create(
@@ -520,7 +513,6 @@ class TestCalculateMetric:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            version=1,
             plan=setup_dict["plan"],
         )
         plan_component = PlanComponent.objects.create(
@@ -626,7 +618,6 @@ class TestCalculateMetric:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            version=1,
             plan=setup_dict["plan"],
         )
         plan_component = PlanComponent.objects.create(
@@ -709,7 +700,6 @@ class TestCalculateMetric:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            version=1,
             plan=setup_dict["plan"],
         )
         plan_component = PlanComponent.objects.create(
@@ -804,7 +794,6 @@ class TestCalculateMetricProrationForGauge:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            version=1,
             plan=setup_dict["plan"],
         )
         plan_component = PlanComponent.objects.create(
@@ -913,7 +902,6 @@ class TestCalculateMetricProrationForGauge:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            version=1,
             plan=setup_dict["plan"],
         )
         plan_component = PlanComponent.objects.create(
@@ -1029,7 +1017,6 @@ class TestCalculateMetricProrationForGauge:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            version=1,
             plan=setup_dict["plan"],
         )
         plan_component = PlanComponent.objects.create(
@@ -1151,7 +1138,6 @@ class TestCalculateMetricWithFilters:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            version=1,
             plan=setup_dict["plan"],
         )
         plan_component = PlanComponent.objects.create(
@@ -1247,7 +1233,6 @@ class TestCalculateMetricWithFilters:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            version=1,
             plan=setup_dict["plan"],
         )
         plan_component = PlanComponent.objects.create(
@@ -1334,7 +1319,6 @@ class TestCalculateMetricWithFilters:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            version=1,
             plan=setup_dict["plan"],
         )
         plan_component = PlanComponent.objects.create(
@@ -1451,7 +1435,6 @@ class TestCalculateMetricWithFilters:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            version=1,
             plan=setup_dict["plan"],
         )
         plan_component = PlanComponent.objects.create(
@@ -1562,7 +1545,6 @@ class TestCustomSQLMetrics:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            version=1,
             plan=setup_dict["plan"],
         )
         plan_component = PlanComponent.objects.create(
@@ -1672,7 +1654,6 @@ class TestCustomSQLMetrics:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            version=1,
             plan=setup_dict["plan"],
         )
         plan_component = PlanComponent.objects.create(
@@ -1782,7 +1763,6 @@ class TestCustomSQLMetrics:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            version=1,
             plan=setup_dict["plan"],
         )
         plan_component = PlanComponent.objects.create(
@@ -1914,7 +1894,6 @@ class TestCustomSQLMetrics:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            version=1,
             plan=setup_dict["plan"],
         )
         plan_component = PlanComponent.objects.create(
@@ -2122,7 +2101,6 @@ class TestCustomSQLMetrics:
         )  # this one also shouldnt as it doesn't have the volume on one of the days in the query
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            version=1,
             plan=setup_dict["plan"],
         )
         plan_component = PlanComponent.objects.create(
@@ -2294,7 +2272,6 @@ class TestRegressions:
         )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            version=1,
             plan=setup_dict["plan"],
         )
         plan_component = PlanComponent.objects.create(

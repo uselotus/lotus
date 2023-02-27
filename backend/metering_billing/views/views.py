@@ -529,7 +529,7 @@ class DraftInvoiceView(APIView):
                 "billing_plan__plan_components",
                 "billing_plan__plan_components__billable_metric",
                 "billing_plan__plan_components__tiers",
-                "billing_plan__pricing_unit",
+                "billing_plan__currency",
             )
             invoices = generate_invoice(
                 sub_records,

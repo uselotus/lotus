@@ -55,7 +55,6 @@ from metering_billing.utils.enums import (
     ORGANIZATION_SETTING_NAMES,
     ORGANIZATION_STATUS,
     PAYMENT_PROCESSORS,
-    PLAN_STATUS,
     PRICE_TIER_TYPE,
     TAG_GROUP,
     TAX_PROVIDER,
@@ -778,17 +777,12 @@ class MetricUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         data = super().validate(data)
         active_plan_versions_with_metric = []
         if data.get("status") == METRIC_STATUS.ARCHIVED:
-            all_active_plan_versions = (
-                PlanVersion.plan_versions.active()
-                .filter(
-                    organization=self.context["organization"],
-                    plan__in=Plan.plans.filter(
-                        organization=self.context["organization"],
-                        status=PLAN_STATUS.ACTIVE,
-                    ),
-                )
-                .prefetch_related("plan_components", "plan_components__billable_metric")
-            )
+            # print(PlanVersion.objects.all())
+            # print(PlanVersion.plan_versions.active())
+            # print(PlanVersion.plan_versions.active().filter(deleted__isnull=True))
+            all_active_plan_versions = PlanVersion.objects.filter(
+                organization=self.context["organization"],
+            ).prefetch_related("plan_components", "plan_components__billable_metric")
             for plan_version in all_active_plan_versions:
                 for component in plan_version.plan_components.all():
                     if component.billable_metric == self.instance:
@@ -1224,12 +1218,10 @@ class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
     plan_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
         queryset=Plan.objects.all(),
-        required=False,
     )
     currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code",
         queryset=PricingUnit.objects.all(),
-        required=False,
     )
 
     def validate(self, data):
@@ -1245,13 +1237,7 @@ class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
                 else:
                     component_metrics.append(component.get("metric"))
         data["currency"] = data.pop("currency_code", None)
-        if data["currency"] is None:
-            raise serializers.ValidationError(
-                "currency_code is required for plan creation."
-            )
         data["plan"] = data.pop("plan_id", None)
-        if data["plan"] is None:
-            raise serializers.ValidationError("plan_id is required for plan creation.")
         return data
 
     def create(self, validated_data):
@@ -1327,7 +1313,7 @@ class PlanVersionDetailSerializer(api_serializers.PlanVersionSerializer):
                     "active_subscriptions",
                 }
             )
-            - {"flat_fee_billing_type", "flat_rate"}
+            - {"flat_fee_billing_type", "flat_rate", "version"}
         )
         extra_kwargs = {**api_serializers.PlanVersionSerializer.Meta.extra_kwargs}
 
@@ -1357,6 +1343,10 @@ class InitialPlanVersionCreateSerializer(PlanVersionCreateSerializer):
                 ]
             )
         )
+
+    def validate(self, data):
+        data = super().validate(data)
+        return data
 
 
 class PlanNameAndIDSerializer(api_serializers.PlanNameAndIDSerializer):
@@ -1389,7 +1379,7 @@ class PlanDetailSerializer(api_serializers.PlanSerializer):
         except AttributeError as e:
             logger.error(f"AttributeError on plan: {e}")
             return PlanVersionDetailSerializer(
-                obj.versions.all().order_by("version"), many=True
+                obj.versions.all().order_by("-created_on"), many=True
             ).data
 
 
@@ -1552,7 +1542,6 @@ class SubscriptionRecordCancelSerializer(
 
 class ListSubscriptionRecordFilter(api_serializers.ListSubscriptionRecordFilter):
     pass
-
 
 
 class SubscriptionActionSerializer(SubscriptionRecordSerializer):

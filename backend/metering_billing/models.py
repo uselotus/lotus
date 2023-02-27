@@ -1916,7 +1916,10 @@ class BasePlanManager(models.Manager):
 
 
 class PlanVersionManager(BasePlanManager):
-    pass
+    def get_queryset(self):
+        qs = super().get_queryset()
+        qs = qs.filter(deleted__isnull=True)
+        return qs
 
 
 class RegularPlanVersionManager(PlanVersionManager):

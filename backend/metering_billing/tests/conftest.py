@@ -294,7 +294,7 @@ def add_plan_version_to_plan():
             plan=plan,
             _quantity=1,
             currency=PricingUnit.objects.get(
-                organization=plan.organization, name="USD"
+                organization=plan.organization, code="USD"
             ),
         )
         RecurringCharge.objects.create(
@@ -303,10 +303,8 @@ def add_plan_version_to_plan():
             charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
             charge_behavior=RecurringCharge.ChargeBehaviorType.PRORATE,
             amount=30,
-            pricing_unit=plan_version.pricing_unit,
+            pricing_unit=plan_version.currency,
         )
         return plan_version
-
-    return do_add_planversion_to_plan
 
     return do_add_planversion_to_plan

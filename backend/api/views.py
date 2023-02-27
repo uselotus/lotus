@@ -532,7 +532,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                         to_attr="recurring_charges_prefetched",
                     ),
                 )
-                .order_by("version"),
+                .order_by("created_on"),
                 to_attr="versions_prefetched",
             ),
         )
@@ -1542,7 +1542,7 @@ class MetricAccessView(APIView):
             "access": False,
             "access_per_subscription": [],
         }
-        for sr in subscription_records.filter(billing_plan__is_addon=False):
+        for sr in subscription_records.filter(billing_plan__addon_spec__isnull=True):
             if subscription_filters_set:
                 sr_filters_set = {(x.property_name, x.value) for x in sr.filters.all()}
                 if not subscription_filters_set.issubset(sr_filters_set):
@@ -1644,7 +1644,7 @@ class FeatureAccessView(APIView):
             "access": False,
             "access_per_subscription": [],
         }
-        for sr in subscription_records.filter(billing_plan__is_addon=False):
+        for sr in subscription_records.filter(billing_plan__addon_spec__isnull=True):
             if subscription_filters_set:
                 sr_filters_set = {(x.property_name, x.value) for x in sr.filters.all()}
                 if not subscription_filters_set.issubset(sr_filters_set):

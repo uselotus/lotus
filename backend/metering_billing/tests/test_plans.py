@@ -5,13 +5,7 @@ from django.urls import reverse
 from metering_billing.models import Plan, PlanVersion
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
-from metering_billing.utils.enums import (
-    MAKE_PLAN_VERSION_ACTIVE_TYPE,
-    PLAN_DURATION,
-    PLAN_STATUS,
-    PLAN_VERSION_STATUS,
-    REPLACE_IMMEDIATELY_TYPE,
-)
+from metering_billing.utils.enums import PLAN_DURATION, PLAN_STATUS, PLAN_VERSION_STATUS
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -38,9 +32,8 @@ def plan_test_common_setup(
         setup_dict["plan_payload"] = {
             "plan_name": "test_plan",
             "plan_duration": PLAN_DURATION.MONTHLY,
-            "product_id": setup_dict["product"].product_id,
             "initial_version": {
-                "status": PLAN_VERSION_STATUS.ACTIVE,
+                "currency_code": "USD",
                 "recurring_charges": [
                     {
                         "name": "test_recurring_charge",
@@ -53,10 +46,10 @@ def plan_test_common_setup(
         }
         setup_dict["plan_update_payload"] = {
             "plan_name": "change_plan_name",
+            "plan_description": "test_plan_version_description",
         }
         setup_dict["plan_version_payload"] = {
-            "description": "test_plan_version_description",
-            "make_active": True,
+            "currency_code": "USD",
             "recurring_charges": [
                 {
                     "name": "test_recurring_charge",
@@ -88,6 +81,7 @@ class TestCreatePlan:
             data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
+        print(response.data)
         assert response.status_code == status.HTTP_201_CREATED
 
     def test_plan_dont_specify_version_fails_doesnt_create_plan(
@@ -127,12 +121,6 @@ class TestCreatePlanVersion:
 
         # now add in the plan ID to the payload, and send a post request for the new version
         setup_dict["plan_version_payload"]["plan_id"] = plan.plan_id
-        setup_dict["plan_version_payload"][
-            "make_active_type"
-        ] = MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_IMMEDIATELY
-        setup_dict["plan_version_payload"][
-            "replace_immediately_type"
-        ] = REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_DONT_BILL
         response = setup_dict["client"].post(
             reverse("plan_version-list"),
             data=json.dumps(setup_dict["plan_version_payload"], cls=DjangoJSONEncoder),
@@ -140,10 +128,6 @@ class TestCreatePlanVersion:
         )
         assert response.status_code == status.HTTP_201_CREATED
         assert PlanVersion.objects.all().count() == 2
-        assert set(PlanVersion.objects.values_list("version", flat=True)) == set([1, 2])
-        assert set(PlanVersion.objects.values_list("status", flat=True)) == set(
-            [PLAN_VERSION_STATUS.ACTIVE, PLAN_VERSION_STATUS.INACTIVE]
-        )
         assert len(plan.versions.all()) == 2
 
     def test_create_new_version_as_inactive_works(
@@ -158,14 +142,10 @@ class TestCreatePlanVersion:
             data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        assert set(PlanVersion.objects.values_list("version", "status")) == set(
-            [(1, PLAN_VERSION_STATUS.ACTIVE)]
-        )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
 
         # now add in the plan ID to the payload, and send a post request for the new version
         setup_dict["plan_version_payload"]["plan_id"] = plan.plan_id
-        setup_dict["plan_version_payload"]["make_active"] = False
         response = setup_dict["client"].post(
             reverse("plan_version-list"),
             data=json.dumps(setup_dict["plan_version_payload"], cls=DjangoJSONEncoder),
@@ -174,9 +154,6 @@ class TestCreatePlanVersion:
 
         assert response.status_code == status.HTTP_201_CREATED
         assert PlanVersion.objects.all().count() == 2
-        assert set(PlanVersion.objects.values_list("version", "status")) == set(
-            [(1, PLAN_VERSION_STATUS.ACTIVE), (2, PLAN_VERSION_STATUS.INACTIVE)]
-        )
         assert len(plan.versions.all()) == 2
 
     def test_create_new_version_as_active_with_existing_subscriptions_grandfathering(
@@ -198,9 +175,6 @@ class TestCreatePlanVersion:
         )
         # now add in the plan ID to the payload, and send a post request for the new version
         setup_dict["plan_version_payload"]["plan_id"] = plan.plan_id
-        setup_dict["plan_version_payload"][
-            "make_active_type"
-        ] = MAKE_PLAN_VERSION_ACTIVE_TYPE.GRANDFATHER_ACTIVE
         response = setup_dict["client"].post(
             reverse("plan_version-list"),
             data=json.dumps(setup_dict["plan_version_payload"], cls=DjangoJSONEncoder),
@@ -209,10 +183,6 @@ class TestCreatePlanVersion:
 
         assert response.status_code == status.HTTP_201_CREATED
         assert PlanVersion.objects.all().count() == 2
-        assert set(PlanVersion.objects.values_list("version", flat=True)) == set([1, 2])
-        assert set(PlanVersion.objects.values_list("status", flat=True)) == set(
-            [PLAN_VERSION_STATUS.ACTIVE, PLAN_VERSION_STATUS.GRANDFATHERED]
-        )
         assert len(plan.versions.all()) == 2
 
     def test_create_new_version_as_active_with_existing_subscriptions_replace_on_renewal(
@@ -236,9 +206,6 @@ class TestCreatePlanVersion:
 
         # now add in the plan ID to the payload, and send a post request for the new version
         setup_dict["plan_version_payload"]["plan_id"] = plan.plan_id
-        setup_dict["plan_version_payload"][
-            "make_active_type"
-        ] = MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_ON_ACTIVE_VERSION_RENEWAL
         response = setup_dict["client"].post(
             reverse("plan_version-list"),
             data=json.dumps(setup_dict["plan_version_payload"], cls=DjangoJSONEncoder),
@@ -247,10 +214,6 @@ class TestCreatePlanVersion:
 
         assert response.status_code == status.HTTP_201_CREATED
         assert PlanVersion.objects.all().count() == 2
-        assert set(PlanVersion.objects.values_list("version", flat=True)) == set([1, 2])
-        assert set(PlanVersion.objects.values_list("status", flat=True)) == set(
-            [PLAN_VERSION_STATUS.ACTIVE, PLAN_VERSION_STATUS.RETIRING]
-        )
         assert len(plan.versions.all()) == 2
 
 
@@ -623,9 +586,6 @@ class TestUpdatePlanVersion:
 
         # now add in the plan ID to the payload, and send a post request for the new version
         setup_dict["plan_version_payload"]["plan_id"] = plan.plan_id
-        setup_dict["plan_version_payload"][
-            "make_active_type"
-        ] = MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_ON_ACTIVE_VERSION_RENEWAL
         response = setup_dict["client"].post(
             reverse("plan_version-list"),
             data=json.dumps(setup_dict["plan_version_payload"], cls=DjangoJSONEncoder),
@@ -647,8 +607,4 @@ class TestUpdatePlanVersion:
 
         assert response.status_code == status.HTTP_200_OK
         assert PlanVersion.objects.all().count() == 2
-        assert set(PlanVersion.objects.values_list("version", flat=True)) == set([1, 2])
-        assert set(PlanVersion.objects.values_list("status", flat=True)) == set(
-            [PLAN_VERSION_STATUS.ACTIVE, PLAN_VERSION_STATUS.INACTIVE]
-        )
         assert len(plan.versions.all()) == 2

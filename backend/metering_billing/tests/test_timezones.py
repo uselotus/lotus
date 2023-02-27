@@ -85,7 +85,6 @@ def timezone_test_common_setup(
         billing_plan = baker.make(
             PlanVersion,
             organization=org,
-            description="test_plan for testing",
             plan=plan,
         )
         plan.save()

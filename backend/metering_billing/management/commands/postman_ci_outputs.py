@@ -122,7 +122,6 @@ class Command(BaseCommand):
         free_bp = PlanVersion.objects.create(
             organization=organization,
             description="The free tier",
-            version=1,
             plan=plan,
             status=PLAN_VERSION_STATUS.ACTIVE,
         )
@@ -193,7 +192,6 @@ class Command(BaseCommand):
             organization=organization,
             description="flat_fee_addon",
             plan=flat_fee_addon,
-            version=1,
             status=PLAN_VERSION_STATUS.ACTIVE,
         )
         RecurringCharge.objects.create(

@@ -83,7 +83,6 @@ def alerts_test_common_setup(
         billing_plan = baker.make(
             PlanVersion,
             organization=org,
-            description="test_plan for testing",
             plan=plan,
         )
         for i, (fmu, cpb, mupb) in enumerate(
