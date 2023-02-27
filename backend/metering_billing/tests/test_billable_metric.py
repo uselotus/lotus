@@ -234,8 +234,6 @@ class TestArchiveMetric:
             plan=plan,
             status=PLAN_VERSION_STATUS.ACTIVE,
         )
-        plan.display_version = billing_plan
-        plan.save()
         for i, (fmu, cpb, mupb) in enumerate(
             zip([50, 0, 1], [5, 0.05, 2], [100, 1, 1])
         ):
@@ -1584,8 +1582,6 @@ class TestCustomSQLMetrics:
             cost_per_batch=100,
             metric_units_per_batch=1,
         )
-        billing_plan.plan.display_version = billing_plan
-        billing_plan.plan.save()
         now = now_utc()
         with (
             mock.patch(
@@ -1696,8 +1692,6 @@ class TestCustomSQLMetrics:
             cost_per_batch=100,
             metric_units_per_batch=1,
         )
-        billing_plan.plan.display_version = billing_plan
-        billing_plan.plan.save()
         now = now_utc()
         with (
             mock.patch(
@@ -1808,8 +1802,6 @@ class TestCustomSQLMetrics:
             cost_per_batch=100,
             metric_units_per_batch=1,
         )
-        billing_plan.plan.display_version = billing_plan
-        billing_plan.plan.save()
         now = now_utc()
         with (
             mock.patch(
@@ -1942,8 +1934,6 @@ class TestCustomSQLMetrics:
             cost_per_batch=100,
             metric_units_per_batch=1,
         )
-        billing_plan.plan.display_version = billing_plan
-        billing_plan.plan.save()
         now = now_utc()
         with (
             mock.patch(
@@ -2152,8 +2142,6 @@ class TestCustomSQLMetrics:
             cost_per_batch=100,
             metric_units_per_batch=1,
         )
-        billing_plan.plan.display_version = billing_plan
-        billing_plan.plan.save()
         now = now_utc()
         with (
             mock.patch(

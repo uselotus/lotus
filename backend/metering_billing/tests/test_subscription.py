@@ -25,7 +25,6 @@ from metering_billing.utils.enums import (
     PLAN_DURATION,
     PLAN_STATUS,
     USAGE_BEHAVIOR,
-    USAGE_BILLING_FREQUENCY,
 )
 from model_bakery import baker
 from rest_framework import status
@@ -96,7 +95,6 @@ def subscription_test_common_setup(
             description="test_plan for testing",
             plan=plan,
         )
-        plan.display_version = billing_plan
         plan.save()
         for i, (fmu, cpb, mupb) in enumerate(
             zip([50, 0, 1], [5, 0.05, 2], [100, 1, 1])
@@ -428,7 +426,6 @@ class TestUpdateSub:
             organization=setup_dict["org"],
             plan_name="yearly plan",
             plan_duration=PLAN_DURATION.YEARLY,
-            display_version=setup_dict["billing_plan"],
             status=PLAN_STATUS.ACTIVE,
         )
         Invoice.objects.all().count()
@@ -438,7 +435,6 @@ class TestUpdateSub:
             organization=setup_dict["org"],
             description="test_plan for testing",
             plan=new_plan,
-            usage_billing_frequency=USAGE_BILLING_FREQUENCY.MONTHLY,
         )
         payload = {
             "replace_plan_id": new_plan.plan_id,
@@ -500,19 +496,16 @@ class TestUpdateSub:
             organization=setup_dict["org"],
             plan_name="yearly plan",
             plan_duration=PLAN_DURATION.MONTHLY,
-            display_version=setup_dict["billing_plan"],
             status=PLAN_STATUS.ACTIVE,
         )
         before_invoices = Invoice.objects.all().count()
 
-        billing_plan = baker.make(
+        baker.make(
             PlanVersion,
             organization=setup_dict["org"],
             description="test_plan for testing",
             plan=new_plan,
-            usage_billing_frequency=USAGE_BILLING_FREQUENCY.END_OF_PERIOD,
         )
-        new_plan.display_version = billing_plan
         new_plan.save()
         payload = {
             "replace_plan_id": new_plan.plan_id,
@@ -538,7 +531,6 @@ class TestUpdateSub:
             assert li.subtotal < 30.0
             assert li.chargeable_item_type != CHARGEABLE_ITEM_TYPE.USAGE_CHARGE
         new_sr = SubscriptionRecord.objects.all().order_by("-id").first()
-        assert new_sr.billing_plan == new_plan.display_version
         assert new_sr.usage_start_date != new_sr.start_date
 
     def test_keep_usage_separate_on_plan_transfer(self, subscription_test_common_setup):
@@ -580,19 +572,16 @@ class TestUpdateSub:
             organization=setup_dict["org"],
             plan_name="yearly plan",
             plan_duration=PLAN_DURATION.MONTHLY,
-            display_version=setup_dict["billing_plan"],
             status=PLAN_STATUS.ACTIVE,
         )
         before_invoices = Invoice.objects.all().count()
 
-        billing_plan = baker.make(
+        baker.make(
             PlanVersion,
             organization=setup_dict["org"],
             description="test_plan for testing",
             plan=new_plan,
-            usage_billing_frequency=USAGE_BILLING_FREQUENCY.END_OF_PERIOD,
         )
-        new_plan.display_version = billing_plan
         new_plan.save()
         payload = {
             "replace_plan_id": new_plan.plan_id,
@@ -621,7 +610,6 @@ class TestUpdateSub:
             )
         )
         new_sr = SubscriptionRecord.objects.all().order_by("-id").first()
-        assert new_sr.billing_plan == new_plan.display_version
         assert new_sr.usage_start_date == new_sr.start_date
 
 

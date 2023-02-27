@@ -22,6 +22,7 @@ from django.views.generic import TemplateView
 from metering_billing.views import auth_views, organization_views, webhook_views
 from metering_billing.views.model_views import (
     ActionViewSet,
+    AddOnVersionViewSet,
     AddOnViewSet,
     APITokenViewSet,
     BacktestViewSet,
@@ -95,6 +96,7 @@ router.register(
 )
 router.register(r"api_tokens", APITokenViewSet, basename="api_token")
 router.register(r"addons", AddOnViewSet, basename="addon")
+router.register(r"addon_versions", AddOnVersionViewSet, basename="addon_version")
 router.register(r"usage_alerts", UsageAlertViewSet, basename="usage_alert")
 
 
@@ -258,5 +260,6 @@ if PROFILER_ENABLED:
     urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
 
 if DEBUG:
+    urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]
     urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]
     urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]

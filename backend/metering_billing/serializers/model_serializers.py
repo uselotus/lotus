@@ -749,19 +749,19 @@ class CustomerDetailSerializer(api_serializers.CustomerSerializer):
         return instance
 
 
-class CategoricalFilterSerializer(api_serializers.CategoricalFilterSerializer):
+class CategoricalFilterDetailSerializer(api_serializers.CategoricalFilterSerializer):
     class Meta(api_serializers.CategoricalFilterSerializer.Meta):
         fields = api_serializers.CategoricalFilterSerializer.Meta.fields
 
 
-class SubscriptionCategoricalFilterSerializer(
+class SubscriptionCategoricalFilterDetailSerializer(
     api_serializers.SubscriptionCategoricalFilterSerializer
 ):
     class Meta(api_serializers.SubscriptionCategoricalFilterSerializer.Meta):
         fields = api_serializers.SubscriptionCategoricalFilterSerializer.Meta.fields
 
 
-class NumericFilterSerializer(api_serializers.NumericFilterSerializer):
+class NumericFilterDetailSerializer(api_serializers.NumericFilterSerializer):
     class Meta(api_serializers.NumericFilterSerializer.Meta):
         fields = api_serializers.NumericFilterSerializer.Meta.fields
 
@@ -779,10 +779,10 @@ class MetricUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         active_plan_versions_with_metric = []
         if data.get("status") == METRIC_STATUS.ARCHIVED:
             all_active_plan_versions = (
-                PlanVersion.objects.active()
+                PlanVersion.plan_versions.active()
                 .filter(
                     organization=self.context["organization"],
-                    plan__in=Plan.objects.filter(
+                    plan__in=Plan.plans.filter(
                         organization=self.context["organization"],
                         status=PLAN_STATUS.ACTIVE,
                     ),
@@ -865,8 +865,8 @@ class MetricCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         }
 
     metric_name = serializers.CharField(source="billable_metric_name")
-    numeric_filters = NumericFilterSerializer(many=True, required=False)
-    categorical_filters = CategoricalFilterSerializer(many=True, required=False)
+    numeric_filters = NumericFilterDetailSerializer(many=True, required=False)
+    categorical_filters = CategoricalFilterDetailSerializer(many=True, required=False)
 
     def validate(self, data):
         data = super().validate(data)
@@ -1489,33 +1489,23 @@ class PlanUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         instance.not_active_after = new_naa
         instance.plan_name = validated_data.get("plan_name", instance.plan_name)
         instance.taxjar_code = validated_data.get("taxjar_code", instance.taxjar_code)
-        # tags = validated_data.get("tags")
-        # if tags is not None:
-        #     tags_lower = [tag["tag_name"].lower() for tag in tags]
-        #     existing_tags = instance.tags.all()
-        #     existing_tag_names = [tag.tag_name.lower() for tag in existing_tags]
-        #     for tag in tags:
-        #         if tag["tag_name"].lower() not in existing_tag_names:
-        #             try:
-        #                 tag_obj = Tag.objects.get(
-        #                     organization=instance.organization,
-        #                     tag_name__iexact=tag["tag_name"].lower(),
-        #                     tag_group=TAG_GROUP.PLAN,
-        #                 )
-        #             except Tag.DoesNotExist:
-        #                 tag_obj = Tag.objects.create(
-        #                     organization=instance.organization,
-        #                     tag_name=tag["tag_name"],
-        #                     tag_group=TAG_GROUP.PLAN,
-        #                     tag_hex=tag["tag_hex"],
-        #                     tag_color=tag["tag_color"],
-        #                 )
-        #             instance.tags.add(tag_obj)
-        #     for existing_tag in existing_tags:
-        #         if existing_tag.tag_name.lower() not in tags_lower:
-        #             instance.tags.remove(existing_tag)
         instance.save()
         return instance
+
+
+class AddOnUpdateSerializer(PlanUpdateSerializer):
+    class Meta:
+        model = Plan
+        fields = (
+            "addon_name",
+            "not_active_before",
+            "not_active_after",
+        )
+        extra_kwargs = {
+            "addon_name": {"required": False},
+        }
+
+    addon_name = serializers.CharField(source="plan_name", required=False)
 
 
 class SubscriptionRecordSerializer(api_serializers.SubscriptionRecordSerializer):
@@ -1563,13 +1553,6 @@ class SubscriptionRecordCancelSerializer(
 class ListSubscriptionRecordFilter(api_serializers.ListSubscriptionRecordFilter):
     pass
 
-
-# class ExperimentalToActiveRequestSerializer(serializers.Serializer):
-#     version_id = SlugRelatedFieldWithOrganization(
-#         queryset=PlanVersion.objects.filter(plan__status=PLAN_STATUS.EXPERIMENTAL),
-#         slug_field="version_id",
-#         read_only=False,
-#     )
 
 
 class SubscriptionActionSerializer(SubscriptionRecordSerializer):
@@ -1798,7 +1781,7 @@ class InvoiceListFilterSerializer(api_serializers.InvoiceListFilterSerializer):
 
 class GroupedLineItemSerializer(serializers.Serializer):
     plan_name = serializers.CharField()
-    subscription_filters = SubscriptionCategoricalFilterSerializer(many=True)
+    subscription_filters = SubscriptionCategoricalFilterDetailSerializer(many=True)
     subtotal = serializers.DecimalField(max_digits=10, decimal_places=2)
     start_date = serializers.DateTimeField()
     end_date = serializers.DateTimeField()
@@ -1868,6 +1851,8 @@ class AddOnDetailSerializer(api_serializers.AddOnSerializer):
                 "billing_frequency",
                 "invoice_when",
                 "currency",
+                "active_instances",
+                "addon_type",
             }
         )
 
@@ -2043,11 +2028,4 @@ class UsageAlertCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer
             plan_version=plan_version,
             **validated_data,
         )
-        return usage_alert
-        return usage_alert
-        return usage_alert
-        return usage_alert
-        return usage_alert
-        return usage_alert
-        return usage_alert
         return usage_alert

@@ -65,19 +65,19 @@ class TargetCustomersSerializer(serializers.Serializer):
     )
 
 
-class AddReplaceWithSerializer(serializers.Serializer):
+class SetReplaceWithSerializer(serializers.Serializer):
     replace_with = SlugRelatedFieldWithOrganization(
         slug_field="version_id",
-        queryset=PlanVersion.objects.active(),
+        queryset=PlanVersion.plan_versions.active(),
         required=True,
         help_text="The plan version to replace the current version with.",
     )
 
 
-class SetReplaceWithSerializer(serializers.Serializer):
+class MakeReplaceWithSerializer(serializers.Serializer):
     versions_to_replace = SlugRelatedFieldWithOrganization(
         slug_field="version_id",
-        queryset=PlanVersion.objects.all(),
+        queryset=PlanVersion.plan_versions.all(),
         required=True,
         many=True,
         help_text="The plan versions that will get replaced by the current version.",

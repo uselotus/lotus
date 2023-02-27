@@ -86,8 +86,6 @@ def alerts_test_common_setup(
             description="test_plan for testing",
             plan=plan,
         )
-        plan.display_version = billing_plan
-        plan.save()
         for i, (fmu, cpb, mupb) in enumerate(
             zip([50, 0, 1], [5, 0.05, 2], [100, 1, 1])
         ):

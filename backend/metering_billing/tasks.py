@@ -65,8 +65,7 @@ def calculate_invoice():
         minutes=-30
     )  # grace period of 30 minutes for sending events
     sub_records_to_bill = SubscriptionRecord.objects.filter(
-        (Q(end_date__lt=now_minus_30) | Q(next_billing_date__lt=now_minus_30))
-        & Q(fully_billed=False),
+        Q(end_date__lt=now_minus_30) & Q(fully_billed=False),
     )
 
     # now generate invoices and new subs

@@ -56,6 +56,7 @@ from metering_billing.serializers.model_serializers import (
     ActionSerializer,
     AddOnCreateSerializer,
     AddOnDetailSerializer,
+    AddOnUpdateSerializer,
     AddOnVersionCreateSerializer,
     AddOnVersionDetailSerializer,
     AddOnVersionUpdateSerializer,
@@ -92,7 +93,7 @@ from metering_billing.serializers.model_serializers import (
     WebhookEndpointSerializer,
 )
 from metering_billing.serializers.request_serializers import (
-    AddReplaceWithSerializer,
+    MakeReplaceWithSerializer,
     OrganizationSettingFilterSerializer,
     SetReplaceWithSerializer,
     TargetCustomersSerializer,
@@ -681,7 +682,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         "create": [IsAuthenticated & ValidOrganization],
         "partial_update": [IsAuthenticated & ValidOrganization],
     }
-    queryset = PlanVersion.objects.all()
+    queryset = PlanVersion.plan_versions.all()
 
     def get_object(self):
         string_uuid = self.kwargs[self.lookup_field]
@@ -698,7 +699,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         organization = self.request.organization
-        qs = PlanVersion.objects.filter(
+        qs = PlanVersion.plan_versions.filter(
             organization=organization,
         )
         return qs
@@ -914,7 +915,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     @extend_schema(
         parameters=None,
-        request=AddReplaceWithSerializer,
+        request=SetReplaceWithSerializer,
         responses=inline_serializer(
             "SetReplaceWithResponse",
             fields={
@@ -923,12 +924,12 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             },
         ),
     )
-    @action(detail=True, methods=["post"], url_path="replacement/add")
-    def add_replacement(self, request, *args, **kwargs):
+    @action(detail=True, methods=["post"], url_path="replacement/set")
+    def set_replacement(self, request, *args, **kwargs):
         plan_version = self.get_object()
-        serializer = AddReplaceWithSerializer(data=request.data)
+        serializer = SetReplaceWithSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        replacement = serializer.validated_data["replacement"]
+        replacement = serializer.validated_data["replace_with"]
         if replacement == plan_version:
             raise InvalidOperation("Cannot set plan version as its own replacement")
         if replacement.is_custom is True and plan_version.is_custom is False:
@@ -954,7 +955,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     @extend_schema(
         parameters=None,
-        request=SetReplaceWithSerializer,
+        request=MakeReplaceWithSerializer,
         responses=inline_serializer(
             "SetReplaceWithResponse",
             fields={
@@ -963,10 +964,10 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             },
         ),
     )
-    @action(detail=True, methods=["post"], url_path="replacement/set")
-    def set_replacement(self, request, *args, **kwargs):
+    @action(detail=True, methods=["post"], url_path="replacement/make")
+    def make_replacement(self, request, *args, **kwargs):
         plan_version = self.get_object()
-        serializer = SetReplaceWithSerializer(data=request.data)
+        serializer = MakeReplaceWithSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         versions_to_replace = serializer.validated_data["versions_to_replace"]
         for to_replace_v in versions_to_replace:
@@ -1654,7 +1655,7 @@ class CustomerBalanceAdjustmentViewSet(api_views.CustomerBalanceAdjustmentViewSe
 
 class AddOnViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated & ValidOrganization]
-    http_method_names = ["get", "head", "post"]
+    http_method_names = ["get", "post", "patch", "head"]
     lookup_field = "plan_id"
     lookup_url_kwarg = "addon_id"
     queryset = Plan.addons.all()
@@ -1674,6 +1675,8 @@ class AddOnViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "create":
             return AddOnCreateSerializer
+        elif self.action == "partial_update":
+            return AddOnUpdateSerializer
         return AddOnDetailSerializer
 
     def perform_create(self, serializer):
@@ -1765,6 +1768,22 @@ class AddOnViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    @extend_schema(responses=AddOnDetailSerializer)
+    def update(self, request, *args, **kwargs):
+        plan = self.get_object()
+        serializer = self.get_serializer(plan, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        if getattr(plan, "_prefetched_objects_cache", None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            plan._prefetched_objects_cache = {}
+
+        return Response(
+            AddOnDetailSerializer(plan, context=self.get_serializer_context()).data,
+            status=status.HTTP_200_OK,
+        )
+
 
 class AddOnVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     serializer_class = AddOnVersionDetailSerializer
@@ -1778,7 +1797,7 @@ class AddOnVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         "create": [IsAuthenticated & ValidOrganization],
         "partial_update": [IsAuthenticated & ValidOrganization],
     }
-    queryset = PlanVersion.addons.all()
+    queryset = PlanVersion.addon_versions.all()
 
     def get_object(self):
         string_uuid = self.kwargs[self.lookup_field]
@@ -1795,7 +1814,7 @@ class AddOnVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         organization = self.request.organization
-        qs = PlanVersion.objects.filter(
+        qs = PlanVersion.plan_versions.filter(
             organization=organization,
         )
         return qs
@@ -1946,6 +1965,7 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
+        return context
         return context
         return context
         return context

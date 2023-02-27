@@ -110,12 +110,7 @@ from metering_billing.serializers.serializer_utils import (
     OrganizationUUIDField,
     PlanUUIDField,
 )
-from metering_billing.utils import (
-    calculate_end_date,
-    convert_to_datetime,
-    date_as_max_dt,
-    now_utc,
-)
+from metering_billing.utils import calculate_end_date, convert_to_datetime, now_utc
 from metering_billing.utils.enums import (
     CATEGORICAL_FILTER_OPERATORS,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
@@ -127,7 +122,6 @@ from metering_billing.utils.enums import (
     SUBSCRIPTION_STATUS,
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
-    USAGE_BILLING_FREQUENCY,
 )
 from metering_billing.webhooks import customer_created_webhook
 from rest_framework import mixins, serializers, status, viewsets
@@ -438,7 +432,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     serializer_class = PlanSerializer
     lookup_field = "plan_id"
     http_method_names = ["get", "head"]
-    queryset = Plan.objects.all().order_by(
+    queryset = Plan.plans.all().order_by(
         F("created_on").desc(nulls_last=False), F("plan_name")
     )
 
@@ -467,7 +461,6 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             "target_customer",
             "created_by",
             "parent_plan",
-            "display_version",
         )
         # then for many to many / reverse FK but still have
         qs = qs.prefetch_related(
@@ -486,7 +479,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         qs = qs.prefetch_related(
             Prefetch(
                 "versions",
-                queryset=PlanVersion.objects.active()
+                queryset=PlanVersion.plan_versions.active()
                 .filter(
                     organization=organization,
                 )
@@ -878,7 +871,6 @@ class SubscriptionViewSet(
                 )
         # check to see if subscription exists
         duration = serializer.validated_data["billing_plan"].plan.plan_duration
-        billing_freq = serializer.validated_data["billing_plan"].usage_billing_frequency
         start_date = convert_to_datetime(
             serializer.validated_data["start_date"], date_behavior="min"
         )
@@ -903,31 +895,6 @@ class SubscriptionViewSet(
             raise ValidationError(
                 "End date cannot be in the past. For historical backfilling of subscriptions, please contact support."
             )
-        if billing_freq in [
-            USAGE_BILLING_FREQUENCY.MONTHLY,
-            USAGE_BILLING_FREQUENCY.QUARTERLY,
-        ]:
-            found = False
-            i = 0
-            num_months = 1 if billing_freq == USAGE_BILLING_FREQUENCY.MONTHLY else 3
-            while not found:
-                tentative_nbd = date_as_max_dt(
-                    start_date + relativedelta(months=i, day=day_anchor, days=-1)
-                )
-                if tentative_nbd <= start_date:
-                    i += 1
-                    continue
-                elif tentative_nbd > end_date:
-                    tentative_nbd = end_date
-                    break
-                months_btwn = relativedelta(end_date, tentative_nbd).months
-                if months_btwn % num_months == 0:
-                    found = True
-                else:
-                    i += 1
-            serializer.validated_data[
-                "next_billing_date"
-            ] = tentative_nbd  # end_date - i * relativedelta(months=num_months)
         subscription_record = serializer.save(
             organization=organization,
         )
@@ -1033,8 +1000,6 @@ class SubscriptionViewSet(
                     billing_plan=replace_billing_plan,
                     start_date=now,
                     end_date=subscription_record.end_date,
-                    next_billing_date=subscription_record.next_billing_date,
-                    last_billing_date=subscription_record.last_billing_date,
                     usage_start_date=now
                     if keep_separate
                     else subscription_record.usage_start_date,
@@ -1065,7 +1030,6 @@ class SubscriptionViewSet(
                 update_dict["auto_renew"] = False
             if end_date:
                 update_dict["end_date"] = end_date
-                update_dict["next_billing_date"] = end_date
             if len(update_dict) > 0:
                 qs.update(**update_dict)
 
@@ -1108,7 +1072,6 @@ class SubscriptionViewSet(
             update_dict["auto_renew"] = False
         if end_date:
             update_dict["end_date"] = end_date
-            update_dict["next_billing_date"] = end_date
         if quantity:
             update_dict["quantity"] = quantity
         if len(update_dict) > 0:

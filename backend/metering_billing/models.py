@@ -9,7 +9,6 @@ from typing import Literal, Optional, TypedDict, Union
 
 # import lotus_python
 import pycountry
-from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.cache import cache
@@ -69,7 +68,6 @@ from metering_billing.utils.enums import (
     SUPPORTED_CURRENCIES_VERSION,
     TAG_GROUP,
     TAX_PROVIDER,
-    USAGE_BILLING_FREQUENCY,
     USAGE_CALC_GRANULARITY,
     WEBHOOK_TRIGGER_EVENTS,
 )
@@ -1991,10 +1989,10 @@ class PlanVersion(models.Model):
     # MISC
     is_custom = models.BooleanField(default=False)
     target_customers = models.ManyToManyField(Customer, related_name="plan_versions")
-    version = models.PositiveSmallIntegerField()
 
-    objects = RegularPlanVersionManager()
-    addons = AddOnPlanVersionManager()
+    objects = PlanVersionManager()
+    plan_versions = RegularPlanVersionManager()
+    addon_versions = AddOnPlanVersionManager()
 
     class Meta:
         constraints = [
@@ -2008,7 +2006,11 @@ class PlanVersion(models.Model):
         ]
 
     def __str__(self) -> str:
-        prefix = f"[{self.pricing_unit.code}]"
+        currency = self.currency
+        if currency is None:
+            prefix = ""
+        else:
+            prefix = f"[{currency.code}]"
         if self.is_custom:
             prefix += "[CUSTOM]"
         if self.plan_version_name is not None:
@@ -2165,7 +2167,8 @@ class Plan(models.Model):
 
     # MISC
     tags = models.ManyToManyField("Tag", blank=True, related_name="plans")
-    objects = RegularPlanManager()
+    objects = BasePlanManager()
+    plans = RegularPlanManager()
     addons = AddOnPlanManager()
 
     history = HistoricalRecords()
@@ -2181,12 +2184,6 @@ class Plan(models.Model):
     )
 
     class Meta:
-        constraints = [
-            models.CheckConstraint(
-                check=(Q(is_addon=True) | Q(plan_duration__isnull=False)),
-                name="addon_cant_have_duration",
-            )
-        ]
         indexes = [
             models.Index(fields=["organization", "plan_id"]),
         ]
@@ -2332,12 +2329,12 @@ class SubscriptionRecordManager(models.Manager):
 
 class BaseSubscriptionRecordManager(SubscriptionRecordManager):
     def get_queryset(self):
-        return super().get_queryset().filter(billing_plan__is_addon=False)
+        return super().get_queryset().filter(billing_plan__addon_spec__isnull=True)
 
 
 class AddOnSubscriptionRecordManager(SubscriptionRecordManager):
     def get_queryset(self):
-        return super().get_queryset().filter(billing_plan__is_addon=True)
+        return super().get_queryset().filter(billing_plan__addon_spec__isnull=False)
 
 
 class SubscriptionRecord(models.Model):
@@ -2365,8 +2362,6 @@ class SubscriptionRecord(models.Model):
     start_date = models.DateTimeField(
         help_text="The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time."
     )
-    next_billing_date = models.DateTimeField(null=True, blank=True)
-    last_billing_date = models.DateTimeField(null=True, blank=True)
     end_date = models.DateTimeField(
         help_text="The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time."
     )
@@ -2447,29 +2442,6 @@ class SubscriptionRecord(models.Model):
             self.unadjusted_duration_microseconds = (
                 scheduled_end_date - self.start_date
             ).total_seconds() * 10**6
-        if not self.next_billing_date or self.next_billing_date < now:
-            if self.billing_plan.usage_billing_frequency in [
-                USAGE_BILLING_FREQUENCY.END_OF_PERIOD,
-                None,
-            ]:
-                self.next_billing_date = self.end_date
-            else:
-                num_months = (
-                    1
-                    if self.billing_plan.usage_billing_frequency
-                    == USAGE_BILLING_FREQUENCY.MONTHLY
-                    else 3
-                )
-                if self.last_billing_date:
-                    self.next_billing_date = min(
-                        self.end_date,
-                        self.last_billing_date + relativedelta(months=num_months),
-                    )
-                else:
-                    self.next_billing_date = min(
-                        self.end_date,
-                        self.start_date + relativedelta(months=num_months),
-                    )
         if not self.usage_start_date:
             self.usage_start_date = self.start_date
         new = not self.pk

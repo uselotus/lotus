@@ -19,12 +19,12 @@ from metering_billing.models import (
     PlanComponent,
     PlanVersion,
     PriceTier,
+    PricingUnit,
     RecurringCharge,
     SubscriptionRecord,
 )
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
-from metering_billing.utils.enums import PLAN_VERSION_STATUS
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -93,8 +93,8 @@ def addon_test_common_setup(
         billing_plan = baker.make(
             PlanVersion,
             organization=org,
-            description="test_plan for testing",
             plan=plan,
+            currency=PricingUnit.objects.get(organization=org, code="USD"),
         )
         RecurringCharge.objects.create(
             organization=plan.organization,
@@ -102,9 +102,8 @@ def addon_test_common_setup(
             charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
             charge_behavior=RecurringCharge.ChargeBehaviorType.PRORATE,
             amount=30,
-            pricing_unit=billing_plan.pricing_unit,
+            pricing_unit=billing_plan.currency,
         )
-        plan.display_version = billing_plan
         plan.save()
         for i, (fmu, cpb, mupb) in enumerate(
             zip([50, 0, 1], [5, 0.05, 2], [100, 1, 1])
@@ -149,15 +148,15 @@ def addon_test_common_setup(
             billing_frequency=AddOnSpecification.BillingFrequency.ONE_TIME,
             flat_fee_invoicing_behavior_on_attach=AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_ATTACH,
         )
-        flat_fee_addon = Plan.objects.create(
-            organization=org, plan_name="flat_fee_addon", addon_spec=flat_fee_addon_spec
+        flat_fee_addon = Plan.addons.create(
+            organization=org, plan_name="flat_fee_addon", is_addon=True
         )
-        flat_fee_addon_version = PlanVersion.objects.create(
+        flat_fee_addon_version = PlanVersion.addon_versions.create(
             organization=org,
-            description="flat_fee_addon",
             plan=flat_fee_addon,
-            version=1,
-            status=PLAN_VERSION_STATUS.ACTIVE,
+            addon_spec=flat_fee_addon_spec,
+            plan_version_name="flat_fee_addon_version",
+            currency=PricingUnit.objects.get(organization=org, code="USD"),
         )
         RecurringCharge.objects.create(
             organization=plan.organization,
@@ -165,15 +164,13 @@ def addon_test_common_setup(
             charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
             charge_behavior=RecurringCharge.ChargeBehaviorType.PRORATE,
             amount=10,
-            pricing_unit=flat_fee_addon_version.pricing_unit,
+            pricing_unit=flat_fee_addon_version.currency,
         )
         flat_fee_addon_version.features.add(premium_support_feature)
         setup_dict["flat_fee_addon"] = flat_fee_addon
         setup_dict["flat_fee_addon_version"] = flat_fee_addon_version
         setup_dict["premium_support_feature"] = premium_support_feature
         setup_dict["flat_fee_addon_spec"] = flat_fee_addon_spec
-        flat_fee_addon.display_version = flat_fee_addon_version
-        flat_fee_addon.save()
         # recurring usage_based addon
         account_manager_feature = Feature.objects.create(
             organization=org,
@@ -185,17 +182,14 @@ def addon_test_common_setup(
             billing_frequency=AddOnSpecification.BillingFrequency.RECURRING,
             flat_fee_invoicing_behavior_on_attach=AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_ATTACH,
         )
-        recurring_addon = Plan.objects.create(
-            organization=org,
-            plan_name="recurring_addon",
-            addon_spec=recurring_addon_spec,
+        recurring_addon = Plan.addons.create(
+            organization=org, plan_name="recurring_addon", is_addon=True
         )
-        recurring_addon_version = PlanVersion.objects.create(
+        recurring_addon_version = PlanVersion.addon_versions.create(
             organization=org,
-            description="recurring_addon",
             plan=recurring_addon,
-            version=1,
-            status=PLAN_VERSION_STATUS.ACTIVE,
+            addon_spec=recurring_addon_spec,
+            currency=PricingUnit.objects.get(organization=org, code="USD"),
         )
         RecurringCharge.objects.create(
             organization=plan.organization,
@@ -203,12 +197,9 @@ def addon_test_common_setup(
             charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
             charge_behavior=RecurringCharge.ChargeBehaviorType.PRORATE,
             amount=1,
-            pricing_unit=recurring_addon_version.pricing_unit,
+            pricing_unit=recurring_addon_version.currency,
         )
         recurring_addon_version.features.add(account_manager_feature)
-        recurring_addon.display_version = recurring_addon_version
-        recurring_addon.save()
-
         setup_dict["recurring_addon"] = recurring_addon
         setup_dict["recurring_addon_version"] = recurring_addon_version
         setup_dict["account_manager_feature"] = account_manager_feature
@@ -1275,4 +1266,5 @@ class TestCancelAddOn:
         assert data["auto_renew"] is False
         generate_invoice(SubscriptionRecord.objects.all())
         baladj_after = len(CustomerBalanceAdjustment.objects.all())
+        assert baladj_before == baladj_after - 1
         assert baladj_before == baladj_after - 1

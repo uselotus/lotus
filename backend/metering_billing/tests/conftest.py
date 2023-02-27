@@ -1,15 +1,12 @@
+import itertools
+import random
+import string
 import uuid
 
 import posthog
 import pytest
 from metering_billing.utils import customer_id_uuidv5, now_utc
-from metering_billing.utils.enums import (
-    PLAN_DURATION,
-    PLAN_STATUS,
-    PLAN_VERSION_STATUS,
-    PRODUCT_STATUS,
-    USAGE_BILLING_FREQUENCY,
-)
+from metering_billing.utils.enums import PLAN_DURATION, PRODUCT_STATUS
 from model_bakery import baker
 
 
@@ -62,7 +59,9 @@ def generate_org_and_api_key():
     from metering_billing.models import APIToken, Organization
 
     def do_generate_org_and_api_key():
-        organization = baker.make(Organization, tax_rate=None)
+        organization = Organization.objects.create(
+            organization_name="test-org",
+        )
         _, key = APIToken.objects.create_key(
             name="test-api-key", organization=organization
         )
@@ -119,8 +118,19 @@ def create_events_with_org_customer():
     from metering_billing.models import Event
 
     def do_create_events_with_org_customer(organization, customer, n):
+        idempotency_ids = itertools.cycle(
+            [
+                "".join(random.choices(string.ascii_letters + string.digits, k=50))
+                for _ in range(n)
+            ]
+        )
         event_set = baker.make(
-            Event, _quantity=n, organization=organization, cust_id=customer.customer_id
+            Event,
+            _quantity=n,
+            organization=organization,
+            cust_id=customer.customer_id,
+            idempotency_id=idempotency_ids,
+            event_name="test_event",
         )
         return event_set
 
@@ -265,7 +275,6 @@ def add_plan_to_product():
             organization=product.organization,
             plan_name="test-plan",
             parent_product=product,
-            status=PLAN_STATUS.ACTIVE,
             plan_duration=PLAN_DURATION.MONTHLY,
             _quantity=1,
         )
@@ -276,18 +285,17 @@ def add_plan_to_product():
 
 @pytest.fixture
 def add_plan_version_to_plan():
-    from metering_billing.models import PlanVersion, RecurringCharge
+    from metering_billing.models import PlanVersion, PricingUnit, RecurringCharge
 
     def do_add_planversion_to_plan(plan):
         (plan_version,) = baker.make(
             PlanVersion,
             organization=plan.organization,
-            description="test-plan-version-description",
-            version=1,
-            usage_billing_frequency=USAGE_BILLING_FREQUENCY.MONTHLY,
             plan=plan,
-            status=PLAN_VERSION_STATUS.ACTIVE,
             _quantity=1,
+            currency=PricingUnit.objects.get(
+                organization=plan.organization, name="USD"
+            ),
         )
         RecurringCharge.objects.create(
             organization=plan.organization,
@@ -300,4 +308,5 @@ def add_plan_version_to_plan():
         return plan_version
 
     return do_add_planversion_to_plan
+
     return do_add_planversion_to_plan

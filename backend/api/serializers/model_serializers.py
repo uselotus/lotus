@@ -146,11 +146,10 @@ class LightweightPlanVersionSerializer(
 ):
     class Meta:
         model = PlanVersion
-        fields = ("plan_name", "plan_id", "version", "version_id")
+        fields = ("plan_name", "plan_id", "version_id")
         extra_kwargs = {
             "plan_id": {"required": True, "read_only": True},
             "plan_name": {"required": True, "read_only": True},
-            "version": {"required": False, "read_only": True},
             "version_id": {"required": True, "read_only": True},
         }
 
@@ -159,7 +158,7 @@ class LightweightPlanVersionSerializer(
     version_id = PlanVersionUUIDField(read_only=True)
 
     def get_plan_name(self, obj) -> str:
-        return obj.get_name()
+        return str(obj)
 
 
 class CategoricalFilterSerializer(
@@ -211,10 +210,9 @@ class SubscriptionCustomerSummarySerializer(
 ):
     class Meta:
         model = SubscriptionRecord
-        fields = ("billing_plan_name", "plan_version", "end_date", "auto_renew")
+        fields = ("billing_plan_name", "end_date", "auto_renew")
 
     billing_plan_name = serializers.CharField(source="billing_plan.plan.plan_name")
-    plan_version = serializers.CharField(source="billing_plan.version")
 
 
 class SubscriptionCustomerDetailSerializer(SubscriptionCustomerSummarySerializer):
@@ -246,14 +244,16 @@ class LightweightAddOnSerializer(TimezoneFieldMixin, serializers.ModelSerializer
     billing_frequency = serializers.SerializerMethodField()
 
     def get_addon_type(self, obj) -> Literal["flat", "usage_based"]:
-        if obj.display_version.plan_components.all().count() > 0:
+        version = obj.versions.first()
+        if version.plan_components.all().count() > 0:
             return "usage_based"
         return "flat"
 
     def get_billing_frequency(
         self, obj
     ) -> serializers.ChoiceField(choices=AddOnSpecification.BillingFrequency.labels):
-        return obj.addon_spec.get_billing_frequency_display()
+        version = obj.versions.first()
+        return version.addon_spec.get_billing_frequency_display()
 
 
 class LightweightAddOnSubscriptionRecordSerializer(
@@ -1159,9 +1159,9 @@ class PlanVersionSerializer(
         else:
             return None
 
-    def get_replace_with(self, obj) -> Union[int, None]:
+    def get_replace_with(self, obj) -> Union[str, None]:
         if obj.replace_with is not None:
-            return obj.replace_with.version
+            return str(obj.replace_with)
         else:
             return None
 
@@ -1259,7 +1259,7 @@ class PlanSerializer(
         }
 
     plan_id = PlanUUIDField()
-    display_version = PlanVersionSerializer(
+    display_version = serializers.SerializerMethodField(
         help_text="Display version has been deprecated. Use 'versions' instead. We will still return this field for now with some heuristics for figuring out what the desired version is, but it will be removed in the near future."
     )
     num_versions = serializers.SerializerMethodField(
@@ -1273,6 +1273,9 @@ class PlanSerializer(
     )
     tags = serializers.SerializerMethodField(help_text="The tags that this plan has.")
     versions = PlanVersionSerializer(many=True, help_text="This plan's versions.")
+
+    def get_display_version(self, obj) -> PlanVersionSerializer:
+        return PlanVersionSerializer(obj.versions.first()).data
 
     def get_num_versions(self, obj) -> int:
         try:
@@ -1375,7 +1378,7 @@ class SubscriptionRecordCreateSerializer(
     )
     version_id = SlugRelatedFieldWithOrganization(
         slug_field="version_id",
-        queryset=PlanVersion.objects.all(),
+        queryset=PlanVersion.plan_versions.all(),
         write_only=True,
         required=False,
         help_text="The Lotus version_id, found in the billing plan object. This is the preferred way to specify the plan version.",
@@ -1514,9 +1517,6 @@ class SubscriptionRecordUpdateSerializer(
 
     def validate(self, data):
         data = super().validate(data)
-        # extract the plan version from the plan
-        if data.get("billing_plan"):
-            data["billing_plan"] = data["billing_plan"]["plan"].display_version
         return data
 
 
@@ -2069,14 +2069,9 @@ class AddOnSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         source="plan_description",
     )
     flat_rate = serializers.SerializerMethodField()
-    components = PlanComponentSerializer(
-        many=True, source="display_version.plan_components"
-    )
-    features = FeatureSerializer(many=True, source="display_version.features")
-    currency = PricingUnitSerializer(
-        source="display_version.pricing_unit",
-        help_text="Currency of the plan. Can only be null if the flat fee is 0 and all components are of type free.",
-    )
+    components = serializers.SerializerMethodField()
+    features = serializers.SerializerMethodField()
+    currency = serializers.SerializerMethodField()
     active_instances = serializers.SerializerMethodField(
         help_text="The number of active instances of the add-on plan."
     )
@@ -2085,10 +2080,23 @@ class AddOnSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     addon_type = serializers.SerializerMethodField()
     versions = AddOnVersionSerializer(many=True, help_text="This addon's versions.")
 
+    def get_components(self, obj) -> PlanComponentSerializer(many=True):
+        version = obj.versions.first()
+        return PlanComponentSerializer(version.plan_components.all(), many=True).data
+
+    def get_features(self, obj) -> FeatureSerializer(many=True):
+        version = obj.versions.first()
+        return FeatureSerializer(version.features.all(), many=True).data
+
+    def get_currency(self, obj) -> PricingUnitSerializer:
+        version = obj.versions.first()
+        return PricingUnitSerializer(version.currency).data
+
     def get_flat_rate(
         self, obj
     ) -> serializers.DecimalField(decimal_places=10, max_digits=20, min_value=0,):
-        return sum(x.amount for x in obj.display_version.recurring_charges.all())
+        version = obj.versions.first()
+        return sum(x.amount for x in version.recurring_charges.all())
 
     def get_invoice_when(
         self, obj
@@ -2098,14 +2106,16 @@ class AddOnSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         return obj.addon_spec.get_flat_fee_invoicing_behavior_on_attach_display()
 
     def get_addon_type(self, obj) -> Literal["usage_based", "flat"]:
-        if obj.display_version.plan_components.all().count() > 0:
+        version = obj.versions.first()
+        if version.plan_components.all().count() > 0:
             return "usage_based"
         return "flat"
 
     def get_billing_frequency(
         self, obj
     ) -> serializers.ChoiceField(choices=AddOnSpecification.BillingFrequency.labels):
-        return obj.addon_spec.get_billing_frequency_display()
+        version = obj.versions.first()
+        return version.get_billing_frequency_display()
 
     def get_active_instances(self, obj) -> int:
         return sum(x.active_subscriptions for x in obj.active_subs_by_version())
@@ -2223,7 +2233,7 @@ class AddOnSubscriptionRecordCreateSerializer(
         data["attach_to_subscription_record"] = valid[0]
         metrics_in_addon = {
             pc.billable_metric
-            for pc in data["addon_id"].display_version.plan_components.all()
+            for pc in data["addon_id"].versions.first().plan_components.all()
         }
         metrics_in_attach_sr = {
             pc.billable_metric
@@ -2244,8 +2254,8 @@ class AddOnSubscriptionRecordCreateSerializer(
         attach_to_sr = validated_data["attach_to_subscription_record"]
         customer = validated_data["attach_to_customer_id"]
         addon = validated_data["addon_id"]
-        addon_version = addon.display_version
-        addon_spec = addon.addon_spec
+        addon_version = addon.versions.first()
+        addon_spec = addon_version.addon_spec
         invoice_now = (
             addon_spec.flat_fee_invoicing_behavior_on_attach
             == AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_ATTACH
@@ -2269,8 +2279,6 @@ class AddOnSubscriptionRecordCreateSerializer(
             usage_start_date=now,
             start_date=now,
             end_date=attach_to_sr.end_date,
-            next_billing_date=attach_to_sr.next_billing_date,
-            last_billing_date=attach_to_sr.last_billing_date,
             unadjusted_duration_microseconds=attach_to_sr.unadjusted_duration_microseconds,
             auto_renew=is_recurring,
             flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_PRORATED
@@ -2284,15 +2292,4 @@ class AddOnSubscriptionRecordCreateSerializer(
             sr.filters.add(sf)
         if invoice_now:
             generate_invoice(sr)
-        return sr
-        return sr
-        return sr
-        return sr
-        return sr
-        return sr
-        return sr
-        return sr
-        return sr
-        return sr
-        return sr
         return sr

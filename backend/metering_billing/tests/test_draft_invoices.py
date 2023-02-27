@@ -115,8 +115,6 @@ def draft_invoice_test_common_setup(
                 metric_units_per_batch=mupb,
             )
         setup_dict["billing_plan"] = plan_version
-        plan.display_version = plan_version
-        plan.save()
         subscription_record = add_subscription_record_to_org(
             org, plan_version, customer, now_utc() - timedelta(days=3)
         )

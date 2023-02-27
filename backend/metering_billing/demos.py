@@ -231,7 +231,6 @@ def setup_demo3(
     create_pc_and_tiers(
         organization, plan_version=free_bp, billable_metric=num_seats, free_units=1
     )
-    plan.display_version = free_bp
     plan.save()
     plan = Plan.objects.create(
         plan_name="10K Words Plan",
@@ -263,7 +262,6 @@ def setup_demo3(
     create_pc_and_tiers(
         organization, plan_version=bp_10_og, billable_metric=num_seats, free_units=5
     )
-    plan.display_version = bp_10_og
     plan.save()
     plan = Plan.objects.create(
         plan_name="25K Words Plan",
@@ -295,7 +293,6 @@ def setup_demo3(
     create_pc_and_tiers(
         organization, plan_version=bp_25_og, billable_metric=num_seats, free_units=5
     )
-    plan.display_version = bp_25_og
     plan.save()
     plan = Plan.objects.create(
         plan_name="50K Words Plan",
@@ -327,7 +324,6 @@ def setup_demo3(
     create_pc_and_tiers(
         organization, plan_version=bp_50_og, billable_metric=num_seats, free_units=5
     )
-    plan.display_version = bp_50_og
     plan.save()
     plan = Plan.objects.create(
         plan_name="10K Words Plan - UB Compute + Seats",
@@ -372,7 +368,6 @@ def setup_demo3(
         cost_per_batch=10,
         metric_units_per_batch=1,
     )
-    plan.display_version = bp_10_compute_seats
     plan.save()
     plan = Plan.objects.create(
         plan_name="25K Words Plan - UB Compute + Seats",
@@ -417,7 +412,6 @@ def setup_demo3(
         cost_per_batch=12,
         metric_units_per_batch=1,
     )
-    plan.display_version = bp_25_compute_seats
     plan.save()
     plan = Plan.objects.create(
         plan_name="50K Words Plan - UB Compute + Seats",
@@ -462,7 +456,6 @@ def setup_demo3(
         cost_per_batch=10,
         metric_units_per_batch=1,
     )
-    plan.display_version = bp_50_compute_seats
     plan.save()
     six_months_ago = now_utc() - relativedelta(months=6) - relativedelta(days=5)
     for cust_set_name, cust_set in [
@@ -838,7 +831,6 @@ def setup_demo4(
         free_units=1,
         max_units=1,
     )
-    plan.display_version = free_bp
     plan.save()
     plan = Plan.objects.create(
         plan_name="Events-only - Basic",
@@ -876,7 +868,6 @@ def setup_demo4(
         billable_metric=num_seats,
         free_units=3,
     )
-    plan.display_version = bp_basic_events
     plan.save()
     plan = Plan.objects.create(
         plan_name="Events-only - Pro",
@@ -914,7 +905,6 @@ def setup_demo4(
         billable_metric=num_seats,
         free_units=5,
     )
-    plan.display_version = bp_pro_events
     plan.save()
     plan = Plan.objects.create(
         plan_name="Events + Recordings - Basic",
@@ -959,7 +949,6 @@ def setup_demo4(
         billable_metric=num_seats,
         free_units=3,
     )
-    plan.display_version = bp_basic_both
     plan.save()
     plan = Plan.objects.create(
         plan_name="Events + Recordings - Pro",
@@ -1004,7 +993,6 @@ def setup_demo4(
         billable_metric=num_seats,
         free_units=5,
     )
-    plan.display_version = bp_pro_both
     plan.save()
     plan = Plan.objects.create(
         plan_name="Experimental - Events + Recording Time",
@@ -1049,7 +1037,6 @@ def setup_demo4(
         billable_metric=num_seats,
         free_units=5,
     )
-    plan.display_version = bp_experimental
     plan.save()
     six_months_ago = now_utc() - relativedelta(months=6) - relativedelta(days=5)
     for cust_set_name, cust_set in [
@@ -1394,7 +1381,6 @@ def setup_paas_demo(
         billable_metric=tntxns_rate,
         free_units=50,
     )
-    plan.display_version = basic_plan
     plan.save()
     plan = Plan.objects.create(
         plan_name="Professional Plan",
@@ -1483,7 +1469,6 @@ def setup_paas_demo(
         billable_metric=mntxns_rate,
         free_units=100,
     )
-    plan.display_version = professional_plan
     plan.save()
     for component in professional_plan.plan_components.all():
         if component.billable_metric.metric_type == METRIC_TYPE.GAUGE:

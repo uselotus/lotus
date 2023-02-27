@@ -307,7 +307,7 @@ class AddFeatureToPlanSerializer(serializers.Serializer):
     )
     version_ids = SlugRelatedFieldWithOrganization(
         slug_field="version_id",
-        queryset=PlanVersion.objects.all(),
+        queryset=PlanVersion.plan_versions.all(),
         required=False,
         many=True,
         help_text="The version_ids of the plan versions you want to add the feature to. If you want to apply to all versions, use the all_versions parameter.",
@@ -330,7 +330,7 @@ class AddFeatureToPlanSerializer(serializers.Serializer):
 class AddFeatureToAddOnSerializer(AddFeatureToPlanSerializer):
     version_ids = SlugRelatedFieldWithOrganization(
         slug_field="version_id",
-        queryset=PlanVersion.addons.all(),
+        queryset=PlanVersion.addon_versions.all(),
         required=False,
         many=True,
         help_text="The version_ids of the AddOn versions you want to add the feature to. If you want to apply to all versions, use the all_versions parameter.",

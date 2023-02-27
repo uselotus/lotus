@@ -2,9 +2,6 @@ import json
 
 import pytest
 from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIClient
-
 from metering_billing.models import Plan, PlanVersion
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
@@ -15,6 +12,8 @@ from metering_billing.utils.enums import (
     PLAN_VERSION_STATUS,
     REPLACE_IMMEDIATELY_TYPE,
 )
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -90,10 +89,6 @@ class TestCreatePlan:
             content_type="application/json",
         )
         assert response.status_code == status.HTTP_201_CREATED
-        assert "display_version" in response.data
-        assert (
-            response.data["display_version"]["version"] == 1
-        )  # should initialize with v1
 
     def test_plan_dont_specify_version_fails_doesnt_create_plan(
         self,
@@ -183,7 +178,6 @@ class TestCreatePlanVersion:
             [(1, PLAN_VERSION_STATUS.ACTIVE), (2, PLAN_VERSION_STATUS.INACTIVE)]
         )
         assert len(plan.versions.all()) == 2
-        assert PlanVersion.objects.get(version=1) == plan.display_version
 
     def test_create_new_version_as_active_with_existing_subscriptions_grandfathering(
         self,
@@ -198,7 +192,7 @@ class TestCreatePlanVersion:
             content_type="application/json",
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
-        plan_version = plan.display_version
+        plan_version = plan.versions.first()
         add_subscription_record_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
@@ -235,7 +229,7 @@ class TestCreatePlanVersion:
             content_type="application/json",
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
-        plan_version = plan.display_version
+        plan_version = plan.versions.first()
         add_subscription_record_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
@@ -327,7 +321,7 @@ class TestUpdatePlan:
             content_type="application/json",
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
-        plan_version = plan.display_version
+        plan_version = plan.versions.first()
         add_subscription_record_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
@@ -360,7 +354,7 @@ class TestUpdatePlan:
             content_type="application/json",
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
-        plan_version = plan.display_version
+        plan_version = plan.versions.first()
         add_subscription_record_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
@@ -398,7 +392,7 @@ class TestUpdatePlan:
             content_type="application/json",
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
-        plan_version = plan.display_version
+        plan_version = plan.versions.first()
         add_subscription_record_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
@@ -454,7 +448,7 @@ class TestUpdatePlan:
             content_type="application/json",
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
-        plan_version = plan.display_version
+        plan_version = plan.versions.first()
         add_subscription_record_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
@@ -581,7 +575,7 @@ class TestUpdatePlanVersion:
             content_type="application/json",
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
-        plan_version = plan.display_version
+        plan_version = plan.versions.first()
         add_subscription_record_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
@@ -622,7 +616,7 @@ class TestUpdatePlanVersion:
             content_type="application/json",
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
-        first_plan_version = plan.display_version
+        first_plan_version = plan.versions.first()
         add_subscription_record_to_org(
             setup_dict["org"], first_plan_version, setup_dict["customer"], now_utc()
         )

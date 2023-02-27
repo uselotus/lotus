@@ -27,6 +27,10 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RemoveConstraint(
+            model_name="plan",
+            name="both_null_or_both_not_null",
+        ),
         migrations.AddField(
             model_name="planversion",
             name="is_custom",

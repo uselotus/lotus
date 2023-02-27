@@ -44,8 +44,6 @@ def integration_test_common_setup(
         setup_dict["plan"] = plan
         plan_version = add_plan_version_to_plan(plan)
         setup_dict["plan_version"] = plan_version
-        plan.display_version = plan_version
-        plan.save()
 
         client = APIClient()
         (user,) = add_users_to_org(org, n=1)
@@ -308,7 +306,7 @@ class TestStripeIntegration:
             SubscriptionRecord.objects.filter(
                 organization=setup_dict["org"],
                 start_date__gte=now_utc(),
-                billing_plan=setup_dict["plan"].display_version,
+                billing_plan=setup_dict["plan"].versions.first(),
             ).count()
             == 1
         )
@@ -321,13 +319,13 @@ class TestStripeIntegration:
         SubscriptionRecord.objects.filter(
             organization=setup_dict["org"],
             start_date__gte=now_utc(),
-            billing_plan=setup_dict["plan"].display_version,
+            billing_plan=setup_dict["plan"].versions.first(),
         ).delete()
         subs = stripe_connector.transfer_subscriptions(setup_dict["org"], end_now=True)
         assert (
             SubscriptionRecord.objects.filter(
                 organization=setup_dict["org"],
-                billing_plan=setup_dict["plan"].display_version,
+                billing_plan=setup_dict["plan"].versions.first(),
             ).count()
             == 1
         )

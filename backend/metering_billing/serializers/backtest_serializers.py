@@ -13,12 +13,12 @@ from .serializer_utils import (
 class BacktestSubstitutionMultiSerializer(serializers.Serializer):
     new_plan = SlugRelatedFieldWithOrganization(
         slug_field="version_id",
-        queryset=PlanVersion.objects.active(),
+        queryset=PlanVersion.plan_versions.active(),
         read_only=False,
     )
     original_plans = SlugRelatedFieldWithOrganization(
         slug_field="version_id",
-        queryset=PlanVersion.objects.all(),
+        queryset=PlanVersion.plan_versions.all(),
         read_only=False,
         many=True,
     )

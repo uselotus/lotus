@@ -79,14 +79,12 @@ def generate_invoice(
     try:
         distinct_currencies_pks = (
             subscription_records.order_by()
-            .values_list("billing_plan__pricing_unit", flat=True)
+            .values_list("billing_plan__currency", flat=True)
             .distinct()
         )
         distinct_currencies = PricingUnit.objects.filter(pk__in=distinct_currencies_pks)
     except AttributeError:
-        distinct_currencies = {
-            x.billing_plan.pricing_unit for x in subscription_records
-        }
+        distinct_currencies = {x.billing_plan.currency for x in subscription_records}
 
     invoices = {}
     for currency in distinct_currencies:
@@ -105,7 +103,7 @@ def generate_invoice(
         invoice = Invoice.objects.create(**invoice_kwargs)
         invoices[currency] = invoice
     for subscription_record in subscription_records:
-        invoice = invoices[subscription_record.billing_plan.pricing_unit]
+        invoice = invoices[subscription_record.billing_plan.currency]
         invoice.subscription_records.add(subscription_record)
         # flat fee calculation for current plan
         calculate_subscription_record_flat_fees(subscription_record, invoice)
@@ -178,13 +176,12 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice):
         else:
             billing_plan = subscription_record.billing_plan
             billing_plan_name = billing_plan.plan.plan_name
-            billing_plan_version = billing_plan.version
             start = subscription_record.start_date
             end = subscription_record.end_date
             qty = subscription_record.quantity
             if flat_fee_due > 0:
                 InvoiceLineItem.objects.create(
-                    name=f"{billing_plan_name} v{billing_plan_version} Flat Fee",
+                    name=f"{billing_plan_name} Flat Fee",
                     start_date=convert_to_datetime(start, date_behavior="min"),
                     end_date=convert_to_datetime(end, date_behavior="max"),
                     quantity=qty if qty > 1 else None,
@@ -199,7 +196,7 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice):
                 )
             if amt_already_billed > 0:
                 InvoiceLineItem.objects.create(
-                    name=f"{billing_plan_name} v{billing_plan_version} Flat Fee Already Invoiced",
+                    name=f"{billing_plan_name} Flat Fee Already Invoiced",
                     start_date=invoice.issue_date,
                     end_date=invoice.issue_date,
                     quantity=qty if qty > 1 else None,
@@ -305,7 +302,7 @@ def charge_next_plan_flat_fee(
             name = f"{next_bp.plan.plan_name} ({recurring_charge.name}) - Next Period [Add-on]"
         else:
             next_bp_duration = next_bp.plan.plan_duration
-            name = f"{next_bp.plan.plan_name} v{next_bp.version} ({recurring_charge.name}) - Next Period"
+            name = f"{next_bp.plan.plan_name} ({recurring_charge.name}) - Next Period"
         if charge_in_advance and recurring_charge.amount > 0:
             new_start = date_as_min_dt(
                 subscription_record.end_date + relativedelta(days=1), timezone
@@ -362,7 +359,7 @@ def apply_plan_discounts(invoice):
             difference = new_amount_due - plan_amount
             if difference != 0:
                 InvoiceLineItem.objects.create(
-                    name=f"{pv.plan.plan_name} v{pv.version} {price_adj_name}",
+                    name=f"{pv.plan.plan_name} {price_adj_name}",
                     start_date=invoice.issue_date,
                     end_date=invoice.issue_date,
                     quantity=None,

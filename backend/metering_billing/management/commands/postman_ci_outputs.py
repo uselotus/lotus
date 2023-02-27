@@ -150,7 +150,6 @@ class Command(BaseCommand):
         tier = pc.tiers.all().first()
         tier.range_end = None
         tier.save()
-        plan.display_version = free_bp
         plan.save()
 
         print(f"PLAN_ID=plan_{plan.plan_id.hex}")
@@ -206,8 +205,6 @@ class Command(BaseCommand):
             pricing_unit=flat_fee_addon_version.pricing_unit,
         )
         flat_fee_addon_version.features.add(premium_support_feature)
-        flat_fee_addon.display_version = flat_fee_addon_version
-        flat_fee_addon.save()
         print(f"ADDON_ID=addon_{flat_fee_addon.plan_id.hex}")
 
         # metric + feature
