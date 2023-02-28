@@ -581,6 +581,11 @@ class BaseCustomerManager(models.Manager):
         return super().get_queryset().filter(deleted__isnull=True)
 
 
+class DeletedCustomerManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(deleted__isnull=False)
+
+
 class Customer(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="customers"
@@ -677,6 +682,7 @@ class Customer(models.Model):
     # HISTORY FIELDS
     history = HistoricalRecords()
     objects = BaseCustomerManager()
+    deleted_objects = DeletedCustomerManager()
 
     class Meta:
         constraints = [
