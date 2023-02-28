@@ -425,6 +425,9 @@ const ViewPlans: FC = () => {
 
                   const result = getFilteredTagsAllPlans(filter);
 
+                  if (result === undefined) {
+                    return;
+                  }
                   setPlansWithTagsFilter(
                     plansWithTagsFilter.filter(
                       (plan) => plan.plan_name === result?.plan_name
@@ -437,6 +440,9 @@ const ViewPlans: FC = () => {
                   const result = getFilteredTagsAllPlans(
                     tag.tag_name.toLowerCase()
                   );
+                  if (result === undefined) {
+                    return;
+                  }
                   setPlansWithTagsFilter((prev) =>
                     prev
                       .filter((prev) => prev.from === true)
@@ -516,7 +522,9 @@ const ViewPlans: FC = () => {
                   }
 
                   const result = getFilteredTagsAllPlans(filter);
-
+                  if (result === undefined) {
+                    return;
+                  }
                   setPlansWithTagsFilter(
                     plansWithTagsFilter.filter(
                       (plan) => plan.plan_name === result?.plan_name
@@ -529,6 +537,9 @@ const ViewPlans: FC = () => {
                   const result = getFilteredTagsAllPlans(
                     tag.tag_name.toLowerCase()
                   );
+                  if (result === undefined) {
+                    return;
+                  }
                   setPlansWithTagsFilter((prev) =>
                     prev
                       .filter((prev) => prev.from === true)
@@ -607,7 +618,9 @@ const ViewPlans: FC = () => {
                 }
 
                 const result = getFilteredTagsAllPlans(filter);
-
+                if (result === undefined) {
+                  return;
+                }
                 setPlansWithTagsFilter(
                   plansWithTagsFilter.filter(
                     (plan) => plan.plan_name === result?.plan_name
@@ -620,6 +633,9 @@ const ViewPlans: FC = () => {
                 const result = getFilteredTagsAllPlans(
                   tag.tag_name.toLowerCase()
                 );
+                if (result === undefined) {
+                  return;
+                }
                 setPlansWithTagsFilter((prev) =>
                   prev
                     .filter((prev) => prev.from === true)
@@ -697,7 +713,9 @@ const ViewPlans: FC = () => {
                 }
 
                 const result = getFilteredTagsAllPlans(filter);
-
+                if (result === undefined) {
+                  return;
+                }
                 setPlansWithTagsFilter(
                   plansWithTagsFilter.filter(
                     (plan) => plan.plan_name === result?.plan_name
@@ -710,6 +728,9 @@ const ViewPlans: FC = () => {
                 const result = getFilteredTagsAllPlans(
                   tag.tag_name.toLowerCase()
                 );
+                if (result === undefined) {
+                  return;
+                }
                 setPlansWithTagsFilter((prev) =>
                   prev
                     .filter((prev) => prev.from === true)
