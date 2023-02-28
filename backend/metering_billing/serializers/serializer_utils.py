@@ -31,47 +31,50 @@ class ConvertEmptyStringToNullMixin:
 
 
 class TimezoneFieldMixin:
-    customer_cache = {}
-    organization_cache = {}
+    def get_organization_timezone(self, organization_id):
+        from metering_billing.models import Organization
 
-    def get_timezone(self, instance):
-        from metering_billing.models import Customer, Organization
-
-        customer_id = getattr(instance, "customer_id", None)
-        if customer_id is not None:
-            if customer_id in self.customer_cache:
-                tz_string = self.customer_cache[customer_id]
-            else:
-                customer_cache_key = f"tz_customer_{customer_id}"
-                tz_string = cache.get(customer_cache_key)
-                if tz_string is None:
-                    customer_tz = Customer.objects.get(pk=customer_id).timezone
-                    cache.set(customer_cache_key, customer_tz.zone, 60 * 60 * 24 * 7)
-                    tz_string = customer_tz.zone
-                self.customer_cache[customer_id] = tz_string
-            try:
-                timezone = pytz.timezone(tz_string)
-                return timezone
-            except pytz.UnknownTimeZoneError:
-                pass
-        organization_id = getattr(instance, "organization_id", None)
-        if organization_id in self.organization_cache:
-            tz_string = self.organization_cache[organization_id]
+        serializer_context = self.context
+        if "tz_organization_cache" not in serializer_context:
+            serializer_context["tz_organization_cache"] = {}
+        tz_organization_cache = serializer_context["tz_organization_cache"]
+        if organization_id in tz_organization_cache:
+            tz_string = tz_organization_cache[organization_id]
         else:
             organization_cache_key = f"tz_organization_{organization_id}"
             tz_string = cache.get(organization_cache_key)
             if tz_string is None:
-                organization_tz = Organization.objects.get(pk=organization_id).timezone
-                cache.set(
-                    organization_cache_key, organization_tz.zone, 60 * 60 * 24 * 7
-                )
-                tz_string = organization_tz.zone
-            self.organization_cache[organization_id] = tz_string
-        try:
-            timezone = pytz.timezone(tz_string)
-        except pytz.UnknownTimeZoneError:
-            timezone = pytz.UTC
-        return timezone
+                try:
+                    organization = Organization.objects.get(id=organization_id)
+                except Organization.DoesNotExist:
+                    tz_string = "UTC"
+                else:
+                    tz_string = organization.timezone.zone
+                    cache.set(organization_cache_key, tz_string, 60 * 60 * 24 * 7)
+        return pytz.timezone(tz_string)
+
+    def get_timezone(self, instance):
+        from metering_billing.models import Customer
+
+        serializer_context = self.context
+        customer_id = getattr(instance, "customer_id", None)
+        if customer_id is not None:
+            if "tz_customer_cache" not in serializer_context:
+                serializer_context["tz_customer_cache"] = {}
+            tz_customer_cache = serializer_context["tz_customer_cache"]
+            if customer_id in tz_customer_cache:
+                tz_string = tz_customer_cache[customer_id]
+            else:
+                customer_cache_key = f"tz_customer_{customer_id}"
+                tz_string = cache.get(customer_cache_key)
+                if tz_string is None:
+                    customer_tz = Customer.objects.get(id=customer_id).timezone
+                    tz_string = customer_tz.zone
+                    cache.set(customer_cache_key, tz_string, 60 * 60 * 24 * 7)
+                tz_customer_cache[customer_id] = tz_string
+            return pytz.timezone(tz_string)
+        else:
+            return self.get_organization_timezone(instance.organization_id)
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)

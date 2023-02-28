@@ -135,13 +135,17 @@ export const Customer = {
     requests.post("app/customers/", post),
   getCustomerTotals: (): Promise<CustomerTotal[]> =>
     requests.get("app/customers/totals/"),
+  deleteCustomer: (customer_id: string): Promise<CustomerType> =>
+    requests.post(`app/customers/${customer_id}/delete/`, {}),
   updateCustomer: (
     customer_id: string,
     default_currency_code: string,
     shipping_address: CustomerType["shipping_address"],
     billing_address: CustomerType["billing_address"],
     tax_rate: number,
-    timezone: string
+    timezone: string,
+    customer_name?: string,
+    new_customer_id?: string
   ): Promise<CustomerType> =>
     requests.patch(`app/customers/${customer_id}/`, {
       default_currency_code,
@@ -149,6 +153,8 @@ export const Customer = {
       billing_address,
       tax_rate,
       timezone,
+      customer_name,
+      new_customer_id,
     }),
   // getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
   //   requests.get(`app/customer_detail/`, { params: { customer_id } }),

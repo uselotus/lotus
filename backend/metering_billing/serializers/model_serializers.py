@@ -547,6 +547,7 @@ class CustomerUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
             "shipping_address",
             "tax_rate",
             "timezone",
+            "customer_name",
         )
 
     default_currency_code = SlugRelatedFieldWithOrganization(
@@ -557,6 +558,7 @@ class CustomerUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         required=False, allow_null=True
     )
     timezone = TimeZoneSerializerField(use_pytz=True)
+    customer_name = serializers.CharField(required=False)
 
     def update(self, instance, validated_data):
         assert (
@@ -565,6 +567,9 @@ class CustomerUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         )
         instance.default_currency = validated_data.get(
             "default_currency", instance.default_currency
+        )
+        instance.customer_name = validated_data.get(
+            "customer_name", instance.customer_name
         )
         instance.tax_rate = validated_data.get("tax_rate", instance.tax_rate)
         tz = validated_data.get("timezone", None)
