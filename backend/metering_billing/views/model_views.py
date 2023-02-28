@@ -426,6 +426,11 @@ class EventViewSet(
     def get_queryset(self):
         now = now_utc()
         organization = self.request.organization
+        distinct = self.request.query_params.get("distinct")
+        if distinct:
+            return Event.objects.filter(
+                organization=organization, time_created__lt=now
+            ).distinct()
         return (
             super()
             .get_queryset()

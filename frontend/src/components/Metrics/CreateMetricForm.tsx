@@ -3,6 +3,8 @@
 /* eslint-disable no-shadow */
 /* eslint-disable use-isnan */
 import React, { useRef, useState, useEffect } from "react";
+import { useQuery, UseQueryResult, useQueryClient } from "react-query";
+import { EventPages } from "../../types/event-type";
 import {
   Modal,
   Form,
@@ -31,6 +33,7 @@ import "ace-builds/src-noconflict/mode-sql";
 import "ace-builds/src-noconflict/theme-github";
 import "ace-builds/src-noconflict/ext-language_tools";
 import { format } from "sql-formatter";
+import { Events } from "../../api/api";
 
 const { Option } = Select;
 const { Panel } = Collapse;
@@ -43,6 +46,7 @@ function CreateMetricForm(props: {
 }) {
   const [form] = Form.useForm();
   const [eventType, setEventType] = useState("counter");
+  const [eventName, setEventName] = useState<string>("");
   const [preset, setPreset] = useState("none");
   const errorMessages = useRef([]);
   const [errors, setErrors] = useState<string[]>();
@@ -56,6 +60,14 @@ function CreateMetricForm(props: {
     useState<TimePeriodType | null>(null);
   const [selectedProration, setSelectedProration] =
     useState<TimePeriodType | null>(null);
+  
+  const { data, isLoading }: UseQueryResult<EventPages> = useQuery<EventPages>(
+      ["search events"],
+      () =>
+        Events.searchEvents(true).then((res) => 
+           res
+        ),
+    );
 
   const disableOption = (option: TimePeriodType) => {
     if (selectedGranularity) {
@@ -382,7 +394,14 @@ function CreateMetricForm(props: {
                   },
                 ]}
               >
-                <Input />
+                <Select
+                  mode="tags"
+                  placeholder="Start typing to look up matching events"
+                >
+                  {
+                    data?.result?.map(e => (<Option value={e.event_name}>{e.event_name}</Option>))
+                  }
+                </Select>
               </Form.Item>
             </Tooltip>
           )}
@@ -644,6 +663,31 @@ function CreateMetricForm(props: {
             />
           </div>
         )}
+
+        <Collapse>
+          <Panel header="Matching Events" key="1">
+          {data?.results.map((event) => (
+                <Panel
+                  header={
+                    <div className="grid grid-cols-3 my-2 font-alliance">
+                      <div className="flex align-middle text-[14px] ">
+                        <p className="leading-[24px]">event_name: </p>
+                        <p className="infoValue"> {event.event_name}</p>
+                      </div>
+                      <div className="flex align-middle text-[14px]">
+                        <p className="leading-[24px]">customer_id: </p>
+                        <p className="infoValue"> {event.customer_id}</p>
+                      </div>
+                    </div>
+                  }
+                  className=" hover:bg-background"
+                  key={event.id}
+                >
+                </Panel>
+              ))}
+          </Panel>
+        </Collapse>
+        <br />
 
         {eventType !== "custom" && (
           <Collapse>
