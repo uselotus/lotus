@@ -28,6 +28,7 @@ from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     NotEditable,
     OverlappingPlans,
+    SubscriptionAlreadyEnded,
 )
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.utils import (
@@ -2560,20 +2561,34 @@ class SubscriptionRecord(models.Model):
         )
         return sub_dict
 
-    def end_subscription_now(
+    def cancel_subscription(
         self,
         bill_usage=True,
         flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
+        invoice_now=True,
     ):
+        from metering_billing.invoice import generate_invoice
+
         now = now_utc()
         if self.end_date <= now:
             logger.info("Subscription already ended.")
-            return
+            raise SubscriptionAlreadyEnded
         self.flat_fee_behavior = flat_fee_behavior
         self.invoice_usage_charges = bill_usage
         self.auto_renew = False
         self.end_date = now
         self.save()
+        addon_srs = []
+        for addon_sr in self.addon_subscriptions.all():
+            addon_sr.cancel_subscription(
+                bill_usage=bill_usage,
+                flat_fee_behavior=flat_fee_behavior,
+                invoice_now=False,
+            )
+            addon_srs.append(addon_sr)
+        srs = [self] + addon_srs
+        if invoice_now:
+            generate_invoice(srs)
 
     def turn_off_auto_renew(self):
         self.auto_renew = False

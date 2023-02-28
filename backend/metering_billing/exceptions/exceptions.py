@@ -9,6 +9,12 @@ class OrganizationMismatch(APIException):
     default_code = "authentication_failure"
 
 
+class SubscriptionAlreadyEnded(APIException):
+    status_code = 400
+    default_detail = "Subscription already ended"
+    default_code = "invalid_state"
+
+
 class InvalidOperation(APIException):
     status_code = 400
     default_detail = "Invalid operation"

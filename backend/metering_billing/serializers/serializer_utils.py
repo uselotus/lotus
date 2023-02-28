@@ -283,6 +283,12 @@ class SubscriptionUUIDField(UUIDPrefixField):
         super().__init__("sub_", *args, **kwargs)
 
 
+@extend_schema_field(serializers.RegexField(regex=r"addon_sub_[0-9a-f]{32}"))
+class AddOnSubscriptionUUIDField(UUIDPrefixField):
+    def __init__(self, *args, **kwargs):
+        super().__init__("addon_", *args, **kwargs)
+
+
 @extend_schema_field(serializers.RegexField(regex=r"sr_[0-9a-f]{32}"))
 class SubscriptionRecordUUIDField(UUIDPrefixField):
     def __init__(self, *args, **kwargs):

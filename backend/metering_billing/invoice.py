@@ -46,6 +46,8 @@ def generate_invoice(
 ):
     """
     Generate an invoice for a subscription.
+
+    IMPORTANT: addons must be passed explicitly as part of subscription_records, otherwise they will not be charged.
     """
     from metering_billing.models import Invoice, PricingUnit
     from metering_billing.tasks import generate_invoice_pdf_async

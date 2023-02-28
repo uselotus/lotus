@@ -37,6 +37,7 @@ from metering_billing.models import (
 )
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.serializers.serializer_utils import (
+    AddOnSubscriptionUUIDField,
     AddOnUUIDField,
     BalanceAdjustmentUUIDField,
     ConvertEmptyStringToNullMixin,
@@ -46,6 +47,7 @@ from metering_billing.serializers.serializer_utils import (
     PlanUUIDField,
     PlanVersionUUIDField,
     SlugRelatedFieldWithOrganization,
+    SubscriptionUUIDField,
     TimezoneFieldMixin,
     TimeZoneSerializerField,
     UsageAlertUUIDField,
@@ -263,18 +265,21 @@ class LightweightAddOnSubscriptionRecordSerializer(
     class Meta:
         model = SubscriptionRecord
         fields = (
+            "addon_subscription_id",
             "start_date",
             "end_date",
             "addon",
             "fully_billed",
         )
         extra_kwargs = {
-            "start_date": {"required": True},
-            "end_date": {"required": True},
-            "addon": {"required": True},
-            "fully_billed": {"required": True},
+            "addon_subscription_id": {"required": True, "read_only": True},
+            "start_date": {"required": True, "read_only": True},
+            "end_date": {"required": True, "read_only": True},
+            "addon": {"required": True, "read_only": True},
+            "fully_billed": {"required": True, "read_only": True},
         }
 
+    addon_subscription_id = AddOnSubscriptionUUIDField(source="subscription_record_id")
     addon = LightweightAddOnSerializer(source="billing_plan.plan")
 
 
@@ -284,6 +289,7 @@ class SubscriptionRecordSerializer(
     class Meta:
         model = SubscriptionRecord
         fields = (
+            "subscription_id",
             "start_date",
             "end_date",
             "auto_renew",
@@ -295,6 +301,7 @@ class SubscriptionRecordSerializer(
             "addons",
         )
         extra_kwargs = {
+            "subscription_id": {"required": True},
             "start_date": {"required": True},
             "end_date": {"required": True},
             "auto_renew": {"required": True},
@@ -305,6 +312,7 @@ class SubscriptionRecordSerializer(
             "addons": {"required": True},
         }
 
+    subscription_id = SubscriptionUUIDField(source="subscription_record_id")
     subscription_filters = SubscriptionCategoricalFilterSerializer(
         many=True, source="filters"
     )
@@ -1489,10 +1497,7 @@ class SubscriptionInvoiceSerializer(SubscriptionRecordSerializer):
         )
 
 
-@extend_schema_serializer(
-    deprecate_fields=["replace_plan_id"],
-)
-class SubscriptionRecordUpdateSerializer(
+class SubscriptionRecordUpdateSerializerOld(
     ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
@@ -1530,6 +1535,74 @@ class SubscriptionRecordUpdateSerializer(
     )
     end_date = serializers.DateTimeField(
         required=False, help_text="Change the end date for the subscription."
+    )
+
+
+class SubscriptionRecordUpdateSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
+    class Meta:
+        model = SubscriptionRecord
+        fields = (
+            "turn_off_auto_renew",
+            "end_date",
+        )
+
+    turn_off_auto_renew = serializers.BooleanField(
+        required=False, help_text="Turn off auto renew for the subscription"
+    )
+    end_date = serializers.DateTimeField(
+        required=False, help_text="Change the end date for the subscription."
+    )
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        now = now_utc()
+        if "end_date" in attrs and attrs["end_date"] < now:
+            raise serializers.ValidationError(
+                "Cannot set end date to a date in the past."
+            )
+        return attrs
+
+    def update(self, instance, validated_data):
+        if "end_date" in validated_data:
+            instance.end_date = validated_data["end_date"]
+        if "turn_off_auto_renew" in validated_data:
+            instance.turn_off_auto_renew = validated_data["turn_off_auto_renew"]
+        instance.save()
+        return instance
+
+
+class SubscriptionRecordSwitchPlanSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
+    class Meta:
+        model = SubscriptionRecord
+        fields = (
+            "new_version_id",
+            "invoicing_behavior",
+            "usage_behavior",
+        )
+
+    new_version_id = SlugRelatedFieldWithOrganization(
+        slug_field="version_id",
+        read_only=False,
+        source="plan_version",
+        queryset=PlanVersion.plan_versions.all(),
+        write_only=True,
+        required=True,
+        help_text="The new plan version to switch to.",
+    )
+    invoicing_behavior = serializers.ChoiceField(
+        choices=INVOICING_BEHAVIOR.choices,
+        default=INVOICING_BEHAVIOR.INVOICE_NOW,
+        required=False,
+        help_text="The invoicing behavior to use when replacing the plan. Invoice now will invoice the customer for the prorated difference of the old plan and the new plan, whereas add_to_next_invoice will wait until the end of the subscription to do the calculation.",
+    )
+    usage_behavior = serializers.ChoiceField(
+        choices=USAGE_BEHAVIOR.choices,
+        default=USAGE_BEHAVIOR.TRANSFER_TO_NEW_SUBSCRIPTION,
+        help_text="The usage behavior to use when replacing the plan. Transfer to new subscription will transfer the usage from the old subscription to the new subscription, whereas reset_usage will reset the usage to 0 for the new subscription, while keeping the old usage on the old subscription and charging for that appropriately at the end of the month.",
     )
 
 
@@ -2165,6 +2238,7 @@ class AddOnSubscriptionRecordSerializer(
     class Meta:
         model = SubscriptionRecord
         fields = (
+            "addon_subscription_id",
             "customer",
             "addon",
             "start_date",
@@ -2174,6 +2248,7 @@ class AddOnSubscriptionRecordSerializer(
             "auto_renew",
         )
         extra_kwargs = {
+            "addon_subscription_id": {"read_only": True, "required": True},
             "customer": {"read_only": True, "required": True},
             "addon": {"read_only": True, "required": True},
             "start_date": {"read_only": True, "required": True},
@@ -2183,6 +2258,9 @@ class AddOnSubscriptionRecordSerializer(
             "auto_renew": {"read_only": True, "required": True},
         }
 
+    addon_subscription_id = AddOnSubscriptionUUIDField(
+        source="subscription_record_id",
+    )
     customer = LightweightCustomerSerializer()
     addon = LightweightAddOnSerializer(source="billing_plan.plan")
     parent = LightweightSubscriptionRecordSerializer()
@@ -2330,5 +2408,7 @@ class AddOnSubscriptionRecordCreateSerializer(
             sr.filters.add(sf)
         if invoice_now:
             generate_invoice(sr)
+        return sr
+        return sr
         return sr
         return sr

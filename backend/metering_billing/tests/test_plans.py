@@ -464,7 +464,7 @@ class TestPlanOperations:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
         # susbcription inactive, should work
-        plan.versions.first().subscription_records.first().end_subscription_now()
+        plan.versions.first().subscription_records.first().cancel_subscription()
         response = setup_dict["client"].post(
             reverse("plan-delete", kwargs={"plan_id": plan.plan_id})
         )
@@ -865,7 +865,7 @@ class TestPlanVersionOperations:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
         # susbcription inactive, should work
-        plan.versions.first().subscription_records.first().end_subscription_now()
+        plan.versions.first().subscription_records.first().cancel_subscription()
         response = setup_dict["client"].post(
             reverse(
                 "plan_version-delete", kwargs={"version_id": first_version.version_id}
