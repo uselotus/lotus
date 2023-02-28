@@ -1489,6 +1489,9 @@ class SubscriptionInvoiceSerializer(SubscriptionRecordSerializer):
         )
 
 
+@extend_schema_serializer(
+    deprecate_fields=["replace_plan_id"],
+)
 class SubscriptionRecordUpdateSerializer(
     ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
@@ -1505,11 +1508,11 @@ class SubscriptionRecordUpdateSerializer(
     replace_plan_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
         read_only=False,
-        source="billing_plan.plan",
+        source="plan",
         queryset=Plan.objects.all(),
         write_only=True,
         required=False,
-        help_text="If provided, will replace the current subscription's plan with this plan. If this is provided,turn_off_auto_renew and end_date will be ignored. The provided plan must have the same duration as the current plan.",
+        help_text="[DEPRECATED] Will currently perform a best-effort attempt to find the correct plan version to replace the current plan with. If more than one plan version matches the criteria, this will return an error. Use the change_plan method of a subscription instance instead.",
     )
     invoicing_behavior = serializers.ChoiceField(
         choices=INVOICING_BEHAVIOR.choices,
@@ -1528,10 +1531,6 @@ class SubscriptionRecordUpdateSerializer(
     end_date = serializers.DateTimeField(
         required=False, help_text="Change the end date for the subscription."
     )
-
-    def validate(self, data):
-        data = super().validate(data)
-        return data
 
 
 class AddOnSubscriptionRecordUpdateSerializer(

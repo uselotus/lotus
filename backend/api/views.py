@@ -82,7 +82,7 @@ from metering_billing.exceptions import (
     SwitchPlanDurationMismatch,
     SwitchPlanSamePlanException,
 )
-from metering_billing.exceptions.exceptions import NotFoundException
+from metering_billing.exceptions.exceptions import InvalidOperation, NotFoundException
 from metering_billing.invoice import generate_invoice
 from metering_billing.invoice_pdf import get_invoice_presigned_url
 from metering_billing.kafka.producer import Producer
@@ -988,7 +988,42 @@ class SubscriptionViewSet(
         plan_to_replace = qs.first().billing_plan
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        replace_billing_plan = serializer.validated_data.get("billing_plan")
+        replace_plan = serializer.validated_data.get("plan")
+        if replace_plan:
+            possible_billing_plans = replace_plan.versions.all()
+            current_currency = qs.first().billing_plan.currency
+            possible_billing_plans = possible_billing_plans.filter(
+                currency=current_currency
+            )
+            if possible_billing_plans.count() == 0:
+                raise InvalidOperation(
+                    "Cannot switch to a plan with a different currency"
+                )
+            elif possible_billing_plans.count() == 1:
+                replace_billing_plan = possible_billing_plans.first()
+            else:
+                # if there are multiple billing plans with the same currency, we need to
+                # prioritize 1. active billing plans, 2. billing plans with customer as target
+                active_billing_plans = possible_billing_plans.active()
+                if active_billing_plans.count() == 0:
+                    raise InvalidOperation(
+                        "Cannot switch to a plan with no matching active versions"
+                    )
+                elif active_billing_plans.count() == 1:
+                    replace_billing_plan = active_billing_plans.first()
+                else:
+                    matching_plans_active = []
+                    for bp in active_billing_plans:
+                        if qs.first().customer in bp.target_customers.all():
+                            matching_plans_active.append(bp)
+                    if len(matching_plans_active) == 1:
+                        replace_billing_plan = matching_plans_active[0]
+                    else:
+                        raise InvalidOperation(
+                            "Could not determine correct billing plan to replace with"
+                        )
+        else:
+            replace_billing_plan = None
         if replace_billing_plan:
             if replace_billing_plan == plan_to_replace:
                 raise SwitchPlanSamePlanException("Cannot switch to the same plan")
@@ -1004,7 +1039,9 @@ class SubscriptionViewSet(
         turn_off_auto_renew = serializer.validated_data.get("turn_off_auto_renew")
         end_date = serializer.validated_data.get("end_date")
         if replace_billing_plan:
-            qs = qs.filter(billing_plan__is_addon=False)  # no addons in replace
+            qs = qs.filter(
+                billing_plan__addon_spec__isnull=True
+            )  # no addons in replace
             now = now_utc()
             keep_separate = usage_behavior == USAGE_BEHAVIOR.KEEP_SEPARATE
             replace_plan_metrics = {

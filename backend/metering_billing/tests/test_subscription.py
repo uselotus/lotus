@@ -14,6 +14,7 @@ from metering_billing.models import (
     PlanComponent,
     PlanVersion,
     PriceTier,
+    PricingUnit,
     SubscriptionRecord,
 )
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
@@ -92,6 +93,7 @@ def subscription_test_common_setup(
             PlanVersion,
             organization=org,
             plan=plan,
+            currency=PricingUnit.objects.get(organization=org, code="USD"),
         )
         plan.save()
         for i, (fmu, cpb, mupb) in enumerate(
@@ -433,7 +435,6 @@ class TestUpdateSub:
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-
         after_subscription_records_len = SubscriptionRecord.objects.all().count()
 
         assert response.status_code == status.HTTP_201_CREATED
@@ -460,6 +461,9 @@ class TestUpdateSub:
             PlanVersion,
             organization=setup_dict["org"],
             plan=new_plan,
+            currency=PricingUnit.objects.get(
+                code="USD", organization=setup_dict["org"]
+            ),
         )
         new_plan.save()
         payload = {
@@ -478,6 +482,7 @@ class TestUpdateSub:
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
+        print(response.data)
         assert response.status_code == status.HTTP_200_OK
         after_invoices = Invoice.objects.all().count()
         assert before_invoices + 1 == after_invoices
@@ -534,6 +539,9 @@ class TestUpdateSub:
             PlanVersion,
             organization=setup_dict["org"],
             plan=new_plan,
+            currency=PricingUnit.objects.get(
+                code="USD", organization=setup_dict["org"]
+            ),
         )
         new_plan.save()
         payload = {
@@ -689,4 +697,5 @@ class TestRegressions:
         try:
             setup_dict["org"].update_subscription_filter_settings(["email"])
         except Exception as e:
+            assert False, e
             assert False, e
