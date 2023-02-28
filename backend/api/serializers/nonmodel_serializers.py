@@ -289,7 +289,6 @@ class CustomerDeleteResponseSerializer(serializers.Serializer):
     customer_id = serializers.CharField()
     deleted = serializers.DateTimeField()
     email = serializers.EmailField(allow_blank=True, allow_null=True)
-    num_events_deleted = serializers.IntegerField()
     num_subscriptions_deleted = serializers.IntegerField()
     num_addons_deleted = serializers.IntegerField()
 
