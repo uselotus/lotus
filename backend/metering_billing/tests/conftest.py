@@ -1,3 +1,6 @@
+import itertools
+import random
+import string
 import uuid
 
 import posthog
@@ -119,8 +122,19 @@ def create_events_with_org_customer():
     from metering_billing.models import Event
 
     def do_create_events_with_org_customer(organization, customer, n):
+        idempotency_ids = itertools.cycle(
+            [
+                "".join(random.choices(string.ascii_letters + string.digits, k=50))
+                for _ in range(n)
+            ]
+        )
         event_set = baker.make(
-            Event, _quantity=n, organization=organization, cust_id=customer.customer_id
+            Event,
+            _quantity=n,
+            organization=organization,
+            cust_id=customer.customer_id,
+            idempotency_id=idempotency_ids,
+            event_name="test_event",
         )
         return event_set
 
@@ -299,5 +313,4 @@ def add_plan_version_to_plan():
         )
         return plan_version
 
-    return do_add_planversion_to_plan
     return do_add_planversion_to_plan
