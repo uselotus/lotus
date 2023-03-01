@@ -46,7 +46,7 @@ function CreateMetricForm(props: {
 }) {
   const [form] = Form.useForm();
   const [eventType, setEventType] = useState("counter");
-  const [eventName, setEventName] = useState<string>("");
+  const [propertyNames, setPropertyNames] = useState<[string]>([]);
   const [preset, setPreset] = useState("none");
   const errorMessages = useRef([]);
   const [errors, setErrors] = useState<string[]>();
@@ -62,9 +62,9 @@ function CreateMetricForm(props: {
     useState<TimePeriodType | null>(null);
   
   const { data, isLoading }: UseQueryResult<EventPages> = useQuery<EventPages>(
-      ["search events"],
+      ["preview events"],
       () =>
-        Events.searchEvents(true).then((res) => 
+        Events.searchEventNames(true).then((res) => 
            res
         ),
     );
@@ -235,6 +235,14 @@ function CreateMetricForm(props: {
           if (errorMessages.current.length) {
             return;
           }
+
+          if(Array.isArray(values.event_name)){
+            values.event_name = values.event_name[0]
+          }
+          if(Array.isArray(values.property_name)){
+            values.property_name = values.property_name[0]
+          }
+          
           const numericFilters: NumericFilterType[] = [];
           const categoricalFilters: CategoricalFilterType[] = [];
           if (values.filters && values.filters.length > 0) {
@@ -397,9 +405,14 @@ function CreateMetricForm(props: {
                 <Select
                   mode="tags"
                   placeholder="Start typing to look up matching events"
+                  onChange={(event_name: string) => {
+                    const selectedEvent = data?.results?.find((e) => e.event_name == event_name);
+                    const temp = Object.keys(selectedEvent?.properties).map(key => key)
+                    setPropertyNames(temp)
+                  }}
                 >
                   {
-                    data?.result?.map(e => (<Option value={e.event_name}>{e.event_name}</Option>))
+                    data?.results?.map(e => (<Option value={e.event_name}>{e.event_name}</Option>))
                   }
                 </Select>
               </Form.Item>
@@ -491,7 +504,14 @@ function CreateMetricForm(props: {
                       label="Property Name"
                       rules={[{ required: true }]}
                     >
-                      <Input />
+                      <Select
+                        mode="tags"
+                        placeholder="Start typing to look up matching property names"
+                >
+                  {
+                    propertyNames.map(p => (<Option value={p}>{p}</Option>))
+                  }
+                </Select>
                     </Form.Item>
                   ) : null
                 }
@@ -538,7 +558,14 @@ function CreateMetricForm(props: {
                 label="Property Name"
                 rules={[{ required: true }]}
               >
-                <Input />
+                <Select
+                        mode="tags"
+                        placeholder="Start typing to look up matching property names"
+                >
+                  {
+                    propertyNames.map(p => (<Option value={p}>{p}</Option>))
+                  }
+                </Select>
               </Form.Item>
 
               <Form.Item
@@ -663,31 +690,6 @@ function CreateMetricForm(props: {
             />
           </div>
         )}
-
-        <Collapse>
-          <Panel header="Matching Events" key="1">
-          {data?.results.map((event) => (
-                <Panel
-                  header={
-                    <div className="grid grid-cols-3 my-2 font-alliance">
-                      <div className="flex align-middle text-[14px] ">
-                        <p className="leading-[24px]">event_name: </p>
-                        <p className="infoValue"> {event.event_name}</p>
-                      </div>
-                      <div className="flex align-middle text-[14px]">
-                        <p className="leading-[24px]">customer_id: </p>
-                        <p className="infoValue"> {event.customer_id}</p>
-                      </div>
-                    </div>
-                  }
-                  className=" hover:bg-background"
-                  key={event.id}
-                >
-                </Panel>
-              ))}
-          </Panel>
-        </Collapse>
-        <br />
 
         {eventType !== "custom" && (
           <Collapse>

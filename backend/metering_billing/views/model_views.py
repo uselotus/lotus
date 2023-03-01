@@ -106,6 +106,7 @@ from rest_framework.decorators import action
 from rest_framework.pagination import CursorPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.db.models import Count
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -428,9 +429,17 @@ class EventViewSet(
         organization = self.request.organization
         distinct = self.request.query_params.get("distinct")
         if distinct:
-            return Event.objects.filter(
+            events = Event.objects.filter(
                 organization=organization, time_created__lt=now
-            ).distinct()
+            )
+            distinct_names = []
+            distinct_uuids = []
+            for event in events.all():
+                if event.event_name not in distinct_names:
+                    distinct_names.append(event.event_name)
+                    distinct_uuids.append(event.idempotency_id)
+            return Event.objects.filter(idempotency_id__in=distinct_uuids)
+
         return (
             super()
             .get_queryset()
