@@ -25,6 +25,7 @@ from metering_billing.exceptions import (
     DuplicateMetric,
     DuplicateWebhookEndpoint,
     InvalidOperation,
+    MethodNotAllowed,
     ServerError,
 )
 from metering_billing.models import (
@@ -1351,7 +1352,17 @@ class PlanViewSet(api_views.PlanViewSet):
 
 
 class SubscriptionViewSet(api_views.SubscriptionViewSet):
-    pass
+    @extend_schema(exclude=True)
+    def add(self, request, *args, **kwargs):
+        raise MethodNotAllowed(request.method)
+
+    @extend_schema(exclude=True)
+    def cancel_multi(self, request, *args, **kwargs):
+        raise MethodNotAllowed(request.method)
+
+    @extend_schema(exclude=True)
+    def edit(self, request, *args, **kwargs):
+        raise MethodNotAllowed(request.method)
 
 
 class InvoiceViewSet(api_views.InvoiceViewSet):

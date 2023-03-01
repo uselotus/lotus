@@ -161,7 +161,7 @@ class TestUsageAlerts:
         assert alert_results_before == 0
 
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload_sr"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -179,7 +179,7 @@ class TestUsageAlerts:
         before_alerts = UsageAlert.objects.all().count()
         assert before_alerts is not None
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload_sr"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -207,7 +207,7 @@ class TestUsageAlerts:
         before_alerts = UsageAlert.objects.all().count()
         assert before_alerts is not None
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload_sr"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )

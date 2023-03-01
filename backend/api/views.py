@@ -15,7 +15,6 @@ import posthog
 import pytz
 from api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
-    AddOnSubscriptionRecordFilterSerializer,
     AddOnSubscriptionRecordSerializer,
     AddOnSubscriptionRecordUpdateSerializer,
     CustomerBalanceAdjustmentCreateSerializer,
@@ -33,6 +32,7 @@ from api.serializers.model_serializers import (
     PlanSerializer,
     SubscriptionRecordCancelSerializer,
     SubscriptionRecordCreateSerializer,
+    SubscriptionRecordCreateSerializerOld,
     SubscriptionRecordFilterSerializer,
     SubscriptionRecordFilterSerializerDelete,
     SubscriptionRecordSerializer,
@@ -78,7 +78,6 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serial
 from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
 from metering_billing.exceptions import (
     DuplicateCustomer,
-    MethodNotAllowed,
     RepeatedOperation,
     ServerError,
     SwitchPlanDurationMismatch,
@@ -655,13 +654,38 @@ class SubscriptionViewSet(
     lookup_field = "subscription_id"
 
     def get_object(self):
-        string_uuid = self.kwargs.pop(self.lookup_field, None)
-        uuid = SubscriptionRecordUUIDField().to_internal_value(string_uuid)
-        if self.lookup_field == "subscription_id":
-            self.lookup_field = "subscription_record_id"
-        self.kwargs[self.lookup_field] = uuid
-        obj = super().get_object()
-        self.lookup_field = "subscription_id"
+        subscription_id = self.kwargs.get("subscription_id")
+        subscription_uuid = SubscriptionRecordUUIDField().to_internal_value(
+            subscription_id
+        )
+        addon_id = self.kwargs.get("addon_id")
+        if addon_id:
+            addon_uuid = AddOnUUIDField().to_internal_value(addon_id)
+        else:
+            addon_uuid = None
+        if not subscription_uuid:
+            raise ServerError(
+                "Unexpected state. Could not find subscription_id in request."
+            )
+        try:
+            obj = self.queryset.get(subscription_record_id=subscription_uuid)
+        except SubscriptionRecord.DoesNotExist:
+            raise NotFoundException(
+                f"Subscription with subscription_id {subscription_id} not found"
+            )
+        if addon_uuid:
+            addons_for_sr = obj.addon_subscription_records.filter(
+                billing_plan__version_id=addon_uuid
+            )
+            if not addons_for_sr.exists():
+                raise NotFoundException(
+                    f"Addon with addon_id {addon_id} not found for subscription {subscription_id}"
+                )
+            elif addons_for_sr.count() > 1:
+                raise ServerError(
+                    f"Unexpected state. More than one addon found for subscription {subscription_id} and addon_id {addon_id}"
+                )
+            obj = addons_for_sr.first()
         return obj
 
     def get_serializer_context(self):
@@ -684,6 +708,8 @@ class SubscriptionViewSet(
         ):
             return SubscriptionRecordCancelSerializer
         elif self.action == "add":
+            return SubscriptionRecordCreateSerializerOld
+        elif self.action == "create":
             return SubscriptionRecordCreateSerializer
         elif self.action == "attach_addon":
             return AddOnSubscriptionRecordCreateSerializer
@@ -726,16 +752,13 @@ class SubscriptionViewSet(
         return qs
 
     def get_queryset(self):
-        if self.action in ["cancel_addon", "update_addon"]:
-            qs = SubscriptionRecord.addon_objects.all()
-        else:
-            qs = SubscriptionRecord.base_objects.all()
+        qs = SubscriptionRecord.base_objects.all()
         now = now_utc()
         organization = self.request.organization
         qs = qs.filter(organization=organization)
         context = self.get_serializer_context()
         context["organization"] = organization
-        if self.action in ["list", "edit", "cancel"]:
+        if self.action in ["list", "edit", "cancel_multi"]:
             subscription_filters = self.request.query_params.getlist(
                 "subscription_filters[]"
             )
@@ -751,7 +774,7 @@ class SubscriptionViewSet(
                 serializer = SubscriptionRecordFilterSerializer(
                     data=data, context=context
                 )
-            elif self.action == "cancel":
+            elif self.action == "cancel_multi":
                 serializer = SubscriptionRecordFilterSerializerDelete(
                     data=data, context=context
                 )
@@ -817,76 +840,6 @@ class SubscriptionViewSet(
                     lambda acc, filter: acc & Q(filters=filter), filters, Q()
                 )
                 qs = qs.filter(query)
-        elif self.action in ["cancel_addon", "update_addon"]:
-            subscription_filters = self.request.query_params.getlist(
-                "subscription_filters[]"
-            )
-            subscription_filters = [json.loads(x) for x in subscription_filters]
-            dict_params = self.request.query_params.dict()
-            data = {
-                "subscription_filters": subscription_filters,
-                "attached_customer_id": dict_params.get("attached_customer_id"),
-                "attached_plan_id": dict_params.get("attached_plan_id"),
-                "addon_id": dict_params.get("addon_id"),
-            }
-            serializer = AddOnSubscriptionRecordFilterSerializer(
-                data=data, context=context
-            )
-            serializer.is_valid(raise_exception=True)
-
-            customer = serializer.validated_data.get("customer")
-            subscription_filters = serializer.validated_data.get("subscription_filters")
-            allowed_status = serializer.validated_data.get(
-                "status", [SUBSCRIPTION_STATUS.ACTIVE]
-            )
-            range_start = serializer.validated_data.get("range_start")
-            range_end = serializer.validated_data.get("range_end")
-            plan = serializer.validated_data.get("plan")
-            # add onto args
-            args = []
-            if customer:
-                args.append(Q(customer=customer))
-            if allowed_status:
-                status_combo = []
-                if SUBSCRIPTION_STATUS.ACTIVE in allowed_status:
-                    status_combo.append(Q(start_date__lte=now, end_date__gte=now))
-                if SUBSCRIPTION_STATUS.ENDED in allowed_status:
-                    status_combo.append(Q(end_date__lt=now))
-                if SUBSCRIPTION_STATUS.NOT_STARTED in allowed_status:
-                    status_combo.append(Q(start_date__gt=now))
-                args.append(reduce(operator.or_, status_combo))
-            if range_start:
-                args.append(Q(end_date__gte=range_start))
-            if range_end:
-                args.append(Q(start_date__lte=range_end))
-            if plan:
-                args.append(Q(billing_plan__plan=plan))
-
-            qs = qs.filter(*args)
-            qs = self._prefetch_qs(qs)
-            qs = SubscriptionRecord.objects.filter(
-                pk__in=[
-                    sr.pk
-                    for sr in chain(
-                        qs, *[r.addon_subscription_records.all() for r in qs]
-                    )
-                ]
-            )
-
-            if serializer.validated_data.get("subscription_filters"):
-                filters = []
-                for filter in serializer.validated_data["subscription_filters"]:
-                    m2m, _ = CategoricalFilter.objects.get_or_create(
-                        organization=organization,
-                        property_name=filter["property_name"],
-                        comparison_value=[filter["value"]],
-                        operator=CATEGORICAL_FILTER_OPERATORS.ISIN,
-                    )
-                    filters.append(m2m)
-                query = reduce(
-                    lambda acc, filter: acc & Q(filters=filter), filters, Q()
-                )
-                qs = qs.filter(query)
         return qs
 
     @extend_schema(
@@ -895,12 +848,63 @@ class SubscriptionViewSet(
     def list(self, request, *args, **kwargs):
         return super().list(request)
 
+    @extend_schema(
+        responses=SubscriptionRecordSerializer,
+    )
     def create(self, request, *args, **kwargs):
-        raise MethodNotAllowed(
-            "Cannot use the create method on the subscription endpoint. Please use the /subscriptions/add endpoint to attach a plan and create a subscription."
+        now = now_utc()
+        # run checks to make sure it's valid
+        organization = self.request.organization
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        # make sure subscription filters are valid
+        subscription_filters = serializer.validated_data.get("subscription_filters", [])
+        sf_setting = organization.settings.get(
+            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
+        )
+        for sf in subscription_filters:
+            if sf["property_name"] not in sf_setting.setting_values:
+                raise ValidationError(
+                    "Invalid subscription filter. Please check your subscription filters setting."
+                )
+        # check to see if subscription exists
+        duration = serializer.validated_data["billing_plan"].plan.plan_duration
+        start_date = convert_to_datetime(
+            serializer.validated_data["start_date"], date_behavior="min"
+        )
+        day_anchor = (
+            serializer.validated_data["billing_plan"].day_anchor
+            or start_date.date().day
+        )
+        month_anchor = (
+            serializer.validated_data["billing_plan"].month_anchor
+            or start_date.date().month
+        )
+        timezone = serializer.validated_data["customer"].timezone
+        end_date = calculate_end_date(
+            duration,
+            start_date,
+            timezone,
+            day_anchor=day_anchor,
+            month_anchor=month_anchor,
+        )
+        end_date = serializer.validated_data.get("end_date", end_date)
+        if end_date < now:
+            raise ValidationError(
+                "End date cannot be in the past. For historical backfilling of subscriptions, please contact support."
+            )
+        subscription_record = serializer.save(
+            organization=organization,
         )
 
-    # # ad hoc methods
+        # now we can actually create the subscription record
+        response = SubscriptionRecordSerializer(subscription_record).data
+        return Response(
+            response,
+            status=status.HTTP_201_CREATED,
+        )
+
+    # REGULAR SUBSCRIPTION RECORDS
     @extend_schema(
         parameters=[
             OpenApiParameter(
@@ -945,7 +949,7 @@ class SubscriptionViewSet(
                 name="subscription_id",
                 location=OpenApiParameter.PATH,
                 type=OpenApiTypes.STR,
-                description="The ID of the subscription to cancel.",
+                description="The ID of the subscription to update.",
             )
         ],
         responses=SubscriptionRecordSerializer,
@@ -974,7 +978,7 @@ class SubscriptionViewSet(
                 name="subscription_id",
                 location=OpenApiParameter.PATH,
                 type=OpenApiTypes.STR,
-                description="The ID of the subscription to cancel.",
+                description="The ID of the subscription which will have its plans switched.",
             )
         ],
         responses=SubscriptionRecordSerializer,
@@ -1032,6 +1036,154 @@ class SubscriptionViewSet(
         if billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
             generate_invoice(current_sr)
 
+    # ADDON SUBSCRIPTION RECORDS
+    @extend_schema(
+        responses=AddOnSubscriptionRecordSerializer,
+        parameters=[
+            OpenApiParameter(
+                name="subscription_id",
+                location=OpenApiParameter.PATH,
+                type=OpenApiTypes.STR,
+                description="The ID of the subscription to add an addon to.",
+            )
+        ],
+    )
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="addons/attach",
+        url_name="atach_addon",
+    )
+    def attach_addon(self, request, *args, **kwargs):
+        attach_to_sr = self.get_object()
+        serializer = self.get_serializer(
+            data=request.data, context={"attach_to_subscription_record": attach_to_sr}
+        )
+        serializer.is_valid(raise_exception=True)
+        sr = serializer.save()
+        return Response(
+            AddOnSubscriptionRecordSerializer(sr).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    # @extend_schema(
+    #     responses=AddOnSubscriptionRecordSerializer(many=True),
+    #     parameters=[
+    #         OpenApiParameter(
+    #             name="subscription_id",
+    #             location=OpenApiParameter.PATH,
+    #             type=OpenApiTypes.STR,
+    #             description="The ID of the subscription to update.",
+    #         ),
+    #         OpenApiParameter(
+    #             name="addon_id",
+    #             location=OpenApiParameter.PATH,
+    #             type=OpenApiTypes.STR,
+    #             description="The ID of the addon within the subscription update.",
+    #         ),
+    #     ],
+    # )
+    # @action(
+    #     detail=True,
+    #     methods=["post"],
+    #     url_path="addons/(?P<addon_id>[^/.]+)/update",
+    #     url_name="update_addon",
+    # )
+    # def update_addon(self, request, *args, **kwargs):
+    #     qs = self.get_queryset()
+    #     organization = self.request.organization
+    #     original_qs = list(copy.copy(qs).values_list("pk", flat=True))
+    #     if qs.count() == 0:
+    #         raise NotFoundException("Subscription matching the given filters not found")
+    #     serializer = self.get_serializer(data=request.data)
+    #     serializer.is_valid(raise_exception=True)
+    #     billing_behavior = serializer.validated_data.get("invoicing_behavior")
+    #     turn_off_auto_renew = serializer.validated_data.get("turn_off_auto_renew")
+    #     end_date = serializer.validated_data.get("end_date")
+    #     quantity = serializer.validated_data.get("quantity")
+    #     update_dict = {}
+    #     if turn_off_auto_renew:
+    #         update_dict["auto_renew"] = False
+    #     if end_date:
+    #         update_dict["end_date"] = end_date
+    #     if quantity:
+    #         update_dict["quantity"] = quantity
+    #     if len(update_dict) > 0:
+    #         qs.update(**update_dict)
+    #     if (
+    #         billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW
+    #         and "quantity" in update_dict
+    #     ):
+    #         new_qs = SubscriptionRecord.addon_objects.filter(
+    #             pk__in=original_qs, organization=organization
+    #         )
+    #         if billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
+    #             generate_invoice(new_qs)
+
+    #     return_qs = SubscriptionRecord.addon_objects.filter(
+    #         pk__in=original_qs, organization=organization
+    #     )
+    #     return Response(
+    #         AddOnSubscriptionRecordSerializer(return_qs, many=True).data,
+    #         status=status.HTTP_200_OK,
+    #     )
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="subscription_id",
+                location=OpenApiParameter.PATH,
+                type=OpenApiTypes.STR,
+                description="The ID of the subscription to update.",
+            ),
+            OpenApiParameter(
+                name="addon_id",
+                location=OpenApiParameter.PATH,
+                type=OpenApiTypes.STR,
+                description="The ID of the addon within the subscription update.",
+            ),
+        ],
+        responses=AddOnSubscriptionRecordSerializer(many=True),
+    )
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="addons/(?P<addon_id>[^/.]+)/cancel",
+        url_name="cancel_addon",
+    )
+    def cancel_addon(self, request, *args, **kwargs):
+        addon_sr = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
+        usage_behavior = serializer.validated_data["usage_behavior"]
+        invoicing_behavior = serializer.validated_data["invoicing_behavior"]
+        now = now_utc()
+
+        addon_sr.cancel_subscription(
+            bill_usage=usage_behavior == USAGE_BILLING_BEHAVIOR.BILL_FULL,
+            flat_fee_behavior=flat_fee_behavior,
+            invoice_now=invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW,
+        )
+        now = now_utc()
+        addon_sr.flat_fee_behavior = flat_fee_behavior
+        addon_sr.invoice_usage_charges = (
+            usage_behavior == USAGE_BILLING_BEHAVIOR.BILL_FULL
+        )
+        addon_sr.auto_renew = False
+        addon_sr.end_date = now
+        addon_sr.fully_billed = invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW
+        addon_sr.save()
+
+        if invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
+            generate_invoice(addon_sr)
+
+        return Response(
+            AddOnSubscriptionRecordSerializer(addon_sr).data,
+            status=status.HTTP_200_OK,
+        )
+
+    ## DEPRECATED METHODS
     @extend_schema(responses=SubscriptionRecordSerializer, deprecated=True)
     @action(detail=False, methods=["post"])
     def add(self, request, *args, **kwargs):
@@ -1087,135 +1239,6 @@ class SubscriptionViewSet(
             status=status.HTTP_201_CREATED,
         )
 
-    # THE ADDON ONES CAN BE REPLACED SINCE WE NEVER PUBLICLY RELEASED THEM
-    @extend_schema(responses=AddOnSubscriptionRecordSerializer)
-    @action(detail=False, methods=["post"], url_path="addons/add")
-    def attach_addon(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        sr = serializer.save()
-        return Response(
-            AddOnSubscriptionRecordSerializer(sr).data,
-            status=status.HTTP_201_CREATED,
-        )
-
-    @extend_schema(
-        parameters=[AddOnSubscriptionRecordFilterSerializer],
-        responses=AddOnSubscriptionRecordSerializer(many=True),
-    )
-    @action(detail=False, methods=["post"], url_path="addons/update")
-    def update_addon(self, request, *args, **kwargs):
-        qs = self.get_queryset()
-        organization = self.request.organization
-        original_qs = list(copy.copy(qs).values_list("pk", flat=True))
-        if qs.count() == 0:
-            raise NotFoundException("Subscription matching the given filters not found")
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        billing_behavior = serializer.validated_data.get("invoicing_behavior")
-        turn_off_auto_renew = serializer.validated_data.get("turn_off_auto_renew")
-        end_date = serializer.validated_data.get("end_date")
-        quantity = serializer.validated_data.get("quantity")
-        update_dict = {}
-        if turn_off_auto_renew:
-            update_dict["auto_renew"] = False
-        if end_date:
-            update_dict["end_date"] = end_date
-        if quantity:
-            update_dict["quantity"] = quantity
-        if len(update_dict) > 0:
-            qs.update(**update_dict)
-        if (
-            billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW
-            and "quantity" in update_dict
-        ):
-            new_qs = SubscriptionRecord.addon_objects.filter(
-                pk__in=original_qs, organization=organization
-            )
-            if billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
-                generate_invoice(new_qs)
-
-        return_qs = SubscriptionRecord.addon_objects.filter(
-            pk__in=original_qs, organization=organization
-        )
-        return Response(
-            AddOnSubscriptionRecordSerializer(return_qs, many=True).data,
-            status=status.HTTP_200_OK,
-        )
-
-    @extend_schema(
-        parameters=[AddOnSubscriptionRecordFilterSerializer],
-        responses=AddOnSubscriptionRecordSerializer(many=True),
-    )
-    @action(detail=False, methods=["post"], url_path="addons/cancel")
-    def cancel_addon(self, request, *args, **kwargs):
-        qs = self.get_queryset()
-        original_qs = list(copy.copy(qs).values_list("pk", flat=True))
-        organization = self.request.organization
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
-        usage_behavior = serializer.validated_data["usage_behavior"]
-        invoicing_behavior = serializer.validated_data["invoicing_behavior"]
-        now = now_utc()
-        qs_pks = list(qs.values_list("pk", flat=True))
-        qs.update(
-            flat_fee_behavior=flat_fee_behavior,
-            invoice_usage_charges=usage_behavior == USAGE_BILLING_BEHAVIOR.BILL_FULL,
-            auto_renew=False,
-            end_date=now,
-            fully_billed=invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW,
-        )
-        qs = SubscriptionRecord.addon_objects.filter(
-            pk__in=qs_pks, organization=organization
-        )
-        customer_ids = qs.values_list("customer", flat=True).distinct()
-        customer_set = Customer.objects.filter(
-            id__in=customer_ids, organization=organization
-        )
-        if invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
-            for customer in customer_set:
-                generate_invoice(qs.filter(customer=customer))
-
-        return_qs = SubscriptionRecord.addon_objects.filter(
-            pk__in=original_qs, organization=organization
-        )
-        return Response(
-            AddOnSubscriptionRecordSerializer(return_qs, many=True).data,
-            status=status.HTTP_200_OK,
-        )
-
-    def dispatch(self, request, *args, **kwargs):
-        response = super().dispatch(request, *args, **kwargs)
-        if status.is_success(response.status_code):
-            try:
-                username = self.request.user.username
-            except Exception:
-                username = None
-            organization = self.request.organization
-            posthog.capture(
-                POSTHOG_PERSON
-                if POSTHOG_PERSON
-                else (
-                    username
-                    if username
-                    else organization.organization_name + " (API Key)"
-                ),
-                event=f"{self.action}_subscription",
-                properties={"organization": organization.organization_name},
-            )
-            # if username:
-            #     if self.action == "plans":
-            #         action.send(
-            #             self.request.user,
-            #             verb="attached",
-            #             action_object=instance.customer,
-            #             target=instance.billing_plan,
-            #         )
-
-        return response
-
-    ## DEPRECATED METHODS
     @extend_schema(
         parameters=[
             SubscriptionRecordFilterSerializerDelete,
@@ -1386,6 +1409,38 @@ class SubscriptionViewSet(
         )
         ret = SubscriptionRecordSerializer(return_qs, many=True).data
         return Response(ret, status=status.HTTP_200_OK)
+
+        ## DISPATCH
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            try:
+                username = self.request.user.username
+            except Exception:
+                username = None
+            organization = self.request.organization
+            posthog.capture(
+                POSTHOG_PERSON
+                if POSTHOG_PERSON
+                else (
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
+                ),
+                event=f"{self.action}_subscription",
+                properties={"organization": organization.organization_name},
+            )
+            # if username:
+            #     if self.action == "plans":
+            #         action.send(
+            #             self.request.user,
+            #             verb="attached",
+            #             action_object=instance.customer,
+            #             target=instance.billing_plan,
+            #         )
+
+        return response
 
 
 class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):

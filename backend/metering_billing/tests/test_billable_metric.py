@@ -1592,7 +1592,7 @@ class TestCustomSQLMetrics:
             "plan_id": billing_plan.plan.plan_id,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -1701,7 +1701,7 @@ class TestCustomSQLMetrics:
             "plan_id": billing_plan.plan.plan_id,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -1810,7 +1810,7 @@ class TestCustomSQLMetrics:
             "plan_id": billing_plan.plan.plan_id,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -1941,7 +1941,7 @@ class TestCustomSQLMetrics:
             "plan_id": billing_plan.plan.plan_id,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -2148,7 +2148,7 @@ class TestCustomSQLMetrics:
             "plan_id": billing_plan.plan.plan_id,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )

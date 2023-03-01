@@ -245,7 +245,7 @@ class TestAttachAddOn:
         )
 
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -272,7 +272,7 @@ class TestAttachAddOn:
             "quantity": 1,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-attach-addon"),
+            reverse("subscription-atach_addon"),
             data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -300,7 +300,7 @@ class TestAttachAddOn:
         )
 
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -333,7 +333,7 @@ class TestAttachAddOn:
         )
         setup_dict["flat_fee_addon_spec"].save()
         response = setup_dict["client"].post(
-            reverse("subscription-attach-addon"),
+            reverse("subscription-atach_addon"),
             data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -358,7 +358,7 @@ class TestAttachAddOn:
         )
 
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -394,7 +394,7 @@ class TestAttachAddOn:
         ].billing_frequency = AddOnSpecification.BillingFrequency.RECURRING
         setup_dict["flat_fee_addon_spec"].save()
         response = setup_dict["client"].post(
-            reverse("subscription-attach-addon"),
+            reverse("subscription-atach_addon"),
             data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -426,7 +426,7 @@ class TestAttachAddOn:
         )
 
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -466,7 +466,7 @@ class TestAttachAddOn:
             "quantity": 1,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-attach-addon"),
+            reverse("subscription-atach_addon"),
             data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -519,7 +519,7 @@ class TestAttachAddOn:
         )
 
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -546,7 +546,7 @@ class TestAttachAddOn:
             "quantity": 1,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-attach-addon"),
+            reverse("subscription-atach_addon"),
             data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -573,7 +573,7 @@ class TestAttachAddOn:
         )
 
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -600,7 +600,7 @@ class TestAttachAddOn:
             "quantity": 1,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-attach-addon"),
+            reverse("subscription-atach_addon"),
             data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -649,7 +649,7 @@ class TestAttachAddOn:
             "quantity": 1,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-attach-addon"),
+            reverse("subscription-atach_addon"),
             data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -667,7 +667,7 @@ class TestAttachAddOn:
         )
 
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -704,7 +704,7 @@ class TestAttachAddOn:
         ].billing_frequency = AddOnSpecification.BillingFrequency.RECURRING
         setup_dict["flat_fee_addon_spec"].save()
         response = setup_dict["client"].post(
-            reverse("subscription-attach-addon"),
+            reverse("subscription-atach_addon"),
             data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -738,7 +738,7 @@ class TestAttachAddOn:
         )
 
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -765,7 +765,7 @@ class TestAttachAddOn:
             "quantity": 1,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-attach-addon"),
+            reverse("subscription-atach_addon"),
             data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -793,7 +793,7 @@ class TestUpdateAddOn:
         )
 
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -820,7 +820,7 @@ class TestUpdateAddOn:
             "quantity": 1,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-attach-addon"),
+            reverse("subscription-atach_addon"),
             data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -851,7 +851,7 @@ class TestUpdateAddOn:
             "turn_off_auto_renew": True,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-update-addon")
+            reverse("subscription-list_addon")
             + "?"
             + urllib.parse.urlencode(update_addon_query_params),
             data=json.dumps(update_addon_payload, cls=DjangoJSONEncoder),
@@ -874,7 +874,7 @@ class TestUpdateAddOn:
         )
 
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -907,7 +907,7 @@ class TestUpdateAddOn:
         )
         setup_dict["flat_fee_addon_spec"].save()
         response = setup_dict["client"].post(
-            reverse("subscription-attach-addon"),
+            reverse("subscription-atach_addon"),
             data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -929,7 +929,7 @@ class TestUpdateAddOn:
             "invoicing_behavior": "add_to_next_invoice",
         }
         response = setup_dict["client"].post(
-            reverse("subscription-update-addon")
+            reverse("subscription-list_addon")
             + "?"
             + urllib.parse.urlencode(update_addon_query_params),
             data=json.dumps(update_addon_payload, cls=DjangoJSONEncoder),
@@ -953,7 +953,7 @@ class TestUpdateAddOn:
         )
 
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -986,7 +986,7 @@ class TestUpdateAddOn:
         )
         setup_dict["flat_fee_addon_spec"].save()
         response = setup_dict["client"].post(
-            reverse("subscription-attach-addon"),
+            reverse("subscription-atach_addon"),
             data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -1008,7 +1008,7 @@ class TestUpdateAddOn:
             "invoicing_behavior": "add_to_next_invoice",
         }
         response = setup_dict["client"].post(
-            reverse("subscription-update-addon")
+            reverse("subscription-list_addon")
             + "?"
             + urllib.parse.urlencode(update_addon_query_params),
             data=json.dumps(update_addon_payload, cls=DjangoJSONEncoder),
@@ -1033,7 +1033,7 @@ class TestUpdateAddOn:
         )
 
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -1060,7 +1060,7 @@ class TestUpdateAddOn:
             "quantity": 5,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-attach-addon"),
+            reverse("subscription-atach_addon"),
             data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -1083,7 +1083,7 @@ class TestUpdateAddOn:
         }
         baladj_before = len(CustomerBalanceAdjustment.objects.all())
         response = setup_dict["client"].post(
-            reverse("subscription-update-addon")
+            reverse("subscription-list_addon")
             + "?"
             + urllib.parse.urlencode(update_addon_query_params),
             data=json.dumps(update_addon_payload, cls=DjangoJSONEncoder),
@@ -1112,7 +1112,7 @@ class TestCancelAddOn:
         )
 
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -1139,7 +1139,7 @@ class TestCancelAddOn:
             "quantity": 1,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-attach-addon"),
+            reverse("subscription-atach_addon"),
             data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -1196,7 +1196,7 @@ class TestCancelAddOn:
         )
 
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -1223,7 +1223,7 @@ class TestCancelAddOn:
             "quantity": 1,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-attach-addon"),
+            reverse("subscription-atach_addon"),
             data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )

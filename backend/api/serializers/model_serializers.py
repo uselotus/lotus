@@ -1348,8 +1348,7 @@ class EventSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     )
 
 
-@extend_schema_serializer(deprecate_fields=["plan_id"])
-class SubscriptionRecordCreateSerializer(
+class SubscriptionRecordCreateSerializerOld(
     ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
@@ -1362,7 +1361,6 @@ class SubscriptionRecordCreateSerializer(
             "subscription_filters",
             "customer_id",
             "plan_id",
-            "version_id",
         )
 
     start_date = serializers.DateTimeField(
@@ -1398,19 +1396,10 @@ class SubscriptionRecordCreateSerializer(
         required=False,
         help_text="The Lotus plan_id, found in the billing plan object. This field has been deprecated in favor of version_id for the sake of being explicit. If used, a best effort will be made to find the correct plan version (matching preferred currencies, prioritizing custom plans), but if more than one plan versions matches this criteria this will return an error.",
     )
-    version_id = SlugRelatedFieldWithOrganization(
-        slug_field="version_id",
-        queryset=PlanVersion.plan_versions.all(),
-        write_only=True,
-        required=False,
-        help_text="The Lotus version_id, found in the billing plan object. This is the preferred way to specify the plan version.",
-    )
 
     def validate(self, data):
         # extract the plan version from the plan
-        if "version_id" in data:
-            data["billing_plan"] = data.pop("version_id")
-        elif "plan_id" in data:
+        if "plan_id" in data:
             data["billing_plan"] = data.pop("plan_id").get_version_for_customer(
                 data["customer"]
             )
@@ -1419,13 +1408,103 @@ class SubscriptionRecordCreateSerializer(
                     "Unable to find a singular pla n version that matches the plan_id. Please specify a version_id instead."
                 )
         else:
-            raise serializers.ValidationError(
-                "Either plan_id or version_id must be specified"
-            )
-        if not data["billing_plan"].is_active():
-            raise serializers.ValidationError(
-                "The plan version you are trying to subscribe to is not active"
-            )
+            raise serializers.ValidationError("plan_id must be specified")
+        if data["billing_plan"].is_custom:
+            if data["customer"] not in data["billing_plan"].target_customers.all():
+                raise serializers.ValidationError(
+                    "The plan version you are trying to create a subscription for is a custom plan that is not available to this customer."
+                )
+        return data
+
+    def create(self, validated_data):
+        from metering_billing.invoice import generate_invoice
+
+        filters = validated_data.pop("subscription_filters", [])
+        subscription_filters = []
+        for filter_data in filters:
+            sub_cat_filter_dict = {
+                "organization": validated_data["customer"].organization,
+                "property_name": filter_data["property_name"],
+                "operator": CATEGORICAL_FILTER_OPERATORS.ISIN,
+                "comparison_value": [filter_data["value"]],
+            }
+            try:
+                cf, _ = CategoricalFilter.objects.get_or_create(**sub_cat_filter_dict)
+            except CategoricalFilter.MultipleObjectsReturned:
+                cf = (
+                    CategoricalFilter.objects.filter(**sub_cat_filter_dict)
+                    .first()
+                    .delete()
+                )
+                cf = CategoricalFilter.objects.filter(**sub_cat_filter_dict).first()
+            subscription_filters.append(cf)
+        sub_record = SubscriptionRecord.objects.create_with_filters(
+            **validated_data, subscription_filters=subscription_filters
+        )
+        # new subscription means we need to create an invoice if its pay in advance
+        if any(
+            x.charge_timing == RecurringCharge.ChargeTimingType.IN_ADVANCE
+            for x in sub_record.billing_plan.recurring_charges.all()
+        ):
+            sub_record.invoice_usage_charges = False
+            sub_record.save()
+            generate_invoice(sub_record)
+            sub_record.invoice_usage_charges = True
+            sub_record.save()
+        return sub_record
+
+
+class SubscriptionRecordCreateSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
+    class Meta:
+        model = SubscriptionRecord
+        fields = (
+            "start_date",
+            "end_date",
+            "auto_renew",
+            "is_new",
+            "subscription_filters",
+            "customer_id",
+            "version_id",
+        )
+
+    start_date = serializers.DateTimeField(
+        help_text="The date the subscription starts. This should be a string in YYYY-MM-DD format of the date in UTC time."
+    )
+    end_date = serializers.DateTimeField(
+        required=False,
+        help_text="The date the subscription ends. This should be a string in YYYY-MM-DD format of the date in UTC time. If you don’t set it (recommended), we will use the information in the billing plan to automatically calculate this.",
+    )
+    auto_renew = serializers.BooleanField(
+        required=False,
+        help_text="Whether the subscription automatically renews. Defaults to true.",
+    )
+    is_new = serializers.BooleanField(required=False)
+    subscription_filters = SubscriptionCategoricalFilterSerializer(
+        many=True,
+        required=False,
+        help_text="Add filter key, value pairs that define which events will be applied to this plan subscription.",
+    )
+
+    # WRITE ONLY
+    customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        source="customer",
+        queryset=Customer.objects.all(),
+        write_only=True,
+        help_text="The id provided when creating the customer",
+    )
+    version_id = SlugRelatedFieldWithOrganization(
+        slug_field="version_id",
+        source="billing_plan",
+        queryset=PlanVersion.plan_versions.all(),
+        write_only=True,
+        help_text="The Lotus version_id, found in the billing plan object. This is the preferred way to specify the plan version.",
+    )
+
+    def validate(self, data):
+        data = super().validate(data)
         if data["billing_plan"].is_custom:
             if data["customer"] not in data["billing_plan"].target_customers.all():
                 raise serializers.ValidationError(
@@ -2272,42 +2351,20 @@ class AddOnSubscriptionRecordCreateSerializer(
     class Meta:
         model = SubscriptionRecord
         fields = (
-            "attach_to_customer_id",
-            "attach_to_plan_id",
-            "attach_to_subscription_filters",
-            "addon_id",
+            "addon_version_id",
             "quantity",
         )
         extra_kwargs = {
-            "attach_to_customer_id": {"required": True, "write_only": True},
-            "attach_to_plan_id": {"required": True, "write_only": True},
-            "attach_to_subscription_filters": {"required": False, "write_only": True},
-            "addon_id": {"required": True, "write_only": True},
+            "addon_version_id": {"required": True, "write_only": True},
             "quantity": {"required": False, "write_only": True},
         }
 
-    attach_to_customer_id = SlugRelatedFieldWithOrganization(
-        slug_field="customer_id",
-        queryset=Customer.objects.all(),
-        required=True,
-        help_text="The add-on will be applied to this customer's subscription.",
-    )
-    attach_to_plan_id = SlugRelatedFieldWithOrganization(
-        slug_field="plan_id",
-        queryset=Plan.objects.all(),
-        required=True,
-        help_text="The add-on will be applied to the subscription with this plan ID.",
-    )
-    attach_to_subscription_filters = SubscriptionCategoricalFilterSerializer(
-        many=True,
-        required=False,
-        help_text="In the case the customer has multiple subscriptions with the same plan ID, the subscription filters should be used to specify which subscription to apply the add-on to.",
-    )
-    addon_id = SlugRelatedFieldWithOrganization(
+    addon_version_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
         queryset=Plan.addons.all(),
         required=True,
         help_text="The add-on to be applied to the subscription.",
+        source="addon_version",
     )
     quantity = serializers.IntegerField(
         default=1,
@@ -2317,39 +2374,11 @@ class AddOnSubscriptionRecordCreateSerializer(
 
     def validate(self, data):
         data = super().validate(data)
-        to_attach_sr = (
-            SubscriptionRecord.objects.active()
-            .filter(
-                customer=data["attach_to_customer_id"],
-                billing_plan__plan=data["attach_to_plan_id"],
-            )
-            .prefetch_related("filters")
-        )
-        valid = []
-        new_filter_set = set()
-        for sf in data.get("attach_to_subscription_filters", []):
-            new_filter_set.add((sf["property_name"], sf["value"]))
-        if len(new_filter_set) > 0:
-            for sr in to_attach_sr:
-                sr_filter_set = set()
-                for sf in sr.filters.all():
-                    sr_filter_set.add((sf.property_name, sf.comparison_value[0]))
-                if new_filter_set.issubset(sr_filter_set):
-                    valid.append(sr)
-        else:
-            valid = to_attach_sr
-        if len(valid) == 0:
-            raise ValidationError(
-                "No subscriptions found for the given customer ID, plan ID, and subscription filters."
-            )
-        if len(valid) > 1:
-            raise ValidationError(
-                "Multiple subscriptions found for the given customer ID, plan ID, and subscription filters."
-            )
-        data["attach_to_subscription_record"] = valid[0]
+        data["attach_to_subscription_record"] = self.context[
+            "attach_to_subscription_record"
+        ]
         metrics_in_addon = {
-            pc.billable_metric
-            for pc in data["addon_id"].versions.first().plan_components.all()
+            pc.billable_metric for pc in data["addon_version"].plan_components.all()
         }
         metrics_in_attach_sr = {
             pc.billable_metric
@@ -2368,9 +2397,8 @@ class AddOnSubscriptionRecordCreateSerializer(
         now = now_utc()
         organization = self.context["organization"]
         attach_to_sr = validated_data["attach_to_subscription_record"]
-        customer = validated_data["attach_to_customer_id"]
-        addon = validated_data["addon_id"]
-        addon_version = addon.versions.first()
+        customer = attach_to_sr.customer
+        addon_version = validated_data["addon_version"]
         addon_spec = addon_version.addon_spec
         invoice_now = (
             addon_spec.flat_fee_invoicing_behavior_on_attach
@@ -2408,7 +2436,4 @@ class AddOnSubscriptionRecordCreateSerializer(
             sr.filters.add(sf)
         if invoice_now:
             generate_invoice(sr)
-        return sr
-        return sr
-        return sr
         return sr

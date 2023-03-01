@@ -154,7 +154,7 @@ class TestCreateSubscription:
         )
 
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -188,7 +188,7 @@ class TestCreateSubscription:
         (customer,) = add_customers_to_org(setup_dict["org"], n=1)
         setup_dict["payload"]["customer_id"] = customer.customer_id
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -215,7 +215,7 @@ class TestCreateSubscription:
         )
 
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -224,7 +224,7 @@ class TestCreateSubscription:
         assert len(get_subscription_records_in_org(setup_dict["org"])) == 1
 
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -323,7 +323,7 @@ class TestUpdateSub:
         }
         response = setup_dict["client"].post(
             reverse(
-                "subscription-edit",
+                "subscription-list",
             )
             + "?"
             + urllib.parse.urlencode(params),
@@ -363,7 +363,7 @@ class TestUpdateSub:
             "plan_id": setup_dict["billing_plan"].plan.plan_id,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -404,7 +404,7 @@ class TestUpdateSub:
         }
         response = setup_dict["client"].post(
             reverse(
-                "subscription-edit",
+                "subscription-list",
             )
             + "?"
             + urllib.parse.urlencode(params),
@@ -431,7 +431,7 @@ class TestUpdateSub:
             "plan_id": setup_dict["billing_plan"].plan.plan_id,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -475,7 +475,7 @@ class TestUpdateSub:
         }
         response = setup_dict["client"].post(
             reverse(
-                "subscription-edit",
+                "subscription-list",
             )
             + "?"
             + urllib.parse.urlencode(params),
@@ -508,7 +508,7 @@ class TestUpdateSub:
             "plan_id": setup_dict["billing_plan"].plan.plan_id,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -554,7 +554,7 @@ class TestUpdateSub:
         }
         response = setup_dict["client"].post(
             reverse(
-                "subscription-edit",
+                "subscription-list",
             )
             + "?"
             + urllib.parse.urlencode(params),
@@ -585,7 +585,7 @@ class TestRegressions:
         assert prev_subscription_records_len == 0
 
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -616,7 +616,7 @@ class TestRegressions:
         assert prev_subscription_records_len == 0
 
         response = setup_dict["client"].post(
-            reverse("subscription-add"),
+            reverse("subscription-list"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -634,7 +634,7 @@ class TestRegressions:
         }
         response = setup_dict["client"].post(
             reverse(
-                "subscription-edit",
+                "subscription-list",
             )
             + "?"
             + urllib.parse.urlencode(params),
@@ -650,7 +650,7 @@ class TestRegressions:
         }
         response = setup_dict["client"].post(
             reverse(
-                "subscription-edit",
+                "subscription-list",
             )
             + "?"
             + urllib.parse.urlencode(params),
@@ -666,7 +666,7 @@ class TestRegressions:
         params = {}
         response = setup_dict["client"].post(
             reverse(
-                "subscription-edit",
+                "subscription-list",
             )
             + "?"
             + urllib.parse.urlencode(params),

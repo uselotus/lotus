@@ -299,7 +299,7 @@ class TestTimezones:
         }
         params = {"status": ["active", "not_started"]}
         response = setup_dict["client"].post(
-            reverse("subscription-add") + "?" + urllib.parse.urlencode(params),
+            reverse("subscription-list") + "?" + urllib.parse.urlencode(params),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
