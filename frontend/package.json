@@ -37,6 +37,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "framer-motion": "^8.5.0",
     "mintlify": "^1.1.9",
+    "openapi-typescript": "^6.1.1",
     "posthog-js": "^1.34.1",
     "prettier": "^2.8.3",
     "react": "18.2.0",

@@ -28,7 +28,4 @@ const execAsync = util.promisify(exec);
   } catch (error) {
     console.error(`Something went wrong writing to ${pathToWriteTo}`, error);
   }
-  // commit what we already have to git because npm-bump creates a new commit too
-  execSync("git add .");
-  execSync("git commit -m 'update the types' ");
 })();
