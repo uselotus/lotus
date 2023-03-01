@@ -7,7 +7,7 @@ const execAsync = util.promisify(exec);
   const pathToReadFrom = "../frontend/src/gen-types.ts";
   const pathToWriteTo = "../frontend/src/gen-types-camel.ts";
   await execAsync(
-    `npx openapi-typescript https://raw.githubusercontent.com/uselotus/lotus/main/docs/openapi.yaml --output ${pathToReadFrom}`
+    `npx openapi-typescript https://raw.githubusercontent.com/uselotus/lotus/main/docs/openapi_private.yaml --output ${pathToReadFrom}`
   );
 
   let result = "";
