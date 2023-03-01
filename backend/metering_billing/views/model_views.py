@@ -2049,19 +2049,11 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
         return UsageAlert.objects.filter(organization=organization)
 
     def perform_create(self, serializer):
+        print("HELLOOOOOO")
         serializer.save(organization=self.request.organization)
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
-        return context
-        context = super().get_serializer_context()
-        organization = self.request.organization
-        context.update({"organization": organization})
-        return context
-        return context
-        return context
-        return context
-        return context
         return context

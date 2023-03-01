@@ -11,6 +11,7 @@ from metering_billing.models import (
     PlanComponent,
     PlanVersion,
     PriceTier,
+    SubscriptionRecord,
     UsageAlert,
     UsageAlertResult,
 )
@@ -125,7 +126,7 @@ def alerts_test_common_setup(
             "name": "test_subscription",
             "start_date": now_utc() - timedelta(days=5),
             "customer_id": customer.customer_id,
-            "plan_id": billing_plan.plan.plan_id,
+            "version_id": billing_plan.version_id,
         }
         setup_dict["payload_sr"] = payload
         setup_dict["customer"] = customer
@@ -160,11 +161,15 @@ class TestUsageAlerts:
         alert_results_before = UsageAlertResult.objects.all().count()
         assert alert_results_before == 0
 
+        subs_before = SubscriptionRecord.objects.all().count()
         response = setup_dict["client"].post(
             reverse("subscription-list"),
             data=json.dumps(setup_dict["payload_sr"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
+        assert response.status_code == status.HTTP_201_CREATED
+        subs_after = SubscriptionRecord.objects.all().count()
+        assert subs_after == subs_before + 1
 
         alert_results_after = UsageAlertResult.objects.all().count()
         assert alert_results_after == alert_results_before + 1
@@ -178,11 +183,15 @@ class TestUsageAlerts:
 
         before_alerts = UsageAlert.objects.all().count()
         assert before_alerts is not None
+        subs_before = SubscriptionRecord.objects.all().count()
         response = setup_dict["client"].post(
             reverse("subscription-list"),
             data=json.dumps(setup_dict["payload_sr"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
+        assert response.status_code == status.HTTP_201_CREATED
+        subs_after = SubscriptionRecord.objects.all().count()
+        assert subs_after == subs_before + 1
         alert_results_before = UsageAlertResult.objects.all().count()
         assert alert_results_before is not None
 
@@ -206,11 +215,16 @@ class TestUsageAlerts:
 
         before_alerts = UsageAlert.objects.all().count()
         assert before_alerts is not None
+        subs_before = SubscriptionRecord.objects.all().count()
         response = setup_dict["client"].post(
             reverse("subscription-list"),
             data=json.dumps(setup_dict["payload_sr"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
+        print(response.data)
+        assert response.status_code == status.HTTP_201_CREATED
+        subs_after = SubscriptionRecord.objects.all().count()
+        assert subs_after == subs_before + 1
         alert_results_before = UsageAlertResult.objects.all().count()
         assert alert_results_before is not None
 
@@ -246,4 +260,5 @@ class TestUsageAlerts:
         refresh_alerts_inner()
 
         alert_result = UsageAlertResult.objects.all().first()
+        assert alert_result.triggered_count == 1
         assert alert_result.triggered_count == 1

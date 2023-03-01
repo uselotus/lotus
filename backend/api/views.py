@@ -105,6 +105,7 @@ from metering_billing.models import (
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.serializer_utils import (
     AddOnUUIDField,
+    AddOnVersionUUIDField,
     BalanceAdjustmentUUIDField,
     InvoiceUUIDField,
     MetricUUIDField,
@@ -642,6 +643,8 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 class SubscriptionViewSet(
     PermissionPolicyMixin,
     mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.RetrieveModelMixin,
     mixins.ListModelMixin,
     viewsets.GenericViewSet,
 ):
@@ -658,9 +661,9 @@ class SubscriptionViewSet(
         subscription_uuid = SubscriptionRecordUUIDField().to_internal_value(
             subscription_id
         )
-        addon_id = self.kwargs.get("addon_id")
-        if addon_id:
-            addon_uuid = AddOnUUIDField().to_internal_value(addon_id)
+        addon_version_id = self.kwargs.get("addon_version_id")
+        if addon_version_id:
+            addon_uuid = AddOnVersionUUIDField().to_internal_value(addon_version_id)
         else:
             addon_uuid = None
         if not subscription_uuid:
@@ -679,11 +682,11 @@ class SubscriptionViewSet(
             )
             if not addons_for_sr.exists():
                 raise NotFoundException(
-                    f"Addon with addon_id {addon_id} not found for subscription {subscription_id}"
+                    f"Addon with addon_version_id {addon_version_id} not found for subscription {subscription_id}"
                 )
             elif addons_for_sr.count() > 1:
                 raise ServerError(
-                    f"Unexpected state. More than one addon found for subscription {subscription_id} and addon_id {addon_id}"
+                    f"Unexpected state. More than one addon found for subscription {subscription_id} and addon_id {addon_version_id}"
                 )
             obj = addons_for_sr.first()
         return obj
@@ -929,16 +932,6 @@ class SubscriptionViewSet(
             flat_fee_behavior=flat_fee_behavior,
             invoice_now=invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW,
         )
-        now = now_utc()
-        sr.flat_fee_behavior = flat_fee_behavior
-        sr.invoice_usage_charges = usage_behavior == USAGE_BILLING_BEHAVIOR.BILL_FULL
-        sr.auto_renew = False
-        sr.end_date = now
-        sr.fully_billed = invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW
-        sr.save()
-
-        if invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
-            generate_invoice(sr)
 
         ret = SubscriptionRecordSerializer(sr).data
         return Response(ret, status=status.HTTP_200_OK)
@@ -993,7 +986,10 @@ class SubscriptionViewSet(
         new_billing_plan = serializer.validated_data["plan_version"]
         if new_billing_plan == current_sr.billing_plan:
             raise ValidationError("Cannot switch to the same plan.")
-        if new_billing_plan.plan.duration != current_sr.billing_plan.plan.duration:
+        if (
+            new_billing_plan.plan.plan_duration
+            != current_sr.billing_plan.plan.plan_duration
+        ):
             raise ValidationError("Cannot switch to a plan with a different duration.")
         sr_plan_metrics = {
             pc.billable_metric
@@ -1018,7 +1014,7 @@ class SubscriptionViewSet(
             organization=current_sr.organization,
             customer=current_sr.customer,
             billing_plan=new_billing_plan,
-            start_date=now_utc(),
+            start_date=now,
             end_date=current_sr.end_date,
             usage_start_date=now if keep_separate else current_sr.usage_start_date,
             auto_renew=current_sr.auto_renew,
@@ -1035,6 +1031,9 @@ class SubscriptionViewSet(
         current_sr.save()
         if billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
             generate_invoice(current_sr)
+        return Response(
+            SubscriptionRecordSerializer(sr).data, status=status.HTTP_200_OK
+        )
 
     # ADDON SUBSCRIPTION RECORDS
     @extend_schema(
@@ -1052,12 +1051,17 @@ class SubscriptionViewSet(
         detail=True,
         methods=["post"],
         url_path="addons/attach",
-        url_name="atach_addon",
+        url_name="attach_addon",
     )
     def attach_addon(self, request, *args, **kwargs):
+        organization = self.request.organization
         attach_to_sr = self.get_object()
         serializer = self.get_serializer(
-            data=request.data, context={"attach_to_subscription_record": attach_to_sr}
+            data=request.data,
+            context={
+                "attach_to_subscription_record": attach_to_sr,
+                "organization": organization,
+            },
         )
         serializer.is_valid(raise_exception=True)
         sr = serializer.save()
@@ -1148,7 +1152,7 @@ class SubscriptionViewSet(
     @action(
         detail=True,
         methods=["post"],
-        url_path="addons/(?P<addon_id>[^/.]+)/cancel",
+        url_path="addons/(?P<addon_version_id>[^/.]+)/cancel",
         url_name="cancel_addon",
     )
     def cancel_addon(self, request, *args, **kwargs):
@@ -1158,26 +1162,11 @@ class SubscriptionViewSet(
         flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
         usage_behavior = serializer.validated_data["usage_behavior"]
         invoicing_behavior = serializer.validated_data["invoicing_behavior"]
-        now = now_utc()
-
         addon_sr.cancel_subscription(
             bill_usage=usage_behavior == USAGE_BILLING_BEHAVIOR.BILL_FULL,
             flat_fee_behavior=flat_fee_behavior,
             invoice_now=invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW,
         )
-        now = now_utc()
-        addon_sr.flat_fee_behavior = flat_fee_behavior
-        addon_sr.invoice_usage_charges = (
-            usage_behavior == USAGE_BILLING_BEHAVIOR.BILL_FULL
-        )
-        addon_sr.auto_renew = False
-        addon_sr.end_date = now
-        addon_sr.fully_billed = invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW
-        addon_sr.save()
-
-        if invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
-            generate_invoice(addon_sr)
-
         return Response(
             AddOnSubscriptionRecordSerializer(addon_sr).data,
             status=status.HTTP_200_OK,

@@ -1646,8 +1646,11 @@ class SubscriptionRecordUpdateSerializer(
     def update(self, instance, validated_data):
         if "end_date" in validated_data:
             instance.end_date = validated_data["end_date"]
-        if "turn_off_auto_renew" in validated_data:
-            instance.turn_off_auto_renew = validated_data["turn_off_auto_renew"]
+        if (
+            "turn_off_auto_renew" in validated_data
+            and validated_data["turn_off_auto_renew"]
+        ):
+            instance.auto_renew = False
         instance.save()
         return instance
 
@@ -2360,8 +2363,8 @@ class AddOnSubscriptionRecordCreateSerializer(
         }
 
     addon_version_id = SlugRelatedFieldWithOrganization(
-        slug_field="plan_id",
-        queryset=Plan.addons.all(),
+        slug_field="version_id",
+        queryset=PlanVersion.addon_versions.all(),
         required=True,
         help_text="The add-on to be applied to the subscription.",
         source="addon_version",

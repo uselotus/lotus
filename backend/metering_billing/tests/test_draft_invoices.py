@@ -234,7 +234,7 @@ class TestGenerateInvoice:
         payload = {
             "start_date": now_utc() - timedelta(days=5),
             "customer_id": setup_dict["customer"].customer_id,
-            "plan_id": setup_dict["billing_plan"].plan.plan_id,
+            "version_id": setup_dict["billing_plan"].version_id,
         }
         for i in range(5):
             payload["subscription_filters"] = [

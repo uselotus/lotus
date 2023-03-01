@@ -295,7 +295,7 @@ class TestTimezones:
             "name": "test_subscription",
             "start_date": start_date.replace(tzinfo=timezone),
             "customer_id": setup_dict["customer"].customer_id,
-            "plan_id": setup_dict["billing_plan"].plan.plan_id,
+            "version_id": setup_dict["billing_plan"].version_id,
         }
         params = {"status": ["active", "not_started"]}
         response = setup_dict["client"].post(

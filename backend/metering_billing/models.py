@@ -2450,7 +2450,7 @@ class SubscriptionRecord(models.Model):
         ]
 
     def __str__(self):
-        addon = "[ADDON] " if self.billing_plan.plan.addon_spec else ""
+        addon = "[ADDON] " if self.billing_plan.addon_spec else ""
         return f"{addon}{self.customer.customer_name}  {self.billing_plan.plan.plan_name} : {self.start_date.date()} to {self.end_date.date()}"
 
     def save(self, *args, **kwargs):
@@ -2579,7 +2579,7 @@ class SubscriptionRecord(models.Model):
         self.end_date = now
         self.save()
         addon_srs = []
-        for addon_sr in self.addon_subscriptions.all():
+        for addon_sr in self.addon_subscription_records.all():
             addon_sr.cancel_subscription(
                 bill_usage=bill_usage,
                 flat_fee_behavior=flat_fee_behavior,
@@ -2885,6 +2885,7 @@ class UsageAlert(models.Model):
             organization=self.organization,
             billing_plan=self.plan_version,
         )
+        print("active_sr", active_sr)
         for subscription_record in active_sr:
             UsageAlertResult.objects.create(
                 organization=self.organization,

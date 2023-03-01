@@ -1,6 +1,5 @@
 import itertools
 import json
-import urllib.parse
 from datetime import timedelta
 
 import pytest
@@ -130,7 +129,7 @@ def subscription_test_common_setup(
             "name": "test_subscription",
             "start_date": now_utc() - timedelta(days=5),
             "customer_id": customer.customer_id,
-            "plan_id": billing_plan.plan.plan_id,
+            "version_id": billing_plan.version_id,
         }
         setup_dict["payload"] = payload
         setup_dict["customer"] = customer
@@ -241,16 +240,18 @@ class TestUpdateSub:
         )
 
         prev_invoices_len = Invoice.objects.all().count()
-
-        params = {
-            "customer_id": setup_dict["customer"].customer_id,
-        }
+        sub = SubscriptionRecord.objects.all()[0]
         payload = {
             "flat_fee_behavior": FLAT_FEE_BEHAVIOR.CHARGE_FULL,
             "bill_usage": True,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-cancel") + "?" + urllib.parse.urlencode(params),
+            reverse(
+                "subscription-cancel",
+                kwargs={
+                    "subscription_id": sub.subscription_record_id,
+                },
+            ),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -273,16 +274,18 @@ class TestUpdateSub:
         prev_invoices_len = Invoice.objects.all().count()
         assert len(active_subscriptions) == 1
 
-        params = {
-            "customer_id": setup_dict["customer"].customer_id,
-            "plan_id": setup_dict["plan"].plan_id,
-        }
+        sub = SubscriptionRecord.objects.all()[0]
         payload = {
             "flat_fee_behavior": FLAT_FEE_BEHAVIOR.CHARGE_FULL,
             "invoicing_behavior": INVOICING_BEHAVIOR.ADD_TO_NEXT_INVOICE,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-cancel") + "?" + urllib.parse.urlencode(params),
+            reverse(
+                "subscription-cancel",
+                kwargs={
+                    "subscription_id": sub.subscription_record_id,
+                },
+            ),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -317,16 +320,14 @@ class TestUpdateSub:
         payload = {
             "turn_off_auto_renew": True,
         }
-        params = {
-            "customer_id": setup_dict["customer"].customer_id,
-            "plan_id": setup_dict["plan"].plan_id,
-        }
+        sub = SubscriptionRecord.objects.all()[0]
         response = setup_dict["client"].post(
             reverse(
-                "subscription-list",
-            )
-            + "?"
-            + urllib.parse.urlencode(params),
+                "subscription-update",
+                kwargs={
+                    "subscription_id": sub.subscription_record_id,
+                },
+            ),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -390,24 +391,22 @@ class TestUpdateSub:
         )
         Invoice.objects.all().count()
 
-        baker.make(
+        pv = baker.make(
             PlanVersion,
             organization=setup_dict["org"],
             plan=new_plan,
         )
         payload = {
-            "replace_plan_id": new_plan.plan_id,
+            "new_version_id": pv.version_id,
         }
-        params = {
-            "customer_id": setup_dict["customer"].customer_id,
-            "plan_id": setup_dict["plan"].plan_id,
-        }
+        sub = SubscriptionRecord.objects.all()[0]
         response = setup_dict["client"].post(
             reverse(
-                "subscription-list",
-            )
-            + "?"
-            + urllib.parse.urlencode(params),
+                "subscription-switch_plan",
+                kwargs={
+                    "subscription_id": sub.subscription_record_id,
+                },
+            ),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -457,7 +456,7 @@ class TestUpdateSub:
         )
         before_invoices = Invoice.objects.all().count()
 
-        baker.make(
+        pv = baker.make(
             PlanVersion,
             organization=setup_dict["org"],
             plan=new_plan,
@@ -467,22 +466,19 @@ class TestUpdateSub:
         )
         new_plan.save()
         payload = {
-            "replace_plan_id": new_plan.plan_id,
+            "new_version_id": pv.version_id,
         }
-        params = {
-            "customer_id": setup_dict["customer"].customer_id,
-            "plan_id": setup_dict["plan"].plan_id,
-        }
+        sub = SubscriptionRecord.objects.all()[0]
         response = setup_dict["client"].post(
             reverse(
-                "subscription-list",
-            )
-            + "?"
-            + urllib.parse.urlencode(params),
+                "subscription-switch_plan",
+                kwargs={
+                    "subscription_id": sub.subscription_record_id,
+                },
+            ),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        print(response.data)
         assert response.status_code == status.HTTP_200_OK
         after_invoices = Invoice.objects.all().count()
         assert before_invoices + 1 == after_invoices
@@ -535,7 +531,7 @@ class TestUpdateSub:
         )
         before_invoices = Invoice.objects.all().count()
 
-        baker.make(
+        pv = baker.make(
             PlanVersion,
             organization=setup_dict["org"],
             plan=new_plan,
@@ -545,22 +541,21 @@ class TestUpdateSub:
         )
         new_plan.save()
         payload = {
-            "replace_plan_id": new_plan.plan_id,
+            "new_version_id": pv.version_id,
             "usage_behavior": USAGE_BEHAVIOR.KEEP_SEPARATE,
         }
-        params = {
-            "customer_id": setup_dict["customer"].customer_id,
-            "plan_id": setup_dict["plan"].plan_id,
-        }
+        sub = SubscriptionRecord.objects.all()[0]
         response = setup_dict["client"].post(
             reverse(
-                "subscription-list",
-            )
-            + "?"
-            + urllib.parse.urlencode(params),
+                "subscription-switch_plan",
+                kwargs={
+                    "subscription_id": sub.subscription_record_id,
+                },
+            ),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
+        print(response.data)
         assert response.status_code == status.HTTP_200_OK
         after_invoices = Invoice.objects.all().count()
         assert before_invoices + 1 == after_invoices
@@ -605,76 +600,6 @@ class TestRegressions:
         response = setup_dict["client"].get(reverse("subscription-list"), payload)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_patch_subscription_cant_find_customer(
-        self, subscription_test_common_setup
-    ):
-        setup_dict = subscription_test_common_setup(
-            num_subscriptions=0, auth_method="session_auth"
-        )
-
-        prev_subscription_records_len = SubscriptionRecord.objects.all().count()
-        assert prev_subscription_records_len == 0
-
-        response = setup_dict["client"].post(
-            reverse("subscription-list"),
-            data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-
-        after_subscription_records_len = SubscriptionRecord.objects.all().count()
-
-        assert response.status_code == status.HTTP_201_CREATED
-        assert after_subscription_records_len == prev_subscription_records_len + 1
-
-        # assert normal customer is chilling
-        payload = {}
-        params = {
-            "customer_id": setup_dict["customer"].customer_id,
-            "plan_id": setup_dict["plan"].plan_id,
-        }
-        response = setup_dict["client"].post(
-            reverse(
-                "subscription-list",
-            )
-            + "?"
-            + urllib.parse.urlencode(params),
-            data=json.dumps(payload, cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-        assert response.status_code == status.HTTP_200_OK
-
-        # assert bad customer errors with 400
-        payload = {}
-        params = {
-            "customer_id": "7568989ok,l;loi8uyiop0iuj",
-        }
-        response = setup_dict["client"].post(
-            reverse(
-                "subscription-list",
-            )
-            + "?"
-            + urllib.parse.urlencode(params),
-            data=json.dumps(payload, cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-
-        # assert good customer with the id in the body instead of request fails
-        payload = {
-            "customer_id": setup_dict["customer"].customer_id,
-        }
-        params = {}
-        response = setup_dict["client"].post(
-            reverse(
-                "subscription-list",
-            )
-            + "?"
-            + urllib.parse.urlencode(params),
-            data=json.dumps(payload, cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-
     def test_refresh_rate_metric_doesnt_fail(self, subscription_test_common_setup):
         from metering_billing.utils.enums import (
             METRIC_AGGREGATION,
@@ -697,5 +622,4 @@ class TestRegressions:
         try:
             setup_dict["org"].update_subscription_filter_settings(["email"])
         except Exception as e:
-            assert False, e
             assert False, e
