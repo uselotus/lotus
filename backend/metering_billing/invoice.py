@@ -7,8 +7,8 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from django.db.models.query import QuerySet
-
-from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
+from metering_billing.taxes import get_lotus_tax_rates, get_taxjar_tax_rates
 from metering_billing.utils import (
     calculate_end_date,
     convert_to_datetime,
@@ -21,6 +21,7 @@ from metering_billing.utils.enums import (
     INVOICE_CHARGE_TIMING_TYPE,
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
+    TAX_PROVIDER,
 )
 from metering_billing.webhooks import invoice_created_webhook
 
@@ -46,29 +47,47 @@ def generate_invoice(
     """
     Generate an invoice for a subscription.
     """
-    from metering_billing.models import Invoice
+    from metering_billing.models import Invoice, PricingUnit
     from metering_billing.tasks import generate_invoice_pdf_async
 
     if not issue_date:
         issue_date = now_utc()
     if not isinstance(subscription_records, (QuerySet, Iterable)):
         subscription_records = [subscription_records]
+
     if len(subscription_records) == 0:
         return None
 
-    customer = subscription_records[0].customer
-    assert all(
-        sr.customer == customer for sr in subscription_records
+    try:
+        customers = subscription_records.values("customer").distinct().count()
+    except AttributeError:
+        customers = len({x.customer for x in subscription_records})
+    assert (
+        customers == 1
     ), "All subscription records must belong to the same customer when invoicing."
-    organization = subscription_records[0].organization
-    assert all(
-        sr.organization == organization for sr in subscription_records
+    try:
+        organizations = subscription_records.values("organization").distinct().count()
+    except AttributeError:
+        organizations = len({x.organization for x in subscription_records})
+    assert (
+        organizations == 1
     ), "All subscription records must belong to the same organization when invoicing."
+    organization = subscription_records[0].organization
+    customer = subscription_records[0].customer
     due_date = calculate_due_date(issue_date, organization)
 
-    distinct_currencies = set(
-        [sr.billing_plan.pricing_unit for sr in subscription_records]
-    )
+    try:
+        distinct_currencies_pks = (
+            subscription_records.order_by()
+            .values_list("billing_plan__pricing_unit", flat=True)
+            .distinct()
+        )
+        distinct_currencies = PricingUnit.objects.filter(pk__in=distinct_currencies_pks)
+    except AttributeError:
+        distinct_currencies = {
+            x.billing_plan.pricing_unit for x in subscription_records
+        }
+
     invoices = {}
     for currency in distinct_currencies:
         # create kwargs for invoice
@@ -111,7 +130,7 @@ def generate_invoice(
                 )
     for invoice in invoices.values():
         apply_plan_discounts(invoice)
-        apply_taxes(invoice, customer, organization)
+        apply_taxes(invoice, customer, organization, draft)
         apply_customer_balance_adjustments(invoice, customer, organization, draft)
         finalize_cost_due(invoice, draft)
         invoice.cost_due = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
@@ -350,30 +369,63 @@ def apply_plan_discounts(invoice):
                 )
 
 
-def apply_taxes(invoice, customer, organization):
+def apply_taxes(invoice, customer, organization, draft):
     """
     Apply taxes to an invoice
     """
-    from metering_billing.models import Invoice, InvoiceLineItem
+    from metering_billing.models import Invoice, InvoiceLineItem, Organization
 
     if invoice.payment_status == Invoice.PaymentStatus.PAID:
         return
-    if customer.tax_rate is None and organization.tax_rate is None:
+    order_of_tax_providers_to_check = (
+        customer.get_tax_provider_values() + organization.get_tax_provider_values()
+    )
+    if len(order_of_tax_providers_to_check) == 0:
         return
-    associated_subscription_records = invoice.line_items.values_list(
-        "associated_subscription_record", flat=True
-    ).distinct()
-    for sr in associated_subscription_records:
+    subscription_records = {
+        x.associated_subscription_record
+        for x in invoice.line_items.all().select_related(
+            "associated_subscription_record"
+        )
+    }
+
+    tax_rate_dict = {}
+    for sr in subscription_records:
         current_subtotal = (
             invoice.line_items.filter(associated_subscription_record=sr).aggregate(
                 tot=Sum("subtotal")
             )["tot"]
             or 0
         )
-        if customer.tax_rate is not None:
-            tax_rate = customer.tax_rate
-        elif organization.tax_rate is not None:
-            tax_rate = organization.tax_rate
+        plan = sr.billing_plan.plan
+        tax_rate = tax_rate_dict.get(plan, None)
+        if tax_rate is None or not draft:
+            for tax_provider in order_of_tax_providers_to_check:
+                if tax_provider == TAX_PROVIDER.LOTUS:
+                    txr, success = get_lotus_tax_rates(
+                        customer,
+                        organization,
+                    )  # , plan, draft, current_subtotal
+                    if success:
+                        tax_rate = txr
+                        break
+                elif (
+                    tax_provider == TAX_PROVIDER.TAXJAR
+                    and organization.organization_type
+                    == Organization.OrganizationType.PRODUCTION
+                ):
+                    txr, success = get_taxjar_tax_rates(
+                        customer, organization, plan, draft, current_subtotal
+                    )
+                    if success:
+                        tax_rate = txr
+                        break
+        tax_rate = tax_rate or Decimal(0)
+        tax_rate_dict[plan] = tax_rate
+
+        if tax_rate == 0:
+            continue
+
         name = f"Tax - {round(tax_rate, 2)}%"
         tax_amount = current_subtotal * (tax_rate / Decimal(100))
         if tax_amount > 0:
@@ -387,7 +439,7 @@ def apply_taxes(invoice, customer, organization):
                 chargeable_item_type=CHARGEABLE_ITEM_TYPE.TAX,
                 invoice=invoice,
                 organization=invoice.organization,
-                associated_subscription_record_id=sr,
+                associated_subscription_record=sr,
             )
 
 
@@ -495,7 +547,7 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
         organization=organization,
     )
 
-    apply_taxes(invoice, customer, organization)
+    apply_taxes(invoice, customer, organization, draft)
     finalize_cost_due(invoice, draft)
 
     if not draft:
@@ -514,19 +566,17 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
 
 def generate_external_payment_obj(invoice):
     customer = invoice.customer
-    for pp in customer.integrations.keys():
-        if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
-            pp_connector = PAYMENT_PROVIDER_MAP[pp]
-            customer_conn = pp_connector.customer_connected(customer)
-            org_conn = pp_connector.organization_connected(invoice.organization)
-            if customer_conn and org_conn:
-                invoice.external_payment_obj_id = pp_connector.create_payment_object(
-                    invoice
-                )
+    pp = customer.payment_provider
+    if pp in PAYMENT_PROCESSOR_MAP and PAYMENT_PROCESSOR_MAP[pp].working():
+        pp_connector = PAYMENT_PROCESSOR_MAP[pp]
+        customer_conn = pp_connector.customer_connected(customer)
+        org_conn = pp_connector.organization_connected(invoice.organization)
+        if customer_conn and org_conn:
+            external_id = pp_connector.create_payment_object(invoice)
+            if external_id:
+                invoice.external_payment_obj_id = external_id
                 invoice.external_payment_obj_type = pp
                 invoice.save()
-
-                break
 
 
 def calculate_due_date(issue_date, organization):

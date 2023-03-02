@@ -1,18 +1,18 @@
 // @ts-ignore
 import React, { FC, useEffect, useState } from "react";
-import { useParams , useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "antd";
 import { useMutation, useQuery } from "react-query";
 import { toast } from "react-toastify";
 import { PageLayout } from "../../components/base/PageLayout";
-import { Stripe } from "../../api/api";
+import { PaymentProcessor } from "../../api/api";
 import {
-  StripeSetting,
+  PaymentProcessorSetting,
   Source,
-  StripeImportCustomerResponse,
+  PaymentProcessorImportCustomerResponse,
   TransferSub,
-  UpdateStripeSettingParams,
-} from "../../types/stripe-type";
+  UpdatePaymentProcessorSettingParams,
+} from "../../types/payment-processor-type";
 
 const TOAST_POSITION = toast.POSITION.TOP_CENTER;
 
@@ -22,20 +22,22 @@ const StripeIntegrationView: FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isSettingValue, setIsSettingValue] = useState(false);
-  const [currentStripeSetting, setCurrentStripeSetting] =
-    useState<StripeSetting>();
+  const [currentPaymentProcessorSetting, setCurrentPaymentProcessorSetting] =
+    useState<PaymentProcessorSetting>();
 
-  const getStripeSettings = async (): Promise<StripeSetting[]> =>
-    Stripe.getStripeSettings({ setting_group: "stripe" });
+  const getPaymentProcessorSettings = async (): Promise<
+    PaymentProcessorSetting[]
+  > =>
+    PaymentProcessor.getPaymentProcessorSettings({ setting_group: "stripe" });
 
-  const { error, data, isLoading } = useQuery<StripeSetting[]>(
+  const { error, data, isLoading } = useQuery<PaymentProcessorSetting[]>(
     ["stripe_settings"],
-    getStripeSettings
+    getPaymentProcessorSettings
   );
 
   useEffect(() => {
     if (!isLoading && !error && data) {
-      setCurrentStripeSetting(
+      setCurrentPaymentProcessorSetting(
         data.filter(
           (item) =>
             item.setting_name === "generate_customer_after_creating_in_lotus"
@@ -45,9 +47,9 @@ const StripeIntegrationView: FC = () => {
   }, [isLoading, error, data]);
 
   const importCustomersMutation = useMutation(
-    (post: Source) => Stripe.importCustomers(post),
+    (post: Source) => PaymentProcessor.importCustomers(post),
     {
-      onSuccess: (data: StripeImportCustomerResponse) => {
+      onSuccess: (data: PaymentProcessorImportCustomerResponse) => {
         toast.success(data.detail, {
           position: TOAST_POSITION,
         });
@@ -61,9 +63,9 @@ const StripeIntegrationView: FC = () => {
   );
 
   const importPaymentsMutation = useMutation(
-    (post: Source) => Stripe.importPayments(post),
+    (post: Source) => PaymentProcessor.importPayments(post),
     {
-      onSuccess: (data: StripeImportCustomerResponse) => {
+      onSuccess: (data: PaymentProcessorImportCustomerResponse) => {
         toast.success(data.detail, {
           position: TOAST_POSITION,
         });
@@ -80,9 +82,9 @@ const StripeIntegrationView: FC = () => {
   const resolveAfter3Sec = new Promise((resolve) => setTimeout(resolve, 3000));
 
   const transferSubscriptionsMutation = useMutation(
-    (post: TransferSub) => Stripe.transferSubscriptions(post),
+    (post: TransferSub) => PaymentProcessor.transferSubscriptions(post),
     {
-      onSuccess: (data: StripeImportCustomerResponse) => {
+      onSuccess: (data: PaymentProcessorImportCustomerResponse) => {
         toast.success(data.detail, {
           position: TOAST_POSITION,
         });
@@ -95,11 +97,12 @@ const StripeIntegrationView: FC = () => {
     }
   );
 
-  const updateStripeSettings = useMutation(
-    (post: UpdateStripeSettingParams) => Stripe.updateStripeSetting(post),
+  const updatePaymentProcessorSettings = useMutation(
+    (post: UpdatePaymentProcessorSettingParams) =>
+      PaymentProcessor.updatePaymentProcessorSetting(post),
     {
-      onSuccess: (data: StripeSetting) => {
-        setCurrentStripeSetting(data);
+      onSuccess: (data: PaymentProcessorSetting) => {
+        setCurrentPaymentProcessorSetting(data);
         setIsSettingValue(false);
         const state =
           data.setting_values.value === true ? "Enabled" : "Disabled";
@@ -187,13 +190,15 @@ const StripeIntegrationView: FC = () => {
               aria-describedby="comments-description"
               name="comments"
               type="checkbox"
-              disabled={isSettingValue || !currentStripeSetting}
-              checked={currentStripeSetting?.setting_values.value === true}
+              disabled={isSettingValue || !currentPaymentProcessorSetting}
+              checked={
+                currentPaymentProcessorSetting?.setting_values.value === true
+              }
               onChange={(value) => {
-                currentStripeSetting &&
-                  updateStripeSettings.mutate({
+                currentPaymentProcessorSetting &&
+                  updatePaymentProcessorSettings.mutate({
                     setting_values: value.target.checked,
-                    setting_id: currentStripeSetting.setting_id,
+                    setting_id: currentPaymentProcessorSetting.setting_id,
                   });
                 setIsSettingValue(true);
               }}

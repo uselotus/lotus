@@ -1,13 +1,16 @@
+import logging
 from decimal import Decimal
 
 import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
+from django.core.cache import cache
 from django.db.models import DecimalField, Q, Sum
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
     AddOnSpecification,
+    Address,
     APIToken,
     Customer,
     ExternalPlanLink,
@@ -52,18 +55,21 @@ from metering_billing.utils.enums import (
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
     ORGANIZATION_STATUS,
+    PAYMENT_PROCESSORS,
     PLAN_DURATION,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
     PRICE_TIER_TYPE,
     REPLACE_IMMEDIATELY_TYPE,
     TAG_GROUP,
+    TAX_PROVIDER,
     WEBHOOK_TRIGGER_EVENTS,
 )
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
+logger = logging.getLogger("django.server")
 
 
 class TagSerializer(api_serializers.TagSerializer):
@@ -180,7 +186,6 @@ class OrganizationSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         fields = (
             "organization_id",
             "organization_name",
-            "payment_provider_ids",
             "users",
             "default_currency",
             "available_currencies",
@@ -193,6 +198,9 @@ class OrganizationSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
             "team_name",
             "subscription_filter_keys",
             "timezone",
+            "stripe_account_id",
+            "braintree_merchant_id",
+            "tax_providers",
         )
 
     organization_id = OrganizationUUIDField()
@@ -203,10 +211,34 @@ class OrganizationSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     payment_grace_period = serializers.SerializerMethodField()
     linked_organizations = serializers.SerializerMethodField()
     current_user = serializers.SerializerMethodField()
-    address = serializers.SerializerMethodField(required=False, allow_null=True)
+    address = serializers.SerializerMethodField()
     team_name = serializers.SerializerMethodField()
     subscription_filter_keys = serializers.SerializerMethodField()
     timezone = TimeZoneSerializerField(use_pytz=True)
+    stripe_account_id = serializers.SerializerMethodField()
+    braintree_merchant_id = serializers.SerializerMethodField()
+    tax_providers = serializers.SerializerMethodField()
+
+    def get_tax_providers(
+        self, obj
+    ) -> serializers.ListField(
+        child=serializers.ChoiceField(choices=TAX_PROVIDER.labels), required=True
+    ):
+        return obj.get_readable_tax_providers()
+
+    def get_stripe_account_id(
+        self, obj
+    ) -> serializers.CharField(required=True, allow_null=True):
+        if obj.stripe_integration:
+            return obj.stripe_integration.stripe_account_id
+        return None
+
+    def get_braintree_merchant_id(
+        self, obj
+    ) -> serializers.CharField(required=True, allow_null=True):
+        if obj.braintree_integration:
+            return obj.braintree_integration.braintree_merchant_id
+        return None
 
     def get_subscription_filter_keys(
         self, obj
@@ -228,12 +260,11 @@ class OrganizationSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     def get_address(
         self, obj
     ) -> api_serializers.AddressSerializer(allow_null=True, required=False):
-        d = obj.properties.get("address", {})
-        try:
-            data = api_serializers.AddressSerializer(d).data
-        except KeyError:
-            data = None
-        return data
+        d = obj.get_address()
+        if d is None:
+            return None
+        else:
+            return api_serializers.AddressSerializer(d).data
 
     def get_current_user(self, obj) -> LightweightUserSerializer():
         user = self.context.get("user")
@@ -368,6 +399,10 @@ class OrganizationUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializ
             "plan_tags",
             "subscription_filter_keys",
             "timezone",
+            "payment_provider",
+            "payment_provider_id",
+            "nango_connected",
+            "tax_providers",
         )
 
     default_currency_code = SlugRelatedFieldWithOrganization(
@@ -382,6 +417,38 @@ class OrganizationUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializ
         child=serializers.CharField(), required=False
     )
     timezone = TimeZoneSerializerField(use_pytz=True)
+    payment_provider = serializers.ChoiceField(
+        choices=PAYMENT_PROCESSORS.choices,
+        required=False,
+        help_text="To udpate a payment provider's ID, specify the payment provider you want to update in this field, and the payment_provider_id in the corresponding field.",
+    )
+    payment_provider_id = serializers.CharField(required=False)
+    nango_connected = serializers.BooleanField(required=False)
+    tax_providers = serializers.ListField(
+        child=serializers.ChoiceField(choices=TAX_PROVIDER.labels),
+        required=False,
+        allow_empty=True,
+        allow_null=True,
+    )
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        # if payment_provider is specified, payment_provider_id must be specified, and vice versa
+        if (
+            attrs.get("payment_provider") is not None
+            and attrs.get("payment_provider_id") is None
+        ) or (
+            attrs.get("payment_provider") is None
+            and attrs.get("payment_provider_id") is not None
+        ):
+            raise serializers.ValidationError(
+                "If payment_provider is specified, payment_provider_id must be specified."
+            )
+        tax_providers = attrs.get("tax_providers")
+        if tax_providers:
+            if len(set(tax_providers)) != len(tax_providers):
+                raise serializers.ValidationError("Tax providers must be distinct.")
+        return attrs
 
     def update(self, instance, validated_data):
         from metering_billing.tasks import update_subscription_filter_settings_task
@@ -393,12 +460,20 @@ class OrganizationUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializ
         instance.default_currency = validated_data.get(
             "default_currency", instance.default_currency
         )
-        instance.timezone = validated_data.get("timezone", instance.timezone)
+        new_tz = validated_data.get("timezone", instance.timezone)
+        if new_tz != instance.timezone:
+            cache.delete(f"tz_organization_{instance.id}")
+        instance.timezone = new_tz
+
         address = validated_data.pop("address", None)
         if address:
-            cur_properties = instance.properties or {}
-            new_properties = {**cur_properties, "address": address}
-            instance.properties = new_properties
+            new_address, _ = Address.objects.get_or_create(
+                **address, organization=instance
+            )
+            instance.address = new_address
+        tax_providers = validated_data.pop("tax_providers", None)
+        if tax_providers is not None:
+            instance.tax_providers = tax_providers
         plan_tags = validated_data.pop("plan_tags", None)
         if plan_tags is not None:
             plan_tag_names_lower = [x["tag_name"].lower() for x in plan_tags]
@@ -463,13 +538,24 @@ class OrganizationUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializ
 class CustomerUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = ("default_currency_code", "address", "tax_rate", "timezone")
+        fields = (
+            "default_currency_code",
+            "billing_address",
+            "shipping_address",
+            "tax_rate",
+            "timezone",
+            "customer_name",
+        )
 
     default_currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code", queryset=PricingUnit.objects.all(), source="default_currency"
     )
-    address = api_serializers.AddressSerializer(required=False, allow_null=True)
+    billing_address = api_serializers.AddressSerializer(required=False, allow_null=True)
+    shipping_address = api_serializers.AddressSerializer(
+        required=False, allow_null=True
+    )
     timezone = TimeZoneSerializerField(use_pytz=True)
+    customer_name = serializers.CharField(required=False)
 
     def update(self, instance, validated_data):
         assert (
@@ -479,16 +565,29 @@ class CustomerUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         instance.default_currency = validated_data.get(
             "default_currency", instance.default_currency
         )
+        instance.customer_name = validated_data.get(
+            "customer_name", instance.customer_name
+        )
         instance.tax_rate = validated_data.get("tax_rate", instance.tax_rate)
         tz = validated_data.get("timezone", None)
+        if tz != instance.timezone:
+            cache.delete(f"tz_customer_{instance.id}")
         if tz:
             instance.timezone = tz
             instance.timezone_set = True
-        address = validated_data.pop("address", None)
-        if address:
-            cur_properties = instance.properties or {}
-            new_properties = {**cur_properties, "address": address}
-            instance.properties = new_properties
+        billing_address = validated_data.pop("billing_address", None)
+        if billing_address:
+            new_address, _ = Address.objects.get_or_create(
+                **billing_address, organization=instance.organization
+            )
+            instance.billing_address = new_address
+        shipping_address = validated_data.pop("shipping_address", None)
+        if shipping_address:
+            new_address, _ = Address.objects.get_or_create(
+                **shipping_address, organization=instance.organization
+            )
+            instance.shipping_address = new_address
+
         instance.save()
         return instance
 
@@ -648,12 +747,6 @@ class CustomerSerializer(api_serializers.CustomerSerializer):
             if behavior == "merge"
             else validated_data.get("properties", {})
         )
-        if "payment_provider_id" in validated_data:
-            if instance.payment_provider not in instance.integrations:
-                instance.integrations[instance.payment_provider] = {}
-            instance.integrations[instance.payment_provider]["id"] = validated_data.get(
-                "payment_provider_id"
-            )
         return instance
 
 
@@ -714,7 +807,7 @@ class MetricUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         return instance
 
 
-class MetricSerializer(api_serializers.MetricSerializer):
+class MetricDetailSerializer(api_serializers.MetricSerializer):
     class Meta(api_serializers.MetricSerializer.Meta):
         fields = tuple(
             set(api_serializers.MetricSerializer.Meta.fields) - {"aggregation_type"}
@@ -1344,15 +1437,32 @@ class LightweightCustomerSerializer(api_serializers.LightweightCustomerSerialize
 
 class PlanDetailSerializer(api_serializers.PlanSerializer):
     class Meta(api_serializers.PlanSerializer.Meta):
-        fields = api_serializers.PlanSerializer.Meta.fields + ("versions",)
+        fields = api_serializers.PlanSerializer.Meta.fields + (
+            "versions",
+            "taxjar_code",
+        )
 
-    display_version = PlanVersionDetailSerializer()
+    display_version = serializers.SerializerMethodField()
     versions = serializers.SerializerMethodField()
 
+    def get_display_version(self, obj) -> PlanVersionDetailSerializer:
+        try:
+            display = [
+                x for x in obj.versions_prefetched if x.pk == obj.display_version_id
+            ][0]
+            return PlanVersionDetailSerializer(display).data
+        except AttributeError as e:
+            logger.error(f"AttributeError on plan: {e}")
+            return PlanVersionDetailSerializer(obj.display_version).data
+
     def get_versions(self, obj) -> PlanVersionDetailSerializer(many=True):
-        return PlanVersionDetailSerializer(
-            obj.versions.all().order_by("version"), many=True
-        ).data
+        try:
+            return PlanVersionDetailSerializer(obj.versions_prefetched, many=True).data
+        except AttributeError as e:
+            logger.error(f"AttributeError on plan: {e}")
+            return PlanVersionDetailSerializer(
+                obj.versions.all().order_by("version"), many=True
+            ).data
 
 
 class PlanCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
@@ -1495,11 +1605,13 @@ class PlanUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
             "plan_name",
             "status",
             "tags",
+            "taxjar_code",
         )
         extra_kwargs = {
             "plan_name": {"required": False},
             "status": {"required": False},
             "tags": {"required": False},
+            "taxjar_code": {"required": False},
         }
 
     status = serializers.ChoiceField(
@@ -1521,6 +1633,7 @@ class PlanUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     def update(self, instance, validated_data):
         instance.plan_name = validated_data.get("plan_name", instance.plan_name)
         instance.status = validated_data.get("status", instance.status)
+        instance.taxjar_code = validated_data.get("taxjar_code", instance.taxjar_code)
         tags = validated_data.get("tags")
         if tags is not None:
             tags_lower = [tag["tag_name"].lower() for tag in tags]
@@ -1666,10 +1779,10 @@ class PlanActionSerializer(PlanDetailSerializer):
         return "Plan"
 
 
-class MetricActionSerializer(MetricSerializer):
-    class Meta(MetricSerializer.Meta):
+class MetricActionSerializer(MetricDetailSerializer):
+    class Meta(MetricDetailSerializer.Meta):
         model = Metric
-        fields = MetricSerializer.Meta.fields + ("string_repr", "object_type")
+        fields = MetricDetailSerializer.Meta.fields + ("string_repr", "object_type")
 
     string_repr = serializers.SerializerMethodField()
     object_type = serializers.SerializerMethodField()
@@ -1695,7 +1808,7 @@ class CustomerSummarySerializer(TimezoneFieldMixin, serializers.ModelSerializer)
     def get_subscriptions(
         self, obj
     ) -> SubscriptionCustomerSummarySerializer(many=True, required=False):
-        sub_obj = obj.subscription_records_filtered
+        sub_obj = obj.active_subscription_records
         return SubscriptionCustomerSummarySerializer(sub_obj, many=True).data
 
 
@@ -1785,10 +1898,10 @@ class OrganizationSettingUpdateSerializer(
             validated_data["setting_values"] = list(
                 current_setting_values.union(new_setting_values)
             )
-        elif (
-            instance.setting_name
-            == ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS
-        ):
+        elif instance.setting_name in [
+            ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS,
+            ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_BRAINTREE_AFTER_LOTUS,
+        ]:
             if not isinstance(setting_values, bool):
                 raise serializers.ValidationError("Setting values must be a boolean")
             setting_values = {"value": setting_values}
@@ -2114,4 +2227,8 @@ class UsageAlertCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer
             plan_version=plan_version,
             **validated_data,
         )
+        return usage_alert
+        return usage_alert
+        return usage_alert
+        return usage_alert
         return usage_alert

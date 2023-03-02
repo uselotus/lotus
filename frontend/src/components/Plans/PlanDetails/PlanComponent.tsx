@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable camelcase */
 // @ts-ignore
 import React, { FC, useEffect, useRef, useState } from "react";
 import "./PlanDetails.css";
@@ -6,13 +8,15 @@ import {
   Typography,
   Menu,
   Modal,
+  Input,
   Button,
   InputNumber,
   Dropdown,
+  Divider,
 } from "antd";
 import {
   CheckCircleOutlined,
-  MoreOutlined,
+  EllipsisOutlined,
   DeleteOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -61,7 +65,9 @@ const findAlertForComponent = (
   if (alerts === undefined) {
     return undefined;
   }
-  return alerts.find((alert) => alert.metric.metric_id === component.billable_metric.metric_id);
+  return alerts.find(
+    (alert) => alert.metric.metric_id === component.billable_metric.metric_id
+  );
 };
 
 const renderCost = (record: Tier, pricing_unit: CurrencyType) => {
@@ -104,6 +110,27 @@ export function PlanSummary({
   const { plan_tags } = useGlobalStore((state) => state.org);
   const windowWidth = useMediaQuery();
   const inputRef = useRef<HTMLInputElement | null>(null!);
+  const [showEditTaxJarModal, setShowEditTaxJarModal] = useState(false);
+  const [updatedTaxJarCode, setUpdatedTaxJarCode] = useState(plan.taxjar_code);
+  const [currentTaxJarCode, setCurrentTaxJarCode] = useState(plan.taxjar_code);
+
+  const updateTaxJarMutation = useMutation(
+    () =>
+      Plan.updatePlan(plan.plan_id, {
+        taxjar_code: updatedTaxJarCode,
+      }),
+    {
+      onSuccess: () => {
+        toast.success("TaxJar Code Updated");
+        setShowEditTaxJarModal(false);
+        setCurrentTaxJarCode(updatedTaxJarCode);
+      },
+      onError: () => {
+        toast.error("Error Updating TaxJar Code");
+        setUpdatedTaxJarCode(currentTaxJarCode);
+      },
+    }
+  );
 
   return (
     <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card">
@@ -135,6 +162,75 @@ export function PlanSummary({
 
         <div className="flex items-center justify-between text-card-text gap-2 mb-2">
           <div className="font-normal whitespace-nowrap leading-4">
+            <a
+              href="https://developers.taxjar.com/api/reference/#get-list-tax-categories"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              TaxJar Code
+            </a>
+          </div>
+          <div>
+            {currentTaxJarCode ? (
+              <div className="flex gap-1">
+                {" "}
+                <div
+                  className="!text-card-grey"
+                  onClick={() => setShowEditTaxJarModal(true)}
+                >
+                  {createShortenedText(currentTaxJarCode, windowWidth >= 2500)}
+                </div>
+                <CopyText showIcon onlyIcon textToCopy={currentTaxJarCode} />
+              </div>
+            ) : (
+              <div
+                className="!text-card-grey"
+                onClick={() => setShowEditTaxJarModal(true)}
+              >
+                Not Set
+              </div>
+            )}
+          </div>
+        </div>
+        <Modal
+          visible={showEditTaxJarModal}
+          onCancel={() => setShowEditTaxJarModal(false)}
+          footer={[
+            <Button key="cancel" onClick={() => setShowEditTaxJarModal(false)}>
+              Cancel
+            </Button>,
+            <Button
+              key="submit"
+              type="primary"
+              disabled={!updatedTaxJarCode}
+              onClick={() => updateTaxJarMutation.mutate()}
+            >
+              Update
+            </Button>,
+          ]}
+        >
+          <Typography.Title level={4} className="mb-4">
+            Edit TaxJar Code
+          </Typography.Title>
+          <Input
+            placeholder="Enter new TaxJar code"
+            value={updatedTaxJarCode}
+            onChange={(event) => setUpdatedTaxJarCode(event.target.value)}
+          />
+          <div className="mt-4">
+            <Button
+              type="link"
+              href="https://developers.taxjar.com/api/reference/#get-list-tax-categories"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View Tax Categories
+            </Button>
+          </div>
+        </Modal>
+
+        <div className="flex items-center justify-between text-card-text gap-2 mb-2">
+          <div className="font-normal whitespace-nowrap leading-4">
             Linked External IDs
           </div>
           <div>
@@ -148,6 +244,9 @@ export function PlanSummary({
         </div>
 
         <div className="flex items-center justify-between text-card-text gap-2 mb-1">
+          <div className="font-normal whitespace-nowrap leading-4">
+            Plan Tags
+          </div>
           <div>
             {" "}
             <DropdownComponent>
@@ -219,6 +318,7 @@ export function PlanSummary({
     </div>
   );
 }
+
 interface PlanInfoProps {
   version: PlanVersionType;
   plan: PlanDetailType;
@@ -231,8 +331,7 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
         .map((el) => capitalize(el))
         .join(" ");
     }
-      return str;
-
+    return str;
   };
   const queryClient = useQueryClient();
   const schedule = (duration: "monthly" | "yearly" | "quarterly") => {
@@ -278,29 +377,32 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
 
   return (
     <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card ">
-      <Typography.Title className="pt-4 whitespace-pre-wrap grid gap-4 !text-[18px] items-center grid-cols-1 md:grid-cols-2">
-        <div>Plan Information</div>
-        <div className="flex flex-row">
-          <StateTabs
-            activeTab={capitalize(version.status)}
-            version_id={version.version_id}
-            version={version.version}
-            activeVersion={version.version}
-            tabs={["Active", "Grandfathered", "Retiring", "Inactive"]}
-          />
-          <span className="ml-auto" onClick={(e) => e.stopPropagation()}>
-            <Dropdown overlay={menu} trigger={["click"]}>
-              <Button
-                type="text"
-                size="small"
-                onClick={(e) => e.preventDefault()}
-              >
-                <MoreOutlined />
-              </Button>
-            </Dropdown>
-          </span>
-        </div>
-      </Typography.Title>
+      <div className='flex justify-between'>
+        <Typography.Title className="pt-4 whitespace-pre-wrap grid gap-4 !text-[18px] items-center grid-cols-1 md:grid-cols-2">
+          <div>Plan Information</div>
+        </Typography.Title>
+        <div className="flex flex-row  items-center font-bold tabsContainer">
+            <StateTabs
+              activeTab={capitalize(version.status)}
+              version_id={version.version_id}
+              version={version.version}
+              activeVersion={version.version}
+              tabs={["Active", "Grandfathered", "Retiring", "Inactive"]}
+              plan={plan}
+            />
+            <span className="ml-auto" onClick={(e) => e.stopPropagation()}>
+              <Dropdown overlay={menu} trigger={["click"]}>
+                <Button
+                  type="text"
+                  size="small"
+                  onClick={(e) => e.preventDefault()}
+                >
+                  <EllipsisOutlined />
+                </Button>
+              </Dropdown>
+            </span>
+          </div>
+      </div>
       <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
       <div className="grid  items-center grid-cols-1 md:grid-cols-2">
         <div className="w-[240px]">
@@ -355,14 +457,14 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
             </div>
             <div>
               <Badge>
-                  <Badge.Content>
-                    <div className="p-1">
-                      {constructBillType(
-                        plan.display_version.flat_fee_billing_type
-                      )}
-                    </div>
-                  </Badge.Content>
-                </Badge>
+                <Badge.Content>
+                  <div className="p-1">
+                    {constructBillType(
+                      plan.display_version.flat_fee_billing_type
+                    )}
+                  </div>
+                </Badge.Content>
+              </Badge>
             </div>
           </div>
 
@@ -478,20 +580,20 @@ const PlanComponents: FC<PlanComponentsProps> = ({
           <div className="grid gap-6 grid-cols-1 xl:grid-cols-4">
             {components.map((component) => (
               <div
-                className="pt-2 pb-4 bg-primary-50 mt-2  mb-2 p-4 min-h-[152px] min-w-[270px]"
+                className="pt-2 pb-4 bg-primary-50 mt-2 relative  mb-2 p-4 min-h-[152px] min-w-[270px]"
                 key={component.id}
               >
                 <div className="text-base text-card-text align-middle">
                   <div> {component.billable_metric.metric_name}</div>
                 </div>
                 <div>
-                  <div className=" w-full h-[1.5px] mt-4 bg-card-divider mb-2" />
+                  <div className=" w-full h-[1.5px] mt-4 bg-card-divider mb-4" />
                   <Table
                     dataSource={component.tiers}
                     pagination={false}
                     showHeader={false}
                     bordered={false}
-                    className="noborderTable"
+                    className="noborderTable mb-12"
                     size="middle"
                     columns={[
                       {
@@ -501,7 +603,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                         align: "left",
                         width: "50%",
                         className: "bg-primary-50 pointer-events-none",
-                        render: (value: any, record: any) => (
+                        render: (value, record) => (
                           <span>
                             From {value} to{" "}
                             {record.range_end == null ? "∞" : record.range_end}
@@ -515,7 +617,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                         key: "cost_per_batch",
                         className:
                           "bg-primary-50 pointer-events-none !text-card-grey arr",
-                        render: (value: any, record: any) => (
+                        render: (_, record) => (
                           <div>
                             {renderCost(record, component.pricing_unit)}
                           </div>
@@ -524,11 +626,11 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                     ]}
                   />
                 </div>
-                <div className=" w-full h-[1.5px] mt-4 bg-card-divider mb-2" />
-
-                <div className="mt-4 self-end">
+                <div className=" w-[96%] h-[1.5px] mt-8 mb-4 absolute bottom-16 bg-card-divider" />
+                <div className=" absolute bottom-[-4px] self-end">
                   <div
                     className="flex"
+                    aria-hidden
                     onClick={() => {
                       if (component.billable_metric.metric_type !== "counter") {
                         toast.error("Only counter metrics can create alerts");
@@ -541,7 +643,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                             alerts
                           );
                           setIsCreateAlert(false);
-                          setAlertThreshold(alert?.threshold);
+                          setAlertThreshold(alert!.threshold);
                           setCurrentAlertId(alert?.usage_alert_id);
                         } else {
                           setIsCreateAlert(true);
@@ -564,7 +666,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                     {findAlertForComponent(component, alerts) !== undefined ? (
                       <p className="align-middle">
                         Reaches:{" "}
-                        {findAlertForComponent(component, alerts).threshold}
+                        {findAlertForComponent(component, alerts)?.threshold}
                       </p>
                     ) : (
                       <p className=" text-small align-middle self-center">

@@ -1,10 +1,15 @@
 # import lotus_python
+import logging
+
 import api.views as api_views
 import posthog
+import sentry_sdk
 from actstream.models import Action
 from api.serializers.webhook_serializers import (
+    CustomerCreatedSerializer,
     InvoiceCreatedSerializer,
     InvoicePaidSerializer,
+    InvoicePastDueSerializer,
     UsageAlertTriggeredSerializer,
 )
 from django.conf import settings
@@ -33,6 +38,7 @@ from metering_billing.models import (
     User,
     WebhookEndpoint,
 )
+from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import ValidOrganization
 from metering_billing.serializers.backtest_serializers import (
     BacktestCreateSerializer,
@@ -46,13 +52,16 @@ from metering_billing.serializers.model_serializers import (
     AddOnSerializer,
     APITokenSerializer,
     CustomerSerializer,
+    CustomerSummarySerializer,
     CustomerUpdateSerializer,
+    CustomerWithRevenueSerializer,
     EventSerializer,
     ExternalPlanLinkSerializer,
     FeatureCreateSerializer,
     FeatureSerializer,
+    InvoiceSerializer,
     MetricCreateSerializer,
-    MetricSerializer,
+    MetricDetailSerializer,
     MetricUpdateSerializer,
     OrganizationCreateSerializer,
     OrganizationSerializer,
@@ -86,10 +95,10 @@ from metering_billing.serializers.serializer_utils import (
     WebhookEndpointUUIDField,
 )
 from metering_billing.tasks import run_backtest
-from metering_billing.utils import now_utc
+from metering_billing.utils import make_all_decimals_floats, now_utc
 from metering_billing.utils.enums import (
     METRIC_STATUS,
-    PAYMENT_PROVIDERS,
+    PAYMENT_PROCESSORS,
     WEBHOOK_TRIGGER_EVENTS,
 )
 from rest_framework import mixins, serializers, status, viewsets
@@ -100,6 +109,7 @@ from rest_framework.response import Response
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
+logger = logging.getLogger("django.server")
 
 
 class CustomPagination(CursorPagination):
@@ -202,7 +212,7 @@ class APITokenViewSet(
             if expiry_date is None
             else (expiry_date - now_utc()).total_seconds()
         )
-        cache.set(api_key.prefix, api_key.organization.pk, timeout)
+        cache.set(key, api_key.organization.pk, timeout)
         headers = self.get_success_headers(serializer.data)
         return Response(
             {"api_key": serializer.data, "key": key},
@@ -211,7 +221,15 @@ class APITokenViewSet(
         )
 
     def perform_destroy(self, instance):
-        cache.delete(instance.prefix)
+        try:
+            cache.delete_pattern(f"{instance.prefix}*")
+        except Exception as e:
+            logger.error("Error deleting cache using delete pattern")
+            sentry_sdk.capture_exception(e)
+            keys_to_delete = []
+            for key in cache.keys(f"{instance.prefix}*"):
+                keys_to_delete.append(key)
+            cache.delete_many(keys_to_delete)
         return super().perform_destroy(instance)
 
     @extend_schema(
@@ -301,6 +319,22 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 extend_schema(
                     description="Usage alert triggered webhook",
                     responses={200: UsageAlertTriggeredSerializer},
+                ),
+            ),
+            OpenApiCallback(
+                WEBHOOK_TRIGGER_EVENTS.CUSTOMER_CREATED.value,
+                "{$request.body#/webhook_url}",
+                extend_schema(
+                    description="Customer created webhook",
+                    responses={200: CustomerCreatedSerializer},
+                ),
+            ),
+            OpenApiCallback(
+                WEBHOOK_TRIGGER_EVENTS.INVOICE_PAST_DUE.value,
+                "{$request.body#/webhook_url}",
+                extend_schema(
+                    description="Invoice Past Due webhook",
+                    responses={200: InvoicePastDueSerializer},
                 ),
             ),
         ]
@@ -433,10 +467,11 @@ class CustomerViewSet(api_views.CustomerViewSet):
     http_method_names = ["get", "post", "head", "patch"]
 
     def get_serializer_class(self):
-        sc = super().get_serializer_class()
         if self.action == "partial_update":
             return CustomerUpdateSerializer
-        return sc
+        elif self.action == "summary":
+            return CustomerSummarySerializer
+        return super().get_serializer_class()
 
     @extend_schema(responses=PlanVersionDetailSerializer)
     def update(self, request, *args, **kwargs):
@@ -453,6 +488,27 @@ class CustomerViewSet(api_views.CustomerViewSet):
             CustomerSerializer(customer, context=self.get_serializer_context()).data,
             status=status.HTTP_200_OK,
         )
+
+    @extend_schema(request=None, responses=CustomerSummarySerializer)
+    @action(detail=False, methods=["get"], url_path="summary")
+    def summary(self, request):
+        """
+        Get the current settings for the organization.
+        """
+        customers = self.get_queryset()
+        serializer = CustomerSummarySerializer(customers, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(request=None, responses=CustomerWithRevenueSerializer)
+    @action(detail=False, methods=["get"], url_path="totals")
+    def totals(self, request, pk=None):
+        """
+        Get the current settings for the organization.
+        """
+        customers = self.get_queryset()
+        cust = CustomerWithRevenueSerializer(customers, many=True).data
+        cust = make_all_decimals_floats(cust)
+        return Response(cust, status=status.HTTP_200_OK)
 
 
 class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -481,7 +537,7 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             return MetricUpdateSerializer
         elif self.action == "create":
             return MetricCreateSerializer
-        return MetricSerializer
+        return MetricDetailSerializer
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -510,12 +566,12 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             )
         return response
 
-    @extend_schema(responses=MetricSerializer)
+    @extend_schema(responses=MetricDetailSerializer)
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = self.perform_create(serializer)
-        metric_data = MetricSerializer(instance).data
+        metric_data = MetricDetailSerializer(instance).data
         return Response(metric_data, status=status.HTTP_201_CREATED)
 
     def perform_create(self, serializer):
@@ -712,7 +768,6 @@ class PlanViewSet(api_views.PlanViewSet):
     serializer_class = PlanDetailSerializer
     lookup_field = "plan_id"
     http_method_names = ["get", "post", "patch", "head"]
-    queryset = Plan.objects.all()
     permission_classes_per_method = {
         "create": [IsAuthenticated & ValidOrganization],
         "partial_update": [IsAuthenticated & ValidOrganization],
@@ -730,6 +785,15 @@ class PlanViewSet(api_views.PlanViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         return qs
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def get_serializer_class(self):
         if self.action == "partial_update":
@@ -778,7 +842,28 @@ class SubscriptionViewSet(api_views.SubscriptionViewSet):
 
 
 class InvoiceViewSet(api_views.InvoiceViewSet):
-    pass
+    http_method_names = ["get", "patch", "head", "post"]
+
+    def get_serializer_class(self):
+        if self.action == "send":
+            return InvoiceSerializer
+        return super().get_serializer_class()
+
+    @extend_schema(request=None)
+    @action(detail=True, methods=["post"])
+    def send(self, request, *args, **kwargs):
+        invoice = self.get_object()
+        customer = invoice.customer
+        if customer.payment_provider and invoice.external_payment_obj_type is None:
+            connector = PAYMENT_PROCESSOR_MAP.get(customer.payment_provider)
+            if connector:
+                external_id = connector.create_payment_object(invoice)
+                if external_id:
+                    invoice.external_payment_obj_id = external_id
+                    invoice.external_payment_obj_type = customer.payment_provider
+                    invoice.save()
+        serializer = self.get_serializer(invoice)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -972,7 +1057,9 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
             inline_serializer(
                 name="SourceSerializer",
                 fields={
-                    "source": serializers.ChoiceField(choices=PAYMENT_PROVIDERS.choices)
+                    "source": serializers.ChoiceField(
+                        choices=PAYMENT_PROCESSORS.choices
+                    )
                 },
             ),
         ],
@@ -1217,4 +1304,16 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
+        return context
+        return context
+        return context
+        return context
+        return context
+        return context
+        return context
+        return context
+        return context
+        return context
+        return context
+        return context
         return context

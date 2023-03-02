@@ -8,19 +8,31 @@ type Props = {
   description: string;
   connected: boolean;
   icon: React.ReactNode;
-  handleClick: () => void;
+  handleClickConnect: () => void;
   isNew?: boolean;
   selfHosted?: boolean;
+  idName?: string;
+  idValue?: string;
+  working?: boolean;
 };
+
 export function AppCard({
   title,
-  handleClick,
+  handleClickConnect,
   description,
   connected,
   icon,
   isNew,
   selfHosted,
+  idName,
+  idValue,
+  working,
 }: Props) {
+  const link = title.toLowerCase().includes("stripe")
+    ? "stripe"
+    : title.toLowerCase().includes("braintree")
+    ? "braintree"
+    : title.toLowerCase();
   return (
     <div>
       <Card
@@ -32,31 +44,29 @@ export function AppCard({
         title={<Avatar shape="square" src={icon} />}
         size="small"
         extra={
-          connected ? (
-            <Tag color="success">Connected</Tag>
-          ) : !selfHosted ? (
-            <Tag
-              color="default"
-              onClick={
-                title === "Stripe"
-                  ? handleClick
-                  : () => {
-                      toast.error("Upgrade to get access to this integration");
-                    }
-              }
-              style={{ cursor: "pointer" }}
-            >
-              Connect
-            </Tag>
-          ) : (
-            <Tag
-              color="default"
-              onClick={handleClick}
-              style={{ cursor: "pointer" }}
-            >
-              No API Key
-            </Tag>
-          )
+          <>
+            {working && (idValue || selfHosted) && connected ? (
+              <Tag color="success">Connected</Tag>
+            ) : !selfHosted ? (
+              <Tag
+                color="default"
+                onClick={
+                  title.includes("Stripe") || title.includes("Braintree")
+                    ? handleClickConnect
+                    : () => {
+                        toast.error(
+                          "Upgrade to get access to this integration"
+                        );
+                      }
+                }
+                style={{ cursor: "pointer" }}
+              >
+                Connect
+              </Tag>
+            ) : (
+              <Tag color="default">No API Key</Tag>
+            )}
+          </>
         }
       >
         <Card.Meta
@@ -67,19 +77,22 @@ export function AppCard({
           }
           description={description}
         />
+        {idName ? (
+          <div className="flex justify-end pt-4">
+            <Tag style={{ cursor: "pointer" }}>
+              <b>{idName}:</b> {idValue || "-"}
+            </Tag>
+          </div>
+        ) : null}
         {connected ? (
           <div className="flex justify-end pt-4">
-            <Link to={title.toLowerCase()}>
+            <Link to={link}>
               <h3 className="text-darkgold hover:text-black">
                 View Integration
               </h3>
             </Link>
           </div>
-        ) : (
-          <div className="flex justify-end ">
-            <h3 className="">-</h3>
-          </div>
-        )}
+        ) : null}
       </Card>
     </div>
   );

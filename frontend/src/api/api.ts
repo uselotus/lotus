@@ -1,3 +1,5 @@
+/* eslint-disable camelcase */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios, { AxiosResponse } from "axios";
 import Cookies from "universal-cookie";
 import {
@@ -36,6 +38,12 @@ import {
   PaymentProcessorConnectionResponseType,
   PaymentProcessorStatusType,
   PaymentProcessorConnectionRequestType,
+  PaymentProcessorSettingsParams,
+  PaymentProcessorSetting,
+  Source,
+  PaymentProcessorImportCustomerResponse,
+  TransferSub,
+  UpdatePaymentProcessorSettingParams,
 } from "../types/payment-processor-type";
 import { CustomerCostType, RevenueType } from "../types/revenue-type";
 import {
@@ -52,13 +60,19 @@ import {
   CancelCreateSubscriptionAddOnBody,
   CancelCreateSubscriptionAddOnQueryParams,
 } from "../types/subscription-type";
-import { MetricUsage, MetricType } from "../types/metric-type";
+import {
+  MetricUsage,
+  MetricType,
+  CreateMetricType,
+} from "../types/metric-type";
 import { EventPages } from "../types/event-type";
 import { DemoSignupProps } from "../pages/DemoSignup";
 import {
   CreateOrgAccountType,
   OrganizationType,
   PaginatedActionsType,
+  UpdateOrganizationPPType,
+  UpdateOrganizationType,
 } from "../types/account-type";
 import { FeatureType, CreateFeatureType } from "../types/feature-type";
 import {
@@ -67,15 +81,8 @@ import {
   BacktestResultType,
 } from "../types/experiment-type";
 import {
-  StripeSettingsParams,
-  StripeSetting,
-  Source,
-  StripeImportCustomerResponse,
-  TransferSub,
-  UpdateStripeSettingParams,
-} from "../types/stripe-type";
-import {
   DraftInvoiceType,
+  InvoiceType,
   MarkPaymentStatusAsPaid,
 } from "../types/invoice-type";
 import { CreateCreditType, CreditType } from "../types/balance-adjustment";
@@ -86,7 +93,6 @@ const cookies = new Cookies();
 
 axios.defaults.headers.common.Authorization = `Token ${cookies.get("Token")}`;
 
-// @ts-ignore
 const API_HOST = import.meta.env.VITE_API_URL;
 
 axios.defaults.baseURL = API_HOST;
@@ -102,46 +108,46 @@ export const instance = axios.create({
 
 const responseBody = (response: AxiosResponse) => response.data;
 
-// make a function that takes an object as input and if it finds a key with the name subscription_filters, it json encodes it, and then returns the whole object
-const encodeSubscriptionFilters = (obj: any) => {
-  if (obj.subscription_filters) {
-    obj.subscription_filters = JSON.stringify(obj.subscription_filters);
-  }
-  return obj;
-};
-
 const requests = {
-  get: (url: string, params?: {}) =>
+  get: (url: string, params?: object) =>
     instance.get(url, params).then(responseBody),
-  post: (url: string, body: {}, params?: {}) =>
+  post: (url: string, body: object, params?: object) =>
     instance.post(url, body, { params }).then(responseBody),
-  patch: (url: string, body: {}, params?: {}) =>
+  patch: (url: string, body: object, params?: object) =>
     instance.patch(url, body, { params }).then(responseBody),
-  delete: (url: string, params?: {}) =>
+  delete: (url: string, params?: object) =>
     instance.delete(url, { params }).then(responseBody),
 };
 
 export const Customer = {
   getCustomers: (): Promise<CustomerSummary[]> =>
-    requests.get("app/customer_summary/"),
+    requests.get("app/customers/summary/"),
   getCustomerDetail: (customer_id: string): Promise<CustomerType> =>
     requests.get(`app/customers/${customer_id}/`),
   createCustomer: (post: CustomerCreateType): Promise<CustomerType> =>
     requests.post("app/customers/", post),
   getCustomerTotals: (): Promise<CustomerTotal[]> =>
-    requests.get("app/customer_totals/"),
+    requests.get("app/customers/totals/"),
+  deleteCustomer: (customer_id: string): Promise<CustomerType> =>
+    requests.post(`app/customers/${customer_id}/delete/`, {}),
   updateCustomer: (
     customer_id: string,
     default_currency_code: string,
-    address: CustomerType["address"],
+    shipping_address: CustomerType["shipping_address"],
+    billing_address: CustomerType["billing_address"],
     tax_rate: number,
-    timezone: string
+    timezone: string,
+    customer_name?: string,
+    new_customer_id?: string
   ): Promise<CustomerType> =>
     requests.patch(`app/customers/${customer_id}/`, {
       default_currency_code,
-      address,
+      shipping_address,
+      billing_address,
       tax_rate,
       timezone,
+      customer_name,
+      new_customer_id,
     }),
   // getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
   //   requests.get(`app/customer_detail/`, { params: { customer_id } }),
@@ -314,7 +320,7 @@ export const Authentication = {
       organization_name: string;
     };
   }> => requests.post("app/demo_login/", { username, password }),
-  logout: (): Promise<{}> => requests.post("app/logout/", {}),
+  logout: (): Promise<object> => requests.post("app/logout/", {}),
   registerCreate: (
     register: CreateOrgAccountType
   ): Promise<{
@@ -356,6 +362,8 @@ export const Authentication = {
 export const Organization = {
   invite: (email: string): Promise<{ email: string }> =>
     requests.post("app/organization/invite/", { email }),
+  invite_link: (email: string): Promise<{ email: string }> =>
+    requests.post("app/organization/invite_link/", { email }),
   get: (): Promise<OrganizationType[]> => requests.get("app/organizations/"),
   createOrg: (
     organization_name: string,
@@ -375,21 +383,15 @@ export const Organization = {
     requests.get("app/actions/", { params: { c: cursor } }),
   updateOrganization: (
     org_id: string,
-    default_currency_code: string,
-    tax_rate: number,
-    timezone: string,
-    payment_grace_period: number,
-    address: OrganizationType["address"],
-    subscription_filter_keys: string[]
+    input: UpdateOrganizationType
   ): Promise<OrganizationType> =>
-    requests.patch(`app/organizations/${org_id}/`, {
-      default_currency_code,
-      tax_rate,
-      timezone,
-      payment_grace_period,
-      address,
-      subscription_filter_keys,
-    }),
+    requests.patch(`app/organizations/${org_id}/`, input),
+  updateOrganizationPaymentProvider: (
+    data: UpdateOrganizationPPType
+  ): Promise<OrganizationType> => {
+    const { org_id, ...payload } = data;
+    return requests.patch(`app/organizations/${org_id}/`, { ...payload });
+  },
 };
 
 export const GetRevenue = {
@@ -447,11 +449,11 @@ export const Metrics = {
       params: { start_date, end_date, top_n_customers },
     }),
   getMetrics: (): Promise<MetricType[]> => requests.get("app/metrics/"),
-  createMetric: (post: MetricType): Promise<MetricType> =>
+  createMetric: (post: CreateMetricType): Promise<MetricType> =>
     requests.post("app/metrics/", post),
-  deleteMetric: (id: number): Promise<{}> =>
+  deleteMetric: (id: number): Promise<object> =>
     requests.delete(`app/metrics/${id}`),
-  archiveMetric: (id: string): Promise<{}> =>
+  archiveMetric: (id: string): Promise<object> =>
     requests.patch(`app/metrics/${id}/`, { status: "archived" }),
 };
 
@@ -490,29 +492,35 @@ export const Backtests = {
     requests.get(`app/backtests/${id}/`),
 };
 
-export const Stripe = {
+export const PaymentProcessor = {
   // Import Customers
-  importCustomers: (post: Source): Promise<StripeImportCustomerResponse> =>
+  importCustomers: (
+    post: Source
+  ): Promise<PaymentProcessorImportCustomerResponse> =>
     requests.post("app/import_customers/", post),
 
   // Import Payments
-  importPayments: (post: Source): Promise<StripeImportCustomerResponse> =>
+  importPayments: (
+    post: Source
+  ): Promise<PaymentProcessorImportCustomerResponse> =>
     requests.post("app/import_payment_objects/", post),
 
   // transfer Subscription
   transferSubscriptions: (
     post: TransferSub
-  ): Promise<StripeImportCustomerResponse> =>
+  ): Promise<PaymentProcessorImportCustomerResponse> =>
     requests.post("app/transfer_subscriptions/", post),
 
   // Get Stripe Setting
-  getStripeSettings: (data: StripeSettingsParams): Promise<StripeSetting[]> =>
+  getPaymentProcessorSettings: (
+    data: PaymentProcessorSettingsParams
+  ): Promise<PaymentProcessorSetting[]> =>
     requests.get("app/organization_settings/", { params: data }),
 
   // Update Stripe Setting
-  updateStripeSetting: (
-    data: UpdateStripeSettingParams
-  ): Promise<StripeSetting> =>
+  updatePaymentProcessorSetting: (
+    data: UpdatePaymentProcessorSettingParams
+  ): Promise<PaymentProcessorSetting> =>
     requests.patch(`app/organization_settings/${data.setting_id}/`, {
       setting_values: data.setting_values,
     }),
@@ -533,10 +541,12 @@ export const Invoices = {
     requests.patch(`app/invoices/${data.invoice_id}/`, {
       payment_status: data.payment_status,
     }),
+  sendToPaymentProcessor: (invoice_id: string): Promise<InvoiceType> =>
+    requests.post(`app/invoices/${invoice_id}/send`, {}),
   getDraftInvoice: (customer_id: string): Promise<DraftInvoiceType> =>
     requests.get("app/draft_invoice/", { params: { customer_id } }),
   getInvoiceUrl: (invoice_id: string): Promise<{ url: string }> =>
-    requests.get(`app/invoice_url/`, { params: { invoice_id } }),
+    requests.get(`app/invoices/${invoice_id}/pdf_url/`),
 };
 
 export const Credits = {
@@ -564,4 +574,8 @@ export const PricingUnits = {
     requests.post("app/pricing_units/", post),
 
   list: (): Promise<CurrencyType[]> => requests.get(`app/pricing_units/`),
+};
+
+export const Netsuite = {
+  invoices: (): Promise<{ url: URL }> => requests.get("app/netsuite_invoices/"),
 };

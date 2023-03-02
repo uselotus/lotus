@@ -1,6 +1,19 @@
 import { PlanType } from "./plan-type";
 import { CurrencyType } from "./pricing-unit-type";
+import { PaymentProcessorType } from "./payment-processor-type";
 
+export const TaxProviders = ["lotus", "taxjar"] as const;
+export type TaxProviderType = (typeof TaxProviders)[number];
+
+export interface AddressType {
+  organization: number;
+  city: string;
+  country: string;
+  line1: string;
+  line2?: string | null;
+  postal_code: string;
+  state?: string | null;
+}
 export interface CreateOrgAccountType {
   username: string;
   password: string;
@@ -26,26 +39,26 @@ export interface OrganizationSettingsType {
   };
 }
 
+export interface UpdateOrganizationPPType {
+  org_id: string;
+  payment_provider: PaymentProcessorType;
+  payment_provider_id: string;
+  nango_connected?: boolean;
+}
+
 export interface OrganizationType {
   organization_name: string;
   payment_provider_ids: object;
-  address?: {
-    city: string;
-    country: string;
-    line1: string;
-    line2: string;
-    postal_code: string;
-    state: string;
-  };
+  address?: AddressType;
   users: UserType[];
   default_currency: CurrencyType;
   available_currencies: CurrencyType[];
   organization_id: string;
   plan_tags: PlanType["tags"];
-  tax_rate: null | number;
+  tax_rate?: number;
   timezone: string;
   payment_grace_period: number;
-  subscription_filter_keys: [];
+  subscription_filter_keys: string[];
   current_user: { username: string };
   linked_organizations: {
     current: boolean;
@@ -53,6 +66,17 @@ export interface OrganizationType {
     organization_type: string;
     organization_name: string;
   }[];
+  tax_providers: TaxProviderType[];
+}
+
+export interface UpdateOrganizationType {
+  address?: AddressType;
+  default_currency_code?: string;
+  tax_rate?: number;
+  timezone?: string;
+  payment_grace_period?: number;
+  subscription_filter_keys?: string[];
+  tax_providers?: TaxProviderType[];
 }
 
 export interface ActionUserType extends UserType {

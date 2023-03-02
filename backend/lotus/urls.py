@@ -43,16 +43,14 @@ from metering_billing.views.model_views import (
     UserViewSet,
     WebhookViewSet,
 )
-from metering_billing.views.payment_provider_views import PaymentProviderView
+from metering_billing.views.payment_processor_views import PaymentProcesorView
 from metering_billing.views.views import (  # MergeCustomersView,; ExperimentalToActiveView,
     ChangeUserOrganizationView,
     CostAnalysisView,
-    CustomersSummaryView,
-    CustomersWithRevenueView,
     DraftInvoiceView,
-    GetInvoicePdfURL,
     ImportCustomersView,
     ImportPaymentObjectsView,
+    NetsuiteInvoiceCSVView,
     PeriodEventsView,
     PeriodMetricRevenueView,
     PeriodMetricUsageView,
@@ -151,12 +149,6 @@ urlpatterns = [
     ),
     # App views
     path("app/", include(router.urls)),
-    path("app/invoice_url/", GetInvoicePdfURL.as_view(), name="invoice_url"),
-    path(
-        "app/customer_summary/",
-        CustomersSummaryView.as_view(),
-        name="customer_summary",
-    ),
     path(
         "app/cost_analysis/",
         CostAnalysisView.as_view(),
@@ -166,11 +158,6 @@ urlpatterns = [
         "app/switch_organization/",
         ChangeUserOrganizationView.as_view(),
         name="switch_organization",
-    ),
-    path(
-        "app/customer_totals/",
-        CustomersWithRevenueView.as_view(),
-        name="customer_totals",
     ),
     path(
         "app/plans_by_customer/",
@@ -209,6 +196,11 @@ urlpatterns = [
         name="import_payment_objects",
     ),
     path(
+        "app/netsuite_invoices/",
+        NetsuiteInvoiceCSVView.as_view(),
+        name="import_payment_objects",
+    ),
+    path(
         "app/transfer_subscriptions/",
         TransferSubscriptionsView.as_view(),
         name="transfer_subscriptions",
@@ -220,7 +212,7 @@ urlpatterns = [
     ),
     path(
         "app/payment_providers/",
-        PaymentProviderView.as_view(),
+        PaymentProcesorView.as_view(),
         name="payment_providers",
     ),
     # path(
@@ -253,6 +245,11 @@ urlpatterns = [
         organization_views.InviteView.as_view(),
         name="invite-to-organization",
     ),
+    path(
+        "app/organization/invite_link/",
+        organization_views.InviteLinkView.as_view(),
+        name="invite-to-organization-link",
+    ),
     # Stripe
     path(
         "stripe/webhook/", webhook_views.stripe_webhook_endpoint, name="stripe-webhook"
@@ -263,4 +260,5 @@ if PROFILER_ENABLED:
     urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
 
 if DEBUG:
+    urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]
     urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]

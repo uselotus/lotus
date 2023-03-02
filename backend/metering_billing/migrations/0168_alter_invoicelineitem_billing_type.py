@@ -6,13 +6,22 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0167_alter_team_team_id'),
+        ("metering_billing", "0167_alter_team_team_id"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='invoicelineitem',
-            name='billing_type',
-            field=models.CharField(blank=True, choices=[('in_arrears', 'In Arrears'), ('in_advance', 'In Advance'), ('one_time', 'One Time')], max_length=40, null=True),
+            model_name="invoicelineitem",
+            name="billing_type",
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    ("in_arrears", "In Arrears"),
+                    ("in_advance", "In Advance"),
+                    ("one_time", "One Time"),
+                ],
+                max_length=40,
+                null=True,
+            ),
         ),
     ]

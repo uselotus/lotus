@@ -1,14 +1,12 @@
 import logging
 from decimal import Decimal, InvalidOperation
-from io import BytesIO
 
 import pytz
 from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
-
-from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
 )
@@ -26,6 +24,7 @@ from metering_billing.utils.enums import (
     BACKTEST_STATUS,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
 )
+from metering_billing.webhooks import invoice_past_due_webhook
 
 logger = logging.getLogger("django.server")
 EVENT_CACHE_FLUSH_COUNT = settings.EVENT_CACHE_FLUSH_COUNT
@@ -49,7 +48,6 @@ def generate_invoice_pdf_async(invoice_pk):
     invoice = Invoice.objects.get(pk=invoice_pk)
     pdf_url = generate_invoice_pdf(
         invoice,
-        BytesIO(),
     )
     invoice.invoice_pdf = pdf_url
     invoice.save()
@@ -119,6 +117,19 @@ def refresh_alerts():
     refresh_alerts_inner()
 
 
+def prune_guard_table_inner():
+    from metering_billing.models import IdempotenceCheck
+
+    # get all UsageAlertResults
+    thirty_three_days = now_utc() - relativedelta(days=33)
+    IdempotenceCheck.objects.filter(time_created__lt=thirty_three_days).delete()
+
+
+@shared_task
+def prune_guard_table():
+    prune_guard_table_inner()
+
+
 @shared_task
 def zero_out_expired_balance_adjustments():
     from metering_billing.models import CustomerBalanceAdjustment
@@ -143,9 +154,9 @@ def update_invoice_status():
     )
     for incomplete_invoice in incomplete_invoices:
         pp = incomplete_invoice.external_payment_obj_type
-        if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
+        if pp in PAYMENT_PROCESSOR_MAP and PAYMENT_PROCESSOR_MAP[pp].working():
             organization = incomplete_invoice.organization
-            status = PAYMENT_PROVIDER_MAP[pp].update_payment_object_status(
+            status = PAYMENT_PROCESSOR_MAP[pp].update_payment_object_status(
                 organization, incomplete_invoice.external_payment_obj_id
             )
             if status == Invoice.PaymentStatus.PAID:
@@ -453,4 +464,38 @@ def run_generate_invoice(subscription_record_pk_set, **kwargs):
         pk__in=subscription_record_pk_set
     )
     generate_invoice(subscription_record_set, **kwargs)
-    generate_invoice(subscription_record_set, **kwargs)
+
+
+def import_customers_from_payment_processor_inner(payment_processor, organization_pk):
+    from metering_billing.models import Organization
+
+    organization = Organization.objects.get(pk=organization_pk)
+    connector = PAYMENT_PROCESSOR_MAP[payment_processor]
+    n = connector.import_customers(organization)
+
+    return n
+
+
+@shared_task
+def import_customers_from_payment_processor(payment_processor, organization_pk):
+    import_customers_from_payment_processor_inner(payment_processor, organization_pk)
+
+
+def check_past_due_invoices_inner():
+    from metering_billing.models import Invoice
+
+    now = now_utc()
+    incomplete_invoices = Invoice.objects.filter(
+        Q(payment_status=Invoice.PaymentStatus.UNPAID),
+        due_date__lt=now,
+        invoice_past_due_webhook_sent=False,
+    )
+    for invoice in incomplete_invoices:
+        invoice_past_due_webhook(invoice, invoice.organization)
+        invoice.invoice_past_due_webhook_sent = True
+        invoice.save()
+
+
+@shared_task
+def check_past_due_invoices():
+    check_past_due_invoices_inner()

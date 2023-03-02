@@ -3,15 +3,8 @@ from decimal import Decimal
 
 import pytz
 from django.conf import settings
-from django.db.models import Count, F, Prefetch, Q, Sum
+from django.db.models import Count, F, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
-from rest_framework import serializers, status
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
-import api.views as api_views
 from metering_billing.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
@@ -24,16 +17,14 @@ from metering_billing.models import (
     Invoice,
     Metric,
     Organization,
-    PlanVersion,
     SubscriptionRecord,
 )
-from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from metering_billing.netsuite_csv import get_csv_presigned_url
+from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.model_serializers import (
-    CustomerSummarySerializer,
-    CustomerWithRevenueSerializer,
     DraftInvoiceSerializer,
-    MetricSerializer,
+    MetricDetailSerializer,
 )
 from metering_billing.serializers.request_serializers import (
     CostAnalysisRequestSerializer,
@@ -49,6 +40,7 @@ from metering_billing.serializers.response_serializers import (
     PeriodSubscriptionsResponseSerializer,
 )
 from metering_billing.serializers.serializer_utils import OrganizationUUIDField
+from metering_billing.tasks import import_customers_from_payment_processor
 from metering_billing.utils import (
     convert_to_date,
     convert_to_datetime,
@@ -57,16 +49,19 @@ from metering_billing.utils import (
     date_as_min_dt,
     make_all_dates_times_strings,
     make_all_decimals_floats,
-    now_utc,
     periods_bwn_twodates,
 )
 from metering_billing.utils.enums import (
     METRIC_STATUS,
     METRIC_TYPE,
-    PAYMENT_PROVIDERS,
+    PAYMENT_PROCESSORS,
     USAGE_CALC_GRANULARITY,
 )
-from metering_billing.views.model_views import CustomerViewSet
+from rest_framework import serializers, status
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -263,7 +258,7 @@ class CostAnalysisView(APIView):
                         not in per_day_dict[date]["cost_data"]
                     ):
                         per_day_dict[date]["cost_data"][metric.billable_metric_name] = {
-                            "metric": MetricSerializer(metric).data,
+                            "metric": MetricDetailSerializer(metric).data,
                             "cost": Decimal(0),
                         }
                     per_day_dict[date]["cost_data"][metric.billable_metric_name][
@@ -476,58 +471,6 @@ class ChangeUserOrganizationView(APIView):
         return Response(status=status.HTTP_200_OK)
 
 
-class CustomersSummaryView(APIView):
-    permission_classes = [IsAuthenticated | ValidOrganization]
-
-    @extend_schema(
-        request=None,
-        responses={200: CustomerSummarySerializer(many=True)},
-    )
-    def get(self, request, format=None):
-        """
-        Get the current settings for the organization.
-        """
-        organization = request.organization
-        logger.debug(f"CustomersSummaryView: {organization}, {request.user}")
-        now = now_utc()
-        customers = Customer.objects.filter(organization=organization).prefetch_related(
-            Prefetch(
-                "subscription_records",
-                queryset=SubscriptionRecord.base_objects.filter(
-                    organization=organization,
-                    end_date__gte=now,
-                    start_date__lte=now,
-                ),
-                to_attr="subscription_records_filtered",
-            ),
-            Prefetch(
-                "subscription_records__billing_plan",
-                queryset=PlanVersion.objects.filter(organization=organization),
-                to_attr="billing_plans",
-            ),
-        )
-        serializer = CustomerSummarySerializer(customers, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-class CustomersWithRevenueView(APIView):
-    permission_classes = [IsAuthenticated | ValidOrganization]
-
-    @extend_schema(
-        request=None,
-        responses={200: CustomerWithRevenueSerializer(many=True)},
-    )
-    def get(self, request, format=None):
-        """
-        Return current usage for a customer during a given billing period.
-        """
-        request.organization
-        customers = CustomerViewSet.get_queryset(self)
-        cust = CustomerWithRevenueSerializer(customers, many=True).data
-        cust = make_all_decimals_floats(cust)
-        return Response(cust, status=status.HTTP_200_OK)
-
-
 class TimezonesView(APIView):
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
@@ -586,6 +529,7 @@ class DraftInvoiceView(APIView):
                 "billing_plan__plan_components",
                 "billing_plan__plan_components__billable_metric",
                 "billing_plan__plan_components__tiers",
+                "billing_plan__pricing_unit",
             )
             invoices = generate_invoice(
                 sub_records,
@@ -608,7 +552,7 @@ class ImportCustomersView(APIView):
         request=inline_serializer(
             name="ImportCustomersRequest",
             fields={
-                "source": serializers.ChoiceField(choices=PAYMENT_PROVIDERS.choices)
+                "source": serializers.ChoiceField(choices=PAYMENT_PROCESSORS.choices)
             },
         ),
         responses={
@@ -631,17 +575,17 @@ class ImportCustomersView(APIView):
     def post(self, request, format=None):
         organization = request.organization
         source = request.data["source"]
-        if source not in [choice[0] for choice in PAYMENT_PROVIDERS.choices]:
+        if source not in [choice[0] for choice in PAYMENT_PROCESSORS.choices]:
             raise ExternalConnectionInvalid(f"Invalid source: {source}")
-        connector = PAYMENT_PROVIDER_MAP[source]
+
         try:
-            num = connector.import_customers(organization)
+            import_customers_from_payment_processor.delay(source, organization.id)
         except Exception as e:
             raise ExternalConnectionFailure(f"Error importing customers: {e}")
         return Response(
             {
                 "status": "success",
-                "detail": f"Customers succesfully imported {num} customers from {source}.",
+                "detail": f"Started customer transfer from {source}.",
             },
             status=status.HTTP_201_CREATED,
         )
@@ -654,7 +598,7 @@ class ImportPaymentObjectsView(APIView):
         request=inline_serializer(
             name="ImportPaymentObjectsRequest",
             fields={
-                "source": serializers.ChoiceField(choices=PAYMENT_PROVIDERS.choices)
+                "source": serializers.ChoiceField(choices=PAYMENT_PROCESSORS.choices)
             },
         ),
         responses={
@@ -677,9 +621,9 @@ class ImportPaymentObjectsView(APIView):
     def post(self, request, format=None):
         organization = request.organization
         source = request.data["source"]
-        if source not in [choice[0] for choice in PAYMENT_PROVIDERS.choices]:
+        if source not in [choice[0] for choice in PAYMENT_PROCESSORS.choices]:
             raise ExternalConnectionInvalid(f"Invalid source: {source}")
-        connector = PAYMENT_PROVIDER_MAP[source]
+        connector = PAYMENT_PROCESSOR_MAP[source]
         try:
             num = connector.import_payment_objects(organization)
         except Exception as e:
@@ -701,7 +645,7 @@ class TransferSubscriptionsView(APIView):
         request=inline_serializer(
             name="TransferSubscriptionsRequest",
             fields={
-                "source": serializers.ChoiceField(choices=PAYMENT_PROVIDERS.choices),
+                "source": serializers.ChoiceField(choices=PAYMENT_PROCESSORS.choices),
                 "end_now": serializers.BooleanField(),
             },
         ),
@@ -725,10 +669,10 @@ class TransferSubscriptionsView(APIView):
     def post(self, request, format=None):
         organization = request.organization
         source = request.data["source"]
-        if source not in [choice[0] for choice in PAYMENT_PROVIDERS.choices]:
+        if source not in [choice[0] for choice in PAYMENT_PROCESSORS.choices]:
             raise ExternalConnectionInvalid(f"Invalid source: {source}")
         end_now = request.data.get("end_now", False)
-        connector = PAYMENT_PROVIDER_MAP[source]
+        connector = PAYMENT_PROCESSOR_MAP[source]
         try:
             num = connector.transfer_subscriptions(organization, end_now)
         except Exception as e:
@@ -740,10 +684,6 @@ class TransferSubscriptionsView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
-
-
-class GetInvoicePdfURL(api_views.GetInvoicePdfURL):
-    pass
 
 
 class PlansByNumCustomersView(APIView):
@@ -794,5 +734,31 @@ class PlansByNumCustomersView(APIView):
                 "status": "success",
                 "results": plans,
             },
+            status=status.HTTP_200_OK,
+        )
+
+
+class NetsuiteInvoiceCSVView(APIView):
+    permission_classes = [IsAuthenticated | ValidOrganization]
+
+    @extend_schema(
+        request=inline_serializer(
+            name="PlansByNumCustomersRequest",
+            fields={},
+        ),
+        responses={
+            200: inline_serializer(
+                name="NetsuiteInvoiceCSVView",
+                fields={
+                    "url": serializers.URLField(),
+                },
+            ),
+        },
+    )
+    def get(self, request, format=None):
+        organization = request.organization
+        url = get_csv_presigned_url(organization)
+        return Response(
+            url,
             status=status.HTTP_200_OK,
         )

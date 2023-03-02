@@ -29,7 +29,7 @@ Events are defined as the following:
 The `event_name` should correspond to what the event is and match what you
 define in your metrics.
 
-The `time_created` is an ISO 8601 format date in UTC (no timezone offset).
+The `time_created` is an RFC3339 format date in UTC.
 
 The `idempotency_id` is a unique identifier for the specific event being passed
 in. Passing in a unique id allows Lotus to make sure no double counting occurs.

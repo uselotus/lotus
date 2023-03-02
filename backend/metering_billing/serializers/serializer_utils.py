@@ -3,6 +3,7 @@ import uuid
 
 import pytz
 from dateutil.parser import parse
+from django.core.cache import cache
 from django.core.serializers.json import DjangoJSONEncoder
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
@@ -30,28 +31,62 @@ class ConvertEmptyStringToNullMixin:
 
 
 class TimezoneFieldMixin:
+    def get_organization_timezone(self, organization_id):
+        from metering_billing.models import Organization
+
+        serializer_context = self.context
+        if "tz_organization_cache" not in serializer_context:
+            serializer_context["tz_organization_cache"] = {}
+        tz_organization_cache = serializer_context["tz_organization_cache"]
+        if organization_id in tz_organization_cache:
+            tz_string = tz_organization_cache[organization_id]
+        else:
+            organization_cache_key = f"tz_organization_{organization_id}"
+            tz_string = cache.get(organization_cache_key)
+            if tz_string is None:
+                try:
+                    organization = Organization.objects.get(id=organization_id)
+                except Organization.DoesNotExist:
+                    tz_string = "UTC"
+                else:
+                    tz_string = organization.timezone.zone
+                    cache.set(organization_cache_key, tz_string, 60 * 60 * 24 * 7)
+        return pytz.timezone(tz_string)
+
+    def get_timezone(self, instance):
+        from metering_billing.models import Customer
+
+        serializer_context = self.context
+        customer_id = getattr(instance, "customer_id", None)
+        if customer_id is not None:
+            if "tz_customer_cache" not in serializer_context:
+                serializer_context["tz_customer_cache"] = {}
+            tz_customer_cache = serializer_context["tz_customer_cache"]
+            if customer_id in tz_customer_cache:
+                tz_string = tz_customer_cache[customer_id]
+            else:
+                customer_cache_key = f"tz_customer_{customer_id}"
+                tz_string = cache.get(customer_cache_key)
+                if tz_string is None:
+                    customer_tz = Customer.objects.get(id=customer_id).timezone
+                    tz_string = customer_tz.zone
+                    cache.set(customer_cache_key, tz_string, 60 * 60 * 24 * 7)
+                tz_customer_cache[customer_id] = tz_string
+            return pytz.timezone(tz_string)
+        else:
+            return self.get_organization_timezone(instance.organization_id)
+
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        customer = getattr(instance, "customer", None)
-        timezone_field = "timezone"
-        if customer is not None:
-            timezone = getattr(customer, timezone_field, None)
-        else:
-            organization = getattr(instance, "organization", None)
-            timezone = (
-                getattr(organization, timezone_field, None)
-                if organization is not None
-                else None
-            )
-        if timezone is not None:
-            for field_name, value in representation.items():
-                if value is None:
-                    representation[field_name] = None
-                field = self.fields.get(field_name)
-                if isinstance(field, serializers.DateTimeField) and value is not None:
-                    if isinstance(value, str):
-                        value = parse(value)
-                    representation[field_name] = value.astimezone(timezone).isoformat()
+        for field_name, value in representation.items():
+            if value is None:
+                representation[field_name] = None
+            field = self.fields.get(field_name)
+            if isinstance(field, serializers.DateTimeField) and value is not None:
+                if isinstance(value, str):
+                    value = parse(value)
+                timezone = self.get_timezone(instance)
+                representation[field_name] = value.astimezone(timezone).isoformat()
         return representation
 
 

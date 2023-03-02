@@ -4,12 +4,15 @@ import copy
 import json
 import logging
 import operator
+import re
+import uuid
 from decimal import Decimal
 from functools import reduce
 from itertools import chain
 from typing import Optional
 
 import posthog
+import pytz
 from api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
     AddonSubscriptionRecordFilterSerializer,
@@ -25,6 +28,7 @@ from api.serializers.model_serializers import (
     InvoiceListFilterSerializer,
     InvoiceSerializer,
     InvoiceUpdateSerializer,
+    ListPlansFilterSerializer,
     ListSubscriptionRecordFilter,
     PlanSerializer,
     SubscriptionRecordCancelSerializer,
@@ -35,6 +39,7 @@ from api.serializers.model_serializers import (
     SubscriptionRecordUpdateSerializer,
 )
 from api.serializers.nonmodel_serializers import (
+    CustomerDeleteResponseSerializer,
     FeatureAccessRequestSerialzier,
     FeatureAccessResponseSerializer,
     GetCustomerEventAccessRequestSerializer,
@@ -42,6 +47,7 @@ from api.serializers.nonmodel_serializers import (
     GetEventAccessSerializer,
     GetFeatureAccessSerializer,
     GetInvoicePdfURLRequestSerializer,
+    GetInvoicePdfURLResponseSerializer,
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
 )
@@ -65,11 +71,12 @@ from django.db.models.functions import Coalesce
 from django.db.utils import IntegrityError
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from drf_spectacular.utils import extend_schema, inline_serializer
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
 from metering_billing.exceptions import (
     DuplicateCustomer,
     MethodNotAllowed,
+    RepeatedOperation,
     ServerError,
     SwitchPlanDurationMismatch,
     SwitchPlanSamePlanException,
@@ -89,7 +96,9 @@ from metering_billing.models import (
     Plan,
     PlanComponent,
     PriceTier,
+    RecurringCharge,
     SubscriptionRecord,
+    Tag,
 )
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.serializer_utils import (
@@ -120,6 +129,7 @@ from metering_billing.utils.enums import (
     USAGE_BILLING_BEHAVIOR,
     USAGE_BILLING_FREQUENCY,
 )
+from metering_billing.webhooks import customer_created_webhook
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import (
     action,
@@ -134,7 +144,7 @@ from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
-
+IDEMPOTENCY_ID_NAMESPACE = settings.IDEMPOTENCY_ID_NAMESPACE
 
 logger = logging.getLogger("django.server")
 
@@ -163,6 +173,10 @@ class PermissionPolicyMixin:
         super().check_permissions(request)
 
 
+class EmptySerializer(serializers.Serializer):
+    pass
+
+
 class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     lookup_field = "customer_id"
     http_method_names = ["get", "post", "head"]
@@ -181,7 +195,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 .filter(
                     organization=organization,
                 )
-                .select_related("customer", "billing_plan")
+                .select_related("customer", "billing_plan", "billing_plan__plan")
                 .prefetch_related(
                     "filters",
                     "addon_subscription_records",
@@ -193,6 +207,10 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 "invoices",
                 queryset=Invoice.objects.filter(
                     organization=organization,
+                    payment_status__in=[
+                        Invoice.PaymentStatus.PAID,
+                        Invoice.PaymentStatus.UNPAID,
+                    ],
                 )
                 .order_by("-issue_date")
                 .select_related("currency")
@@ -215,6 +233,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                     min_date=Min("line_items__start_date"),
                     max_date=Max("line_items__end_date"),
                 ),
+                to_attr="active_invoices",
             ),
         )
         qs = qs.annotate(
@@ -229,6 +248,8 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "create":
             return CustomerCreateSerializer
+        elif self.action == "archive":
+            return EmptySerializer
         return CustomerSerializer
 
     @extend_schema(responses=CustomerSerializer)
@@ -237,7 +258,44 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         instance = self.perform_create(serializer)
         customer_data = CustomerSerializer(instance).data
+        customer_created_webhook(instance, customer_data=customer_data)
         return Response(customer_data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        responses=CustomerDeleteResponseSerializer,
+    )
+    @action(detail=True, methods=["post"], url_path="delete")
+    def archive(self, request, customer_id=None):
+        customer = self.get_object()
+        if customer.deleted is not None:
+            raise RepeatedOperation("Customer already deleted")
+        now = now_utc()
+
+        return_data = {
+            "customer_id": customer.customer_id,
+            "email": customer.email,
+            "deleted": now,
+        }
+        customer.deleted = now
+        customer.save()
+        subscription_records = customer.subscription_records.active().all()
+        n_subs = subscription_records.filter(
+            billing_plan__plan__addon_spec__isnull=True
+        ).count()
+        return_data["num_subscriptions_deleted"] = n_subs
+        n_addons = subscription_records.filter(
+            billing_plan__plan__addon_spec__isnull=False
+        ).count()
+        return_data["num_addons_deleted"] = n_addons
+        subscription_records.update(
+            flat_fee_behavior=FLAT_FEE_BEHAVIOR.REFUND,
+            invoice_usage_charges=False,
+            auto_renew=False,
+            end_date=now,
+            fully_billed=True,
+        )
+        CustomerDeleteResponseSerializer().validate(return_data)
+        return Response(return_data, status=status.HTTP_200_OK)
 
     # @extend_schema(
     #     request=inline_serializer(
@@ -391,7 +449,11 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
         now = now_utc()
         organization = self.request.organization
-        qs = Plan.objects.filter(organization=organization, status=PLAN_STATUS.ACTIVE)
+        qs = (
+            Plan.objects.all()
+            .order_by(F("created_on").desc(nulls_last=False), F("plan_name"))
+            .filter(organization=organization, status=PLAN_STATUS.ACTIVE)
+        )
         # first go for the ones that are one away (FK) and not nested
         qs = qs.select_related(
             "organization",
@@ -401,7 +463,10 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             "display_version",
         )
         # then for many to many / reverse FK but still have
-        qs = qs.prefetch_related("tags", "external_links")
+        qs = qs.prefetch_related(
+            "external_links",
+            Prefetch("tags", queryset=Tag.objects.filter(organization=organization)),
+        )
         # then come the really deep boys
         # we need to construct the prefetch objects so that we are prefetching the more
         # deeply nested objectsd as part of the call:
@@ -412,7 +477,6 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             end_date__gte=now,
         ).annotate(active_subscriptions=Count("*"))
         qs = qs.prefetch_related(
-            "organization",
             Prefetch(
                 "versions",
                 queryset=PlanVersion.objects.filter(
@@ -431,7 +495,6 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 )
                 .select_related("price_adjustment", "created_by", "pricing_unit")
                 .prefetch_related(
-                    "subscription_records",
                     "usage_alerts",
                     "features",
                 )
@@ -442,8 +505,13 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                             organization=organization,
                         )
                         .select_related("pricing_unit")
-                        .prefetch_related("tiers")
                         .prefetch_related(
+                            Prefetch(
+                                "tiers",
+                                queryset=PriceTier.objects.filter(
+                                    organization=organization
+                                ),
+                            ),
                             Prefetch(
                                 "billable_metric",
                                 queryset=Metric.objects.filter(
@@ -456,9 +524,51 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                             ),
                         ),
                     ),
-                ),
+                    Prefetch(
+                        "recurring_charges",
+                        queryset=RecurringCharge.objects.filter(
+                            organization=organization,
+                        ).select_related("pricing_unit", "organization"),
+                        to_attr="recurring_charges_prefetched",
+                    ),
+                )
+                .order_by("version"),
+                to_attr="versions_prefetched",
             ),
         )
+
+        plan_filter_serializer = ListPlansFilterSerializer(
+            data=self.request.query_params
+        )
+
+        if not plan_filter_serializer.is_valid():
+            return qs
+
+        include_tags = plan_filter_serializer.validated_data.get("include_tags")
+        include_tags_all = plan_filter_serializer.validated_data.get("include_tags_all")
+        exclude_tags = plan_filter_serializer.validated_data.get("exclude_tags")
+
+        if include_tags:
+            # Filter to plans that have any of the tags in this list
+            q_objects = Q()
+            for tag in include_tags:
+                q_objects |= Q(tags__tag_name__iexact=tag)
+            qs = qs.filter(q_objects)
+
+        if include_tags_all:
+            # Filter to plans that have all of the tags in this list
+            q_objects = Q()
+            for tag in include_tags_all:
+                q_objects &= Q(tags__tag_name__iexact=tag)
+            qs = qs.filter(q_objects)
+
+        if exclude_tags:
+            # Filter to plans that do not have any of the tags in this list
+            q_objects = Q()
+            for tag in exclude_tags:
+                q_objects &= ~Q(tags__tag_name__iexact=tag)
+            qs = qs.filter(q_objects)
+
         return qs
 
     def dispatch(self, request, *args, **kwargs):
@@ -491,6 +601,12 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             user = None
         context.update({"organization": organization, "user": user})
         return context
+
+    @extend_schema(
+        parameters=[ListPlansFilterSerializer],
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request)
 
 
 class SubscriptionViewSet(
@@ -596,7 +712,7 @@ class SubscriptionViewSet(
             else:
                 raise Exception("Invalid action")
             serializer.is_valid(raise_exception=True)
-            # unpack whats in teh serialized data
+            # unpack whats in the serialized data
 
             customer = serializer.validated_data.get("customer")
             subscription_filters = serializer.validated_data.get("subscription_filters")
@@ -1093,10 +1209,21 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     }
 
     def get_object(self):
-        string_uuid = self.kwargs[self.lookup_field]
-        uuid = InvoiceUUIDField().to_internal_value(string_uuid)
-        self.kwargs[self.lookup_field] = uuid
-        return super().get_object()
+        lookup_field = "invoice_id"
+        string_id = self.kwargs[lookup_field]
+        # Check if the string_id matches the invoice number format YYMMDD-000001
+        if re.match(r"\d{6}-\d{6}", string_id):
+            lookup_field = "invoice_number"
+        else:
+            # Check if the string_id starts with "invoice_"
+            if string_id.startswith("invoice_"):
+                string_id = string_id[8:]
+            # Replace dashes in the string_id if any
+            string_id = InvoiceUUIDField().to_internal_value(string_id.replace("-", ""))
+        self.kwargs[lookup_field] = string_id
+        # Log the lookup value using drf-spectacular
+        self.instance = super().get_object()
+        return self.instance
 
     def get_queryset(self):
         args = [
@@ -1170,9 +1297,24 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def list(self, request):
         return super().list(request)
 
-
-class EmptySerializer(serializers.Serializer):
-    pass
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="invoice_id",
+                required=True,
+                location=OpenApiParameter.PATH,
+                description="Either an invoice ID (in the format `invoice_<uuid>`) or an invoice number (in the format `YYMMDD-000001`)",
+            )
+        ]
+    )
+    @action(detail=True, methods=["get"])
+    def pdf_url(self, request, *args, **kwargs):
+        invoice = self.get_object()
+        url = get_invoice_presigned_url(invoice).get("url")
+        return Response(
+            {"url": url},
+            status=status.HTTP_200_OK,
+        )
 
 
 class CustomerBalanceAdjustmentViewSet(
@@ -1577,14 +1719,8 @@ class GetInvoicePdfURL(APIView):
 
     @extend_schema(
         parameters=[GetInvoicePdfURLRequestSerializer],
-        responses={
-            200: inline_serializer(
-                name="GetInvoicePdfURLResponse",
-                fields={
-                    "url": serializers.URLField(),
-                },
-            ),
-        },
+        responses=GetInvoicePdfURLResponseSerializer,
+        exclude=True,
     )
     def get(self, request, format=None):
         organization = request.organization
@@ -1652,10 +1788,11 @@ class ConfirmIdemsReceivedView(APIView):
         ids_not_found = []
         for i in range(num_batches_idems):
             idem_batch = set(idempotency_ids[i * 1000 : (i + 1) * 1000])
+            idem_batch = {uuid.uuid5(IDEMPOTENCY_ID_NAMESPACE, x) for x in idem_batch}
             events = Event.objects.filter(
                 organization=organization,
                 time_created__gte=now_minus_lookback,
-                idempotency_id__in=idem_batch,
+                uuidv5_idempotency_id__in=idem_batch,
             )
             if request.data.get("customer_id"):
                 events = events.filter(customer_id=request.data.get("customer_id"))
@@ -1769,11 +1906,12 @@ def track_event(request):
         if not time_created:
             bad_events[idempotency_id] = "Invalid time_created"
             continue
-        if not (
-            now - relativedelta(days=30)
-            <= parser.parse(time_created)
-            <= now + relativedelta(days=1)
-        ):
+        tc = parser.parse(time_created)
+        # Check if the datetime object is naive
+        if tc.tzinfo is None or tc.tzinfo.utcoffset(tc) is None:
+            # If the datetime object is naive, replace its tzinfo with UTC
+            tc = tc.replace(tzinfo=pytz.UTC)
+        if not (now - relativedelta(days=30) <= tc <= now + relativedelta(days=1)):
             bad_events[
                 idempotency_id
             ] = "Time created too far in the past or future. Events must be within 30 days before or 1 day ahead of current time."
@@ -1783,6 +1921,7 @@ def track_event(request):
             stream_events = {
                 "events": [transformed_event],
                 "organization_id": organization_pk,
+                "event": transformed_event,
             }
             kafka_producer.produce(customer_id, stream_events)
         except Exception as e:

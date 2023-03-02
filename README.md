@@ -26,8 +26,6 @@
    <a href="https://join.slack.com/t/lotus-community/shared_invite/zt-1ghi61p9j-ADYbp3tEL~N16AxQr2mlzA"><img src="https://img.shields.io/badge/slack-lotus-E01E5A.svg?logo=slack&labelColor=2EB67D" alt="Join Lotus on Slack"></a>
    <a href="https://github.com/uselotus/lotus/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-9d2235" alt="License"></a>
    <a href="https://github.com/uselotus/lotus/commits/main"><img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/m/uselotus/lotus?color=8b55e3"/></a>
-   <a href="https://github.com/uselotus/lotus/actions/workflows/django-postgres.yml"><img alt="Build Passing" src="https://github.com/uselotus/lotus/actions/workflows/django-postgres.yml/badge.svg?style=flat"/></a>
-   <a href="https://twitter.com/uselotusio"><img src="https://img.shields.io/twitter/follow/uselotusio?style=flat&color=1DA1F2"></a>
 </p>
 
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
@@ -124,11 +122,12 @@ Pricing your SaaS product is never easy, and often isn't directly related to the
 Tech Stack:
 
 - React Typescript
-- Postgres (Timescaledb)
+- Postgres (TimescaleDB)
 - Redpanda
 - Redis
-- Python (Django/Fast API)
+- Python (Django)
 - Celery (background jobs)
+- Go (Microservices)
 
 ### Features
 

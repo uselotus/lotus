@@ -1,3 +1,6 @@
+/* eslint-disable no-shadow */
+/* eslint-disable camelcase */
+/* eslint-disable no-plusplus */
 import {
   Button,
   Card,
@@ -15,6 +18,7 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
+import moment from "moment";
 
 import {
   CreateComponent,
@@ -63,6 +67,7 @@ function CreatePlan() {
   const [componentsData, setComponentsData] = useState<CreateComponent[]>([]);
   const [form] = Form.useForm();
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>([]);
+  const [month, setMonth] = useState(1);
   const [editComponentItem, setEditComponentsItem] =
     useState<CreateComponent>();
   const [availableBillingTypes, setAvailableBillingTypes] = useState<
@@ -90,6 +95,7 @@ function CreatePlan() {
     }
   }, []);
 
+  const months = moment.months();
   const mutation = useMutation(
     (post: CreatePlanType) => Plan.createPlan(post),
     {
@@ -136,7 +142,9 @@ function CreatePlan() {
     );
   };
 
-  const onFinishFailed = (errorInfo: any) => {};
+  const onFinishFailed = () => {
+    //
+  };
 
   const hideComponentModal = () => {
     setcomponentVisible(false);
@@ -259,17 +267,16 @@ function CreatePlan() {
           };
         }
 
-        if (values.align_plan == "calendar_aligned") {
-          if (values.plan_duration === "yearly") {
-            initialPlanVersion.day_anchor = 1;
-            initialPlanVersion.month_anchor = 1;
+        if (values.align_plan === "calendar_aligned") {
+          if (
+            values.plan_duration === "yearly" ||
+            values.plan_duration === "quarterly"
+          ) {
+            initialPlanVersion.day_anchor = values.day_of_month;
+            initialPlanVersion.month_anchor = month;
           }
           if (values.plan_duration === "monthly") {
-            initialPlanVersion.day_anchor = 1;
-          }
-          if (values.plan_duration === "quarterly") {
-            initialPlanVersion.day_anchor = 1;
-            initialPlanVersion.month_anchor = 1;
+            initialPlanVersion.day_anchor = values.day_of_month;
           }
         }
         const plan: CreatePlanType = {
@@ -407,12 +414,42 @@ function CreatePlan() {
                     >
                       <Radio.Group>
                         <Radio value="calendar_aligned">
-                          Start of Every{" "}
-                          {
-                            durationConversion[
-                              form.getFieldValue("plan_duration")
-                            ]
-                          }
+                          Every{" "}
+                          <Form.Item name="day_of_month" noStyle>
+                            <InputNumber
+                              min={1}
+                              max={31}
+                              size="small"
+                              style={{ width: "50px" }}
+                              placeholder="Day"
+                            />
+                          </Form.Item>{" "}
+                          {["quarterly", "yearly"].includes(
+                            form.getFieldValue("plan_duration")
+                          ) && (
+                            <>
+                              of{" "}
+                              <Form.Item name="month_of_year" noStyle>
+                                <select
+                                  className="border border-black rounded-sm outline-none"
+                                  onChange={(e) =>
+                                    setMonth(Number(e.target.value))
+                                  }
+                                  name="month_of_year"
+                                  id="month_of_year"
+                                >
+                                  {months.map((month, i) => (
+                                    <option value={i + 1} key={month}>
+                                      {month}
+                                    </option>
+                                  ))}
+                                </select>
+                              </Form.Item>
+                            </>
+                          )}
+                          {["monthly"].includes(
+                            form.getFieldValue("plan_duration")
+                          ) && "of the Month"}
                         </Radio>
                         <Radio value="subscription_aligned">
                           Start of Subscription
@@ -667,6 +704,7 @@ function CreatePlan() {
             editComponentItem={editComponentItem}
             setEditComponentsItem={setEditComponentsItem}
             currency={selectedCurrency}
+            planDuration={form.getFieldValue("plan_duration")}
           />
         )}
         {featureVisible && (

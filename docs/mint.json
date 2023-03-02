@@ -56,7 +56,7 @@
   "navigation": [
     {
       "group": "Overview",
-      "pages": ["overview/why-lotus", "overview/self-hosting", "contributing"]
+      "pages": ["overview/why-lotus", "overview/getting-started","overview/self-hosting", "contributing"]
     },
     {
       "group": "Metering",
@@ -86,7 +86,7 @@
     },
     {
       "group": "External Integrations",
-      "pages": ["external-integrations/stripe"]
+      "pages": ["external-integrations/stripe", "external-integrations/braintree"]
     },
     {
       "group": "Extensibility",
@@ -131,7 +131,7 @@
           ]
         },
         {
-          "group": "Access",
+          "group": "Entitlements",
           "pages": [
             "api-reference/access/feature-access",
             "api-reference/access/metric-access"

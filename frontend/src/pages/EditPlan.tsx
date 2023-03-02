@@ -35,6 +35,7 @@ import TargetCustomerForm from "../components/Plans/TargetCustomerForm";
 import VersionActiveForm from "../components/Plans/VersionActiveForm";
 import { CurrencyType } from "../types/pricing-unit-type";
 import { CreateRecurringCharge } from "../types/plan-type";
+import moment from "moment";
 
 interface CustomizedState {
   plan: PlanType;
@@ -60,6 +61,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     useState<boolean>(false);
   const [activeVersion, setActiveVersion] = useState<boolean>(false);
   const [activeVersionType, setActiveVersionType] = useState<string>();
+  const [month, setMonth] = useState(1);
   const [allCurrencies, setAllCurrencies] = useState<CurrencyType[]>([]);
   const navigate = useNavigate();
   const [componentsData, setComponentsData] = useState<any>([]);
@@ -86,6 +88,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
       name: "",
     }
   );
+  const months = moment.months();
 
   const queryClient = useQueryClient();
 
@@ -102,13 +105,13 @@ function EditPlan({ type, plan, versionIndex }: Props) {
   useEffect(() => {
     const initialComponents: any[] = plan.versions[versionIndex].components.map(
       (component) => ({
-          metric: component.billable_metric.metric_name,
-          tiers: component.tiers,
-          proration_granularity: component.proration_granularity,
-          id: component.billable_metric.metric_id,
-          metric_id: component.billable_metric.metric_id,
-          pricing_unit: component.pricing_unit,
-        })
+        metric: component.billable_metric.metric_name,
+        tiers: component.tiers,
+        proration_granularity: component.proration_granularity,
+        id: component.billable_metric.metric_id,
+        metric_id: component.billable_metric.metric_id,
+        pricing_unit: component.pricing_unit,
+      })
     );
     setComponentsData(initialComponents);
   }, [plan.versions[versionIndex].components]);
@@ -132,7 +135,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           position: toast.POSITION.TOP_CENTER,
         });
         queryClient.invalidateQueries(["plan_list"]);
-        navigate(`/plans/${  plan.plan_id}`);
+        navigate(`/plans/${plan.plan_id}`);
       },
       onError: () => {
         toast.error("Failed to create version", {
@@ -328,17 +331,16 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           usage_billing_frequency: values.usage_billing_frequency,
           currency_code: values.plan_currency.code,
         };
-        if (values.align_plan == "calendar_aligned") {
-          if (values.plan_duration === "yearly") {
-            initialPlanVersion.day_anchor = 1;
-            initialPlanVersion.month_anchor = 1;
+        if (values.align_plan === "calendar_aligned") {
+          if (
+            values.plan_duration === "yearly" ||
+            values.plan_duration === "quarterly"
+          ) {
+            initialPlanVersion.day_anchor = values.day_of_month;
+            initialPlanVersion.month_anchor = month;
           }
           if (values.plan_duration === "monthly") {
-            initialPlanVersion.day_anchor = 1;
-          }
-          if (values.plan_duration === "quarterly") {
-            initialPlanVersion.day_anchor = 1;
-            initialPlanVersion.month_anchor = 1;
+            initialPlanVersion.day_anchor = values.day_of_month;
           }
         }
         if (
@@ -370,7 +372,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           const newVersion: CreatePlanVersionType = {
             plan_id: plan.plan_id,
             description: values.description,
-            recurring_charges: recurring_charges,
+            recurring_charges,
             transition_to_plan_id: values.transition_to_plan_id,
             components: usagecomponentslist,
             features: featureIdList,
@@ -379,7 +381,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
             make_active_type: activeVersionType,
             currency_code: values.plan_currency.code,
           };
-          if (values.align_plan == "calendar_aligned") {
+          if (values.align_plan === "calendar_aligned") {
             if (values.plan_duration === "yearly") {
               newVersion.day_anchor = 1;
               newVersion.month_anchor = 1;
@@ -417,21 +419,21 @@ function EditPlan({ type, plan, versionIndex }: Props) {
   function returnPageTitle(): string {
     if (type === "backtest") {
       return "Backtest Plan";
-    } if (type === "version") {
-      return `Create New Version:` + ` ${  plan.plan_name}`;
     }
-      return `Create Custom Plan:` + ` ${  plan.plan_name}`;
-
+    if (type === "version") {
+      return `Create New Version:` + ` ${plan.plan_name}`;
+    }
+    return `Create Custom Plan:` + ` ${plan.plan_name}`;
   }
 
   function returnSubmitButtonText(): string {
     if (type === "backtest") {
       return "Create new Plan";
-    } if (type === "version") {
+    }
+    if (type === "version") {
       return "Publish version";
     }
-      return "Create custom plan";
-
+    return "Create custom plan";
   }
 
   return (
@@ -557,12 +559,42 @@ function EditPlan({ type, plan, versionIndex }: Props) {
                     >
                       <Radio.Group>
                         <Radio value="calendar_aligned">
-                          Start of Every{" "}
-                          {
-                            durationConversion[
-                              form.getFieldValue("plan_duration")
-                            ]
-                          }
+                          Every{" "}
+                          <Form.Item name="day_of_month" noStyle>
+                            <InputNumber
+                              min={1}
+                              max={31}
+                              size="small"
+                              style={{ width: "50px" }}
+                              placeholder="Day"
+                            />
+                          </Form.Item>{" "}
+                          {["quarterly", "yearly"].includes(
+                            form.getFieldValue("plan_duration")
+                          ) && (
+                            <>
+                              of{" "}
+                              <Form.Item name="month_of_year" noStyle>
+                                <select
+                                  className="border border-black rounded-sm outline-none"
+                                  onChange={(e) =>
+                                    setMonth(Number(e.target.value))
+                                  }
+                                  name="month_of_year"
+                                  id="month_of_year"
+                                >
+                                  {months.map((month, i) => (
+                                    <option value={i + 1} key={month}>
+                                      {month}
+                                    </option>
+                                  ))}
+                                </select>
+                              </Form.Item>
+                            </>
+                          )}
+                          {["monthly"].includes(
+                            form.getFieldValue("plan_duration")
+                          ) && "of the Month"}
                         </Radio>
                         <Radio value="subscription_aligned">
                           Start of Subscription
@@ -644,6 +676,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
                   borderWidth: "2px",
                   borderColor: "#EAEAEB",
                   borderStyle: "solid",
+                  height: "100%",
                 }}
                 className="h-full"
                 extra={[
@@ -802,6 +835,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
             editComponentItem={editComponentItem}
             setEditComponentsItem={setEditComponentsItem}
             currency={selectedCurrency}
+            planDuration={form.getFieldValue("plan_duration")}
           />
         )}
         {featureVisible && (

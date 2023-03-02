@@ -1,4 +1,8 @@
-import React, { Fragment, useState } from "react";
+/* eslint-disable no-plusplus */
+/* eslint-disable react/no-array-index-key */
+/* eslint-disable no-shadow */
+/* eslint-disable use-isnan */
+import React, { useRef, useState, useEffect } from "react";
 import {
   Modal,
   Form,
@@ -10,8 +14,17 @@ import {
   Collapse,
   Button,
   Tag,
+  InputNumber,
 } from "antd";
-import { MetricType } from "../../types/metric-type";
+import {
+  CreateMetricType,
+  MetricCategory,
+  EventType,
+  TimePeriodType,
+  TimePeriods,
+  CategoricalFilterType,
+  NumericFilterType,
+} from "../../types/metric-type";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-sql";
@@ -22,33 +35,39 @@ import { format } from "sql-formatter";
 const { Option } = Select;
 const { Panel } = Collapse;
 
-export interface CreateMetricState extends MetricType {
-  title: string;
-  usage_aggregation_type_2: string;
-  property_name_2: string;
-  granularity_2?: string;
-  filters?: {
-    property_name: string;
-    operator: string;
-    comparison_value: string;
-  }[];
-}
-
 function CreateMetricForm(props: {
-  state: CreateMetricState;
+  state: CreateMetricType;
   visible: boolean;
-  onSave: (state: CreateMetricState) => void;
+  onSave: (state: CreateMetricType) => void;
   onCancel: () => void;
 }) {
   const [form] = Form.useForm();
-  const gaugeGranularity = Form.useWatch("granularity_2", form);
   const [eventType, setEventType] = useState("counter");
-  const [rate, setRate] = useState(false);
   const [preset, setPreset] = useState("none");
-  const [filters, setFilters] = useState();
+  const errorMessages = useRef([]);
+  const [errors, setErrors] = useState<string[]>();
+  const [showTags, setShowTags] = useState({});
+  type MixedFilterType = CategoricalFilterType | NumericFilterType;
+  const [filters, setFilters] = useState<MixedFilterType[]>([]);
   const [customSQL, setCustomSQL] = useState<null | string>(
     "SELECT COUNT(*) as usage_qty FROM events"
   );
+  const [selectedGranularity, setSelectedGranularity] =
+    useState<TimePeriodType | null>(null);
+  const [selectedProration, setSelectedProration] =
+    useState<TimePeriodType | null>(null);
+
+  const disableOption = (option: TimePeriodType) => {
+    if (selectedGranularity) {
+      if (selectedGranularity === "total") {
+        return false;
+      } else {
+        const granularityIndex = TimePeriods.indexOf(selectedGranularity);
+        const optionIndex = TimePeriods.indexOf(option);
+        return optionIndex >= granularityIndex && option !== "total";
+      }
+    }
+  };
 
   const formatSQL = () => {
     if (customSQL) {
@@ -60,34 +79,80 @@ function CreateMetricForm(props: {
     }
   };
 
+  const getGaugeGranularityRules = () => {
+    if (eventType === "gauge") {
+      return [{ required: true, message: "Period is required" }];
+    } else {
+      return [];
+    }
+  };
+
+  const getRateGranularityRules = () => {
+    if (eventType === "rate") {
+      return [{ required: true, message: "Period is required" }];
+    } else {
+      return [];
+    }
+  };
+
+  const handleGranularityChange = (value: TimePeriodType) => {
+    setSelectedGranularity(value);
+    setSelectedProration("total");
+    form.setFieldsValue({ gauge_granularity: value });
+  };
+
+  const handleProrationChange = (value: TimePeriodType) => {
+    setSelectedProration(value);
+    form.setFieldsValue({ proration: value });
+  };
+
   const [costMetric, setCostMetric] = useState(false);
+
+  const handleCreateMetricTypeChange = (createMetricType: MetricCategory) => {
+    setEventType(createMetricType);
+    form.setFieldsValue({
+      usage_aggregation_type: "",
+      billable_aggregation_type: "",
+      event_type: "",
+      property_name: "",
+      gauge_granularity: "",
+      rate_granularity: "",
+    });
+    setSelectedGranularity(null);
+    setSelectedProration("total");
+    if (createMetricType === "custom") {
+      // Set the value of the event_name form field to an empty string
+      form.setFieldsValue({
+        event_name: "",
+      });
+    }
+  };
 
   const changeFormPreset = (preset: string) => {
     switch (preset) {
       case "none":
-        setEventType("counter");
-        setRate(false);
+        handleCreateMetricTypeChange("counter");
 
         form.resetFields();
         break;
       case "seats":
-        setEventType("gauge");
-        setRate(false);
+        handleCreateMetricTypeChange("gauge");
         setCostMetric(false);
 
         form.setFieldsValue({
-          aggregation_type_2: "max",
           event_name: "seats",
           metric_type: "gauge",
-          property_name_2: "seat_count",
-          granularity_2: "total",
+          property_name: "seat_count",
+          gauge_granularity: "months",
           metric_name: "Seats",
-          event_type: "total",
+          event_type: "delta",
+          proration: "total",
         });
+        setSelectedGranularity("months");
+        setSelectedProration("total");
         break;
       case "calls":
-        setEventType("counter");
-        setRate(false);
+        handleCreateMetricTypeChange("counter");
         setCostMetric(false);
 
         form.setFieldsValue({
@@ -98,27 +163,28 @@ function CreateMetricForm(props: {
         });
         break;
       case "rate":
-        setEventType("counter");
-        setRate(true);
+        handleCreateMetricTypeChange("rate");
         setCostMetric(false);
 
         form.setFieldsValue({
           usage_aggregation_type: "sum",
           metric_name: "Database Insert Rate",
           event_name: "db_insert",
-          metric_type: "counter",
-          property_name: "#_of_inserts",
-          rate: true,
+          metric_type: "rate",
+          property_name: "num_inserts",
           billable_aggregation_type: "max",
-          granularity: "minutes",
+          rate_granularity: "minutes",
         });
+        break;
+      default:
+        break;
     }
   };
 
   return (
     <Modal
       visible={props.visible}
-      title={props.state.title}
+      title="Create Metric"
       okText="Create"
       okType="primary"
       okButtonProps={{
@@ -128,26 +194,130 @@ function CreateMetricForm(props: {
       width={800}
       onCancel={props.onCancel}
       onOk={() => {
-        form
-          .validateFields()
-          .then((values) => {
-            values.is_cost_metric = costMetric;
-            if (rate) {
-              values.metric_type = "rate";
+        form.validateFields().then((values) => {
+          var { filters } = values;
+          filters = filters || [];
+          filters.forEach((filter) => {
+            if (
+              (filter.operator === "isin" || filter.operator === "isnotin") &&
+              !filter.comparison_value.some((el) => Number(el) >= 0 === true)
+            ) {
+              errorMessages.current = [];
+            } else if (
+              (filter.operator !== "isin" || filter.operator !== "isnotin") &&
+              Number(filter.comparison_value) >= 0
+            ) {
+              errorMessages.current = [];
+            } else if (
+              (filter.operator !== "isin" || filter.operator !== "isnotin") &&
+              Number(filter.comparison_value) < 0 === false
+            ) {
+              errorMessages.current = errorMessages.current.concat([
+                `${filter.operator} requires number conversion type`,
+              ]);
+            } else if (
+              (filter.operator === "isin" || filter.operator === "isnotin") &&
+              filter.comparison_value.every((el) => Number(el) >= 0 === false)
+            ) {
+              errorMessages.current = [];
             }
-            if (values.metric_type === "custom" && customSQL) {
-              values.custom_sql = format(customSQL, {
-                language: "postgresql",
-              });
+          });
+          setErrors(errorMessages.current);
+          if (errorMessages.current.length) {
+            return;
+          }
+          const numericFilters: NumericFilterType[] = [];
+          const categoricalFilters: CategoricalFilterType[] = [];
+          if (values.filters && values.filters.length > 0) {
+            for (let i = 0; i < values.filters.length; i++) {
+              const comparisonValue = values.filters[i].comparison_value;
+              if (["isin", "isnotin"].includes(values.filters[i].operator)) {
+                //comparisonValue will be a list of strings
+                categoricalFilters.push({
+                  property_name: values.filters[i].property_name,
+                  operator: values.filters[i].operator,
+                  comparison_value: [...values.filters[i].comparison_value],
+                });
+              } else {
+                numericFilters.push({
+                  property_name: values.filters[i].property_name,
+                  operator: values.filters[i].operator,
+                  comparison_value: parseFloat(
+                    values.filters[i].comparison_value
+                  ),
+                });
+              }
             }
-            props.onSave(values);
-            setCustomSQL("SELECT COUNT(*) as usage_qty FROM events");
-            form.resetFields();
-            setRate(false);
-            setEventType("counter");
-            setPreset("none");
-          })
-          .catch((info) => {});
+          }
+          if (values.metric_type === "custom" && customSQL) {
+            values.custom_sql = format(customSQL, {
+              language: "postgresql",
+            });
+          }
+
+          var newMetric: CreateMetricType;
+          if (values.metric_type === "counter") {
+            newMetric = {
+              event_name: values.event_name,
+              usage_aggregation_type: values.usage_aggregation_type,
+              metric_type: "counter",
+              metric_name: values.metric_name,
+              numeric_filters: numericFilters,
+              categorical_filters: categoricalFilters,
+              is_cost_metric: values.is_cost_metric,
+              ...(values.property_name
+                ? { property_name: values.property_name }
+                : {}),
+            };
+          } else if (values.metric_type === "gauge") {
+            newMetric = {
+              event_name: values.event_name,
+              property_name: values.property_name,
+              usage_aggregation_type: "max",
+              metric_type: "gauge",
+              metric_name: values.metric_name,
+              event_type: values.event_type,
+              numeric_filters: numericFilters,
+              categorical_filters: categoricalFilters,
+              granularity: values.gauge_granularity,
+              proration: values.proration,
+              is_cost_metric: false,
+            };
+          } else if (values.metric_type === "rate") {
+            newMetric = {
+              event_name: values.event_name,
+              metric_name: values.metric_name,
+              usage_aggregation_type: values.usage_aggregation_type,
+              granularity: values.rate_granularity,
+              metric_type: "rate",
+              billable_aggregation_type: "max",
+              numeric_filters: numericFilters,
+              categorical_filters: categoricalFilters,
+              ...(values.property_name
+                ? { property_name: values.property_name }
+                : {}),
+              is_cost_metric: false,
+            };
+          } else {
+            newMetric = {
+              metric_name: values.metric_name,
+              metric_type: "custom",
+              custom_sql: values.custom_sql,
+              is_cost_metric: false,
+              numeric_filters: [],
+              categorical_filters: [],
+            };
+          }
+          props.onSave(newMetric);
+          setCustomSQL("SELECT COUNT(*) as usage_qty FROM events");
+          form.resetFields();
+          setEventType("counter");
+          setPreset("none");
+        });
+
+        // form.validateFields().then((values) => {
+
+        // });
       }}
     >
       <div className="grid grid-cols-8 my-4 gap-4 items-center">
@@ -172,12 +342,12 @@ function CreateMetricForm(props: {
       <Form
         form={form}
         layout="vertical"
-        name="customer_form"
+        name="metric_form"
         initialValues={{
           metric_type: "counter",
           usage_aggregation_type: "count",
-          usage_aggregation_type_2: "max",
-          granularity_2: "days",
+          billable_aggregation_type: "max",
+          granularity: "days",
           event_type: "total",
         }}
       >
@@ -200,19 +370,24 @@ function CreateMetricForm(props: {
             </Form.Item>
           </Tooltip>
           {eventType !== "custom" && (
-            <Form.Item
-              name="event_name"
-              label="Event Name"
-              rules={[
-                {
-                  required: true,
-                  message:
-                    "Please input the name of the event you want to track",
-                },
-              ]}
+            <Tooltip
+              placement="left"
+              title="Define the name of the event you want to track"
             >
-              <Input id="event-name-input" />
-            </Form.Item>
+              <Form.Item
+                name="event_name"
+                label="Event Name"
+                rules={[
+                  {
+                    required: true,
+                    message:
+                      "Please input the name of the event you want to track",
+                  },
+                ]}
+              >
+                <Input id="event-name-input" />
+              </Form.Item>
+            </Tooltip>
           )}
         </div>
 
@@ -234,33 +409,15 @@ function CreateMetricForm(props: {
               value={eventType}
               defaultValue={eventType}
               onChange={(e) => {
-                setEventType(e.target.value);
-                if (e.target.value === "counter") {
-                  setRate(false);
-                }
+                handleCreateMetricTypeChange(e.target.value);
+                setPreset("none");
               }}
             >
               <Radio value="counter">Counter</Radio>
               <Radio value="gauge">Gauge</Radio>
+              <Radio value="rate">Rate</Radio>
               <Radio value="custom">Custom (Beta)</Radio>
             </Radio.Group>
-          </Form.Item>
-          <Form.Item label="Does this metric represent a cost?">
-            <Switch
-              checked={costMetric}
-              onChange={() => {
-                setCostMetric(!costMetric);
-                if (!costMetric) {
-                  form.setFieldsValue({
-                    is_cost_metric: false,
-                  });
-                } else {
-                  form.setFieldsValue({
-                    is_cost_metric: true,
-                  });
-                }
-              }}
-            />
           </Form.Item>
         </div>
         <Form.Item
@@ -269,7 +426,7 @@ function CreateMetricForm(props: {
             prevValues.metric_type !== currentValues.metric_type
           }
         >
-          {eventType === "counter" && (
+          {(eventType === "counter" || eventType === "rate") && (
             <>
               <Form.Item
                 name="usage_aggregation_type"
@@ -282,7 +439,7 @@ function CreateMetricForm(props: {
                   // if rate is selected, don't allow unique
                   {
                     validator: (_, value) => {
-                      if (rate && value === "unique") {
+                      if (eventType == "rate" && value === "unique") {
                         return Promise.reject(
                           new Error("Cannot use unique with rate")
                         );
@@ -294,7 +451,9 @@ function CreateMetricForm(props: {
               >
                 <Select defaultValue="count">
                   <Option value="count">count</Option>
-                  <Option value="unique">unique</Option>
+                  {eventType === "counter" && (
+                    <Option value="unique">unique</Option>
+                  )}
                   <Option value="sum">sum</Option>
                   <Option value="max">max</Option>
                 </Select>
@@ -321,45 +480,15 @@ function CreateMetricForm(props: {
                   ) : null
                 }
               </Form.Item>
-              <div className="mb-4">
-                <h4>
-                  Add Rate. This will allow you to track the metric over windows
-                  of time.
-                </h4>
-                <Switch
-                  checked={rate}
-                  onChange={() => {
-                    setRate(!rate);
-                    if (!rate) {
-                      form.setFieldsValue({
-                        billable_aggregation_type: "max",
-                        granularity: "days",
-                      });
-                    } else {
-                      form.setFieldsValue({
-                        metric_type: "counter",
-                      });
-                    }
-                  }}
-                  // disabled={
-                  //   form.getFieldValue("usage_aggregation_type") !== "unique"
-                  // }
-                />
-              </div>
 
-              {rate && (
+              {eventType === "rate" && (
                 <>
                   <Form.Item
-                    name="granularity"
+                    name="rate_granularity"
                     label="Rate Period"
-                    rules={[
-                      {
-                        required: true,
-                        message: "Period is required",
-                      },
-                    ]}
+                    rules={getRateGranularityRules()}
                   >
-                    <Select defaultValue="minutes">
+                    <Select>
                       <Option value="minutes">minute</Option>
 
                       <Option value="hours">hour</Option>
@@ -367,20 +496,6 @@ function CreateMetricForm(props: {
                       <Option value="days">day</Option>
 
                       <Option value="months">month</Option>
-                    </Select>
-                  </Form.Item>
-                  <Form.Item
-                    name="billable_aggregation_type"
-                    label="Rate Aggregation Type"
-                    rules={[
-                      {
-                        required: true,
-                        message: "Aggregation type is required",
-                      },
-                    ]}
-                  >
-                    <Select defaultValue="max">
-                      <Option value="max">max</Option>
                     </Select>
                   </Form.Item>
                 </>
@@ -391,25 +506,11 @@ function CreateMetricForm(props: {
             <>
               <div className="grid grid-cols-2 gap-4">
                 <Form.Item
-                  name="usage_aggregation_type_2"
-                  label="Aggregation Type"
-                  rules={[
-                    {
-                      required: true,
-                      message: "Aggregation type is required",
-                    },
-                  ]}
-                >
-                  <Select defaultValue="max">
-                    <Option value="max">max</Option>
-                  </Select>
-                </Form.Item>
-                <Form.Item
                   name="event_type"
                   label="Event Type (how the property amount is reported)"
                   rules={[{ required: true }]}
                 >
-                  <Select defaultValue="total">
+                  <Select>
                     <Option value="total">total</Option>
                     <Option value="delta">delta</Option>
                   </Select>
@@ -417,30 +518,35 @@ function CreateMetricForm(props: {
               </div>
 
               <Form.Item
-                name="property_name_2"
+                name="property_name"
                 label="Property Name"
                 rules={[{ required: true }]}
               >
                 <Input />
               </Form.Item>
-              <Form.Item name="granularity_2" label="Proration">
-                <Select>
-                  <Option value="minutes">minute</Option>
-                  <Option value="hours">hour</Option>
-                  <Option value="days">day</Option>
-                  <Option value="months">month</Option>
-                  <Option value="quarters">quarter</Option>
-                  <Option value="years">year</Option>
-                  <Option value="total">none</Option>
-                </Select>
-              </Form.Item>
 
-              {/* {gaugeGranularity && gaugeGranularity !== "total" && (
-                <p className=" text-darkgold mb-4">
-                  When inputting the price for this metric, you will be inputing
-                  the price per {gaugeGranularity.slice(0, -1)}
-                </p>
-              )} */}
+              <Form.Item
+                name="gauge_granularity"
+                label="Unit Defined Per"
+                rules={getGaugeGranularityRules()}
+              >
+                <Tooltip
+                  placement="left"
+                  title="Define the unit of measurement for this gauge metric. This would be `hours` for AWS-style CPU-hour metrics, or `month` for a monthly metric based on seats/users."
+                >
+                  <Select
+                    value={selectedGranularity}
+                    onChange={handleGranularityChange}
+                  >
+                    <Select.Option value="seconds">second</Select.Option>
+                    <Select.Option value="minutes">minute</Select.Option>
+                    <Select.Option value="hours">hour</Select.Option>
+                    <Select.Option value="days">day</Select.Option>
+                    <Select.Option value="months">month</Select.Option>
+                    <Select.Option value="total">plan duration</Select.Option>
+                  </Select>
+                </Tooltip>
+              </Form.Item>
             </>
           )}
         </Form.Item>
@@ -565,7 +671,7 @@ function CreateMetricForm(props: {
                                 required: true,
                                 whitespace: true,
                                 message:
-                                  "Please input a property name name or delete this filter.",
+                                  "Please input a property name or delete this filter.",
                               },
                             ]}
                             noStyle
@@ -582,13 +688,27 @@ function CreateMetricForm(props: {
                                 required: true,
                                 whitespace: true,
                                 message:
-                                  "Please input a property name name or delete this filter.",
+                                  "Please input an operator or delete this filter.",
                               },
                             ]}
                           >
-                            <Select style={{ width: "50%" }}>
-                              <Option value="isin">is (string)</Option>
-                              <Option value="isnotin">is not (string)</Option>
+                            <Select
+                              onChange={(e) => {
+                                let tagsShown = false;
+                                if (e === "isin" || e === "isnotin") {
+                                  tagsShown = true;
+                                } else {
+                                  tagsShown = false;
+                                }
+                                setShowTags({
+                                  ...showTags,
+                                  [field.name]: tagsShown,
+                                });
+                              }}
+                              style={{ width: "50%" }}
+                            >
+                              <Option value="isin">is one of</Option>
+                              <Option value="isnotin">is not one of</Option>
                               <Option value="eq">= </Option>
                               <Option value="gte">&#8805;</Option>
                               <Option value="gt"> &#62; </Option>
@@ -601,9 +721,52 @@ function CreateMetricForm(props: {
                             <Form.Item
                               name={[field.name, "comparison_value"]}
                               style={{ alignSelf: "middle" }}
+                              dependencies={[field.name, "operator"]}
+                              validateTrigger={["onChange", "onBlur"]}
+                              rules={[
+                                ({ getFieldValue }) => ({
+                                  validator(_, value) {
+                                    if (showTags[field.name] || false) {
+                                      if (
+                                        Array.isArray(value) &&
+                                        value.length >= 1
+                                      ) {
+                                        return Promise.resolve();
+                                      }
+                                      return Promise.reject(
+                                        "Please select at least one value for this filter."
+                                      );
+                                    } else if (
+                                      value === undefined ||
+                                      value === null ||
+                                      value === "" ||
+                                      (Array.isArray(value) &&
+                                        value.length === 0)
+                                    ) {
+                                      return Promise.reject(
+                                        "Please input a comparison value or delete this filter."
+                                      );
+                                    }
+                                    return Promise.resolve();
+                                  },
+                                }),
+                              ]}
                             >
-                              <Input />
+                              {!showTags[field.name] || false ? (
+                                <InputNumber
+                                  placeholder="comparison value"
+                                  style={{ width: "100%" }}
+                                />
+                              ) : (
+                                <Select
+                                  mode="tags"
+                                  style={{ width: "100%" }}
+                                  placeholder="Input 1...n values"
+                                  options={[]}
+                                />
+                              )}
                             </Form.Item>
+
                             {fields.length > 0 ? (
                               <MinusCircleOutlined
                                 className="hover:bg-background place-self-center p-4"
@@ -628,6 +791,92 @@ function CreateMetricForm(props: {
                   </>
                 )}
               </Form.List>
+              {errors?.length && errors.length > 0 ? (
+                <div>
+                  {errors.map((el, idx) => (
+                    <div className="text-red-700" key={idx}>
+                      {el}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </Panel>
+            <Panel header="Advanced Settings" key="2">
+              {eventType === "gauge" && (
+                <Form.Item name="proration" label="Proration">
+                  <Tooltip
+                    placement="left"
+                    title="You can define your proration in order to allow usage as a fractional amount of the granularity."
+                  >
+                    <Select
+                      value={selectedProration}
+                      onChange={handleProrationChange}
+                    >
+                      {/* <Select.Option
+                        value="milliseconds"
+                        disabled={disableOption("milliseconds")}
+                      >
+                        milliseconds
+                      </Select.Option> */}
+                      <Select.Option
+                        value="seconds"
+                        disabled={disableOption("seconds")}
+                      >
+                        second
+                      </Select.Option>
+                      <Select.Option
+                        value="minutes"
+                        disabled={disableOption("minutes")}
+                      >
+                        minute
+                      </Select.Option>
+                      <Select.Option
+                        value="hours"
+                        disabled={disableOption("hours")}
+                      >
+                        hour
+                      </Select.Option>
+                      <Select.Option
+                        value="days"
+                        disabled={disableOption("days")}
+                      >
+                        day
+                      </Select.Option>
+                      <Select.Option
+                        value="months"
+                        disabled={disableOption("months")}
+                      >
+                        month
+                      </Select.Option>
+                      <Select.Option
+                        value="total"
+                        disabled={disableOption("total")}
+                      >
+                        no proration
+                      </Select.Option>
+                    </Select>
+                  </Tooltip>
+                </Form.Item>
+              )}
+              {eventType === "counter" && (
+                <Form.Item label="Does this metric represent a cost?">
+                  <Switch
+                    checked={costMetric}
+                    onChange={() => {
+                      setCostMetric(!costMetric);
+                      if (!costMetric) {
+                        form.setFieldsValue({
+                          is_cost_metric: false,
+                        });
+                      } else {
+                        form.setFieldsValue({
+                          is_cost_metric: true,
+                        });
+                      }
+                    }}
+                  />
+                </Form.Item>
+              )}
             </Panel>
           </Collapse>
         )}

@@ -21,12 +21,12 @@ export const colorMap = new Map<string, string>([
 
 const operatorDisplayMap = new Map<string, string>([
   ["eq", "="],
-  ["isin", "is"],
+  ["isin", "in"],
   ["gt", ">"],
   ["gte", ">="],
   ["lt", "<"],
   ["lte", "<="],
-  ["isnotin", "is not"],
+  ["isnotin", "not in"],
 ]);
 
 interface Props {
@@ -44,30 +44,30 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
   ) => {
     if (numeric_filters !== undefined && categorical_filters === undefined) {
       filters = numeric_filters.map((filter) => ({
-          ...filter,
-          operator: operatorDisplayMap.get(filter.operator),
-        }));
+        ...filter,
+        operator: operatorDisplayMap.get(filter.operator),
+      }));
     } else if (
       categorical_filters !== undefined &&
       numeric_filters === undefined
     ) {
       filters = categorical_filters.map((filter) => ({
-          ...filter,
-          operator: operatorDisplayMap.get(filter.operator),
-        }));
+        ...filter,
+        operator: operatorDisplayMap.get(filter.operator),
+      }));
     } else if (
       numeric_filters !== undefined &&
       categorical_filters !== undefined
     ) {
       filters = numeric_filters.map((filter) => ({
-          ...filter,
-          operator: operatorDisplayMap.get(filter.operator),
-        }));
+        ...filter,
+        operator: operatorDisplayMap.get(filter.operator),
+      }));
       filters = filters.concat(
         categorical_filters.map((filter) => ({
-            ...filter,
-            operator: operatorDisplayMap.get(filter.operator),
-          }))
+          ...filter,
+          operator: operatorDisplayMap.get(filter.operator),
+        }))
       );
     }
 
@@ -147,15 +147,25 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
             record.numeric_filters,
             record.categorical_filters
           );
-
           if (filters) {
             return (
               <div className="space-y-2">
                 {filters.map((filter) => (
                   <Tag color="" key={filter.property_name}>
-                    <b>{filter.property_name}</b> {filter.operator} "
-                    {filter.comparison_value}
-                    "
+                    <b>{filter.property_name}</b> {filter.operator}{" "}
+                    {Array.isArray(filter.comparison_value)
+                      ? "[" +
+                        filter.comparison_value
+                          .map((v) => `"${v}"`)
+                          .join(", ") +
+                        "]"
+                      : filter.operator === "=" ||
+                        filter.operator === ">=" ||
+                        filter.operator === "<=" ||
+                        filter.operator === ">" ||
+                        filter.operator === "<"
+                      ? filter.comparison_value
+                      : `"${filter.comparison_value}"`}
                   </Tag>
                 ))}
               </div>
@@ -172,10 +182,10 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
         columns={columns}
         dataSource={metricArray}
         onRow={(record, rowIndex) => ({
-            onClick: (event) => {
-              setCurrentMetric(record);
-            },
-          })}
+          onClick: (event) => {
+            setCurrentMetric(record);
+          },
+        })}
         toolBarRender={false}
         rowKey="customer_id"
         formRef={formRef}
@@ -185,6 +195,7 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
           showTotal: (total, range) => (
             <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
           ),
+          pageSize: 8,
         }}
         options={false}
       />

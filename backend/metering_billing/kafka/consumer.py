@@ -1,11 +1,11 @@
 import logging
-import threading
 from dataclasses import dataclass
 
 import posthog
+import sentry_sdk
 from django.conf import settings
 from django.core.cache import cache
-from metering_billing.models import Customer, Event, Organization
+from metering_billing.models import Event, Organization
 from metering_billing.utils import now_utc
 
 from .singleton import Singleton
@@ -34,8 +34,6 @@ class Consumer(metaclass=Singleton):
         self.__connection = CONSUMER
         self.config = ConsumerConfig()
         self.topic = self.config.topic
-        self.buffer = {}
-        self.buffer_size = 0
 
     def consume(self):
         """Consume messages from a Redpanda topic"""
@@ -48,30 +46,16 @@ class Consumer(metaclass=Singleton):
                 try:
                     event = msg.value["events"][0]
                     organization_pk = msg.value["organization_id"]
-                    self.buffer[organization_pk] = self.buffer.get(
-                        organization_pk, []
-                    ).append(event)
-                    self.buffer_size += 1
-                    if self.buffer_size >= 100:
-                        self.write_events_to_db()
-                    elif self.timer is None:
-                        self.timer = threading.Timer(0.250, self.write_events_to_db)
-                        self.timer.start()
-                except Exception:
+                    write_batch_events_to_db({organization_pk: [event]})
+                except Exception as e:
+                    sentry_sdk.capture_exception(e)
+                    logger.info(
+                        f"Could not consume from topic: {self.topic}. Excpetionmessage: {e}"
+                    )
                     continue
         except Exception:
             logger.info(f"Could not consume from topic: {self.topic}")
             raise
-
-    def write_events_to_db(self):
-        self.timer.cancel()
-
-        if self.buffer:
-            write_batch_events_to_db(self.buffer)
-            self.buffer = {}
-            self.buffer_size = 0
-
-        self.timer = threading.Timer(0.250, self.write_events_to_db)
 
 
 def write_batch_events_to_db(buffer):
@@ -80,22 +64,7 @@ def write_batch_events_to_db(buffer):
         ### Match Customer pk with customer_id amd fill in customer pk
         events_to_insert = []
         for event in events_list:
-            customer_pk = cache.get(f"customer_pk_{org_pk}_{event['cust_id']}")
-            if not customer_pk:
-                try:
-                    customer_pk = Customer.objects.get(
-                        organization_id=org_pk, customer_id=event["cust_id"]
-                    ).pk
-                    cache.set(
-                        f"customer_pk_{org_pk}_{event['cust_id']}",
-                        customer_pk,
-                        60 * 60 * 24,
-                    )
-                except Customer.DoesNotExist:
-                    pass
-            events_to_insert.append(
-                Event(**{**event, "customer_id": customer_pk, "inserted_at": now})
-            )
+            events_to_insert.append(Event(**{**event, "inserted_at": now}))
         ## now insert events
         events = Event.objects.bulk_create(events_to_insert, ignore_conflicts=True)
         organization_name = cache.get(f"organization_name_{org_pk}")

@@ -1,9 +1,10 @@
 import collections
 import datetime
+import json
 import uuid
 from collections import OrderedDict, namedtuple
 from collections.abc import MutableMapping, MutableSequence
-from decimal import ROUND_DOWN, ROUND_UP, Decimal
+from decimal import ROUND_DOWN, ROUND_HALF_UP, ROUND_UP, Decimal
 
 import pytz
 from dateutil import parser
@@ -18,6 +19,20 @@ from metering_billing.utils.enums import (
 
 ModelType = type[Model]
 Fields = list[Field]
+
+
+def parse_nested_response(obj) -> dict:
+    json_enc = json.dumps(obj, default=lambda o: "<not serializable>")
+    return json.loads(json_enc)
+
+
+def print_prefetch_counts(queryset, prefix=""):
+    for obj in queryset:
+        print(f"{prefix}{obj.__class__.__name__} {obj.pk}")
+        if hasattr(obj, "_prefetched_objects_cache"):
+            for prefetch_key, prefetched_objs in obj._prefetched_objects_cache.items():
+                print(f"{prefix} - {prefetch_key}: {prefetched_objs.all().count()}")
+                print_prefetch_counts(prefetched_objs.all(), prefix=prefix + "    ")
 
 
 def make_hashable(obj):
@@ -35,6 +50,12 @@ def convert_to_decimal(value):
     if value is None:
         return Decimal(0)
     return Decimal(value).quantize(Decimal(".0000000001"), rounding=ROUND_UP)
+
+
+def convert_to_two_decimal_places(value):
+    if value is None:
+        return Decimal(0)
+    return Decimal(value).quantize(Decimal(".01"), rounding=ROUND_HALF_UP)
 
 
 def convert_to_date(value):
@@ -525,3 +546,21 @@ def namedtuplefetchall(cursor):
     desc = cursor.description
     nt_result = namedtuple("Result", [col[0] for col in desc])
     return [nt_result(*row) for row in cursor.fetchall()]
+
+
+def customer_id_uuidv5(customer_id):
+    from django.conf import settings
+
+    return uuid.uuid5(settings.CUSTOMER_ID_NAMESPACE, customer_id)
+
+
+def event_name_uuidv5(event_name):
+    from django.conf import settings
+
+    return uuid.uuid5(settings.EVENT_NAME_NAMESPACE, event_name)
+
+
+def idempotency_id_uuidv5(idempotency_id):
+    from django.conf import settings
+
+    return uuid.uuid5(settings.IDEMPOTENCY_ID_NAMESPACE, idempotency_id)

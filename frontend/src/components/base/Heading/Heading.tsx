@@ -25,7 +25,7 @@ const Heading: React.FC<HeadingProps> = ({
   const currentPath = pathname.split("/")[1];
   const isPlansPage = currentPath === "plans";
   const headingText: string =
-    import.meta.env.VITE_IS_DEMO === "true"
+    (import.meta as any).env.VITE_IS_DEMO === "true"
       ? "Welcome To The Lotus Cloud Demo"
       : "";
   return (

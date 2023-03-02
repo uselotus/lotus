@@ -2,17 +2,14 @@ import { PlanDisplay, PlanVersionType } from "./plan-type";
 import { SubscriptionType } from "./subscription-type";
 import { InvoiceType } from "./invoice-type";
 import { CurrencyType } from "./pricing-unit-type";
+import { PaymentProcessorType } from "./payment-processor-type";
+import { AddressType, TaxProviderType } from "./account-type";
 
 export interface CustomerType {
   customer_id: string;
-  address?: {
-    city: string;
-    country: string;
-    line1: string;
-    line2: string;
-    postal_code: string;
-    state: string;
-  };
+  shipping_address?: AddressType;
+  billing_address?: AddressType;
+  tax_providers: TaxProviderType[];
   email: string;
   customer_name: string;
   invoices: InvoiceType[];
@@ -21,7 +18,8 @@ export interface CustomerType {
   integrations: object;
   default_currency: CurrencyType;
   has_payment_method: boolean;
-  payment_provider: string;
+  payment_provider?: PaymentProcessorType;
+  payment_provider_id?: string;
   tax_rate?: number;
   timezone: string;
 }
@@ -52,6 +50,14 @@ export interface CustomerCreateType
   payment_provider_id?: string;
   properties?: { [key: string]: string };
   default_currency_code?: string;
+}
+
+export interface CustomerUpdateType {
+  default_currency_code?: string;
+  shipping_address?: CustomerType["shipping_address"];
+  billing_address?: CustomerType["billing_address"];
+  tax_rate?: number;
+  timezone?: string;
 }
 
 export interface CustomerTableItem extends CustomerSummary {

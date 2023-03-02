@@ -10,44 +10,41 @@ import { toast } from "react-toastify";
 import MetricTable from "../components/Metrics/MetricTable";
 import { Metrics } from "../api/api";
 import {
-  CateogricalFilterType,
+  CategoricalFilterType,
+  CreateMetricType,
   MetricType,
   NumericFilterType,
 } from "../types/metric-type";
 import LoadingSpinner from "../components/LoadingSpinner";
-import CreateMetricForm, {
-  CreateMetricState,
-} from "../components/Metrics/CreateMetricForm";
+import CreateMetricForm from "../components/Metrics/CreateMetricForm";
 import EventPreview from "../components/EventPreview";
 import "./ViewMetrics.css";
 import { PageLayout } from "../components/base/PageLayout";
 
-const defaultMetricState: CreateMetricState = {
-  title: "Create a new Metric",
+const defaultMetricState: CreateMetricType = {
   event_name: "",
-  usage_aggregation_type: "count",
+  usage_aggregation_type: "",
   property_name: "",
   metric_type: "counter",
-  usage_aggregation_type_2: "max",
-  property_name_2: "",
-  metric_id: "",
+  metric_name: "",
+  numeric_filters: [],
+  categorical_filters: [],
+  is_cost_metric: false,
 };
 
 const ViewMetrics: FC = () => {
   const [visible, setVisible] = useState<boolean>(false);
   const [metricState, setMetricState] =
-    useState<CreateMetricState>(defaultMetricState);
+    useState<CreateMetricType>(defaultMetricState);
 
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError }: UseQueryResult<MetricType[]> = useQuery<
     MetricType[]
-  >(["metric_list"], () =>
-    Metrics.getMetrics().then((res) => res)
-  );
+  >(["metric_list"], () => Metrics.getMetrics().then((res) => res));
 
   const mutation = useMutation(
-    (post: MetricType) => Metrics.createMetric(post),
+    (post: CreateMetricType) => Metrics.createMetric(post),
     {
       onSuccess: () => {
         setVisible(false);
@@ -58,7 +55,7 @@ const ViewMetrics: FC = () => {
       },
 
       onError: (error: any) => {
-        toast.error(`Error creating metric: ${  error.response.data.detail}`, {
+        toast.error(`Error creating metric: ${error.response.data.detail}`, {
           position: toast.POSITION.TOP_CENTER,
         });
       },
@@ -73,55 +70,7 @@ const ViewMetrics: FC = () => {
     setVisible(false);
   };
 
-  const onSave = (state: CreateMetricState) => {
-    const metricInstance: MetricType = {
-      event_name: state.event_name,
-      usage_aggregation_type:
-        state.metric_type === "gauge"
-          ? state.usage_aggregation_type_2
-          : state.usage_aggregation_type,
-      property_name:
-        state.metric_type == "gauge"
-          ? state.property_name_2
-          : state.property_name,
-      granularity: state.metric_type === "rate" ? state.granularity : "total",
-      proration:
-        state.metric_type === "gauge" ? state.granularity_2 : state.granularity,
-      metric_name: state.metric_name,
-      metric_type: state.metric_type,
-      billable_aggregation_type: state.billable_aggregation_type,
-      // defaults for now
-      event_type: state.metric_type === "gauge" ? state.event_type : "delta",
-      is_cost_metric: state.is_cost_metric,
-      custom_sql: state.metric_type === "custom" ? state.custom_sql : undefined,
-      metric_id: "",
-    };
-
-    if (state.filters) {
-      const numericFilters: NumericFilterType[] = [];
-      const categoricalFilters: CateogricalFilterType[] = [];
-      for (let i = 0; i < state.filters.length; i++) {
-        if (
-          state.filters[i].operator === "isin" ||
-          state.filters[i].operator === "isnotin"
-        ) {
-          categoricalFilters.push({
-            property_name: state.filters[i].property_name,
-            operator: state.filters[i].operator,
-            comparison_value: [state.filters[i].comparison_value],
-          });
-        } else {
-          numericFilters.push({
-            property_name: state.filters[i].property_name,
-            operator: state.filters[i].operator,
-            comparison_value: parseFloat(state.filters[i].comparison_value),
-          });
-        }
-      }
-      metricInstance.numeric_filters = numericFilters;
-      metricInstance.categorical_filters = categoricalFilters;
-    }
-
+  const onSave = (metricInstance: CreateMetricType) => {
     mutation.mutate(metricInstance);
   };
 

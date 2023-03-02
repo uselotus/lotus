@@ -71,7 +71,7 @@ jobs:
           python -m pip install --upgrade pipenv wheel && pipenv update
 
       - id: cache-pipenv
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: ~/.local/share/virtualenvs
           key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
@@ -135,26 +135,3 @@ jobs:
 
       - name: Output summary to console
         run: echo ${{ steps.run-newman.outputs.summary }}
-
-      - name: Checkout lotus-python repository
-        uses: actions/checkout@v3
-        with:
-          repository: uselotus/lotus-python
-          ref: main
-          path: lotus-python
-
-      - name: Install pipenv for lotus-python
-        run: |
-          cd ../lotus-python
-          python -m pip install --upgrade pipenv wheel && pipenv update
-
-      - name: Install dependencies for lotus-python
-        if: steps.cache-pipenv.outputs.cache-hit != 'true'
-        run: |
-          cd ../lotus-python
-          pipenv install --deploy --dev
-
-      - name: Test Pytest for lotus-python
-        run: |
-          cd ../lotus-python
-          pipenv run pytest

@@ -1,5 +1,5 @@
 // @ts-ignore
-import React, { FC, useEffect, useState } from "react";
+import React, { FC, useEffect, useState, useCallback } from "react";
 import {
   useMutation,
   useQuery,
@@ -21,10 +21,14 @@ import { toast } from "react-toastify";
 import { PlusOutlined } from "@ant-design/icons";
 import { Organization, PricingUnits } from "../../../../api/api";
 import { CurrencyType } from "../../../../types/pricing-unit-type";
+import { TaxProviderType, TaxProviders } from "../../../../types/account-type";
 import LoadingSpinner from "../../../LoadingSpinner";
 import useGlobalStore from "../../../../stores/useGlobalstore";
 import { QueryErrors } from "../../../../types/error-response-types";
-import { OrganizationType } from "../../../../types/account-type";
+import {
+  OrganizationType,
+  UpdateOrganizationType,
+} from "../../../../types/account-type";
 import { country_json } from "../../../../assets/country_codes";
 import { fourDP } from "../../../../helpers/fourDP";
 import { timezones } from "../../../../assets/timezones";
@@ -63,6 +67,15 @@ const GeneralTab: FC = () => {
   const [currentCurrency, setCurrentCurrency] = useState("");
   const [formSubscriptionFilters, setFormSubscriptionFilters] =
     React.useState<string[]>(subscriptionFilters);
+  const [organizationTaxProviders, setTaxProviders] = useState<
+    TaxProviderType[]
+  >([]);
+  const [taxProvider1, setTaxProvider1] = useState<TaxProviderType | null>(
+    null
+  );
+  const [taxProvider2, setTaxProvider2] = useState<TaxProviderType | null>(
+    null
+  );
 
   const {
     data: pricingUnits,
@@ -119,8 +132,23 @@ const GeneralTab: FC = () => {
       setPostalCode(orgData.address ? orgData.address.postal_code : "");
       setSubscriptionFilters(orgData.subscription_filter_keys);
       setFormSubscriptionFilters(orgData.subscription_filter_keys);
+      setTaxProviders(orgData.tax_providers);
+      setTaxProvidersAfterQuery(orgData.tax_providers);
     }
   }, [orgData]);
+
+  function setTaxProvidersAfterQuery(taxProviders: TaxProviderType[]) {
+    if (taxProviders.length >= 2) {
+      setTaxProvider1(taxProviders[0]);
+      setTaxProvider2(taxProviders[1]);
+    } else if (taxProviders.length === 1) {
+      setTaxProvider1(taxProviders[0]);
+      setTaxProvider2(null);
+    } else {
+      setTaxProvider1(null);
+      setTaxProvider2(null);
+    }
+  }
 
   const handleEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(event.target.value);
@@ -146,45 +174,42 @@ const GeneralTab: FC = () => {
     }
   );
 
-  const updateOrg = useMutation(
-    (obj: {
-      org_id: string;
-      default_currency_code: string;
-      address: OrganizationType["address"];
-      tax_rate: number;
-      timezone: string;
-      payment_grace_period: number;
-      subscription_filter_keys: string[];
-    }) =>
-      Organization.updateOrganization(
-        obj.org_id,
-        obj.default_currency_code,
-        obj.tax_rate,
-        obj.timezone,
-        obj.payment_grace_period,
-        obj.address,
-        obj.subscription_filter_keys
-      ),
-    {
-      onSuccess: () => {
-        setIsEdit(false);
+  const updateOrg = useMutation<
+    OrganizationType,
+    Error,
+    { org_id: string; obj: UpdateOrganizationType }
+  >(({ org_id, obj }) => Organization.updateOrganization(org_id, obj), {
+    onSuccess: (res) => {
+      setIsEdit(false);
 
-        toast.success("Successfully Updated Organization Settings", {
-          position: toast.POSITION.TOP_CENTER,
-        });
-        queryClient.invalidateQueries(["organization"]);
-        form.resetFields();
-      },
-      onError: () => {
-        toast.error("Failed to Update Organization Settings", {
-          position: toast.POSITION.TOP_CENTER,
-        });
-      },
-    }
-  );
+      toast.success("Successfully Updated Organization Settings", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+      queryClient.invalidateQueries(["organization"]);
+      form.resetFields();
+    },
+    onError: () => {
+      toast.error("Failed to Update Organization Settings", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+    },
+  });
 
   const handleSendInviteEmail = (event: React.FormEvent<FormElements>) => {
     mutation.mutate({ email });
+  };
+
+  interface FormValues {
+    taxProvider1: TaxProviderType | null;
+    taxProvider2: TaxProviderType | null;
+  }
+
+  const validateTaxProviders = (values: FormValues) => {
+    const { taxProvider1, taxProvider2 } = values;
+    if (taxProvider1 && taxProvider2 && taxProvider1 === taxProvider2) {
+      return Promise.reject("Cannot select the same tax provider twice");
+    }
+    return Promise.resolve();
   };
 
   return (
@@ -249,6 +274,12 @@ const GeneralTab: FC = () => {
               <Tag key={filter}>{filter}</Tag>
             ))}
           </p>
+          <p className="text-[16px]">
+            <b>Tax Providers:</b>{" "}
+            {organizationTaxProviders.map((provider) => (
+              <Tag key={provider}>{provider}</Tag>
+            ))}
+          </p>
 
           <div className=" flex justify-end" />
         </div>
@@ -280,14 +311,21 @@ const GeneralTab: FC = () => {
                 state,
               };
             }
+            const providers = [taxProvider1, taxProvider2];
+            const organizationTaxProviders = providers.filter(
+              (provider) => provider !== null
+            ) as TaxProviderType[];
             updateOrg.mutate({
               org_id: org.organization_id,
-              default_currency_code: currentCurrency,
-              tax_rate: fourDP(taxRate),
-              timezone,
-              payment_grace_period: invoiceGracePeriod,
-              address: submittedAddress,
-              subscription_filter_keys: subscriptionFilters,
+              obj: {
+                default_currency_code: currentCurrency,
+                tax_rate: fourDP(taxRate),
+                timezone,
+                payment_grace_period: invoiceGracePeriod,
+                address: submittedAddress,
+                subscription_filter_keys: subscriptionFilters,
+                tax_providers: organizationTaxProviders,
+              },
             });
           }
         }}
@@ -358,9 +396,10 @@ const GeneralTab: FC = () => {
                 />
                 <Select
                   placeholder="Country"
-                  defaultValue={country}
+                  defaultValue={""}
                   onChange={(e) => setCountry(e)}
                 >
+                  <Select.Option value="">-- None --</Select.Option>
                   {country_json.map((country) => (
                     <Select.Option value={country.Code}>
                       {country.Name}
@@ -414,6 +453,41 @@ const GeneralTab: FC = () => {
                   value: filter,
                 }))}
               />
+            </Form.Item>
+            <Form.Item label="Tax Provider 1" name="tax_provider_1">
+              <Select
+                options={[
+                  { value: null, label: "-" },
+                  ...TaxProviders.filter(
+                    (provider) => provider !== taxProvider2
+                  ).map((provider) => ({ value: provider, label: provider })),
+                ]}
+                defaultValue={taxProvider1}
+                onChange={(value) => setTaxProvider1(value)}
+              />
+            </Form.Item>
+            <Form.Item label="Tax Provider 2" name="tax_provider_2">
+              <Select
+                options={[
+                  { value: null, label: "-" },
+                  ...TaxProviders.filter(
+                    (provider) => provider !== taxProvider1
+                  ).map((provider) => ({ value: provider, label: provider })),
+                ]}
+                defaultValue={taxProvider2}
+                onChange={(value) => setTaxProvider2(value)}
+              />
+            </Form.Item>
+            <Form.Item
+              name="organization_tax_providers"
+              rules={[
+                {
+                  validator: (_, value) => validateTaxProviders(value),
+                },
+              ]}
+              hidden
+            >
+              <Input />
             </Form.Item>
 
             <Input

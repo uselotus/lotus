@@ -1,7 +1,14 @@
+const PaymentProcessors = ["stripe", "braintree"] as const;
+export type PaymentProcessorType = (typeof PaymentProcessors)[number];
+
 export interface PaymentProcessorStatusType {
-  payment_provider_name: string;
+  payment_provider_name: PaymentProcessorType;
   connected: boolean;
   redirect_url: string;
+  self_hosted: boolean;
+  connection_id: string;
+  working: boolean;
+  account_id: string;
 }
 
 export interface PaymentProcessorConnectionResponseType {
@@ -11,12 +18,47 @@ export interface PaymentProcessorConnectionResponseType {
 }
 
 export interface PaymentProcessorConnectionRequestType {
-  payment_processor: string;
-  data: StripeConnectionRequestType | object;
+  payment_processor: PaymentProcessorType;
+  data: StripeConnectionRequestType | BraintreeConnectionRequestType;
 }
 
 export interface StripeConnectionRequestType {
   authorization_code: string;
+}
+
+export interface BraintreeConnectionRequestType {
+  merchant_id?: string;
+  nango_connected: boolean;
+}
+
+export interface PaymentProcessorImportCustomerResponse {
+  status: string;
+  detail: string;
+}
+
+export interface Source {
+  source: PaymentProcessorType;
+}
+
+export interface TransferSub extends Source {
+  end_now: boolean;
+}
+
+export interface PaymentProcessorSettingsParams {
+  setting_group: PaymentProcessorType;
+  setting_name?: string;
+}
+
+export interface PaymentProcessorSetting {
+  setting_group: PaymentProcessorType;
+  setting_id: string;
+  setting_name: string;
+  setting_values: any;
+}
+
+export interface UpdatePaymentProcessorSettingParams {
+  setting_id: string;
+  setting_values: boolean;
 }
 
 export const integrationsMap = {
@@ -25,6 +67,14 @@ export const integrationsMap = {
     icon: "https://cdn.neverbounce.com/images/integrations/square/stripe-square.png",
     description:
       "Charge and invoice your customers through your Stripe account",
+    account_id_name: "Account ID",
+  },
+  braintree: {
+    name: "Braintree",
+    icon: "https://pbs.twimg.com/profile_images/1146433479091118081/Yn29TbtJ_400x400.png",
+    description:
+      "Charge and invoice your customers through your Braintree account",
+    account_id_name: "Merchant ID",
   },
   snowflake: {
     name: "Snowflake",
@@ -35,5 +85,10 @@ export const integrationsMap = {
     name: "Salesforce",
     icon: "https://cdn-icons-png.flaticon.com/512/5968/5968914.png",
     description: "Sync data to your Salesforce account",
+  },
+  netsuite: {
+    name: "NetSuite",
+    icon: "https://pbs.twimg.com/profile_images/1159567930020941824/Xmp1cwhV_400x400.jpg",
+    description: "Sync invoice + plan data to your NetSuite account",
   },
 };
