@@ -134,7 +134,6 @@ def generate_invoice(
         apply_customer_balance_adjustments(invoice, customer, organization, draft)
         finalize_cost_due(invoice, draft)
 
-        print("invoice", invoice, invoice.cost_due)
         if not draft:
             generate_external_payment_obj(invoice)
             for subscription_record in subscription_records:
