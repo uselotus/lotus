@@ -1,3 +1,5 @@
+/* eslint-disable camelcase */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios, { AxiosResponse } from "axios";
 import Cookies from "universal-cookie";
 import {
@@ -91,7 +93,6 @@ const cookies = new Cookies();
 
 axios.defaults.headers.common.Authorization = `Token ${cookies.get("Token")}`;
 
-// @ts-ignore
 const API_HOST = import.meta.env.VITE_API_URL;
 
 axios.defaults.baseURL = API_HOST;
@@ -107,22 +108,14 @@ export const instance = axios.create({
 
 const responseBody = (response: AxiosResponse) => response.data;
 
-// make a function that takes an object as input and if it finds a key with the name subscription_filters, it json encodes it, and then returns the whole object
-const encodeSubscriptionFilters = (obj: any) => {
-  if (obj.subscription_filters) {
-    obj.subscription_filters = JSON.stringify(obj.subscription_filters);
-  }
-  return obj;
-};
-
 const requests = {
-  get: (url: string, params?: {}) =>
+  get: (url: string, params?: object) =>
     instance.get(url, params).then(responseBody),
-  post: (url: string, body: {}, params?: {}) =>
+  post: (url: string, body: object, params?: object) =>
     instance.post(url, body, { params }).then(responseBody),
-  patch: (url: string, body: {}, params?: {}) =>
+  patch: (url: string, body: object, params?: object) =>
     instance.patch(url, body, { params }).then(responseBody),
-  delete: (url: string, params?: {}) =>
+  delete: (url: string, params?: object) =>
     instance.delete(url, { params }).then(responseBody),
 };
 
@@ -135,13 +128,17 @@ export const Customer = {
     requests.post("app/customers/", post),
   getCustomerTotals: (): Promise<CustomerTotal[]> =>
     requests.get("app/customers/totals/"),
+  deleteCustomer: (customer_id: string): Promise<CustomerType> =>
+    requests.post(`app/customers/${customer_id}/delete/`, {}),
   updateCustomer: (
     customer_id: string,
     default_currency_code: string,
     shipping_address: CustomerType["shipping_address"],
     billing_address: CustomerType["billing_address"],
     tax_rate: number,
-    timezone: string
+    timezone: string,
+    customer_name?: string,
+    new_customer_id?: string
   ): Promise<CustomerType> =>
     requests.patch(`app/customers/${customer_id}/`, {
       default_currency_code,
@@ -149,6 +146,8 @@ export const Customer = {
       billing_address,
       tax_rate,
       timezone,
+      customer_name,
+      new_customer_id,
     }),
   // getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
   //   requests.get(`app/customer_detail/`, { params: { customer_id } }),
@@ -321,7 +320,7 @@ export const Authentication = {
       organization_name: string;
     };
   }> => requests.post("app/demo_login/", { username, password }),
-  logout: (): Promise<{}> => requests.post("app/logout/", {}),
+  logout: (): Promise<object> => requests.post("app/logout/", {}),
   registerCreate: (
     register: CreateOrgAccountType
   ): Promise<{
@@ -452,9 +451,9 @@ export const Metrics = {
   getMetrics: (): Promise<MetricType[]> => requests.get("app/metrics/"),
   createMetric: (post: CreateMetricType): Promise<MetricType> =>
     requests.post("app/metrics/", post),
-  deleteMetric: (id: number): Promise<{}> =>
+  deleteMetric: (id: number): Promise<object> =>
     requests.delete(`app/metrics/${id}`),
-  archiveMetric: (id: string): Promise<{}> =>
+  archiveMetric: (id: string): Promise<object> =>
     requests.patch(`app/metrics/${id}/`, { status: "archived" }),
 };
 

@@ -1127,13 +1127,13 @@ class StripeConnector(PaymentProcesor):
             }
             tax_behavior = "inclusive"
             sr = line_item.associated_subscription_record
-            metadata = {
-                "plan_name": sr.billing_plan.plan.plan_name,
-            }
-            filters = sr.filters.all()
-            for f in filters:
-                metadata[f.property_name] = f.comparison_value[0]
-                name += f" - ({f.property_name} : {f.comparison_value[0]})"
+            metadata = {}
+            if sr is not None:
+                metadata["plan_name"] = sr.billing_plan.plan.plan_name
+                filters = sr.filters.all()
+                for f in filters:
+                    metadata[f.property_name] = f.comparison_value[0]
+                    name += f" - ({f.property_name} : {f.comparison_value[0]})"
             inv_dict = {
                 "description": name,
                 "amount": int(amount * 100),

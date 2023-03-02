@@ -58,6 +58,8 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     data.default_currency.code ? data.default_currency.code : ""
   );
   const [taxRate, setTaxRate] = React.useState(0);
+  const [customerName, setCustomerName] = React.useState(data.customer_name);
+  const [customerId, setCustomerId] = React.useState(data.customer_id);
   const [line1, setLine1] = React.useState("");
   const [line2, setLine2] = React.useState("");
   const [city, setCity] = React.useState("");
@@ -81,6 +83,8 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
       address: CustomerType["address"];
       tax_rate: number;
       timezone: string;
+      customer_name?: string;
+      new_customer_id?: string;
     }) =>
       Customer.updateCustomer(
         obj.customer_id,
@@ -88,7 +92,9 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
         obj.address,
         obj.address,
         obj.tax_rate,
-        obj.timezone
+        obj.timezone,
+        obj.customer_name,
+        obj.new_customer_id
       ),
     {
       onSuccess: () => {
@@ -120,20 +126,22 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
       submittedAddress = null;
     } else {
       submittedAddress = {
-        city,
-        line1,
-        line2,
-        country,
-        postal_code: postalCode,
-        state,
+        city: city === "" ? null : city,
+        line1: line1 === "" ? null : line1,
+        line2: line2 === "" ? null : line2,
+        country: country === "" ? null : country,
+        postal_code: postalCode === "" ? null : postalCode,
+        state: state === "" ? null : state,
       };
     }
-    const d = await updateCustomer.mutateAsync({
+    await updateCustomer.mutateAsync({
       customer_id: data.customer_id,
       address: submittedAddress,
       default_currency_code: currentCurrency,
       tax_rate: fourDP(taxRate),
       timezone,
+      customer_name: customerName,
+      new_customer_id: customerId,
     });
 
     refetch();
@@ -264,26 +272,48 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   </div>
                   <div className="flex gap-1">
                     {" "}
-                    <div className="Inter">{data.customer_name}</div>
+                    {isEditing ? (
+                      <input
+                        placeholder="Customer Name"
+                        className="input-class focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
+                        defaultValue={data.customer_name}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        required
+                      />
+                    ) : (
+                      <div className="Inter">{data.customer_name}</div>
+                    )}
                   </div>
                 </CustomerCard.Item>
                 <CustomerCard.Item>
                   <div className="font-normal text-card-text font-alliance whitespace-nowrap leading-4">
                     ID
                   </div>
-                  <div className="flex gap-1 !text-card-grey font-menlo">
+                  <div className="flex gap-1">
                     {" "}
-                    <div>
-                      {createShortenedText(
-                        data.customer_id as string,
-                        windowWidth >= 2500
-                      )}
-                    </div>
-                    <CopyText
-                      showIcon
-                      onlyIcon
-                      textToCopy={data.customer_id as string}
-                    />
+                    {false ? (
+                      <input
+                        placeholder="Customer ID"
+                        className="input-class focus:none focus-visible:none outline-none border border-black p-2 rounded-sm"
+                        defaultValue={data.customer_id}
+                        onChange={(e) => setCustomerId(e.target.value)}
+                        required
+                      />
+                    ) : (
+                      <div className="flex gap-1 !text-card-grey font-menlo">
+                        <div>
+                          {createShortenedText(
+                            data.customer_id as string,
+                            windowWidth >= 2500
+                          )}
+                        </div>
+                        <CopyText
+                          showIcon
+                          onlyIcon
+                          textToCopy={data.customer_id as string}
+                        />
+                      </div>
+                    )}
                   </div>
                 </CustomerCard.Item>
                 <CustomerCard.Item>
@@ -454,6 +484,8 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                         className="w-full bg-white border border-black p-4"
                         name="currency"
                         id="currency"
+                        defaultValue={data.default_currency.code}
+                        onChange={(e) => setCurrentCurrency(e.target.value)}
                       >
                         {pricingUnits?.map((pc) => (
                           <option

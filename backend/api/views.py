@@ -269,9 +269,8 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     )
     @action(detail=True, methods=["post"], url_path="delete")
     def archive(self, request, customer_id=None):
-        organization = request.organization
         customer = self.get_object()
-        if customer.deleted:
+        if customer.deleted is not None:
             raise RepeatedOperation("Customer already deleted")
         now = now_utc()
 
@@ -280,14 +279,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             "email": customer.email,
             "deleted": now,
         }
-
-        n_objs, _ = Event.objects.filter(
-            cust_id=customer.customer_id, organization=organization
-        ).delete()
-        return_data["num_events_deleted"] = n_objs
         customer.deleted = now
-        customer.customer_id = None
-        customer.uuidv5_customer_id = None
         customer.save()
         subscription_records = customer.subscription_records.active().all()
         n_subs = subscription_records.filter(
