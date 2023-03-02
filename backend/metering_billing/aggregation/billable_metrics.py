@@ -252,7 +252,7 @@ class CounterHandler(MetricHandler):
             organization.provision_subscription_filter_settings()
             groupby = []
         injection_dict["group_by"] = groupby
-        for filter in billing_record.filters.all():
+        for filter in billing_record.subscription.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
             ] = filter.comparison_value
@@ -701,7 +701,7 @@ class CustomHandler(MetricHandler):
         injection_dict["start_date"] = start
         injection_dict["end_date"] = end
         injection_dict["organization_id"] = organization.id
-        for filter in billing_record.filters.all():
+        for filter in billing_record.subscription.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
             ] = filter.comparison_value
@@ -1140,7 +1140,7 @@ class GaugeHandler(MetricHandler):
             ],
             "property_name": metric.property_name,
         }
-        for filter in billing_record.filters.all():
+        for filter in billing_record.subscription.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
             ] = filter.comparison_value
@@ -1226,7 +1226,7 @@ class GaugeHandler(MetricHandler):
             ],
             "property_name": metric.property_name,
         }
-        for filter in billing_record.filters.all():
+        for filter in billing_record.subscription.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
             ] = filter.comparison_value
@@ -1308,7 +1308,7 @@ class GaugeHandler(MetricHandler):
             ],
             "property_name": metric.property_name,
         }
-        for filter in billing_record.filters.all():
+        for filter in billing_record.subscription.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
             ] = filter.comparison_value
@@ -1548,7 +1548,7 @@ class RateHandler(MetricHandler):
             organization.provision_subscription_filter_settings()
             groupby = []
         injection_dict["group_by"] = groupby
-        for filter in billing_record.filters.all():
+        for filter in billing_record.subscription.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
             ] = filter.comparison_value
@@ -1617,7 +1617,7 @@ class RateHandler(MetricHandler):
             organization.provision_subscription_filter_settings()
             groupby = []
         injection_dict["group_by"] = groupby
-        for filter in billing_record.filters.all():
+        for filter in billing_record.subscription.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
             ] = filter.comparison_value

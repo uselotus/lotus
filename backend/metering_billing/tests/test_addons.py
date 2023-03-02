@@ -161,7 +161,7 @@ def addon_test_common_setup(
             organization=plan.organization,
             plan_version=flat_fee_addon_version,
             charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
-            charge_behavior=RecurringCharge.ChargeBehaviorType.PRORATE,
+            charge_behavior=RecurringCharge.ChargeBehaviorType.CHARGE_FULL,
             amount=10,
             pricing_unit=flat_fee_addon_version.currency,
         )

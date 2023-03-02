@@ -133,11 +133,8 @@ def generate_invoice(
         apply_taxes(invoice, customer, organization, draft)
         apply_customer_balance_adjustments(invoice, customer, organization, draft)
         finalize_cost_due(invoice, draft)
-        invoice.cost_due = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
-        if abs(invoice.cost_due) < Decimal("0.01") and not draft:
-            invoice.payment_status = Invoice.PaymentStatus.PAID
-        invoice.save()
 
+        print("invoice", invoice, invoice.cost_due)
         if not draft:
             generate_external_payment_obj(invoice)
             for subscription_record in subscription_records:
@@ -166,6 +163,7 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice, draft)
     for billing_record in subscription_record.billing_records.filter(
         recurring_charge__isnull=False
     ):
+        print("billing_record", billing_record)
         # if the next invoicing date is in the future, we don't need to bill for it yet
         if billing_record.next_invoicing_date > invoice.issue_date:
             continue
@@ -213,6 +211,7 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice, draft)
                     chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE,
                     invoice=invoice,
                     associated_subscription_record=subscription_record,
+                    associated_billing_record=billing_record,
                     associated_plan_version=billing_plan,
                     organization=subscription_record.organization,
                 )
@@ -227,6 +226,7 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice, draft)
                     billing_type=billing_type,
                     chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE,
                     invoice=invoice,
+                    associated_subscription_record=subscription_record,
                     associated_billing_record=billing_record,
                     associated_plan_version=billing_plan,
                     organization=subscription_record.organization,
@@ -247,7 +247,7 @@ def calculate_subscription_record_usage_fees(subscription_record, invoice, draft
             qty = usg_rev["usage_qty"]
             rev = usg_rev["revenue"]
             InvoiceLineItem.objects.create(
-                name=str(br.plan_component.billable_metric.billable_metric_name),
+                name=str(br.component.billable_metric.billable_metric_name),
                 start_date=subscription_record.start_date,
                 end_date=subscription_record.end_date,
                 quantity=qty or 0,
@@ -256,6 +256,7 @@ def calculate_subscription_record_usage_fees(subscription_record, invoice, draft
                 chargeable_item_type=CHARGEABLE_ITEM_TYPE.USAGE_CHARGE,
                 invoice=invoice,
                 associated_subscription_record=subscription_record,
+                associated_billing_record=br,
                 associated_plan_version=billing_plan,
                 organization=subscription_record.organization,
             )

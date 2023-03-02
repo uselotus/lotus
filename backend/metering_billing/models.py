@@ -28,7 +28,6 @@ from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
-    IntermediateBillingEngineFailure,
     NotEditable,
     OverlappingPlans,
     SubscriptionAlreadyEnded,
@@ -1527,8 +1526,10 @@ class PlanComponent(models.Model):
             self.pricing_unit = self.plan_version.currency
         super().save(*args, **kwargs)
 
-    def get_invoicing_dates(self, start_date, end_date):
+    def get_invoicing_dates(self, subscription_record):
         # FOR PLAN COMPONENTS
+        start_date = subscription_record.start_date
+        end_date = subscription_record.end_date
         if self.invoicing_interval_unit is None:
             return [end_date]
 
@@ -1556,8 +1557,10 @@ class PlanComponent(models.Model):
 
         return invoicing_dates
 
-    def get_reset_dates(self, start_date, end_date):
+    def get_reset_dates(self, subscription_record):
         # FOR PLAN COMPONENTS
+        start_date = subscription_record.start_date
+        end_date = subscription_record.end_date
         if self.reset_interval_unit is None:
             return [(start_date, end_date)]
 
@@ -1811,6 +1814,12 @@ class InvoiceLineItem(models.Model):
         null=True,
         related_name="line_items",
     )
+    associated_subscription_record = models.ForeignKey(
+        "SubscriptionRecord",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="line_items",
+    )
     associated_billing_record = models.ForeignKey(
         "BillingRecord",
         on_delete=models.SET_NULL,
@@ -1923,12 +1932,21 @@ class RecurringCharge(models.Model):
             )
         ]
 
-    def get_invoicing_dates(self, start_date, end_date):
+    def get_invoicing_dates(self, subscription_record):
+        from metering_billing.models import AddOnSpecification
+
         # FOR RECURRIG CHARGES
+        start_date = subscription_record.start_date
+        end_date = subscription_record.end_date
         invoicing_interval_unit = self.invoicing_interval_unit
         invoicing_interval_count = self.invoicing_interval_count
+        # if we don't have a sub-plan length invoicing interval, use the plan length
         if not invoicing_interval_unit:
-            invoicing_interval_unit = self.plan_version.plan.plan_duration
+            # problem here is for addons. Their plans do not have durations as they depend on the parent subscription.
+            invoicing_interval_unit = (
+                self.plan_version.plan.plan_duration
+                or subscription_record.parent.billing_plan.plan.plan_duration
+            )
             if invoicing_interval_unit == PLAN_DURATION.QUARTERLY:
                 invoicing_interval_count = 3
 
@@ -1941,7 +1959,6 @@ class RecurringCharge(models.Model):
             PLAN_DURATION.QUARTERLY: "months",
             PLAN_DURATION.YEARLY: "years",
         }
-
         interval_delta = relativedelta(
             **{unit_map[invoicing_interval_unit]: invoicing_interval_count or 1}
         )
@@ -1949,6 +1966,18 @@ class RecurringCharge(models.Model):
         invoicing_dates = []
 
         invoicing_date = start_date
+        # sometime, we need to charge this at the beginning of the period. This is if the charge
+        # is in advance, AND its not an addon that has invoice with end of subscription
+        if self.charge_timing == RecurringCharge.ChargeTimingType.IN_ADVANCE:
+            addon_spec = self.plan_version.addon_spec
+            if addon_spec:
+                if (
+                    addon_spec.flat_fee_invoicing_behavior_on_attach
+                    == AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_ATTACH
+                ):
+                    invoicing_dates.append(start_date)
+            else:
+                invoicing_dates.append(start_date)
         while invoicing_date < end_date:
             invoicing_date += interval_delta
             append_date = min(invoicing_date, end_date)
@@ -1956,12 +1985,19 @@ class RecurringCharge(models.Model):
 
         return invoicing_dates
 
-    def get_reset_dates(self, start_date, end_date):
+    def get_reset_dates(self, subscription_record):
         # FOR RECURRIG CHARGES
+        start_date = subscription_record.start_date
+        end_date = subscription_record.end_date
         invoicing_interval_unit = self.invoicing_interval_unit
         invoicing_interval_count = self.invoicing_interval_count
+        # if we don't have a sub-plan length invoicing interval, use the plan length
         if not invoicing_interval_unit:
-            invoicing_interval_unit = self.plan_version.plan.plan_duration
+            # problem here is for addons. Their plans do not have durations as they depend on the parent subscription.
+            invoicing_interval_unit = (
+                self.plan_version.plan.plan_duration
+                or subscription_record.parent.billing_plan.plan.plan_duration
+            )
             if invoicing_interval_unit == PLAN_DURATION.QUARTERLY:
                 invoicing_interval_count = 3
 
@@ -2650,12 +2686,13 @@ class SubscriptionRecord(models.Model):
             addon_billing_plan.addon_spec is not None
         ), "Cannot create an addon subscription record with a base plan"
         sr = SubscriptionRecord.objects.create_with_filters(
+            parent=parent_subscription_record,
             start_date=now,
             end_date=parent_subscription_record.end_date,
             billing_plan=addon_billing_plan,
             customer=parent_subscription_record.customer,
             organization=parent_subscription_record.organization,
-            subscription_filters=parent_subscription_record.filters,
+            subscription_filters=parent_subscription_record.filters.all(),
             is_new=True,
             quantity=quantity,
             auto_renew=addon_billing_plan.addon_spec.billing_frequency
@@ -2667,14 +2704,8 @@ class SubscriptionRecord(models.Model):
 
     def create_billing_records(self):
         for component in self.billing_plan.plan_components.all():
-            invoicing_dates = component.get_invoicing_dates(
-                self.start_date,
-                self.end_date,
-            )
-            reset_ranges = component.get_reset_dates(
-                self.start_date,
-                self.end_date,
-            )
+            invoicing_dates = component.get_invoicing_dates(self)
+            reset_ranges = component.get_reset_dates(self)
             i = 0
             for start_date, end_date in reset_ranges:
                 br_invoicing_dates = []
@@ -2692,14 +2723,8 @@ class SubscriptionRecord(models.Model):
                     invoicing_dates=br_invoicing_dates,
                 )
         for recurring_charge in self.billing_plan.recurring_charges.all():
-            invoicing_dates = recurring_charge.get_invoicing_dates(
-                self.start_date,
-                self.end_date,
-            )
-            reset_ranges = recurring_charge.get_reset_dates(
-                self.start_date,
-                self.end_date,
-            )
+            invoicing_dates = recurring_charge.get_invoicing_dates(self)
+            reset_ranges = recurring_charge.get_reset_dates(self)
             i = 0
             for k, (
                 start_date,
@@ -2712,14 +2737,7 @@ class SubscriptionRecord(models.Model):
                         break
                     br_invoicing_dates.append(invoicing_dates[j])
                 i += len(br_invoicing_dates)
-                dont_invoice_in_advance = (
-                    self.billing_plan.addon_spec is not None
-                    and self.billing_plan.addon_spec.flat_fee_invoicing_behavior_on_attach
-                    != AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_SUBSCRIPTION_END
-                )
-                if k == 0 and not dont_invoice_in_advance:
-                    br_invoicing_dates = [start_date] + br_invoicing_dates
-                BillingRecord.objects.create(
+                br = BillingRecord.objects.create(
                     organization=self.organization,
                     subscription=self,
                     recurring_charge=recurring_charge,
@@ -2728,6 +2746,7 @@ class SubscriptionRecord(models.Model):
                     end_date=end_date,
                     unadjusted_duration_microseconds=unadjusted_duration_microseconds,
                 )
+                print(f"CREATED BR {str(br)}")
 
     def save(self, *args, **kwargs):
         new_filters = kwargs.pop("subscription_filters", []) or []
@@ -2746,8 +2765,13 @@ class SubscriptionRecord(models.Model):
                 month_anchor=month_anchor,
             )
         if not self.unadjusted_duration_microseconds:
+            bp = self.billing_plan
+            if bp.addon_spec is not None:
+                plan_duration = self.parent.billing_plan.plan.plan_duration
+            else:
+                plan_duration = bp.plan.plan_duration
             scheduled_end_date = calculate_end_date(
-                self.billing_plan.plan.plan_duration, self.start_date, timezone
+                plan_duration, self.start_date, timezone
             )
             self.unadjusted_duration_microseconds = (
                 scheduled_end_date - self.start_date
@@ -2909,6 +2933,13 @@ class BillingRecord(models.Model):
     subscription = models.ForeignKey(
         SubscriptionRecord, on_delete=models.CASCADE, related_name="billing_records"
     )
+    # directly inherited from subscription
+    customer = models.ForeignKey(
+        Customer, on_delete=models.CASCADE, related_name="billing_records"
+    )
+    billing_plan = models.ForeignKey(
+        PlanVersion, on_delete=models.CASCADE, related_name="billing_records"
+    )
     # only one of these two
     component = models.ForeignKey(
         PlanComponent,
@@ -2958,6 +2989,14 @@ class BillingRecord(models.Model):
             ),
         ]
 
+    def __str__(self):
+        if self.component is not None:
+            return f"[Component BR]: {str(self.component)} {self.invoicing_dates}"
+        else:
+            return (
+                f"[Recurring BR]: {str(self.recurring_charge)} {self.invoicing_dates}"
+            )
+
     def save(self, *args, **kwargs):
         new = self._state.adding is True
         if new:
@@ -2976,29 +3015,7 @@ class BillingRecord(models.Model):
             self.component is not None
         ), "Can't call get_usage_and_revenue for a recurring charge."
         plan_component_summary = self.component.calculate_total_revenue(self)
-
-        sub_dict = {"components": []}
-        # set up the billing plan for this subscription
-        plan = self.billing_plan
-        # set up other details of the subscription
-        self.start_date
-        self.end_date
-        # extract other objects that we need when calculating usage
-        self.customer
-        plan_components_qs = plan.plan_components.all()
-        # For each component of the plan, calculate usage/revenue
-        for plan_component in plan_components_qs:
-            sub_dict["components"].append((plan_component.pk, plan_component_summary))
-        sub_dict["usage_amount_due"] = Decimal(0)
-        for component_pk, component_dict in sub_dict["components"]:
-            sub_dict["usage_amount_due"] += component_dict["revenue"]
-        sub_dict["flat_amount_due"] = sum(
-            x.amount for x in plan.recurring_charges.all()
-        )
-        sub_dict["total_amount_due"] = (
-            sub_dict["flat_amount_due"] + sub_dict["usage_amount_due"]
-        )
-        return sub_dict
+        return plan_component_summary
 
     def calculate_recurring_charge_due(self, proration_end_date):
         assert (
@@ -3046,7 +3063,8 @@ class BillingRecord(models.Model):
                 self.fully_invoiced = True
                 self.save()
         else:
-            raise IntermediateBillingEngineFailure
+            # do nothing, we have an invociing date coming up. This invoice was likely from attaching a subscription or something
+            pass
 
     def calculate_earned_revenue_per_day(self) -> dict:
         dates = periods_bwn_twodates(
