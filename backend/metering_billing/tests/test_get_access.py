@@ -314,11 +314,15 @@ class TestGetAccess:
             cost_per_batch=5,
             metric_units_per_batch=1,
         )
-        SubscriptionRecord.objects.create(
-            organization=setup_dict["org"],
-            customer=setup_dict["customer"],
-            billing_plan=billing_plan,
+        SubscriptionRecord.create_subscription_record(
             start_date=now_utc() - relativedelta(days=3),
+            end_date=None,
+            billing_plan=billing_plan,
+            customer=setup_dict["customer"],
+            organization=setup_dict["org"],
+            subscription_filters=None,
+            is_new=True,
+            quantity=1,
         )
         # initial value, just 1 user
         Event.objects.create(
@@ -500,11 +504,15 @@ class TestGetAccessOld:
             cost_per_batch=5,
             metric_units_per_batch=1,
         )
-        SubscriptionRecord.objects.create(
-            organization=setup_dict["org"],
-            customer=setup_dict["customer"],
-            billing_plan=billing_plan,
+        SubscriptionRecord.create_subscription_record(
             start_date=now_utc() - relativedelta(days=3),
+            end_date=None,
+            billing_plan=billing_plan,
+            customer=setup_dict["customer"],
+            organization=setup_dict["org"],
+            subscription_filters=None,
+            is_new=True,
+            quantity=1,
         )
         # initial value, just 1 user
         Event.objects.create(
@@ -665,11 +673,15 @@ class TestGetAccessWithMetricIDOld:
             cost_per_batch=5,
             metric_units_per_batch=1,
         )
-        SubscriptionRecord.objects.create(
-            organization=setup_dict["org"],
-            customer=setup_dict["customer"],
-            billing_plan=billing_plan,
+        SubscriptionRecord.create_subscription_record(
             start_date=now_utc() - relativedelta(days=3),
+            end_date=None,
+            billing_plan=billing_plan,
+            customer=setup_dict["customer"],
+            organization=setup_dict["org"],
+            subscription_filters=None,
+            is_new=True,
+            quantity=1,
         )
         # initial value, just 1 user
         Event.objects.create(

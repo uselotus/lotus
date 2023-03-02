@@ -1299,7 +1299,16 @@ class StripeConnector(PaymentProcesor):
                         **stripe_cust_kwargs,
                     )
                 ret_subs.append(sub)
-                SubscriptionRecord.objects.create(**validated_data)
+                SubscriptionRecord.create_subscription_record(
+                    start_date=validated_data["start_date"],
+                    end_date=validated_data.get("start_date"),
+                    billing_plan=billing_plan,
+                    customer=customer,
+                    organization=organization,
+                    subscription_filters=[],
+                    is_new=False,
+                    quantity=1,
+                )
             else:  # error if multiple plans match
                 err_msg = "Multiple Lotus plans match Stripe subscription {}.".format(
                     subscription

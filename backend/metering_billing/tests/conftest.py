@@ -224,15 +224,16 @@ def add_subscription_record_to_org():
                 day_anchor=day_anchor,
                 month_anchor=month_anchor,
             )
-        subscription_record = SubscriptionRecord.objects.create(
-            organization=organization,
-            customer=customer,
-            billing_plan=billing_plan,
+        subscription_record = SubscriptionRecord.create_subscription_record(
             start_date=start_date,
-            auto_renew=True,
+            end_date=end_date,
+            billing_plan=billing_plan,
+            customer=customer,
+            organization=organization,
+            subscription_filters=None,
             is_new=True,
+            quantity=1,
         )
-        subscription_record.save()
         return subscription_record
 
     return do_add_subscription_record_to_org

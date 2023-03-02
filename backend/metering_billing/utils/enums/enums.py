@@ -91,6 +91,7 @@ class COMPONENT_RESET_FREQUENCY(models.TextChoices):
 
 class INVOICE_CHARGE_TIMING_TYPE(models.TextChoices):
     IN_ARREARS = ("in_arrears", _("In Arrears"))
+    INTERMEDIATE = ("intermediate", _("Intermediate"))
     IN_ADVANCE = ("in_advance", _("In Advance"))
     ONE_TIME = ("one_time", _("One Time"))
 

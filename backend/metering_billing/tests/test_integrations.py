@@ -151,12 +151,15 @@ class TestStripeIntegration:
         new_cust = Customer.objects.get(email=stripe_customer.email)
 
         # now lets generate an invoice + for this customer
-        subscription_record = SubscriptionRecord.objects.create(
-            organization=setup_dict["org"],
-            customer=new_cust,
-            billing_plan=setup_dict["plan_version"],
+        subscription_record = SubscriptionRecord.create_subscription_record(
             start_date=now_utc() - timedelta(days=35),
             end_date=now_utc() - timedelta(days=5),
+            billing_plan=setup_dict["plan_version"],
+            customer=new_cust,
+            organization=setup_dict["org"],
+            subscription_filters=None,
+            is_new=True,
+            quantity=1,
         )
         invoice = generate_invoice(subscription_record)[0]
         assert invoice.payment_status == Invoice.PaymentStatus.UNPAID
@@ -185,12 +188,15 @@ class TestStripeIntegration:
         new_cust = Customer.objects.get(email=stripe_customer.email)
 
         # now lets generate an invoice + for this customer
-        subscription_record = SubscriptionRecord.objects.create(
-            organization=setup_dict["org"],
-            customer=new_cust,
-            billing_plan=setup_dict["plan_version"],
+        subscription_record = SubscriptionRecord.create_subscription_record(
             start_date=now_utc() - timedelta(days=35),
             end_date=now_utc() - timedelta(days=5),
+            billing_plan=setup_dict["plan_version"],
+            customer=new_cust,
+            organization=setup_dict["org"],
+            subscription_filters=None,
+            is_new=True,
+            quantity=1,
         )
         invoice = generate_invoice(subscription_record)[0]
         try:
@@ -439,12 +445,15 @@ class TestBraintreeIntegration:
         new_cust = Customer.objects.get(email=braintree_customer.email)
 
         # now lets generate an invoice + for this customer
-        subscription_record = SubscriptionRecord.objects.create(
-            organization=setup_dict["org"],
-            customer=new_cust,
-            billing_plan=setup_dict["plan_version"],
+        subscription_record = SubscriptionRecord.create_subscription_record(
             start_date=now_utc() - timedelta(days=35),
             end_date=now_utc() - timedelta(days=5),
+            billing_plan=setup_dict["plan_version"],
+            customer=new_cust,
+            organization=setup_dict["org"],
+            subscription_filters=None,
+            is_new=True,
+            quantity=1,
         )
         invoice = generate_invoice(subscription_record)[0]
         assert invoice.payment_status == Invoice.PaymentStatus.UNPAID
@@ -478,12 +487,15 @@ class TestBraintreeIntegration:
         new_cust = Customer.objects.get(email=braintree_customer.email)
 
         # now lets generate an invoice + for this customer
-        subscription_record = SubscriptionRecord.objects.create(
-            organization=setup_dict["org"],
-            customer=new_cust,
-            billing_plan=setup_dict["plan_version"],
+        subscription_record = SubscriptionRecord.create_subscription_record(
             start_date=now_utc() - timedelta(days=35),
             end_date=now_utc() - timedelta(days=5),
+            billing_plan=setup_dict["plan_version"],
+            customer=new_cust,
+            organization=setup_dict["org"],
+            subscription_filters=None,
+            is_new=True,
+            quantity=1,
         )
         invoice = generate_invoice(subscription_record)[0]
         assert invoice.payment_status == Invoice.PaymentStatus.UNPAID

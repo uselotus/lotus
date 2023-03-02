@@ -1523,10 +1523,14 @@ def make_subscription_record(
     start_date,
     is_new,
 ):
-    sr = SubscriptionRecord.objects.create(
-        organization=organization,
-        customer=customer,
-        billing_plan=plan,
+    sr = SubscriptionRecord.create_subscription_record(
         start_date=start_date,
+        end_date=None,
+        billing_plan=plan,
+        customer=customer,
+        organization=organization,
+        subscription_filters=None,
+        is_new=is_new,
+        quantity=1,
     )
     return sr

@@ -375,7 +375,7 @@ class TestCalculateMetric:
                 customer,
                 now - relativedelta(days=1),
             )
-        metric_usage = billable_metric.get_subscription_record_total_billable_usage(
+        metric_usage = billable_metric.get_billing_record_total_billable_usage(
             subscription_record
         )
         assert metric_usage == 2
@@ -1174,7 +1174,7 @@ class TestCalculateMetricWithFilters:
                 customer,
                 now - relativedelta(days=1),
             )
-        metric_usage = billable_metric.get_subscription_record_total_billable_usage(
+        metric_usage = billable_metric.get_billing_record_total_billable_usage(
             subscription_record
         )
         assert metric_usage == 2
@@ -1581,9 +1581,7 @@ class TestCustomSQLMetrics:
                 customer,
                 now - relativedelta(days=1),
             )
-        billable_metric.get_subscription_record_total_billable_usage(
-            subscription_record
-        )
+        billable_metric.get_billing_record_total_billable_usage(subscription_record)
 
         payload = {
             "name": "test_subscription",
@@ -1597,7 +1595,7 @@ class TestCustomSQLMetrics:
             content_type="application/json",
         )
 
-        total_usage = billable_metric.get_subscription_record_total_billable_usage(
+        total_usage = billable_metric.get_billing_record_total_billable_usage(
             subscription_record
         )
 
@@ -1690,9 +1688,7 @@ class TestCustomSQLMetrics:
                 customer,
                 now - relativedelta(days=1),
             )
-        billable_metric.get_subscription_record_total_billable_usage(
-            subscription_record
-        )
+        billable_metric.get_billing_record_total_billable_usage(subscription_record)
 
         payload = {
             "name": "test_subscription",
@@ -1706,7 +1702,7 @@ class TestCustomSQLMetrics:
             content_type="application/json",
         )
 
-        total_usage = billable_metric.get_subscription_record_total_billable_usage(
+        total_usage = billable_metric.get_billing_record_total_billable_usage(
             subscription_record
         )
 
@@ -1799,9 +1795,7 @@ class TestCustomSQLMetrics:
                 customer,
                 now - relativedelta(days=1),
             )
-        billable_metric.get_subscription_record_total_billable_usage(
-            subscription_record
-        )
+        billable_metric.get_billing_record_total_billable_usage(subscription_record)
 
         payload = {
             "name": "test_subscription",
@@ -1815,7 +1809,7 @@ class TestCustomSQLMetrics:
             content_type="application/json",
         )
 
-        total_usage = billable_metric.get_subscription_record_total_billable_usage(
+        total_usage = billable_metric.get_billing_record_total_billable_usage(
             subscription_record
         )
 
@@ -1930,9 +1924,7 @@ class TestCustomSQLMetrics:
                 customer,
                 now - relativedelta(days=1),
             )
-        billable_metric.get_subscription_record_total_billable_usage(
-            subscription_record
-        )
+        billable_metric.get_billing_record_total_billable_usage(subscription_record)
 
         payload = {
             "name": "test_subscription",
@@ -1946,7 +1938,7 @@ class TestCustomSQLMetrics:
             content_type="application/json",
         )
 
-        total_usage = billable_metric.get_subscription_record_total_billable_usage(
+        total_usage = billable_metric.get_billing_record_total_billable_usage(
             subscription_record
         )
 
@@ -2137,9 +2129,7 @@ class TestCustomSQLMetrics:
                 customer,
                 now - relativedelta(days=1),
             )
-        billable_metric.get_subscription_record_total_billable_usage(
-            subscription_record
-        )
+        billable_metric.get_billing_record_total_billable_usage(subscription_record)
 
         payload = {
             "name": "test_subscription",
@@ -2153,7 +2143,7 @@ class TestCustomSQLMetrics:
             content_type="application/json",
         )
 
-        total_usage = billable_metric.get_subscription_record_total_billable_usage(
+        total_usage = billable_metric.get_billing_record_total_billable_usage(
             subscription_record
         )
 

@@ -1006,33 +1006,16 @@ class SubscriptionViewSet(
             raise ValidationError(
                 "Cannot switch to a plan with overlapping metrics with the current addons."
             )
-        now = now_utc()
         usage_behavior = serializer.validated_data.get("usage_behavior")
-        keep_separate = usage_behavior == USAGE_BEHAVIOR.KEEP_SEPARATE
         billing_behavior = serializer.validated_data.get("invoicing_behavior")
-        sr = SubscriptionRecord.objects.create(
-            organization=current_sr.organization,
-            customer=current_sr.customer,
-            billing_plan=new_billing_plan,
-            start_date=now,
-            end_date=current_sr.end_date,
-            usage_start_date=now if keep_separate else current_sr.usage_start_date,
-            auto_renew=current_sr.auto_renew,
-            fully_billed=False,
-            unadjusted_duration_microseconds=current_sr.unadjusted_duration_microseconds,
+        new_sr = current_sr.switch_plan(
+            new_billing_plan,
+            transfer_usage=usage_behavior
+            == USAGE_BEHAVIOR.TRANSFER_TO_NEW_SUBSCRIPTION,
+            invoice_now=billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW,
         )
-        for filter in current_sr.filters.all():
-            sr.filters.add(filter)
-        current_sr.flat_fee_behavior = FLAT_FEE_BEHAVIOR.CHARGE_PRORATED
-        current_sr.invoice_usage_charges = keep_separate
-        current_sr.auto_renew = False
-        current_sr.end_date = now
-        current_sr.fully_billed = billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW
-        current_sr.save()
-        if billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
-            generate_invoice(current_sr)
         return Response(
-            SubscriptionRecordSerializer(sr).data, status=status.HTTP_200_OK
+            SubscriptionRecordSerializer(new_sr).data, status=status.HTTP_200_OK
         )
 
     # ADDON SUBSCRIPTION RECORDS
@@ -1337,8 +1320,6 @@ class SubscriptionViewSet(
             qs = qs.filter(
                 billing_plan__addon_spec__isnull=True
             )  # no addons in replace
-            now = now_utc()
-            keep_separate = usage_behavior == USAGE_BEHAVIOR.KEEP_SEPARATE
             replace_plan_metrics = {
                 pc.billable_metric for pc in replace_billing_plan.plan_components.all()
             }
@@ -1354,36 +1335,12 @@ class SubscriptionViewSet(
                     )
                     original_qs.remove(subscription_record.pk)
                     continue
-                sr = SubscriptionRecord.objects.create(
-                    organization=subscription_record.organization,
-                    customer=subscription_record.customer,
-                    billing_plan=replace_billing_plan,
-                    start_date=now,
-                    end_date=subscription_record.end_date,
-                    usage_start_date=now
-                    if keep_separate
-                    else subscription_record.usage_start_date,
-                    auto_renew=subscription_record.auto_renew,
-                    fully_billed=False,
-                    unadjusted_duration_microseconds=subscription_record.unadjusted_duration_microseconds,
+                subscription_record.switch_plan(
+                    replace_billing_plan,
+                    transfer_usage=usage_behavior
+                    == USAGE_BEHAVIOR.TRANSFER_TO_NEW_SUBSCRIPTION,
+                    invoice_now=billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW,
                 )
-                for filter in subscription_record.filters.all():
-                    sr.filters.add(filter)
-                subscription_record.flat_fee_behavior = (
-                    FLAT_FEE_BEHAVIOR.CHARGE_PRORATED
-                )
-                subscription_record.invoice_usage_charges = keep_separate
-                subscription_record.auto_renew = False
-                subscription_record.end_date = now
-                subscription_record.fully_billed = (
-                    billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW
-                )
-                subscription_record.save()
-            new_qs = SubscriptionRecord.objects.filter(
-                pk__in=original_qs, organization=organization
-            )
-            if billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
-                generate_invoice(new_qs)
         else:
             update_dict = {}
             if turn_off_auto_renew:
@@ -1831,7 +1788,7 @@ class MetricAccessView(APIView):
                         else 0
                     )
                     total_limit = tiers[-1].range_end
-                    current_usage = metric.get_subscription_record_current_usage(sr)
+                    current_usage = metric.get_billing_record_current_usage(sr)
                     single_sr_dict["metric_usage"] = current_usage
                     single_sr_dict["metric_free_limit"] = free_limit
                     single_sr_dict["metric_total_limit"] = total_limit
@@ -1842,7 +1799,7 @@ class MetricAccessView(APIView):
             #         check_metric = component.billable_metric
             #         if check_metric == metric:
             #             total_limit = tiers[-1].range_end
-            #             current_usage = metric.get_subscription_record_current_usage(
+            #             current_usage = metric.get_billing_record_current_usage(
             #                 addon_sr
             #             )
             #             if single_sr_dict["metric_total_limit"] is None:
@@ -2351,7 +2308,7 @@ class GetCustomerEventAccessView(APIView):
                         else None
                     )
                     total_limit = tiers[-1].range_end
-                    current_usage = metric.get_subscription_record_current_usage(sr)
+                    current_usage = metric.get_billing_record_current_usage(sr)
                     unique_tup_dict = {
                         "event_name": metric.event_name,
                         "metric_name": metric_name,

@@ -108,9 +108,9 @@ def generate_invoice(
         invoice = invoices[subscription_record.billing_plan.currency]
         invoice.subscription_records.add(subscription_record)
         # flat fee calculation for current plan
-        calculate_subscription_record_flat_fees(subscription_record, invoice)
+        calculate_subscription_record_flat_fees(subscription_record, invoice, draft)
         # usage calculation
-        calculate_subscription_record_usage_fees(subscription_record, invoice)
+        calculate_subscription_record_usage_fees(subscription_record, invoice, draft)
         # next plan flat fee calculation
         next_bp = find_next_billing_plan(subscription_record)
         sr_renews = check_subscription_record_renews(subscription_record, issue_date)
@@ -134,7 +134,7 @@ def generate_invoice(
         apply_customer_balance_adjustments(invoice, customer, organization, draft)
         finalize_cost_due(invoice, draft)
         invoice.cost_due = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
-        if abs(invoice.cost_due) < 0.01 and not draft:
+        if abs(invoice.cost_due) < Decimal("0.01") and not draft:
             invoice.payment_status = Invoice.PaymentStatus.PAID
         invoice.save()
 
@@ -154,33 +154,54 @@ def generate_invoice(
     return list(invoices.values())
 
 
-def calculate_subscription_record_flat_fees(subscription_record, invoice):
-    from metering_billing.models import InvoiceLineItem, RecurringCharge
+def calculate_subscription_record_flat_fees(subscription_record, invoice, draft):
+    from metering_billing.models import (
+        AddOnSpecification,
+        InvoiceLineItem,
+        RecurringCharge,
+    )
 
-    for recurring_charge in subscription_record.billing_plan.recurring_charges.all():
-        flat_fee_due = recurring_charge.calculate_amount_due(subscription_record)
-        amt_already_billed = recurring_charge.amount_already_invoiced(
-            subscription_record
-        )
-        logger.info(
-            f"amt_already_billed: {amt_already_billed}, flat_fee_due: {flat_fee_due}"
-        )
-        if abs(float(amt_already_billed) - float(flat_fee_due)) < 0.01:
-            # already billed the correct amount
-            pass
-        elif (
-            subscription_record.end_date > invoice.issue_date
-            and recurring_charge.charge_timing
-            == RecurringCharge.ChargeTimingType.IN_ARREARS
+    # go thru every billing record that has a recurring charge to determien from ther
+    # whats due
+    for billing_record in subscription_record.billing_records.filter(
+        recurring_charge__isnull=False
+    ):
+        # if the next invoicing date is in the future, we don't need to bill for it yet
+        if billing_record.next_invoicing_date > invoice.issue_date:
+            continue
+        # this step checks how much is due. If its an in advance charge, we want to calculate the charge up til the end date of teh subscription. If its in arrears, then we only want to calculate the charge up til the invoice's issue date. You might worry that invoice issue date is past the end of the billing record, but we check inside to make sure the relative end date is never more than the end date of the billing record
+        if (
+            billing_record.recurring_charge.charge_timing
+            == RecurringCharge.ChargeTimingType.IN_ADVANCE
         ):
-            # if this is an in arrears charge, and the end date is after the invoice date, then we don't charge
+            relative_end_date = billing_record.end_date
+        else:
+            relative_end_date = billing_record.next_invoicing_date
+        flat_fee_due = billing_record.calculate_recurring_charge_due(relative_end_date)
+        # we check how much has already been billed
+        amt_already_billed = billing_record.amount_already_invoiced()
+        if abs(amt_already_billed - flat_fee_due) < Decimal("0.01"):
             pass
         else:
             billing_plan = subscription_record.billing_plan
-            billing_plan_name = billing_plan.plan.plan_name
-            start = subscription_record.start_date
-            end = subscription_record.end_date
+            billing_plan_name = str(billing_plan)
+            start = billing_record.start_date
+            end = billing_record.end_date
             qty = subscription_record.quantity
+            billing_type = billing_record.recurring_charge.get_charge_timing_display()
+            # one case... if the invoice charge timing is in arrears, but the billing record end date is past the invoice issue date, then we need to change the charge timing to intermediate because it's not done billing yet
+            if (
+                billing_type == INVOICE_CHARGE_TIMING_TYPE.IN_ARREARS
+                and billing_record.end_date > invoice.issue_date
+            ):
+                billing_type = INVOICE_CHARGE_TIMING_TYPE.INTERMEDIATE
+            # another case... if we are charging an addon that is a one-time charge, then we need to change the charge timing to one time
+            if (
+                billing_plan.addon_spec is not None
+                and billing_plan.addon_spec.billing_frequency
+                == AddOnSpecification.BillingFrequency.ONE_TIME
+            ):
+                billing_type = INVOICE_CHARGE_TIMING_TYPE.ONE_TIME
             if flat_fee_due > 0:
                 InvoiceLineItem.objects.create(
                     name=f"{billing_plan_name} Flat Fee",
@@ -188,14 +209,14 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice):
                     end_date=convert_to_datetime(end, date_behavior="max"),
                     quantity=qty if qty > 1 else None,
                     subtotal=flat_fee_due,
-                    billing_type=recurring_charge.get_charge_timing_display(),
+                    billing_type=billing_type,
                     chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE,
                     invoice=invoice,
                     associated_subscription_record=subscription_record,
                     associated_plan_version=billing_plan,
-                    associated_recurring_charge=recurring_charge,
                     organization=subscription_record.organization,
                 )
+            # to make the accounting add up, we need to subtract stuff
             if amt_already_billed > 0:
                 InvoiceLineItem.objects.create(
                     name=f"{billing_plan_name} Flat Fee Already Invoiced",
@@ -203,35 +224,34 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice):
                     end_date=invoice.issue_date,
                     quantity=qty if qty > 1 else None,
                     subtotal=-amt_already_billed,
-                    billing_type=recurring_charge.get_charge_timing_display(),
+                    billing_type=billing_type,
                     chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE,
                     invoice=invoice,
-                    associated_subscription_record=subscription_record,
+                    associated_billing_record=billing_record,
                     associated_plan_version=billing_plan,
-                    associated_recurring_charge=recurring_charge,
                     organization=subscription_record.organization,
                 )
+            # now we need to handle the billing record being invoiced. This means advancing the next invoicing date, or if this was the last invoicing date, marking the billing record as fully billed. Only do this if its not a draft!
+            if not draft:
+                billing_record.handle_invoicing(invoice.issue_date)
 
 
-def calculate_subscription_record_usage_fees(subscription_record, invoice):
+def calculate_subscription_record_usage_fees(subscription_record, invoice, draft):
     from metering_billing.models import InvoiceLineItem
 
     billing_plan = subscription_record.billing_plan
     # only calculate this for parent plans! addons should never calculate
     if subscription_record.invoice_usage_charges:
-        for plan_component in billing_plan.plan_components.all():
-            usg_rev = plan_component.calculate_total_revenue(subscription_record)
+        for br in subscription_record.billing_records.filter(component__isnull=False):
+            usg_rev = br.get_usage_and_revenue()
             qty = usg_rev["usage_qty"]
             rev = usg_rev["revenue"]
-            logger.info(
-                f"plan_component: {plan_component.billable_metric.billable_metric_name} usage_qty: {qty} revenue: {rev}",
-            )
             InvoiceLineItem.objects.create(
-                name=str(plan_component.billable_metric.billable_metric_name),
-                start_date=subscription_record.usage_start_date,
+                name=str(br.plan_component.billable_metric.billable_metric_name),
+                start_date=subscription_record.start_date,
                 end_date=subscription_record.end_date,
-                quantity=usg_rev["usage_qty"] or 0,
-                subtotal=usg_rev["revenue"],
+                quantity=qty or 0,
+                subtotal=rev,
                 billing_type=INVOICE_CHARGE_TIMING_TYPE.IN_ARREARS,
                 chargeable_item_type=CHARGEABLE_ITEM_TYPE.USAGE_CHARGE,
                 invoice=invoice,
@@ -239,6 +259,8 @@ def calculate_subscription_record_usage_fees(subscription_record, invoice):
                 associated_plan_version=billing_plan,
                 organization=subscription_record.organization,
             )
+            if not draft:
+                br.handle_invoicing(invoice.issue_date)
 
 
 def find_next_billing_plan(subscription_record):
@@ -251,7 +273,7 @@ def find_next_billing_plan(subscription_record):
             else:
                 next_bp = subscription_record.billing_plan
         else:
-            next_bp = subscription_record.billing_plan.replace_with
+            next_bp = replace_with
     else:
         next_bp = subscription_record.billing_plan
     return next_bp
@@ -270,20 +292,20 @@ def create_next_subscription_record(subscription_record, next_bp):
     from metering_billing.models import SubscriptionRecord
 
     timezone = subscription_record.customer.timezone
-    subrec_dict = {
-        "organization": subscription_record.organization,
-        "customer": subscription_record.customer,
-        "billing_plan": next_bp,
-        "start_date": date_as_min_dt(
-            subscription_record.end_date + relativedelta(days=1), timezone
-        ),
-        "is_new": False,
-        "quantity": subscription_record.quantity,
-    }
-    next_subscription_record = SubscriptionRecord.objects.create(**subrec_dict)
-    for f in subscription_record.filters.all():
-        next_subscription_record.filters.add(f)
-    return next_subscription_record
+    start_date = date_as_min_dt(
+        subscription_record.end_date + relativedelta(days=1), timezone
+    )
+    next_sr = SubscriptionRecord.create_subscription_record(
+        start_date=start_date,
+        end_date=None,
+        billing_plan=next_bp,
+        customer=subscription_record.customer,
+        organization=subscription_record.organization,
+        subscription_filters=subscription_record.filters.all(),
+        is_new=False,
+        quantity=subscription_record.quantity,
+    )
+    return next_sr
 
 
 def charge_next_plan_flat_fee(

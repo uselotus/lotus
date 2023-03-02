@@ -40,8 +40,8 @@ logger = logging.getLogger("django.server")
 Metric = apps.get_app_config("metering_billing").get_model(model_name="Metric")
 Customer = apps.get_app_config("metering_billing").get_model(model_name="Customer")
 Event = apps.get_app_config("metering_billing").get_model(model_name="Event")
-SubscriptionRecord = apps.get_app_config("metering_billing").get_model(
-    model_name="SubscriptionRecord"
+BillingRecord = apps.get_app_config("metering_billing").get_model(
+    model_name="BillingRecord"
 )
 Organization = apps.get_app_config("metering_billing").get_model(
     model_name="Organization"
@@ -98,30 +98,30 @@ class MetricHandler(abc.ABC):
 
     @staticmethod
     @abc.abstractmethod
-    def get_subscription_record_total_billable_usage(
-        metric: Metric, subscription_record: SubscriptionRecord
+    def get_billing_record_total_billable_usage(
+        metric: Metric, billing_record: BillingRecord
     ) -> Decimal:
         """This method returns the total quantity of usage that a subscription record should be billed for. This is very straightforward and should simply return a number that will then be used to calculate the amount due."""
         pass
 
     @staticmethod
     @abc.abstractmethod
-    def get_subscription_record_current_usage(
-        metric: Metric, subscription_record: SubscriptionRecord
+    def get_billing_record_current_usage(
+        metric: Metric, billing_record: BillingRecord
     ) -> Decimal:
         """This method returns the current usage of a susbcription record. The result from this method will be used to calculate whether the customer has access to the event represented by the metric. It sounds similar, but there are some key subtleties to note:
         Counter: In this case, subscription record current_usage and total_billable_usage are the same.
         Gauge: These metrics are not billed on a per-event bases, but on the peak usage within some specified granularity period. That means that the billable usage is the normalized peak usage, where the current usage is the value of the underlying state at the time of the request.
-        Rate: Even though the billable usage would be the maximum rate over the subscription_record period, the current usage is simply the current rate.
+        Rate: Even though the billable usage would be the maximum rate over the billing_record period, the current usage is simply the current rate.
         """
         pass
 
     @staticmethod
     @abc.abstractmethod
-    def get_subscription_record_daily_billable_usage(
-        metric: Metric, subscription_record: SubscriptionRecord
+    def get_billing_record_daily_billable_usage(
+        metric: Metric, billing_record: BillingRecord
     ) -> dict[datetime.date, Decimal]:
-        """This method should return the same quantity as get_subscription_record_total_billable_usage, but split up per day. This allows for calculations of the amount due per day, which is useful for prorating and accounting integrations."""
+        """This method should return the same quantity as get_billing_record_total_billable_usage, but split up per day. This allows for calculations of the amount due per day, which is useful for prorating and accounting integrations."""
         pass
 
     @staticmethod
@@ -227,12 +227,12 @@ class CounterHandler(MetricHandler):
     @staticmethod
     def _prepare_injection_dict(
         metric: Metric,
-        subscription_record: SubscriptionRecord,
+        billing_record: BillingRecord,
         organization: Organization,
     ) -> dict:
         from metering_billing.models import OrganizationSetting
 
-        customer = subscription_record.customer
+        customer = billing_record.subscription.customer
         uuidv5_customer_id = customer.uuidv5_customer_id
         if uuidv5_customer_id is None:
             uuidv5_customer_id = customer_id_uuidv5(customer.customer_id)
@@ -252,7 +252,7 @@ class CounterHandler(MetricHandler):
             organization.provision_subscription_filter_settings()
             groupby = []
         injection_dict["group_by"] = groupby
-        for filter in subscription_record.filters.all():
+        for filter in billing_record.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
             ] = filter.comparison_value
@@ -261,7 +261,7 @@ class CounterHandler(MetricHandler):
     @staticmethod
     def _get_total_usage_per_day_not_unique(
         metric: Metric,
-        subscription_record: SubscriptionRecord,
+        billing_record: BillingRecord,
         organization: Organization,
     ) -> list[namedtuple]:
         from metering_billing.aggregation.counter_query_templates import (
@@ -273,10 +273,10 @@ class CounterHandler(MetricHandler):
         )
         # prepare dictionary for injection
         injection_dict = CounterHandler._prepare_injection_dict(
-            metric, subscription_record, organization
+            metric, billing_record, organization
         )
-        start = subscription_record.usage_start_date
-        end = subscription_record.end_date
+        start = billing_record.start_date
+        end = billing_record.end_date
         # there's 3 periods here.... the chunk between the start and the end of that day,
         # the full days in between, and the chunk between the last full day and the end. There
         # are scenarios where all 3 of them happen or don't independently of each other, so
@@ -359,8 +359,8 @@ class CounterHandler(MetricHandler):
         return all_results
 
     @staticmethod
-    def get_subscription_record_total_billable_usage(
-        metric: Metric, subscription_record: SubscriptionRecord
+    def get_billing_record_total_billable_usage(
+        metric: Metric, billing_record: BillingRecord
     ) -> Decimal:
         from metering_billing.aggregation.counter_query_templates import (
             COUNTER_UNIQUE_TOTAL,
@@ -372,13 +372,13 @@ class CounterHandler(MetricHandler):
         )
         if metric.usage_aggregation_type != METRIC_AGGREGATION.UNIQUE:
             all_results = CounterHandler._get_total_usage_per_day_not_unique(
-                metric, subscription_record, organization
+                metric, billing_record, organization
             )
         else:
-            start = subscription_record.usage_start_date
-            end = subscription_record.end_date
+            start = billing_record.start_date
+            end = billing_record.end_date
             injection_dict = CounterHandler._prepare_injection_dict(
-                metric, subscription_record, organization
+                metric, billing_record, organization
             )
             injection_dict["start_date"] = start
             injection_dict["end_date"] = end
@@ -416,11 +416,11 @@ class CounterHandler(MetricHandler):
         return totals["usage_qty"]
 
     @staticmethod
-    def get_subscription_record_current_usage(
-        metric: Metric, subscription_record: SubscriptionRecord
+    def get_billing_record_current_usage(
+        metric: Metric, billing_record: BillingRecord
     ) -> Decimal:
-        return CounterHandler.get_subscription_record_total_billable_usage(
-            metric, subscription_record
+        return CounterHandler.get_billing_record_total_billable_usage(
+            metric, billing_record
         )
 
     @staticmethod
@@ -436,8 +436,8 @@ class CounterHandler(MetricHandler):
         )
 
     @staticmethod
-    def get_subscription_record_daily_billable_usage(
-        metric: Metric, subscription_record: SubscriptionRecord
+    def get_billing_record_daily_billable_usage(
+        metric: Metric, billing_record: BillingRecord
     ) -> dict[datetime.date, Decimal]:
         from metering_billing.models import Organization
 
@@ -449,7 +449,7 @@ class CounterHandler(MetricHandler):
         all_results = {}
         if metric.usage_aggregation_type != METRIC_AGGREGATION.UNIQUE:
             usg_per_day_results = CounterHandler._get_total_usage_per_day_not_unique(
-                metric, subscription_record, organization
+                metric, billing_record, organization
             )
             for result in usg_per_day_results:
                 time = convert_to_date(result.bucket)
@@ -481,10 +481,10 @@ class CounterHandler(MetricHandler):
                         all_results[time]["usage_qty"] = 0
                 all_results[time] = all_results[time]["usage_qty"]
         else:
-            start = subscription_record.usage_start_date
-            end = subscription_record.end_date
+            start = billing_record.start_date
+            end = billing_record.end_date
             injection_dict = CounterHandler._prepare_injection_dict(
-                metric, subscription_record, organization
+                metric, billing_record, organization
             )
             injection_dict["start_date"] = start
             injection_dict["end_date"] = end
@@ -684,8 +684,8 @@ class CustomHandler(MetricHandler):
         return results
 
     @staticmethod
-    def get_subscription_record_total_billable_usage(
-        metric: Metric, subscription_record: SubscriptionRecord
+    def get_billing_record_total_billable_usage(
+        metric: Metric, billing_record: BillingRecord
     ) -> Decimal:
         from metering_billing.models import Organization
 
@@ -694,14 +694,14 @@ class CustomHandler(MetricHandler):
         )
         injection_dict = {
             "filter_properties": {},
-            "uuidv5_customer_id": subscription_record.customer.uuidv5_customer_id,
+            "uuidv5_customer_id": billing_record.customer.uuidv5_customer_id,
         }
-        start = subscription_record.usage_start_date
-        end = subscription_record.end_date
+        start = billing_record.start_date
+        end = billing_record.end_date
         injection_dict["start_date"] = start
         injection_dict["end_date"] = end
         injection_dict["organization_id"] = organization.id
-        for filter in subscription_record.filters.all():
+        for filter in billing_record.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
             ] = filter.comparison_value
@@ -711,25 +711,25 @@ class CustomHandler(MetricHandler):
         return results[0].usage_qty
 
     @staticmethod
-    def get_subscription_record_current_usage(
-        metric: Metric, subscription_record: SubscriptionRecord
+    def get_billing_record_current_usage(
+        metric: Metric, billing_record: BillingRecord
     ) -> Decimal:
-        return CustomHandler.get_subscription_record_total_billable_usage(
-            metric, subscription_record
+        return CustomHandler.get_billing_record_total_billable_usage(
+            metric, billing_record
         )
 
     @staticmethod
-    def get_subscription_record_daily_billable_usage(
-        metric: Metric, subscription_record: SubscriptionRecord
+    def get_billing_record_daily_billable_usage(
+        metric: Metric, billing_record: BillingRecord
     ) -> dict[datetime.date, Decimal]:
-        usage_qty = CustomHandler.get_subscription_record_total_billable_usage(
-            metric, subscription_record
+        usage_qty = CustomHandler.get_billing_record_total_billable_usage(
+            metric, billing_record
         )
         now = now_utc().date()
         dates_bwn = [
             x
             for x in dates_bwn_two_dts(
-                subscription_record.usage_start_date, subscription_record.end_date
+                billing_record.start_date, billing_record.end_date
             )
             if x <= now
         ]
@@ -1074,8 +1074,8 @@ class GaugeHandler(MetricHandler):
         return metric
 
     @staticmethod
-    def get_subscription_record_total_billable_usage(
-        metric: Metric, subscription_record: SubscriptionRecord
+    def get_billing_record_total_billable_usage(
+        metric: Metric, billing_record: BillingRecord
     ) -> Decimal:
         from metering_billing.models import Organization, OrganizationSetting
 
@@ -1097,7 +1097,7 @@ class GaugeHandler(MetricHandler):
             groupby = []
         metric_granularity = metric.granularity
         if metric_granularity == METRIC_GRANULARITY.TOTAL:
-            plan_duration = subscription_record.billing_plan.plan.plan_duration
+            plan_duration = billing_record.billing_plan.plan.plan_duration
             metric_granularity = (
                 METRIC_GRANULARITY.YEAR
                 if plan_duration == PLAN_DURATION.YEARLY
@@ -1108,7 +1108,7 @@ class GaugeHandler(MetricHandler):
                 )
             )
         granularity_ratio = get_granularity_ratio(
-            metric_granularity, metric.proration, subscription_record.usage_start_date
+            metric_granularity, metric.proration, billing_record.start_date
         )
         proration_units = metric.proration
         if proration_units == METRIC_GRANULARITY.TOTAL:
@@ -1124,9 +1124,9 @@ class GaugeHandler(MetricHandler):
             ),
             "group_by": groupby,
             "filter_properties": {},
-            "uuidv5_customer_id": subscription_record.customer.uuidv5_customer_id,
-            "start_date": subscription_record.usage_start_date,
-            "end_date": subscription_record.end_date,
+            "uuidv5_customer_id": billing_record.customer.uuidv5_customer_id,
+            "start_date": billing_record.start_date,
+            "end_date": billing_record.end_date,
             "granularity_ratio": granularity_ratio,
             "uuidv5_event_name": uuid.uuid5(EVENT_NAME_NAMESPACE, metric.event_name),
             "organization_id": organization.id,
@@ -1140,7 +1140,7 @@ class GaugeHandler(MetricHandler):
             ],
             "property_name": metric.property_name,
         }
-        for filter in subscription_record.filters.all():
+        for filter in billing_record.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
             ] = filter.comparison_value
@@ -1160,8 +1160,8 @@ class GaugeHandler(MetricHandler):
         return result[0].usage_qty
 
     @staticmethod
-    def get_subscription_record_current_usage(
-        metric: Metric, subscription_record: SubscriptionRecord
+    def get_billing_record_current_usage(
+        metric: Metric, billing_record: BillingRecord
     ) -> Decimal:
         from metering_billing.models import Organization, OrganizationSetting
 
@@ -1183,7 +1183,7 @@ class GaugeHandler(MetricHandler):
             groupby = []
         metric_granularity = metric.granularity
         if metric_granularity == METRIC_GRANULARITY.TOTAL:
-            plan_duration = subscription_record.billing_plan.plan.plan_duration
+            plan_duration = billing_record.billing_plan.plan.plan_duration
             metric_granularity = (
                 METRIC_GRANULARITY.YEAR
                 if plan_duration == PLAN_DURATION.YEARLY
@@ -1194,7 +1194,7 @@ class GaugeHandler(MetricHandler):
                 )
             )
         granularity_ratio = get_granularity_ratio(
-            metric_granularity, metric.proration, subscription_record.usage_start_date
+            metric_granularity, metric.proration, billing_record.start_date
         )
         proration_units = metric.proration
         if proration_units == METRIC_GRANULARITY.TOTAL:
@@ -1210,9 +1210,9 @@ class GaugeHandler(MetricHandler):
             ),
             "group_by": groupby,
             "filter_properties": {},
-            "uuidv5_customer_id": subscription_record.customer.uuidv5_customer_id,
-            "start_date": subscription_record.usage_start_date,
-            "end_date": subscription_record.end_date,
+            "uuidv5_customer_id": billing_record.customer.uuidv5_customer_id,
+            "start_date": billing_record.start_date,
+            "end_date": billing_record.end_date,
             "granularity_ratio": granularity_ratio,
             "uuidv5_event_name": uuid.uuid5(EVENT_NAME_NAMESPACE, metric.event_name),
             "organization_id": organization.id,
@@ -1226,7 +1226,7 @@ class GaugeHandler(MetricHandler):
             ],
             "property_name": metric.property_name,
         }
-        for filter in subscription_record.filters.all():
+        for filter in billing_record.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
             ] = filter.comparison_value
@@ -1242,8 +1242,8 @@ class GaugeHandler(MetricHandler):
         return result[0].usage_qty
 
     @staticmethod
-    def get_subscription_record_daily_billable_usage(
-        metric: Metric, subscription_record: SubscriptionRecord
+    def get_billing_record_daily_billable_usage(
+        metric: Metric, billing_record: BillingRecord
     ) -> dict[datetime.date, Decimal]:
         from metering_billing.models import Organization, OrganizationSetting
 
@@ -1265,7 +1265,7 @@ class GaugeHandler(MetricHandler):
             groupby = []
         metric_granularity = metric.granularity
         if metric_granularity == METRIC_GRANULARITY.TOTAL:
-            plan_duration = subscription_record.billing_plan.plan.plan_duration
+            plan_duration = billing_record.billing_plan.plan.plan_duration
             metric_granularity = (
                 METRIC_GRANULARITY.YEAR
                 if plan_duration == PLAN_DURATION.YEARLY
@@ -1276,7 +1276,7 @@ class GaugeHandler(MetricHandler):
                 )
             )
         granularity_ratio = get_granularity_ratio(
-            metric_granularity, metric.proration, subscription_record.usage_start_date
+            metric_granularity, metric.proration, billing_record.start_date
         )
         proration_units = metric.proration
         if proration_units == METRIC_GRANULARITY.TOTAL:
@@ -1292,9 +1292,9 @@ class GaugeHandler(MetricHandler):
             ),
             "group_by": groupby,
             "filter_properties": {},
-            "uuidv5_customer_id": subscription_record.customer.uuidv5_customer_id,
-            "start_date": subscription_record.usage_start_date,
-            "end_date": subscription_record.end_date,
+            "uuidv5_customer_id": billing_record.customer.uuidv5_customer_id,
+            "start_date": billing_record.start_date,
+            "end_date": billing_record.end_date,
             "granularity_ratio": granularity_ratio,
             "uuidv5_event_name": uuid.uuid5(EVENT_NAME_NAMESPACE, metric.event_name),
             "organization_id": organization.id,
@@ -1308,7 +1308,7 @@ class GaugeHandler(MetricHandler):
             ],
             "property_name": metric.property_name,
         }
-        for filter in subscription_record.filters.all():
+        for filter in billing_record.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
             ] = filter.comparison_value
@@ -1513,22 +1513,20 @@ class RateHandler(MetricHandler):
         return metric
 
     @staticmethod
-    def _rate_cagg_total_results(
-        metric: Metric, subscription_record: SubscriptionRecord
-    ):
+    def _rate_cagg_total_results(metric: Metric, billing_record: BillingRecord):
         from metering_billing.aggregation.rate_query_templates import RATE_CAGG_TOTAL
         from metering_billing.models import Organization, OrganizationSetting
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
         )
-        start = subscription_record.usage_start_date
-        end = subscription_record.end_date
+        start = billing_record.start_date
+        end = billing_record.end_date
         injection_dict = {
             "query_type": metric.usage_aggregation_type,
             "organization_id": organization.id,
             "filter_properties": {},
-            "uuidv5_customer_id": subscription_record.customer.uuidv5_customer_id,
+            "uuidv5_customer_id": billing_record.customer.uuidv5_customer_id,
             "start_date": start.replace(microsecond=0),
             "end_date": end.replace(microsecond=0),
             "cagg_name": ("org_" + organization.organization_id.hex)[:22]
@@ -1550,7 +1548,7 @@ class RateHandler(MetricHandler):
             organization.provision_subscription_filter_settings()
             groupby = []
         injection_dict["group_by"] = groupby
-        for filter in subscription_record.filters.all():
+        for filter in billing_record.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
             ] = filter.comparison_value
@@ -1561,18 +1559,18 @@ class RateHandler(MetricHandler):
         return results
 
     @staticmethod
-    def get_subscription_record_total_billable_usage(
-        metric: Metric, subscription_record: SubscriptionRecord
+    def get_billing_record_total_billable_usage(
+        metric: Metric, billing_record: BillingRecord
     ) -> Decimal:
-        results = RateHandler._rate_cagg_total_results(metric, subscription_record)
+        results = RateHandler._rate_cagg_total_results(metric, billing_record)
         if len(results) == 0:
             return Decimal(0)
         total = results[0].usage_qty
         return total
 
     @staticmethod
-    def get_subscription_record_current_usage(
-        metric: Metric, subscription_record: SubscriptionRecord
+    def get_billing_record_current_usage(
+        metric: Metric, billing_record: BillingRecord
     ) -> Decimal:
         from metering_billing.aggregation.rate_query_templates import (
             RATE_GET_CURRENT_USAGE,
@@ -1582,12 +1580,12 @@ class RateHandler(MetricHandler):
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
         )
-        start = subscription_record.usage_start_date
-        end = subscription_record.end_date
+        start = billing_record.start_date
+        end = billing_record.end_date
         injection_dict = {
             "query_type": metric.usage_aggregation_type,
             "filter_properties": {},
-            "uuidv5_customer_id": subscription_record.customer.uuidv5_customer_id,
+            "uuidv5_customer_id": billing_record.customer.uuidv5_customer_id,
             "start_date": start.replace(microsecond=0),
             "end_date": end.replace(microsecond=0),
             "cagg_name": ("org_" + organization.organization_id.hex)[:22]
@@ -1619,7 +1617,7 @@ class RateHandler(MetricHandler):
             organization.provision_subscription_filter_settings()
             groupby = []
         injection_dict["group_by"] = groupby
-        for filter in subscription_record.filters.all():
+        for filter in billing_record.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
             ] = filter.comparison_value
@@ -1632,10 +1630,10 @@ class RateHandler(MetricHandler):
         return results[0].usage_qty
 
     @staticmethod
-    def get_subscription_record_daily_billable_usage(
-        metric: Metric, subscription_record: SubscriptionRecord
+    def get_billing_record_daily_billable_usage(
+        metric: Metric, billing_record: BillingRecord
     ) -> dict[datetime.date, Decimal]:
-        results = RateHandler._rate_cagg_total_results(metric, subscription_record)
+        results = RateHandler._rate_cagg_total_results(metric, billing_record)
         total = results[0].usage_qty
         date = convert_to_date(results[0].bucket)
         return {date: total}

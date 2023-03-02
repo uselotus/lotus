@@ -175,3 +175,9 @@ class AlignmentEngineFailure(APIException):
     status_code = 500
     default_detail = "Alignment engine failed to perform alignment"
     default_code = "alignment_engine_failure"
+
+
+class IntermediateBillingEngineFailure(APIException):
+    status_code = 500
+    default_detail = "Intermediate billing engine ran into an unexpected state"
+    default_code = "intermediate_billing_engine_failure"

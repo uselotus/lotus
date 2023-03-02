@@ -6,10 +6,7 @@ from typing import Literal, Union
 from django.conf import settings
 from django.db.models import Max, Min, Sum
 from drf_spectacular.utils import extend_schema_serializer
-from metering_billing.invoice import (
-    generate_balance_adjustment_invoice,
-    generate_invoice,
-)
+from metering_billing.invoice import generate_balance_adjustment_invoice
 from metering_billing.models import (
     AddOnSpecification,
     Address,
@@ -1417,8 +1414,6 @@ class SubscriptionRecordCreateSerializerOld(
         return data
 
     def create(self, validated_data):
-        from metering_billing.invoice import generate_invoice
-
         filters = validated_data.pop("subscription_filters", [])
         subscription_filters = []
         for filter_data in filters:
@@ -1438,20 +1433,17 @@ class SubscriptionRecordCreateSerializerOld(
                 )
                 cf = CategoricalFilter.objects.filter(**sub_cat_filter_dict).first()
             subscription_filters.append(cf)
-        sub_record = SubscriptionRecord.objects.create_with_filters(
-            **validated_data, subscription_filters=subscription_filters
+        sr = SubscriptionRecord.create_subscription_record(
+            start_date=validated_data["start_date"],
+            end_date=validated_data.get("end_date"),
+            billing_plan=validated_data["billing_plan"],
+            customer=validated_data["customer"],
+            organization=self.context["organization"],
+            is_new=validated_data.get("is_new", True),
+            subscription_filters=subscription_filters,
+            quantity=validated_data.get("quantity", 1),
         )
-        # new subscription means we need to create an invoice if its pay in advance
-        if any(
-            x.charge_timing == RecurringCharge.ChargeTimingType.IN_ADVANCE
-            for x in sub_record.billing_plan.recurring_charges.all()
-        ):
-            sub_record.invoice_usage_charges = False
-            sub_record.save()
-            generate_invoice(sub_record)
-            sub_record.invoice_usage_charges = True
-            sub_record.save()
-        return sub_record
+        return sr
 
 
 class SubscriptionRecordCreateSerializer(
@@ -1513,8 +1505,6 @@ class SubscriptionRecordCreateSerializer(
         return data
 
     def create(self, validated_data):
-        from metering_billing.invoice import generate_invoice
-
         filters = validated_data.pop("subscription_filters", [])
         subscription_filters = []
         for filter_data in filters:
@@ -1534,20 +1524,17 @@ class SubscriptionRecordCreateSerializer(
                 )
                 cf = CategoricalFilter.objects.filter(**sub_cat_filter_dict).first()
             subscription_filters.append(cf)
-        sub_record = SubscriptionRecord.objects.create_with_filters(
-            **validated_data, subscription_filters=subscription_filters
+        sr = SubscriptionRecord.create_subscription_record(
+            start_date=validated_data["start_date"],
+            end_date=validated_data.get("end_date"),
+            billing_plan=validated_data["billing_plan"],
+            customer=validated_data["customer"],
+            organization=self.context["organization"],
+            subscription_filters=subscription_filters,
+            is_new=validated_data.get("is_new", True),
+            quantity=validated_data.get("quantity", 1),
         )
-        # new subscription means we need to create an invoice if its pay in advance
-        if any(
-            x.charge_timing == RecurringCharge.ChargeTimingType.IN_ADVANCE
-            for x in sub_record.billing_plan.recurring_charges.all()
-        ):
-            sub_record.invoice_usage_charges = False
-            sub_record.save()
-            generate_invoice(sub_record)
-            sub_record.invoice_usage_charges = True
-            sub_record.save()
-        return sub_record
+        return sr
 
 
 class LightweightSubscriptionRecordSerializer(SubscriptionRecordSerializer):
@@ -2397,46 +2384,11 @@ class AddOnSubscriptionRecordCreateSerializer(
         return data
 
     def create(self, validated_data):
-        now = now_utc()
-        organization = self.context["organization"]
-        attach_to_sr = validated_data["attach_to_subscription_record"]
-        customer = attach_to_sr.customer
-        addon_version = validated_data["addon_version"]
-        addon_spec = addon_version.addon_spec
-        invoice_now = (
-            addon_spec.flat_fee_invoicing_behavior_on_attach
-            == AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_ATTACH
-        )
-        is_recurring = (
-            addon_spec.billing_frequency
-            == AddOnSpecification.BillingFrequency.RECURRING
-        )
-        if addon_version.plan_components.all().count() > 0:
-            is_fully_billed = False  # if it has components its not fully billed
-        else:
-            # otherwise, depends on if we invoice now or later
-            if invoice_now:
-                is_fully_billed = True
-            else:
-                is_fully_billed = False
-        sr = SubscriptionRecord.objects.create(
-            organization=organization,
-            customer=customer,
-            billing_plan=addon_version,
-            usage_start_date=now,
-            start_date=now,
-            end_date=attach_to_sr.end_date,
-            unadjusted_duration_microseconds=attach_to_sr.unadjusted_duration_microseconds,
-            auto_renew=is_recurring,
-            flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_PRORATED
-            if is_recurring
-            else FLAT_FEE_BEHAVIOR.CHARGE_FULL,
-            parent=attach_to_sr,
-            fully_billed=is_fully_billed,
+        from metering_billing.models import SubscriptionRecord
+
+        sr = SubscriptionRecord.create_addon_subscription_record(
+            parent_subscription_record=validated_data["attach_to_subscription_record"],
+            addon_billing_plan=validated_data["addon_version"],
             quantity=validated_data["quantity"],
         )
-        for sf in attach_to_sr.filters.all():
-            sr.filters.add(sf)
-        if invoice_now:
-            generate_invoice(sr)
         return sr
