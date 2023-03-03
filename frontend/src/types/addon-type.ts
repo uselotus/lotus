@@ -61,3 +61,8 @@ export interface CreateAddOnType
   features: string[];
   currency_code?: string;
 }
+export interface CreateAddOnFeatureBody {
+  feature_id: string;
+  version_ids?: string[];
+  all_versions: boolean;
+}

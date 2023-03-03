@@ -106,10 +106,8 @@ function CustomerDetail() {
   );
 
   const cancelSubscriptionMutation = useMutation(
-    (obj: {
-      post: CancelSubscriptionBody;
-      params: CancelSubscriptionQueryParams;
-    }) => Customer.cancelSubscription(obj.params, obj.post),
+    (obj: { post: CancelSubscriptionBody; subscription_id: string }) =>
+      Customer.cancelSubscription(obj.subscription_id, obj.post),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
@@ -160,11 +158,11 @@ function CustomerDetail() {
 
   const cancelSubscription = (
     props: CancelSubscriptionBody,
-    params: CancelSubscriptionQueryParams
+    subscription_id: string
   ) => {
     cancelSubscriptionMutation.mutate({
       post: props,
-      params,
+      subscription_id,
     });
   };
 

@@ -13,6 +13,7 @@ type OneOf<T extends any[]> = T extends [infer Only]
   : T extends [infer A, infer B, ...infer Rest]
   ? OneOf<[XOR<A, B>, ...Rest]>
   : never;
+
 export interface components {
   schemas: {
     APIToken: {
