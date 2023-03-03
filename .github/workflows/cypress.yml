@@ -102,5 +102,5 @@ jobs:
         uses: cypress-io/github-action@v5
         with:
           working-directory: ./frontend
-          start: yarn run dev --port 3000 &
+          start: yarn run dev --port 3000
           wait-on: "http://localhost:8000/api/healthcheck/, http://localhost:3000"
