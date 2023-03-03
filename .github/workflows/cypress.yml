@@ -48,6 +48,7 @@ jobs:
       DEBUG: False
       KAFKA_URL: "localhost:9092"
       PYTHONDONTWRITEBYTECODE: 1
+      VITE_API_URL: "http://localhost:8000/"
 
     steps:
       - uses: actions/checkout@v3
