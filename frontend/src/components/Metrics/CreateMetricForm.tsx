@@ -60,14 +60,11 @@ function CreateMetricForm(props: {
     useState<TimePeriodType | null>(null);
   const [selectedProration, setSelectedProration] =
     useState<TimePeriodType | null>(null);
-  
+
   const { data, isLoading }: UseQueryResult<EventPages> = useQuery<EventPages>(
-      ["preview events"],
-      () =>
-        Events.searchEventNames(true).then((res) => 
-           res
-        ),
-    );
+    ["preview events"],
+    () => Events.searchEventNames(true).then((res) => res)
+  );
 
   const disableOption = (option: TimePeriodType) => {
     if (selectedGranularity) {
@@ -236,13 +233,13 @@ function CreateMetricForm(props: {
             return;
           }
 
-          if(Array.isArray(values.event_name)){
-            values.event_name = values.event_name[0]
+          if (Array.isArray(values.event_name)) {
+            values.event_name = values.event_name[0];
           }
-          if(Array.isArray(values.property_name)){
-            values.property_name = values.property_name[0]
+          if (Array.isArray(values.property_name)) {
+            values.property_name = values.property_name[0];
           }
-          
+
           const numericFilters: NumericFilterType[] = [];
           const categoricalFilters: CategoricalFilterType[] = [];
           if (values.filters && values.filters.length > 0) {
@@ -406,14 +403,18 @@ function CreateMetricForm(props: {
                   mode="tags"
                   placeholder="Start typing to look up matching events"
                   onChange={(event_name: string) => {
-                    const selectedEvent = data?.results?.find((e) => e.event_name == event_name);
-                    const temp = Object.keys(selectedEvent?.properties).map(key => key)
-                    setPropertyNames(temp)
+                    const selectedEvent = data?.results?.find(
+                      (e) => e.event_name == event_name
+                    );
+                    const temp = Object.keys(selectedEvent?.properties).map(
+                      (key) => key
+                    );
+                    setPropertyNames(temp);
                   }}
                 >
-                  {
-                    data?.results?.map(e => (<Option value={e.event_name}>{e.event_name}</Option>))
-                  }
+                  {data?.results?.map((e) => (
+                    <Option value={e.event_name}>{e.event_name}</Option>
+                  ))}
                 </Select>
               </Form.Item>
             </Tooltip>
@@ -502,16 +503,28 @@ function CreateMetricForm(props: {
                     <Form.Item
                       name="property_name"
                       label="Property Name"
-                      rules={[{ required: true }]}
+                      rules={[
+                        {
+                          validator: (rule, value) => {
+                            if (value && value.length > 0) {
+                              return Promise.resolve();
+                            }
+                            return Promise.reject(
+                              "Please select a property name"
+                            );
+                          },
+                        },
+                      ]}
                     >
                       <Select
                         mode="tags"
+                        maxTagCount={1}
                         placeholder="Start typing to look up matching property names"
-                >
-                  {
-                    propertyNames.map(p => (<Option value={p}>{p}</Option>))
-                  }
-                </Select>
+                      >
+                        {propertyNames.map((p) => (
+                          <Option value={p}>{p}</Option>
+                        ))}
+                      </Select>
                     </Form.Item>
                   ) : null
                 }
@@ -559,12 +572,13 @@ function CreateMetricForm(props: {
                 rules={[{ required: true }]}
               >
                 <Select
-                        mode="tags"
-                        placeholder="Start typing to look up matching property names"
+                  mode="tags"
+                  maxTagCount={1}
+                  placeholder="Start typing to look up matching property names"
                 >
-                  {
-                    propertyNames.map(p => (<Option value={p}>{p}</Option>))
-                  }
+                  {propertyNames.map((p) => (
+                    <Option value={p}>{p}</Option>
+                  ))}
                 </Select>
               </Form.Item>
 
@@ -711,18 +725,28 @@ function CreateMetricForm(props: {
                             validateTrigger={["onChange", "onBlur"]}
                             rules={[
                               {
-                                required: true,
-                                whitespace: true,
-                                message:
-                                  "Please input a property name or delete this filter.",
+                                validator: (rule, value) => {
+                                  if (value && value.length > 0) {
+                                    return Promise.resolve();
+                                  }
+                                  return Promise.reject(
+                                    "Please select a property name"
+                                  );
+                                },
                               },
                             ]}
                             noStyle
                           >
-                            <Input
+                            <Select
                               placeholder="property name"
+                              mode="tags"
+                              maxTagCount={1}
                               style={{ width: "30%" }}
-                            />
+                            >
+                              {propertyNames.map((p) => (
+                                <Option value={p}>{p}</Option>
+                              ))}
+                            </Select>
                           </Form.Item>
                           <Form.Item
                             name={[field.name, "operator"]}
