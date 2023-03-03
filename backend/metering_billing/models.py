@@ -26,6 +26,15 @@ from django.db.models import Count, F, FloatField, Prefetch, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
+
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     NotEditable,
@@ -54,7 +63,6 @@ from metering_billing.utils.enums import (
     EVENT_TYPE,
     FLAT_FEE_BEHAVIOR,
     INVOICE_CHARGE_TIMING_TYPE,
-    INVOICING_BEHAVIOR,
     METRIC_AGGREGATION,
     METRIC_GRANULARITY,
     METRIC_STATUS,
@@ -75,14 +83,6 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -1526,9 +1526,11 @@ class PlanComponent(models.Model):
             self.pricing_unit = self.plan_version.currency
         super().save(*args, **kwargs)
 
-    def get_invoicing_dates(self, subscription_record):
+    def get_component_invoicing_dates(
+        self, subscription_record, override_start_date=None
+    ):
         # FOR PLAN COMPONENTS
-        start_date = subscription_record.start_date
+        start_date = override_start_date or subscription_record.start_date
         end_date = subscription_record.end_date
         if self.invoicing_interval_unit is None:
             return [end_date]
@@ -1557,9 +1559,9 @@ class PlanComponent(models.Model):
 
         return invoicing_dates
 
-    def get_reset_dates(self, subscription_record):
+    def get_component_reset_dates(self, subscription_record, override_start_date=None):
         # FOR PLAN COMPONENTS
-        start_date = subscription_record.start_date
+        start_date = override_start_date or subscription_record.start_date
         end_date = subscription_record.end_date
         if self.reset_interval_unit is None:
             return [(start_date, end_date)]
@@ -1932,12 +1934,19 @@ class RecurringCharge(models.Model):
             )
         ]
 
-    def get_invoicing_dates(self, subscription_record):
+    def get_recurring_charge_invoicing_dates(self, subscription_record):
         from metering_billing.models import AddOnSpecification
 
         # FOR RECURRIG CHARGES
-        start_date = subscription_record.start_date
-        end_date = subscription_record.end_date
+        # first we get the actual star tdate and end date of this subscription. However, if this is an addon, we need to calculate the periods w.r.t the parent subscription
+        sr_start_date = subscription_record.start_date
+        sr_end_date = subscription_record.end_date
+        if subscription_record.parent:
+            range_start_date = subscription_record.parent.start_date
+            range_end_date = subscription_record.parent.end_date
+        else:
+            range_start_date = sr_start_date
+            range_end_date = sr_end_date
         invoicing_interval_unit = self.invoicing_interval_unit
         invoicing_interval_count = self.invoicing_interval_count
         # if we don't have a sub-plan length invoicing interval, use the plan length
@@ -1965,30 +1974,49 @@ class RecurringCharge(models.Model):
 
         invoicing_dates = []
 
-        invoicing_date = start_date
+        invoicing_date = range_start_date
         # sometime, we need to charge this at the beginning of the period. This is if the charge
         # is in advance, AND its not an addon that has invoice with end of subscription
+        append_range_start = True
         if self.charge_timing == RecurringCharge.ChargeTimingType.IN_ADVANCE:
             addon_spec = self.plan_version.addon_spec
-            if addon_spec:
-                if (
-                    addon_spec.flat_fee_invoicing_behavior_on_attach
-                    == AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_ATTACH
-                ):
-                    invoicing_dates.append(start_date)
-            else:
-                invoicing_dates.append(start_date)
-        while invoicing_date < end_date:
+            if (
+                addon_spec
+                and addon_spec.flat_fee_invoicing_behavior_on_attach
+                == AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_SUBSCRIPTION_END
+            ):
+                append_range_start = False
+        if append_range_start:
+            invoicing_dates.append(range_start_date)
+
+        # now generate invoicing dates
+        while invoicing_date < range_end_date:
             invoicing_date += interval_delta
-            append_date = min(invoicing_date, end_date)
+            append_date = min(invoicing_date, range_end_date)
             invoicing_dates.append(append_date)
 
+        # purge the ones that don't match up with the real duration, and add the start + end dates
+        invoicing_dates = {
+            x for x in invoicing_dates if x >= sr_start_date and x <= sr_end_date
+        }
+        print("inv dates before", invoicing_dates, append_range_start)
+        if append_range_start:
+            invoicing_dates = invoicing_dates | {sr_start_date}
+        invoicing_dates = invoicing_dates | {sr_end_date}
+        invoicing_dates = sorted(list(invoicing_dates))
+        print("inv dates after", invoicing_dates)
         return invoicing_dates
 
-    def get_reset_dates(self, subscription_record):
+    def get_recurring_charge_reset_dates(self, subscription_record):
         # FOR RECURRIG CHARGES
-        start_date = subscription_record.start_date
-        end_date = subscription_record.end_date
+        sr_start_date = subscription_record.start_date
+        sr_end_date = subscription_record.end_date
+        if subscription_record.parent:
+            range_start_date = subscription_record.parent.start_date
+            range_end_date = subscription_record.parent.end_date
+        else:
+            range_start_date = sr_start_date
+            range_end_date = sr_end_date
         invoicing_interval_unit = self.invoicing_interval_unit
         invoicing_interval_count = self.invoicing_interval_count
         # if we don't have a sub-plan length invoicing interval, use the plan length
@@ -2014,30 +2042,38 @@ class RecurringCharge(models.Model):
         interval_delta = relativedelta(
             **{unit_map[invoicing_interval_unit]: invoicing_interval_count or 1}
         )
-
+        print("interval_delta", interval_delta)
         if not self.reset_interval_unit:
             unadjusted_duration_microseconds = (
-                (start_date + interval_delta) - start_date
+                (range_start_date + interval_delta) - range_start_date
             ).total_seconds() * 10**6
-            return [(start_date, end_date, unadjusted_duration_microseconds)]
+            print(
+                "here:",
+                range_start_date,
+                range_start_date + interval_delta,
+                unadjusted_duration_microseconds,
+            )
+            return [(sr_start_date, sr_end_date, unadjusted_duration_microseconds)]
 
         reset_dates = []
 
-        reset_date = start_date
-        while reset_date < end_date:
+        reset_date = range_start_date
+        while reset_date < range_end_date:
             reset_date += interval_delta
-            append_date = min(reset_date, end_date)
+            append_date = min(reset_date, range_end_date)
             reset_dates.append(append_date)
 
         # Construct non-overlapping date ranges
         reset_ranges = []
         for i in range(len(reset_dates)):
-            start = reset_dates[i]
+            if sr_start_date > reset_dates[i]:
+                continue
+            start = max(reset_dates[i], sr_start_date)
             end = reset_dates[i + 1] - datetime.timedelta(microseconds=1)
             if i == len(reset_dates) - 1:
-                end = end_date
+                end = sr_end_date
             unadjusted_duration_microseconds = (
-                (start_date + interval_delta) - start_date
+                (reset_dates[i] + interval_delta) - reset_dates[i]
             ).total_seconds() * 10**6
             reset_ranges.append((start, end, unadjusted_duration_microseconds))
 
@@ -2669,7 +2705,10 @@ class SubscriptionRecord(models.Model):
             is_new=is_new,
             quantity=quantity,
         )
-        sr.create_billing_records()
+        for component in sr.billing_plan.plan_components.all():
+            sr._create_component_billing_records(component)
+        for recurring_charge in sr.billing_plan.recurring_charges.all():
+            sr._create_recurring_charge_billing_records(recurring_charge)
         generate_invoice(sr)
         return sr
 
@@ -2698,55 +2737,63 @@ class SubscriptionRecord(models.Model):
             auto_renew=addon_billing_plan.addon_spec.billing_frequency
             == AddOnSpecification.BillingFrequency.RECURRING,
         )
-        sr.create_billing_records()
+        for component in sr.billing_plan.plan_components.all():
+            sr._create_component_billing_records(component)
+        for recurring_charge in sr.billing_plan.recurring_charges.all():
+            sr._create_recurring_charge_billing_records(recurring_charge)
         generate_invoice(sr)
         return sr
 
-    def create_billing_records(self):
-        for component in self.billing_plan.plan_components.all():
-            invoicing_dates = component.get_invoicing_dates(self)
-            reset_ranges = component.get_reset_dates(self)
-            i = 0
-            for start_date, end_date in reset_ranges:
-                br_invoicing_dates = []
-                for j in range(i, len(invoicing_dates)):
-                    if invoicing_dates[j] > end_date:
-                        break
-                    br_invoicing_dates.append(invoicing_dates[j])
-                i += len(br_invoicing_dates)
-                BillingRecord.objects.create(
-                    organization=self.organization,
-                    subscription=self,
-                    component=component,
-                    start_date=start_date,
-                    end_date=end_date,
-                    invoicing_dates=br_invoicing_dates,
-                )
-        for recurring_charge in self.billing_plan.recurring_charges.all():
-            invoicing_dates = recurring_charge.get_invoicing_dates(self)
-            reset_ranges = recurring_charge.get_reset_dates(self)
-            i = 0
-            for k, (
-                start_date,
-                end_date,
-                unadjusted_duration_microseconds,
-            ) in enumerate(reset_ranges):
-                br_invoicing_dates = []
-                for j in range(i, len(invoicing_dates)):
-                    if invoicing_dates[j] > end_date:
-                        break
-                    br_invoicing_dates.append(invoicing_dates[j])
-                i += len(br_invoicing_dates)
-                br = BillingRecord.objects.create(
-                    organization=self.organization,
-                    subscription=self,
-                    recurring_charge=recurring_charge,
-                    invoicing_dates=invoicing_dates,
-                    start_date=start_date,
-                    end_date=end_date,
-                    unadjusted_duration_microseconds=unadjusted_duration_microseconds,
-                )
-                print(f"CREATED BR {str(br)}")
+    def _create_component_billing_records(self, component, override_start_date=None):
+        invoicing_dates = component.get_component_invoicing_dates(
+            self, override_start_date
+        )
+        reset_ranges = component.get_component_reset_dates(self, override_start_date)
+        i = 0
+        brs = []
+        for start_date, end_date in reset_ranges:
+            br_invoicing_dates = []
+            for j in range(i, len(invoicing_dates)):
+                if invoicing_dates[j] > end_date:
+                    break
+                br_invoicing_dates.append(invoicing_dates[j])
+            br_invoicing_dates = sorted(set(br_invoicing_dates).union({end_date}))
+            i += len(br_invoicing_dates)
+            br = BillingRecord.objects.create(
+                organization=self.organization,
+                subscription=self,
+                component=component,
+                start_date=start_date,
+                end_date=end_date,
+                invoicing_dates=br_invoicing_dates,
+            )
+            brs.append(br)
+        return brs
+
+    def _create_recurring_charge_billing_records(self, recurring_charge):
+        invoicing_dates = recurring_charge.get_recurring_charge_invoicing_dates(self)
+        reset_ranges = recurring_charge.get_recurring_charge_reset_dates(self)
+        i = 0
+        brs = []
+        for start_date, end_date, unadjusted_duration_microseconds in reset_ranges:
+            br_invoicing_dates = []
+            for j in range(i, len(invoicing_dates)):
+                if invoicing_dates[j] > end_date:
+                    break
+                br_invoicing_dates.append(invoicing_dates[j])
+            br_invoicing_dates = sorted(set(br_invoicing_dates).union({end_date}))
+            i += len(br_invoicing_dates)
+            br = BillingRecord.objects.create(
+                organization=self.organization,
+                subscription=self,
+                recurring_charge=recurring_charge,
+                invoicing_dates=invoicing_dates,
+                start_date=start_date,
+                end_date=end_date,
+                unadjusted_duration_microseconds=unadjusted_duration_microseconds,
+            )
+            brs.append(br)
+        return brs
 
     def save(self, *args, **kwargs):
         new_filters = kwargs.pop("subscription_filters", []) or []
@@ -2894,11 +2941,56 @@ class SubscriptionRecord(models.Model):
         self.auto_renew = False
         self.save()
 
-    def switch_subscription_bp(
-        self, new_version, invoicing_behavior=INVOICING_BEHAVIOR.INVOICE_NOW
+    @staticmethod
+    def _billing_record_cancel_protocol(billing_record, cancel_date, invoice_now=True):
+        if billing_record.start_date >= cancel_date:
+            # this billing record hasn't started yet, so we can just delete it
+            billing_record.delete()
+        elif billing_record.end_date < cancel_date:
+            # this billing record has already ended, so we can just check if we should invoice it now or not.
+            if invoice_now:
+                billing_record.cancel_billing_record(
+                    cancel_date=cancel_date,
+                    change_invoice_date_to_cancel_date=invoice_now,
+                )
+            else:
+                # we don't want to invoice it now, so we can just leave the old invoice date
+                pass
+        else:
+            # this means it's currently active
+            billing_record.cancel_billing_record(
+                cancel_date=cancel_date, change_invoice_date_to_cancel_date=invoice_now
+            )
+
+    @staticmethod
+    def _check_should_transfer_cancel_if_not(
+        billing_record, cancel_date, invoice_now=True
     ):
+        if billing_record.start_date >= cancel_date:
+            # this billing record hasn't started yet, so we can just delete it
+            billing_record.delete()
+            return False
+        elif billing_record.end_date < cancel_date:
+            # this billing record has already ended, so we can just check if we should invoice it now or not.
+            if invoice_now:
+                billing_record.cancel_billing_record(
+                    cancel_date=cancel_date,
+                    change_invoice_date_to_cancel_date=invoice_now,
+                )
+            else:
+                # we don't want to invoice it now, so we can just leave the old invoice date
+                pass
+            return False
+        return True
+
+    def switch_plan(self, new_version, transfer_usage=True, invoice_now=True):
+        from metering_billing.invoice import generate_invoice
+
+        # when switching a plan, there's a few things we need to take into account:
+        # 1. flat fees dont transfer. Just end them.
+        # 2. what does it mean for usage to transfer? Does it just mean the billing records for the old plan are cancelled and new ones are created for the new plan with a start date the same as previously? In the case we used to charge for x but no longer do, then perhaps in that case we do charge? If we weren;t doing the whole reset frequency thing anymore it would be awesome because we could just switch which plan component it points at and have the already billed for be a part of that.
         now = now_utc()
-        SubscriptionRecord.objects.create(
+        sr = SubscriptionRecord.objects.create(
             organization=self.organization,
             customer=self.customer,
             billing_plan=new_version,
@@ -2907,9 +2999,79 @@ class SubscriptionRecord(models.Model):
             auto_renew=self.auto_renew,
             unadjusted_duration_microseconds=self.unadjusted_duration_microseconds,
         )
+        # current recurring_charge billing records must be canceled + billed
+        for billing_record in self.billing_records.filter(
+            recurring_charge__isnull=False, fully_billed=False
+        ):
+            # this is common enough that we made a method for it
+            SubscriptionRecord._billing_record_cancel_protocol(
+                billing_record, now, invoice_now=invoice_now
+            )
+        # and now we generate the new recurring_charge billing records
+        for recurring_charge in new_version.recurring_charges.all():
+            sr._create_recurring_charge_billing_records(recurring_charge)
+        # same for component based billing records
+        # so we're going to have to create a new billing record for each component, except if the metric coincides in the old plan and the new plan, then if transfer usage is true we have to do some wizardry to accomplish this
+        # first a set of components we'll create from scratch... if we transfer usage from anywhere we'll remove it from this set
+        pcs_to_create_charges_for = set(new_version.plan_components.all())
+        # dict of metrics for convenience
+        new_version_metrics_map = {x.metric: x for x in pcs_to_create_charges_for}
+        for billing_record in self.billing_records.filter(
+            component__isnull=False, fully_billed=False
+        ):
+            component = billing_record.component
+            # if not transferring usage, simple, just cancel the billing record same as above
+            if not transfer_usage:
+                SubscriptionRecord._billing_record_cancel_protocol(
+                    billing_record, now, invoice_now=invoice_now
+                )
+            else:
+                metric = component.metric
+                if metric in new_version_metrics_map:
+                    # if the metric is in the new plan, we perform the surgery to switch the billing record to the new plan. Don't create from scratch.
+                    transfer = SubscriptionRecord._check_should_transfer_cancel_if_not(
+                        billing_record, now, invoice_now=invoice_now
+                    )
+                    if transfer:
+                        pcs_to_create_charges_for.remove(
+                            new_version_metrics_map[metric]
+                        )
+                        new_billing_records = sr._create_component_billing_records(
+                            component, override_start_date=billing_record.start_date
+                        )
+                        override_billing_record = new_billing_records[0]
+                        # heres the surgery... open to improvements... this allows us to keep
+                        # info about what's been paid already though which is nice
+                        billing_record.subscription = sr
+                        billing_record.billing_plan = new_version
+                        billing_record.component = override_billing_record.component
+                        billing_record.start_date = override_billing_record.start_date
+                        billing_record.end_date = override_billing_record.end_date
+                        billing_record.unadjusted_duration_microseconds = (
+                            override_billing_record.unadjusted_duration_microseconds
+                        )
+                        billing_record.invoicing_dates = (
+                            override_billing_record.invoicing_dates
+                        )
+                        billing_record.next_invoicing_date = (
+                            override_billing_record.next_invoicing_date
+                        )
+                        billing_record.fully_billed = (
+                            override_billing_record.fully_billed
+                        )
+                        billing_record.save()
+                        override_billing_record.delete()
+                else:
+                    # if the metric is not in the new plan, we cancel the billing record
+                    SubscriptionRecord._billing_record_cancel_protocol(
+                        billing_record, now, invoice_now=invoice_now
+                    )
+        for pc in pcs_to_create_charges_for:
+            sr._create_component_billing_records(pc)
         self.end_date = now
         self.auto_renew = False
         self.save()
+        generate_invoice([self, sr])
 
     def calculate_earned_revenue_per_day(self):
         return_dict = {}
@@ -2966,7 +3128,7 @@ class BillingRecord(models.Model):
     )
     invoicing_dates = ArrayField(models.DateTimeField(), default=list)
     next_invoicing_date = models.DateTimeField()
-    fully_invoiced = models.BooleanField(default=False)
+    fully_billed = models.BooleanField(default=False)
 
     class Meta:
         constraints = [
@@ -3004,10 +3166,6 @@ class BillingRecord(models.Model):
                 self.invoicing_dates = [self.end_date]
             if self.next_invoicing_date is None:
                 self.next_invoicing_date = self.invoicing_dates[0]
-            if self.unadjusted_duration_microseconds is None:
-                self.unadjusted_duration_microseconds = (
-                    self.end_date - self.start_date
-                ).total_seconds() * 10**6
         super().save(*args, **kwargs)
 
     def get_usage_and_revenue(self):
@@ -3060,7 +3218,7 @@ class BillingRecord(models.Model):
                     found_next = True
                     break
             if not found_next:
-                self.fully_invoiced = True
+                self.fully_billed = True
                 self.save()
         else:
             # do nothing, we have an invociing date coming up. This invoice was likely from attaching a subscription or something
@@ -3108,6 +3266,25 @@ class BillingRecord(models.Model):
         return self.line_items.aggregate(Sum("subtotal"))["subtotal__sum"] or Decimal(
             0.0
         )
+
+    def cancel_billing_record(
+        self, cancel_date=None, change_invoice_date_to_cancel_date=True
+    ):
+        now = now_utc()
+        if cancel_date is None:
+            cancel_date = now
+        if cancel_date < self.end_date and self.end_date > now:
+            # cant set a cancellation date after the end date, and if it already ended we cant change the end date
+            self.end_date = cancel_date
+        if change_invoice_date_to_cancel_date:
+            # the first thing this means is that further invoicing dates after the cancel date and in the future are removed
+            self.invoicing_dates = sorted(
+                [x for x in self.invoicing_dates if x <= cancel_date or x < now]
+                + [cancel_date]
+            )
+            # the second thing this means is that the next invoicing date will be the cancel date
+            self.next_invoicing_date = cancel_date
+        self.save()
 
 
 class Backtest(models.Model):

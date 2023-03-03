@@ -20,7 +20,7 @@ def transfer_to_brs(apps, schema_editor):
                 end_date=sr.end_date,
                 invoicing_dates=[sr.end_date],
                 next_invoicing_date=sr.end_date,
-                fully_invoiced=sr.fully_billed,
+                fully_billed=sr.fully_billed,
             )
             for invoice_line_items in InvoiceLineItem.objects.filter(
                 associated_subscription_record=sr, associated_plan_component=component
@@ -36,7 +36,7 @@ def transfer_to_brs(apps, schema_editor):
                 end_date=sr.end_date,
                 invoicing_dates=[sr.end_date],
                 next_invoicing_date=sr.end_date,
-                fully_invoiced=sr.fully_billed,
+                fully_billed=sr.fully_billed,
             )
             for invoice_line_items in InvoiceLineItem.objects.filter(
                 associated_subscription_record=sr, associated_recurring_charge=charge

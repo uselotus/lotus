@@ -161,7 +161,7 @@ def addon_test_common_setup(
             organization=plan.organization,
             plan_version=flat_fee_addon_version,
             charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
-            charge_behavior=RecurringCharge.ChargeBehaviorType.CHARGE_FULL,
+            charge_behavior=RecurringCharge.ChargeBehaviorType.PRORATE,
             amount=10,
             pricing_unit=flat_fee_addon_version.currency,
         )
@@ -288,10 +288,9 @@ class TestAttachAddOn:
         assert data["end_date"] == end_date
         assert invoice_before + 1 == invoice_after
         recent_inv = Invoice.objects.all().order_by("-issue_date").first()
-        assert (
-            recent_inv.cost_due
-            == setup_dict["flat_fee_addon_version"].recurring_charges.first().amount
-        )
+        max_value = 10 * (Decimal("31") - Decimal("5")) / Decimal("31")
+        min_value = 10 * (Decimal("28") - Decimal("6")) / Decimal("28")
+        assert min_value < recent_inv.cost_due < max_value
 
     def test_flat_addon_invoice_later_doesnt_make_new_invoice_and_invoices(
         self,
@@ -351,8 +350,13 @@ class TestAttachAddOn:
         assert data["start_date"] != start_date
         assert data["end_date"] == end_date
         assert invoice_before == invoice_after
-        invoices = generate_invoice(SubscriptionRecord.objects.all())
-        assert Decimal("10.00") - invoices[0].cost_due < Decimal("0.01")
+        print("okkkk now generate")
+        invoices = generate_invoice(
+            SubscriptionRecord.objects.all(), issue_date=sub.end_date
+        )
+        max_value = 10 * (Decimal("31") - Decimal("5")) / Decimal("31")
+        min_value = 10 * (Decimal("28") - Decimal("6")) / Decimal("28")
+        assert min_value < invoices[0].cost_due < max_value
 
     def test_flat_addon_invoice_later_and_recurring_prorates_current_charge_and_charges_full_next(
         self,

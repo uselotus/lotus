@@ -70,7 +70,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("next_invoicing_date", models.DateTimeField()),
-                ("fully_invoiced", models.BooleanField(default=False)),
+                ("fully_billed", models.BooleanField(default=False)),
                 (
                     "billing_plan",
                     models.ForeignKey(

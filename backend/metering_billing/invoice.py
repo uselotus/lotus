@@ -52,6 +52,14 @@ def generate_invoice(
     from metering_billing.models import Invoice, PricingUnit
     from metering_billing.tasks import generate_invoice_pdf_async
 
+    print(
+        "generate_invoice",
+        subscription_records,
+        draft,
+        charge_next_plan,
+        generate_next_subscription_record,
+        issue_date,
+    )
     if not issue_date:
         issue_date = now_utc()
     if not isinstance(subscription_records, (QuerySet, Iterable)):
@@ -129,11 +137,16 @@ def generate_invoice(
                     subscription_record, next_subscription_record, next_bp, invoice
                 )
     for invoice in invoices.values():
+        if invoice.line_items.count() == 0:
+            invoice.delete()
+            print("deleted invoice because it had no line items\n")
+            continue
         apply_plan_discounts(invoice)
         apply_taxes(invoice, customer, organization, draft)
         apply_customer_balance_adjustments(invoice, customer, organization, draft)
         finalize_cost_due(invoice, draft)
 
+        print("done with invoice ", invoice.cost_due, "\n")
         if not draft:
             generate_external_payment_obj(invoice)
             for subscription_record in subscription_records:
@@ -162,7 +175,6 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice, draft)
     for billing_record in subscription_record.billing_records.filter(
         recurring_charge__isnull=False
     ):
-        print("billing_record", billing_record)
         # if the next invoicing date is in the future, we don't need to bill for it yet
         if billing_record.next_invoicing_date > invoice.issue_date:
             continue

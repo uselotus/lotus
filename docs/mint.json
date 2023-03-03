@@ -120,14 +120,7 @@
           "pages": [
             "api-reference/customers/create-customer",
             "api-reference/customers/retrieve-customer",
-            "api-reference/customers/list-customers",
-            {
-              "group": "Deprecated Methods",
-              "pages": [
-                "api-reference/customers/deprecated_methods/get-customer-access",
-                "api-reference/customers/deprecated_methods/customer-feature-access"
-              ]
-            }
+            "api-reference/customers/list-customers"
           ]
         },
         {
