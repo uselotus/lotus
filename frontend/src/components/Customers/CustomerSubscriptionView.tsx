@@ -176,13 +176,8 @@ const SubscriptionView: FC<Props> = ({
     }
   );
 
-  const cancelSubscription = (plan_id, subscription_filters) => {
-    const query_params: CancelSubscriptionQueryParams = {
-      customer_id,
-      plan_id,
-      subscription_filters,
-    };
-    onCancel(cancelBody, query_params);
+  const cancelSubscription = (subscription_id: string) => {
+    onCancel(cancelBody, subscription_id);
     setShowModal(false);
   };
 
@@ -694,10 +689,7 @@ const SubscriptionView: FC<Props> = ({
                       type="primary"
                       className="!bg-rose-600 border !border-rose-600"
                       onClick={() => {
-                        cancelSubscription(
-                          selectedSubPlan.billing_plan.plan_id,
-                          selectedSubPlan.subscription_filters
-                        );
+                        cancelSubscription(selectedSubPlan?.subscription_id);
                       }}
                     >
                       Cancel Plan

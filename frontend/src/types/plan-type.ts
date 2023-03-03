@@ -179,10 +179,31 @@ export interface PlanVersionUpdateDescriptionType
   extends PlanVersionUpdateType {
   description: string;
 }
-
+export interface PlanFeaturesAdd {
+  feature_id: string;
+  version_ids?: string[];
+  all_versions?: boolean;
+}
 // archive plan
 export interface ArchivePlanVersionType extends PlanVersionUpdateType {
   status: "archived";
+}
+export interface PlanVersionsType {
+  success: boolean;
+  message: string;
+}
+
+export interface PlanVersionFeatureAddBody {
+  feature_id: string;
+}
+export interface PlanVersionReplacementMakeBody {
+  version_to_replace: string[];
+}
+export interface PlanVersionReplacementSetBody {
+  replace_with: string;
+}
+export interface PlanVersionAddTargetCustomerBody {
+  customer_ids: string[] | null[];
 }
 
 // if we specify make_active_type as replace_immediately, must have a corresponding replace_immediately_type
@@ -204,7 +225,14 @@ export interface ReplaceLaterType extends PlanVersionUpdateType {
 // UPDATE PLANS
 export interface UpdatePlanType {
   plan_name?: string;
-  status?: "active" | "archived";
-  plan_duration?: "monthly" | "quarterly" | "yearly";
-  tags?: PlanType["tags"];
+  plan_description: string | null;
+  taxjar_code: string | null;
+  not_active_before: string;
+  not_active_after: string | null;
+}
+export interface CreateTagsPlanBody {
+  tags: PlanType["tags"];
+}
+export interface CreateTagsType extends PlanVersionsType {
+  tags: PlanType["tags"];
 }
