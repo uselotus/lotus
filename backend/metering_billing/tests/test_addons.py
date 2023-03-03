@@ -6,6 +6,10 @@ from decimal import Decimal
 import pytest
 from dateutil import parser
 from django.urls import reverse
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
@@ -24,9 +28,6 @@ from metering_billing.models import (
 )
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -269,8 +270,6 @@ class TestAttachAddOn:
             .version_id,
             "quantity": 1,
         }
-        print(setup_dict["flat_fee_addon"].versions.first().version_id)
-        print(PlanVersion.addon_versions.all().values())
         sub = SubscriptionRecord.objects.first()
         response = setup_dict["client"].post(
             reverse(
@@ -280,7 +279,6 @@ class TestAttachAddOn:
             data=json.dumps(addon_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        print(response.data)
         invoice_after = len(Invoice.objects.all())
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
@@ -350,7 +348,6 @@ class TestAttachAddOn:
         assert data["start_date"] != start_date
         assert data["end_date"] == end_date
         assert invoice_before == invoice_after
-        print("okkkk now generate")
         invoices = generate_invoice(
             SubscriptionRecord.objects.all(), issue_date=sub.end_date
         )
@@ -421,6 +418,7 @@ class TestAttachAddOn:
         assert invoice_before == invoice_after
         invoices = generate_invoice(
             SubscriptionRecord.objects.all(),
+            issue_date=sub.end_date,
             charge_next_plan=True,
         )
         max_value = 10 * (Decimal("31") - Decimal("5")) / Decimal("31")
@@ -495,10 +493,10 @@ class TestAttachAddOn:
         assert data["end_date"] == end_date
         assert invoice_before + 1 == invoice_after
         recent_inv = Invoice.objects.all().order_by("-issue_date").first()
-        assert (
-            recent_inv.cost_due
-            == setup_dict["flat_fee_addon_version"].recurring_charges.first().amount
-        )
+        val = setup_dict["flat_fee_addon_version"].recurring_charges.first().amount
+        max_value = val * (Decimal("31") - Decimal("5")) / Decimal("31")
+        min_value = val * (Decimal("28") - Decimal("6")) / Decimal("28")
+        assert max_value >= recent_inv.cost_due >= min_value
 
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
@@ -724,6 +722,7 @@ class TestAttachAddOn:
         invoices = generate_invoice(
             SubscriptionRecord.objects.all(),
             charge_next_plan=True,
+            issue_date=sub.end_date,
         )
         max_value = 10 * (Decimal("31") - Decimal("5")) / Decimal("31")
         min_value = 10 * (Decimal("28") - Decimal("6")) / Decimal("28")
@@ -783,10 +782,9 @@ class TestAttachAddOn:
         assert data["end_date"] == end_date
         assert invoice_before + 1 == invoice_after
         recent_inv = Invoice.objects.all().order_by("-issue_date").first()
-        assert (
-            recent_inv.cost_due
-            == setup_dict["flat_fee_addon_version"].recurring_charges.first().amount
-        )
+        max_value = 10 * (Decimal("31") - Decimal("5")) / Decimal("31")
+        min_value = 10 * (Decimal("28") - Decimal("6")) / Decimal("28")
+        assert max_value >= recent_inv.cost_due >= min_value
 
 
 # @pytest.mark.django_db(transaction=True)

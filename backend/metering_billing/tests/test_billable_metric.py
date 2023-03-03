@@ -288,7 +288,6 @@ class TestArchiveMetric:
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        print(response.data)
         assert response.status_code == status.HTTP_200_OK
         assert (
             Metric.objects.get(metric_id=metric_set[0].metric_id).status
@@ -376,7 +375,7 @@ class TestCalculateMetric:
                 now - relativedelta(days=1),
             )
         metric_usage = billable_metric.get_billing_record_total_billable_usage(
-            subscription_record
+            subscription_record.billing_records.first()
         )
         assert metric_usage == 2
 
@@ -463,7 +462,9 @@ class TestCalculateMetric:
                 now - relativedelta(days=46),
             )
 
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
+        usage_revenue_dict = plan_component.calculate_total_revenue(
+            subscription_record.billing_records.first()
+        )
         assert usage_revenue_dict["revenue"] == Decimal(300)
 
     def test_gauge_daily_granularity(
@@ -542,7 +543,9 @@ class TestCalculateMetric:
             subscription_record = add_subscription_record_to_org(
                 setup_dict["org"], billing_plan, customer, time_created
             )
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
+        usage_revenue_dict = plan_component.calculate_total_revenue(
+            subscription_record.billing_records.first()
+        )
         # 3 * (4-3) + 3* (5-3) + 3 * (6-3) = 18 user*days ... it costs 100 per 1 month of
         # user days, so should be between 18/28*100 and 18/31*100
         assert usage_revenue_dict["revenue"] >= Decimal(100) * (
@@ -654,7 +657,9 @@ class TestCalculateMetric:
                 customer,
                 now - relativedelta(days=31),
             )
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
+        usage_revenue_dict = plan_component.calculate_total_revenue(
+            subscription_record.billing_records.first()
+        )
         # 1 dollar per for 64 rows - 3 free rows = 61 rows * 1 dollar = 61 dollars
         assert usage_revenue_dict["revenue"] == Decimal(61)
 
@@ -730,7 +735,9 @@ class TestCalculateMetric:
                 setup_dict["org"], billing_plan, customer, time_created
             )
 
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
+        usage_revenue_dict = plan_component.calculate_total_revenue(
+            subscription_record.billing_records.first()
+        )
         # 2 * (4-3) + 2* (5-3) + 2 * (6-3) = 12 user*days abvoe the free tier... it costs 100
         # per 1 month of user*days, so should be between 12/28*100 and 12/31*100
         assert Decimal(100) * Decimal(12) / Decimal(28) >= usage_revenue_dict["revenue"]
@@ -829,7 +836,9 @@ class TestCalculateMetricProrationForGauge:
                 time_created,
             )
 
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
+        usage_revenue_dict = plan_component.calculate_total_revenue(
+            subscription_record.billing_records.first()
+        )
         calculated_amt = (Decimal(87) - Decimal(60)) / Decimal(60) * Decimal(100)
         assert abs(usage_revenue_dict["revenue"] - calculated_amt) < Decimal(0.01)
 
@@ -936,7 +945,9 @@ class TestCalculateMetricProrationForGauge:
                 now - relativedelta(days=46),
             )
 
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
+        usage_revenue_dict = plan_component.calculate_total_revenue(
+            subscription_record.billing_records.first()
+        )
         supposed_revenue = (Decimal(72) - Decimal(24)) / Decimal(24) * Decimal(100)
         assert abs(usage_revenue_dict["revenue"] - supposed_revenue) < Decimal(0.01)
 
@@ -1052,7 +1063,9 @@ class TestCalculateMetricProrationForGauge:
                 tc,
             )
 
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
+        usage_revenue_dict = plan_component.calculate_total_revenue(
+            subscription_record.billing_records.first()
+        )
         assert Decimal(100) > usage_revenue_dict["revenue"] > Decimal(0)
 
         {}
@@ -1175,7 +1188,7 @@ class TestCalculateMetricWithFilters:
                 now - relativedelta(days=1),
             )
         metric_usage = billable_metric.get_billing_record_total_billable_usage(
-            subscription_record
+            subscription_record.billing_records.first()
         )
         assert metric_usage == 2
 
@@ -1265,7 +1278,9 @@ class TestCalculateMetricWithFilters:
                 setup_dict["org"], billing_plan, customer, time_created
             )
 
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
+        usage_revenue_dict = plan_component.calculate_total_revenue(
+            subscription_record.billing_records.first()
+        )
         assert usage_revenue_dict["revenue"] == Decimal(300)
 
     def test_gauge_daily_granularity_with_filters(
@@ -1351,7 +1366,9 @@ class TestCalculateMetricWithFilters:
             subscription_record = add_subscription_record_to_org(
                 setup_dict["org"], billing_plan, customer, time_created
             )
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
+        usage_revenue_dict = plan_component.calculate_total_revenue(
+            subscription_record.billing_records.first()
+        )
         # 3 * (4-3) + 3* (5-3) + 3 * (6-3) = 18 user*days ... it costs 100 per 1 month of
         # user days, so should be between 18/28*100 and 18/31*100...\
         assert usage_revenue_dict["revenue"] >= Decimal(100) * (
@@ -1461,7 +1478,9 @@ class TestCalculateMetricWithFilters:
             customer,
             now - relativedelta(days=21),
         )
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
+        usage_revenue_dict = plan_component.calculate_total_revenue(
+            subscription_record.billing_records.first()
+        )
         # 1 dollar per for 67 rows - 3 free rows - 3 uncoutned rows = 61 rows * 1 dollar =$61
         assert usage_revenue_dict["revenue"] == Decimal(62)
 
@@ -1489,7 +1508,6 @@ class TestCustomSQLMetrics:
             data=json.dumps(insert_billable_metric_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        print(response.data)
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) > 0  # check that the response is not empty
         assert len(get_billable_metrics_in_org(setup_dict["org"])) == 1
@@ -1581,7 +1599,9 @@ class TestCustomSQLMetrics:
                 customer,
                 now - relativedelta(days=1),
             )
-        billable_metric.get_billing_record_total_billable_usage(subscription_record)
+        billable_metric.get_billing_record_total_billable_usage(
+            subscription_record.billing_records.first()
+        )
 
         payload = {
             "name": "test_subscription",
@@ -1596,7 +1616,7 @@ class TestCustomSQLMetrics:
         )
 
         total_usage = billable_metric.get_billing_record_total_billable_usage(
-            subscription_record
+            subscription_record.billing_records.first()
         )
 
         assert total_usage == 10
@@ -1688,7 +1708,9 @@ class TestCustomSQLMetrics:
                 customer,
                 now - relativedelta(days=1),
             )
-        billable_metric.get_billing_record_total_billable_usage(subscription_record)
+        billable_metric.get_billing_record_total_billable_usage(
+            subscription_record.billing_records.first()
+        )
 
         payload = {
             "name": "test_subscription",
@@ -1703,7 +1725,7 @@ class TestCustomSQLMetrics:
         )
 
         total_usage = billable_metric.get_billing_record_total_billable_usage(
-            subscription_record
+            subscription_record.billing_records.first()
         )
 
         assert total_usage == 2
@@ -1795,7 +1817,9 @@ class TestCustomSQLMetrics:
                 customer,
                 now - relativedelta(days=1),
             )
-        billable_metric.get_billing_record_total_billable_usage(subscription_record)
+        billable_metric.get_billing_record_total_billable_usage(
+            subscription_record.billing_records.first()
+        )
 
         payload = {
             "name": "test_subscription",
@@ -1810,7 +1834,7 @@ class TestCustomSQLMetrics:
         )
 
         total_usage = billable_metric.get_billing_record_total_billable_usage(
-            subscription_record
+            subscription_record.billing_records.first()
         )
 
         assert total_usage == 5
@@ -1924,7 +1948,9 @@ class TestCustomSQLMetrics:
                 customer,
                 now - relativedelta(days=1),
             )
-        billable_metric.get_billing_record_total_billable_usage(subscription_record)
+        billable_metric.get_billing_record_total_billable_usage(
+            subscription_record.billing_records.first()
+        )
 
         payload = {
             "name": "test_subscription",
@@ -1939,7 +1965,7 @@ class TestCustomSQLMetrics:
         )
 
         total_usage = billable_metric.get_billing_record_total_billable_usage(
-            subscription_record
+            subscription_record.billing_records.first()
         )
 
         assert total_usage == 125
@@ -2129,7 +2155,9 @@ class TestCustomSQLMetrics:
                 customer,
                 now - relativedelta(days=1),
             )
-        billable_metric.get_billing_record_total_billable_usage(subscription_record)
+        billable_metric.get_billing_record_total_billable_usage(
+            subscription_record.billing_records.first()
+        )
 
         payload = {
             "name": "test_subscription",
@@ -2144,7 +2172,7 @@ class TestCustomSQLMetrics:
         )
 
         total_usage = billable_metric.get_billing_record_total_billable_usage(
-            subscription_record
+            subscription_record.billing_records.first()
         )
 
         assert total_usage == 2
@@ -2291,7 +2319,9 @@ class TestRegressions:
                 time_created,
             )
 
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
+        usage_revenue_dict = plan_component.calculate_total_revenue(
+            subscription_record.billing_records.first()
+        )
         assert usage_revenue_dict["revenue"] >= Decimal(8700) / (
             Decimal(60) * Decimal(24) * Decimal(31)
         ) * Decimal(100)

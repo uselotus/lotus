@@ -12,6 +12,7 @@ from django.apps import apps
 from django.conf import settings
 from django.db import connection
 from jinja2 import Template
+
 from metering_billing.exceptions import MetricValidationFailed
 from metering_billing.utils import (
     convert_to_date,

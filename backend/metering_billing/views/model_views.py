@@ -1058,7 +1058,6 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             data=request.data, context={"organization": organization}
         )
         serializer.is_valid(raise_exception=True)
-        print(serializer.validated_data)
         feature = serializer.validated_data["feature"]
         plan_version.features.add(feature)
         return Response(
@@ -2049,7 +2048,6 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
         return UsageAlert.objects.filter(organization=organization)
 
     def perform_create(self, serializer):
-        print("HELLOOOOOO")
         serializer.save(organization=self.request.organization)
 
     def get_serializer_context(self):

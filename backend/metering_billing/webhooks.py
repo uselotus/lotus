@@ -1,12 +1,13 @@
 from django.conf import settings
 from django.utils.text import slugify
+from svix.api import MessageIn
+
 from metering_billing.utils import (
     make_all_dates_times_strings,
     make_all_decimals_floats,
     now_utc,
 )
 from metering_billing.utils.enums import WEBHOOK_TRIGGER_EVENTS
-from svix.api import MessageIn
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 

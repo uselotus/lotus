@@ -52,14 +52,6 @@ def generate_invoice(
     from metering_billing.models import Invoice, PricingUnit
     from metering_billing.tasks import generate_invoice_pdf_async
 
-    print(
-        "generate_invoice",
-        subscription_records,
-        draft,
-        charge_next_plan,
-        generate_next_subscription_record,
-        issue_date,
-    )
     if not issue_date:
         issue_date = now_utc()
     if not isinstance(subscription_records, (QuerySet, Iterable)):
@@ -139,14 +131,12 @@ def generate_invoice(
     for invoice in invoices.values():
         if invoice.line_items.count() == 0:
             invoice.delete()
-            print("deleted invoice because it had no line items\n")
             continue
         apply_plan_discounts(invoice)
         apply_taxes(invoice, customer, organization, draft)
         apply_customer_balance_adjustments(invoice, customer, organization, draft)
         finalize_cost_due(invoice, draft)
 
-        print("done with invoice ", invoice.cost_due, "\n")
         if not draft:
             generate_external_payment_obj(invoice)
             for subscription_record in subscription_records:
@@ -254,6 +244,8 @@ def calculate_subscription_record_usage_fees(subscription_record, invoice, draft
     # only calculate this for parent plans! addons should never calculate
     if subscription_record.invoice_usage_charges:
         for br in subscription_record.billing_records.filter(component__isnull=False):
+            if br.next_invoicing_date > invoice.issue_date and not draft:
+                continue
             usg_rev = br.get_usage_and_revenue()
             qty = usg_rev["usage_qty"]
             rev = usg_rev["revenue"]

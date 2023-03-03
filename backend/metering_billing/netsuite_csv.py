@@ -6,6 +6,7 @@ import logging
 import boto3
 from botocore.exceptions import ClientError
 from django.conf import settings
+
 from metering_billing.invoice_pdf import s3_bucket_exists, s3_file_exists
 from metering_billing.models import Invoice, Organization
 from metering_billing.utils import convert_to_datetime, now_utc
@@ -109,9 +110,7 @@ def upload_csv(organization, csv_buffer, csv_folder, csv_filename):
 
             key = get_key(organization, csv_folder, csv_filename)
             csv_bytes = csv_buffer.getvalue().encode()
-            print("uploading", key)
             s3.Bucket(bucket_name).upload_fileobj(io.BytesIO(csv_bytes), key)
-            print("uploaded", key)
 
         except Exception as e:
             print(e)

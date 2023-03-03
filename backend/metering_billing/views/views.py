@@ -5,6 +5,12 @@ import pytz
 from django.conf import settings
 from django.db.models import Count, F, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from metering_billing.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
@@ -47,21 +53,11 @@ from metering_billing.utils import (
     convert_to_decimal,
     date_as_max_dt,
     date_as_min_dt,
+    dates_bwn_two_dts,
     make_all_dates_times_strings,
     make_all_decimals_floats,
-    periods_bwn_twodates,
 )
-from metering_billing.utils.enums import (
-    METRIC_STATUS,
-    METRIC_TYPE,
-    PAYMENT_PROCESSORS,
-    USAGE_CALC_GRANULARITY,
-)
-from rest_framework import serializers, status
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
+from metering_billing.utils.enums import METRIC_STATUS, METRIC_TYPE, PAYMENT_PROCESSORS
 
 logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -131,9 +127,7 @@ class PeriodMetricRevenueView(APIView):
                 .prefetch_related("billing_plan__plan_components__tiers")
             )
             per_day_dict = {}
-            for period in periods_bwn_twodates(
-                USAGE_CALC_GRANULARITY.DAILY, start, end
-            ):
+            for period in dates_bwn_two_dts(start, end):
                 period = convert_to_date(period)
                 per_day_dict[period] = {
                     "date": period,
@@ -231,9 +225,7 @@ class CostAnalysisView(APIView):
                 f"Customer with customer_id: {customer_id} not found"
             )
         per_day_dict = {}
-        for period in periods_bwn_twodates(
-            USAGE_CALC_GRANULARITY.DAILY, start_date, end_date
-        ):
+        for period in dates_bwn_two_dts(start_date, end_date):
             period = convert_to_date(period)
             per_day_dict[period] = {
                 "date": period,

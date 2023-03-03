@@ -2,11 +2,14 @@ import logging
 import re
 from decimal import Decimal
 
-import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import DecimalField, Q, Sum
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
+import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -60,8 +63,6 @@ from metering_billing.utils.enums import (
     TAX_PROVIDER,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -782,9 +783,6 @@ class MetricUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         data = super().validate(data)
         active_plan_versions_with_metric = []
         if data.get("status") == METRIC_STATUS.ARCHIVED:
-            # print(PlanVersion.objects.all())
-            # print(PlanVersion.plan_versions.active())
-            # print(PlanVersion.plan_versions.active().filter(deleted__isnull=True))
             all_active_plan_versions = PlanVersion.objects.filter(
                 organization=self.context["organization"],
             ).prefetch_related("plan_components", "plan_components__billable_metric")

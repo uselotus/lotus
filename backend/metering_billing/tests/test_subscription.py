@@ -465,6 +465,29 @@ class TestUpdateSub:
             ),
         )
         new_plan.save()
+        for i, (fmu, cpb, mupb) in enumerate(
+            zip([50, 0, 1], [5, 0.05, 2], [100, 1, 1])
+        ):
+            pc = PlanComponent.objects.create(
+                plan_version=pv,
+                billable_metric=setup_dict["metrics"][i],
+            )
+            start = 0
+            if fmu > 0:
+                PriceTier.objects.create(
+                    plan_component=pc,
+                    type=PriceTier.PriceTierType.FREE,
+                    range_start=0,
+                    range_end=fmu,
+                )
+                start = fmu
+            PriceTier.objects.create(
+                plan_component=pc,
+                type=PriceTier.PriceTierType.PER_UNIT,
+                range_start=start,
+                cost_per_batch=cpb,
+                metric_units_per_batch=mupb,
+            )
         payload = {
             "new_version_id": pv.version_id,
         }
@@ -481,13 +504,11 @@ class TestUpdateSub:
         )
         assert response.status_code == status.HTTP_200_OK
         after_invoices = Invoice.objects.all().count()
-        assert before_invoices + 1 == after_invoices
-        most_recent_invoice = Invoice.objects.all().order_by("-id").first()
-        for li in most_recent_invoice.line_items.all():
-            assert li.subtotal < 30.0
-            assert li.chargeable_item_type != CHARGEABLE_ITEM_TYPE.USAGE_CHARGE
+        # no new invoices since we transferred all the usage and that shouldn't have intermediate invoiced
+        assert before_invoices == after_invoices
+        assert sub.billing_records.count() == 0  # all transferred away!
         new_sr = SubscriptionRecord.objects.all().order_by("-id").first()
-        assert new_sr.usage_start_date != new_sr.start_date
+        assert new_sr.billing_records.count() == 3  # all transferred away!
 
     def test_keep_usage_separate_on_plan_transfer(self, subscription_test_common_setup):
         setup_dict = subscription_test_common_setup(
@@ -540,6 +561,29 @@ class TestUpdateSub:
             ),
         )
         new_plan.save()
+        for i, (fmu, cpb, mupb) in enumerate(
+            zip([50, 0, 1], [5, 0.05, 2], [100, 1, 1])
+        ):
+            pc = PlanComponent.objects.create(
+                plan_version=pv,
+                billable_metric=setup_dict["metrics"][i],
+            )
+            start = 0
+            if fmu > 0:
+                PriceTier.objects.create(
+                    plan_component=pc,
+                    type=PriceTier.PriceTierType.FREE,
+                    range_start=0,
+                    range_end=fmu,
+                )
+                start = fmu
+            PriceTier.objects.create(
+                plan_component=pc,
+                type=PriceTier.PriceTierType.PER_UNIT,
+                range_start=start,
+                cost_per_batch=cpb,
+                metric_units_per_batch=mupb,
+            )
         payload = {
             "new_version_id": pv.version_id,
             "usage_behavior": USAGE_BEHAVIOR.KEEP_SEPARATE,
@@ -555,7 +599,6 @@ class TestUpdateSub:
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        print(response.data)
         assert response.status_code == status.HTTP_200_OK
         after_invoices = Invoice.objects.all().count()
         assert before_invoices + 1 == after_invoices
@@ -566,7 +609,10 @@ class TestUpdateSub:
             )
         )
         new_sr = SubscriptionRecord.objects.all().order_by("-id").first()
-        assert new_sr.usage_start_date == new_sr.start_date
+        assert (
+            sub.billing_records.count() == 3
+        )  # not transferred, just ended + restarted
+        assert new_sr.billing_records.count() == 3  # all new ones
 
 
 @pytest.mark.django_db(transaction=True)

@@ -51,7 +51,6 @@ from metering_billing.utils import (
     event_uuid,
     now_plus_day,
     now_utc,
-    periods_bwn_twodates,
     product_uuid,
 )
 from metering_billing.utils.enums import (
@@ -79,7 +78,6 @@ from metering_billing.utils.enums import (
     SUPPORTED_CURRENCIES_VERSION,
     TAG_GROUP,
     TAX_PROVIDER,
-    USAGE_CALC_GRANULARITY,
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
@@ -1999,12 +1997,10 @@ class RecurringCharge(models.Model):
         invoicing_dates = {
             x for x in invoicing_dates if x >= sr_start_date and x <= sr_end_date
         }
-        print("inv dates before", invoicing_dates, append_range_start)
         if append_range_start:
             invoicing_dates = invoicing_dates | {sr_start_date}
         invoicing_dates = invoicing_dates | {sr_end_date}
         invoicing_dates = sorted(list(invoicing_dates))
-        print("inv dates after", invoicing_dates)
         return invoicing_dates
 
     def get_recurring_charge_reset_dates(self, subscription_record):
@@ -2042,17 +2038,10 @@ class RecurringCharge(models.Model):
         interval_delta = relativedelta(
             **{unit_map[invoicing_interval_unit]: invoicing_interval_count or 1}
         )
-        print("interval_delta", interval_delta)
         if not self.reset_interval_unit:
             unadjusted_duration_microseconds = (
                 (range_start_date + interval_delta) - range_start_date
             ).total_seconds() * 10**6
-            print(
-                "here:",
-                range_start_date,
-                range_start_date + interval_delta,
-                unadjusted_duration_microseconds,
-            )
             return [(sr_start_date, sr_end_date, unadjusted_duration_microseconds)]
 
         reset_dates = []
@@ -3015,7 +3004,9 @@ class SubscriptionRecord(models.Model):
         # first a set of components we'll create from scratch... if we transfer usage from anywhere we'll remove it from this set
         pcs_to_create_charges_for = set(new_version.plan_components.all())
         # dict of metrics for convenience
-        new_version_metrics_map = {x.metric: x for x in pcs_to_create_charges_for}
+        new_version_metrics_map = {
+            x.billable_metric: x for x in pcs_to_create_charges_for
+        }
         for billing_record in self.billing_records.filter(
             component__isnull=False, fully_billed=False
         ):
@@ -3026,7 +3017,7 @@ class SubscriptionRecord(models.Model):
                     billing_record, now, invoice_now=invoice_now
                 )
             else:
-                metric = component.metric
+                metric = component.billable_metric
                 if metric in new_version_metrics_map:
                     # if the metric is in the new plan, we perform the surgery to switch the billing record to the new plan. Don't create from scratch.
                     transfer = SubscriptionRecord._check_should_transfer_cancel_if_not(
@@ -3076,7 +3067,7 @@ class SubscriptionRecord(models.Model):
     def calculate_earned_revenue_per_day(self):
         return_dict = {}
         for billing_record in self.billing_records.all():
-            br_dict = billing_record.calculate_earned_revenue_per_day(return_dict)
+            br_dict = billing_record.calculate_earned_revenue_per_day()
             for key in br_dict:
                 if key not in return_dict:
                     return_dict[key] = br_dict[key]
@@ -3161,6 +3152,7 @@ class BillingRecord(models.Model):
 
     def save(self, *args, **kwargs):
         new = self._state.adding is True
+        self.invoicing_dates = sorted(self.invoicing_dates)
         if new:
             if len(self.invoicing_dates) == 0:
                 self.invoicing_dates = [self.end_date]
@@ -3211,7 +3203,7 @@ class BillingRecord(models.Model):
     def handle_invoicing(self, invoice_date):
         if self.next_invoicing_date < invoice_date:
             found_next = False
-            for invoicing_date in self.invoicing_dates:
+            for invoicing_date in sorted(self.invoicing_dates):
                 if invoicing_date > invoice_date:
                     self.next_invoicing_date = invoicing_date
                     self.save()
@@ -3225,9 +3217,7 @@ class BillingRecord(models.Model):
             pass
 
     def calculate_earned_revenue_per_day(self) -> dict:
-        dates = periods_bwn_twodates(
-            USAGE_CALC_GRANULARITY.DAILY, self.start_date, self.end_date
-        )
+        dates = dates_bwn_two_dts(self.start_date, self.end_date)
         rev_per_day = dict.fromkeys(dates, Decimal(0))
         if self.recurring_charge:
             for day in dates:
@@ -3519,7 +3509,6 @@ class UsageAlert(models.Model):
             organization=self.organization,
             billing_plan=self.plan_version,
         )
-        print("active_sr", active_sr)
         for subscription_record in active_sr:
             UsageAlertResult.objects.create(
                 organization=self.organization,
@@ -3560,7 +3549,12 @@ class UsageAlertResult(models.Model):
         metric = self.alert.metric
         subscription_record = self.subscription_record
         now = now_utc()
-        new_value = metric.get_billing_record_total_billable_usage(subscription_record)
+        billing_record = subscription_record.billing_records.filter(
+            start_date__lte=now,
+            end_date__gt=now,
+            component__billable_metric=metric,
+        ).first()
+        new_value = metric.get_billing_record_total_billable_usage(billing_record)
         if (
             new_value >= self.alert.threshold
             and self.last_run_value < self.alert.threshold
