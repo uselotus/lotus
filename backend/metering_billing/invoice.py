@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from django.db.models.query import QuerySet
+from metering_billing.kafka.producer import Producer
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.taxes import get_lotus_tax_rates, get_taxjar_tax_rates
 from metering_billing.utils import (
@@ -35,6 +36,7 @@ DEBUG = settings.DEBUG
 # if LOTUS_HOST and LOTUS_API_KEY:
 #     lotus_python.api_key = LOTUS_API_KEY
 #     lotus_python.host = LOTUS_HOST
+kafka_producer = Producer()
 
 
 def generate_invoice(
@@ -149,6 +151,7 @@ def generate_invoice(
                 sentry_sdk.capture_exception(e)
 
             invoice_created_webhook(invoice, organization)
+            kafka_producer.produce_invoice(invoice)
 
     return list(invoices.values())
 
@@ -590,6 +593,7 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
         except Exception as e:
             sentry_sdk.capture_exception(e)
         invoice_created_webhook(invoice, organization)
+        kafka_producer.produce_invoice(invoice)
 
     return invoice
 

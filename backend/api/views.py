@@ -13,40 +13,6 @@ from typing import Optional
 
 import posthog
 import pytz
-from dateutil import parser
-from dateutil.relativedelta import relativedelta
-from django.conf import settings
-from django.db.models import (
-    Count,
-    DecimalField,
-    F,
-    Max,
-    Min,
-    OuterRef,
-    Prefetch,
-    Q,
-    Subquery,
-    Sum,
-    Value,
-)
-from django.db.models.functions import Coalesce
-from django.db.utils import IntegrityError
-from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import (
-    action,
-    api_view,
-    authentication_classes,
-    permission_classes,
-)
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
 from api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
     AddOnSubscriptionRecordSerializer,
@@ -83,6 +49,28 @@ from api.serializers.nonmodel_serializers import (
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
 )
+from dateutil import parser
+from dateutil.relativedelta import relativedelta
+from django.conf import settings
+from django.db.models import (
+    Count,
+    DecimalField,
+    F,
+    Max,
+    Min,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
+from django.db.utils import IntegrityError
+from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
 from metering_billing.exceptions import (
     DuplicateCustomer,
@@ -133,6 +121,17 @@ from metering_billing.utils.enums import (
     USAGE_BILLING_BEHAVIOR,
 )
 from metering_billing.webhooks import customer_created_webhook
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import (
+    action,
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -258,9 +257,8 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     )
     @action(detail=True, methods=["post"], url_path="delete")
     def delete(self, request, customer_id=None):
-        organization = request.organization
         customer = self.get_object()
-        if customer.deleted:
+        if customer.deleted is not None:
             raise RepeatedOperation("Customer already deleted")
         now = now_utc()
 
@@ -269,14 +267,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             "email": customer.email,
             "deleted": now,
         }
-
-        n_objs, _ = Event.objects.filter(
-            cust_id=customer.customer_id, organization=organization
-        ).delete()
-        return_data["num_events_deleted"] = n_objs
         customer.deleted = now
-        customer.customer_id = None
-        customer.uuidv5_customer_id = None
         customer.save()
         subscription_records = customer.subscription_records.active().all()
         n_subs = subscription_records.filter(billing_plan__is_addon=False).count()
