@@ -26,15 +26,6 @@ from django.db.models import Count, F, FloatField, Prefetch, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
-
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     NotEditable,
@@ -81,6 +72,14 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -2074,43 +2073,6 @@ class RecurringCharge(models.Model):
 
         return reset_ranges
 
-    def calculate_amount_due(self, subscription_record):
-        # first thing to consider is Timing... in advance vs in arrears
-        refunded_amount = Decimal(0.0)
-        proration_factor = (
-            (
-                subscription_record.end_date - subscription_record.start_date
-            ).total_seconds()
-            * 10**6
-            / subscription_record.unadjusted_duration_microseconds
-        )
-        prorated_amount = (
-            self.amount
-            * subscription_record.quantity
-            * convert_to_decimal(proration_factor)
-        )
-        full_amount = self.amount * subscription_record.quantity
-        if (
-            subscription_record.flat_fee_behavior is not None
-        ):  # this overrides other behavior
-            if subscription_record.flat_fee_behavior == FLAT_FEE_BEHAVIOR.REFUND:
-                return refunded_amount
-            elif subscription_record.flat_fee_behavior == FLAT_FEE_BEHAVIOR.CHARGE_FULL:
-                return full_amount
-            else:
-                return prorated_amount
-        else:  # dont worry about invoice timing here, thats the problem of the invoice
-            if self.charge_behavior == RecurringCharge.ChargeBehaviorType.PRORATE:
-                return prorated_amount
-            else:
-                return full_amount
-
-    def amount_already_invoiced(self, subscription_record):
-        return subscription_record.line_items.filter(
-            Q(chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE),
-            associated_recurring_charge=self,
-        ).aggregate(Sum("subtotal"))["subtotal__sum"] or Decimal(0.0)
-
 
 class BasePlanManager(models.Manager):
     def get_queryset(self):
@@ -2620,11 +2582,6 @@ class SubscriptionRecord(models.Model):
     end_date = models.DateTimeField(
         help_text="The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time."
     )
-    unadjusted_duration_microseconds = models.PositiveBigIntegerField(
-        null=True,
-        blank=True,
-        help_text="The duration of the subscription in microseconds without any anchoring.",
-    )
     auto_renew = models.BooleanField(
         default=True,
         help_text="Whether the subscription automatically renews. Defaults to true.",
@@ -2645,10 +2602,6 @@ class SubscriptionRecord(models.Model):
     flat_fee_behavior = models.CharField(
         choices=FLAT_FEE_BEHAVIOR.choices, max_length=20, null=True, default=None
     )
-    fully_billed = models.BooleanField(
-        default=False,
-        help_text="Whether the subscription has been fully billed and finalized.",
-    )
     parent = models.ForeignKey(
         "self",
         null=True,
@@ -2658,6 +2611,8 @@ class SubscriptionRecord(models.Model):
         help_text="The parent subscription record.",
     )
     quantity = models.PositiveIntegerField(default=1)
+
+    # managers etc
     objects = SubscriptionRecordManager()
     addon_objects = AddOnSubscriptionRecordManager()
     base_objects = BaseSubscriptionRecordManager()
@@ -2806,18 +2761,6 @@ class SubscriptionRecord(models.Model):
                 day_anchor=day_anchor,
                 month_anchor=month_anchor,
             )
-        if not self.unadjusted_duration_microseconds:
-            bp = self.billing_plan
-            if bp.addon_spec is not None:
-                plan_duration = self.parent.billing_plan.plan.plan_duration
-            else:
-                plan_duration = bp.plan.plan_duration
-            scheduled_end_date = calculate_end_date(
-                plan_duration, self.start_date, timezone
-            )
-            self.unadjusted_duration_microseconds = (
-                scheduled_end_date - self.start_date
-            ).total_seconds() * 10**6
         new = self._state.adding is True
         if new:
             overlapping_subscriptions = SubscriptionRecord.objects.filter(
@@ -3080,6 +3023,25 @@ class SubscriptionRecord(models.Model):
                 else:
                     return_dict[key] += br_dict[key]
         return return_dict
+
+    def delete_subscription(self, delete_time=None):
+        if delete_time is None:
+            delete_time = now_utc()
+        self.end_date = delete_time
+        self.auto_renew = False
+        for billing_record in self.billing_records.all():
+            if billing_record.start_date >= delete_time:
+                # straight up delete it
+                billing_record.delete()
+            else:
+                # essentially all we have to do is set everythign as already billed
+                # this means we won't generate invoices for it anymore
+                billing_record.end_date = min(billing_record.end_date, delete_time)
+                billing_record.fully_billed = True
+                billing_record.save()
+        for addon_subscription in self.addon_subscription_records.all():
+            addon_subscription.delete_subscription(delete_time=delete_time)
+        self.save()
 
 
 class BillingRecord(models.Model):

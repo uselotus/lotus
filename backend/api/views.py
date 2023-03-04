@@ -89,7 +89,6 @@ from metering_billing.auth.auth_utils import (
 )
 from metering_billing.exceptions import (
     DuplicateCustomer,
-    RepeatedOperation,
     ServerError,
     SwitchPlanDurationMismatch,
     SwitchPlanSamePlanException,
@@ -127,7 +126,6 @@ from metering_billing.utils import calculate_end_date, convert_to_datetime, now_
 from metering_billing.utils.enums import (
     CATEGORICAL_FILTER_OPERATORS,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
-    FLAT_FEE_BEHAVIOR,
     INVOICING_BEHAVIOR,
     METRIC_STATUS,
     ORGANIZATION_SETTING_NAMES,
@@ -194,8 +192,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                             "pricing_unit",
                             "associated_subscription_record",
                             "associated_plan_version",
-                            "associated_recurring_charge",
-                            "associated_plan_component",
+                            "associated_billing_record",
                         )
                         .prefetch_related("organization"),
                     ),
@@ -219,7 +216,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "create":
             return CustomerCreateSerializer
-        elif self.action == "delete":
+        elif self.action == "archive":
             return EmptySerializer
         return CustomerSerializer
 
@@ -235,11 +232,10 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     @extend_schema(
         responses=CustomerDeleteResponseSerializer,
     )
-    @action(detail=True, methods=["post"], url_path="delete")
-    def delete(self, request, customer_id=None):
+    @action(detail=True, methods=["post"], url_path="delete", url_name="delete")
+    def archive(self, request, customer_id=None):
         customer = self.get_object()
-        if customer.deleted is not None:
-            raise RepeatedOperation("Customer already deleted")
+
         now = now_utc()
 
         return_data = {
@@ -250,114 +246,21 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         customer.deleted = now
         customer.save()
         subscription_records = customer.subscription_records.active().all()
-        n_subs = subscription_records.filter(billing_plan__is_addon=False).count()
+        n_subs = subscription_records.filter(
+            billing_plan__addon_spec__isnull=True
+        ).count()
         return_data["num_subscriptions_deleted"] = n_subs
-        n_addons = subscription_records.filter(billing_plan__is_addon=True).count()
+        n_addons = subscription_records.filter(
+            billing_plan__addon_spec__isnull=False
+        ).count()
         return_data["num_addons_deleted"] = n_addons
-        subscription_records.update(
-            flat_fee_behavior=FLAT_FEE_BEHAVIOR.REFUND,
-            invoice_usage_charges=False,
-            auto_renew=False,
-            end_date=now,
-            fully_billed=True,
-        )
+        for subscription_record in subscription_records:
+            subscription_record.delete_subscription(delete_time=now)
         versions = customer.plan_versions.all()
         for version in versions:
             version.target_customers.remove(customer)
         CustomerDeleteResponseSerializer().validate(return_data)
         return Response(return_data, status=status.HTTP_200_OK)
-
-    # @extend_schema(
-    #     request=inline_serializer(
-    #         name="CustomerBatchCreateRequest",
-    #         fields={
-    #             "customers": CustomerCreateSerializer(many=True),
-    #             "behavior_on_existing": serializers.ChoiceField(
-    #                 choices=["merge", "ignore", "overwrite"],
-    #                 help_text="Determines what to do if a customer with the same email or customer_id already exists. Ignore skips, merge merges the existing customer with the new customer, and overwrite overwrites the existing customer with the new customer.",
-    #             ),
-    #         },
-    #     ),
-    #     responses={
-    #         201: inline_serializer(
-    #             name="CustomerBatchCreateSuccess",
-    #             fields={
-    #                 "success": serializers.ChoiceField(choices=["all", "some"]),
-    #                 "failed_customers": serializers.DictField(
-    #                     required=False,
-    #                     help_text="Returns the customers that failed to be created, if any, in the same format as the request.",
-    #                 ),
-    #             },
-    #         ),
-    #         400: inline_serializer(
-    #             name="CustomerBatchCreateFailure",
-    #             fields={
-    #                 "success": serializers.ChoiceField(choices=["none"]),
-    #                 "failed_customers": serializers.DictField(
-    #                     help_text="Returns the customers that failed to be created in the same format as the request."
-    #                 ),
-    #             },
-    #         ),
-    #     },
-    # )
-    # @action(detail=False, methods=["post"])
-    # def batch(self, request, format=None):
-    #     organization = request.organization
-    #     serializer = CustomerCreateSerializer(
-    #         data=request.data["customers"],
-    #         many=True,
-    #         context={"organization": organization},
-    #     )
-    #     serializer.is_valid(raise_exception=True)
-    #     failed_customers = {}
-    #     behavior = request.data.get("behavior_on_existing", "merge")
-    #     for customer in serializer.validated_data:
-    #         try:
-    #             match = Customer.objects.filter(
-    #                 Q(email=customer["email"]) | Q(customer_id=customer["customer_id"]),
-    #                 organization=organization,
-    #             )
-    #             if match.exists():
-    #                 match = match.first()
-    #                 if behavior == "ignore":
-    #                     pass
-    #                 else:
-    #                     if "customer_id" in customer:
-    #                         non_unique_id = Customer.objects.filter(
-    #                             ~Q(pk=match.pk), customer_id=customer["customer_id"]
-    #                         ).exists()
-    #                         if non_unique_id:
-    #                             failed_customers[
-    #                                 customer["customer_id"]
-    #                             ] = "customer_id already exists"
-    #                             continue
-    #                     CustomerUpdateSerializer().update(
-    #                         match, customer, behavior=behavior
-    #                     )
-    #             else:
-    #                 customer["organization"] = organization
-    #                 CustomerCreateSerializer().create(customer)
-    #         except Exception as e:
-    #             identifier = customer.get("customer_id", customer.get("email"))
-    #             failed_customers[identifier] = str(e)
-
-    #     if len(failed_customers) == 0 or len(failed_customers) < len(
-    #         serializer.validated_data
-    #     ):
-    #         return Response(
-    #             {
-    #                 "success": "all" if len(failed_customers) == 0 else "some",
-    #                 "failed_customers": failed_customers,
-    #             },
-    #             status=status.HTTP_201_CREATED,
-    #         )
-    #     return Response(
-    #         {
-    #             "success": "none",
-    #             "failed_customers": failed_customers,
-    #         },
-    #         status=status.HTTP_400_BAD_REQUEST,
-    #     )
 
     def perform_create(self, serializer):
         try:

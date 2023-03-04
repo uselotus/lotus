@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from django.db.models.query import QuerySet
+
 from metering_billing.kafka.producer import Producer
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.taxes import get_lotus_tax_rates, get_taxjar_tax_rates
@@ -169,7 +170,10 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice, draft)
         recurring_charge__isnull=False
     ):
         # if the next invoicing date is in the future, we don't need to bill for it yet
-        if billing_record.next_invoicing_date > invoice.issue_date:
+        if (
+            billing_record.next_invoicing_date > invoice.issue_date
+            or billing_record.fully_billed
+        ):
             continue
         # this step checks how much is due. If its an in advance charge, we want to calculate the charge up til the end date of teh subscription. If its in arrears, then we only want to calculate the charge up til the invoice's issue date. You might worry that invoice issue date is past the end of the billing record, but we check inside to make sure the relative end date is never more than the end date of the billing record
         if (
@@ -247,7 +251,9 @@ def calculate_subscription_record_usage_fees(subscription_record, invoice, draft
     # only calculate this for parent plans! addons should never calculate
     if subscription_record.invoice_usage_charges:
         for br in subscription_record.billing_records.filter(component__isnull=False):
-            if br.next_invoicing_date > invoice.issue_date and not draft:
+            if (
+                br.next_invoicing_date > invoice.issue_date and not draft
+            ) or br.fully_billed:
                 continue
             usg_rev = br.get_usage_and_revenue()
             qty = usg_rev["usage_qty"]
