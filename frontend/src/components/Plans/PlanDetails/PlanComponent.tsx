@@ -16,7 +16,7 @@ import {
 } from "antd";
 import {
   CheckCircleOutlined,
-  MoreOutlined,
+  EllipsisOutlined,
   DeleteOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -377,29 +377,32 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
 
   return (
     <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card ">
-      <Typography.Title className="pt-4 whitespace-pre-wrap grid gap-4 !text-[18px] items-center grid-cols-1 md:grid-cols-2">
-        <div>Plan Information</div>
-        <div className="flex flex-row">
-          <StateTabs
-            activeTab={capitalize(version.status)}
-            version_id={version.version_id}
-            version={version.version}
-            activeVersion={version.version}
-            tabs={["Active", "Grandfathered", "Retiring", "Inactive"]}
-          />
-          <span className="ml-auto" onClick={(e) => e.stopPropagation()}>
-            <Dropdown overlay={menu} trigger={["click"]}>
-              <Button
-                type="text"
-                size="small"
-                onClick={(e) => e.preventDefault()}
-              >
-                <MoreOutlined />
-              </Button>
-            </Dropdown>
-          </span>
-        </div>
-      </Typography.Title>
+      <div className='flex justify-between'>
+        <Typography.Title className="pt-4 whitespace-pre-wrap grid gap-4 !text-[18px] items-center grid-cols-1 md:grid-cols-2">
+          <div>Plan Information</div>
+        </Typography.Title>
+        <div className="flex flex-row  items-center font-bold tabsContainer">
+            <StateTabs
+              activeTab={capitalize(version.status)}
+              version_id={version.version_id}
+              version={version.version}
+              activeVersion={version.version}
+              tabs={["Active", "Grandfathered", "Retiring", "Inactive"]}
+              plan={plan}
+            />
+            <span className="ml-auto" onClick={(e) => e.stopPropagation()}>
+              <Dropdown overlay={menu} trigger={["click"]}>
+                <Button
+                  type="text"
+                  size="small"
+                  onClick={(e) => e.preventDefault()}
+                >
+                  <EllipsisOutlined />
+                </Button>
+              </Dropdown>
+            </span>
+          </div>
+      </div>
       <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
       <div className="grid  items-center grid-cols-1 md:grid-cols-2">
         <div className="w-[240px]">
