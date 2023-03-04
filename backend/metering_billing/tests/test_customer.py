@@ -2,11 +2,10 @@ import json
 
 import pytest
 from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIClient
-
 from metering_billing.models import Customer
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
