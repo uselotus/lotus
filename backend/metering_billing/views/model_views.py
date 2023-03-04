@@ -9,6 +9,7 @@ from api.serializers.nonmodel_serializers import (
     AddFeatureSerializer,
     AddFeatureToAddOnSerializer,
     AddFeatureToPlanSerializer,
+    ChangeActiveDatesSerializer,
 )
 from api.serializers.webhook_serializers import (
     CustomerCreatedSerializer,
@@ -19,8 +20,15 @@ from api.serializers.webhook_serializers import (
 )
 from django.conf import settings
 from django.core.cache import cache
+from django.core.validators import MinValueValidator
 from django.db.utils import IntegrityError
-from drf_spectacular.utils import OpenApiCallback, extend_schema, inline_serializer
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiCallback,
+    OpenApiParameter,
+    extend_schema,
+    inline_serializer,
+)
 from metering_billing.exceptions import (
     DuplicateMetric,
     DuplicateWebhookEndpoint,
@@ -97,6 +105,7 @@ from metering_billing.serializers.model_serializers import (
 from metering_billing.serializers.request_serializers import (
     MakeReplaceWithSerializer,
     OrganizationSettingFilterSerializer,
+    PlansSetReplaceWithForVersionNumberSerializer,
     SetReplaceWithSerializer,
     TargetCustomersSerializer,
 )
@@ -120,6 +129,7 @@ from metering_billing.utils.enums import (
 )
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import CursorPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -805,7 +815,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         ct_before = plan_version.target_customers.all().count()
         if ct_before == 0 and plan_version.is_custom is False:
             # check there's no subscriptions where this plan version is active
-            # and teh customer is not in the target customers list
+            # and the customer is not in the target customers list
             current_subscriptions = plan_version.subscription_records.active().exclude(
                 customer__in=customers
             )
@@ -822,6 +832,8 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         ct_after = plan_version.target_customers.all().count()
         if plan_version.is_custom is False and ct_after > 0:
             plan_version.is_custom = True
+            # v0 is reserved for custom plan versions
+            plan_version.version = 0
             plan_version.save()
         return Response(
             {
@@ -874,7 +886,12 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         )
 
     @extend_schema(
-        request=None,
+        request=inline_serializer(
+            "MakePublicRequest",
+            fields={
+                "version": serializers.IntegerField(validators=[MinValueValidator(1)]),
+            },
+        ),
         responses=inline_serializer(
             "MakePublicResponse",
             fields={
@@ -887,15 +904,19 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         detail=True, methods=["post"], url_path="make_public", url_name="make_public"
     )
     def make_public(self, request, *args, **kwargs):
+        new_version = request.data.get("version")
+        if new_version is None or new_version < 1:
+            raise ValidationError("Invalid version number.")
         plan_version = self.get_object()
         if plan_version.is_custom is True:
             plan_version.is_custom = False
+            plan_version.version = new_version
             plan_version.save()
             plan_version.target_customers.clear()
         return Response(
             {
                 "success": True,
-                "message": f"Plan version {str(plan_version)} made public.",
+                "message": f"Plan version {str(plan_version)} made public as version {new_version}.",
             }
         )
 
@@ -1345,6 +1366,207 @@ class PlanViewSet(api_views.PlanViewSet):
             {
                 "success": True,
                 "message": f"Added feature {feature.feature_name} to {len(plan_versions)} versions of plan {plan.plan_name}",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="plan_id",
+                location=OpenApiParameter.PATH,
+                type=OpenApiTypes.STR,
+                description="The ID of the plan whose versions we're adding a feature to.",
+            ),
+            OpenApiParameter(
+                name="version_number",
+                location=OpenApiParameter.PATH,
+                type=OpenApiTypes.INT,
+                description="The version number to update.",
+            ),
+        ],
+        request=AddFeatureToPlanSerializer,
+        responses=inline_serializer(
+            "AddFeatureToPlanVersionNumberResponse",
+            fields={
+                "success": serializers.BooleanField(),
+                "message": serializers.CharField(),
+            },
+        ),
+    )
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="versions/(?P<version_number>[^/.]+)/features/add",
+        url_name="plan_versions-features-add ",
+    )
+    def add_feature_to_version_number(self, request, *args, **kwargs):
+        plan = self.get_object()
+        serializer = AddFeatureToPlanSerializer(
+            data=request.data, context={"organization": request.organization}
+        )
+        serializer.is_valid(raise_exception=True)
+        feature = serializer.validated_data["feature"]
+        if serializer.validated_data["all_versions"] is True:
+            plan_versions = plan.versions.get_queryset()
+        else:
+            plan_versions = serializer.validated_data["plan_versions"]
+        version_number = self.kwargs.get("version_number")
+        if version_number is None or version_number < 1:
+            raise ValidationError(
+                "Valid version number is required when performing this action."
+            )
+        plan_versions = plan_versions.filter(version=version_number)
+        if plan_versions.count() == 0:
+            raise ValidationError(
+                f"Plan {plan.plan_name} does not have any of the plan versions specified under version number {serializer.validated_data['version_number']} "
+            )
+        for pv in plan_versions:
+            pv.features.add(feature)
+        return Response(
+            {
+                "success": True,
+                "message": f"Added feature {feature.feature_name} to {len(plan_versions)} versions of plan {plan.plan_name}",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="plan_id",
+                location=OpenApiParameter.PATH,
+                type=OpenApiTypes.STR,
+                description="The ID of the plan whose versions we're changing the active dates.",
+            ),
+            OpenApiParameter(
+                name="version_number",
+                location=OpenApiParameter.PATH,
+                type=OpenApiTypes.INT,
+                description="The version number to update.",
+            ),
+        ],
+        request=ChangeActiveDatesSerializer,
+        responses=inline_serializer(
+            "ChangeActiveDateResponse",
+            fields={
+                "success": serializers.BooleanField(),
+                "message": serializers.CharField(),
+            },
+        ),
+    )
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="versions/(?P<version_number>[^/.]+)/active_dates/update",
+        url_name="plan_versions-active_dates-update",
+    )
+    def change_version_number_active_dates(self, request, *args, **kwargs):
+        plan = self.get_object()
+        serializer = ChangeActiveDatesSerializer(
+            data=request.data, context={"organization": request.organization}
+        )
+        serializer.is_valid(raise_exception=True)
+        if serializer.validated_data["all_versions"] is True:
+            plan_versions = plan.versions.get_queryset()
+        else:
+            plan_versions = serializer.validated_data["plan_versions"]
+        version_number = self.kwargs.get("version_number")
+        if version_number is None or version_number < 1:
+            raise ValidationError(
+                "Valid version number is required when performing this action."
+            )
+        plan_versions = plan_versions.filter(version=version_number)
+        if plan_versions.count() == 0:
+            raise ValidationError(
+                f"Plan {plan.plan_name} does not have any of the plan versions specified under version number {serializer.validated_data['version_number']} "
+            )
+        update_kwargs = {}
+        if "active_from" in serializer.validated_data:
+            update_kwargs["active_from"] = serializer.validated_data["active_from"]
+        if "active_to" in serializer.validated_data:
+            update_kwargs["active_to"] = serializer.validated_data["active_to"]
+        plan_versions.update(**update_kwargs)
+        return Response(
+            {
+                "success": True,
+                "message": f"Changed active dates of {len(plan_versions)} instances of version {version_number} of plan {plan.plan_name}",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        parameters=None,
+        request=PlansSetReplaceWithForVersionNumberSerializer,
+        responses=inline_serializer(
+            "PlanVersionNumberSetReplaceWithResponse",
+            fields={
+                "success": serializers.BooleanField(),
+                "message": serializers.CharField(),
+            },
+        ),
+    )
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="versions/(?P<version_number>[^/.]+)/replacement/set",
+        url_name="plan_versions-replacement-set",
+    )
+    def set_replacement_for_version_number(self, request, *args, **kwargs):
+        plan = self.get_object()
+        organization = self.request.organization
+        serializer = PlansSetReplaceWithForVersionNumberSerializer(
+            data=request.data, context={"organization": organization}
+        )
+        serializer.is_valid(raise_exception=True)
+        # extract versions to replace
+        if serializer.validated_data["all_versions"] is True:
+            plan_versions = plan.versions.get_queryset()
+        else:
+            plan_versions = serializer.validated_data["plan_versions"]
+
+        # get the current version number
+        version_number = self.kwargs.get("version_number")
+        if version_number is None or version_number < 1:
+            raise ValidationError(
+                "Valid version number is required when performing this action."
+            )
+        current_plan_versions = plan_versions.filter(version=version_number)
+
+        # get the replacement version number
+        replacement_version_number = serializer.validated_data[
+            "replacement_version_number"
+        ]
+        if replacement_version_number == version_number:
+            raise ValidationError(
+                "Replacement version number cannot be the same as the version number."
+            )
+        replacement_plan_versions = plan_versions.filter(
+            version=replacement_version_number
+        )
+
+        # build a replacement map to maker sure they're all valid before performing the update
+        replacement_map = {}
+        for pv in current_plan_versions:
+            try:
+                replacement_map[pv] = replacement_plan_versions.get(
+                    currency=pv.currency
+                )
+            except PlanVersion.DoesNotExist:
+                raise ValidationError(
+                    f"Replacement plan version {replacement_version_number} for currency {pv.currency} does not exist."
+                )
+            except PlanVersion.MultipleObjectsReturned:
+                raise ValidationError(
+                    f"Multiple replacement plan versions {replacement_version_number} for currency {pv.currency} exist."
+                )
+        for pv, replacement in replacement_map.items():
+            pv.replacement = replacement
+            pv.save()
+        return Response(
+            {
+                "success": True,
+                "message": f"Added replacement plan version {replacement_version_number} for {len(current_plan_versions)} instances of version {version_number} of plan {plan.plan_name}",
             },
             status=status.HTTP_200_OK,
         )
@@ -2051,6 +2273,10 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
         serializer.save(organization=self.request.organization)
 
     def get_serializer_context(self):
+        context = super().get_serializer_context()
+        organization = self.request.organization
+        context.update({"organization": organization})
+        return context
         context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})

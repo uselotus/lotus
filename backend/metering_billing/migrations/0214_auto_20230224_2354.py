@@ -3,20 +3,9 @@
 from django.db import migrations
 
 
-def transition_to_new_plan(apps, schema_editor):
-    PlanVersion = apps.get_model("metering_billing", "PlanVersion")
-    for pv in PlanVersion.objects.all():
-        if pv.transition_to is not None:
-            trans_plan = pv.transition_to.display_version
-            pv.replace_with = trans_plan
-            pv.save()
-
-
 class Migration(migrations.Migration):
     dependencies = [
         ("metering_billing", "0213_auto_20230224_2336"),
     ]
 
-    operations = [
-        migrations.RunPython(transition_to_new_plan),
-    ]
+    operations = []

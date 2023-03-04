@@ -6,6 +6,9 @@ from typing import Literal, Union
 from django.conf import settings
 from django.db.models import Max, Min, Sum
 from drf_spectacular.utils import extend_schema_serializer
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
 from metering_billing.invoice import generate_balance_adjustment_invoice
 from metering_billing.models import (
     AddOnSpecification,
@@ -64,8 +67,6 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -140,25 +141,32 @@ class LightweightCustomerSerializerForInvoice(LightweightCustomerSerializer):
         return None
 
 
-@extend_schema_serializer(deprecate_fields=["version"])
 class LightweightPlanVersionSerializer(
     ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = PlanVersion
-        fields = ("plan_name", "plan_id", "version_id")
+        fields = ("plan_name", "plan_id", "version_id", "version")
         extra_kwargs = {
             "plan_id": {"required": True, "read_only": True},
             "plan_name": {"required": True, "read_only": True},
             "version_id": {"required": True, "read_only": True},
+            "version": {"required": True, "read_only": True},
         }
 
     plan_name = serializers.SerializerMethodField()
     plan_id = PlanUUIDField(source="plan.plan_id")
     version_id = PlanVersionUUIDField(read_only=True)
+    version = serializers.SerializerMethodField()
 
     def get_plan_name(self, obj) -> str:
         return str(obj)
+
+    def get_version(self, obj) -> Union[int, Literal["custom_version"]]:
+        if obj.version == 0:
+            return "custom_version"
+        else:
+            return obj.version
 
 
 class CategoricalFilterSerializer(
@@ -278,6 +286,10 @@ class LightweightAddOnSubscriptionRecordSerializer(
 
     addon_subscription_id = AddOnSubscriptionUUIDField(source="subscription_record_id")
     addon = LightweightAddOnSerializer(source="billing_plan.plan")
+    fully_billed = serializers.SerializerMethodField()
+
+    def get_fully_billed(self, obj) -> bool:
+        return all(obj.billing_records.values_list("fully_billed", flat=True))
 
 
 class SubscriptionRecordSerializer(
@@ -318,6 +330,10 @@ class SubscriptionRecordSerializer(
     addons = LightweightAddOnSubscriptionRecordSerializer(
         many=True, source="addon_subscription_records"
     )
+    fully_billed = serializers.SerializerMethodField()
+
+    def get_fully_billed(self, obj) -> bool:
+        return all(obj.billing_records.values_list("fully_billed", flat=True))
 
 
 class InvoiceLineItemSerializer(
@@ -1095,6 +1111,7 @@ class PlanVersionSerializer(
             "status",
             "plan_name",
             "currency",
+            "version",
         )
         extra_kwargs = {
             "flat_fee_billing_type": {"required": True, "read_only": True},
@@ -1181,8 +1198,11 @@ class PlanVersionSerializer(
         else:
             return None
 
-    def get_version(self, obj) -> int:
-        return 1
+    def get_version(self, obj) -> Union[int, Literal["custom_version"]]:
+        if obj.version == 0:
+            return "custom_version"
+        else:
+            return obj.version
 
 
 class PlanNameAndIDSerializer(
@@ -1459,6 +1479,7 @@ class SubscriptionRecordCreateSerializer(
             "subscription_filters",
             "customer_id",
             "version_id",
+            "plan_id",
         )
 
     start_date = serializers.DateTimeField(
@@ -1492,11 +1513,34 @@ class SubscriptionRecordCreateSerializer(
         source="billing_plan",
         queryset=PlanVersion.plan_versions.all(),
         write_only=True,
-        help_text="The Lotus version_id, found in the billing plan object. This is the preferred way to specify the plan version.",
+        help_text="The Lotus version_id, found in the billing plan object. For maximum specificity, you can use this to control exactly what plan version becomes part of the subscription.",
+        required=False,
+    )
+    plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        source="plan",
+        queryset=Plan.objects.all(),
+        write_only=True,
+        required=False,
+        help_text="The Lotus plan_id, found in the billing plan object. We will make a best-effort attempt to find the correct plan version (matching preferred currencies, prioritizing custom plans), but if more than one plan version or no plan version matches these criteria this will return an error.",
     )
 
     def validate(self, data):
         data = super().validate(data)
+        plan_id_present = data.get("plan_id") is not None
+        version_id_present = data.get("version_id") is not None
+        if plan_id_present == version_id_present:  # xor check
+            raise serializers.ValidationError(
+                "You must specify exactly one of plan_id or version_id"
+            )
+        if plan_id_present:  # this means billing plan is not present
+            data["billing_plan"] = data.pop("plan").get_version_for_customer(
+                data["customer"]
+            )
+            if data["billing_plan"] is None:
+                raise serializers.ValidationError(
+                    "Unable to find a singular plan version that matches the plan_id. Please specify a version_id instead."
+                )
         if data["billing_plan"].is_custom:
             if data["customer"] not in data["billing_plan"].target_customers.all():
                 raise serializers.ValidationError(
@@ -1734,11 +1778,11 @@ class ListPlansFilterSerializer(serializers.Serializer):
     )
     range_start = serializers.DateTimeField(
         required=False,
-        help_text="Filter to plans and versions whose not_active_after datetime is on or after this date + time.",
+        help_text="Filter to plans and versions whose active_until datetime is on or after this date + time.",
     )
     range_end = serializers.DateTimeField(
         required=False,
-        help_text="Filter to plans and versions whose not_active_before datetime is on or before this date + time.",
+        help_text="Filter to plans and versions whose active_from datetime is on or before this date + time.",
     )
     active_on = serializers.DateTimeField(
         required=False,
@@ -2333,6 +2377,10 @@ class AddOnSubscriptionRecordSerializer(
     customer = LightweightCustomerSerializer()
     addon = LightweightAddOnSerializer(source="billing_plan.plan")
     parent = LightweightSubscriptionRecordSerializer()
+    fully_billed = serializers.SerializerMethodField()
+
+    def get_fully_billed(self, obj) -> bool:
+        return all(obj.billing_records.values_list("fully_billed", flat=True))
 
 
 class AddOnSubscriptionRecordCreateSerializer(
@@ -2341,18 +2389,27 @@ class AddOnSubscriptionRecordCreateSerializer(
     class Meta:
         model = SubscriptionRecord
         fields = (
+            "addon_id",
             "addon_version_id",
             "quantity",
         )
         extra_kwargs = {
             "addon_version_id": {"required": True, "write_only": True},
             "quantity": {"required": False, "write_only": True},
+            "addon_id": {"required": True, "write_only": True},
         }
 
+    addon_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        queryset=Plan.addons.all(),
+        required=False,
+        help_text="The add-on to be applied to the subscription. You can use either this field or addon_version_id, but not both.",
+        source="addon",
+    )
     addon_version_id = SlugRelatedFieldWithOrganization(
         slug_field="version_id",
         queryset=PlanVersion.addon_versions.all(),
-        required=True,
+        required=False,
         help_text="The add-on to be applied to the subscription.",
         source="addon_version",
     )
@@ -2364,6 +2421,21 @@ class AddOnSubscriptionRecordCreateSerializer(
 
     def validate(self, data):
         data = super().validate(data)
+        plan_id_present = data.get("addon_id") is not None
+        version_id_present = data.get("addon_version_id") is not None
+        if plan_id_present == version_id_present:  # xor check
+            raise serializers.ValidationError(
+                "You must specify exactly one of addon_id or addon_version_id"
+            )
+        if plan_id_present:
+            data["addon_version"] = data.pop("addon").get_version_for_customer(
+                data["customer"]
+            )
+            if data["addon_version"] is None:
+                raise serializers.ValidationError(
+                    "Unable to find a singular addon version that matches the addon_id. Please specify an addon_version_id instead."
+                )
+
         data["attach_to_subscription_record"] = self.context[
             "attach_to_subscription_record"
         ]

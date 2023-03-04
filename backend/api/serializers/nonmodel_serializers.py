@@ -27,14 +27,12 @@ class GetInvoicePdfURLRequestSerializer(serializers.Serializer):
         queryset=Invoice.objects.all(),
         help_text="The invoice_id of the invoice you want to get the PDF URL for.",
         required=False,
-        allow_null=True,
     )
     invoice_number = SlugRelatedFieldWithOrganization(
         slug_field="invoice_number",
         queryset=Invoice.objects.all(),
         help_text="The invoice_number of the invoice you want to get the PDF URL for.",
         required=False,
-        allow_null=True,
     )
 
     def validate(self, data):
@@ -298,16 +296,7 @@ class GetInvoicePdfURLResponseSerializer(serializers.Serializer):
     url = serializers.URLField()
 
 
-class AddFeatureSerializer(serializers.Serializer):
-    feature_id = SlugRelatedFieldWithOrganization(
-        slug_field="feature_id",
-        queryset=Feature.objects.all(),
-        help_text="The feature_id of the feature you want to add to the plan.",
-        source="feature",
-    )
-
-
-class AddFeatureToPlanSerializer(AddFeatureSerializer):
+class VersionSelectorSerializer(serializers.Serializer):
     version_ids = SlugRelatedFieldWithOrganization(
         slug_field="version_id",
         queryset=PlanVersion.plan_versions.all(),
@@ -328,7 +317,31 @@ class AddFeatureToPlanSerializer(AddFeatureSerializer):
             raise serializers.ValidationError(
                 "You cannot use both version_ids and all_versions."
             )
-        return super().validate(data)
+        data = super().validate(data)
+        data["plan_versions"] = PlanVersion.objects.filter(
+            id__in=[x.id for x in data.get("plan_versions", [])]
+        )
+        return data
+
+
+class AddFeatureToPlanSerializer(VersionSelectorSerializer):
+    feature_id = SlugRelatedFieldWithOrganization(
+        slug_field="feature_id",
+        queryset=Feature.objects.all(),
+        help_text="The feature_id of the feature you want to add to the plan.",
+        source="feature",
+        required=True,
+    )
+
+
+class AddFeatureSerializer(serializers.Serializer):
+    feature_id = SlugRelatedFieldWithOrganization(
+        slug_field="feature_id",
+        queryset=Feature.objects.all(),
+        help_text="The feature_id of the feature you want to add to the plan.",
+        source="feature",
+        required=True,
+    )
 
 
 class AddFeatureToAddOnSerializer(AddFeatureToPlanSerializer):
@@ -338,4 +351,18 @@ class AddFeatureToAddOnSerializer(AddFeatureToPlanSerializer):
         required=False,
         many=True,
         help_text="The version_ids of the AddOn versions you want to add the feature to. If you want to apply to all versions, use the all_versions parameter.",
+    )
+    all_versions = None
+
+
+class ChangeActiveDatesSerializer(VersionSelectorSerializer):
+    active_from = serializers.DateTimeField(
+        help_text="The date and time that the feature should be active from. If you want to make this inactive, you can pass null here.",
+        required=False,
+        allow_null=True,
+    )
+    active_until = serializers.DateTimeField(
+        help_text="The date and time that the feature should be active until. If you want to make this active indefinitely, you can pass null here.",
+        required=False,
+        allow_null=True,
     )

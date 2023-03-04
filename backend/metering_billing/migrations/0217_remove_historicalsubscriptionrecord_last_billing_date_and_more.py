@@ -4,30 +4,25 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('metering_billing', '0216_remove_plan_both_null_or_both_not_null_and_more'),
+        ("metering_billing", "0216_remove_plan_both_null_or_both_not_null_and_more"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='historicalsubscriptionrecord',
-            name='last_billing_date',
+            model_name="historicalsubscriptionrecord",
+            name="last_billing_date",
         ),
         migrations.RemoveField(
-            model_name='historicalsubscriptionrecord',
-            name='next_billing_date',
+            model_name="historicalsubscriptionrecord",
+            name="next_billing_date",
         ),
         migrations.RemoveField(
-            model_name='planversion',
-            name='version',
+            model_name="subscriptionrecord",
+            name="last_billing_date",
         ),
         migrations.RemoveField(
-            model_name='subscriptionrecord',
-            name='last_billing_date',
-        ),
-        migrations.RemoveField(
-            model_name='subscriptionrecord',
-            name='next_billing_date',
+            model_name="subscriptionrecord",
+            name="next_billing_date",
         ),
     ]

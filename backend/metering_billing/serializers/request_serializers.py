@@ -83,3 +83,21 @@ class MakeReplaceWithSerializer(serializers.Serializer):
         many=True,
         help_text="The plan versions that will get replaced by the current version.",
     )
+
+
+class PlansChangeActiveDatesForVersionNumberSerializer(serializers.Serializer):
+    versions_to_edit = SlugRelatedFieldWithOrganization(
+        slug_field="version_id",
+        queryset=PlanVersion.plan_versions.all(),
+        required=True,
+        many=True,
+        help_text="The plan versions that will get their active dates changed.",
+    )
+
+
+class PlansSetReplaceWithForVersionNumberSerializer(serializers.Serializer):
+    replacement_version_number = serializers.IntegerField(
+        required=True,
+        help_text="The version number of the plan that will replace the current version.",
+        min_value=1,
+    )

@@ -7,13 +7,13 @@ def set_not_before(apps, schema_editor):
     PlanVersion = apps.get_model("metering_billing", "PlanVersion")
     for version in PlanVersion.objects.all():
         if version.created_on:
-            version.not_active_before = version.created_on
+            version.active_from = version.created_on
             version.save()
 
     Plan = apps.get_model("metering_billing", "Plan")
     for version in Plan.objects.all():
         if version.created_on:
-            version.not_active_before = version.created_on
+            version.active_from = version.created_on
             version.save()
 
 
@@ -23,21 +23,21 @@ def set_not_after(apps, schema_editor):
     PlanVersion = apps.get_model("metering_billing", "PlanVersion")
     for version in PlanVersion.objects.all():
         if version.status == "active":
-            version.not_active_after = None
+            version.active_until = None
         else:
             if version.status == "archived":
                 version.deleted = now_utc()
-            version.not_active_after = now_utc()
+            version.active_until = now_utc()
         version.save()
 
     Plan = apps.get_model("metering_billing", "Plan")
     for plan in Plan.objects.all():
         if plan.status == "active":
-            plan.not_active_after = None
+            plan.active_until = None
         else:
             if plan.status == "archived":
                 plan.deleted = now_utc()
-            plan.not_active_after = now_utc()
+            plan.active_until = now_utc()
         plan.save()
 
 

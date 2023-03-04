@@ -227,8 +227,8 @@ export interface UpdatePlanType {
   plan_name?: string;
   plan_description: string | null;
   taxjar_code: string | null;
-  not_active_before: string;
-  not_active_after: string | null;
+  active_from: string;
+  active_until: string | null;
 }
 export interface CreateTagsPlanBody {
   tags: PlanType["tags"];

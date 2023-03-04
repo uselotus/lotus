@@ -26,6 +26,15 @@ from django.db.models import Count, F, FloatField, Prefetch, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
+
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     NotEditable,
@@ -72,14 +81,6 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -2084,19 +2085,19 @@ class BasePlanManager(models.Manager):
         if time is None:
             time = now_utc()
         return self.filter(
-            Q(not_active_before__lte=time)
-            & ((Q(not_active_after__gt=time) | Q(not_active_after__isnull=True)))
+            Q(active_from__lte=time)
+            & ((Q(active_until__gt=time) | Q(active_until__isnull=True)))
         )
 
     def ended(self, time=None):
         if time is None:
             time = now_utc()
-        return self.filter(not_active_after__lte=time)
+        return self.filter(active_until__lte=time)
 
     def not_started(self, time=None):
         if time is None:
             time = now_utc()
-        return self.filter(not_active_before__gt=time)
+        return self.filter(active_from__gt=time)
 
 
 class PlanVersionManager(BasePlanManager):
@@ -2130,6 +2131,7 @@ class PlanVersion(models.Model):
         on_delete=models.CASCADE,
         related_name="plan_versions",
     )
+    version = models.PositiveSmallIntegerField()
     version_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     plan_version_name = models.TextField(null=True, blank=True, default=None)
     plan = models.ForeignKey("Plan", on_delete=models.CASCADE, related_name="versions")
@@ -2157,6 +2159,13 @@ class PlanVersion(models.Model):
     replace_with = models.ForeignKey(
         "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
+    transition_to = models.ForeignKey(
+        "Plan",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="transition_from",
+    )
     addon_spec = models.OneToOneField(
         "AddOnSpecification",
         on_delete=models.SET_NULL,
@@ -2164,8 +2173,8 @@ class PlanVersion(models.Model):
         null=True,
         blank=True,
     )
-    not_active_before = models.DateTimeField(default=now_utc, blank=True)
-    not_active_after = models.DateTimeField(null=True, blank=True)
+    active_from = models.DateTimeField(null=True, default=now_utc, blank=True)
+    active_until = models.DateTimeField(null=True, blank=True)
 
     # PRICING
     features = models.ManyToManyField(Feature, blank=True)
@@ -2221,16 +2230,16 @@ class PlanVersion(models.Model):
     def is_active(self, time=None):
         if time is None:
             time = now_utc()
-        return self.not_active_before <= time and (
-            self.not_active_after is None or self.not_active_after > time
+        return self.active_from <= time and (
+            self.active_until is None or self.active_until > time
         )
 
     def get_status(self) -> PLAN_VERSION_STATUS:
         now = now_utc()
         if self.deleted is not None:
             return PLAN_VERSION_STATUS.DELETED
-        if self.not_active_before <= now:
-            if self.not_active_after is None or self.not_active_after > now:
+        if self.active_from <= now:
+            if self.active_until is None or self.active_until > now:
                 return PLAN_VERSION_STATUS.ACTIVE
             else:
                 n_active_subs = self.num_active_subs()
@@ -2362,8 +2371,8 @@ class Plan(models.Model):
         help_text="Duration of the plan",
         null=True,
     )
-    not_active_before = models.DateTimeField(default=now_utc, blank=True)
-    not_active_after = models.DateTimeField(null=True, blank=True)
+    active_from = models.DateTimeField(default=now_utc, blank=True)
+    active_until = models.DateTimeField(null=True, blank=True)
 
     # MISC
     tags = models.ManyToManyField("Tag", blank=True, related_name="plans")
@@ -2456,41 +2465,53 @@ class Plan(models.Model):
         return versions_count
 
     def get_version_for_customer(self, customer) -> Optional[PlanVersion]:
-        versions = self.versions.active().prefetch_related("subscription_records")
+        versions = self.versions.active().prefetch_related(
+            "subscription_records", "target_customers"
+        )
+        # rules are as follows:
+        # 1. if there is only one version, return it
+        # 2. custom plans, preferring the customer's preferred currency
+        # 3. filter down to the customer's preferred currency
+        # 4. filter down to the organization's preferred currency
+
         if versions.count() == 0:
             return None
         elif versions.count() == 1:
             return versions.first()
         else:
-            # try to match based on target customer
-            target_versions = []
-            public_versions = []
-            for version in versions:
-                if version.is_custom:
-                    if customer in version.target_customer.all():
-                        target_versions.append(version)
-                else:
-                    public_versions.append(version)
-            if len(target_versions) == 1:
-                return target_versions[0]
-            elif len(target_versions) > 1:
-                customer_currency = customer.currency
-                target_versions = [
-                    x for x in target_versions if x.currency == customer_currency
-                ]
-                if len(target_versions) == 1:
-                    return target_versions[0]
+            customer_target_plans = customer.plan_versions.filter(plan=self)
+            customer_target_plan_in_customer_currency = customer_target_plans.filter(
+                currency=customer.default_currency
+            )
+            customer_target_plan_in_org_currency = customer_target_plans.filter(
+                currency=customer.organization.default_currency
+            )
+            if customer_target_plans.count() == 1:
+                return customer_target_plans.first()
+            elif customer_target_plan_in_customer_currency.count() == 1:
+                return customer_target_plan_in_customer_currency.first()
+            elif customer_target_plan_in_customer_currency.count() > 1:
+                return None  # DO NOT randomly choose a plan if multiple match
+            elif customer_target_plan_in_org_currency.count() == 1:
+                return customer_target_plan_in_org_currency.first()
+            elif customer_target_plan_in_org_currency.count() > 1:
+                return None
 
-            if len(public_versions) == 1:
-                return public_versions[0]
-            elif len(public_versions) > 1:
-                customer_currency = customer.currency
-                public_versions = [
-                    x for x in public_versions if x.currency == customer_currency
-                ]
-                if len(public_versions) == 1:
-                    return public_versions[0]
-
+            # if we get here that means there are no customer specific plans
+            versions_in_customer_currency = versions.filter(
+                currency=customer.default_currency
+            )
+            if versions_in_customer_currency.count() == 1:
+                return versions_in_customer_currency.first()
+            elif versions_in_customer_currency.count() > 1:
+                return None
+            versions_in_org_currency = versions.filter(
+                currency=customer.organization.default_currency
+            )
+            if versions_in_org_currency.count() == 1:
+                return versions_in_org_currency.first()
+            elif versions_in_org_currency.count() > 1:
+                return None
             return None
 
 

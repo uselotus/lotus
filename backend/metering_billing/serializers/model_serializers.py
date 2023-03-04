@@ -1047,24 +1047,24 @@ class PlanVersionUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
         model = PlanVersion
         fields = (
             "plan_version_name",
-            "not_active_before",
-            "not_active_after",
+            "active_from",
+            "active_until",
         )
         extra_kwargs = {
             "plan_version_name": {"required": False},
         }
 
     def update(self, instance, validated_data):
-        new_nab = validated_data.get("not_active_before", instance.not_active_before)
-        new_naa = validated_data.get("not_active_after", instance.not_active_after)
+        new_nab = validated_data.get("active_from", instance.active_from)
+        new_naa = validated_data.get("active_until", instance.active_until)
         if new_naa is not None:
             # new nab can't be after new naa
             if new_nab > new_naa:
                 raise serializers.ValidationError(
-                    "not_active_before must be before not_active_after"
+                    "active_from must be before active_until"
                 )
-        instance.not_active_before = new_nab
-        instance.not_active_after = new_naa
+        instance.active_from = new_nab
+        instance.active_until = new_naa
         instance.plan_version_name = validated_data.get(
             "plan_version_name", instance.plan_version_name
         )
@@ -1077,8 +1077,8 @@ class AddOnVersionUpdateSerializer(PlanVersionUpdateSerializer):
         model = PlanVersion
         fields = (
             "addon_version_name",
-            "not_active_before",
-            "not_active_after",
+            "active_from",
+            "active_until",
         )
         extra_kwargs = {
             "addon_version_name": {"required": False},
@@ -1190,6 +1190,8 @@ class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
             "day_anchor",
             "month_anchor",
             "currency_code",
+            "version",
+            "target_customer_ids",
         )
         extra_kwargs = {
             "plan_id": {"write_only": True},
@@ -1200,6 +1202,8 @@ class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
             "day_anchor": {"write_only": True},
             "month_anchor": {"write_only": True},
             "currency_code": {"write_only": True},
+            "version": {"write_only": True},
+            "target_customer_ids": {"write_only": True},
         }
 
     components = PlanComponentCreateSerializer(
@@ -1226,6 +1230,15 @@ class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
         slug_field="code",
         queryset=PricingUnit.objects.all(),
     )
+    version = serializers.IntegerField(required=True)
+    target_customer_ids = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        many=True,
+        allow_null=False,
+        required=False,
+        source="target_customers",
+    )
 
     def validate(self, data):
         data = super().validate(data)
@@ -1248,6 +1261,7 @@ class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
         components_data = validated_data.pop("components", [])
         recurring_charge_data = validated_data.pop("recurring_charges", [])
         features = validated_data.pop("features", [])
+        target_customers = validated_data.pop("target_customers", [])
         price_adjustment_data = validated_data.pop("price_adjustment", None)
 
         billing_plan = PlanVersion.objects.create(**validated_data)
@@ -1290,6 +1304,8 @@ class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
                 pa = PriceAdjustment.objects.filter(**price_adjustment_data).first()
             billing_plan.price_adjustment = pa
         billing_plan.save()
+        if target_customers:
+            billing_plan.target_customers.set(target_customers)
         return billing_plan
 
 
@@ -1462,8 +1478,8 @@ class PlanUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
             "plan_name",
             "plan_description",
             "taxjar_code",
-            "not_active_before",
-            "not_active_after",
+            "active_from",
+            "active_until",
         )
         extra_kwargs = {
             "plan_name": {"required": False},
@@ -1472,16 +1488,16 @@ class PlanUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         }
 
     def update(self, instance, validated_data):
-        new_nab = validated_data.get("not_active_before", instance.not_active_before)
-        new_naa = validated_data.get("not_active_after", instance.not_active_after)
+        new_nab = validated_data.get("active_from", instance.active_from)
+        new_naa = validated_data.get("active_until", instance.active_until)
         if new_naa is not None:
             # new nab can't be after new naa
             if new_nab > new_naa:
                 raise serializers.ValidationError(
-                    "not_active_before must be before not_active_after"
+                    "active_from must be before active_until"
                 )
-        instance.not_active_before = new_nab
-        instance.not_active_after = new_naa
+        instance.active_from = new_nab
+        instance.active_until = new_naa
         instance.plan_name = validated_data.get("plan_name", instance.plan_name)
         instance.plan_description = validated_data.get(
             "plan_description", instance.plan_description
@@ -1496,8 +1512,8 @@ class AddOnUpdateSerializer(PlanUpdateSerializer):
         model = Plan
         fields = (
             "addon_name",
-            "not_active_before",
-            "not_active_after",
+            "active_from",
+            "active_until",
         )
         extra_kwargs = {
             "addon_name": {"required": False},

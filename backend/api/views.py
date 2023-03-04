@@ -13,40 +13,6 @@ from typing import Optional
 
 import posthog
 import pytz
-from dateutil import parser
-from dateutil.relativedelta import relativedelta
-from django.conf import settings
-from django.db.models import (
-    Count,
-    DecimalField,
-    F,
-    Max,
-    Min,
-    OuterRef,
-    Prefetch,
-    Q,
-    Subquery,
-    Sum,
-    Value,
-)
-from django.db.models.functions import Coalesce
-from django.db.utils import IntegrityError
-from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import (
-    action,
-    api_view,
-    authentication_classes,
-    permission_classes,
-)
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
 from api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
     AddOnSubscriptionRecordSerializer,
@@ -83,6 +49,28 @@ from api.serializers.nonmodel_serializers import (
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
 )
+from dateutil import parser
+from dateutil.relativedelta import relativedelta
+from django.conf import settings
+from django.db.models import (
+    Count,
+    DecimalField,
+    F,
+    Max,
+    Min,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
+from django.db.utils import IntegrityError
+from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from metering_billing.auth.auth_utils import (
     PermissionPolicyMixin,
     fast_api_key_validation_and_cache,
@@ -134,6 +122,17 @@ from metering_billing.utils.enums import (
     USAGE_BILLING_BEHAVIOR,
 )
 from metering_billing.webhooks import customer_created_webhook
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import (
+    action,
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -347,21 +346,20 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             range_start_aware = convert_to_datetime(
                 range_start, tz=organization.timezone
             )
-            q_cond = Q(not_active_after__gte=range_start_aware) | Q(
-                not_active_after__isnull=True
+            q_cond = Q(active_until__gte=range_start_aware) | Q(
+                active_until__isnull=True
             )
             versions_filters.append(q_cond)
             plans_filters.append(q_cond)
         if range_end:
             range_end_aware = convert_to_datetime(range_end)
-            q_cond = Q(not_active_before__lte=range_end_aware)
+            q_cond = Q(active_from__lte=range_end_aware)
             versions_filters.append(q_cond)
             plans_filters.append(q_cond)
         if active_on:
             active_on_aware = convert_to_datetime(active_on)
-            q_cond = Q(not_active_before__lte=active_on_aware) & (
-                Q(not_active_after__gte=active_on_aware)
-                | Q(not_active_after__isnull=True)
+            q_cond = Q(active_from__lte=active_on_aware) & (
+                Q(active_until__gte=active_on_aware) | Q(active_until__isnull=True)
             )
             versions_filters.append(q_cond)
             plans_filters.append(q_cond)

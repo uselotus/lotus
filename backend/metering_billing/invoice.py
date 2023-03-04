@@ -7,7 +7,6 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from django.db.models.query import QuerySet
-
 from metering_billing.kafka.producer import Producer
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.taxes import get_lotus_tax_rates, get_taxjar_tax_rates
@@ -175,7 +174,7 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice, draft)
             or billing_record.fully_billed
         ):
             continue
-        # this step checks how much is due. If its an in advance charge, we want to calculate the charge up til the end date of teh subscription. If its in arrears, then we only want to calculate the charge up til the invoice's issue date. You might worry that invoice issue date is past the end of the billing record, but we check inside to make sure the relative end date is never more than the end date of the billing record
+        # this step checks how much is due. If its an in advance charge, we want to calculate the charge up til the end date of the subscription. If its in arrears, then we only want to calculate the charge up til the invoice's issue date. You might worry that invoice issue date is past the end of the billing record, but we check inside to make sure the relative end date is never more than the end date of the billing record
         if (
             billing_record.recurring_charge.charge_timing
             == RecurringCharge.ChargeTimingType.IN_ADVANCE
