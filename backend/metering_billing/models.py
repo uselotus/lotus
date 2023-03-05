@@ -26,6 +26,15 @@ from django.db.models import Count, F, FloatField, Prefetch, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
+
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     NotEditable,
@@ -72,14 +81,6 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -2107,13 +2108,13 @@ class BasePlanManager(models.Manager):
             time = now_utc()
         return self.filter(
             Q(active_from__lte=time)
-            & ((Q(active_toime) | Q(actactactive_toe)))
+            & ((Q(active_to__gt=time) | Q(active_to__isnull=True)))
         )
 
     def ended(self, time=None):
         if time is None:
             time = now_utc()
-        return self.filter(active_totime)
+        return self.filter(active_to__lte=time)
 
     def not_started(self, time=None):
         if time is None:
@@ -2195,7 +2196,7 @@ class PlanVersion(models.Model):
         blank=True,
     )
     active_from = models.DateTimeField(null=True, default=now_utc, blank=True)
-    active_toels.DateTimeField(null=True, blank=True)
+    active_to = models.DateTimeField(null=True, blank=True)
 
     # PRICING
     features = models.ManyToManyField(Feature, blank=True)
@@ -2253,7 +2254,7 @@ class PlanVersion(models.Model):
         if time is None:
             time = now_utc()
         return self.active_from <= time and (
-            self.active_tone or self.actactactive_to
+            self.active_to is None or self.active_to > time
         )
 
     def get_status(self) -> PLAN_VERSION_STATUS:
@@ -2261,7 +2262,7 @@ class PlanVersion(models.Model):
         if self.deleted is not None:
             return PLAN_VERSION_STATUS.DELETED
         if self.active_from <= now:
-            if self.active_tone or self.actactactive_to
+            if self.active_to is None or self.active_to > now:
                 return PLAN_VERSION_STATUS.ACTIVE
             else:
                 n_active_subs = self.num_active_subs()
@@ -2394,7 +2395,7 @@ class Plan(models.Model):
         null=True,
     )
     active_from = models.DateTimeField(default=now_utc, blank=True)
-    active_toels.DateTimeField(null=True, blank=True)
+    active_to = models.DateTimeField(null=True, blank=True)
 
     # MISC
     tags = models.ManyToManyField("Tag", blank=True, related_name="plans")
