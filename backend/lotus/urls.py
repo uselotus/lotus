@@ -119,7 +119,6 @@ urlpatterns = [
     # API Views
     path("api/", include((api_router.urls, "api"), namespace="api")),
     path("api/ping/", api_views.Ping.as_view(), name="ping"),
-    path("api/healthcheck/", api_views.Healthcheck.as_view(), name="healthcheck"),
     path("api/track/", api_views.track_event, name="track_event"),
     path("api/invoice_url/", api_views.GetInvoicePdfURL.as_view(), name="invoice_url"),
     path(

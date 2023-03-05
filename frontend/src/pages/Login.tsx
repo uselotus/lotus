@@ -115,7 +115,6 @@ const Login: FC = () => {
                   <Input
                     type="text"
                     name="username"
-                    id="username"
                     value={username}
                     defaultValue="username123"
                     onChange={handleUserNameChange}
@@ -126,7 +125,6 @@ const Login: FC = () => {
                 <Form.Item>
                   <Input
                     type="password"
-                    id='password'
                     name="password"
                     value={password}
                     defaultValue="password123"

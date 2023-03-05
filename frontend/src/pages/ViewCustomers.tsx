@@ -88,8 +88,7 @@ const ViewCustomers: FC = () => {
       extra={[
         <Button
           onClick={openCustomerModal}
-            type="primary"
-            id='create-cutsomer-model'
+          type="primary"
           size="large"
           key="create-plan"
           className="hover:!bg-primary-700"
