@@ -1,10 +1,28 @@
 # import lotus_python
 import logging
 
-import api.views as api_views
 import posthog
 import sentry_sdk
 from actstream.models import Action
+from django.conf import settings
+from django.core.cache import cache
+from django.core.validators import MinValueValidator
+from django.db.utils import IntegrityError
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiCallback,
+    OpenApiParameter,
+    extend_schema,
+    inline_serializer,
+)
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.pagination import CursorPagination
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+import api.views as api_views
 from api.serializers.nonmodel_serializers import (
     AddFeatureSerializer,
     AddFeatureToAddOnSerializer,
@@ -17,17 +35,6 @@ from api.serializers.webhook_serializers import (
     InvoicePaidSerializer,
     InvoicePastDueSerializer,
     UsageAlertTriggeredSerializer,
-)
-from django.conf import settings
-from django.core.cache import cache
-from django.core.validators import MinValueValidator
-from django.db.utils import IntegrityError
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import (
-    OpenApiCallback,
-    OpenApiParameter,
-    extend_schema,
-    inline_serializer,
 )
 from metering_billing.exceptions import (
     DuplicateMetric,
@@ -93,6 +100,7 @@ from metering_billing.serializers.model_serializers import (
     PlanUpdateSerializer,
     PlanVersionCreateSerializer,
     PlanVersionDetailSerializer,
+    PlanVersionHistoricalSubscriptionSerializer,
     PlanVersionUpdateSerializer,
     PricingUnitDetailSerializer,
     ProductSerializer,
@@ -128,12 +136,6 @@ from metering_billing.utils.enums import (
     PAYMENT_PROCESSORS,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
-from rest_framework.pagination import CursorPagination
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -1089,6 +1091,27 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             },
             status=status.HTTP_200_OK,
         )
+
+    @extend_schema(
+        request=None,
+        responses=PlanVersionHistoricalSubscriptionSerializer(many=True),
+    )
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="subscriptions",
+        url_name="subscriptions",
+    )
+    def subscriptions(self, request, *args, **kwargs):
+        plan_version = self.get_object()
+        organization = self.request.organization
+        subscriptions = SubscriptionRecord.objects.filter(
+            billing_plan=plan_version, organization=organization
+        ).select_related("customer", "billing_plan")
+        serializer = PlanVersionHistoricalSubscriptionSerializer(
+            subscriptions, many=True
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class PlanViewSet(api_views.PlanViewSet):
