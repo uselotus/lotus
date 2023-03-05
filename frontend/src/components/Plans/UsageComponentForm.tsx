@@ -21,6 +21,30 @@ import { CurrencyType } from "../../types/pricing-unit-type";
 const { Option } = Select;
 const { Panel } = Collapse;
 
+function resetValidationLogic(reset_unit, invoicing_unit) {
+  if (invoicing_unit && reset_unit) {
+    if (reset_unit === "week" && invoicing_unit === "day") {
+      return Promise.reject(
+        "Reset interval unit must be less than or equal to invoicing interval unit"
+      );
+    }
+    if (reset_unit === "month" && ["day", "week"].includes(invoicing_unit)) {
+      return Promise.reject(
+        "Reset interval unit must be less than or equal to invoicing interval unit"
+      );
+    }
+    if (
+      reset_unit === "year" &&
+      ["day", "week", "month"].includes(invoicing_unit)
+    ) {
+      return Promise.reject(
+        "Reset interval unit must be less than or equal to invoicing interval unit"
+      );
+    }
+  }
+  return Promise.resolve();
+}
+
 const EditableContext = React.createContext<FormInstance<any> | null>(null);
 type EditableTableProps = Parameters<typeof Table>[0];
 
@@ -399,6 +423,14 @@ function UsageComponentForm({
       row.cost_per_batch = 0;
       row.metric_units_per_batch = undefined;
     }
+
+    if (row.type === "per_unit" && !row.batch_rounding_type) {
+      row.batch_rounding_type = "no_rounding";
+    }
+    if (row.type === "per_unit" && !row.metric_units_per_batch) {
+      row.metric_units_per_batch = 1;
+    }
+
     setRangeEnd(row.range_end);
     const item = newData[index];
     newData.splice(index, 1, {
@@ -592,6 +624,8 @@ function UsageComponentForm({
             label="Metric"
             className="col-span-11"
             name="metric"
+            labelCol={{ span: 24 }}
+            wrapperCol={{ span: 24 }}
             rules={[
               {
                 required: true,
@@ -605,25 +639,6 @@ function UsageComponentForm({
               ))}
             </Select>
           </Form.Item>
-
-          {/* TODO
-          <Form.Item
-            label="Reset Frequency"
-            className="col-span-11"
-            name="metric"
-            rules={[
-              {
-                required: true,
-                message: "Please select a metric",
-              },
-            ]}
-          >
-            <Select>
-              {metrics?.map((metric_name) => (
-                <Option value={metric_name}>{metric_name}</Option>
-              ))}
-            </Select>
-          </Form.Item> */}
         </div>
         {gaugeGranularity && gaugeGranularity !== "total" && (
           <p className="text-darkgold mb-4">
@@ -658,22 +673,30 @@ function UsageComponentForm({
         {errorMessage !== "" && (
           <p className="flex justify-center text-danger">{errorMessage}</p>
         )}
-        <div className="mt-8 mb-12">
+        <div className="mt-8 mb-12 space-y-6">
           <Collapse
             className="col-span-full bg-white py-8 rounded"
             defaultActiveKey={"1"}
           >
-            <Panel header="Pre-Paid" key="1">
+            <Panel header="Pre-Paid Usage" key="1">
               <div className="mb-8">
                 Add a number of pre-paid units to the plan. These units will be
                 charged at the start of the invoicing period.
               </div>
 
-              <div className="grid grid-col-3">
-                <Form.Item>
+              <div className="grid grid-cols-3 gap-8">
+                <Form.Item name="prepaid_units">
                   <Input type="number" placeholder="Pre-paid units" />
                 </Form.Item>
                 <Form.Item>
+                  <InputNumber
+                    controls={false}
+                    addonBefore={currency ? currency.symbol : "-"}
+                    defaultValue={0}
+                    precision={2}
+                  />
+                </Form.Item>
+                <Form.Item name="prepaid_amount">
                   <Select defaultValue={"full"}>
                     <Option value="full">Full</Option>
                     <Option value="prorate">Prorate</Option>
@@ -734,40 +757,59 @@ function UsageComponentForm({
             <Panel header="Component Settings" key="1">
               <div className="mb-8">
                 <p className="mb-4">
-                  <b>What is a component?</b>
+                  <b>
+                    How often does the usage for this component get invoiced?
+                  </b>
                 </p>
-                <Form.Item
-                  label="Reset Interval"
-                  name="reset_inteval"
-                  rules={[
-                    {
-                      required: true,
-                      message: "Please select a metric",
-                    },
-                  ]}
-                >
-                  <Select>
-                    {metrics?.map((metric_name) => (
-                      <Option value={metric_name}>{metric_name}</Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item
-                  label="Invoice Interval"
-                  name="invoice_interval"
-                  rules={[
-                    {
-                      required: true,
-                      message: "Please select a metric",
-                    },
-                  ]}
-                >
-                  <Select>
-                    {metrics?.map((metric_name) => (
-                      <Option value={metric_name}>{metric_name}</Option>
-                    ))}
-                  </Select>
-                </Form.Item>
+
+                <div className="grid grid-cols-2 mb-4 gap-8">
+                  <Form.Item
+                    name="invoicing_interval_count"
+                    label="Invoicing Interval"
+                  >
+                    <Input type="number" />
+                  </Form.Item>
+                  <Form.Item name="invoicing_interval_unit" initialValue={null}>
+                    <Select>
+                      <Option value="day">days</Option>
+                      <Option value="week">weeks</Option>
+                      <Option value="month">months</Option>
+                      <Option value="year">years</Option>
+                      <Option value={null}>Same as plan duration</Option>
+                    </Select>
+                  </Form.Item>
+                </div>
+                <p className="mb-4">
+                  <b>How often does the usage reset for this component?</b>
+                </p>
+                <div className="grid grid-cols-2 mb-4 gap-8">
+                  <Form.Item name="reset_interval_count" label="Reset Interval">
+                    <Input type="number" />
+                  </Form.Item>
+                  <Form.Item
+                    name="reset_interval_unit"
+                    rules={[
+                      ({ getFieldValue }) => ({
+                        validator(_, value) {
+                          const invoicingIntervalUnit = getFieldValue(
+                            "invoicing_interval_unit"
+                          );
+                          return resetValidationLogic(
+                            value,
+                            invoicingIntervalUnit
+                          );
+                        },
+                      }),
+                    ]}
+                  >
+                    <Select>
+                      <Option value="day">days</Option>
+                      <Option value="week">weeks</Option>
+                      <Option value="month">months</Option>
+                      <Option value="year">years</Option>
+                    </Select>
+                  </Form.Item>
+                </div>
               </div>
             </Panel>
           </Collapse>

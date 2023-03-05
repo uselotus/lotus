@@ -11,6 +11,9 @@ export interface RecurringCharge {
   amount: number;
   pricing_unit: CurrencyType;
 }
+
+//create enum of day week month year null
+
 export interface Tier {
   type: "flat" | "free" | "per_unit";
   cost_per_batch?: number;
@@ -34,12 +37,17 @@ export interface CreateRecurringCharge {
   amount: number;
   pricing_unit_code?: string;
 }
+
 export interface Component {
   billable_metric: MetricType;
   tiers: Tier[];
   proration_granularity: string;
   id?: number;
   pricing_unit: CurrencyType;
+  reset_interval_unit: "day" | "week" | "month" | "year" | null;
+  reset_interval_count: number;
+  invoicing_interval_unit: "day" | "week" | "month" | "year" | null;
+  invoicing_interval_count: number;
 }
 export interface CreateComponent
   extends Omit<Component, "billable_metric" | "pricing_unit"> {
