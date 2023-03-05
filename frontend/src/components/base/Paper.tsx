@@ -1,18 +1,26 @@
 import React from "react";
 
 type Props = {
-  color: "gold" | "default";
+  color: "gold" | "white";
+  border?: boolean;
+  className?: string;
 };
-export function Paper(props: Props | any) {
+export const Paper = (props: Props) => {
+  const className = props.className || "";
   return (
     <div
       {...props}
       className={[
         "py-4 px-8 rounded-lg",
         props.color === "white" ? "bg-[#FFFFFF]" : "bg-[#FAFAFA]",
-        props.className,
+        className,
         props.border ? "border-2 border-solid border-[#EAEAEB]" : "",
       ].join(" ")}
     />
   );
-}
+};
+
+Paper.defaultProps = {
+  color: "white",
+  className: "",
+};

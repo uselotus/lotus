@@ -187,6 +187,9 @@ function CreateMetricForm(props: {
       title="Create Metric"
       okText="Create"
       okType="primary"
+      okButtonProps={{
+        id: "Create-metric-button",
+      }}
       cancelText="Cancel"
       width={800}
       onCancel={props.onCancel}
@@ -350,7 +353,7 @@ function CreateMetricForm(props: {
       >
         <div className="grid grid-cols-2 gap-4">
           <Tooltip
-            placement="left"
+            placement="top"
             title="Define a display name for this metric"
           >
             <Form.Item
@@ -363,7 +366,7 @@ function CreateMetricForm(props: {
                 },
               ]}
             >
-              <Input />
+              <Input id="Metric-Name-input" />
             </Form.Item>
           </Tooltip>
           {eventType !== "custom" && (
@@ -382,7 +385,7 @@ function CreateMetricForm(props: {
                   },
                 ]}
               >
-                <Input />
+                <Input id="event-name-input" />
               </Form.Item>
             </Tooltip>
           )}

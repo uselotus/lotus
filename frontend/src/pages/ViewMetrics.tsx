@@ -81,7 +81,8 @@ const ViewMetrics: FC = () => {
         <Button
           type="primary"
           size="large"
-          key="create-plan"
+          id='create-metric-button'
+          key={"create-plan"}
           onClick={createMetricButton}
         >
           Create Metric
