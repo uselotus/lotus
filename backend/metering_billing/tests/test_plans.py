@@ -44,6 +44,7 @@ def plan_test_common_setup(
                         "charge_behavior": "prorate",
                     }
                 ],
+                "version": 1,
             },
         }
         setup_dict["plan_update_payload"] = {
@@ -60,6 +61,7 @@ def plan_test_common_setup(
                     "charge_behavior": "prorate",
                 }
             ],
+            "version": 2,
         }
         setup_dict["plan_version_update_payload"] = {}
 
@@ -81,6 +83,7 @@ class TestCreatePlan:
             data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
+        print(response.data)
         assert response.status_code == status.HTTP_201_CREATED
 
     def test_plan_dont_specify_version_fails_doesnt_create_plan(
@@ -120,11 +123,13 @@ class TestCreatePlanVersion:
 
         # now add in the plan ID to the payload, and send a post request for the new version
         setup_dict["plan_version_payload"]["plan_id"] = plan.plan_id
+        setup_dict["plan_version_payload"]["version"] = 2
         response = setup_dict["client"].post(
             reverse("plan_version-list"),
             data=json.dumps(setup_dict["plan_version_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
+        print(response.data)
         assert response.status_code == status.HTTP_201_CREATED
         assert PlanVersion.objects.all().count() == 2
         assert len(plan.versions.all()) == 2
@@ -711,11 +716,13 @@ class TestPlanVersionOperations:
         assert version_customers.count() == 1
         assert version.is_custom is True
 
+        payload = {"version": 2}
         response = setup_dict["client"].post(
             reverse(
                 "plan_version-make_public",
                 kwargs={"version_id": version.version_id},
             ),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
         )
         assert response.status_code == status.HTTP_200_OK
 

@@ -1,3 +1,5 @@
+from rest_framework import serializers
+
 from metering_billing.models import Customer, PlanVersion
 from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganization,
@@ -6,7 +8,6 @@ from metering_billing.utils.enums import (
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
 )
-from rest_framework import serializers
 
 
 class PeriodComparisonRequestSerializer(serializers.Serializer):
@@ -100,4 +101,14 @@ class PlansSetReplaceWithForVersionNumberSerializer(serializers.Serializer):
         required=True,
         help_text="The version number of the plan that will replace the current version.",
         min_value=1,
+    )
+
+
+class PlansSetTransitionToForVersionNumberSerializer(serializers.Serializer):
+    transition_to_plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        queryset=PlanVersion.plan_versions.all(),
+        required=True,
+        help_text="The plan that the current version will transition to.",
+        source="transition_to_plan",
     )

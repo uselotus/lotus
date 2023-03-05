@@ -2,14 +2,11 @@ import logging
 import re
 from decimal import Decimal
 
+import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import DecimalField, Q, Sum
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-
-import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -63,6 +60,8 @@ from metering_billing.utils.enums import (
     TAX_PROVIDER,
     WEBHOOK_TRIGGER_EVENTS,
 )
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -992,10 +991,18 @@ class PlanComponentCreateSerializer(api_serializers.PlanComponentSerializer):
         fields = (
             "metric_id",
             "tiers",
+            "invoicing_interval_unit",
+            "invoicing_interval_count",
+            "reset_interval_unit",
+            "reset_interval_count",
         )
         extra_kwargs = {
             "metric_id": {"required": True, "write_only": True},
             "tiers": {"required": True, "write_only": True},
+            "invoicing_interval_unit": {"required": False},
+            "invoicing_interval_count": {"required": False},
+            "reset_interval_unit": {"required": False},
+            "reset_interval_count": {"required": False},
         }
 
     metric_id = SlugRelatedFieldWithOrganization(
@@ -1022,6 +1029,12 @@ class PlanComponentCreateSerializer(api_serializers.PlanComponentSerializer):
                 ] <= Decimal(1), "All tiers must be contiguous"
         except AssertionError as e:
             raise serializers.ValidationError(str(e))
+        data["invoicing_interval_unit"] = PlanComponent.convert_length_label_to_value(
+            data.get("invoicing_interval_unit")
+        )
+        data["reset_interval_unit"] = PlanComponent.convert_length_label_to_value(
+            data.get("reset_interval_unit")
+        )
         return data
 
     def create(self, validated_data):
@@ -1117,6 +1130,10 @@ class RecurringChargeCreateSerializer(TimezoneFieldMixin, serializers.ModelSeria
             "charge_behavior",
             "amount",
             "pricing_unit_code",
+            "invoicing_interval_unit",
+            "invoicing_interval_count",
+            "reset_interval_unit",
+            "reset_interval_count",
         )
         extra_kwargs = {
             "name": {"required": True},
@@ -1124,6 +1141,10 @@ class RecurringChargeCreateSerializer(TimezoneFieldMixin, serializers.ModelSeria
             "charge_behavior": {"required": False},
             "amount": {"required": True},
             "pricing_unit_code": {"required": False},
+            "invoicing_interval_unit": {"required": False},
+            "invoicing_interval_count": {"required": False},
+            "reset_interval_unit": {"required": False},
+            "reset_interval_count": {"required": False},
         }
 
     charge_timing = serializers.ChoiceField(
@@ -1172,6 +1193,14 @@ class RecurringChargeCreateSerializer(TimezoneFieldMixin, serializers.ModelSeria
             raise serializers.ValidationError(
                 f"Invalid charge_behavior: {attrs.get('charge_behavior')}"
             )
+        attrs[
+            "invoicing_interval_unit"
+        ] = RecurringCharge.convert_length_label_to_value(
+            attrs.get("invoicing_interval_unit")
+        )
+        attrs["reset_interval_unit"] = RecurringCharge.convert_length_label_to_value(
+            attrs.get("reset_interval_unit")
+        )
         return attrs
 
     def create(self, validated_data):
