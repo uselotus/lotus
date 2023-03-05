@@ -106,6 +106,7 @@ from metering_billing.serializers.request_serializers import (
     MakeReplaceWithSerializer,
     OrganizationSettingFilterSerializer,
     PlansSetReplaceWithForVersionNumberSerializer,
+    PlansSetTransitionToForVersionNumberSerializer,
     SetReplaceWithSerializer,
     TargetCustomersSerializer,
 )
@@ -1471,6 +1472,7 @@ class PlanViewSet(api_views.PlanViewSet):
             plan_versions = plan.versions.get_queryset()
         else:
             plan_versions = serializer.validated_data["plan_versions"]
+        # get the current version number
         version_number = self.kwargs.get("version_number")
         if version_number is None or version_number < 1:
             raise ValidationError(
@@ -1567,6 +1569,59 @@ class PlanViewSet(api_views.PlanViewSet):
             {
                 "success": True,
                 "message": f"Added replacement plan version {replacement_version_number} for {len(current_plan_versions)} instances of version {version_number} of plan {plan.plan_name}",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        parameters=None,
+        request=PlansSetTransitionToForVersionNumberSerializer,
+        responses=inline_serializer(
+            "PlanVersionNumberSetTransitionToResponse",
+            fields={
+                "success": serializers.BooleanField(),
+                "message": serializers.CharField(),
+            },
+        ),
+    )
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="versions/(?P<version_number>[^/.]+)/transition/set",
+        url_name="plan_versions-transition-set",
+    )
+    def set_transition_for_version_number(self, request, *args, **kwargs):
+        plan = self.get_object()
+        organization = self.request.organization
+        serializer = PlansSetTransitionToForVersionNumberSerializer(
+            data=request.data, context={"organization": organization}
+        )
+        serializer.is_valid(raise_exception=True)
+        # extract versions to replace
+        if serializer.validated_data["all_versions"] is True:
+            plan_versions = plan.versions.get_queryset()
+        else:
+            plan_versions = serializer.validated_data["plan_versions"]
+
+        # get the current version number
+        version_number = self.kwargs.get("version_number")
+        if version_number is None or version_number < 1:
+            raise ValidationError(
+                "Valid version number is required when performing this action."
+            )
+        current_plan_versions = plan_versions.filter(version=version_number)
+
+        # get the replacement version number
+        transition_to_plan = serializer.validated_data["transition_to_plan"]
+        if transition_to_plan == plan:
+            raise ValidationError(
+                "Transition to plan cannot be the same as the plan being updated."
+            )
+        current_plan_versions.update(transition_to=transition_to_plan)
+        return Response(
+            {
+                "success": True,
+                "message": f"Added transition to plan {transition_to_plan.plan_name} for {len(current_plan_versions)} instances of version {version_number} of plan {plan.plan_name}",
             },
             status=status.HTTP_200_OK,
         )

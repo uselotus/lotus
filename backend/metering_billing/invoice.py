@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from django.db.models.query import QuerySet
+
 from metering_billing.kafka.producer import Producer
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.taxes import get_lotus_tax_rates, get_taxjar_tax_rates
@@ -276,6 +277,14 @@ def calculate_subscription_record_usage_fees(subscription_record, invoice, draft
 
 
 def find_next_billing_plan(subscription_record):
+    bp = subscription_record.billing_plan
+    next_bp = None
+    if bp.transition_to:
+        plan = bp.transition_to
+        customer = subscription_record.customer
+        next_bp = plan.get_version_for_customer(customer)
+    if next_bp:
+        return next_bp
     if subscription_record.billing_plan.replace_with:
         replace_with = subscription_record.billing_plan.replace_with
         customer = subscription_record.customer

@@ -1023,16 +1023,44 @@ class PlanComponentSerializer(
             "billable_metric",
             "tiers",
             "pricing_unit",
+            "invoicing_interval_unit",
+            "invoicing_interval_count",
+            "reset_interval_unit",
+            "reset_interval_count",
         )
         extra_kwargs = {
             "billable_metric": {"required": True, "read_only": True},
             "tiers": {"required": True},
             "pricing_unit": {"required": True, "read_only": True},
+            "invoicing_interval_unit": {"required": True, "read_only": True},
+            "invoicing_interval_count": {"required": True, "read_only": True},
+            "reset_interval_unit": {"required": True, "read_only": True},
+            "reset_interval_count": {"required": True, "read_only": True},
         }
 
     billable_metric = MetricSerializer()
     pricing_unit = PricingUnitSerializer()
     tiers = PriceTierSerializer(many=True)
+    invoicing_interval_unit = serializers.SerializerMethodField()
+    reset_interval_unit = serializers.SerializerMethodField()
+
+    def get_invoicing_interval_unit(
+        self, obj
+    ) -> serializers.ChoiceField(
+        choices=RecurringCharge.IntervalLengthType.labels, allow_null=True
+    ):
+        if obj.invoicing_interval_unit is None:
+            return None
+        return obj.get_invoicing_interval_unit_display()
+
+    def get_reset_interval_unit(
+        self, obj
+    ) -> serializers.ChoiceField(
+        choices=RecurringCharge.IntervalLengthType.labels, allow_null=True
+    ):
+        if obj.reset_interval_unit is None:
+            return None
+        return obj.get_reset_interval_unit_display()
 
 
 class PriceAdjustmentSerializer(
@@ -1065,17 +1093,27 @@ class RecurringChargeSerializer(
             "charge_behavior",
             "amount",
             "pricing_unit",
+            "invoicing_interval_unit",
+            "invoicing_interval_count",
+            "reset_interval_unit",
+            "reset_interval_count",
         )
         extra_kwargs = {
             "name": {"required": True},
             "charge_timing": {"required": True},
             "amount": {"required": True},
             "pricing_unit": {"required": True},
+            "invoicing_interval_unit": {"required": True},
+            "invoicing_interval_count": {"required": True},
+            "reset_interval_unit": {"required": True},
+            "reset_interval_count": {"required": True},
         }
 
     pricing_unit = PricingUnitSerializer()
     charge_timing = serializers.SerializerMethodField()
     charge_behavior = serializers.SerializerMethodField()
+    invoicing_interval_unit = serializers.SerializerMethodField()
+    reset_interval_unit = serializers.SerializerMethodField()
 
     def get_charge_timing(
         self, obj
@@ -1086,6 +1124,24 @@ class RecurringChargeSerializer(
         self, obj
     ) -> serializers.ChoiceField(choices=RecurringCharge.ChargeBehaviorType.labels):
         return obj.get_charge_behavior_display()
+
+    def get_invoicing_interval_unit(
+        self, obj
+    ) -> serializers.ChoiceField(
+        choices=RecurringCharge.IntervalLengthType.labels, allow_null=True
+    ):
+        if obj.invoicing_interval_unit is None:
+            return None
+        return obj.get_invoicing_interval_unit_display()
+
+    def get_reset_interval_unit(
+        self, obj
+    ) -> serializers.ChoiceField(
+        choices=RecurringCharge.IntervalLengthType.labels, allow_null=True
+    ):
+        if obj.reset_interval_unit is None:
+            return None
+        return obj.get_reset_interval_unit_display()
 
 
 @extend_schema_serializer(
@@ -1527,8 +1583,8 @@ class SubscriptionRecordCreateSerializer(
 
     def validate(self, data):
         data = super().validate(data)
-        plan_id_present = data.get("plan_id") is not None
-        version_id_present = data.get("version_id") is not None
+        plan_id_present = data.get("plan") is not None
+        version_id_present = data.get("billing_plan") is not None
         if plan_id_present == version_id_present:  # xor check
             raise serializers.ValidationError(
                 "You must specify exactly one of plan_id or version_id"
@@ -2421,8 +2477,8 @@ class AddOnSubscriptionRecordCreateSerializer(
 
     def validate(self, data):
         data = super().validate(data)
-        plan_id_present = data.get("addon_id") is not None
-        version_id_present = data.get("addon_version_id") is not None
+        plan_id_present = data.get("addon") is not None
+        version_id_present = data.get("addon_version") is not None
         if plan_id_present == version_id_present:  # xor check
             raise serializers.ValidationError(
                 "You must specify exactly one of addon_id or addon_version_id"

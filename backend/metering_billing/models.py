@@ -26,15 +26,6 @@ from django.db.models import Count, F, FloatField, Prefetch, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
-
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     NotEditable,
@@ -81,6 +72,14 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -1530,6 +1529,17 @@ class PlanComponent(models.Model):
             self.pricing_unit = self.plan_version.currency
         super().save(*args, **kwargs)
 
+    @staticmethod
+    def convert_length_label_to_value(label):
+        label_map = {
+            PlanComponent.IntervalLengthType.DAY.label: PlanComponent.IntervalLengthType.DAY,
+            PlanComponent.IntervalLengthType.WEEK.label: PlanComponent.IntervalLengthType.WEEK,
+            PlanComponent.IntervalLengthType.MONTH.label: PlanComponent.IntervalLengthType.MONTH,
+            PlanComponent.IntervalLengthType.YEAR.label: PlanComponent.IntervalLengthType.YEAR,
+            None: None,
+        }
+        return label_map[label]
+
     def get_component_invoicing_dates(
         self, subscription_record, override_start_date=None
     ):
@@ -1938,6 +1948,17 @@ class RecurringCharge(models.Model):
             )
         ]
 
+    @staticmethod
+    def convert_length_label_to_value(label):
+        label_map = {
+            RecurringCharge.IntervalLengthType.DAY.label: RecurringCharge.IntervalLengthType.DAY,
+            RecurringCharge.IntervalLengthType.WEEK.label: RecurringCharge.IntervalLengthType.WEEK,
+            RecurringCharge.IntervalLengthType.MONTH.label: RecurringCharge.IntervalLengthType.MONTH,
+            RecurringCharge.IntervalLengthType.YEAR.label: RecurringCharge.IntervalLengthType.YEAR,
+            None: None,
+        }
+        return label_map[label]
+
     def get_recurring_charge_invoicing_dates(self, subscription_record):
         from metering_billing.models import AddOnSpecification
 
@@ -2131,7 +2152,7 @@ class PlanVersion(models.Model):
         on_delete=models.CASCADE,
         related_name="plan_versions",
     )
-    version = models.PositiveSmallIntegerField()
+    version = models.PositiveSmallIntegerField(default=1)
     version_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     plan_version_name = models.TextField(null=True, blank=True, default=None)
     plan = models.ForeignKey("Plan", on_delete=models.CASCADE, related_name="versions")
@@ -2201,7 +2222,8 @@ class PlanVersion(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["plan", "version"], name="unique_plan_version"
+                fields=["plan", "version", "currency"],
+                name="unique_plan_version_per_currency",
             ),
         ]
         indexes = [
@@ -2956,7 +2978,6 @@ class SubscriptionRecord(models.Model):
             start_date=now,
             end_date=self.end_date,
             auto_renew=self.auto_renew,
-            unadjusted_duration_microseconds=self.unadjusted_duration_microseconds,
         )
         # current recurring_charge billing records must be canceled + billed
         for billing_record in self.billing_records.filter(
