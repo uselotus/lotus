@@ -658,16 +658,16 @@ function UsageComponentForm({
           <p className="flex justify-center text-danger">{errorMessage}</p>
         )}
         <div className="mt-8 mb-12">
-          {/* <Collapse
+          <Collapse
             className="col-span-full bg-white py-8 rounded"
             defaultActiveKey={"1"}
           >
-            <Panel header="Advanced Settings" key="1"> */}
-          {/* <div className="mb-8">
+            <Panel header="Advanced Settings" key="1">
+              <div className="mb-8">
                 (Optional) Separate Reporting Based on Distinct Property Value
               </div>
 
-              <div className="grid grid-flow-col items-center mb-8">
+              {/* <div className="grid grid-flow-col items-center mb-8">
                 <p>Property:</p>
                 <Input
                   onChange={(e) => {
@@ -685,7 +685,7 @@ function UsageComponentForm({
                   </p>
                 )} */}
 
-          {/* {metricGauge === true && (
+              {/* {metricGauge === true && (
                 <Fragment>
                   <div className="separator mb-8"></div>
                   <div className="grid grid-flow-col items-center mb-4">
@@ -711,8 +711,36 @@ function UsageComponentForm({
                   )}
                 </Fragment>
               )} */}
-          {/* </Panel>
-          </Collapse> */}
+            </Panel>
+          </Collapse>
+          <Collapse
+            className="col-span-full bg-white py-8 rounded"
+            defaultActiveKey={["1"]}
+          >
+            <Panel header="Help" key="1">
+              <div className="mb-8">
+                <p className="mb-4">
+                  <b>What is a component?</b>
+                </p>
+                <Form.Item
+                  label="Reset Frequency"
+                  name="metric"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Please select a metric",
+                    },
+                  ]}
+                >
+                  <Select>
+                    {metrics?.map((metric_name) => (
+                      <Option value={metric_name}>{metric_name}</Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </div>
+            </Panel>
+          </Collapse>
         </div>
       </Form>
     </Modal>
