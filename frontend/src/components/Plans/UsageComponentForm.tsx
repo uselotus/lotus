@@ -381,6 +381,7 @@ function UsageComponentForm({
         setMetricObjects(data);
       }
     });
+    console.log(initalData);
   }, []);
 
   const handleAdd = () => {
@@ -575,7 +576,7 @@ function UsageComponentForm({
     <Modal
       visible={visible}
       title="Create Component"
-      okText="Create New Component"
+      okText={initalData ? "Update Component" : "Create New Component"}
       okType="primary"
       cancelText="Cancel"
       width={900}
@@ -601,8 +602,11 @@ function UsageComponentForm({
               handleComponentAdd({
                 metric: values.metric,
                 tiers: currentTiers,
-                proration_granularity: prorationGranularity,
                 metric_id: currentMetric?.metric_id,
+                reset_interval_count: values.reset_interval_count,
+                reset_interval_unit: values.reset_interval_unit,
+                invoicing_interval_count: values.invoicing_interval_count,
+                invoicing_interval_unit: values.invoicing_interval_unit,
               });
 
               form.submit();
@@ -676,7 +680,7 @@ function UsageComponentForm({
         <div className="mt-8 mb-12 space-y-6">
           <Collapse
             className="col-span-full bg-white py-8 rounded"
-            defaultActiveKey={"1"}
+            defaultActiveKey={initalData ? [1] : []}
           >
             <Panel header="Pre-Paid Usage" key="1">
               <div className="mb-8">
@@ -752,7 +756,7 @@ function UsageComponentForm({
           </Collapse>
           <Collapse
             className="col-span-full bg-white py-8 rounded"
-            defaultActiveKey={["1"]}
+            defaultActiveKey={initalData ? [1] : []}
           >
             <Panel header="Component Settings" key="1">
               <div className="mb-8">
@@ -767,9 +771,9 @@ function UsageComponentForm({
                     name="invoicing_interval_count"
                     label="Invoicing Interval"
                   >
-                    <Input type="number" />
+                    <Input type="number" placeholder="N/A" />
                   </Form.Item>
-                  <Form.Item name="invoicing_interval_unit" initialValue={null}>
+                  <Form.Item name="invoicing_interval_unit">
                     <Select>
                       <Option value="day">days</Option>
                       <Option value="week">weeks</Option>
@@ -784,7 +788,7 @@ function UsageComponentForm({
                 </p>
                 <div className="grid grid-cols-2 mb-4 gap-8">
                   <Form.Item name="reset_interval_count" label="Reset Interval">
-                    <Input type="number" />
+                    <Input type="number" placeholder="N/A" />
                   </Form.Item>
                   <Form.Item
                     name="reset_interval_unit"

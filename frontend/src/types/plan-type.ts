@@ -41,7 +41,6 @@ export interface CreateRecurringCharge {
 export interface Component {
   billable_metric: MetricType;
   tiers: Tier[];
-  proration_granularity: string;
   id?: number;
   pricing_unit: CurrencyType;
   reset_interval_unit: "day" | "week" | "month" | "year" | null;
@@ -67,6 +66,7 @@ export interface CreatePlanVersionType {
   day_anchor?: number;
   month_anchor?: number;
   currency_code?: string;
+  version: number;
 }
 export interface CreateInitialVersionType extends CreatePlanVersionType {
   description?: string;

@@ -156,6 +156,7 @@ function CreatePlan() {
 
   const handleComponentAdd = (newData: any) => {
     const old = componentsData;
+    console.log(newData);
 
     if (editComponentItem) {
       const index = componentsData.findIndex(
@@ -163,6 +164,7 @@ function CreatePlan() {
       );
       old[index] = newData;
       setComponentsData(old);
+      console.log(old);
     } else {
       const newComponentsData = [
         ...old,
@@ -173,6 +175,7 @@ function CreatePlan() {
       ];
       setComponentsData(newComponentsData);
     }
+
     setEditComponentsItem(undefined);
     setcomponentVisible(false);
   };
@@ -216,7 +219,10 @@ function CreatePlan() {
             const usagecomponent: CreateComponent = {
               metric_id: components[i].metric_id,
               tiers: components[i].tiers,
-              proration_granularity: components[i].proration_granularity,
+              reset_interval_count: components[i].reset_interval_count,
+              reset_interval_unit: components[i].reset_interval_unit,
+              invoicing_interval_count: components[i].invoicing_interval_count,
+              invoicing_interval_unit: components[i].invoicing_interval_unit,
             };
             usagecomponentslist.push(usagecomponent);
           }
@@ -243,6 +249,7 @@ function CreatePlan() {
         const initialPlanVersion: CreateInitialVersionType = {
           description: values.description,
           recurring_charges: recurring_charges,
+          version: 1,
           transition_to_plan_id: values.transition_to_plan_id,
           components: usagecomponentslist,
           features: featureIdList,
