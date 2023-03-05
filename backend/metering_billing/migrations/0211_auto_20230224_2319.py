@@ -23,21 +23,21 @@ def set_not_after(apps, schema_editor):
     PlanVersion = apps.get_model("metering_billing", "PlanVersion")
     for version in PlanVersion.objects.all():
         if version.status == "active":
-            version.active_until = None
+            version.active_to = None
         else:
             if version.status == "archived":
                 version.deleted = now_utc()
-            version.active_until = now_utc()
+            version.active_to = now_utc()
         version.save()
 
     Plan = apps.get_model("metering_billing", "Plan")
     for plan in Plan.objects.all():
         if plan.status == "active":
-            plan.active_until = None
+            plan.active_to = None
         else:
             if plan.status == "archived":
                 plan.deleted = now_utc()
-            plan.active_until = now_utc()
+            plan.active_to = now_utc()
         plan.save()
 
 

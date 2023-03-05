@@ -1,3 +1,5 @@
+from rest_framework import serializers
+
 from api.serializers.model_serializers import (
     FeatureSerializer,
     LightweightCustomerSerializer,
@@ -18,7 +20,6 @@ from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganizationPK,
     TimezoneFieldMixin,
 )
-from rest_framework import serializers
 
 
 class GetInvoicePdfURLRequestSerializer(serializers.Serializer):
@@ -361,7 +362,7 @@ class ChangeActiveDatesSerializer(VersionSelectorSerializer):
         required=False,
         allow_null=True,
     )
-    active_until = serializers.DateTimeField(
+    active_to = serializers.DateTimeField(
         help_text="The date and time that the feature should be active until. If you want to make this active indefinitely, you can pass null here.",
         required=False,
         allow_null=True,

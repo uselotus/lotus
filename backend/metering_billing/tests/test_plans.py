@@ -4,12 +4,13 @@ import urllib.parse
 import pytest
 from dateutil.relativedelta import relativedelta
 from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.models import Customer, Feature, Plan, PlanVersion, Tag
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PLAN_DURATION
-from rest_framework import status
-from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -294,7 +295,7 @@ class TestPlanOperations:
             plan=plan,
             plan_version_name="inactive_version",
             active_from=now_utc() - relativedelta(days=10),
-            active_until=now_utc() - relativedelta(days=5),
+            active_to=now_utc() - relativedelta(days=5),
         )
         assert inactive_version.features.count() == 0
         deleted_version = PlanVersion.objects.create(
@@ -302,7 +303,7 @@ class TestPlanOperations:
             plan=plan,
             plan_version_name="deleted_version",
             active_from=now_utc() - relativedelta(days=10),
-            active_until=now_utc() - relativedelta(days=5),
+            active_to=now_utc() - relativedelta(days=5),
             deleted=now_utc() - relativedelta(days=5),
         )
         assert deleted_version.features.count() == 0
@@ -346,7 +347,7 @@ class TestPlanOperations:
         assert inactive_version.features.count() == 1
         assert deleted_version.features.count() == 0
 
-    def test_edit_active_until_no_longer_in_list_plans(
+    def test_edit_active_to_no_longer_in_list_plans(
         self,
         plan_test_common_setup,
     ):
@@ -361,7 +362,7 @@ class TestPlanOperations:
         list_plans = setup_dict["client"].get(reverse("plan-list"))
         assert len(list_plans.data) == 1
 
-        setup_dict["plan_update_payload"]["active_until"] = now_utc()
+        setup_dict["plan_update_payload"]["active_to"] = now_utc()
         response = setup_dict["client"].patch(
             reverse("plan-detail", kwargs={"plan_id": response.data["plan_id"]}),
             data=json.dumps(setup_dict["plan_update_payload"], cls=DjangoJSONEncoder),
@@ -387,7 +388,7 @@ class TestPlanOperations:
             content_type="application/json",
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
-        plan.active_until = now_utc() + relativedelta(days=3)
+        plan.active_to = now_utc() + relativedelta(days=3)
         plan.save()
 
         list_plans = setup_dict["client"].get(reverse("plan-list"))
@@ -403,7 +404,7 @@ class TestPlanOperations:
         )
         # check if we just update this then before and after are confusing
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        plan.active_until = now_utc() + relativedelta(days=10)
+        plan.active_to = now_utc() + relativedelta(days=10)
         plan.save()
         setup_dict["plan_update_payload"]["active_from"] = now_utc() + relativedelta(
             days=3
@@ -882,7 +883,7 @@ class TestPlanVersionOperations:
         assert PlanVersion.objects.all().count() == 1
         assert Plan.objects.first().versions.count() == 1
 
-    def test_edit_active_until_no_longer_in_list_plans(
+    def test_edit_active_to_no_longer_in_list_plans(
         self,
         plan_test_common_setup,
     ):
@@ -898,7 +899,7 @@ class TestPlanVersionOperations:
         listed_plan = setup_dict["client"].get(reverse("plan-list")).data[0]
         assert len(listed_plan["versions"]) == 1
 
-        setup_dict["plan_version_update_payload"]["active_until"] = now_utc()
+        setup_dict["plan_version_update_payload"]["active_to"] = now_utc()
         response = setup_dict["client"].patch(
             reverse(
                 "plan_version-detail", kwargs={"version_id": first_version.version_id}
@@ -934,7 +935,7 @@ class TestPlanVersionOperations:
         listed_plan = setup_dict["client"].get(reverse("plan-list")).data[0]
         assert len(listed_plan["versions"]) == 1
 
-        first_version.active_until = now_utc() + relativedelta(days=3)
+        first_version.active_to = now_utc() + relativedelta(days=3)
         first_version.save()
 
         setup_dict["plan_version_update_payload"][
@@ -951,7 +952,7 @@ class TestPlanVersionOperations:
         )
         # check if we just update this then before and after are confusing
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        first_version.active_until = now_utc() + relativedelta(days=10)
+        first_version.active_to = now_utc() + relativedelta(days=10)
         first_version.save()
         setup_dict["plan_version_update_payload"][
             "active_from"

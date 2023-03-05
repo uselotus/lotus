@@ -2107,13 +2107,13 @@ class BasePlanManager(models.Manager):
             time = now_utc()
         return self.filter(
             Q(active_from__lte=time)
-            & ((Q(active_until__gt=time) | Q(active_until__isnull=True)))
+            & ((Q(active_toime) | Q(actactactive_toe)))
         )
 
     def ended(self, time=None):
         if time is None:
             time = now_utc()
-        return self.filter(active_until__lte=time)
+        return self.filter(active_totime)
 
     def not_started(self, time=None):
         if time is None:
@@ -2195,7 +2195,7 @@ class PlanVersion(models.Model):
         blank=True,
     )
     active_from = models.DateTimeField(null=True, default=now_utc, blank=True)
-    active_until = models.DateTimeField(null=True, blank=True)
+    active_toels.DateTimeField(null=True, blank=True)
 
     # PRICING
     features = models.ManyToManyField(Feature, blank=True)
@@ -2253,7 +2253,7 @@ class PlanVersion(models.Model):
         if time is None:
             time = now_utc()
         return self.active_from <= time and (
-            self.active_until is None or self.active_until > time
+            self.active_tone or self.actactactive_to
         )
 
     def get_status(self) -> PLAN_VERSION_STATUS:
@@ -2261,7 +2261,7 @@ class PlanVersion(models.Model):
         if self.deleted is not None:
             return PLAN_VERSION_STATUS.DELETED
         if self.active_from <= now:
-            if self.active_until is None or self.active_until > now:
+            if self.active_tone or self.actactactive_to
                 return PLAN_VERSION_STATUS.ACTIVE
             else:
                 n_active_subs = self.num_active_subs()
@@ -2394,7 +2394,7 @@ class Plan(models.Model):
         null=True,
     )
     active_from = models.DateTimeField(default=now_utc, blank=True)
-    active_until = models.DateTimeField(null=True, blank=True)
+    active_toels.DateTimeField(null=True, blank=True)
 
     # MISC
     tags = models.ManyToManyField("Tag", blank=True, related_name="plans")

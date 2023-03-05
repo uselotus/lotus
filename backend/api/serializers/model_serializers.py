@@ -6,9 +6,6 @@ from typing import Literal, Union
 from django.conf import settings
 from django.db.models import Max, Min, Sum
 from drf_spectacular.utils import extend_schema_serializer
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-
 from metering_billing.invoice import generate_balance_adjustment_invoice
 from metering_billing.models import (
     AddOnSpecification,
@@ -67,6 +64,8 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -1834,7 +1833,7 @@ class ListPlansFilterSerializer(serializers.Serializer):
     )
     range_start = serializers.DateTimeField(
         required=False,
-        help_text="Filter to plans and versions whose active_until datetime is on or after this date + time.",
+        help_text="Filter to plans and versions whose active_to datetime is on or after this date + time.",
     )
     range_end = serializers.DateTimeField(
         required=False,
