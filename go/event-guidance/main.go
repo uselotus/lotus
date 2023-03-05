@@ -16,50 +16,15 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/pkg/sasl/scram"
+	"github.com/uselotus/lotus/go/pkg/types"
 )
 
 const batchSize = 1000
 
-type VerifiedEvent struct {
-	OrganizationID int64                  `json:"organization_id,omitempty"`
-	CustID         string                 `json:"customer_id,omitempty"`
-	IdempotencyID  string                 `json:"idempotency_id,omitempty"`
-	TimeCreated    time.Time              `json:"time_created,omitempty"`
-	Properties     map[string]interface{} `json:"properties,omitempty"`
-	EventName      string                 `json:"event_name,omitempty"`
-}
-
 type StreamEvents struct {
-	Events         *[]VerifiedEvent `json:"events"`
-	OrganizationID int64            `json:"organization_id"`
-	Event          *VerifiedEvent   `json:"event"`
-}
-
-func (t *VerifiedEvent) UnmarshalJSON(data []byte) error {
-	type Alias VerifiedEvent
-	aux := &struct {
-		TimeCreated string `json:"time_created"`
-		*Alias
-	}{
-		Alias: (*Alias)(t),
-	}
-	if err := json.Unmarshal(data, &aux); err != nil {
-		return err
-	}
-	parsedTime, err := time.Parse(time.RFC3339, aux.TimeCreated)
-	if err != nil {
-		parsedTime, err = time.Parse("2006-01-02 15:04:05.999999-07:00", aux.TimeCreated)
-		if err != nil {
-			parsedTime, err = time.Parse("2006-01-02 15:04:05.999999", aux.TimeCreated)
-			if err != nil {
-				return err
-			}
-			// Set timezone offset to UTC
-			parsedTime = parsedTime.UTC()
-		}
-	}
-	t.TimeCreated = parsedTime
-	return nil
+	Events         *[]types.VerifiedEvent `json:"events"`
+	OrganizationID int64                  `json:"organization_id"`
+	Event          *types.VerifiedEvent   `json:"event"`
 }
 
 type batch struct {
@@ -68,7 +33,7 @@ type batch struct {
 	count           int
 }
 
-func (b *batch) addRecord(event *VerifiedEvent) (bool, error) {
+func (b *batch) addRecord(event *types.VerifiedEvent) (bool, error) {
 	propertiesJSON, errJSON := json.Marshal(event.Properties)
 	if errJSON != nil {
 		log.Printf("Error encoding properties to JSON: %s\n", errJSON)
@@ -122,6 +87,7 @@ func main() {
 		kgo.ConsumeTopics(kafkaTopic),
 		kgo.DisableAutoCommit(),
 	}
+
 	if saslUsername != "" && saslPassword != "" {
 		opts = append(opts, kgo.SASL(scram.Auth{
 			User: saslUsername,
@@ -131,6 +97,7 @@ func main() {
 		tlsDialer := &tls.Dialer{NetDialer: &net.Dialer{Timeout: 10 * time.Second}}
 		opts = append(opts, kgo.Dialer(tlsDialer.DialContext))
 	}
+
 	cl, err := kgo.NewClient(opts...)
 
 	if err != nil {
@@ -151,6 +118,7 @@ func main() {
 		if pgUser == "" {
 			pgUser = "lotus"
 		}
+
 		pgPassword := os.Getenv("POSTGRES_PASSWORD")
 		if pgPassword == "" {
 			pgPassword = "lotus"
@@ -170,20 +138,27 @@ func main() {
 	defer db.Close()
 
 	insertStatement, err := db.Prepare("SELECT insert_metric($1, $2, $3, $4, $5, $6)")
+
 	if err != nil {
 		panic(err)
 	}
+
 	defer insertStatement.Close()
+
 	fmt.Printf("Starting event fetching\n")
+
 	for {
 		fetches := cl.PollFetches(ctx)
 		log.Print("Polling for messages...")
+
 		if fetches == nil {
 			continue
 		}
+
 		if fetches.IsClientClosed() {
 			panic(errors.New("client is closed"))
 		}
+
 		if errs := fetches.Errors(); len(errs) > 0 {
 			// All errors are retried internally when fetching, but non-retriable errors are
 			// returned from polls so that users can notice and take action.
@@ -192,10 +167,12 @@ func main() {
 		}
 
 		tx, err := db.Begin()
+
 		if err != nil {
 			log.Printf("Error starting transaction: %s\n", err)
 			panic(err)
 		}
+
 		batch := &batch{
 			tx:              tx,
 			insertStatement: insertStatement,
@@ -205,6 +182,7 @@ func main() {
 			log.Printf("Received record: %s\n", r.Value)
 			var streamEvents StreamEvents
 			err := json.Unmarshal(r.Value, &streamEvents)
+
 			if err != nil {
 				log.Printf("Error unmarshalling event: %s\n", err)
 				// since we check in the prevuious statement that the event has the correct format, an error unmarshalling should be a fatal error

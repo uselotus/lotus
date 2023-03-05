@@ -8,7 +8,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/uselotus/lotus/go/event-ingestion/cache"
-	"github.com/uselotus/lotus/go/event-ingestion/types"
+	"github.com/uselotus/lotus/go/pkg/types"
 )
 
 func getAPIKeyFromHeader(h http.Header) string {
