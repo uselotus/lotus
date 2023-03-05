@@ -7,6 +7,7 @@ import {
   Modal,
   Select,
   Table,
+  Input,
 } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import "./UsageComponentForm.css";
@@ -662,9 +663,22 @@ function UsageComponentForm({
             className="col-span-full bg-white py-8 rounded"
             defaultActiveKey={"1"}
           >
-            <Panel header="Advanced Settings" key="1">
+            <Panel header="Pre-Paid" key="1">
               <div className="mb-8">
-                (Optional) Separate Reporting Based on Distinct Property Value
+                Add a number of pre-paid units to the plan. These units will be
+                charged at the start of the invoicing period.
+              </div>
+
+              <div className="grid grid-col-3">
+                <Form.Item>
+                  <Input type="number" placeholder="Pre-paid units" />
+                </Form.Item>
+                <Form.Item>
+                  <Select defaultValue={"full"}>
+                    <Option value="full">Full</Option>
+                    <Option value="prorate">Prorate</Option>
+                  </Select>
+                </Form.Item>
               </div>
 
               {/* <div className="grid grid-flow-col items-center mb-8">
@@ -717,14 +731,30 @@ function UsageComponentForm({
             className="col-span-full bg-white py-8 rounded"
             defaultActiveKey={["1"]}
           >
-            <Panel header="Help" key="1">
+            <Panel header="Component Settings" key="1">
               <div className="mb-8">
                 <p className="mb-4">
                   <b>What is a component?</b>
                 </p>
                 <Form.Item
-                  label="Reset Frequency"
-                  name="metric"
+                  label="Reset Interval"
+                  name="reset_inteval"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Please select a metric",
+                    },
+                  ]}
+                >
+                  <Select>
+                    {metrics?.map((metric_name) => (
+                      <Option value={metric_name}>{metric_name}</Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item
+                  label="Invoice Interval"
+                  name="invoice_interval"
                   rules={[
                     {
                       required: true,
