@@ -2225,7 +2225,7 @@ class PlanVersion(models.Model):
     )
     version = models.PositiveSmallIntegerField(default=1)
     version_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    plan_version_name = models.TextField(null=True, blank=True, default=None)
+    localized_name = models.TextField(null=True, blank=True, default=None)
     plan = models.ForeignKey("Plan", on_delete=models.CASCADE, related_name="versions")
     created_on = models.DateTimeField(default=now_utc)
     created_by = models.ForeignKey(
@@ -2310,8 +2310,8 @@ class PlanVersion(models.Model):
             prefix = f"[{currency.code}]"
         if self.is_custom:
             prefix += "[CUSTOM]"
-        if self.plan_version_name is not None:
-            name = self.plan_version_name
+        if self.localized_name is not None:
+            name = self.localized_name
         else:
             name = str(self.plan)
         return prefix + name
@@ -3407,11 +3407,11 @@ class BillingRecord(models.Model):
                 if period in rev_per_day:
                     rev_per_day[period] += revenue
         return rev_per_day
-    
+
     def prepaid_already_invoiced(self):
         return self.line_items.filter(
-                chargeable_item_type=CHARGEABLE_ITEM_TYPE.PREPAID_USAGE_CHARGE
-            ).aggregate(Sum("subtotal"))["subtotal__sum"] or Decimal(0.0)
+            chargeable_item_type=CHARGEABLE_ITEM_TYPE.PREPAID_USAGE_CHARGE
+        ).aggregate(Sum("subtotal"))["subtotal__sum"] or Decimal(0.0)
 
     def amt_already_invoiced(self):
         if self.recurring_charge:
@@ -3422,12 +3422,14 @@ class BillingRecord(models.Model):
             return self.line_items.filter(
                 chargeable_item_type=CHARGEABLE_ITEM_TYPE.USAGE_CHARGE
             ).aggregate(Sum("subtotal"))["subtotal__sum"] or Decimal(0.0)
-    
+
     def qty_already_invoiced(self):
-        assert self.recurring_charge is None, "This is a recurring charge billing record, cannot use this function."
+        assert (
+            self.recurring_charge is None
+        ), "This is a recurring charge billing record, cannot use this function."
         return self.line_items.filter(
-                chargeable_item_type=CHARGEABLE_ITEM_TYPE.USAGE_CHARGE
-            ).aggregate(Sum("quantity"))["quantity__sum"] or Decimal(0.0)
+            chargeable_item_type=CHARGEABLE_ITEM_TYPE.USAGE_CHARGE
+        ).aggregate(Sum("quantity"))["quantity__sum"] or Decimal(0.0)
 
     def cancel_billing_record(
         self, cancel_date=None, change_invoice_date_to_cancel_date=True
@@ -3447,18 +3449,27 @@ class BillingRecord(models.Model):
             # the second thing this means is that the next invoicing date will be the cancel date
             self.next_invoicing_date = cancel_date
         self.save()
-    
+
     def calculate_prepay_usage_revenue(self, component_charge_record):
         # the main consideration here is 1. how to handle proration and 2. how much has been invoiced already
         # 1. how to handle proration // how much is actually owed
         component = component_charge_record.component
         component_charge = component_charge_record.component_charge
-        if component_charge.charge_behavior == ComponentFixedCharge.ChargeBehavior.PRORATE:
+        if (
+            component_charge.charge_behavior
+            == ComponentFixedCharge.ChargeBehavior.PRORATE
+        ):
             total_amt = Decimal(0.0)
             for component_charge_record in self.component_charge_records.all():
-                total_microseconds = (component_charge.end_date-component_charge.start_date).total_seconds()*10**6
-                unadjusted_microseconds = component_charge_record.billing_record.unadjusted_duration_microseconds
-                full_amt_due = component.tier_rating_function(component_charge_record.units)
+                total_microseconds = (
+                    component_charge.end_date - component_charge.start_date
+                ).total_seconds() * 10**6
+                unadjusted_microseconds = (
+                    component_charge_record.billing_record.unadjusted_duration_microseconds
+                )
+                full_amt_due = component.tier_rating_function(
+                    component_charge_record.units
+                )
                 total_amt += full_amt_due * total_microseconds / unadjusted_microseconds
         else:
             total_amt = component.tier_rating_function(component_charge_record.units)
@@ -3467,6 +3478,7 @@ class BillingRecord(models.Model):
         # 3. how much is left to invoice
         amt_left_to_invoice = total_amt - amt_already_invoiced
         return amt_left_to_invoice
+
 
 class ComponentChargeRecord(models.Model):
     organization = models.ForeignKey(

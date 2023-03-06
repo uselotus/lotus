@@ -155,7 +155,7 @@ def addon_test_common_setup(
             organization=org,
             plan=flat_fee_addon,
             addon_spec=flat_fee_addon_spec,
-            plan_version_name="flat_fee_addon_version",
+            localized_name="flat_fee_addon_version",
             currency=PricingUnit.objects.get(organization=org, code="USD"),
         )
         RecurringCharge.objects.create(

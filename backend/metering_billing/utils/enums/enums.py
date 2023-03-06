@@ -120,6 +120,12 @@ class SUBSCRIPTION_STATUS(models.TextChoices):
     NOT_STARTED = ("not_started", _("Not Started"))
 
 
+class PLAN_CUSTOM_TYPE(models.TextChoices):
+    CUSTOM_ONLY = ("custom_only", _("Custom Only"))
+    PUBLIC_ONLY = ("public_only", _("Public Only"))
+    ALL = ("all", _("All"))
+
+
 class PLAN_VERSION_STATUS(models.TextChoices):
     ACTIVE = ("active", _("Active"))
     RETIRING = ("retiring", _("Retiring"))

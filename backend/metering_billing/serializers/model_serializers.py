@@ -2,14 +2,11 @@ import logging
 import re
 from decimal import Decimal
 
+import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import DecimalField, Q, Sum
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-
-import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -64,6 +61,8 @@ from metering_billing.utils.enums import (
     TAX_PROVIDER,
     WEBHOOK_TRIGGER_EVENTS,
 )
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -1115,9 +1114,9 @@ class ProductSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
 class PlanVersionUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = PlanVersion
-        fields = ("plan_version_name", "active_from", "active_to")
+        fields = ("localized_name", "active_from", "active_to")
         extra_kwargs = {
-            "plan_version_name": {"required": False},
+            "localized_name": {"required": False},
         }
 
     def update(self, instance, validated_data):
@@ -1131,8 +1130,8 @@ class PlanVersionUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
                 )
         instance.active_from = new_nab
         instance.active_to_naa
-        instance.plan_version_name = validated_data.get(
-            "plan_version_name", instance.plan_version_name
+        instance.localized_name = validated_data.get(
+            "localized_name", instance.localized_name
         )
         instance.save()
         return instance
@@ -1146,9 +1145,7 @@ class AddOnVersionUpdateSerializer(PlanVersionUpdateSerializer):
             "addon_version_name": {"required": False},
         }
 
-    addon_version_name = serializers.CharField(
-        required=False, source="plan_version_name"
-    )
+    addon_version_name = serializers.CharField(required=False, source="localized_name")
 
 
 class PriceAdjustmentSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
@@ -1280,6 +1277,7 @@ class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
             "currency_code",
             "version",
             "target_customer_ids",
+            "localized_name",
         )
         extra_kwargs = {
             "plan_id": {"write_only": True},
@@ -1292,6 +1290,11 @@ class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
             "currency_code": {"write_only": True},
             "version": {"write_only": True},
             "target_customer_ids": {"write_only": True},
+            "localized_name": {
+                "write_only": True,
+                "required": False,
+                "allow_null": True,
+            },
         }
 
     components = PlanComponentCreateSerializer(
@@ -1401,6 +1404,11 @@ class LightweightPlanVersionSerializer(
         fields = api_serializers.LightweightPlanVersionSerializer.Meta.fields
 
 
+class LightweightPlanSerializer(api_serializers.LightweightPlanSerializer):
+    class Meta(api_serializers.LightweightPlanSerializer.Meta):
+        fields = api_serializers.LightweightPlanSerializer.Meta.fields
+
+
 class UsageAlertSerializer(api_serializers.UsageAlertSerializer):
     class Meta(api_serializers.UsageAlertSerializer.Meta):
         fields = api_serializers.UsageAlertSerializer.Meta.fields
@@ -1415,16 +1423,33 @@ class PlanVersionDetailSerializer(api_serializers.PlanVersionSerializer):
                     "plan_id",
                     "alerts",
                     "active_subscriptions",
+                    "transition_to",
+                    "replace_with",
                 }
             )
-            - {"flat_fee_billing_type", "flat_rate", "version"}
+            - {
+                "flat_fee_billing_type",
+                "flat_rate",
+            }
         )
-        extra_kwargs = {**api_serializers.PlanVersionSerializer.Meta.extra_kwargs}
+        extra_kwargs = {
+            **api_serializers.PlanVersionSerializer.Meta.extra_kwargs,
+            **{
+                "plan_id": {"read_only": True},
+                "alerts": {"read_only": True},
+                "active_subscriptions": {"read_only": True},
+                "transition_to": {"read_only": True},
+                "replace_with": {"read_only": True},
+                "version_id": {"read_only": True},
+            },
+        }
 
     plan_id = PlanUUIDField(source="plan.plan_id", read_only=True)
     alerts = serializers.SerializerMethodField()
     version_id = PlanVersionUUIDField(read_only=True)
     active_subscriptions = serializers.SerializerMethodField()
+    replace_with = LightweightPlanVersionSerializer()
+    transition_to = LightweightPlanSerializer()
 
     def get_alerts(self, obj) -> UsageAlertSerializer(many=True):
         return UsageAlertSerializer(obj.usage_alerts, many=True).data
@@ -1485,6 +1510,10 @@ class PlanDetailSerializer(api_serializers.PlanSerializer):
             return PlanVersionDetailSerializer(
                 obj.versions.all().order_by("-created_on"), many=True
             ).data
+
+    def get_tags(self, obj) -> TagSerializer(many=True):
+        data = TagSerializer(obj.tags.all(), many=True).data
+        return data
 
 
 class PlanCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):

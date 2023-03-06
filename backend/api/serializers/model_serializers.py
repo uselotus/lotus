@@ -6,9 +6,6 @@ from typing import Literal, Union
 from django.conf import settings
 from django.db.models import Max, Min, Sum
 from drf_spectacular.utils import extend_schema_serializer
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-
 from metering_billing.invoice import generate_balance_adjustment_invoice
 from metering_billing.models import (
     AddOnSpecification,
@@ -61,6 +58,7 @@ from metering_billing.utils.enums import (
     INVOICE_STATUS_ENUM,
     INVOICING_BEHAVIOR,
     PAYMENT_PROCESSORS,
+    PLAN_CUSTOM_TYPE,
     PLAN_DURATION,
     PLAN_VERSION_STATUS,
     SUBSCRIPTION_STATUS,
@@ -68,6 +66,8 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -168,6 +168,23 @@ class LightweightPlanVersionSerializer(
             return "custom_version"
         else:
             return obj.version
+
+
+class LightweightPlanSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
+    class Meta:
+        model = Plan
+        fields = (
+            "plan_name",
+            "plan_id",
+        )
+        extra_kwargs = {
+            "plan_id": {"required": True, "read_only": True},
+            "plan_name": {"required": True, "read_only": True},
+        }
+
+    plan_id = PlanUUIDField()
 
 
 class CategoricalFilterSerializer(
@@ -1205,6 +1222,9 @@ class PlanVersionSerializer(
             "plan_name",
             "currency",
             "version",
+            "active_from",
+            "active_to",
+            "localized_name",
         )
         extra_kwargs = {
             "flat_fee_billing_type": {"required": True, "read_only": True},
@@ -1220,6 +1240,9 @@ class PlanVersionSerializer(
             "version": {"required": True, "read_only": True},
             "plan_name": {"required": True, "read_only": True},
             "status": {"required": True, "read_only": True},
+            "active_from": {"required": True, "read_only": True},
+            "active_to": {"required": True, "read_only": True},
+            "localized_name": {"required": True, "read_only": True},
         }
 
     flat_rate = serializers.SerializerMethodField()
@@ -1432,9 +1455,8 @@ class PlanSerializer(
                 or 0
             )
 
-    def get_tags(self, obj) -> TagNameSerializer(many=True):
-        data = TagNameSerializer(obj.tags.all(), many=True).data
-        return data
+    def get_tags(self, obj) -> serializers.ListField(child=serializers.SlugField()):
+        return obj.tags.all().values_list("tag_name", flat=True)
 
 
 class EventSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
@@ -1888,30 +1910,35 @@ class ListPlansFilterSerializer(serializers.Serializer):
         required=False,
         help_text="Filter to plans that do not have any of the tags in this list.",
     )
-    currency = SlugRelatedFieldWithOrganization(
-        slug_field="code",
-        queryset=PricingUnit.objects.all(),
-        required=False,
-        help_text="Filter to versions that have this currency.",
-    )
     duration = serializers.ChoiceField(
         choices=PLAN_DURATION.choices,
         required=False,
         help_text="Filter to plans that have this duration.",
     )
-    range_start = serializers.DateTimeField(
+
+
+class ListPlanVersionsFilterSerializer(serializers.Serializer):
+    version_currency_code = SlugRelatedFieldWithOrganization(
+        slug_field="code",
+        queryset=PricingUnit.objects.all(),
         required=False,
-        help_text="Filter to plans and versions whose active_to datetime is on or after this date + time.",
+        help_text="Filter to versions that have the currency specified by this currency code.",
+        source="version_currency",
     )
-    range_end = serializers.DateTimeField(
-        required=False,
-        help_text="Filter to plans and versions whose active_from datetime is on or before this date + time.",
+    version_status = serializers.MultipleChoiceField(
+        choices=SUBSCRIPTION_STATUS.choices,
+        default=[
+            SUBSCRIPTION_STATUS.ACTIVE,
+            SUBSCRIPTION_STATUS.ENDED,
+            SUBSCRIPTION_STATUS.NOT_STARTED,
+        ],
+        help_text="Filter to versions that have this status. Ended means it has an active_to date in the past. Not started means it has an active_from date in the future or null.",
     )
-    active_on = serializers.DateTimeField(
+    version_custom_type = serializers.ChoiceField(
+        choices=PLAN_CUSTOM_TYPE.choices,
         required=False,
-        help_text="Filter to plans and versions that were active on this date + time. Defaults to the current date + time. Set to null to avoid filtering by this.",
-        allow_null=True,
-        default=now_utc,
+        default=PLAN_CUSTOM_TYPE.ALL,
+        help_text="Filter to versions that have this custom type. If you choose custom_only, you will only see versions that have target customers. If you choose public_only, you will only see versions that do not have target customers.",
     )
 
 

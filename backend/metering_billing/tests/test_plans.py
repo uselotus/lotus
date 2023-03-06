@@ -287,13 +287,13 @@ class TestPlanOperations:
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         # we want to test that when we add it to the plan, it doesn't add it to any deleted plan versions, but adds it to both active and inactive plan versions
         first_version = plan.versions.first()
-        first_version.plan_version_name = "active_version"
+        first_version.localized_name = "active_version"
         first_version.save()
         assert first_version.features.count() == 0
         inactive_version = PlanVersion.objects.create(
             organization=setup_dict["org"],
             plan=plan,
-            plan_version_name="inactive_version",
+            localized_name="inactive_version",
             active_from=now_utc() - relativedelta(days=10),
             active_to=now_utc() - relativedelta(days=5),
         )
@@ -301,7 +301,7 @@ class TestPlanOperations:
         deleted_version = PlanVersion.objects.create(
             organization=setup_dict["org"],
             plan=plan,
-            plan_version_name="deleted_version",
+            localized_name="deleted_version",
             active_from=now_utc() - relativedelta(days=10),
             active_to=now_utc() - relativedelta(days=5),
             deleted=now_utc() - relativedelta(days=5),
@@ -744,13 +744,13 @@ class TestPlanVersionOperations:
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         # we want to test that when we add it to the plan, it doesn't add it to any deleted plan versions, but adds it to both active and inactive plan versions
         first_version = plan.versions.first()
-        first_version.plan_version_name = "active_version"
+        first_version.localized_name = "active_version"
         first_version.save()
         assert first_version.features.count() == 0
         second_version = PlanVersion.objects.create(
             organization=setup_dict["org"],
             plan=plan,
-            plan_version_name="inactive_version",
+            localized_name="inactive_version",
         )
         assert second_version.features.count() == 0
 
@@ -785,12 +785,12 @@ class TestPlanVersionOperations:
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         # we want to test that when we add it to the plan, it doesn't add it to any deleted plan versions, but adds it to both active and inactive plan versions
         first_version = plan.versions.first()
-        first_version.plan_version_name = "active_version"
+        first_version.localized_name = "active_version"
         first_version.save()
         second_version = PlanVersion.objects.create(
             organization=setup_dict["org"],
             plan=plan,
-            plan_version_name="inactive_version",
+            localized_name="inactive_version",
         )
         assert first_version.replace_with is None
 
@@ -819,12 +819,12 @@ class TestPlanVersionOperations:
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         # we want to test that when we add it to the plan, it doesn't add it to any deleted plan versions, but adds it to both active and inactive plan versions
         first_version = plan.versions.first()
-        first_version.plan_version_name = "active_version"
+        first_version.localized_name = "active_version"
         first_version.save()
         second_version = PlanVersion.objects.create(
             organization=setup_dict["org"],
             plan=plan,
-            plan_version_name="inactive_version",
+            localized_name="inactive_version",
         )
         assert first_version.replace_with is None
 
@@ -852,12 +852,12 @@ class TestPlanVersionOperations:
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         first_version = plan.versions.first()
-        first_version.plan_version_name = "active_version"
+        first_version.localized_name = "active_version"
         first_version.save()
         PlanVersion.objects.create(
             organization=setup_dict["org"],
             plan=plan,
-            plan_version_name="inactive_version",
+            localized_name="inactive_version",
         )
         add_subscription_record_to_org(
             setup_dict["org"], first_version, setup_dict["customer"]

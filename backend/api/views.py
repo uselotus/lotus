@@ -13,42 +13,6 @@ from typing import Optional
 
 import posthog
 import pytz
-from api.serializers.model_serializers import (
-    AddOnSubscriptionRecordCreateSerializer,
-    AddOnSubscriptionRecordSerializer,
-    AddOnSubscriptionRecordUpdateSerializer,
-    CustomerBalanceAdjustmentCreateSerializer,
-    CustomerBalanceAdjustmentFilterSerializer,
-    CustomerBalanceAdjustmentSerializer,
-    CustomerBalanceAdjustmentUpdateSerializer,
-    CustomerCreateSerializer,
-    CustomerSerializer,
-    EventSerializer,
-    InvoiceListFilterSerializer,
-    InvoiceSerializer,
-    InvoiceUpdateSerializer,
-    ListPlansFilterSerializer,
-    ListSubscriptionRecordFilter,
-    PlanSerializer,
-    SubscriptionRecordCancelSerializer,
-    SubscriptionRecordCreateSerializer,
-    SubscriptionRecordCreateSerializerOld,
-    SubscriptionRecordFilterSerializer,
-    SubscriptionRecordFilterSerializerDelete,
-    SubscriptionRecordSerializer,
-    SubscriptionRecordSwitchPlanSerializer,
-    SubscriptionRecordUpdateSerializer,
-    SubscriptionRecordUpdateSerializerOld,
-)
-from api.serializers.nonmodel_serializers import (
-    CustomerDeleteResponseSerializer,
-    FeatureAccessRequestSerialzier,
-    FeatureAccessResponseSerializer,
-    GetInvoicePdfURLRequestSerializer,
-    GetInvoicePdfURLResponseSerializer,
-    MetricAccessRequestSerializer,
-    MetricAccessResponseSerializer,
-)
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
@@ -71,6 +35,55 @@ from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import (
+    action,
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from api.serializers.model_serializers import (
+    AddOnSubscriptionRecordCreateSerializer,
+    AddOnSubscriptionRecordSerializer,
+    AddOnSubscriptionRecordUpdateSerializer,
+    CustomerBalanceAdjustmentCreateSerializer,
+    CustomerBalanceAdjustmentFilterSerializer,
+    CustomerBalanceAdjustmentSerializer,
+    CustomerBalanceAdjustmentUpdateSerializer,
+    CustomerCreateSerializer,
+    CustomerSerializer,
+    EventSerializer,
+    InvoiceListFilterSerializer,
+    InvoiceSerializer,
+    InvoiceUpdateSerializer,
+    ListPlansFilterSerializer,
+    ListPlanVersionsFilterSerializer,
+    ListSubscriptionRecordFilter,
+    PlanSerializer,
+    SubscriptionRecordCancelSerializer,
+    SubscriptionRecordCreateSerializer,
+    SubscriptionRecordCreateSerializerOld,
+    SubscriptionRecordFilterSerializer,
+    SubscriptionRecordFilterSerializerDelete,
+    SubscriptionRecordSerializer,
+    SubscriptionRecordSwitchPlanSerializer,
+    SubscriptionRecordUpdateSerializer,
+    SubscriptionRecordUpdateSerializerOld,
+)
+from api.serializers.nonmodel_serializers import (
+    CustomerDeleteResponseSerializer,
+    FeatureAccessRequestSerialzier,
+    FeatureAccessResponseSerializer,
+    GetInvoicePdfURLRequestSerializer,
+    GetInvoicePdfURLResponseSerializer,
+    MetricAccessRequestSerializer,
+    MetricAccessResponseSerializer,
+)
 from metering_billing.auth.auth_utils import (
     PermissionPolicyMixin,
     fast_api_key_validation_and_cache,
@@ -117,22 +130,12 @@ from metering_billing.utils.enums import (
     INVOICING_BEHAVIOR,
     METRIC_STATUS,
     ORGANIZATION_SETTING_NAMES,
+    PLAN_CUSTOM_TYPE,
     SUBSCRIPTION_STATUS,
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
 from metering_billing.webhooks import customer_created_webhook
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import (
-    action,
-    api_view,
-    authentication_classes,
-    permission_classes,
-)
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -321,46 +324,52 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
         now = now_utc()
         organization = self.request.organization
+        # first filter plans
         plan_filter_serializer = ListPlansFilterSerializer(
             data=self.request.query_params
         )
         plan_filter_serializer.is_valid(raise_exception=True)
 
         plans_filters = []
-        versions_filters = []
 
         include_tags = plan_filter_serializer.validated_data.get("include_tags")
         include_tags_all = plan_filter_serializer.validated_data.get("include_tags_all")
         exclude_tags = plan_filter_serializer.validated_data.get("exclude_tags")
-        currency = plan_filter_serializer.validated_data.get("currency")
         duration = plan_filter_serializer.validated_data.get("duration")
-        range_start = plan_filter_serializer.validated_data.get("range_start")
-        range_end = plan_filter_serializer.validated_data.get("range_end")
-        active_on = plan_filter_serializer.validated_data.get("active_on")
 
-        if currency:
-            versions_filters.append(Q(currency=currency))
         if duration:
             plans_filters.append(Q(duration=duration))
-        if range_start:
-            range_start_aware = convert_to_datetime(
-                range_start, tz=organization.timezone
+
+        # then filter plan versions
+        versions_filters = []
+
+        plan_version_filter_serializer = ListPlanVersionsFilterSerializer(
+            data=self.request.query_params
+        )
+        plan_version_filter_serializer.is_valid(raise_exception=True)
+        validated_data = plan_version_filter_serializer.validated_data
+        version_currency = validated_data.get("version_currency")
+        version_status = validated_data.get("version_status")
+        version_custom_type = validated_data.get("version_custom_type")
+        status_combo = []
+        if SUBSCRIPTION_STATUS.ACTIVE in version_status:
+            status_combo.append(
+                (
+                    Q(active_from__lte=now)
+                    & (Q(active_to__gte=now) | Q(active_to__isnull=True))
+                )
             )
-            q_cond = Q(active_to__gte=range_start_aware) | Q(active_to__isnull=True)
-            versions_filters.append(q_cond)
-            plans_filters.append(q_cond)
-        if range_end:
-            range_end_aware = convert_to_datetime(range_end)
-            q_cond = Q(active_from__lte=range_end_aware)
-            versions_filters.append(q_cond)
-            plans_filters.append(q_cond)
-        if active_on:
-            active_on_aware = convert_to_datetime(active_on)
-            q_cond = Q(active_from__lte=active_on_aware) & (
-                Q(active_to__gte=active_on_aware) | Q(active_to__isnull=True)
-            )
-            versions_filters.append(q_cond)
-            plans_filters.append(q_cond)
+        if SUBSCRIPTION_STATUS.ENDED in version_status:
+            status_combo.append(Q(active_to__lt=now))
+        if SUBSCRIPTION_STATUS.NOT_STARTED in version_status:
+            status_combo.append((Q(active_from__gt=now) | Q(active_from__isnull=True)))
+        versions_filters.append(reduce(operator.or_, status_combo))
+        if version_currency:
+            versions_filters.append(Q(currency=version_currency))
+        if version_custom_type == PLAN_CUSTOM_TYPE.PUBLIC_ONLY:
+            versions_filters.append(Q(is_custom=False))
+        elif version_custom_type == PLAN_CUSTOM_TYPE.CUSTOM_ONLY:
+            versions_filters.append(Q(is_custom=True))
 
         qs = (
             Plan.plans.all()
@@ -500,10 +509,16 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return context
 
     @extend_schema(
-        parameters=[ListPlansFilterSerializer],
+        parameters=[ListPlansFilterSerializer, ListPlanVersionsFilterSerializer],
     )
     def list(self, request, *args, **kwargs):
         return super().list(request)
+
+    @extend_schema(
+        parameters=[ListPlanVersionsFilterSerializer],
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
 
 
 class SubscriptionViewSet(

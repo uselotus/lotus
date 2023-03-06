@@ -4,53 +4,58 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('metering_billing', '0211_auto_20230224_2319'),
+        ("metering_billing", "0211_auto_20230224_2319"),
     ]
 
     operations = [
         migrations.RemoveIndex(
-            model_name='plan',
-            name='metering_bi_organiz_b5d6d8_idx',
+            model_name="plan",
+            name="metering_bi_organiz_b5d6d8_idx",
         ),
         migrations.RemoveIndex(
-            model_name='planversion',
-            name='metering_bi_organiz_847d79_idx',
+            model_name="planversion",
+            name="metering_bi_organiz_847d79_idx",
         ),
         migrations.RemoveField(
-            model_name='historicalplan',
-            name='status',
+            model_name="historicalplan",
+            name="status",
         ),
         migrations.RemoveField(
-            model_name='plan',
-            name='status',
+            model_name="plan",
+            name="status",
         ),
         migrations.RemoveField(
-            model_name='planversion',
-            name='status',
+            model_name="planversion",
+            name="status",
         ),
         migrations.RemoveField(
-            model_name='planversion',
-            name='usage_billing_frequency',
+            model_name="planversion",
+            name="usage_billing_frequency",
         ),
         migrations.AddField(
-            model_name='historicalplan',
-            name='plan_description',
-            field=models.TextField(blank=True, help_text='Description of the plan', null=True),
+            model_name="historicalplan",
+            name="plan_description",
+            field=models.TextField(
+                blank=True, help_text="Description of the plan", null=True
+            ),
         ),
         migrations.AddField(
-            model_name='plan',
-            name='plan_description',
-            field=models.TextField(blank=True, help_text='Description of the plan', null=True),
+            model_name="plan",
+            name="plan_description",
+            field=models.TextField(
+                blank=True, help_text="Description of the plan", null=True
+            ),
         ),
         migrations.AddField(
-            model_name='planversion',
-            name='plan_version_name',
+            model_name="planversion",
+            name="localized_name",
             field=models.TextField(blank=True, default=None, null=True),
         ),
         migrations.AddIndex(
-            model_name='planversion',
-            index=models.Index(fields=['organization', 'plan'], name='metering_bi_organiz_87662e_idx'),
+            model_name="planversion",
+            index=models.Index(
+                fields=["organization", "plan"], name="metering_bi_organiz_87662e_idx"
+            ),
         ),
     ]
