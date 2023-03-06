@@ -60,69 +60,69 @@ export const ComponentDisplay: FC<{
   deleteComponent,
   pricing_unit,
 }) => (
-    <Row gutter={[12, 12]} className="overflow-y-auto max-h-[400px]">
-      {componentsData.map((component: any, index: number) => (
-        <Col span="24" key={index}>
-          <Paper border className="items-stretch">
-            <Descriptions
-              title={component?.metric}
-              className="text-[20px]"
-              column={2}
-              extra={[
-                <Button
-                  key="edit"
-                  type="text"
-                  size="small"
-                  icon={<EditOutlined />}
-                  onClick={() => handleComponentEdit(component.id)}
-                />,
-                <Button
-                  key="delete"
-                  type="text"
-                  size="small"
-                  icon={<DeleteOutlined />}
-                  danger
-                  onClick={() => deleteComponent(component.id)}
-                />,
-              ]}
-             />
-            <Table
-              dataSource={component.tiers}
-              pagination={false}
-              showHeader={false}
-              style={{ backgroundColor: "FAFAFA" }}
-              size="middle"
-              rowClassName="bg-[#FAFAFA]"
-              className="noborderTable"
-              columns={[
-                {
-                  title: "Range",
-                  dataIndex: "range_start",
-                  key: "range_start",
-                  align: "left",
-                  width: "50%",
-                  render: (value: any, record: any) => (
-                    <span>
-                      From {value} to{" "}
-                      {record.range_end == null ? "∞" : record.range_end}
-                    </span>
-                  ),
-                },
-                {
-                  title: "Cost",
-                  align: "left",
-                  dataIndex: "cost_per_batch",
-                  key: "cost_per_batch",
-                  render: (value: any, record: Tier) => (
-                    <div>{renderCost(record, pricing_unit)}</div>
-                  ),
-                },
-              ]}
-            />
-          </Paper>
-        </Col>
-      ))}
-    </Row>
-  );
+  <Row gutter={[12, 12]} className="overflow-y-auto max-h-[400px]">
+    {componentsData.map((component: any, index: number) => (
+      <Col span="24" key={index}>
+        <Paper border className="items-stretch">
+          <Descriptions
+            title={component?.metric}
+            className="text-[20px]"
+            column={2}
+            extra={[
+              <Button
+                key="edit"
+                type="text"
+                size="small"
+                icon={<EditOutlined />}
+                onClick={() => handleComponentEdit(component.metric_id)}
+              />,
+              <Button
+                key="delete"
+                type="text"
+                size="small"
+                icon={<DeleteOutlined />}
+                danger
+                onClick={() => deleteComponent(component.metric_id)}
+              />,
+            ]}
+          />
+          <Table
+            dataSource={component.tiers}
+            pagination={false}
+            showHeader={false}
+            style={{ backgroundColor: "FAFAFA" }}
+            size="middle"
+            rowClassName="bg-[#FAFAFA]"
+            className="noborderTable"
+            columns={[
+              {
+                title: "Range",
+                dataIndex: "range_start",
+                key: "range_start",
+                align: "left",
+                width: "50%",
+                render: (value: any, record: any) => (
+                  <span>
+                    From {value} to{" "}
+                    {record.range_end == null ? "∞" : record.range_end}
+                  </span>
+                ),
+              },
+              {
+                title: "Cost",
+                align: "left",
+                dataIndex: "cost_per_batch",
+                key: "cost_per_batch",
+                render: (value: any, record: Tier) => (
+                  <div>{renderCost(record, pricing_unit)}</div>
+                ),
+              },
+            ]}
+          />
+        </Paper>
+      </Col>
+    ))}
+  </Row>
+);
 
 export default ComponentDisplay;

@@ -158,13 +158,27 @@ function CreatePlan() {
     const old = componentsData;
     console.log(newData);
 
+    ///check if the metricId on newdata is already in a component in componentsData
+    //if it is then raise an alert with toast
+    //if not then add the new data to the componentsData
+
+    const metricComponentExists = componentsData.some(
+      (item) => item.metric_id === newData.metric_id
+    );
+
+    if (metricComponentExists) {
+      toast.error("Metric already exists in another component", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+      return;
+    }
+
     if (editComponentItem) {
       const index = componentsData.findIndex(
-        (item) => item.id === editComponentItem.id
+        (item) => item.metric_id === editComponentItem.metric_id
       );
       old[index] = newData;
       setComponentsData(old);
-      console.log(old);
     } else {
       const newComponentsData = [
         ...old,
@@ -180,8 +194,11 @@ function CreatePlan() {
     setcomponentVisible(false);
   };
 
-  const handleComponentEdit = (id: any) => {
-    const currentComponent = componentsData.filter((item) => item.id === id)[0];
+  const handleComponentEdit = (id: string) => {
+    console.log(componentsData);
+    const currentComponent = componentsData.filter(
+      (item) => item.metric_id === id
+    )[0];
 
     setEditComponentsItem(currentComponent);
     setcomponentVisible(true);
@@ -214,6 +231,7 @@ function CreatePlan() {
       .then((values) => {
         const usagecomponentslist: CreateComponent[] = [];
         const components: any = Object.values(componentsData);
+        console.log(components);
         if (components) {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
@@ -574,30 +592,6 @@ function CreatePlan() {
                     pricing_unit={selectedCurrency}
                   />
                 </Form.Item>
-                {/* <div className="inset-x-0 bottom-0 justify-center self-end">
-                  <div className="w-full border-t border-gray-300 py-2" />
-                  <div className="mx-4">
-                    <Form.Item
-                      label="Billing Frequency"
-                      name="usage_billing_frequency"
-                      shouldUpdate={(prevValues, currentValues) =>
-                        prevValues.plan_duration !== currentValues.plan_duration
-                      }
-                      rules={[
-                        {
-                          required: true,
-                          message: "Please select an interval",
-                        },
-                      ]}
-                    >
-                      <Radio.Group>
-                        {availableBillingTypes.map((type) => (
-                          <Radio value={type.name}>{type.label}</Radio>
-                        ))}
-                      </Radio.Group>
-                    </Form.Item>
-                  </div>
-                </div> */}
               </Card>
             </Col>
 

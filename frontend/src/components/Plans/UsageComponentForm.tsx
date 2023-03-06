@@ -607,6 +607,7 @@ function UsageComponentForm({
                 reset_interval_unit: values.reset_interval_unit,
                 invoicing_interval_count: values.invoicing_interval_count,
                 invoicing_interval_unit: values.invoicing_interval_unit,
+                id: initalData?.id,
               });
 
               form.submit();
