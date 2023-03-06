@@ -2839,8 +2839,6 @@ class SubscriptionRecord(models.Model):
                     break
                 br_invoicing_dates.add(invoicing_dates[j])
             br_invoicing_dates = br_invoicing_dates.union({end_date})
-            if prepaid_charge and not ignore_prepaid:
-                br_invoicing_dates = br_invoicing_dates.union({start_date})
             br_invoicing_dates = sorted(list(br_invoicing_dates))
             i += len(br_invoicing_dates)
             br = BillingRecord.objects.create(
@@ -2882,7 +2880,7 @@ class SubscriptionRecord(models.Model):
                 if invoicing_dates[j] > end_date:
                     break
                 br_invoicing_dates.append(invoicing_dates[j])
-            br_invoicing_dates = sorted(set(br_invoicing_dates).union({end_date}))
+            br_invoicing_dates = sorted(list(set(br_invoicing_dates).union({end_date})))
             i += len(br_invoicing_dates)
             br = BillingRecord.objects.create(
                 organization=self.organization,

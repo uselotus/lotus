@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from django.db.models.query import QuerySet
+
 from metering_billing.kafka.producer import Producer
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.taxes import get_lotus_tax_rates, get_taxjar_tax_rates
@@ -249,7 +250,9 @@ def calculate_subscription_record_usage_fees(subscription_record, invoice, draft
     billing_plan = subscription_record.billing_plan
     # only calculate this for parent plans! addons should never calculate
     if subscription_record.invoice_usage_charges:
-        for br in subscription_record.billing_records.filter(component__isnull=False):
+        for br in subscription_record.billing_records.filter(
+            component__isnull=False, fully_billed=False
+        ):
             for component_charge_record in br.component_charge_records.filter(
                 fully_billed=False
             ):

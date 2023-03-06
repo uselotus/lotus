@@ -13,40 +13,6 @@ from typing import Optional
 
 import posthog
 import pytz
-from dateutil import parser
-from dateutil.relativedelta import relativedelta
-from django.conf import settings
-from django.db.models import (
-    Count,
-    DecimalField,
-    F,
-    Max,
-    Min,
-    OuterRef,
-    Prefetch,
-    Q,
-    Subquery,
-    Sum,
-    Value,
-)
-from django.db.models.functions import Coalesce
-from django.db.utils import IntegrityError
-from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import (
-    action,
-    api_view,
-    authentication_classes,
-    permission_classes,
-)
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
 from api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
     AddOnSubscriptionRecordSerializer,
@@ -76,6 +42,7 @@ from api.serializers.model_serializers import (
     SubscriptionRecordUpdateSerializerOld,
 )
 from api.serializers.nonmodel_serializers import (
+    ChangePrepaidUnitsSerializer,
     CustomerDeleteResponseSerializer,
     FeatureAccessRequestSerialzier,
     FeatureAccessResponseSerializer,
@@ -84,6 +51,28 @@ from api.serializers.nonmodel_serializers import (
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
 )
+from dateutil import parser
+from dateutil.relativedelta import relativedelta
+from django.conf import settings
+from django.db.models import (
+    Count,
+    DecimalField,
+    F,
+    Max,
+    Min,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
+from django.db.utils import IntegrityError
+from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from metering_billing.auth.auth_utils import (
     PermissionPolicyMixin,
     fast_api_key_validation_and_cache,
@@ -100,6 +89,7 @@ from metering_billing.invoice_pdf import get_invoice_presigned_url
 from metering_billing.kafka.producer import Producer
 from metering_billing.models import (
     CategoricalFilter,
+    ComponentChargeRecord,
     Customer,
     CustomerBalanceAdjustment,
     Event,
@@ -136,6 +126,17 @@ from metering_billing.utils.enums import (
     USAGE_BILLING_BEHAVIOR,
 )
 from metering_billing.webhooks import customer_created_webhook
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import (
+    action,
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -599,6 +600,8 @@ class SubscriptionViewSet(
             return AddOnSubscriptionRecordCreateSerializer
         elif self.action == "update_addon":
             return AddOnSubscriptionRecordUpdateSerializer
+        elif self.action == "change_prepaid_amount":
+            return ChangePrepaidUnitsSerializer
         else:
             return SubscriptionRecordSerializer
 
@@ -900,6 +903,79 @@ class SubscriptionViewSet(
         )
         return Response(
             SubscriptionRecordSerializer(new_sr).data, status=status.HTTP_200_OK
+        )
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="subscription_id",
+                location=OpenApiParameter.PATH,
+                type=OpenApiTypes.STR,
+                description="The ID of the subscription which will have its plans switched.",
+            ),
+            OpenApiParameter(
+                name="metric_id",
+                location=OpenApiParameter.PATH,
+                type=OpenApiTypes.STR,
+                description="The ID of the metric to alter the prepaid usage for.",
+            ),
+        ],
+        request=ChangePrepaidUnitsSerializer,
+        responses=SubscriptionRecordSerializer,
+    )
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="components/(?P<metric_id>[^/.]+)/change_prepaid_units",
+        url_name="change_prepaid_units",
+    )
+    def change_prepaid_units(self, request, *args, **kwargs):
+        now = now_utc()
+        organization = self.request.organization
+        current_sr = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        units = serializer.validated_data["units"]
+        current_billing_plan = current_sr.billing_plan
+        target_plan_component = current_billing_plan.plan_components.filter(
+            billable_metric=kwargs["metric_id"]
+        ).first()
+        if not target_plan_component:
+            raise ValidationError(
+                "A plan component with the specified metric is not in the plan."
+            )
+        if target_plan_component.fixed_charge is None:
+            raise ValidationError(
+                "Cannot change prepaid units for a plan component with no fixed charge."
+            )
+        future_component_records = ComponentChargeRecord.objects.filter(
+            billing_record__subscription=current_sr,
+            component=current_billing_plan,
+            start_date__gt=now,
+        )
+        current_component_record = ComponentChargeRecord.objects.get(
+            start_date__lte=now,
+            end_date__gt=now,
+            billing_record__subscription=current_sr,
+            component=current_billing_plan,
+        )
+        current_component_record.end_date = now
+        current_component_record.fully_billed = False
+        current_component_record.save()
+        ComponentChargeRecord.objects.create(
+            billing_record=current_component_record.billing_record,
+            organization=organization,
+            component_charge=target_plan_component.fixed_charge,
+            component=target_plan_component,
+            start_date=now,
+            end_date=current_component_record.end_date,
+            units=units,
+        )
+        future_component_records.update(units=units)
+        if serializer.validated_data.get("invoice_now"):
+            generate_invoice(current_sr)
+        return Response(
+            SubscriptionRecordSerializer(current_sr).data, status=status.HTTP_200_OK
         )
 
     # ADDON SUBSCRIPTION RECORDS
