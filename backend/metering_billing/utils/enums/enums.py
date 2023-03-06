@@ -213,6 +213,7 @@ class INVOICING_BEHAVIOR(models.TextChoices):
 
 class CHARGEABLE_ITEM_TYPE(models.TextChoices):
     USAGE_CHARGE = ("usage_charge", _("Usage Charge"))
+    PREPAID_USAGE_CHARGE = ("prepaid_usage_charge", _("Prepaid Usage Charge"))
     RECURRING_CHARGE = ("recurring_charge", _("Recurring Charge"))
     ONE_TIME_CHARGE = ("one_time_charge", _("One Time Charge"))
     PLAN_ADJUSTMENT = ("plan_adjustment", _("Plan Adjustment"))

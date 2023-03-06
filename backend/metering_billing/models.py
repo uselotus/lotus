@@ -39,6 +39,7 @@ from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     NotEditable,
     OverlappingPlans,
+    PrepaymentEngineFailure,
     SubscriptionAlreadyEnded,
 )
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
@@ -1613,7 +1614,9 @@ class PlanComponent(models.Model):
 
         return reset_ranges
 
-    def calculate_total_revenue(self, billing_record) -> UsageRevenueSummary:
+    def calculate_total_revenue(
+        self, billing_record, prepaid_units=None
+    ) -> UsageRevenueSummary:
         assert isinstance(
             billing_record, BillingRecord
         ), "billing_record must be a BillingRecord"
@@ -1621,6 +1624,16 @@ class PlanComponent(models.Model):
         usage_qty = billable_metric.get_billing_record_total_billable_usage(
             billing_record
         )
+        revenue = self.tier_rating_function(usage_qty)
+        latest_component_charge = self.component_charge_records.order_by(
+            "-start_date"
+        ).first()
+        if latest_component_charge is not None:
+            revenue_from_prepaid_units = self.tier_rating_function(prepaid_units)
+            revenue = max(revenue - revenue_from_prepaid_units, 0)
+        return {"revenue": revenue, "usage_qty": usage_qty}
+
+    def tier_rating_function(self, usage_qty):
         revenue = 0
         tiers = self.tiers.all()
         for i, tier in enumerate(tiers):
@@ -1634,7 +1647,7 @@ class PlanComponent(models.Model):
                 tier_revenue = tier.calculate_revenue(usage_qty)
             revenue += tier_revenue
         revenue = convert_to_decimal(revenue)
-        return {"revenue": revenue, "usage_qty": usage_qty}
+        return revenue
 
     def calculate_revenue_per_day(
         self, billing_record
@@ -1674,6 +1687,69 @@ class PlanComponent(models.Model):
                 results[date]["revenue"] += date_revenue
                 results[date]["usage_qty"] += usage_qty
         return results
+
+
+class ComponentFixedCharge(models.Model):
+    class ChargeType(models.IntegerChoices):
+        PREDEFINED = (1, _("predefined"))
+        DYNAMIC = (2, _("dynamic"))
+
+    class ChargeBehavior(models.IntegerChoices):
+        PRORATE = (1, _("prorate"))
+        FULL = (2, _("full"))
+
+    component = models.OneToOneField(
+        PlanComponent, on_delete=models.CASCADE, related_name="fixed_charge"
+    )
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="component_charges"
+    )
+    units = models.DecimalField(
+        decimal_places=10,
+        max_digits=20,
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(0)],
+    )
+    charge_type = models.PositiveSmallIntegerField(
+        choices=ChargeType.choices, default=ChargeType.PREDEFINED
+    )
+    charge_behavior = models.PositiveSmallIntegerField(
+        choices=ChargeBehavior.choices, default=ChargeBehavior.PRORATE
+    )
+
+    def __str__(self):
+        return f"Fixed Charge for {self.component}"
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["plan_component", "organization"],
+                name="unique_component_charge",
+            ),
+            # check that if the charge type is predefined, units must be set, and vice versa
+            models.CheckConstraint(
+                check=(Q(charge_type=1) & Q(units__isnull=False))  # predefined
+                | (Q(charge_type=2) & Q(units__isnull=True)),  # dynamic
+                name="charge_type_units_check",
+            ),
+        ]
+
+    @staticmethod
+    def get_charge_type_from_label(label):
+        mapping = {
+            ComponentFixedCharge.ChargeType.PREDEFINED.label: ComponentFixedCharge.ChargeType.PREDEFINED.value,
+            ComponentFixedCharge.ChargeType.DYNAMIC.label: ComponentFixedCharge.ChargeType.DYNAMIC.value,
+        }
+        return mapping.get(label, label)
+
+    @staticmethod
+    def get_charge_behavior_from_label(label):
+        mapping = {
+            ComponentFixedCharge.ChargeBehavior.PRORATE.label: ComponentFixedCharge.ChargeBehavior.PRORATE.value,
+            ComponentFixedCharge.ChargeBehavior.FULL.label: ComponentFixedCharge.ChargeBehavior.FULL.value,
+        }
+        return mapping.get(label, label)
 
 
 class Feature(models.Model):
@@ -1904,12 +1980,6 @@ class RecurringCharge(models.Model):
         "PlanVersion",
         on_delete=models.CASCADE,
         related_name="recurring_charges",
-    )
-    plan_component = models.ForeignKey(
-        "PlanComponent",
-        on_delete=models.CASCADE,
-        related_name="recurring_charges",
-        null=True,
     )
     charge_timing = models.PositiveSmallIntegerField(
         choices=ChargeTimingType.choices, default=ChargeTimingType.IN_ADVANCE
@@ -2683,9 +2753,15 @@ class SubscriptionRecord(models.Model):
         subscription_filters=None,
         is_new=True,
         quantity=1,
+        dynamic_fixed_charges_initial_units=None,
     ):
         from metering_billing.invoice import generate_invoice
 
+        if dynamic_fixed_charges_initial_units is None:
+            dynamic_fixed_charges_initial_units = []
+        dynamic_fixed_charges_initial_units = {
+            d["metric"]: d["units"] for d in dynamic_fixed_charges_initial_units
+        }
         assert (
             billing_plan.addon_spec is None
         ), "Cannot create a base subscription record with an addon plan"
@@ -2700,7 +2776,11 @@ class SubscriptionRecord(models.Model):
             quantity=quantity,
         )
         for component in sr.billing_plan.plan_components.all():
-            sr._create_component_billing_records(component)
+            metric = component.metric
+            kwargs = {}
+            if metric in dynamic_fixed_charges_initial_units:
+                kwargs["initial_units"] = dynamic_fixed_charges_initial_units[metric]
+            sr._create_component_billing_records(component, **kwargs)
         for recurring_charge in sr.billing_plan.recurring_charges.all():
             sr._create_recurring_charge_billing_records(recurring_charge)
         generate_invoice(sr)
@@ -2738,7 +2818,14 @@ class SubscriptionRecord(models.Model):
         generate_invoice(sr)
         return sr
 
-    def _create_component_billing_records(self, component, override_start_date=None):
+    def _create_component_billing_records(
+        self,
+        component,
+        override_start_date=None,
+        initial_units=None,
+        ignore_prepaid=False,
+    ):
+        prepaid_charge = component.fixed_charge
         invoicing_dates = component.get_component_invoicing_dates(
             self, override_start_date
         )
@@ -2746,12 +2833,15 @@ class SubscriptionRecord(models.Model):
         i = 0
         brs = []
         for start_date, end_date in reset_ranges:
-            br_invoicing_dates = []
+            br_invoicing_dates = set()
             for j in range(i, len(invoicing_dates)):
                 if invoicing_dates[j] > end_date:
                     break
-                br_invoicing_dates.append(invoicing_dates[j])
-            br_invoicing_dates = sorted(set(br_invoicing_dates).union({end_date}))
+                br_invoicing_dates.add(invoicing_dates[j])
+            br_invoicing_dates = br_invoicing_dates.union({end_date})
+            if prepaid_charge and not ignore_prepaid:
+                br_invoicing_dates = br_invoicing_dates.union({start_date})
+            br_invoicing_dates = sorted(list(br_invoicing_dates))
             i += len(br_invoicing_dates)
             br = BillingRecord.objects.create(
                 organization=self.organization,
@@ -2762,6 +2852,23 @@ class SubscriptionRecord(models.Model):
                 invoicing_dates=br_invoicing_dates,
             )
             brs.append(br)
+            if prepaid_charge and not ignore_prepaid:
+                if initial_units is None:
+                    units = prepaid_charge.units
+                else:
+                    units = initial_units
+                if units is None:
+                    raise PrepaymentEngineFailure(
+                        "No units specified for prepayment. This is usually an input error but may possibly be caused by inconsistent state in the backend."
+                    )
+                ComponentChargeRecord.objects.create(
+                    billing_record=br,
+                    component_charge=prepaid_charge,
+                    component=component,
+                    start_date=start_date,
+                    end_date=end_date,
+                    units=units,
+                )
         return brs
 
     def _create_recurring_charge_billing_records(self, recurring_charge):
@@ -2855,7 +2962,7 @@ class SubscriptionRecord(models.Model):
             filters_dict[filter.property_name] = filter.comparison_value[0]
         return filters_dict
 
-    def amount_already_invoiced(self):
+    def amt_already_invoiced(self):
         billed_invoices = self.line_items.filter(
             ~Q(invoice__payment_status=Invoice.PaymentStatus.VOIDED)
             & ~Q(invoice__payment_status=Invoice.PaymentStatus.DRAFT),
@@ -2965,9 +3072,20 @@ class SubscriptionRecord(models.Model):
             return False
         return True
 
-    def switch_plan(self, new_version, transfer_usage=True, invoice_now=True):
+    def switch_plan(
+        self,
+        new_version,
+        transfer_usage=True,
+        invoice_now=True,
+        dynamic_fixed_charges_initial_units=None,
+    ):
         from metering_billing.invoice import generate_invoice
 
+        if dynamic_fixed_charges_initial_units is None:
+            dynamic_fixed_charges_initial_units = []
+        dynamic_fixed_charges_initial_units = {
+            d["metric"]: d["units"] for d in dynamic_fixed_charges_initial_units
+        }
         # when switching a plan, there's a few things we need to take into account:
         # 1. flat fees dont transfer. Just end them.
         # 2. what does it mean for usage to transfer? Does it just mean the billing records for the old plan are cancelled and new ones are created for the new plan with a start date the same as previously? In the case we used to charge for x but no longer do, then perhaps in that case we do charge? If we weren;t doing the whole reset frequency thing anymore it would be awesome because we could just switch which plan component it points at and have the already billed for be a part of that.
@@ -3020,7 +3138,9 @@ class SubscriptionRecord(models.Model):
                             new_version_metrics_map[metric]
                         )
                         new_billing_records = sr._create_component_billing_records(
-                            component, override_start_date=billing_record.start_date
+                            component,
+                            override_start_date=billing_record.start_date,
+                            ignore_prepaid=True,
                         )
                         override_billing_record = new_billing_records[0]
                         # heres the surgery... open to improvements... this allows us to keep
@@ -3043,6 +3163,22 @@ class SubscriptionRecord(models.Model):
                             override_billing_record.fully_billed
                         )
                         billing_record.save()
+                        charge_records = (
+                            billing_record.component_charge_records.all().order_by(
+                                "start_date"
+                            )
+                        )
+                        for k, component_charge_record in enumerate(charge_records):
+                            new_component = override_billing_record.component
+                            component_charge_record.component = new_component
+                            component_charge_record.component_charge = (
+                                new_component.charges.all().first()
+                            )
+                            if k == len(charge_records) - 1:
+                                component_charge_record.end_date = (
+                                    billing_record.end_date
+                                )
+                            component_charge_record.save()
                         override_billing_record.delete()
                 else:
                     # if the metric is not in the new plan, we cancel the billing record
@@ -3050,7 +3186,11 @@ class SubscriptionRecord(models.Model):
                         billing_record, now, invoice_now=invoice_now
                     )
         for pc in pcs_to_create_charges_for:
-            sr._create_component_billing_records(pc)
+            metric = pc.billable_metric
+            kwargs = {}
+            if metric in dynamic_fixed_charges_initial_units:
+                kwargs["initial_units"] = dynamic_fixed_charges_initial_units[metric]
+            sr._create_component_billing_records(pc, **kwargs)
         self.end_date = now
         self.auto_renew = False
         self.save()
@@ -3175,7 +3315,12 @@ class BillingRecord(models.Model):
         assert (
             self.component is not None
         ), "Can't call get_usage_and_revenue for a recurring charge."
-        plan_component_summary = self.component.calculate_total_revenue(self)
+        most_recent_prepaid_units = self.component_charge_records.order_by(
+            "-start_date"
+        ).first()
+        plan_component_summary = self.component.calculate_total_revenue(
+            self, prepaid_units=most_recent_prepaid_units
+        )
         return plan_component_summary
 
     def calculate_recurring_charge_due(self, proration_end_date):
@@ -3262,11 +3407,27 @@ class BillingRecord(models.Model):
                 if period in rev_per_day:
                     rev_per_day[period] += revenue
         return rev_per_day
+    
+    def prepaid_already_invoiced(self):
+        return self.line_items.filter(
+                chargeable_item_type=CHARGEABLE_ITEM_TYPE.PREPAID_USAGE_CHARGE
+            ).aggregate(Sum("subtotal"))["subtotal__sum"] or Decimal(0.0)
 
-    def amount_already_invoiced(self):
-        return self.line_items.aggregate(Sum("subtotal"))["subtotal__sum"] or Decimal(
-            0.0
-        )
+    def amt_already_invoiced(self):
+        if self.recurring_charge:
+            return self.line_items.filter(
+                chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE
+            ).aggregate(Sum("subtotal"))["subtotal__sum"] or Decimal(0.0)
+        else:
+            return self.line_items.filter(
+                chargeable_item_type=CHARGEABLE_ITEM_TYPE.USAGE_CHARGE
+            ).aggregate(Sum("subtotal"))["subtotal__sum"] or Decimal(0.0)
+    
+    def qty_already_invoiced(self):
+        assert self.recurring_charge is None, "This is a recurring charge billing record, cannot use this function."
+        return self.line_items.filter(
+                chargeable_item_type=CHARGEABLE_ITEM_TYPE.USAGE_CHARGE
+            ).aggregate(Sum("quantity"))["quantity__sum"] or Decimal(0.0)
 
     def cancel_billing_record(
         self, cancel_date=None, change_invoice_date_to_cancel_date=True
@@ -3286,6 +3447,65 @@ class BillingRecord(models.Model):
             # the second thing this means is that the next invoicing date will be the cancel date
             self.next_invoicing_date = cancel_date
         self.save()
+    
+    def calculate_prepay_usage_revenue(self, component_charge_record):
+        # the main consideration here is 1. how to handle proration and 2. how much has been invoiced already
+        # 1. how to handle proration // how much is actually owed
+        component = component_charge_record.component
+        component_charge = component_charge_record.component_charge
+        if component_charge.charge_behavior == ComponentFixedCharge.ChargeBehavior.PRORATE:
+            total_amt = Decimal(0.0)
+            for component_charge_record in self.component_charge_records.all():
+                total_microseconds = (component_charge.end_date-component_charge.start_date).total_seconds()*10**6
+                unadjusted_microseconds = component_charge_record.billing_record.unadjusted_duration_microseconds
+                full_amt_due = component.tier_rating_function(component_charge_record.units)
+                total_amt += full_amt_due * total_microseconds / unadjusted_microseconds
+        else:
+            total_amt = component.tier_rating_function(component_charge_record.units)
+        # 2. how much has been invoiced already
+        amt_already_invoiced = self.prepaid_already_invoiced()
+        # 3. how much is left to invoice
+        amt_left_to_invoice = total_amt - amt_already_invoiced
+        return amt_left_to_invoice
+
+class ComponentChargeRecord(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="component_charge_records"
+    )
+    billing_record = models.ForeignKey(
+        BillingRecord,
+        on_delete=models.CASCADE,
+        related_name="component_charge_records",
+    )
+    component_charge = models.ForeignKey(
+        ComponentFixedCharge,
+        on_delete=models.CASCADE,
+        related_name="component_charge_records",
+    )
+    component = models.ForeignKey(
+        PlanComponent, on_delete=models.CASCADE, related_name="component_charge_records"
+    )
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField()
+    units = models.DecimalField(
+        max_digits=20, decimal_places=10, validators=[MinValueValidator(Decimal(0))]
+    )
+    fully_billed = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs):
+        assert (
+            self.component == self.component_charge.component
+        ), "Component must match component charge"
+        assert (
+            self.billing_record.component == self.component
+        ), "Component must match billing record"
+        assert (
+            self.billing_record.start_date
+            <= self.start_date
+            <= self.end_date
+            <= self.billing_record.end_date
+        ), "Start and end dates must be within the billing record"
+        super().save(*args, **kwargs)
 
 
 class Backtest(models.Model):

@@ -7,7 +7,6 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from django.db.models.query import QuerySet
-
 from metering_billing.kafka.producer import Producer
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.taxes import get_lotus_tax_rates, get_taxjar_tax_rates
@@ -185,8 +184,8 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice, draft)
             relative_end_date = billing_record.next_invoicing_date
         flat_fee_due = billing_record.calculate_recurring_charge_due(relative_end_date)
         # we check how much has already been billed
-        amt_already_billed = billing_record.amount_already_invoiced()
-        if abs(amt_already_billed - flat_fee_due) < Decimal("0.01"):
+        amt_already_invoiced = billing_record.amt_already_invoiced()
+        if abs(amt_already_invoiced - flat_fee_due) < Decimal("0.01"):
             pass
         else:
             billing_plan = subscription_record.billing_plan
@@ -224,13 +223,13 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice, draft)
                     organization=subscription_record.organization,
                 )
             # to make the accounting add up, we need to subtract stuff
-            if amt_already_billed > 0:
+            if amt_already_invoiced > 0:
                 InvoiceLineItem.objects.create(
                     name=f"{billing_plan_name} Flat Fee Already Invoiced",
                     start_date=invoice.issue_date,
                     end_date=invoice.issue_date,
                     quantity=qty if qty > 1 else None,
-                    subtotal=-amt_already_billed,
+                    subtotal=-amt_already_invoiced,
                     billing_type=billing_type,
                     chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE,
                     invoice=invoice,
@@ -251,6 +250,27 @@ def calculate_subscription_record_usage_fees(subscription_record, invoice, draft
     # only calculate this for parent plans! addons should never calculate
     if subscription_record.invoice_usage_charges:
         for br in subscription_record.billing_records.filter(component__isnull=False):
+            for component_charge_record in br.component_charge_records.filter(
+                fully_billed=False
+            ):
+                amt_to_bill = br.calculate_prepay_usage_revenue(component_charge_record)
+                InvoiceLineItem.objects.create(
+                    name=str(component_charge_record),
+                    start_date=component_charge_record.start_date,
+                    end_date=component_charge_record.end_date,
+                    quantity=component_charge_record.units,
+                    subtotal=amt_to_bill,
+                    billing_type=INVOICE_CHARGE_TIMING_TYPE.IN_ADVANCE,
+                    chargeable_item_type=CHARGEABLE_ITEM_TYPE.PREPAID_USAGE_CHARGE,
+                    invoice=invoice,
+                    associated_subscription_record=subscription_record,
+                    associated_billing_record=br,
+                    associated_plan_version=billing_plan,
+                    organization=subscription_record.organization,
+                )
+                if not draft:
+                    component_charge_record.fully_billed = True
+                    component_charge_record.save()
             if (
                 br.next_invoicing_date > invoice.issue_date and not draft
             ) or br.fully_billed:
@@ -258,12 +278,22 @@ def calculate_subscription_record_usage_fees(subscription_record, invoice, draft
             usg_rev = br.get_usage_and_revenue()
             qty = usg_rev["usage_qty"]
             rev = usg_rev["revenue"]
+            amt_already_invoiced = br.amt_already_invoiced()
+            qty_already_invoiced = br.qty_already_invoiced()
+            net_qty = qty or 0 - qty_already_invoiced
+            net_rev = rev or 0 - amt_already_invoiced
+            assert (
+                net_qty >= 0
+            ), "net qty should be >= 0, billable quantity should never go down"
+            assert (
+                net_rev >= 0
+            ), "net rev should be >= 0, billable revenue should never go down"
             InvoiceLineItem.objects.create(
                 name=str(br.component.billable_metric.billable_metric_name),
                 start_date=subscription_record.start_date,
                 end_date=subscription_record.end_date,
-                quantity=qty or 0,
-                subtotal=rev,
+                quantity=net_qty,
+                subtotal=net_rev,
                 billing_type=INVOICE_CHARGE_TIMING_TYPE.IN_ARREARS,
                 chargeable_item_type=CHARGEABLE_ITEM_TYPE.USAGE_CHARGE,
                 invoice=invoice,

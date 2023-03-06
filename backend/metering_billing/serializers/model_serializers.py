@@ -16,6 +16,7 @@ from metering_billing.models import (
     AddOnSpecification,
     Address,
     APIToken,
+    ComponentFixedCharge,
     Customer,
     ExternalPlanLink,
     Feature,
@@ -985,7 +986,41 @@ class PriceTierCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer)
         return PriceTier.objects.create(**validated_data)
 
 
-# PLAN COMPONENT
+class ComponentChargeCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
+    class Meta:
+        model = ComponentFixedCharge
+        fields = ("units", "charge_type", "charge_behavior")
+        extra_kwargs = {
+            "units": {"required": True, "read_only": True},
+            "charge_type": {"required": True, "read_only": True},
+            "charge_behavior": {"required": True, "read_only": True},
+        }
+
+    units = serializers.DecimalField(
+        max_digits=20,
+        decimal_places=10,
+        min_value=0,
+        allow_null=True,
+        help_text="The number of units to charge for. If the charge type is 'dynamic', this field should be null.",
+    )
+    charge_type = serializers.ChoiceField(
+        choices=ComponentFixedCharge.ChargeType.labels,
+    )
+    charge_behavior = serializers.ChoiceField(
+        choices=ComponentFixedCharge.ChargeBehavior.labels,
+    )
+
+    def validate(self, data):
+        data = super().validate(data)
+        data["charge_type"] = ComponentFixedCharge.get_charge_type_from_label(
+            data["charge_type"]
+        )
+        data["charge_behavior"] = ComponentFixedCharge.get_charge_behavior_from_label(
+            data["charge_behavior"]
+        )
+        return data
+
+
 class PlanComponentCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = PlanComponent
@@ -996,6 +1031,7 @@ class PlanComponentCreateSerializer(TimezoneFieldMixin, serializers.ModelSeriali
             "invoicing_interval_count",
             "reset_interval_unit",
             "reset_interval_count",
+            "prepaid_charge",
         )
         extra_kwargs = {
             "metric_id": {"required": True, "write_only": True},
@@ -1004,6 +1040,7 @@ class PlanComponentCreateSerializer(TimezoneFieldMixin, serializers.ModelSeriali
             "invoicing_interval_count": {"required": False},
             "reset_interval_unit": {"required": False},
             "reset_interval_count": {"required": False},
+            "prepaid_charge": {"required": False},
         }
 
     metric_id = SlugRelatedFieldWithOrganization(
@@ -1023,6 +1060,7 @@ class PlanComponentCreateSerializer(TimezoneFieldMixin, serializers.ModelSeriali
         required=False,
         allow_null=True,
     )
+    prepaid_charge = ComponentChargeCreateSerializer(required=False, allow_null=True)
 
     def validate(self, data):
         data = super().validate(data)
@@ -1050,6 +1088,7 @@ class PlanComponentCreateSerializer(TimezoneFieldMixin, serializers.ModelSeriali
 
     def create(self, validated_data):
         tiers = validated_data.pop("tiers")
+        prepaid_charge = validated_data.pop("prepaid_charge", None)
         pc = PlanComponent.objects.create(**validated_data)
         for tier in tiers:
             tier = {**tier, "organization": self.context["organization"]}
@@ -1057,6 +1096,13 @@ class PlanComponentCreateSerializer(TimezoneFieldMixin, serializers.ModelSeriali
             assert type(tier) is PriceTier
             tier.plan_component = pc
             tier.save()
+        if prepaid_charge:
+            prepaid_charge = {
+                **prepaid_charge,
+                "organization": self.context["organization"],
+                "component": pc,
+            }
+            ComponentChargeCreateSerializer(context=self.context).create(prepaid_charge)
         return pc
 
 
