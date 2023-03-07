@@ -8,7 +8,8 @@ import {
   Menu,
   Dropdown,
   Checkbox,
- DatePicker } from "antd";
+  DatePicker,
+} from "antd";
 import dayjs from "dayjs";
 import React, { useState } from "react";
 import { useQuery, useMutation, QueryClient } from "react-query";
@@ -47,12 +48,16 @@ export function DeveloperTab() {
   const [apiKeyExpire, setAPIKeyExpire] = useState<string>("");
   const [webhookSelected, setWebhookSelected] = useState<WebhookEndpoint>();
   const [apiKeySelected, setApiKeySelected] = useState<APIKeyType>();
+
+  // Webhook Selects
   const [isCustomerCreated, setIsCustomerCreated] = useState<boolean>(false);
   const [isInvoiceGenerated, setIsInvoiceGenerated] = useState<boolean>(false);
   const [isInvoicePaid, setIsInvoicePaid] = useState<boolean>(false);
-  const [isSubscriptionCreated, setIsSubscriptionCreated] = useState<boolean>(false);
+  const [isSubscriptionCreated, setIsSubscriptionCreated] =
+    useState<boolean>(false);
   const [isUsageAlertTriggered, setIsUsageAlertTriggered] =
     useState<boolean>(false);
+  const [isInvoicePastDue, setIsInvoicePastDue] = useState<boolean>(false);
   const closeModal = () => {
     setVisible(false);
     setApiKey("");
@@ -123,6 +128,7 @@ export function DeveloperTab() {
         setIsInvoicePaid(false);
         setIsSubscriptionCreated(false);
         setIsUsageAlertTriggered(false);
+        setIsInvoicePastDue(false);
         toast.success("Webhook URL added successfully");
         setVisibleWebhook(false);
         setWebhookSelected(undefined);
@@ -163,7 +169,14 @@ export function DeveloperTab() {
       return;
     }
 
-    if (!isCustomerCreated && !isInvoiceGenerated && !isInvoicePaid && !isSubscriptionCreated && !isUsageAlertTriggered) {
+    if (
+      !isCustomerCreated &&
+      !isInvoiceGenerated &&
+      !isInvoicePaid &&
+      !isSubscriptionCreated &&
+      !isUsageAlertTriggered &&
+      !isInvoicePastDue
+    ) {
       toast.error("Please select at-least one trigger");
       return;
     }
@@ -183,6 +196,9 @@ export function DeveloperTab() {
     }
     if (isUsageAlertTriggered) {
       triggers.push("usage_alert.triggered");
+    }
+    if (isInvoicePastDue) {
+      triggers.push("invoice.past_due");
     }
     const endpointPost: WebhookEndpointCreate = {
       name: webhookName,
@@ -287,7 +303,9 @@ export function DeveloperTab() {
               title: "Key",
               dataIndex: "prefix",
               key: "prefix",
-              render: (prefix: string) => <div className="font-menlo">{prefix}•••</div>,
+              render: (prefix: string) => (
+                <div className="font-menlo">{prefix}•••</div>
+              ),
             },
             {
               title: "Expiry Date",
@@ -298,7 +316,9 @@ export function DeveloperTab() {
               title: "Created At",
               dataIndex: "created",
               key: "created",
-              render: (created: string) => <div>{dayjs(created).format("DD MMM YYYY, hh:mm")}</div>,
+              render: (created: string) => (
+                <div>{dayjs(created).format("DD MMM YYYY, hh:mm")}</div>
+              ),
             },
             {
               key: "action",
@@ -367,14 +387,12 @@ export function DeveloperTab() {
               dataIndex: "triggers",
               key: "triggers",
               render: (triggers: object[]) => (
-                  <div>
-                    {triggers.map((trigger) => (
-                        <div>
-                          [ {trigger.trigger_name} ]
-                        </div>
-                      ))}
-                  </div>
-                ),
+                <div>
+                  {triggers.map((trigger) => (
+                    <div>[ {trigger.trigger_name} ]</div>
+                  ))}
+                </div>
+              ),
             },
             {
               key: "action",
@@ -418,13 +436,13 @@ export function DeveloperTab() {
           <Input
             value={webhookName}
             onChange={(e) => setWebhookName(e.target.value)}
-           />
+          />
           <p className="text-lg font-main">Endpoint URL:</p>
           <Input
             addonBefore="https://"
             value={webhookUrl}
             onChange={(e) => setWebhookUrl(e.target.value)}
-           />
+          />
           <p className="text-lg font-main">Events Subscribed To:</p>
           <div className="grid grid-cols-2">
             <Checkbox
@@ -447,6 +465,13 @@ export function DeveloperTab() {
               value={isInvoicePaid}
             >
               <p className="text-lg font-main">invoice.paid</p>
+            </Checkbox>
+            <Checkbox
+              style={{ marginLeft: "0px" }}
+              onChange={(e) => setIsInvoicePastDue(e.target.checked)}
+              value={isInvoicePastDue}
+            >
+              <p className="text-lg font-main">invoice.past_due</p>
             </Checkbox>
             <Checkbox
               style={{ marginLeft: "0px" }}
@@ -488,7 +513,7 @@ export function DeveloperTab() {
             value={apiKeyName}
             className="mt-0"
             onChange={(e) => setAPIKeyName(e.target.value)}
-           />
+          />
         </div>
         <div className="flex flex-col mt-10 space-y-8">
           <span className="text-lg font-main">Expiry Date + Time:</span>
