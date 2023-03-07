@@ -209,15 +209,15 @@ const QuickstartPage: FC = () => {
             subText: "",
             complete: false,
             icon: "ri-user-add-line",
-            time: "2 min",
+            time: "3 min",
             link: `/settings/team`,
           })}
           {quickStartItem({
             text: "Create a Metric",
-            subText: "",
+            subText: "Use a template provide for the quickest start.",
             complete: false,
             icon: "ri-user-add-line",
-            time: "2 min",
+            time: "1 min",
             link: `/settings/team`,
           })}
           {quickStartItem({
