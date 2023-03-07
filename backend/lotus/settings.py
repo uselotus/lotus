@@ -707,6 +707,14 @@ if SVIX_CONNECTOR is not None:
     try:
         svix = SVIX_CONNECTOR
         list_response_event_type_out = [x.name for x in svix.event_type.list().data]
+        if "customer.created" not in list_response_event_type_out:
+            event_type_out = svix.event_type.create(
+                EventTypeIn(
+                    description="Customer is created",
+                    archived=False,
+                    name="customer.created",
+                )
+            )
         if "invoice.created" not in list_response_event_type_out:
             event_type_out = svix.event_type.create(
                 EventTypeIn(
@@ -723,28 +731,28 @@ if SVIX_CONNECTOR is not None:
                     name="invoice.paid",
                 )
             )
-        if "usage_alert.triggered" not in list_response_event_type_out:
-            event_type_out = svix.event_type.create(
-                EventTypeIn(
-                    description="Usage alert is triggered",
-                    archived=False,
-                    name="usage_alert.triggered",
-                )
-            )
-        if "customer.created" not in list_response_event_type_out:
-            event_type_out = svix.event_type.create(
-                EventTypeIn(
-                    description="Customer is created",
-                    archived=False,
-                    name="customer.created",
-                )
-            )
         if "invoice.past_due" not in list_response_event_type_out:
             event_type_out = svix.event_type.create(
                 EventTypeIn(
                     description="Invoice is past due",
                     archived=False,
                     name="invoice.past_due",
+                )
+            )
+        if "subscription.created" not in list_response_event_type_out:
+            event_type_out = svix.event_type.create(
+                EventTypeIn(
+                    description="Subscription is created",
+                    archived=False,
+                    name="subscription.created",
+                )
+            )
+        if "usage_alert.triggered" not in list_response_event_type_out:
+            event_type_out = svix.event_type.create(
+                EventTypeIn(
+                    description="Usage alert is triggered",
+                    archived=False,
+                    name="usage_alert.triggered",
                 )
             )
     except Exception:
