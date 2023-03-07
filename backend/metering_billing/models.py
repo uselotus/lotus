@@ -1480,6 +1480,62 @@ class PriceTier(models.Model):
         return revenue
 
 
+class ComponentFixedCharge(models.Model):
+    class ChargeType(models.IntegerChoices):
+        PREDEFINED = (1, _("predefined"))
+        DYNAMIC = (2, _("dynamic"))
+
+    class ChargeBehavior(models.IntegerChoices):
+        PRORATE = (1, _("prorate"))
+        FULL = (2, _("full"))
+
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="component_charges"
+    )
+    units = models.DecimalField(
+        decimal_places=10,
+        max_digits=20,
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(0)],
+    )
+    charge_type = models.PositiveSmallIntegerField(
+        choices=ChargeType.choices, default=ChargeType.PREDEFINED
+    )
+    charge_behavior = models.PositiveSmallIntegerField(
+        choices=ChargeBehavior.choices, default=ChargeBehavior.PRORATE
+    )
+
+    def __str__(self):
+        return f"Fixed Charge for {self.component}"
+
+    class Meta:
+        constraints = [
+            # check that if the charge type is predefined, units must be set, and vice versa
+            models.CheckConstraint(
+                check=(Q(charge_type=1) & Q(units__isnull=False))  # predefined
+                | (Q(charge_type=2) & Q(units__isnull=True)),  # dynamic
+                name="charge_type_units_check",
+            ),
+        ]
+
+    @staticmethod
+    def get_charge_type_from_label(label):
+        mapping = {
+            ComponentFixedCharge.ChargeType.PREDEFINED.label: ComponentFixedCharge.ChargeType.PREDEFINED.value,
+            ComponentFixedCharge.ChargeType.DYNAMIC.label: ComponentFixedCharge.ChargeType.DYNAMIC.value,
+        }
+        return mapping.get(label, label)
+
+    @staticmethod
+    def get_charge_behavior_from_label(label):
+        mapping = {
+            ComponentFixedCharge.ChargeBehavior.PRORATE.label: ComponentFixedCharge.ChargeBehavior.PRORATE.value,
+            ComponentFixedCharge.ChargeBehavior.FULL.label: ComponentFixedCharge.ChargeBehavior.FULL.value,
+        }
+        return mapping.get(label, label)
+
+
 class PlanComponent(models.Model):
     class IntervalLengthType(models.IntegerChoices):
         DAY = (1, "day")
@@ -1522,6 +1578,12 @@ class PlanComponent(models.Model):
         choices=IntervalLengthType.choices, null=True, blank=True
     )
     reset_interval_count = models.PositiveSmallIntegerField(null=True, blank=True)
+    fixed_charge = models.OneToOneField(
+        ComponentFixedCharge,
+        on_delete=models.SET_NULL,
+        related_name="component",
+        null=True,
+    )
 
     def __str__(self):
         return str(self.billable_metric)
@@ -1605,10 +1667,10 @@ class PlanComponent(models.Model):
 
         # Construct non-overlapping date ranges
         reset_ranges = []
-        for i in range(len(reset_dates)):
+        for i in range(len(reset_dates) - 1):
             start = reset_dates[i]
             end = reset_dates[i + 1] - datetime.timedelta(microseconds=1)
-            if i == len(reset_dates) - 1:
+            if reset_dates[i + 1] == end_date:
                 end = end_date
             reset_ranges.append((start, end))
 
@@ -1687,69 +1749,6 @@ class PlanComponent(models.Model):
                 results[date]["revenue"] += date_revenue
                 results[date]["usage_qty"] += usage_qty
         return results
-
-
-class ComponentFixedCharge(models.Model):
-    class ChargeType(models.IntegerChoices):
-        PREDEFINED = (1, _("predefined"))
-        DYNAMIC = (2, _("dynamic"))
-
-    class ChargeBehavior(models.IntegerChoices):
-        PRORATE = (1, _("prorate"))
-        FULL = (2, _("full"))
-
-    component = models.OneToOneField(
-        PlanComponent, on_delete=models.CASCADE, related_name="fixed_charge"
-    )
-    organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="component_charges"
-    )
-    units = models.DecimalField(
-        decimal_places=10,
-        max_digits=20,
-        blank=True,
-        null=True,
-        validators=[MinValueValidator(0)],
-    )
-    charge_type = models.PositiveSmallIntegerField(
-        choices=ChargeType.choices, default=ChargeType.PREDEFINED
-    )
-    charge_behavior = models.PositiveSmallIntegerField(
-        choices=ChargeBehavior.choices, default=ChargeBehavior.PRORATE
-    )
-
-    def __str__(self):
-        return f"Fixed Charge for {self.component}"
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["plan_component", "organization"],
-                name="unique_component_charge",
-            ),
-            # check that if the charge type is predefined, units must be set, and vice versa
-            models.CheckConstraint(
-                check=(Q(charge_type=1) & Q(units__isnull=False))  # predefined
-                | (Q(charge_type=2) & Q(units__isnull=True)),  # dynamic
-                name="charge_type_units_check",
-            ),
-        ]
-
-    @staticmethod
-    def get_charge_type_from_label(label):
-        mapping = {
-            ComponentFixedCharge.ChargeType.PREDEFINED.label: ComponentFixedCharge.ChargeType.PREDEFINED.value,
-            ComponentFixedCharge.ChargeType.DYNAMIC.label: ComponentFixedCharge.ChargeType.DYNAMIC.value,
-        }
-        return mapping.get(label, label)
-
-    @staticmethod
-    def get_charge_behavior_from_label(label):
-        mapping = {
-            ComponentFixedCharge.ChargeBehavior.PRORATE.label: ComponentFixedCharge.ChargeBehavior.PRORATE.value,
-            ComponentFixedCharge.ChargeBehavior.FULL.label: ComponentFixedCharge.ChargeBehavior.FULL.value,
-        }
-        return mapping.get(label, label)
 
 
 class Feature(models.Model):
@@ -2152,12 +2151,12 @@ class RecurringCharge(models.Model):
 
         # Construct non-overlapping date ranges
         reset_ranges = []
-        for i in range(len(reset_dates)):
+        for i in range(len(reset_dates) - 1):
             if sr_start_date > reset_dates[i]:
                 continue
             start = max(reset_dates[i], sr_start_date)
             end = reset_dates[i + 1] - datetime.timedelta(microseconds=1)
-            if i == len(reset_dates) - 1:
+            if reset_dates[i + 1] == sr_end_date:
                 end = sr_end_date
             unadjusted_duration_microseconds = (
                 (reset_dates[i] + interval_delta) - reset_dates[i]
@@ -2776,7 +2775,7 @@ class SubscriptionRecord(models.Model):
             quantity=quantity,
         )
         for component in sr.billing_plan.plan_components.all():
-            metric = component.metric
+            metric = component.billable_metric
             kwargs = {}
             if metric in dynamic_fixed_charges_initial_units:
                 kwargs["initial_units"] = dynamic_fixed_charges_initial_units[metric]

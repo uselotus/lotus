@@ -4,8 +4,13 @@ from datetime import timedelta
 
 import pytest
 from django.urls import reverse
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
+    BillingRecord,
     Event,
     Invoice,
     Metric,
@@ -25,9 +30,6 @@ from metering_billing.utils.enums import (
     PLAN_DURATION,
     USAGE_BEHAVIOR,
 )
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -126,7 +128,6 @@ def subscription_test_common_setup(
                 org, billing_plan, customer
             )
         payload = {
-            "name": "test_subscription",
             "start_date": now_utc() - timedelta(days=5),
             "customer_id": customer.customer_id,
             "version_id": billing_plan.version_id,
@@ -669,3 +670,234 @@ class TestRegressions:
             setup_dict["org"].update_subscription_filter_settings(["email"])
         except Exception as e:
             assert False, e
+
+
+@pytest.mark.django_db(transaction=True)
+class TestResetAndInvoicingIntervals:
+    def test_monthly_plan_with_weekly_invoicing_creates_correct_number_of_billing_records_for_pcs(
+        self,
+        subscription_test_common_setup,
+    ):
+        num_subscriptions = 0
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        customer = setup_dict["customer"]
+        PlanVersion.objects.all().delete()
+        billing_plan = baker.make(
+            PlanVersion,
+            organization=setup_dict["org"],
+            plan=setup_dict["plan"],
+            currency=PricingUnit.objects.get(
+                organization=setup_dict["org"], code="USD"
+            ),
+        )
+        for i, (fmu, cpb, mupb) in enumerate(
+            zip([50, 0, 1], [5, 0.05, 2], [100, 1, 1])
+        ):
+            pc = PlanComponent.objects.create(
+                plan_version=billing_plan,
+                billable_metric=setup_dict["metrics"][i],
+                invoicing_interval_unit=PlanComponent.IntervalLengthType.WEEK,
+                invoicing_interval_count=1,
+            )
+            start = 0
+            if fmu > 0:
+                PriceTier.objects.create(
+                    plan_component=pc,
+                    type=PriceTier.PriceTierType.FREE,
+                    range_start=0,
+                    range_end=fmu,
+                )
+                start = fmu
+            PriceTier.objects.create(
+                plan_component=pc,
+                type=PriceTier.PriceTierType.PER_UNIT,
+                range_start=start,
+                cost_per_batch=cpb,
+                metric_units_per_batch=mupb,
+            )
+        payload = {
+            "start_date": now_utc() - timedelta(days=5),
+            "customer_id": customer.customer_id,
+            "version_id": billing_plan.version_id,
+        }
+        sr_before = SubscriptionRecord.objects.all().count()
+        br_before = BillingRecord.objects.all().count()
+        response = setup_dict["client"].post(
+            reverse("subscription-list"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        sr_after = SubscriptionRecord.objects.all().count()
+        br_after = BillingRecord.objects.all().count()
+        assert response.status_code == status.HTTP_201_CREATED
+        assert sr_after == sr_before + 1
+        assert br_after == br_before + 3  # 3 billing records for 3 plan components
+        new_br = BillingRecord.objects.all().order_by("-id").first()
+        # new billign record should have a billing date at 7, 14, 21, 28 days from start date, plus end date, so 5
+        assert len(new_br.invoicing_dates) == 5
+        assert (
+            new_br.next_invoicing_date == new_br.invoicing_dates[0]
+        )  # no billing dates have passed
+        assert new_br.fully_billed is False
+
+    def test_monthly_plan_with_daily_reset_creates_correct_amount_of_billing_records_for_pcs(
+        self,
+        subscription_test_common_setup,
+    ):
+        num_subscriptions = 0
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        customer = setup_dict["customer"]
+        PlanVersion.objects.all().delete()
+        billing_plan = baker.make(
+            PlanVersion,
+            organization=setup_dict["org"],
+            plan=setup_dict["plan"],
+            currency=PricingUnit.objects.get(
+                organization=setup_dict["org"], code="USD"
+            ),
+        )
+        for i, (fmu, cpb, mupb) in enumerate(
+            zip([50, 0, 1], [5, 0.05, 2], [100, 1, 1])
+        ):
+            pc = PlanComponent.objects.create(
+                plan_version=billing_plan,
+                billable_metric=setup_dict["metrics"][i],
+                reset_interval_unit=PlanComponent.IntervalLengthType.DAY,
+                reset_interval_count=1,
+            )
+            start = 0
+            if fmu > 0:
+                PriceTier.objects.create(
+                    plan_component=pc,
+                    type=PriceTier.PriceTierType.FREE,
+                    range_start=0,
+                    range_end=fmu,
+                )
+                start = fmu
+            PriceTier.objects.create(
+                plan_component=pc,
+                type=PriceTier.PriceTierType.PER_UNIT,
+                range_start=start,
+                cost_per_batch=cpb,
+                metric_units_per_batch=mupb,
+            )
+        payload = {
+            "start_date": now_utc() - timedelta(days=5),
+            "customer_id": customer.customer_id,
+            "version_id": billing_plan.version_id,
+        }
+        sr_before = SubscriptionRecord.objects.all()
+        sr_before_ct = len(sr_before)
+        br_before = BillingRecord.objects.all()
+        br_before_ct = len(br_before)
+        response = setup_dict["client"].post(
+            reverse("subscription-list"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        sr_after = SubscriptionRecord.objects.all()
+        br_after = BillingRecord.objects.all()
+        assert response.status_code == status.HTTP_201_CREATED
+        assert sr_after.count() == sr_before_ct + 1
+        assert (
+            br_before_ct + 3 * 28 <= br_after.count() <= br_before_ct + 3 * 31
+        )  # 3 billing records for 3 plan components, 28-31 days
+        new_br = br_after.exclude(id__in=br_before)
+        # new billign record should have a billing date at 7, 14, 21, 28 days from start date, plus end date, so 5
+        for br in new_br:
+            assert len(br.invoicing_dates) == 1
+            assert br.next_invoicing_date == br.invoicing_dates[0]
+            assert br.fully_billed is False
+            assert br.unadjusted_duration_microseconds == 86400000000 or (
+                br.start_date == br.subscription.start_date
+                or br.end_date == br.subscription.end_date
+            )
+
+    def test_monthly_plan_with_mixed_reset_and_invoicing_generates_correct_brs_for_pcs(
+        self,
+        subscription_test_common_setup,
+    ):
+        num_subscriptions = 0
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        customer = setup_dict["customer"]
+        PlanVersion.objects.all().delete()
+        billing_plan = baker.make(
+            PlanVersion,
+            organization=setup_dict["org"],
+            plan=setup_dict["plan"],
+            currency=PricingUnit.objects.get(
+                organization=setup_dict["org"], code="USD"
+            ),
+        )
+        for i, (fmu, cpb, mupb) in enumerate(
+            zip([50, 0, 1], [5, 0.05, 2], [100, 1, 1])
+        ):
+            pc = PlanComponent.objects.create(
+                plan_version=billing_plan,
+                billable_metric=setup_dict["metrics"][i],
+                reset_interval_unit=PlanComponent.IntervalLengthType.WEEK,
+                reset_interval_count=1,
+                invoicing_interval_unit=PlanComponent.IntervalLengthType.DAY,
+                invoicing_interval_count=2,
+            )
+            start = 0
+            if fmu > 0:
+                PriceTier.objects.create(
+                    plan_component=pc,
+                    type=PriceTier.PriceTierType.FREE,
+                    range_start=0,
+                    range_end=fmu,
+                )
+                start = fmu
+            PriceTier.objects.create(
+                plan_component=pc,
+                type=PriceTier.PriceTierType.PER_UNIT,
+                range_start=start,
+                cost_per_batch=cpb,
+                metric_units_per_batch=mupb,
+            )
+        payload = {
+            "start_date": now_utc() - timedelta(days=5),
+            "customer_id": customer.customer_id,
+            "version_id": billing_plan.version_id,
+        }
+        sr_before = SubscriptionRecord.objects.all()
+        sr_before_ct = len(sr_before)
+        br_before = BillingRecord.objects.all()
+        br_before_ct = len(br_before)
+        response = setup_dict["client"].post(
+            reverse("subscription-list"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        sr_after = SubscriptionRecord.objects.all()
+        br_after = BillingRecord.objects.all()
+        assert response.status_code == status.HTTP_201_CREATED
+        assert sr_after.count() == sr_before_ct + 1
+        assert (
+            br_before_ct + 3 * 4 <= br_after.count() <= br_before_ct + 3 * 5
+        )  # 3 billing records for 3 plan components, 4-5 weeks
+        new_br = br_after.exclude(id__in=br_before)
+        # new billign record should have a billing date at 7, 14, 21, 28 days from start date, plus end date, so 5
+        for br in new_br:
+            assert (
+                3 <= len(br.invoicing_dates) <= 4
+                or br.end_date == br.subscription.end_date
+            )
+            assert br.next_invoicing_date == br.invoicing_dates[0]
+            assert br.fully_billed is False
+            assert br.unadjusted_duration_microseconds == 7 * 86400000000 or (
+                br.end_date == br.subscription.end_date
+            )

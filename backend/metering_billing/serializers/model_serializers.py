@@ -1129,7 +1129,7 @@ class PlanVersionUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
                     "active_from must be before active_to"
                 )
         instance.active_from = new_nab
-        instance.active_to_naa
+        instance.active_to = new_naa
         instance.localized_name = validated_data.get(
             "localized_name", instance.localized_name
         )
@@ -1611,7 +1611,7 @@ class PlanUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
                     "active_from must be before active_to"
                 )
         instance.active_from = new_nab
-        instance.active_to_naa
+        instance.active_to = new_naa
         instance.plan_name = validated_data.get("plan_name", instance.plan_name)
         instance.plan_description = validated_data.get(
             "plan_description", instance.plan_description

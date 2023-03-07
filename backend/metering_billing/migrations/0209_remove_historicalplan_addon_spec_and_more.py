@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name="historicalplan",
-            name="active_to
+            name="active_to",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
@@ -33,7 +33,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name="plan",
-            name="active_to
+            name="active_to",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
@@ -45,7 +45,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name="planversion",
-            name="active_to
+            name="active_to",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(

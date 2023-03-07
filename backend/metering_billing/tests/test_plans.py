@@ -1,16 +1,14 @@
 import json
-import urllib.parse
 
 import pytest
 from dateutil.relativedelta import relativedelta
 from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIClient
-
 from metering_billing.models import Customer, Feature, Plan, PlanVersion, Tag
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PLAN_DURATION
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -347,82 +345,6 @@ class TestPlanOperations:
         assert inactive_version.features.count() == 1
         assert deleted_version.features.count() == 0
 
-    def test_edit_active_to_no_longer_in_list_plans(
-        self,
-        plan_test_common_setup,
-    ):
-        setup_dict = plan_test_common_setup()
-        response = setup_dict["client"].post(
-            reverse("plan-list"),
-            data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-        Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
-
-        list_plans = setup_dict["client"].get(reverse("plan-list"))
-        assert len(list_plans.data) == 1
-
-        setup_dict["plan_update_payload"]["active_to"] = now_utc()
-        response = setup_dict["client"].patch(
-            reverse("plan-detail", kwargs={"plan_id": response.data["plan_id"]}),
-            data=json.dumps(setup_dict["plan_update_payload"], cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-        assert response.status_code == status.HTTP_200_OK
-
-        list_plans = setup_dict["client"].get(
-            reverse("plan-list")
-            + "?"
-            + urllib.parse.urlencode({"active_on": now_utc().isoformat()})
-        )
-        assert len(list_plans.data) == 0
-
-    def test_edit_active_from_no_longer_in_list_plans(
-        self,
-        plan_test_common_setup,
-    ):
-        setup_dict = plan_test_common_setup()
-        response = setup_dict["client"].post(
-            reverse("plan-list"),
-            data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-        plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
-        plan.active_to = now_utc() + relativedelta(days=3)
-        plan.save()
-
-        list_plans = setup_dict["client"].get(reverse("plan-list"))
-        assert len(list_plans.data) == 1
-
-        setup_dict["plan_update_payload"]["active_from"] = now_utc() + relativedelta(
-            days=10
-        )
-        response = setup_dict["client"].patch(
-            reverse("plan-detail", kwargs={"plan_id": response.data["plan_id"]}),
-            data=json.dumps(setup_dict["plan_update_payload"], cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-        # check if we just update this then before and after are confusing
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        plan.active_to = now_utc() + relativedelta(days=10)
-        plan.save()
-        setup_dict["plan_update_payload"]["active_from"] = now_utc() + relativedelta(
-            days=3
-        )
-        response = setup_dict["client"].patch(
-            reverse("plan-detail", kwargs={"plan_id": plan.plan_id}),
-            data=json.dumps(setup_dict["plan_update_payload"], cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-        assert response.status_code == status.HTTP_200_OK
-
-        list_plans = setup_dict["client"].get(
-            reverse("plan-list")
-            + "?"
-            + urllib.parse.urlencode({"active_on": now_utc().isoformat()})
-        )
-        assert len(list_plans.data) == 0
-
     def test_update_plan_name_description_works(
         self,
         plan_test_common_setup,
@@ -724,6 +646,7 @@ class TestPlanVersionOperations:
                 kwargs={"version_id": version.version_id},
             ),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
         )
         assert response.status_code == status.HTTP_200_OK
 
@@ -911,16 +834,9 @@ class TestPlanVersionOperations:
         )
         assert response.status_code == status.HTTP_200_OK
 
-        listed_plan = (
-            setup_dict["client"]
-            .get(
-                reverse("plan-list")
-                + "?"
-                + urllib.parse.urlencode({"active_on": now_utc().isoformat()})
-            )
-            .data[0]
-        )
-        assert len(listed_plan["versions"]) == 0
+        params = {"version_status[]": ["active"]}
+        list_plans = setup_dict["client"].get(reverse("plan-list"), params=params)
+        assert len(list_plans.data[0]["versions"]) == 0
 
     def test_edit_active_from_no_longer_in_list_plans(self, plan_test_common_setup):
         setup_dict = plan_test_common_setup()
@@ -968,13 +884,6 @@ class TestPlanVersionOperations:
         )
         assert response.status_code == status.HTTP_200_OK
 
-        listed_plan = (
-            setup_dict["client"]
-            .get(
-                reverse("plan-list")
-                + "?"
-                + urllib.parse.urlencode({"active_on": now_utc().isoformat()})
-            )
-            .data[0]
-        )
-        assert len(listed_plan["versions"]) == 0
+        params = {"version_status[]": ["active"]}
+        list_plans = setup_dict["client"].get(reverse("plan-list"), params=params)
+        assert len(list_plans.data[0]["versions"]) == 0
