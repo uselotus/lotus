@@ -129,7 +129,11 @@ from metering_billing.utils.enums import (
     USAGE_BILLING_BEHAVIOR,
     USAGE_BILLING_FREQUENCY,
 )
-from metering_billing.webhooks import customer_created_webhook, subscription_cancelled_webhook
+from metering_billing.webhooks import (
+    customer_created_webhook,
+    subscription_created_webhook,
+    subscription_cancelled_webhook,
+)
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import (
     action,
@@ -927,6 +931,7 @@ class SubscriptionViewSet(
 
         # now we can actually create the subscription record
         response = SubscriptionRecordSerializer(subscription_record).data
+        subscription_created_webhook(subscription_record, subscription_data=response)
         return Response(
             response,
             status=status.HTTP_201_CREATED,
@@ -1697,6 +1702,25 @@ class Ping(APIView):
                     organization.organization_id
                 ),
             },
+            status=status.HTTP_200_OK,
+        )
+
+
+class Healthcheck(APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="HealthcheckResponse",
+                fields={},
+            ),
+        },
+    )
+    def get(self, request, format=None):
+        return Response(
+            {},
             status=status.HTTP_200_OK,
         )
 

@@ -2,11 +2,19 @@ from api.serializers.model_serializers import (
     CustomerSerializer,
     InvoiceSerializer,
     LightweightSubscriptionRecordSerializer,
+    SubscriptionRecordSerializer,
     UsageAlertSerializer,
     SubscriptionRecordSerializer,
 )
 from metering_billing.utils.enums import WEBHOOK_TRIGGER_EVENTS
 from rest_framework import serializers
+
+
+class CustomerCreatedSerializer(serializers.Serializer):
+    payload = CustomerSerializer()
+    eventType = serializers.CharField(
+        default=WEBHOOK_TRIGGER_EVENTS.CUSTOMER_CREATED, read_only=True
+    )
 
 
 class InvoiceCreatedSerializer(serializers.Serializer):
@@ -27,6 +35,13 @@ class InvoicePastDueSerializer(serializers.Serializer):
     payload = InvoiceSerializer()
     event_type = serializers.CharField(
         default=WEBHOOK_TRIGGER_EVENTS.INVOICE_PAST_DUE, read_only=True
+    )
+
+
+class SubscriptionCreatedSerializer(serializers.Serializer):
+    payload = SubscriptionRecordSerializer()
+    eventType = serializers.CharField(
+        default=WEBHOOK_TRIGGER_EVENTS.SUBSCRIPTION_CREATED, read_only=True
     )
 
 

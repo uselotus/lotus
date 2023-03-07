@@ -183,11 +183,12 @@ class ORGANIZATION_STATUS(models.TextChoices):
 
 
 class WEBHOOK_TRIGGER_EVENTS(models.TextChoices):
+    CUSTOMER_CREATED = ("customer.created", _("customer.created"))
     INVOICE_CREATED = ("invoice.created", _("invoice.created"))
     INVOICE_PAID = ("invoice.paid", _("invoice.paid"))
     INVOICE_PAST_DUE = ("invoice.past_due", _("invoice.past_due"))
+    SUBSCRIPTION_CREATED = ("subscription.created", _("subscription.created"))
     USAGE_ALERT_TRIGGERED = ("usage_alert.triggered", _("usage_alert.triggered"))
-    CUSTOMER_CREATED = ("customer.created", _("customer.created"))
     SUBSCRIPTION_CANCELLED = ("subscription.cancelled", _("subscription.cancelled"))
 
 
@@ -236,8 +237,9 @@ SUPPORTED_CURRENCIES = [
     ("South African Rand", "ZAR", "R"),
     ("Brazilian Real", "BRL", "R$"),
     ("Danish Krone", "DKK", "kr"),
+    ("Nigerian Naira", "NGN", "₦"),
 ]
-SUPPORTED_CURRENCIES_VERSION = 1
+SUPPORTED_CURRENCIES_VERSION = 2
 
 
 class ACCOUNTS_RECEIVABLE_TRANSACTION_TYPES(models.IntegerChoices):
