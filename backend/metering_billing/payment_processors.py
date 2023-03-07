@@ -14,6 +14,9 @@ import stripe
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import F, Prefetch, Q
+from rest_framework import serializers, status
+from rest_framework.response import Response
+
 from metering_billing.serializers.payment_processor_serializers import (
     PaymentProcesorPostResponseSerializer,
 )
@@ -28,8 +31,6 @@ from metering_billing.utils.enums import (
     PAYMENT_PROCESSORS,
     PLAN_STATUS,
 )
-from rest_framework import serializers, status
-from rest_framework.response import Response
 
 logger = logging.getLogger("django.server")
 
@@ -489,7 +490,7 @@ class BraintreeConnector(PaymentProcesor):
             braintree_customer_id is not None
         ), "Customer does not have a Braintree ID"
         invoice_kwargs = {
-            "amount": convert_to_two_decimal_places(invoice.cost_due),
+            "amount": convert_to_two_decimal_places(invoice.amount),
             "customer_id": braintree_customer_id,
             "line_items": [],
             "options": {"submit_for_settlement": True},
@@ -498,9 +499,9 @@ class BraintreeConnector(PaymentProcesor):
             F("associated_subscription_record").desc(nulls_last=True)
         ):
             name = line_item.name[:35]
-            kind = "debit" if line_item.subtotal > 0 else "credit"
+            kind = "debit" if line_item.base > 0 else "credit"
             quantity = convert_to_two_decimal_places(line_item.quantity or 1)
-            total_amount = convert_to_two_decimal_places(abs(line_item.subtotal))
+            total_amount = convert_to_two_decimal_places(abs(line_item.base))
             unit_amount = convert_to_two_decimal_places(total_amount / quantity)
 
             invoice_kwargs["line_items"].append(
@@ -1024,10 +1025,10 @@ class StripeConnector(PaymentProcesor):
                 external_payment_obj_id=stripe_invoice.id,
             ).exists():
                 continue
-            cost_due = Decimal(stripe_invoice.amount_due) / 100
+            amount = Decimal(stripe_invoice.amount_due) / 100
             invoice_kwargs = {
                 "customer": customer,
-                "cost_due": cost_due,
+                "amount": amount,
                 "issue_date": datetime.datetime.fromtimestamp(
                     stripe_invoice.created, pytz.utc
                 ),
@@ -1118,8 +1119,8 @@ class StripeConnector(PaymentProcesor):
         for line_item in invoice.line_items.all().order_by(
             F("associated_subscription_record").desc(nulls_last=True)
         ):
-            name = line_item.name
-            amount = line_item.subtotal
+            name = line_item.namebase
+            amount = line_item.base
             customer = stripe_customer_id
             period = {
                 "start": int(line_item.start_date.timestamp()),

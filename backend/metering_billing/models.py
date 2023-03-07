@@ -12,6 +12,7 @@ import pycountry
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.contrib.postgres.fields import ArrayField
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.validators import (
@@ -753,7 +754,7 @@ class Customer(models.Model):
                 draft=True,
                 charge_next_plan=True,
             )
-            total += sum([inv.cost_due for inv in invs])
+            total += sum([inv.amount for inv in invs])
             for inv in invs:
                 inv.delete()
         return total
@@ -770,7 +771,7 @@ class Customer(models.Model):
     def get_outstanding_revenue(self):
         unpaid_invoice_amount_due = (
             self.invoices.filter(payment_status=Invoice.PaymentStatus.UNPAID)
-            .aggregate(unpaid_inv_amount=Sum("cost_due"))
+            .aggregate(unpaid_inv_amount=Sum("amount"))
             .get("unpaid_inv_amount")
         )
         total_amount_due = unpaid_invoice_amount_due or 0
@@ -1627,7 +1628,7 @@ class Invoice(models.Model):
         PAID = (3, _("paid"))
         UNPAID = (4, _("unpaid"))
 
-    cost_due = models.DecimalField(
+    amount = models.DecimalField(
         decimal_places=10,
         max_digits=20,
         default=Decimal(0.0),
@@ -1706,11 +1707,15 @@ class Invoice(models.Model):
         paid_before = self.payment_status == Invoice.PaymentStatus.PAID
         super().save(*args, **kwargs)
         paid_after = self.payment_status == Invoice.PaymentStatus.PAID
-        if not paid_before and paid_after and self.cost_due > 0:
+        if not paid_before and paid_after and self.amount > 0:
             invoice_paid_webhook(self, self.organization)
 
 
 class InvoiceLineItem(models.Model):
+    class AdjustmentType(models.IntegerChoices):
+        SALES_TAX = (1, _("sales tax"))
+        PLAN_ADJUSTMENT = (2, _("plan adjustment"))
+
     invoice_line_item_id = models.UUIDField(
         default=uuid.uuid4, unique=True, editable=False
     )
@@ -1730,8 +1735,35 @@ class InvoiceLineItem(models.Model):
         blank=True,
         validators=[MinValueValidator(0)],
     )
-    subtotal = models.DecimalField(
-        decimal_places=10, max_digits=20, default=Decimal(0.0)
+    base = models.DecimalField(
+        decimal_places=10,
+        max_digits=20,
+        default=Decimal(0.0),
+        help_text="Base price of the line item. This is the price before any adjustments are applied.",
+    )
+    adjustments = ArrayField(
+        models.JSONField(
+            null=False,
+            blank=False,
+            default=dict,
+            help_text="Adjustment data. Must be a dict with keys: amount, account, adjustment_type.",
+            # fields={
+            #     "amount": models.DecimalField(max_digits=20, decimal_places=10),
+            #     "account": models.PositiveBigIntegerField(),
+            #     "adjustment_type": models.PositiveSmallIntegerField(
+            #         choices=AdjustmentType.choices
+            #     ),
+            # },
+        ),
+        default=list,
+        blank=True,
+        help_text="List of adjustments.",
+    )
+    amount = models.DecimalField(
+        decimal_places=10,
+        max_digits=20,
+        default=Decimal(0.0),
+        help_text="Amount of the line item. This is the price after any adjustments are applied.",
     )
     pricing_unit = models.ForeignKey(
         "PricingUnit",
@@ -1776,7 +1808,7 @@ class InvoiceLineItem(models.Model):
     metadata = models.JSONField(default=dict, blank=True, null=True)
 
     def __str__(self):
-        return self.name + " " + str(self.invoice.invoice_number) + f"[{self.subtotal}]"
+        return self.name + " " + str(self.invoice.invoice_number) + f"[{self.base}]"
 
     def save(self, *args, **kwargs):
         if not self.pricing_unit:
@@ -1900,7 +1932,7 @@ class RecurringCharge(models.Model):
         return subscription_record.line_items.filter(
             Q(chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE),
             associated_recurring_charge=self,
-        ).aggregate(Sum("subtotal"))["subtotal__sum"] or Decimal(0.0)
+        ).aggregate(Sum("base"))["base__sum"] or Decimal(0.0)
 
 
 class PlanVersion(models.Model):
@@ -2522,8 +2554,8 @@ class SubscriptionRecord(models.Model):
         billed_invoices = self.line_items.filter(
             ~Q(invoice__payment_status=Invoice.PaymentStatus.VOIDED)
             & ~Q(invoice__payment_status=Invoice.PaymentStatus.DRAFT),
-            subtotal__isnull=False,
-        ).aggregate(tot=Sum("subtotal"))["tot"]
+            base__isnull=False,
+        ).aggregate(tot=Sum("base"))["tot"]
         return billed_invoices or 0
 
     def get_usage_and_revenue(self):

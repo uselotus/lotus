@@ -167,7 +167,7 @@ class InvoicePDF:
         start_date,
         end_date,
         quantity,
-        subtotal,
+        amount,
         currency_symbol,
         billing_type,
         line_item_start,
@@ -206,11 +206,11 @@ class InvoicePDF:
             self.PDF.drawString(350, offset, str(new_quantity))
         else:
             self.PDF.drawString(350, offset, "")
-        if subtotal:
-            new_subtotal = "{:g}".format(float(subtotal))
-            self.PDF.drawString(412.5, offset, f"{currency_symbol}{str(new_subtotal)}")
+        if amount:
+            new_amount = "{:g}".format(float(amount))
+            self.PDF.drawString(412.5, offset, f"{currency_symbol}{str(new_amount)}")
         else:
-            self.PDF.drawString(412.5, offset, f"{currency_symbol}{str(subtotal)}")
+            self.PDF.drawString(412.5, offset, f"{currency_symbol}{str(amount)}")
 
         self.PDF.drawString(475, offset, billing_type)
 
@@ -230,7 +230,7 @@ class InvoicePDF:
         self.PDF.drawString(100, offset, "Item")
         self.PDF.drawString(225, offset, "Dates")
         self.PDF.drawString(350, offset, "Quantity")
-        self.PDF.drawString(412.5, offset, "Subtotal")
+        self.PDF.drawString(412.5, offset, "amount")
         self.PDF.drawString(475, offset, "Billing Type")
         return line_item_start + 20
 
@@ -406,7 +406,7 @@ class InvoicePDF:
         consumed_credits = []
         for group in grouped_line_items:
             amount = sum(
-                model_to_dict(line_item)["subtotal"]
+                model_to_dict(line_item)["amount"]
                 for line_item in grouped_line_items[group]
                 if line_item.chargeable_item_type != CHARGEABLE_ITEM_TYPE.TAX
             )
@@ -460,7 +460,7 @@ class InvoicePDF:
                     line_item["quantity"].normalize()
                     if isinstance(line_item["quantity"], Decimal)
                     else line_item["quantity"],
-                    line_item["subtotal"].normalize(),
+                    line_item["amount"].normalize(),
                     self.invoice.currency.symbol,
                     line_item["billing_type"],
                     line_item_start_y,
@@ -491,7 +491,7 @@ class InvoicePDF:
             #     transform_date(line_item["start_date"]),
             #     transform_date(line_item["end_date"]),
             #     line_item["quantity"],
-            #     line_item["subtotal"],
+            #     line_item["amount"],
             #     currency.symbol,
             #     line_item["billing_type"],
             #     line_item_start_y,
@@ -506,16 +506,16 @@ class InvoicePDF:
             #     doc.drawString(25, 770, f"#{invoice_number}")
             #     doc.setFillColor("black")
             #     doc.drawString(470, 770, "Thank you for your buisness.")
-            total_tax += line_item["subtotal"]
+            total_tax += line_item["amount"]
 
         total_credits = Decimal(0)
         for credit_line_item in consumed_credits:
             line_item = model_to_dict(credit_line_item)
-            total_credits += line_item["subtotal"]
+            total_credits += line_item["amount"]
 
         self.write_total(
             self.invoice.currency.symbol,
-            round(self.invoice.cost_due, 2),
+            round(self.invoice.amount, 2),
             line_item_start_y,
             total_tax.quantize(Decimal("0.00")),
             total_credits.quantize(Decimal("0.00")),

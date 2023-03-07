@@ -7,6 +7,9 @@ from typing import Literal, Union
 from django.conf import settings
 from django.db.models import Max, Min, Sum
 from drf_spectacular.utils import extend_schema_serializer
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
 from metering_billing.invoice import (
     generate_balance_adjustment_invoice,
     generate_invoice,
@@ -64,8 +67,6 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -316,6 +317,11 @@ class SubscriptionRecordSerializer(
     )
 
 
+@extend_schema_serializer(
+    deprecate_fields=[
+        "subtotal",
+    ]
+)
 class InvoiceLineItemSerializer(
     ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
@@ -327,6 +333,7 @@ class InvoiceLineItemSerializer(
             "end_date",
             "quantity",
             "subtotal",
+            "amount",
             "billing_type",
             "metadata",
             "plan",
@@ -338,6 +345,7 @@ class InvoiceLineItemSerializer(
             "end_date": {"required": True},
             "quantity": {"required": True},
             "subtotal": {"required": True},
+            "amount": {"required": True},
             "billing_type": {"required": True, "allow_blank": False},
             "metadata": {"required": True},
             "plan": {"required": True, "allow_null": True},
@@ -346,6 +354,11 @@ class InvoiceLineItemSerializer(
 
     plan = serializers.SerializerMethodField(allow_null=True)
     subscription_filters = serializers.SerializerMethodField(allow_null=True)
+    subtotal = serializers.DecimalField(
+        max_digits=20,
+        decimal_places=10,
+        source="amount",
+    )
 
     def get_subscription_filters(
         self, obj
@@ -387,6 +400,7 @@ class SellerSerializer(
         return None
 
 
+@extend_schema_serializer(deprecate_fields=("cost_due",))
 class InvoiceSerializer(
     ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
@@ -396,6 +410,7 @@ class InvoiceSerializer(
             "invoice_id",
             "invoice_number",
             "cost_due",
+            "amount",
             "currency",
             "issue_date",
             "payment_status",
@@ -413,6 +428,7 @@ class InvoiceSerializer(
             "invoice_id": {"required": True, "read_only": True},
             "invoice_number": {"required": True, "read_only": True},
             "cost_due": {"required": True, "read_only": True},
+            "amount": {"required": True, "read_only": True},
             "issue_date": {"required": True, "read_only": True},
             "payment_status": {"required": True, "read_only": True},
             "due_date": {"required": True, "allow_null": True, "read_only": True},
@@ -448,6 +464,9 @@ class InvoiceSerializer(
     end_date = serializers.SerializerMethodField()
     seller = SellerSerializer(source="organization")
     payment_status = serializers.SerializerMethodField()
+    cost_due = serializers.DecimalField(
+        max_digits=20, decimal_places=10, min_value=0, source="amount"
+    )
 
     def get_payment_status(
         self, obj

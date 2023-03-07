@@ -5,6 +5,12 @@ import pytz
 from django.conf import settings
 from django.db.models import Count, F, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from metering_billing.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
@@ -57,11 +63,6 @@ from metering_billing.utils.enums import (
     PAYMENT_PROCESSORS,
     USAGE_CALC_GRANULARITY,
 )
-from rest_framework import serializers, status
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -105,13 +106,13 @@ class PeriodMetricRevenueView(APIView):
             issue_date__gte=p1_start,
             issue_date__lte=p1_end,
             payment_status=Invoice.PaymentStatus.PAID,
-        ).aggregate(tot=Sum("cost_due"))["tot"]
+        ).aggregate(tot=Sum("amount"))["tot"]
         p2_collected = Invoice.objects.filter(
             organization=organization,
             issue_date__gte=p2_start,
             issue_date__lte=p2_end,
             payment_status=Invoice.PaymentStatus.PAID,
-        ).aggregate(tot=Sum("cost_due"))["tot"]
+        ).aggregate(tot=Sum("amount"))["tot"]
         return_dict["total_revenue_period_1"] = p1_collected or Decimal(0)
         return_dict["total_revenue_period_2"] = p2_collected or Decimal(0)
         # earned

@@ -717,9 +717,7 @@ class CustomerWithRevenueSerializer(TimezoneFieldMixin, serializers.ModelSeriali
         except AttributeError:
             return (
                 obj.invoices.filter(payment_status=Invoice.PaymentStatus.UNPAID)
-                .aggregate(
-                    unpaid_inv_amount=Sum("cost_due", output_field=DecimalField())
-                )
+                .aggregate(unpaid_inv_amount=Sum("amount", output_field=DecimalField()))
                 .get("unpaid_inv_amount")
             )
 

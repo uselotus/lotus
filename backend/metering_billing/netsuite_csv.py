@@ -6,6 +6,7 @@ import logging
 import boto3
 from botocore.exceptions import ClientError
 from django.conf import settings
+
 from metering_billing.invoice_pdf import s3_bucket_exists, s3_file_exists
 from metering_billing.models import Invoice, Organization
 from metering_billing.utils import convert_to_datetime, now_utc
@@ -66,7 +67,7 @@ def generate_invoices_csv(organization, start_date=None, end_date=None):
     )
 
     for invoice in invoices:
-        tot = invoice.cost_due
+        tot = invoice.amount
         amount_paid = tot if invoice.payment_status == Invoice.PaymentStatus.PAID else 0
         amount_remaining = tot - amount_paid
         due_date = invoice.due_date or invoice.issue_date

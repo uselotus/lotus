@@ -5,6 +5,10 @@ from datetime import timedelta
 
 import pytest
 from django.urls import reverse
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     Event,
@@ -27,9 +31,6 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_FREQUENCY,
 )
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -535,7 +536,7 @@ class TestUpdateSub:
         assert before_invoices + 1 == after_invoices
         most_recent_invoice = Invoice.objects.all().order_by("-id").first()
         for li in most_recent_invoice.line_items.all():
-            assert li.subtotal < 30.0
+            assert li.base < 30.0
             assert li.chargeable_item_type != CHARGEABLE_ITEM_TYPE.USAGE_CHARGE
         new_sr = SubscriptionRecord.objects.all().order_by("-id").first()
         assert new_sr.billing_plan == new_plan.display_version
