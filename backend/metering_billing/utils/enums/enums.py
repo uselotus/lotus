@@ -236,8 +236,9 @@ SUPPORTED_CURRENCIES = [
     ("South African Rand", "ZAR", "R"),
     ("Brazilian Real", "BRL", "R$"),
     ("Danish Krone", "DKK", "kr"),
+    ("Nigerian Naira", "NGN", "₦"),
 ]
-SUPPORTED_CURRENCIES_VERSION = 1
+SUPPORTED_CURRENCIES_VERSION = 2
 
 
 class ACCOUNTS_RECEIVABLE_TRANSACTION_TYPES(models.IntegerChoices):
