@@ -198,6 +198,8 @@ def subscription_created_webhook(subscription, subscription_data=None):
                 + "_"
                 + slugify(str(subscription.billing_plan))
                 + "_"
+                + slugify(str(subscription.subscription_record_id.hex)[:50])
+                + "_"
                 + "created"
             )
             response = svix.message.create(
