@@ -1,8 +1,7 @@
 import React, { FC, useRef } from "react";
 import { Typography } from "antd";
-import { useMutation, useQueryClient } from "react-query";
+import { useQueryClient } from "react-query";
 import { useNavigate } from "react-router-dom";
-import { Plan } from "../../../api/api";
 import CopyText from "../../base/CopytoClipboard";
 import createShortenedText from "../../../helpers/createShortenedText";
 import capitalize from "../../../helpers/capitalize";

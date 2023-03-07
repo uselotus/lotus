@@ -15,6 +15,7 @@ import {
   PlanDetailType,
 } from "../../../types/plan-type";
 import LoadingSpinner from "../../LoadingSpinner";
+import { components } from "../../../gen-types";
 
 type PlanDetailParams = {
   planId: string;
@@ -145,15 +146,14 @@ const PlanDetails: FC = () => {
     isLoading,
     isError,
     refetch,
-  } = useQuery<PlanDetailType>(
+  } = useQuery<components["schemas"]["PlanDetail"]>(
     ["plan_detail", planId],
-    () =>
-      Plan.getPlan(planId as string).then((res) => res),
+    () => Plan.getPlan(planId as string).then((res) => res),
     { refetchOnMount: "always" }
   );
 
   const navigateCreateCustomPlan = () => {
-    navigate(`/create-custom/${  planId}`);
+    navigate(`/create-custom/${planId}`);
   };
 
   return (
@@ -177,22 +177,12 @@ const PlanDetails: FC = () => {
         <div>
           <PageLayout
             title={
-              plan.target_customer !== null ? (
-                <div>
-                  {" "}
-                  {plan.plan_name}
-                  <span className="block mt-4 text-neutral-500 text-base">
-                    {plan.display_version.description}
-                  </span>
-                </div>
-              ) : (
-                <div>
-                  {plan.plan_name}
-                  <span className="block mt-4  text-neutral-500 text-base">
-                    {plan.display_version.description}
-                  </span>
-                </div>
-              )
+              <div>
+                {plan.plan_name}
+                <span className="block mt-4  text-neutral-500 text-base">
+                  {plan.plan_description}
+                </span>
+              </div>
             }
             hasBackButton
             aboveTitle
@@ -215,26 +205,24 @@ const PlanDetails: FC = () => {
               </div>
             }
             backIcon
-            extra={
-              plan.target_customer === null && [
-                <Button
-                  onClick={navigateCreateCustomPlan}
-                  type="primary"
-                  size="large"
-                  key="create-custom-plan"
-                  className="hover:!bg-primary-700"
-                  style={{ background: "#C3986B", borderColor: "#C3986B" }}
-                >
-                  <div className="flex items-center justify-between text-white">
-                    <div>
-                      <PlusOutlined className="!text-white w-12 h-12 cursor-pointer" />
-                      Create Custom Plan
-                    </div>
+            extra={[
+              <Button
+                onClick={navigateCreateCustomPlan}
+                type="primary"
+                size="large"
+                key="create-custom-plan"
+                className="hover:!bg-primary-700"
+                style={{ background: "#C3986B", borderColor: "#C3986B" }}
+              >
+                <div className="flex items-center justify-between text-white">
+                  <div>
+                    <PlusOutlined className="!text-white w-12 h-12 cursor-pointer" />
+                    Create Custom Plan
                   </div>
-                </Button>,
-              ]
-            }
-           />
+                </div>
+              </Button>,
+            ]}
+          />
           <div className="mx-10">
             {plan.versions.length > 0 && (
               <SwitchVersions

@@ -1,3 +1,4 @@
+/* eslint-disable camelcase */
 /* eslint-disable @typescript-eslint/no-explicit-any camelcase */
 import axios, { AxiosResponse } from "axios";
 import Cookies from "universal-cookie";
@@ -99,6 +100,7 @@ import {
 import { CreateCreditType, CreditType } from "../types/balance-adjustment";
 import { CurrencyType } from "../types/pricing-unit-type";
 import { AlertType, CreateAlertType } from "../types/alert-type";
+import { components } from "../gen-types";
 
 const cookies = new Cookies();
 
@@ -237,7 +239,7 @@ export const AddOn = {
 export const Plan = {
   // get methods
   getPlans: (): Promise<PlanType[]> => requests.get("app/plans/"),
-  getPlan: (plan_id: string): Promise<PlanDetailType> =>
+  getPlan: (plan_id: string): Promise<components["schemas"]["PlanDetail"]> =>
     requests.get(`app/plans/${plan_id}/`),
   // create plan
   createPlan: (post: CreatePlanType): Promise<PlanType> =>
@@ -303,6 +305,10 @@ export const Plan = {
     requests.post(`/app/plan_versions/${version_id}/features/add/`, post),
   makePublicPlanVersion: (version_id: string): Promise<PlanVersionsType> =>
     requests.post(`app/plan_versions/${version_id}/make_public/`, {}),
+  subscriptionsPlanVersions: (
+    version_id: string
+  ): Promise<components["schemas"]["PlanVersionHistoricalSubscription"][]> =>
+    requests.post(`app/plan_versions/${version_id}/subscriptions/`, {}),
   makeReplacementPlanVersion: (
     version_id: string,
     post: PlanVersionReplacementMakeBody

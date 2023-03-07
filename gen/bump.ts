@@ -1,13 +1,14 @@
-import { execSync, exec } from "child_process";
+import { exec } from "child_process";
 import { readFile, writeFile } from "fs/promises";
 import util from "util";
+
 const execAsync = util.promisify(exec);
 
 (async () => {
   const pathToReadFrom = "../frontend/src/gen-types.ts";
   const pathToWriteTo = "../frontend/src/gen-types-camel.ts";
   await execAsync(
-    `npx openapi-typescript https://raw.githubusercontent.com/uselotus/lotus/main/docs/openapi_private.yaml --output ${pathToReadFrom}`
+    `npx openapi-typescript "../docs/openapi_private.yaml" --output ${pathToReadFrom}`
   );
 
   let result = "";

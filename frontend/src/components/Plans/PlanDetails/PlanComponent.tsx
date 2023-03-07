@@ -1,3 +1,5 @@
+/* eslint-disable react/no-array-index-key */
+/* eslint-disable no-shadow */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable camelcase */
 // @ts-ignore
@@ -12,7 +14,6 @@ import {
   Button,
   InputNumber,
   Dropdown,
-  Divider,
 } from "antd";
 import {
   CheckCircleOutlined,
@@ -22,14 +23,7 @@ import {
 import dayjs from "dayjs";
 import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
-import StateTabs from "./StateTabs";
-import {
-  Component,
-  PlanDetailType,
-  PlanType,
-  PlanVersionType,
-  Tier,
-} from "../../../types/plan-type";
+import { Component, PlanType, Tier } from "../../../types/plan-type";
 import { CurrencyType } from "../../../types/pricing-unit-type";
 import createShortenedText from "../../../helpers/createShortenedText";
 import DropdownComponent from "../../base/Dropdown/Dropdown";
@@ -37,24 +31,20 @@ import PlansTags from "../PlanTags";
 import LinkExternalIds from "../LinkExternalIds";
 import capitalize from "../../../helpers/capitalize";
 import CopyText from "../../base/CopytoClipboard";
-import useVersionStore from "../../../stores/useVersionStore";
 import Badge from "../../base/Badges/Badges";
-import Select from "../../base/Select/Select";
 import useMediaQuery from "../../../hooks/useWindowQuery";
 import createTags from "../helpers/createTags";
 import useGlobalStore from "../../../stores/useGlobalstore";
 import createPlanTagsList from "../helpers/createPlanTagsList";
 import { AlertType, CreateAlertType } from "../../../types/alert-type";
 import { Plan } from "../../../api/api";
+import { components } from "../../../gen-types";
 
 interface PlanComponentsProps {
-  components?: Component[];
-  plan: PlanType;
+  components?: components["schemas"]["PlanDetail"]["versions"][0]["components"];
+  plan: components["schemas"]["PlanDetail"];
   refetch: VoidFunction;
-  updateBillingFrequencyMutation: (
-    billing_frequency: "monthly" | "quarterly" | "yearly"
-  ) => void;
-  alerts?: AlertType[];
+  alerts?: components["schemas"]["PlanDetail"]["versions"][0]["alerts"];
   plan_version_id: string;
 }
 
@@ -95,7 +85,7 @@ const renderCost = (record: Tier, pricing_unit: CurrencyType) => {
 interface PlanSummaryProps {
   createPlanExternalLink: (link: string) => void;
   deletePlanExternalLink: (link: string) => void;
-  plan: PlanDetailType;
+  plan: components["schemas"]["PlanDetail"];
   createTagMutation: (variables: {
     plan_id: string;
     tags: PlanType["tags"];
@@ -175,6 +165,7 @@ export function PlanSummary({
               <div className="flex gap-1">
                 {" "}
                 <div
+                  aria-hidden
                   className="!text-card-grey"
                   onClick={() => setShowEditTaxJarModal(true)}
                 >
@@ -184,6 +175,7 @@ export function PlanSummary({
               </div>
             ) : (
               <div
+                aria-hidden
                 className="!text-card-grey"
                 onClick={() => setShowEditTaxJarModal(true)}
               >
@@ -257,6 +249,7 @@ export function PlanSummary({
                 {plan_tags &&
                   createPlanTagsList(plan.tags, plan_tags).map((tag, index) => (
                     <DropdownComponent.MenuItem
+                      key={tag.tag_name}
                       onSelect={() => {
                         if (tag.from !== "plans") {
                           const planTags = [...plan.tags];
@@ -320,8 +313,8 @@ export function PlanSummary({
 }
 
 interface PlanInfoProps {
-  version: PlanVersionType;
-  plan: PlanDetailType;
+  version: components["schemas"]["PlanDetail"]["versions"][0];
+  plan: components["schemas"]["PlanDetail"];
 }
 export function PlanInfo({ version, plan }: PlanInfoProps) {
   const constructBillType = (str: string) => {
@@ -377,31 +370,35 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
 
   return (
     <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card ">
-      <div className='flex justify-between'>
+      <div className="flex justify-between">
         <Typography.Title className="pt-4 whitespace-pre-wrap grid gap-4 !text-[18px] items-center grid-cols-1 md:grid-cols-2">
           <div>Plan Information</div>
         </Typography.Title>
         <div className="flex flex-row  items-center font-bold tabsContainer">
-            <StateTabs
-              activeTab={capitalize(version.status)}
-              version_id={version.version_id}
-              version={version.version}
-              activeVersion={version.version}
-              tabs={["Active", "Grandfathered", "Retiring", "Inactive"]}
-              plan={plan}
-            />
-            <span className="ml-auto" onClick={(e) => e.stopPropagation()}>
-              <Dropdown overlay={menu} trigger={["click"]}>
-                <Button
-                  type="text"
-                  size="small"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  <EllipsisOutlined />
-                </Button>
-              </Dropdown>
-            </span>
-          </div>
+          {/* <StateTabs
+            activeTab={capitalize(version.status)}
+            version_id={version.version_id}
+            version={version.version}
+            activeVersion={version.version}
+            tabs={["Active", "Grandfathered", "Retiring", "Inactive"]}
+            plan={plan}
+          /> */}
+          <span
+            aria-hidden
+            className="ml-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Dropdown overlay={menu} trigger={["click"]}>
+              <Button
+                type="text"
+                size="small"
+                onClick={(e) => e.preventDefault()}
+              >
+                <EllipsisOutlined />
+              </Button>
+            </Dropdown>
+          </span>
+        </div>
       </div>
       <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
       <div className="grid  items-center grid-cols-1 md:grid-cols-2">
@@ -412,7 +409,7 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
             </div>
             <div className="flex gap-1">
               {" "}
-              <div className="text-gold">{`${plan.display_version.currency.symbol}${plan.display_version.flat_rate}`}</div>
+              <div className="text-gold">{`${version.currency.symbol}${plan.display_version.flat_rate}`}</div>
             </div>
           </div>
 
@@ -421,7 +418,7 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
               Plan Duration
             </div>
             <div className="!text-card-grey">
-              {capitalize(plan.plan_duration)}
+              {capitalize(plan.plan_duration!)}
             </div>
           </div>
 
@@ -486,11 +483,9 @@ const PlanComponents: FC<PlanComponentsProps> = ({
   components,
   plan,
   refetch,
-  updateBillingFrequencyMutation,
   alerts,
   plan_version_id,
 }) => {
-  const selectRef = useRef<HTMLSelectElement | null>(null!);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [alertThreshold, setAlertThreshold] = useState(0);
   const [isCreateAlert, setIsCreateAlert] = useState(true);
@@ -578,10 +573,10 @@ const PlanComponents: FC<PlanComponentsProps> = ({
             <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
           </div>
           <div className="grid gap-6 grid-cols-1 xl:grid-cols-4">
-            {components.map((component) => (
+            {components.map((component, index) => (
               <div
                 className="pt-2 pb-4 bg-primary-50 mt-2 relative  mb-2 p-4 min-h-[152px] min-w-[270px]"
-                key={component.id}
+                key={index}
               >
                 <div className="text-base text-card-text align-middle">
                   <div> {component.billable_metric.metric_name}</div>
@@ -623,8 +618,84 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                           </div>
                         ),
                       },
+                      [{}],
                     ]}
                   />
+                  {component.invoicing_interval_count && (
+                    <Table
+                      dataSource={[
+                        { count: component.invoicing_interval_count },
+                      ]}
+                      pagination={false}
+                      showHeader={false}
+                      bordered={false}
+                      className="noborderTable mb-12"
+                      size="middle"
+                      columns={[
+                        {
+                          title: "Charge Interval",
+                          dataIndex: "charge_interval",
+                          key: "charge_interval",
+                          align: "left",
+                          width: "50%",
+                          className: "bg-primary-50 pointer-events-none",
+                          render: () => <span>Charge Interval</span>,
+                        },
+                        {
+                          title: "Cost",
+                          align: "left",
+                          dataIndex: "cost_per_batch",
+                          key: "cost_per_batch",
+                          className:
+                            "bg-primary-50 pointer-events-none !text-card-grey arr",
+                          render: (_, record) => (
+                            <div>
+                              {record.count} {record.count > 1 ? "Days" : "Day"}
+                            </div>
+                          ),
+                        },
+                      ]}
+                    />
+                  )}
+                  {component.prepaid_charge && (
+                    <Table
+                      dataSource={[component.prepaid_charge]}
+                      pagination={false}
+                      showHeader={false}
+                      bordered={false}
+                      className="noborderTable mb-12"
+                      size="middle"
+                      columns={[
+                        {
+                          title: "Prepaid Quantity",
+                          dataIndex: "prepaid_quantity",
+                          key: "prepaid_quantity",
+                          align: "left",
+                          width: "50%",
+                          className: "bg-primary-50 pointer-events-none",
+                          render: () => (
+                            <span className="underline underline-offset-2">
+                              Prepaid Quantity
+                            </span>
+                          ),
+                        },
+                        {
+                          title: "units",
+                          align: "left",
+                          dataIndex: "units",
+                          key: "units",
+                          className:
+                            "bg-primary-50 pointer-events-none !text-card-grey arr",
+                          render: (_, record) => (
+                            <div>
+                              {record.units}{" "}
+                              {record.units > 1 ? "Units" : "Unit"}
+                            </div>
+                          ),
+                        },
+                      ]}
+                    />
+                  )}
                 </div>
                 <div className=" w-[96%] h-[1.5px] mt-8 mb-4 absolute bottom-16 bg-card-divider" />
                 <div className=" absolute bottom-[-4px] self-end">
@@ -742,7 +813,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
               </div>
             </Modal>
           </div>
-          <div>
+          {/* <div>
             <Select>
               <Select.Label className="">Billing Frequency</Select.Label>
               <Select.Select
@@ -761,7 +832,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                 ))}
               </Select.Select>
             </Select>
-          </div>
+          </div> */}
         </div>
       ) : (
         <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card">

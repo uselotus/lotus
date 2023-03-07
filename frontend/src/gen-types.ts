@@ -73,45 +73,74 @@ export interface components {
       /** Format: date-time */
       timestamp?: string;
     };
-    AddOn: {
-      /** @description The name of the add-on plan. */
-      addon_name: string;
-      /** @description The ID of the add-on plan. */
-      addon_id: string;
-      /** @description The description of the add-on plan. */
-      description: string;
-      /** Format: double */
-      flat_rate: number;
-      components: components["schemas"]["PlanComponent"][];
-      features: components["schemas"]["Feature"][];
-      /** @description Currency of the plan. Can only be null if the flat fee is 0 and all components are of type free. */
-      currency: components["schemas"]["PricingUnit"];
-      /** @description The number of active instances of the add-on plan. */
-      active_instances: number;
-      /** @enum {unknown} */
-      invoice_when: "invoice_on_attach" | "invoice_on_subscription_end";
-      /** @enum {unknown} */
-      billing_frequency: "one_time" | "recurring";
-      /** @enum {string} */
-      addon_type: "usage_based" | "flat";
+    AddFeatureRequest: {
+      /**
+       * Format: uuid
+       * @description The feature_id of the feature you want to add to the plan.
+       */
+      feature_id: string;
+    };
+    AddFeatureResponse: {
+      success: boolean;
+      message: string;
+    };
+    AddFeatureToAddOnRequest: {
+      /** @description The version_ids of the AddOn versions you want to add the feature to. If you want to apply to all versions, use the all_versions parameter. */
+      version_ids?: string[];
+      /**
+       * Format: uuid
+       * @description The feature_id of the feature you want to add to the plan.
+       */
+      feature_id: string;
+    };
+    AddFeatureToAddOnResponse: {
+      success: boolean;
+      message: string;
+    };
+    AddFeatureToPlanRequest: {
+      /** @description The version_ids of the plan versions you want to add the feature to. If you want to apply to all versions, use the all_versions parameter. */
+      version_ids?: string[];
+      /**
+       * @description Whether or not to apply this feature to all versions of the feature. If you want to apply to specific versions, use the version_ids parameter.
+       * @default false
+       */
+      all_versions?: boolean;
+      /**
+       * Format: uuid
+       * @description The feature_id of the feature you want to add to the plan.
+       */
+      feature_id: string;
+    };
+    AddFeatureToPlanResponse: {
+      success: boolean;
+      message: string;
+    };
+    AddFeatureToPlanVersionNumberResponse: {
+      success: boolean;
+      message: string;
     };
     AddOnCreateRequest: {
       /** @description The name of the add-on plan. */
       addon_name: string;
+      /** @description Description of the plan */
+      plan_description?: string;
+      /** @description The initial version of the add-on plan. */
+      initial_version: components["schemas"]["InitialAddOnVersionCreateRequest"];
+    };
+    AddOnDetail: {
+      /** @description This addon's versions. */
+      versions: components["schemas"]["AddOnVersion"][];
       /** @description The description of the add-on plan. */
-      description: string;
-      recurring_charges?: components["schemas"]["RecurringChargeCreateRequest"][];
-      components?: components["schemas"]["PlanComponentCreateRequest"][];
-      features?: string[];
-      currency_code?: string;
-      /** @enum {unknown} */
-      invoice_when: "invoice_on_attach" | "invoice_on_subscription_end";
-      /** @enum {unknown} */
-      billing_frequency: "one_time" | "recurring";
+      addon_description: string;
+      /** @description The name of the add-on plan. */
+      addon_name: string;
+      /** @description The ID of the add-on plan. */
+      addon_id: string;
     };
     AddOnSubscriptionRecord: {
+      addon_subscription_id: string;
       customer: components["schemas"]["LightweightCustomer"];
-      addon: components["schemas"]["LightweightAddon"];
+      addon: components["schemas"]["LightweightAddOn"];
       /**
        * Format: date-time
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
@@ -123,48 +152,110 @@ export interface components {
        */
       end_date: string;
       parent: components["schemas"]["LightweightSubscriptionRecord"];
-      /** @description Whether the subscription has been fully billed and finalized. */
       fully_billed: boolean;
       /** @description Whether the subscription automatically renews. Defaults to true. */
       auto_renew: boolean;
     };
     AddOnSubscriptionRecordCreateRequest: {
-      /** @description The add-on will be applied to this customer's subscription. */
-      attach_to_customer_id: string;
       /**
        * Format: uuid
-       * @description The add-on will be applied to the subscription with this plan ID.
+       * @description The add-on to be applied to the subscription. You can use either this field or addon_version_id, but not both.
        */
-      attach_to_plan_id: string;
-      /** @description In the case the customer has multiple subscriptions with the same plan ID, the subscription filters should be used to specify which subscription to apply the add-on to. */
-      attach_to_subscription_filters?: components["schemas"]["SubscriptionCategoricalFilterRequest"][];
+      addon_id?: string;
       /**
        * Format: uuid
        * @description The add-on to be applied to the subscription.
        */
-      addon_id: string;
+      addon_version_id?: string;
       /**
        * @description The quantity of the add-on to be applied to the subscription. Flat fees of add-ons will be multiplied by this quantity. Usage-based components of add-ons will be unaffected by the quantity.
        * @default 1
        */
       quantity?: number;
     };
-    AddonSubscriptionRecordUpdateRequest: {
-      /**
-       * @description The invoicing behavior to use when changing the quantity. Invoice now will recalculate the amount due immediately, whereas add_to_next_invoice will wait until the end of the subscription to do the calculation.
-       * @default invoice_now
-       * @enum {string}
-       */
-      invoicing_behavior?: "add_to_next_invoice" | "invoice_now";
-      /** @description Turn off auto renew for the addon */
-      turn_off_auto_renew?: boolean;
-      /**
-       * Format: date-time
-       * @description Change the end date for the addon.
-       */
-      end_date?: string;
-      /** @description Change the quantity of the susbcription to be this number. */
-      quantity?: number;
+    AddOnUpdate: {
+      addon_name?: string;
+      /** Format: date-time */
+      active_from?: string;
+      /** Format: date-time */
+      active_to?: string;
+    };
+    AddOnVersion: {
+      recurring_charges: components["schemas"]["RecurringCharge"][];
+      components: components["schemas"]["PlanComponent"][];
+      features: components["schemas"]["Feature"][];
+      /** @enum {string} */
+      status:
+        | "active"
+        | "retiring"
+        | "grandfathered"
+        | "deleted"
+        | "inactive"
+        | "not_started";
+      /** @description Currency of the plan. Can only be null if the flat fee is 0 and all components are of type free. */
+      currency: components["schemas"]["PricingUnit"];
+      /** @description The number of active instances of this version of the add-on plan. */
+      active_instances: number;
+      /** @enum {unknown} */
+      invoice_when: "invoice_on_attach" | "invoice_on_subscription_end";
+      /** @enum {unknown} */
+      billing_frequency: "one_time" | "recurring";
+      /** @enum {string} */
+      addon_type: "usage_based" | "flat";
+    };
+    AddOnVersionCreateRequest: {
+      /** Format: uuid */
+      addon_id: string;
+      recurring_charges?: components["schemas"]["RecurringChargeCreateRequest"][];
+      components?: components["schemas"]["PlanComponentCreateRequest"][];
+      features?: string[];
+      currency_code: string;
+      /** @enum {unknown} */
+      invoice_when: "invoice_on_attach" | "invoice_on_subscription_end";
+      /** @enum {unknown} */
+      billing_frequency: "one_time" | "recurring";
+    };
+    AddOnVersionDetail: {
+      recurring_charges: components["schemas"]["RecurringCharge"][];
+      components: components["schemas"]["PlanComponent"][];
+      features: components["schemas"]["Feature"][];
+      /** @enum {string} */
+      status:
+        | "active"
+        | "retiring"
+        | "grandfathered"
+        | "deleted"
+        | "inactive"
+        | "not_started";
+      /** @description Currency of the plan. Can only be null if the flat fee is 0 and all components are of type free. */
+      currency: components["schemas"]["PricingUnit"];
+      /** @description The number of active instances of this version of the add-on plan. */
+      active_instances: number;
+      /** @enum {unknown} */
+      invoice_when: "invoice_on_attach" | "invoice_on_subscription_end";
+      /** @enum {unknown} */
+      billing_frequency: "one_time" | "recurring";
+      /** @enum {string} */
+      addon_type: "usage_based" | "flat";
+    };
+    AddOnVersionUpdate: {
+      addon_version_name?: string;
+      /** Format: date-time */
+      active_from?: string;
+      /** Format: date-time */
+      active_to?: string;
+    };
+    AddPlanTags: {
+      tags?: components["schemas"]["Tag"][];
+      success: boolean;
+      message: string;
+    };
+    AddPlanTagsRequest: {
+      tags?: components["schemas"]["TagRequest"][];
+    };
+    AddTargetCustomerResponse: {
+      success: boolean;
+      message: string;
     };
     Address: {
       /** @description City, district, suburb, town, or village */
@@ -725,21 +816,21 @@ export interface components {
       backtest_name: string;
     };
     BacktestDetail: {
+      backtest_id: string;
       /** Format: date */
       end_date: string;
-      backtest_id: string;
+      /** Format: date */
+      start_date: string;
+      backtest_results: components["schemas"]["AllSubstitutionResults"];
+      backtest_name: string;
+      backtest_substitutions: components["schemas"]["BacktestSubstitution"][];
+      /** @enum {string} */
+      status?: "running" | "completed" | "failed";
       /** Format: date-time */
       time_created?: string;
-      backtest_results: components["schemas"]["AllSubstitutionResults"];
-      backtest_substitutions: components["schemas"]["BacktestSubstitution"][];
       kpis?: {
         [key: string]: Record<string, never> | undefined;
       };
-      /** Format: date */
-      start_date: string;
-      /** @enum {string} */
-      status?: "running" | "completed" | "failed";
-      backtest_name: string;
     };
     BacktestSubstitution: {
       new_plan: components["schemas"]["PlanVersionDetail"];
@@ -779,38 +870,66 @@ export interface components {
       operator: "isin" | "isnotin";
       comparison_value: string[];
     };
+    CategoricalFilterDetailRequest: {
+      property_name: string;
+      /** @enum {string} */
+      operator: "isin" | "isnotin";
+      comparison_value: string[];
+    };
     CategoricalFilterRequest: {
       property_name: string;
       /** @enum {string} */
       operator: "isin" | "isnotin";
       comparison_value: string[];
     };
+    ChangeActiveDateResponse: {
+      success: boolean;
+      message: string;
+    };
+    ChangeActiveDatesRequest: {
+      /** @description The version_ids of the plan versions you want to add the feature to. If you want to apply to all versions, use the all_versions parameter. */
+      version_ids?: string[];
+      /**
+       * @description Whether or not to apply this feature to all versions of the feature. If you want to apply to specific versions, use the version_ids parameter.
+       * @default false
+       */
+      all_versions?: boolean;
+      /**
+       * Format: date-time
+       * @description The date and time that the feature should be active from. If you want to make this inactive, you can pass null here.
+       */
+      active_from?: string;
+      /**
+       * Format: date-time
+       * @description The date and time that the feature should be active until. If you want to make this active indefinitely, you can pass null here.
+       */
+      active_to?: string;
+    };
     ChangeUserOrganizationRequestRequest: {
       /** @description The organization ID to transfer to */
       transfer_to_organization_id: string;
     };
-    ComponentUsage: {
-      /** @description The name of the event you are checking access for. */
-      event_name: string;
-      /** @description The name of the metric. */
-      metric_name: string;
-      /** @description The metric_id of the metric. This metric_id can be found in the Lotus frontend if you haven't seen it before. */
-      metric_id: string;
+    ComponentCharge: {
       /**
        * Format: double
-       * @description The current usage of the metric. Keep in mind the current usage of the metric can be different from the billable usage of the metric.
+       * @description The number of units to charge for. If the charge type is 'dynamic', this field will be null.
        */
-      metric_usage: number;
+      units: number;
+      /** @enum {unknown} */
+      charge_type: "predefined" | "dynamic";
+      /** @enum {unknown} */
+      charge_behavior: "prorate" | "full";
+    };
+    ComponentChargeCreateRequest: {
       /**
        * Format: double
-       * @description If you specified a free tier of usage for this metric, this is the amount of usage that is free. Will be null if you did not specify a free tier for this metric.
+       * @description The number of units to charge for. If the charge type is 'dynamic', this field should be null.
        */
-      metric_free_limit: number;
-      /**
-       * Format: double
-       * @description The total limit of the metric. Will be null if you did not specify a limit for this metric.
-       */
-      metric_total_limit: number;
+      units: number;
+      /** @enum {unknown} */
+      charge_type: "predefined" | "dynamic";
+      /** @enum {unknown} */
+      charge_behavior: "prorate" | "full";
     };
     ConfirmConnected: {
       organization_id: string;
@@ -2320,6 +2439,22 @@ export interface components {
         [key: string]: number | undefined;
       };
     };
+    DeleteAddOn: {
+      success: boolean;
+      message: string;
+    };
+    DeleteAddOnVersion: {
+      success: boolean;
+      message: string;
+    };
+    DeletePlan: {
+      success: boolean;
+      message: string;
+    };
+    DeletePlanVersion: {
+      success: boolean;
+      message: string;
+    };
     DemoLoginFailure: {
       detail: string;
     };
@@ -2349,28 +2484,40 @@ export interface components {
       user: components["schemas"]["User"];
     };
     DraftInvoice: {
-      currency: components["schemas"]["PricingUnit"];
-      /** Format: date */
-      end_date: string;
-      line_items: readonly components["schemas"]["GroupedLineItem"][];
       /** Format: date-time */
       due_date: string;
+      /** Format: date */
+      end_date: string;
       invoice_id: string;
-      /** Format: double */
-      cost_due: number;
       /** Format: date */
       start_date: string;
       /** Format: date-time */
       issue_date: string;
+      currency: components["schemas"]["PricingUnit"];
+      /** Format: double */
+      cost_due: number;
+      line_items: readonly components["schemas"]["GroupedLineItem"][];
     };
     DraftInvoiceResponse: {
       invoice?: components["schemas"]["DraftInvoice"][];
+    };
+    DynamicFixedChargeInitialValueRequest: {
+      /**
+       * Format: uuid
+       * @description The id of the metric that this initial value is for
+       */
+      metric_id: string;
+      /**
+       * Format: double
+       * @description The number of units of the metric that this initial value is for
+       */
+      units: number;
     };
     EmailRequest: {
       /** Format: email */
       email: string;
     };
-    Event: {
+    EventDetail: {
       /** @description String name of the event, corresponds to definition in metrics */
       event_name: string;
       /** @description Extra metadata on the event that can be filtered and queried on in the metrics. All key value pairs should have string keys and values can be either strings or numbers. Place subscription filters in this object to specify which subscription the event should be tracked under */
@@ -2436,27 +2583,14 @@ export interface components {
       feature_name: string;
       feature_description?: string;
     };
-    GetEventAccess: {
-      /** @description The plan_id of the plan we are checking that has access to this feature. */
-      plan_id: string;
-      /** @description The subscription filters that are applied to this plan's relationship with the customer. If your billing model does not have the ability multiple plans or subscriptions per customer, this is likely not relevant for you. */
-      subscription_filters: components["schemas"]["SubscriptionCategoricalFilter"][];
-      /** @description The usage of each component of the plan the customer is on. Only components that match the request will be included: If metric_id is provided, this will be a list of length 1. If event_name is provided, this will be a list of length 1 or more depending on how many components of the customer's plan use this event. */
-      usage_per_component: components["schemas"]["ComponentUsage"][];
-    };
-    GetFeatureAccess: {
-      /** @description Name of the feature to check access for. */
+    FeatureDetail: {
+      feature_id: string;
       feature_name: string;
-      /** @description The plan_id of the plan we are checking that has access to this feature. */
-      plan_id: string;
-      /** @description The subscription filters that are applied to this plan's relationship with the customer. If your billing model does not have the ability multiple plans or subscriptions per customer, this is likely not relevant for you. */
-      subscription_filters: components["schemas"]["SubscriptionCategoricalFilter"][];
-      /** @description Whether or not the plan has access to this feature. If your customer can have multiple plans or subscriptions, then you must check the 'access' across all returned plans to determine if the customer can access this feature. */
-      access: boolean;
+      feature_description: string;
     };
     GroupedLineItem: {
       plan_name: string;
-      subscription_filters: components["schemas"]["SubscriptionCategoricalFilter"][];
+      subscription_filters: components["schemas"]["SubscriptionCategoricalFilterDetail"][];
       /** Format: double */
       subtotal: number;
       /** Format: date-time */
@@ -2496,6 +2630,16 @@ export interface components {
     InitResetPasswordSuccess: {
       email: string;
     };
+    InitialAddOnVersionCreateRequest: {
+      currency_code: string;
+      components?: components["schemas"]["PlanComponentCreateRequest"][];
+      /** @enum {unknown} */
+      invoice_when: "invoice_on_attach" | "invoice_on_subscription_end";
+      recurring_charges?: components["schemas"]["RecurringChargeCreateRequest"][];
+      /** @enum {unknown} */
+      billing_frequency: "one_time" | "recurring";
+      features?: string[];
+    };
     InitialExternalPlanLink: {
       /** @enum {string} */
       source: "stripe" | "braintree";
@@ -2506,25 +2650,16 @@ export interface components {
       source: "stripe" | "braintree";
       external_plan_id: string;
     };
-    InitialPlanVersionRequest: {
-      components?: components["schemas"]["PlanComponentCreateRequest"][];
-      /** @enum {string|null} */
-      usage_billing_frequency?:
-        | "monthly"
-        | "quarterly"
-        | "end_of_period"
-        | ""
-        | ""
-        | null;
-      currency_code?: string;
-      /** Format: uuid */
-      transition_to_plan_id?: string;
-      day_anchor?: number;
-      features?: string[];
-      description?: string;
+    InitialPlanVersionCreateRequest: {
+      currency_code: string;
+      target_customer_ids?: string[];
       month_anchor?: number;
+      components?: components["schemas"]["PlanComponentCreateRequest"][];
       price_adjustment?: components["schemas"]["PriceAdjustmentRequest"];
+      version: number;
       recurring_charges?: components["schemas"]["RecurringChargeCreateRequest"][];
+      features?: string[];
+      day_anchor?: number;
     };
     InviteLinkResponse: {
       /** Format: email */
@@ -2568,6 +2703,31 @@ export interface components {
     InvoiceCreatedRequest: {
       payload: components["schemas"]["InvoiceRequest"];
     };
+    InvoiceDetail: {
+      invoice_id: string;
+      invoice_number: string;
+      /** Format: double */
+      cost_due: number;
+      currency: components["schemas"]["PricingUnit"];
+      /** Format: date-time */
+      issue_date: string;
+      /** @enum {unknown} */
+      payment_status: "draft" | "voided" | "paid" | "unpaid";
+      external_payment_obj_id: string;
+      /** @enum {string|null} */
+      external_payment_obj_type: "stripe" | "braintree" | "" | null;
+      line_items: components["schemas"]["InvoiceLineItem"][];
+      customer: components["schemas"]["LightweightCustomerSerializerForInvoice"];
+      /** Format: date-time */
+      due_date: string;
+      /** Format: date */
+      start_date: string;
+      /** Format: date */
+      end_date: string;
+      seller: components["schemas"]["Seller"];
+      /** Format: uri */
+      invoice_pdf: string;
+    };
     InvoiceLineItem: {
       name: string;
       /** Format: date-time */
@@ -2579,7 +2739,13 @@ export interface components {
       /** Format: double */
       subtotal: number;
       /** @enum {string|null} */
-      billing_type: "in_arrears" | "in_advance" | "one_time" | "" | null;
+      billing_type:
+        | "in_arrears"
+        | "intermediate"
+        | "in_advance"
+        | "one_time"
+        | ""
+        | null;
       metadata: {
         [key: string]: Record<string, never> | undefined;
       } | null;
@@ -2597,7 +2763,13 @@ export interface components {
       /** Format: double */
       subtotal: number;
       /** @enum {string|null} */
-      billing_type: "in_arrears" | "in_advance" | "one_time" | "" | null;
+      billing_type:
+        | "in_arrears"
+        | "intermediate"
+        | "in_advance"
+        | "one_time"
+        | ""
+        | null;
       metadata: {
         [key: string]: Record<string, never> | undefined;
       } | null;
@@ -2620,7 +2792,7 @@ export interface components {
       /** @enum {string} */
       payment_status: "paid" | "unpaid";
     };
-    LightweightAddon: {
+    LightweightAddOn: {
       /** @description The name of the add-on plan. */
       addon_name: string;
       /** @description The ID of the add-on plan. */
@@ -2630,13 +2802,14 @@ export interface components {
       /** @enum {unknown} */
       billing_frequency: "one_time" | "recurring";
     };
-    LightweightAddonRequest: {
+    LightweightAddOnRequest: {
       /** @description The name of the add-on plan. */
       addon_name: string;
       /** @description The ID of the add-on plan. */
       addon_id: string;
     };
-    LightweightAddonSubscriptionRecord: {
+    LightweightAddOnSubscriptionRecord: {
+      addon_subscription_id: string;
       /**
        * Format: date-time
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
@@ -2647,24 +2820,12 @@ export interface components {
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
       end_date: string;
-      addon: components["schemas"]["LightweightAddon"];
-      /** @description Whether the subscription has been fully billed and finalized. */
+      addon: components["schemas"]["LightweightAddOn"];
       fully_billed: boolean;
     };
-    LightweightAddonSubscriptionRecordRequest: {
-      /**
-       * Format: date-time
-       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
-       */
-      start_date: string;
-      /**
-       * Format: date-time
-       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
-       */
-      end_date: string;
-      addon: components["schemas"]["LightweightAddonRequest"];
-      /** @description Whether the subscription has been fully billed and finalized. */
-      fully_billed: boolean;
+    LightweightAddOnSubscriptionRecordRequest: {
+      addon_subscription_id: string;
+      addon: components["schemas"]["LightweightAddOnRequest"];
     };
     LightweightCustomer: {
       /** @description The display name of the customer */
@@ -2690,42 +2851,48 @@ export interface components {
       address?: components["schemas"]["Address"] | null;
     };
     LightweightInvoice: {
-      /** @enum {unknown} */
-      payment_status: "draft" | "voided" | "paid" | "unpaid";
-      currency: components["schemas"]["PricingUnit"];
       /** Format: uri */
       invoice_pdf: string;
-      external_payment_obj_id: string;
-      /** Format: date */
-      end_date: string;
-      invoice_id: string;
-      /** @enum {string|null} */
-      external_payment_obj_type: "stripe" | "braintree" | "" | null;
       /** Format: date-time */
       due_date: string;
-      /** Format: double */
-      cost_due: number;
+      /** Format: date */
+      end_date: string;
+      external_payment_obj_id: string;
+      /** @enum {unknown} */
+      payment_status: "draft" | "voided" | "paid" | "unpaid";
+      seller: components["schemas"]["Seller"];
+      invoice_id: string;
       /** Format: date */
       start_date: string;
-      invoice_number: string;
-      seller: components["schemas"]["Seller"];
       /** Format: date-time */
       issue_date: string;
+      invoice_number: string;
+      currency: components["schemas"]["PricingUnit"];
+      /** Format: double */
+      cost_due: number;
+      /** @enum {string|null} */
+      external_payment_obj_type: "stripe" | "braintree" | "" | null;
     };
     LightweightInvoiceLineItem: {
+      /** Format: date-time */
+      end_date: string;
+      /** Format: double */
+      subtotal: number;
+      name: string;
+      subscription_filters: readonly components["schemas"]["SubscriptionCategoricalFilter"][];
+      /** @enum {string|null} */
+      billing_type:
+        | "in_arrears"
+        | "intermediate"
+        | "in_advance"
+        | "one_time"
+        | ""
+        | null;
+      /** Format: date-time */
+      start_date: string;
       /** Format: double */
       quantity: number;
       plan: components["schemas"]["LightweightPlanVersion"] | null;
-      /** Format: double */
-      subtotal: number;
-      /** Format: date-time */
-      end_date: string;
-      subscription_filters: readonly components["schemas"]["SubscriptionCategoricalFilter"][];
-      /** @enum {string|null} */
-      billing_type: "in_arrears" | "in_advance" | "one_time" | "" | null;
-      /** Format: date-time */
-      start_date: string;
-      name: string;
     };
     LightweightMetric: {
       metric_id: string;
@@ -2747,55 +2914,53 @@ export interface components {
     LightweightPlanVersion: {
       plan_name: string;
       plan_id: string;
-      version: number;
       version_id: string;
+      version: number | "custom_version";
     };
     LightweightPlanVersionRequest: {
-      plan_name: string;
       plan_id: string;
     };
     LightweightSubscriptionRecord: {
+      addons: components["schemas"]["LightweightAddOnSubscriptionRecord"][];
       /**
        * Format: date-time
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
       end_date: string;
-      subscription_filters: readonly components["schemas"]["SubscriptionCategoricalFilter"][];
-      customer: components["schemas"]["LightweightCustomer"];
-      /** @description Whether the subscription has been fully billed and finalized. */
-      fully_billed: boolean;
-      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
-      is_new: boolean;
-      /**
-       * Format: date-time
-       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
-       */
-      start_date: string;
-      billing_plan: components["schemas"]["LightweightPlanVersion"];
-      addons: components["schemas"]["LightweightAddonSubscriptionRecord"][];
       /** @description Whether the subscription automatically renews. Defaults to true. */
       auto_renew: boolean;
       plan_detail: components["schemas"]["LightweightPlanVersion"];
-    };
-    LightweightSubscriptionRecordRequest: {
-      /**
-       * Format: date-time
-       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
-       */
-      end_date: string;
-      /** @description Whether the subscription has been fully billed and finalized. */
-      fully_billed: boolean;
-      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
-      is_new: boolean;
+      subscription_filters: readonly components["schemas"]["SubscriptionCategoricalFilter"][];
       /**
        * Format: date-time
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
       start_date: string;
-      billing_plan: components["schemas"]["LightweightPlanVersionRequest"];
-      addons: components["schemas"]["LightweightAddonSubscriptionRecordRequest"][];
+      fully_billed: boolean;
+      customer: components["schemas"]["LightweightCustomer"];
+      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
+      is_new: boolean;
+      billing_plan: components["schemas"]["LightweightPlanVersion"];
+      subscription_id: string;
+    };
+    LightweightSubscriptionRecordRequest: {
+      addons: components["schemas"]["LightweightAddOnSubscriptionRecordRequest"][];
+      /**
+       * Format: date-time
+       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
+       */
+      end_date: string;
       /** @description Whether the subscription automatically renews. Defaults to true. */
       auto_renew: boolean;
+      /**
+       * Format: date-time
+       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
+       */
+      start_date: string;
+      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
+      is_new: boolean;
+      billing_plan: components["schemas"]["LightweightPlanVersionRequest"];
+      subscription_id: string;
     };
     LightweightUser: {
       /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
@@ -2820,6 +2985,21 @@ export interface components {
     };
     LogoutSuccess: {
       detail: string;
+    };
+    MakePublicRequestRequest: {
+      version: number;
+    };
+    MakePublicResponse: {
+      success: boolean;
+      message: string;
+    };
+    MakeReplaceWithRequest: {
+      /** @description The plan versions that will get replaced by the current version. */
+      versions_to_replace: string[];
+    };
+    MakeReplaceWithResponse: {
+      success: boolean;
+      message: string;
     };
     Metric: {
       metric_id: string;
@@ -2980,30 +3160,38 @@ export interface components {
       is_cost_metric?: boolean;
       /** @description A custom SQL query that can be used to define the metric. Please refer to our documentation for more information. */
       custom_sql?: string;
-      categorical_filters?: components["schemas"]["CategoricalFilterRequest"][];
-      numeric_filters?: components["schemas"]["NumericFilterRequest"][];
+      categorical_filters?: components["schemas"]["CategoricalFilterDetailRequest"][];
+      numeric_filters?: components["schemas"]["NumericFilterDetailRequest"][];
     };
     MetricDetail: {
+      /** @description Name of the event that this metric is tracking. */
+      event_name: string;
+      categorical_filters: components["schemas"]["CategoricalFilter"][];
+      /** @description A custom SQL query that can be used to define the metric. Please refer to our documentation for more information. */
+      custom_sql: string;
+      /**
+       * @description The proration of the metric. Only applies to metrics of type 'gauge'.
+       * @enum {string|null}
+       */
+      proration:
+        | "seconds"
+        | "minutes"
+        | "hours"
+        | "days"
+        | "months"
+        | "quarters"
+        | "years"
+        | "total"
+        | ""
+        | null;
       /**
        * @description Used only for metrics of type 'gauge'. Please refer to our documentation for an explanation of the different types.
        * @enum {string|null}
        */
       event_type: "delta" | "total" | "" | null;
-      /** @description Whether or not this metric is a cost metric (used to track costs to your business). */
-      is_cost_metric: boolean;
-      categorical_filters: components["schemas"]["CategoricalFilter"][];
-      /**
-       * @description The type of metric that this is. Please refer to our documentation for an explanation of the different types.
-       * @enum {string}
-       */
-      metric_type: "counter" | "rate" | "custom" | "gauge";
-      /** @description A custom SQL query that can be used to define the metric. Please refer to our documentation for more information. */
-      custom_sql: string;
       metric_id: string;
-      metric_name: string;
-      /** @description Name of the event that this metric is tracking. */
-      event_name: string;
-      numeric_filters: components["schemas"]["NumericFilter"][];
+      /** @description The name of the property of the event that should be used for this metric. Doesn't apply if the metric is of type 'counter' with an aggregation of count. */
+      property_name: string;
       /**
        * @description The granularity of the metric. Only applies to metrics of type 'gauge' or 'rate'.
        * @enum {string|null}
@@ -3020,22 +3208,14 @@ export interface components {
         | ""
         | null;
       /**
-       * @description The proration of the metric. Only applies to metrics of type 'gauge'.
-       * @enum {string|null}
+       * @description The type of metric that this is. Please refer to our documentation for an explanation of the different types.
+       * @enum {string}
        */
-      proration:
-        | "seconds"
-        | "minutes"
-        | "hours"
-        | "days"
-        | "months"
-        | "quarters"
-        | "years"
-        | "total"
-        | ""
-        | null;
-      /** @description The name of the property of the event that should be used for this metric. Doesn't apply if the metric is of type 'counter' with an aggregation of count. */
-      property_name: string;
+      metric_type: "counter" | "rate" | "custom" | "gauge";
+      /** @description Whether or not this metric is a cost metric (used to track costs to your business). */
+      is_cost_metric: boolean;
+      metric_name: string;
+      numeric_filters: components["schemas"]["NumericFilter"][];
       /**
        * @description The type of aggregation that should be used for this metric. Please refer to our documentation for an explanation of the different types.
        * @enum {string}
@@ -3089,6 +3269,13 @@ export interface components {
       /** Format: double */
       comparison_value: number;
     };
+    NumericFilterDetailRequest: {
+      property_name: string;
+      /** @enum {string} */
+      operator: "gte" | "gt" | "eq" | "lt" | "lte";
+      /** Format: double */
+      comparison_value: number;
+    };
     NumericFilterRequest: {
       property_name: string;
       /** @enum {string} */
@@ -3100,8 +3287,8 @@ export interface components {
       organization_id: string;
       organization_name: string;
       users: readonly components["schemas"]["OrganizationUser"][];
-      default_currency: components["schemas"]["PricingUnit"];
-      available_currencies: readonly components["schemas"]["PricingUnit"][];
+      default_currency: components["schemas"]["PricingUnitDetail"];
+      available_currencies: readonly components["schemas"]["PricingUnitDetail"][];
       plan_tags: readonly components["schemas"]["Tag"][];
       /**
        * Format: double
@@ -3599,10 +3786,24 @@ export interface components {
       previous?: string;
       results?: components["schemas"]["Action"][];
     };
-    PaginatedEventList: {
+    PaginatedEventDetailList: {
       next?: string;
       previous?: string;
-      results?: components["schemas"]["Event"][];
+      results?: components["schemas"]["EventDetail"][];
+    };
+    PatchedAddOnUpdateRequest: {
+      addon_name?: string;
+      /** Format: date-time */
+      active_from?: string;
+      /** Format: date-time */
+      active_to?: string;
+    };
+    PatchedAddOnVersionUpdateRequest: {
+      addon_version_name?: string;
+      /** Format: date-time */
+      active_from?: string;
+      /** Format: date-time */
+      active_to?: string;
     };
     PatchedCustomerUpdateRequest: {
       default_currency_code?: string;
@@ -4524,27 +4725,20 @@ export interface components {
     PatchedPlanUpdateRequest: {
       /** @description Name of the plan */
       plan_name?: string;
-      /** @enum {string} */
-      status?: "active" | "archived";
-      tags?: components["schemas"]["TagRequest"][];
+      /** @description Description of the plan */
+      plan_description?: string;
       taxjar_code?: string;
+      /** Format: date-time */
+      active_from?: string;
+      /** Format: date-time */
+      active_to?: string;
     };
     PatchedPlanVersionUpdateRequest: {
-      description?: string;
-      /** @enum {string} */
-      status?: "active" | "archived";
-      /** @enum {string} */
-      make_active_type?:
-        | "replace_immediately"
-        | "replace_on_active_version_renewal"
-        | "grandfather_active";
-      /** @enum {string} */
-      replace_immediately_type?:
-        | "end_current_subscription_and_bill"
-        | "end_current_subscription_dont_bill"
-        | "change_subscription_plan";
-      /** Format: uuid */
-      transition_to_plan_id?: string;
+      plan_version_name?: string;
+      /** Format: date-time */
+      active_from?: string;
+      /** Format: date-time */
+      active_to?: string;
     };
     PaymentProcesorPostDataRequest: {
       /** @enum {string} */
@@ -4589,6 +4783,7 @@ export interface components {
       period_2_new_subscriptions: number;
     };
     Plan: {
+      plan_id: string;
       /** @description Name of the plan */
       plan_name: string;
       /**
@@ -4596,78 +4791,85 @@ export interface components {
        * @enum {string|null}
        */
       plan_duration: "monthly" | "quarterly" | "yearly" | "" | null;
-      /** @enum {string} */
-      status: "active" | "archived" | "experimental";
+      /** @description Description of the plan */
+      plan_description: string;
       /** @description The external links that this plan has. */
       external_links: components["schemas"]["InitialExternalPlanLink"][];
-      plan_id: string;
-      parent_plan: components["schemas"]["PlanNameAndID"] | null;
-      target_customer: components["schemas"]["LightweightCustomer"] | null;
+      /**
+       * @deprecated
+       * @description Display version has been deprecated. Use 'versions' instead. We will still return this field for now with some heuristics for figuring out what the desired version is, but it will be removed in the near future.
+       */
       display_version: components["schemas"]["PlanVersion"];
       /** @description The number of versions that this plan has. */
       num_versions: number;
       /** @description The number of active subscriptions that this plan has across all versions. */
       active_subscriptions: number;
       /** @description The tags that this plan has. */
-      tags: readonly components["schemas"]["Tag"][];
+      tags: readonly components["schemas"]["TagName"][];
+      /** @description This plan's versions. */
+      versions: components["schemas"]["PlanVersion"][];
     };
     PlanComponent: {
       billable_metric: components["schemas"]["Metric"];
       tiers: components["schemas"]["PriceTier"][];
       pricing_unit: components["schemas"]["PricingUnit"];
+      /** @enum {string|null} */
+      invoicing_interval_unit: "day" | "week" | "month" | "year" | "" | null;
+      invoicing_interval_count: number;
+      /** @enum {string|null} */
+      reset_interval_unit: "day" | "week" | "month" | "year" | "" | null;
+      reset_interval_count: number;
+      prepaid_charge: components["schemas"]["ComponentCharge"] | null;
     };
     PlanComponentCreateRequest: {
       /** Format: uuid */
       metric_id: string;
       tiers?: components["schemas"]["PriceTierCreateRequest"][];
+      /** @enum {string|null} */
+      invoicing_interval_unit?: "day" | "week" | "month" | "year" | "" | null;
+      invoicing_interval_count?: number;
+      /** @enum {string|null} */
+      reset_interval_unit?: "day" | "week" | "month" | "year" | "" | null;
+      reset_interval_count?: number;
+      prepaid_charge?:
+        | components["schemas"]["ComponentChargeCreateRequest"]
+        | null;
     };
     PlanCreateRequest: {
       /** @description Name of the plan */
       plan_name: string;
+      /** @description Description of the plan */
+      plan_description?: string;
       /**
        * @description Duration of the plan
        * @enum {string|null}
        */
       plan_duration?: "monthly" | "quarterly" | "yearly" | "" | null;
-      /** @enum {string} */
-      status?: "active" | "archived" | "experimental";
       initial_external_links?: components["schemas"]["InitialExternalPlanLinkRequest"][];
-      initial_version: components["schemas"]["InitialPlanVersionRequest"];
-      /** Format: uuid */
-      parent_plan_id?: string;
-      /** @description The id provided when creating the customer, we suggest matching with your internal customer id in your backend */
-      target_customer_id?: string;
+      initial_version: components["schemas"]["InitialPlanVersionCreateRequest"];
       tags?: components["schemas"]["TagRequest"][];
     };
     PlanDetail: {
-      /** @description Name of the plan */
-      plan_name: string;
+      /** @description The number of active subscriptions that this plan has across all versions. */
+      active_subscriptions: number;
+      /** @description The number of versions that this plan has. */
+      num_versions: number;
       /**
        * @description Duration of the plan
        * @enum {string|null}
        */
       plan_duration: "monthly" | "quarterly" | "yearly" | "" | null;
-      /** @enum {string} */
-      status: "active" | "archived" | "experimental";
-      /** @description The external links that this plan has. */
-      external_links: components["schemas"]["InitialExternalPlanLink"][];
-      plan_id: string;
-      parent_plan: components["schemas"]["PlanNameAndID"] | null;
-      target_customer: components["schemas"]["LightweightCustomer"] | null;
-      display_version: components["schemas"]["PlanVersionDetail"];
-      /** @description The number of versions that this plan has. */
-      num_versions: number;
-      /** @description The number of active subscriptions that this plan has across all versions. */
-      active_subscriptions: number;
-      /** @description The tags that this plan has. */
-      tags: readonly components["schemas"]["Tag"][];
       versions: readonly components["schemas"]["PlanVersionDetail"][];
       taxjar_code?: string;
-    };
-    PlanNameAndID: {
+      /** @description Description of the plan */
+      plan_description: string;
+      plan_id: string;
+      /** @description The tags that this plan has. */
+      tags: readonly components["schemas"]["TagName"][];
+      /** @description The external links that this plan has. */
+      external_links: components["schemas"]["InitialExternalPlanLink"][];
       /** @description Name of the plan */
       plan_name: string;
-      plan_id: string;
     };
     PlanRepresentation: {
       plan_name: string;
@@ -4678,13 +4880,15 @@ export interface components {
     PlanUpdate: {
       /** @description Name of the plan */
       plan_name?: string;
-      /** @enum {string} */
-      status?: "active" | "archived";
-      tags?: components["schemas"]["Tag"][];
+      /** @description Description of the plan */
+      plan_description?: string;
       taxjar_code?: string;
+      /** Format: date-time */
+      active_from?: string;
+      /** Format: date-time */
+      active_to?: string;
     };
     PlanVersion: {
-      description: string;
       /**
        * @deprecated
        * @enum {string}
@@ -4699,104 +4903,95 @@ export interface components {
       components: components["schemas"]["PlanComponent"][];
       features: components["schemas"]["Feature"][];
       price_adjustment: components["schemas"]["PriceAdjustment"] | null;
-      /** @enum {string|null} */
-      usage_billing_frequency:
-        | "monthly"
-        | "quarterly"
-        | "end_of_period"
-        | ""
-        | null;
-      version: number;
+      /** @deprecated */
+      version: number | "custom_version";
       /** @enum {string} */
-      status: "active" | "retiring" | "grandfathered" | "archived" | "inactive";
+      status:
+        | "active"
+        | "retiring"
+        | "grandfathered"
+        | "deleted"
+        | "inactive"
+        | "not_started";
       plan_name: string;
       currency: components["schemas"]["PricingUnit"];
     };
     PlanVersionCreateRequest: {
-      description?: string;
       /** Format: uuid */
-      plan_id?: string;
+      plan_id: string;
       recurring_charges?: components["schemas"]["RecurringChargeCreateRequest"][];
       components?: components["schemas"]["PlanComponentCreateRequest"][];
       features?: string[];
       price_adjustment?: components["schemas"]["PriceAdjustmentRequest"];
-      /** @enum {string|null} */
-      usage_billing_frequency?:
-        | "monthly"
-        | "quarterly"
-        | "end_of_period"
-        | ""
-        | ""
-        | null;
       day_anchor?: number;
       month_anchor?: number;
-      make_active: boolean;
-      /** @enum {string} */
-      make_active_type?:
-        | "replace_immediately"
-        | "replace_on_active_version_renewal"
-        | "grandfather_active";
-      /** @enum {string} */
-      replace_immediately_type?:
-        | "end_current_subscription_and_bill"
-        | "end_current_subscription_dont_bill"
-        | "change_subscription_plan";
-      /** Format: uuid */
-      transition_to_plan_id?: string;
-      currency_code?: string;
+      currency_code: string;
+      version: number;
+      target_customer_ids?: string[];
     };
     PlanVersionDetail: {
-      description: string;
-      /**
-       * @deprecated
-       * @enum {string}
-       */
-      flat_fee_billing_type: "in_advance" | "in_arrears";
-      /**
-       * Format: double
-       * @deprecated
-       */
-      flat_rate: number;
-      recurring_charges: readonly components["schemas"]["RecurringCharge"][];
-      components: components["schemas"]["PlanComponent"][];
-      features: components["schemas"]["Feature"][];
-      price_adjustment: components["schemas"]["PriceAdjustment"] | null;
-      /** @enum {string|null} */
-      usage_billing_frequency:
-        | "monthly"
-        | "quarterly"
-        | "end_of_period"
-        | ""
-        | null;
-      version: number;
-      /** @enum {string} */
-      status: "active" | "retiring" | "grandfathered" | "archived" | "inactive";
-      plan_name: string;
-      currency: components["schemas"]["PricingUnit"];
       version_id: string;
-      plan_id: string;
-      alerts: readonly components["schemas"]["UsageAlert"][];
       active_subscriptions: number;
+      alerts: readonly components["schemas"]["UsageAlert"][];
+      features: components["schemas"]["Feature"][];
+      currency: components["schemas"]["PricingUnit"];
+      price_adjustment: components["schemas"]["PriceAdjustment"] | null;
+      components: components["schemas"]["PlanComponent"][];
+      plan_id: string;
+      /** @enum {string} */
+      status:
+        | "active"
+        | "retiring"
+        | "grandfathered"
+        | "deleted"
+        | "inactive"
+        | "not_started";
+      recurring_charges: readonly components["schemas"]["RecurringCharge"][];
+      plan_name: string;
+    };
+    PlanVersionHistoricalSubscription: {
+      customer_id: string;
+      customer_name: string;
+      /**
+       * Format: date-time
+       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
+       */
+      start_date: string;
+      /**
+       * Format: date-time
+       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
+       */
+      end_date: string;
+      /** @description Whether the subscription automatically renews. Defaults to true. */
+      auto_renew: boolean;
+    };
+    PlanVersionNumberSetReplaceWithResponse: {
+      success: boolean;
+      message: string;
+    };
+    PlanVersionNumberSetTransitionToResponse: {
+      success: boolean;
+      message: string;
     };
     PlanVersionUpdate: {
-      description?: string;
-      /** @enum {string} */
-      status?: "active" | "archived";
-      /** @enum {string} */
-      make_active_type?:
-        | "replace_immediately"
-        | "replace_on_active_version_renewal"
-        | "grandfather_active";
-      /** @enum {string} */
-      replace_immediately_type?:
-        | "end_current_subscription_and_bill"
-        | "end_current_subscription_dont_bill"
-        | "change_subscription_plan";
+      plan_version_name?: string;
+      /** Format: date-time */
+      active_from?: string;
+      /** Format: date-time */
+      active_to?: string;
     };
     PlansByNumCustomers: {
       results: components["schemas"]["SinglePlanNumCustomers"][];
       /** @enum {string} */
       status: "success";
+    };
+    PlansSetReplaceWithForVersionNumberRequest: {
+      /** @description The version number of the plan that will replace the current version. */
+      replacement_version_number: number;
+    };
+    PlansSetTransitionToForVersionNumberRequest: {
+      /** @description The plan that the current version will transition to. */
+      transition_to_plan_id: number;
     };
     PriceAdjustment: {
       price_adjustment_name: string;
@@ -4863,24 +5058,20 @@ export interface components {
       name: string;
       symbol: string;
     };
-    PricingUnitRequest: {
+    PricingUnitDetail: {
       code: string;
       name: string;
       symbol: string;
     };
-    Product: {
+    PricingUnitDetailRequest: {
+      code: string;
       name: string;
-      description?: string;
-      product_id?: string;
-      /** @enum {string} */
-      status: "active" | "archived";
+      symbol: string;
     };
-    ProductRequest: {
+    PricingUnitRequest: {
+      code: string;
       name: string;
-      description?: string;
-      product_id?: string;
-      /** @enum {string} */
-      status: "active" | "archived";
+      symbol: string;
     };
     RecurringCharge: {
       name: string;
@@ -4891,6 +5082,12 @@ export interface components {
       /** Format: double */
       amount: number;
       pricing_unit: components["schemas"]["PricingUnit"];
+      /** @enum {string|null} */
+      invoicing_interval_unit: "day" | "week" | "month" | "year" | "" | null;
+      invoicing_interval_count: number;
+      /** @enum {string|null} */
+      reset_interval_unit: "day" | "week" | "month" | "year" | "" | null;
+      reset_interval_count: number;
     };
     RecurringChargeCreateRequest: {
       name: string;
@@ -4904,6 +5101,12 @@ export interface components {
       /** Format: double */
       amount: number;
       pricing_unit_code?: string;
+      /** @enum {string|null} */
+      invoicing_interval_unit?: "day" | "week" | "month" | "year" | "" | null;
+      invoicing_interval_count?: number;
+      /** @enum {string|null} */
+      reset_interval_unit?: "day" | "week" | "month" | "year" | "" | null;
+      reset_interval_count?: number;
     };
     RegistrationDetailRequest: {
       organization_name: string;
@@ -4922,6 +5125,18 @@ export interface components {
       detail: string;
       token: string;
       user: components["schemas"]["User"];
+    };
+    RemovePlanTags: {
+      tags?: components["schemas"]["Tag"][];
+      success: boolean;
+      message: string;
+    };
+    RemovePlanTagsRequest: {
+      tags?: components["schemas"]["TagRequest"][];
+    };
+    RemoveTargetCustomerResponse: {
+      success: boolean;
+      message: string;
     };
     ResetPasswordRequestRequest: {
       userId: string;
@@ -4955,6 +5170,25 @@ export interface components {
     };
     SessionSuccess: {
       isAuthenticated: boolean;
+    };
+    SetPlanTagsRequest: {
+      tags?: components["schemas"]["TagRequest"][];
+    };
+    SetPlanTagsResponse: {
+      tags?: components["schemas"]["Tag"][];
+      success: boolean;
+      message: string;
+    };
+    SetReplaceWithRequest: {
+      /**
+       * Format: uuid
+       * @description The plan version to replace the current version with.
+       */
+      replace_with: string;
+    };
+    SetReplaceWithResponse: {
+      success: boolean;
+      message: string;
     };
     SingleCustomerValue: {
       customer_id: string;
@@ -5008,6 +5242,11 @@ export interface components {
       /** @description The string name of the property to filter on. Example: 'product_id' */
       property_name: string;
     };
+    SubscriptionCategoricalFilterDetail: {
+      value: string;
+      /** @description The string name of the property to filter on. Example: 'product_id' */
+      property_name: string;
+    };
     SubscriptionCategoricalFilterRequest: {
       value: string;
       /** @description The string name of the property to filter on. Example: 'product_id' */
@@ -5015,7 +5254,6 @@ export interface components {
     };
     SubscriptionCustomerSummary: {
       billing_plan_name: string;
-      plan_version: string;
       /**
        * Format: date-time
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
@@ -5025,6 +5263,7 @@ export interface components {
       auto_renew?: boolean;
     };
     SubscriptionRecord: {
+      subscription_id: string;
       /**
        * Format: date-time
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
@@ -5042,9 +5281,8 @@ export interface components {
       subscription_filters: components["schemas"]["SubscriptionCategoricalFilter"][];
       customer: components["schemas"]["LightweightCustomer"];
       billing_plan: components["schemas"]["LightweightPlanVersion"];
-      /** @description Whether the subscription has been fully billed and finalized. */
       fully_billed: boolean;
-      addons: components["schemas"]["LightweightAddonSubscriptionRecord"][];
+      addons: components["schemas"]["LightweightAddOnSubscriptionRecord"][];
     };
     SubscriptionRecordCancelRequest: {
       /**
@@ -5090,35 +5328,75 @@ export interface components {
       customer_id: string;
       /**
        * Format: uuid
-       * @description The Lotus plan_id, found in the billing plan object
+       * @description The Lotus version_id, found in the billing plan object. For maximum specificity, you can use this to control exactly what plan version becomes part of the subscription.
        */
-      plan_id: string;
+      version_id?: string;
+      /**
+       * Format: uuid
+       * @description The Lotus plan_id, found in the billing plan object. We will make a best-effort attempt to find the correct plan version (matching preferred currencies, prioritizing custom plans), but if more than one plan version or no plan version matches these criteria this will return an error.
+       */
+      plan_id?: string;
+      /** @description The initial units for dynamic fixed charges. This is only required if the plan has dynamic fixed charges for components. */
+      dynamic_fixed_charges_initial_units?: components["schemas"]["DynamicFixedChargeInitialValueRequest"][];
     };
-    SubscriptionRecordRequest: {
+    SubscriptionRecordCreateSerializerOldRequest: {
       /**
        * Format: date-time
-       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
+       * @description The date the subscription starts. This should be a string in YYYY-MM-DD format of the date in UTC time.
        */
       start_date: string;
       /**
        * Format: date-time
-       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
+       * @description The date the subscription ends. This should be a string in YYYY-MM-DD format of the date in UTC time. If you don’t set it (recommended), we will use the information in the billing plan to automatically calculate this.
        */
-      end_date: string;
+      end_date?: string;
       /** @description Whether the subscription automatically renews. Defaults to true. */
-      auto_renew: boolean;
-      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
-      is_new: boolean;
-      subscription_filters: components["schemas"]["SubscriptionCategoricalFilterRequest"][];
-      billing_plan: components["schemas"]["LightweightPlanVersionRequest"];
-      /** @description Whether the subscription has been fully billed and finalized. */
-      fully_billed: boolean;
-      addons: components["schemas"]["LightweightAddonSubscriptionRecordRequest"][];
-    };
-    SubscriptionRecordUpdateRequest: {
+      auto_renew?: boolean;
+      is_new?: boolean;
+      /** @description Add filter key, value pairs that define which events will be applied to this plan subscription. */
+      subscription_filters?: components["schemas"]["SubscriptionCategoricalFilterRequest"][];
+      /** @description The id provided when creating the customer */
+      customer_id: string;
       /**
        * Format: uuid
-       * @description If provided, will replace the current subscription's plan with this plan. If this is provided,turn_off_auto_renew and end_date will be ignored. The provided plan must have the same duration as the current plan.
+       * @description The Lotus plan_id, found in the billing plan object. This field has been deprecated in favor of version_id for the sake of being explicit. If used, a best effort will be made to find the correct plan version (matching preferred currencies, prioritizing custom plans), but if more than one plan versions matches this criteria this will return an error.
+       */
+      plan_id?: string;
+    };
+    SubscriptionRecordSwitchPlanRequest: {
+      /**
+       * Format: uuid
+       * @description The new plan version to switch to.
+       */
+      new_version_id: string;
+      /**
+       * @description The invoicing behavior to use when replacing the plan. Invoice now will invoice the customer for the prorated difference of the old plan and the new plan, whereas add_to_next_invoice will wait until the end of the subscription to do the calculation.
+       * @default invoice_now
+       * @enum {string}
+       */
+      invoicing_behavior?: "add_to_next_invoice" | "invoice_now";
+      /**
+       * @description The usage behavior to use when replacing the plan. Transfer to new subscription will transfer the usage from the old subscription to the new subscription, whereas reset_usage will reset the usage to 0 for the new subscription, while keeping the old usage on the old subscription and charging for that appropriately at the end of the month.
+       * @default transfer_to_new_subscription
+       * @enum {string}
+       */
+      usage_behavior?: "transfer_to_new_subscription" | "keep_separate";
+      /** @description The initial units for dynamic fixed charges. This is only required if the plan has dynamic fixed charges for components. */
+      dynamic_fixed_charges_initial_units?: components["schemas"]["DynamicFixedChargeInitialValueRequest"][];
+    };
+    SubscriptionRecordUpdateRequest: {
+      /** @description Turn off auto renew for the subscription */
+      turn_off_auto_renew?: boolean;
+      /**
+       * Format: date-time
+       * @description Change the end date for the subscription.
+       */
+      end_date?: string;
+    };
+    SubscriptionRecordUpdateSerializerOldRequest: {
+      /**
+       * Format: uuid
+       * @description [DEPRECATED] Will currently perform a best-effort attempt to find the correct plan version to replace the current plan with. If more than one plan version matches the criteria, this will return an error. Use the change_plan method of a subscription instance instead.
        */
       replace_plan_id?: string;
       /**
@@ -5146,10 +5424,16 @@ export interface components {
       tag_hex?: string;
       tag_color?: string;
     };
+    TagName: {
+      tag_name: string;
+    };
     TagRequest: {
       tag_name: string;
       tag_hex?: string;
       tag_color?: string;
+    };
+    TargetCustomersRequest: {
+      customer_ids: string[];
     };
     TimezonesResponse: {
       timezones: string[];
@@ -5310,11 +5594,62 @@ export interface operations {
       };
     };
   };
+  app_addon_versions_create: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AddOnVersionCreateRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["AddOnVersionCreateRequest"];
+        "multipart/form-data": components["schemas"]["AddOnVersionCreateRequest"];
+      };
+    };
+    responses: {
+      201: {
+        content: {
+          "application/json": components["schemas"]["AddOnVersionDetail"];
+        };
+      };
+    };
+  };
+  app_addon_versions_partial_update: {
+    parameters: {
+      path: {
+        version_id: string;
+      };
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["PatchedAddOnVersionUpdateRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["PatchedAddOnVersionUpdateRequest"];
+        "multipart/form-data": components["schemas"]["PatchedAddOnVersionUpdateRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["AddOnVersionUpdate"];
+        };
+      };
+    };
+  };
+  app_addon_versions_delete_create: {
+    parameters: {
+      path: {
+        version_id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["DeleteAddOnVersion"];
+        };
+      };
+    };
+  };
   app_addons_list: {
     responses: {
       200: {
         content: {
-          "application/json": components["schemas"]["AddOn"][];
+          "application/json": components["schemas"]["AddOnDetail"][];
         };
       };
     };
@@ -5330,7 +5665,7 @@ export interface operations {
     responses: {
       201: {
         content: {
-          "application/json": components["schemas"]["AddOn"];
+          "application/json": components["schemas"]["AddOnDetail"];
         };
       };
     };
@@ -5344,7 +5679,63 @@ export interface operations {
     responses: {
       200: {
         content: {
-          "application/json": components["schemas"]["AddOn"];
+          "application/json": components["schemas"]["AddOnDetail"];
+        };
+      };
+    };
+  };
+  app_addons_partial_update: {
+    parameters: {
+      path: {
+        addon_id: string;
+      };
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["PatchedAddOnUpdateRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["PatchedAddOnUpdateRequest"];
+        "multipart/form-data": components["schemas"]["PatchedAddOnUpdateRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["AddOnUpdate"];
+        };
+      };
+    };
+  };
+  app_addons_delete_create: {
+    parameters: {
+      path: {
+        addon_id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["DeleteAddOn"];
+        };
+      };
+    };
+  };
+  app_addons_features_add_create: {
+    parameters: {
+      path: {
+        addon_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AddFeatureToAddOnRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["AddFeatureToAddOnRequest"];
+        "multipart/form-data": components["schemas"]["AddFeatureToAddOnRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["AddFeatureToAddOnResponse"];
         };
       };
     };
@@ -5506,8 +5897,24 @@ export interface operations {
       };
     };
   };
+  app_credits_retrieve: {
+    parameters: {
+      /** @description The ID of the credit to retrieve or update. */
+      path: {
+        credit_id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["CustomerBalanceAdjustment"];
+        };
+      };
+    };
+  };
   app_credits_update_create: {
     parameters: {
+      /** @description The ID of the credit to retrieve or update. */
       path: {
         credit_id: string;
       };
@@ -5529,6 +5936,7 @@ export interface operations {
   };
   app_credits_void_create: {
     parameters: {
+      /** @description The ID of the credit to retrieve or update. */
       path: {
         credit_id: string;
       };
@@ -5707,7 +6115,7 @@ export interface operations {
     responses: {
       200: {
         content: {
-          "application/json": components["schemas"]["PaginatedEventList"];
+          "application/json": components["schemas"]["PaginatedEventDetailList"];
         };
       };
     };
@@ -5746,7 +6154,7 @@ export interface operations {
     responses: {
       200: {
         content: {
-          "application/json": components["schemas"]["Feature"][];
+          "application/json": components["schemas"]["FeatureDetail"][];
         };
       };
     };
@@ -5762,7 +6170,7 @@ export interface operations {
     responses: {
       201: {
         content: {
-          "application/json": components["schemas"]["Feature"];
+          "application/json": components["schemas"]["FeatureDetail"];
         };
       };
     };
@@ -5901,7 +6309,7 @@ export interface operations {
     responses: {
       200: {
         content: {
-          "application/json": components["schemas"]["Invoice"];
+          "application/json": components["schemas"]["InvoiceDetail"];
         };
       };
     };
@@ -6277,6 +6685,160 @@ export interface operations {
       };
     };
   };
+  app_plan_versions_delete_create: {
+    parameters: {
+      path: {
+        version_id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["DeletePlanVersion"];
+        };
+      };
+    };
+  };
+  app_plan_versions_features_add_create: {
+    parameters: {
+      path: {
+        version_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AddFeatureRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["AddFeatureRequest"];
+        "multipart/form-data": components["schemas"]["AddFeatureRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["AddFeatureResponse"];
+        };
+      };
+    };
+  };
+  app_plan_versions_make_public_create: {
+    parameters: {
+      path: {
+        version_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MakePublicRequestRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["MakePublicRequestRequest"];
+        "multipart/form-data": components["schemas"]["MakePublicRequestRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["MakePublicResponse"];
+        };
+      };
+    };
+  };
+  app_plan_versions_replacement_make_create: {
+    parameters: {
+      path: {
+        version_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MakeReplaceWithRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["MakeReplaceWithRequest"];
+        "multipart/form-data": components["schemas"]["MakeReplaceWithRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["MakeReplaceWithResponse"];
+        };
+      };
+    };
+  };
+  app_plan_versions_replacement_set_create: {
+    parameters: {
+      path: {
+        version_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SetReplaceWithRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["SetReplaceWithRequest"];
+        "multipart/form-data": components["schemas"]["SetReplaceWithRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["SetReplaceWithResponse"];
+        };
+      };
+    };
+  };
+  app_plan_versions_subscriptions_create: {
+    parameters: {
+      path: {
+        version_id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["PlanVersionHistoricalSubscription"][];
+        };
+      };
+    };
+  };
+  app_plan_versions_target_customers_add_create: {
+    parameters: {
+      path: {
+        version_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TargetCustomersRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["TargetCustomersRequest"];
+        "multipart/form-data": components["schemas"]["TargetCustomersRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["AddTargetCustomerResponse"];
+        };
+      };
+    };
+  };
+  app_plan_versions_target_customers_remove_create: {
+    parameters: {
+      path: {
+        version_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TargetCustomersRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["TargetCustomersRequest"];
+        "multipart/form-data": components["schemas"]["TargetCustomersRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["RemoveTargetCustomerResponse"];
+        };
+      };
+    };
+  };
   app_plans_list: {
     /** @description ViewSet for viewing and editing Plans. */
     responses: {
@@ -6341,6 +6903,205 @@ export interface operations {
       };
     };
   };
+  app_plans_delete_create: {
+    /** @description ViewSet for viewing and editing Plans. */
+    parameters: {
+      path: {
+        plan_id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["DeletePlan"];
+        };
+      };
+    };
+  };
+  app_plans_features_add_create: {
+    /** @description ViewSet for viewing and editing Plans. */
+    parameters: {
+      path: {
+        plan_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AddFeatureToPlanRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["AddFeatureToPlanRequest"];
+        "multipart/form-data": components["schemas"]["AddFeatureToPlanRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["AddFeatureToPlanResponse"];
+        };
+      };
+    };
+  };
+  app_plans_tags_add_create: {
+    /** @description ViewSet for viewing and editing Plans. */
+    parameters: {
+      path: {
+        plan_id: string;
+      };
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AddPlanTagsRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["AddPlanTagsRequest"];
+        "multipart/form-data": components["schemas"]["AddPlanTagsRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["AddPlanTags"];
+        };
+      };
+    };
+  };
+  app_plans_tags_remove_create: {
+    /** @description ViewSet for viewing and editing Plans. */
+    parameters: {
+      path: {
+        plan_id: string;
+      };
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["RemovePlanTagsRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["RemovePlanTagsRequest"];
+        "multipart/form-data": components["schemas"]["RemovePlanTagsRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["RemovePlanTags"];
+        };
+      };
+    };
+  };
+  app_plans_tags_set_create: {
+    /** @description ViewSet for viewing and editing Plans. */
+    parameters: {
+      path: {
+        plan_id: string;
+      };
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["SetPlanTagsRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["SetPlanTagsRequest"];
+        "multipart/form-data": components["schemas"]["SetPlanTagsRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["SetPlanTagsResponse"];
+        };
+      };
+    };
+  };
+  app_plans_versions_active_dates_update_create: {
+    /** @description ViewSet for viewing and editing Plans. */
+    parameters: {
+      /** @description The ID of the plan whose versions we're changing the active dates. */
+      /** @description The version number to update. */
+      path: {
+        plan_id: string;
+        version_number: number;
+      };
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ChangeActiveDatesRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["ChangeActiveDatesRequest"];
+        "multipart/form-data": components["schemas"]["ChangeActiveDatesRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["ChangeActiveDateResponse"];
+        };
+      };
+    };
+  };
+  app_plans_versions_features_add_create: {
+    /** @description ViewSet for viewing and editing Plans. */
+    parameters: {
+      /** @description The ID of the plan whose versions we're adding a feature to. */
+      /** @description The version number to update. */
+      path: {
+        plan_id: string;
+        version_number: number;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AddFeatureToPlanRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["AddFeatureToPlanRequest"];
+        "multipart/form-data": components["schemas"]["AddFeatureToPlanRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["AddFeatureToPlanVersionNumberResponse"];
+        };
+      };
+    };
+  };
+  app_plans_versions_replacement_set_create: {
+    /** @description ViewSet for viewing and editing Plans. */
+    parameters: {
+      path: {
+        plan_id: string;
+        version_number: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PlansSetReplaceWithForVersionNumberRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["PlansSetReplaceWithForVersionNumberRequest"];
+        "multipart/form-data": components["schemas"]["PlansSetReplaceWithForVersionNumberRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["PlanVersionNumberSetReplaceWithResponse"];
+        };
+      };
+    };
+  };
+  app_plans_versions_transition_set_create: {
+    /** @description ViewSet for viewing and editing Plans. */
+    parameters: {
+      path: {
+        plan_id: string;
+        version_number: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PlansSetTransitionToForVersionNumberRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["PlansSetTransitionToForVersionNumberRequest"];
+        "multipart/form-data": components["schemas"]["PlansSetTransitionToForVersionNumberRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["PlanVersionNumberSetTransitionToResponse"];
+        };
+      };
+    };
+  };
   app_plans_by_customer_retrieve: {
     responses: {
       200: {
@@ -6354,7 +7115,7 @@ export interface operations {
     responses: {
       200: {
         content: {
-          "application/json": components["schemas"]["PricingUnit"][];
+          "application/json": components["schemas"]["PricingUnitDetail"][];
         };
       };
     };
@@ -6362,54 +7123,15 @@ export interface operations {
   app_pricing_units_create: {
     requestBody: {
       content: {
-        "application/json": components["schemas"]["PricingUnitRequest"];
-        "application/x-www-form-urlencoded": components["schemas"]["PricingUnitRequest"];
-        "multipart/form-data": components["schemas"]["PricingUnitRequest"];
+        "application/json": components["schemas"]["PricingUnitDetailRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["PricingUnitDetailRequest"];
+        "multipart/form-data": components["schemas"]["PricingUnitDetailRequest"];
       };
     };
     responses: {
       201: {
         content: {
-          "application/json": components["schemas"]["PricingUnit"];
-        };
-      };
-    };
-  };
-  app_products_list: {
-    responses: {
-      200: {
-        content: {
-          "application/json": components["schemas"]["Product"][];
-        };
-      };
-    };
-  };
-  app_products_create: {
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["ProductRequest"];
-        "application/x-www-form-urlencoded": components["schemas"]["ProductRequest"];
-        "multipart/form-data": components["schemas"]["ProductRequest"];
-      };
-    };
-    responses: {
-      201: {
-        content: {
-          "application/json": components["schemas"]["Product"];
-        };
-      };
-    };
-  };
-  app_products_retrieve: {
-    parameters: {
-      path: {
-        product_id: string;
-      };
-    };
-    responses: {
-      200: {
-        content: {
-          "application/json": components["schemas"]["Product"];
+          "application/json": components["schemas"]["PricingUnitDetail"];
         };
       };
     };
@@ -6472,9 +7194,9 @@ export interface operations {
   app_subscriptions_create: {
     requestBody: {
       content: {
-        "application/json": components["schemas"]["SubscriptionRecordRequest"];
-        "application/x-www-form-urlencoded": components["schemas"]["SubscriptionRecordRequest"];
-        "multipart/form-data": components["schemas"]["SubscriptionRecordRequest"];
+        "application/json": components["schemas"]["SubscriptionRecordCreateRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["SubscriptionRecordCreateRequest"];
+        "multipart/form-data": components["schemas"]["SubscriptionRecordCreateRequest"];
       };
     };
     responses: {
@@ -6485,12 +7207,10 @@ export interface operations {
       };
     };
   };
-  app_subscriptions_add_create: {
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["SubscriptionRecordCreateRequest"];
-        "application/x-www-form-urlencoded": components["schemas"]["SubscriptionRecordCreateRequest"];
-        "multipart/form-data": components["schemas"]["SubscriptionRecordCreateRequest"];
+  app_subscriptions_retrieve: {
+    parameters: {
+      path: {
+        subscription_id: string;
       };
     };
     responses: {
@@ -6501,8 +7221,39 @@ export interface operations {
       };
     };
   };
-  app_subscriptions_addons_add_create: {
-    requestBody: {
+  app_subscriptions_addons_cancel_create: {
+    parameters: {
+      /** @description The ID of the addon within the subscription update. */
+      /** @description The ID of the subscription to update. */
+      path: {
+        addon_id: string;
+        addon_version_id: string;
+        subscription_id: string;
+      };
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["SubscriptionRecordCancelRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["SubscriptionRecordCancelRequest"];
+        "multipart/form-data": components["schemas"]["SubscriptionRecordCancelRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["AddOnSubscriptionRecord"][];
+        };
+      };
+    };
+  };
+  app_subscriptions_addons_attach_create: {
+    parameters: {
+      /** @description The ID of the subscription to add an addon to. */
+      path: {
+        subscription_id: string;
+      };
+    };
+    requestBody?: {
       content: {
         "application/json": components["schemas"]["AddOnSubscriptionRecordCreateRequest"];
         "application/x-www-form-urlencoded": components["schemas"]["AddOnSubscriptionRecordCreateRequest"];
@@ -6517,71 +7268,11 @@ export interface operations {
       };
     };
   };
-  app_subscriptions_addons_cancel_create: {
-    parameters: {
-      /** @description Filter to a specific addon. */
-      /** @description Filter to a specific customer. */
-      /** @description Filter to a specific plan. */
-      /** @description Filter to a specific set of subscription filters. If your billing model only allows for one subscription per customer, you very likely do not need this field. Must be formatted as a JSON-encoded + stringified list of dictionaries, where each dictionary has a key of 'property_name' and a key of 'value'. */
-      query: {
-        addon_id: string;
-        attached_customer_id: string;
-        attached_plan_id: string;
-        attached_subscription_filters?: components["schemas"]["SubscriptionCategoricalFilterRequest"][];
-      };
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["SubscriptionRecordCancelRequest"];
-        "application/x-www-form-urlencoded": components["schemas"]["SubscriptionRecordCancelRequest"];
-        "multipart/form-data": components["schemas"]["SubscriptionRecordCancelRequest"];
-      };
-    };
-    responses: {
-      200: {
-        content: {
-          "application/json": components["schemas"]["AddOnSubscriptionRecord"][];
-        };
-      };
-    };
-  };
-  app_subscriptions_addons_update_create: {
-    parameters: {
-      /** @description Filter to a specific addon. */
-      /** @description Filter to a specific customer. */
-      /** @description Filter to a specific plan. */
-      /** @description Filter to a specific set of subscription filters. If your billing model only allows for one subscription per customer, you very likely do not need this field. Must be formatted as a JSON-encoded + stringified list of dictionaries, where each dictionary has a key of 'property_name' and a key of 'value'. */
-      query: {
-        addon_id: string;
-        attached_customer_id: string;
-        attached_plan_id: string;
-        attached_subscription_filters?: components["schemas"]["SubscriptionCategoricalFilterRequest"][];
-      };
-    };
-    requestBody?: {
-      content: {
-        "application/json": components["schemas"]["AddonSubscriptionRecordUpdateRequest"];
-        "application/x-www-form-urlencoded": components["schemas"]["AddonSubscriptionRecordUpdateRequest"];
-        "multipart/form-data": components["schemas"]["AddonSubscriptionRecordUpdateRequest"];
-      };
-    };
-    responses: {
-      200: {
-        content: {
-          "application/json": components["schemas"]["AddOnSubscriptionRecord"][];
-        };
-      };
-    };
-  };
   app_subscriptions_cancel_create: {
     parameters: {
-      /** @description Filter to a specific customer. */
-      /** @description Filter to a specific plan. If not specified, all plans will be included in the cancellation request. */
-      /** @description Filter to a specific set of subscription filters. If your billing model only allows for one subscription per customer, you very likely do not need this field. Must be formatted as a JSON-encoded + stringified list of dictionaries, where each dictionary has a key of 'property_name' and a key of 'value'. */
-      query: {
-        customer_id: string;
-        plan_id?: string;
-        subscription_filters?: components["schemas"]["SubscriptionCategoricalFilterRequest"][];
+      /** @description The ID of the subscription to cancel. */
+      path: {
+        subscription_id: string;
       };
     };
     requestBody?: {
@@ -6594,20 +7285,38 @@ export interface operations {
     responses: {
       200: {
         content: {
-          "application/json": components["schemas"]["SubscriptionRecord"][];
+          "application/json": components["schemas"]["SubscriptionRecord"];
+        };
+      };
+    };
+  };
+  app_subscriptions_switch_plan_create: {
+    parameters: {
+      /** @description The ID of the subscription which will have its plans switched. */
+      path: {
+        subscription_id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SubscriptionRecordSwitchPlanRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["SubscriptionRecordSwitchPlanRequest"];
+        "multipart/form-data": components["schemas"]["SubscriptionRecordSwitchPlanRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["SubscriptionRecord"];
         };
       };
     };
   };
   app_subscriptions_update_create: {
     parameters: {
-      /** @description Filter to a specific customer. */
-      /** @description Filter to a specific plan. */
-      /** @description Filter to a specific set of subscription filters. If your billing model only allows for one subscription per customer, you very likely do not need this field. Must be formatted as a JSON-encoded + stringified list of dictionaries, where each dictionary has a key of 'property_name' and a key of 'value'. */
-      query: {
-        customer_id: string;
-        plan_id: string;
-        subscription_filters?: components["schemas"]["SubscriptionCategoricalFilterRequest"][];
+      /** @description The ID of the subscription to update. */
+      path: {
+        subscription_id: string;
       };
     };
     requestBody?: {
@@ -6620,7 +7329,7 @@ export interface operations {
     responses: {
       200: {
         content: {
-          "application/json": components["schemas"]["SubscriptionRecord"][];
+          "application/json": components["schemas"]["SubscriptionRecord"];
         };
       };
     };
@@ -6848,12 +7557,28 @@ export interface paths {
     /** @description API endpoint that allows events to be viewed. */
     get: operations["app_actions_list"];
   };
+  "/app/addon_versions/": {
+    post: operations["app_addon_versions_create"];
+  };
+  "/app/addon_versions/{version_id}/": {
+    patch: operations["app_addon_versions_partial_update"];
+  };
+  "/app/addon_versions/{version_id}/delete/": {
+    post: operations["app_addon_versions_delete_create"];
+  };
   "/app/addons/": {
     get: operations["app_addons_list"];
     post: operations["app_addons_create"];
   };
   "/app/addons/{addon_id}/": {
     get: operations["app_addons_retrieve"];
+    patch: operations["app_addons_partial_update"];
+  };
+  "/app/addons/{addon_id}/delete/": {
+    post: operations["app_addons_delete_create"];
+  };
+  "/app/addons/{addon_id}/features/add/": {
+    post: operations["app_addons_features_add_create"];
   };
   "/app/api_tokens/": {
     /** @description API endpoint that allows API Tokens to be viewed or edited. */
@@ -6883,6 +7608,9 @@ export interface paths {
   "/app/credits/": {
     get: operations["app_credits_list"];
     post: operations["app_credits_create"];
+  };
+  "/app/credits/{credit_id}/": {
+    get: operations["app_credits_retrieve"];
   };
   "/app/credits/{credit_id}/update/": {
     post: operations["app_credits_update_create"];
@@ -7015,6 +7743,30 @@ export interface paths {
   "/app/plan_versions/{version_id}/": {
     patch: operations["app_plan_versions_partial_update"];
   };
+  "/app/plan_versions/{version_id}/delete/": {
+    post: operations["app_plan_versions_delete_create"];
+  };
+  "/app/plan_versions/{version_id}/features/add/": {
+    post: operations["app_plan_versions_features_add_create"];
+  };
+  "/app/plan_versions/{version_id}/make_public/": {
+    post: operations["app_plan_versions_make_public_create"];
+  };
+  "/app/plan_versions/{version_id}/replacement/make/": {
+    post: operations["app_plan_versions_replacement_make_create"];
+  };
+  "/app/plan_versions/{version_id}/replacement/set/": {
+    post: operations["app_plan_versions_replacement_set_create"];
+  };
+  "/app/plan_versions/{version_id}/subscriptions/": {
+    post: operations["app_plan_versions_subscriptions_create"];
+  };
+  "/app/plan_versions/{version_id}/target_customers/add/": {
+    post: operations["app_plan_versions_target_customers_add_create"];
+  };
+  "/app/plan_versions/{version_id}/target_customers/remove/": {
+    post: operations["app_plan_versions_target_customers_remove_create"];
+  };
   "/app/plans/": {
     /** @description ViewSet for viewing and editing Plans. */
     get: operations["app_plans_list"];
@@ -7027,19 +7779,48 @@ export interface paths {
     /** @description ViewSet for viewing and editing Plans. */
     patch: operations["app_plans_partial_update"];
   };
+  "/app/plans/{plan_id}/delete/": {
+    /** @description ViewSet for viewing and editing Plans. */
+    post: operations["app_plans_delete_create"];
+  };
+  "/app/plans/{plan_id}/features/add/": {
+    /** @description ViewSet for viewing and editing Plans. */
+    post: operations["app_plans_features_add_create"];
+  };
+  "/app/plans/{plan_id}/tags/add/": {
+    /** @description ViewSet for viewing and editing Plans. */
+    post: operations["app_plans_tags_add_create"];
+  };
+  "/app/plans/{plan_id}/tags/remove/": {
+    /** @description ViewSet for viewing and editing Plans. */
+    post: operations["app_plans_tags_remove_create"];
+  };
+  "/app/plans/{plan_id}/tags/set/": {
+    /** @description ViewSet for viewing and editing Plans. */
+    post: operations["app_plans_tags_set_create"];
+  };
+  "/app/plans/{plan_id}/versions/{version_number}/active_dates/update/": {
+    /** @description ViewSet for viewing and editing Plans. */
+    post: operations["app_plans_versions_active_dates_update_create"];
+  };
+  "/app/plans/{plan_id}/versions/{version_number}/features/add/": {
+    /** @description ViewSet for viewing and editing Plans. */
+    post: operations["app_plans_versions_features_add_create"];
+  };
+  "/app/plans/{plan_id}/versions/{version_number}/replacement/set/": {
+    /** @description ViewSet for viewing and editing Plans. */
+    post: operations["app_plans_versions_replacement_set_create"];
+  };
+  "/app/plans/{plan_id}/versions/{version_number}/transition/set/": {
+    /** @description ViewSet for viewing and editing Plans. */
+    post: operations["app_plans_versions_transition_set_create"];
+  };
   "/app/plans_by_customer/": {
     get: operations["app_plans_by_customer_retrieve"];
   };
   "/app/pricing_units/": {
     get: operations["app_pricing_units_list"];
     post: operations["app_pricing_units_create"];
-  };
-  "/app/products/": {
-    get: operations["app_products_list"];
-    post: operations["app_products_create"];
-  };
-  "/app/products/{product_id}/": {
-    get: operations["app_products_retrieve"];
   };
   "/app/register/": {
     post: operations["app_register_create"];
@@ -7051,22 +7832,22 @@ export interface paths {
     get: operations["app_subscriptions_list"];
     post: operations["app_subscriptions_create"];
   };
-  "/app/subscriptions/add/": {
-    post: operations["app_subscriptions_add_create"];
+  "/app/subscriptions/{subscription_id}/": {
+    get: operations["app_subscriptions_retrieve"];
   };
-  "/app/subscriptions/addons/add/": {
-    post: operations["app_subscriptions_addons_add_create"];
-  };
-  "/app/subscriptions/addons/cancel/": {
+  "/app/subscriptions/{subscription_id}/addons/{addon_version_id}/cancel/": {
     post: operations["app_subscriptions_addons_cancel_create"];
   };
-  "/app/subscriptions/addons/update/": {
-    post: operations["app_subscriptions_addons_update_create"];
+  "/app/subscriptions/{subscription_id}/addons/attach/": {
+    post: operations["app_subscriptions_addons_attach_create"];
   };
-  "/app/subscriptions/cancel/": {
+  "/app/subscriptions/{subscription_id}/cancel/": {
     post: operations["app_subscriptions_cancel_create"];
   };
-  "/app/subscriptions/update/": {
+  "/app/subscriptions/{subscription_id}/switch_plan/": {
+    post: operations["app_subscriptions_switch_plan_create"];
+  };
+  "/app/subscriptions/{subscription_id}/update/": {
     post: operations["app_subscriptions_update_create"];
   };
   "/app/switch_organization/": {
