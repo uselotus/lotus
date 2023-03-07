@@ -38,6 +38,12 @@ export interface CreateRecurringCharge {
   pricing_unit_code?: string;
 }
 
+export interface PrepaidType {
+  units: number;
+  charge_type: "predefined" | "dynamic";
+  charge_behavior: "prorate" | "full";
+}
+
 export interface Component {
   billable_metric: MetricType;
   tiers: Tier[];
@@ -47,6 +53,7 @@ export interface Component {
   reset_interval_count: number;
   invoicing_interval_unit: "day" | "week" | "month" | "year" | null;
   invoicing_interval_count: number;
+  prepaid_charge?: number;
 }
 export interface CreateComponent
   extends Omit<Component, "billable_metric" | "pricing_unit"> {
