@@ -284,7 +284,6 @@ def subscription_cancelled_webhook(subscription, subscription_data=None):
             .distinct()
         )
 
-        print(endpoints) # testing 
         if endpoints.count() > 0:
             svix = SVIX_CONNECTOR
             now = str(now_utc())
