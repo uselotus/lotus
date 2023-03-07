@@ -1,6 +1,7 @@
 import React, { FC, useState, useEffect } from "react";
 import { PageLayout } from "../components/base/PageLayout";
 import { Button } from "antd";
+import { useQuery } from "react-query";
 
 interface Props {
   text: string;
@@ -12,13 +13,26 @@ interface Props {
   link?: string;
 }
 
-function quickStartCheck(
+interface QuickStartCheckProps {
+  setHasTrackedEvent?: (value: boolean) => void;
+  setHasCreatedMetric?: (value: boolean) => void;
+  setHasCreatedPlan?: (value: boolean) => void;
+  setHasPaymentConnected?: (value: boolean) => void;
+  setUsersInOrg?: (value: boolean) => void;
+}
+
+const quickStartCheck = async ({
   setHasTrackedEvent,
   setHasCreatedMetric,
   setHasCreatedPlan,
   setHasPaymentConnected,
-  setUsersInOrg
-);
+  setUsersInOrg,
+}: QuickStartCheckProps) => {
+  const { data: eventsData } = useQuery(["preview events", ""]);
+
+  console.log(eventsData);
+  const userTrackedEvent = eventsData?.results.length > 0;
+};
 
 const quickStartItem = ({
   text,
