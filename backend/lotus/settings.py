@@ -106,7 +106,7 @@ BRAINTREE_WEBHOOK_SECRET = config("BRAINTREE_WEBHOOK_SECRET", default="")
 # taxjar
 TAXJAR_API_KEY = config("TAXJAR_API_KEY", default=None)
 # Webhooks for Svix
-SVIX_API_KEY = config("SVIX_API_KEY", default="")
+SVIX_API_KEY = config("SVIX_API_KEY", default="testsk_gRhDBB9zHVFoewibKf4nnvyoxNdAGqNl.eu")
 SVIX_JWT_SECRET = config("SVIX_JWT_SECRET", default="")
 # Optional Observalility Services
 CRONITOR_API_KEY = config("CRONITOR_API_KEY", default="")
@@ -737,6 +737,14 @@ if SVIX_CONNECTOR is not None:
                     description="Customer is created",
                     archived=False,
                     name="customer.created",
+                )
+            )
+        if "subscription.cancelled" not in list_response_event_type_out: 
+            event_type_out = svix.event_type.create(
+                EventTypeIn(
+                    description="Subscription is cancelled",
+                    archived=False,
+                    name="subscription.cancelled",
                 )
             )
         if "invoice.past_due" not in list_response_event_type_out:

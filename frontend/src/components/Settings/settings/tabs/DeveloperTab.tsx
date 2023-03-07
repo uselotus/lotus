@@ -52,6 +52,8 @@ export function DeveloperTab() {
   const [isInvoicePaid, setIsInvoicePaid] = useState<boolean>(false);
   const [isUsageAlertTriggered, setIsUsageAlertTriggered] =
     useState<boolean>(false);
+  const [isSubscriptionCancelled, setIsSubscriptionCancelled] = useState<boolean>(false);
+
   const closeModal = () => {
     setVisible(false);
     setApiKey("");
@@ -124,6 +126,7 @@ export function DeveloperTab() {
         toast.success("Webhook URL added successfully");
         setVisibleWebhook(false);
         setWebhookSelected(undefined);
+        setIsSubscriptionCancelled(false);
       },
       onError: (error) => {
         toast.error(error.response.title);
@@ -161,7 +164,7 @@ export function DeveloperTab() {
       return;
     }
 
-    if (!isCustomerCreated && !isInvoiceGenerated && !isInvoicePaid && !isUsageAlertTriggered) {
+    if (!isCustomerCreated && !isInvoiceGenerated && !isInvoicePaid && !isUsageAlertTriggered && !isSubscriptionCancelled) {
       toast.error("Please select at-least one trigger");
       return;
     }
@@ -178,6 +181,9 @@ export function DeveloperTab() {
     }
     if (isUsageAlertTriggered) {
       triggers.push("usage_alert.triggered");
+    }
+    if (isSubscriptionCancelled) {
+      triggers.push("subscription.cancelled");
     }
     const endpointPost: WebhookEndpointCreate = {
       name: webhookName,
@@ -449,6 +455,13 @@ export function DeveloperTab() {
               value={isUsageAlertTriggered}
             >
               <p className="text-lg font-main">usage_alert.triggered</p>
+            </Checkbox>
+            <Checkbox 
+              style={{ marginLeft: "0px" }}
+              onChange={(e) => setIsSubscriptionCancelled(e.target.checked)}
+              value={isSubscriptionCancelled}
+            >
+              <p className="text-lg font-main">subscription.cancelled</p>
             </Checkbox>
           </div>
         </div>

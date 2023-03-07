@@ -224,3 +224,53 @@ def customer_created_webhook(customer, customer_data=None):
                     },
                 ),
             )
+
+
+def subscription_cancelled_webhook(subscription, subscription_data=None):
+    from api.serializers.model_serializers import SubscriptionRecordSerializer
+    from metering_billing.models import WebhookEndpoint
+    
+    print(subscription.customer, subscription_data) # aashish testing
+
+    if SVIX_CONNECTOR is not None: 
+        endpoints = (
+            WebhookEndpoint.objects.prefetch_related("triggers")
+            .filter(triggers__trigger_name=WEBHOOK_TRIGGER_EVENTS.SUBSCRIPTION_CANCELLED)
+            .distinct()
+        )
+
+        print(endpoints) # testing 
+        if endpoints.count() > 0:
+            svix = SVIX_CONNECTOR
+            now = str(now_utc())
+            payload = (
+                subscription_data if subscription_data else SubscriptionRecordSerializer(subscription).data
+            )
+            payload = make_all_decimals_floats(payload)
+            payload = make_all_dates_times_strings(payload)
+            response = {
+                "event_type": WEBHOOK_TRIGGER_EVENTS.SUBSCRIPTION_CANCELLED,
+                "payload": payload,
+            }
+            print(response) # aashish testing
+            event_id = (
+                slugify(str(subscription.customer))
+                + "_"
+                + slugify(str(subscription.billing_plan))
+                + "_"
+                + slugify(str(subscription.subscription_record_id.hex)[:50])
+                + "_"
+                + "cancelled"
+            )
+            response = svix.message.create(
+                subscription.organization.organization_id.hex,
+                MessageIn(
+                    event_type=WEBHOOK_TRIGGER_EVENTS.SUBSCRIPTION_CANCELLED,
+                    event_id=event_id,
+                    payload={
+                        "attempt": 5,
+                        "created_at": now,
+                        "properties": response,
+                    },
+                ),
+            ) 

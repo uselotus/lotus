@@ -129,7 +129,7 @@ from metering_billing.utils.enums import (
     USAGE_BILLING_BEHAVIOR,
     USAGE_BILLING_FREQUENCY,
 )
-from metering_billing.webhooks import customer_created_webhook
+from metering_billing.webhooks import customer_created_webhook, subscription_cancelled_webhook
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import (
     action,
@@ -969,7 +969,13 @@ class SubscriptionViewSet(
         return_qs = SubscriptionRecord.base_objects.filter(
             pk__in=original_qs, organization=organization
         )
+
         ret = SubscriptionRecordSerializer(return_qs, many=True).data
+
+        for subscription in qs:
+            subscription_data = SubscriptionRecordSerializer(subscription).data
+            subscription_cancelled_webhook(subscription, subscription_data)
+
         return Response(ret, status=status.HTTP_200_OK)
 
     @extend_schema(
