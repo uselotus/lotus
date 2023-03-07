@@ -2,6 +2,7 @@ import React, { FC, useState, useEffect } from "react";
 import { PageLayout } from "../components/base/PageLayout";
 import { Button } from "antd";
 import { useQuery } from "react-query";
+import { Events } from "../api/api";
 
 interface Props {
   text: string;
@@ -28,9 +29,12 @@ const quickStartCheck = async ({
   setHasPaymentConnected,
   setUsersInOrg,
 }: QuickStartCheckProps) => {
-  const { data: eventsData } = useQuery(["preview events", ""]);
+  const eventsDataPromise = useQuery(
+    ["preview events", ""],
+    Events.getEventPreviews("")
+  );
+  const eventsData = await eventsDataPromise;
 
-  console.log(eventsData);
   const userTrackedEvent = eventsData?.results.length > 0;
 };
 
