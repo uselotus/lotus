@@ -570,14 +570,14 @@ const PlanComponents: FC<PlanComponentsProps> = ({
   return (
     <div className="">
       {components && components.length > 0 ? (
-        <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card ">
+        <div className="mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card ">
           <Typography.Title className="pt-4 whitespace-pre-wrap !text-[18px]">
             Added Components
           </Typography.Title>
           <div>
             <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
           </div>
-          <div className="grid gap-6 grid-cols-1 xl:grid-cols-4">
+          <div className="grid gap-6 grid-cols-1 items-start xl:grid-cols-4">
             {components.map((component) => (
               <div
                 className="pt-2 bg-primary-50 mt-2 relative  mb-2 px-4 min-h-[152px] min-w-[270px]"
@@ -593,7 +593,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                     pagination={false}
                     showHeader={false}
                     bordered={false}
-                    className="noborderTable mb-12"
+                    className="noborderTable mb-8"
                     size="middle"
                     columns={[
                       {
@@ -626,7 +626,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                     ]}
                   />
                 </div>
-                <div className=" w-[96%] h-[1.5px] bg-card-divider" />
+                <div className="w-[96%] h-[1.5px] mt-8 bg-card-divider" />
                 <div className="self-end">
                   <div
                     className="flex py-6"
@@ -664,10 +664,10 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                       <path d="M20 17h2v2H2v-2h2v-7a8 8 0 1 1 16 0v7zm-2 0v-7a6 6 0 1 0-12 0v7h12zm-9 4h6v2H9v-2z" />
                     </svg>
                     {findAlertForComponent(component, alerts) !== undefined ? (
-                      <p className="align-middle">
+                      <span className="align-middle">
                         Reaches:{" "}
                         {findAlertForComponent(component, alerts)?.threshold}
-                      </p>
+                      </span>
                     ) : (
                       <span className=" text-small mb-0 align-middle self-center">
                         Set Alert
