@@ -276,7 +276,6 @@ def subscription_cancelled_webhook(subscription, subscription_data=None):
     from api.serializers.model_serializers import SubscriptionRecordSerializer
     from metering_billing.models import WebhookEndpoint
     
-    print(subscription.customer, subscription_data) # aashish testing
 
     if SVIX_CONNECTOR is not None: 
         endpoints = (
@@ -298,7 +297,6 @@ def subscription_cancelled_webhook(subscription, subscription_data=None):
                 "event_type": WEBHOOK_TRIGGER_EVENTS.SUBSCRIPTION_CANCELLED,
                 "payload": payload,
             }
-            print(response) # aashish testing
             event_id = (
                 slugify(str(subscription.customer))
                 + "_"
