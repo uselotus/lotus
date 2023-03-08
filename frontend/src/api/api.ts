@@ -247,7 +247,7 @@ export const Plan = {
     version_currency_code?: string;
     version_custom_type?: "custom_only" | "public_only" | "all";
     version_status?: ("active" | "ended" | "not_started")[];
-  }): Promise<PlanType[] | components["schemas"]["Plan"][]> =>
+  }): Promise<PlanType[] | components["schemas"]["PlanDetail"][]> =>
     requests.get("app/plans/", params),
   getPlan: (plan_id: string): Promise<components["schemas"]["PlanDetail"]> =>
     requests.get(`app/plans/${plan_id}/`),

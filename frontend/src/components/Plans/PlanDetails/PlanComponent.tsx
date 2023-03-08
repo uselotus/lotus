@@ -42,7 +42,7 @@ import StateTabs from "./StateTabs";
 
 interface PlanComponentsProps {
   components?: components["schemas"]["PlanDetail"]["versions"][0]["components"];
-  plan: components["schemas"]["Plan"];
+  plan: components["schemas"]["PlanDetail"];
   refetch: VoidFunction;
   alerts?: components["schemas"]["PlanDetail"]["versions"][0]["alerts"];
   plan_version_id: string;
@@ -85,7 +85,7 @@ const renderCost = (record: Tier, pricing_unit: CurrencyType) => {
 interface PlanSummaryProps {
   createPlanExternalLink: (link: string) => void;
   deletePlanExternalLink: (link: string) => void;
-  plan: components["schemas"]["Plan"];
+  plan: components["schemas"]["PlanDetail"];
   createTagMutation: (variables: {
     plan_id: string;
     tags: PlanType["tags"];
@@ -313,8 +313,8 @@ export function PlanSummary({
 }
 
 interface PlanInfoProps {
-  version: components["schemas"]["Plan"]["versions"][0];
-  plan: components["schemas"]["Plan"];
+  version: components["schemas"]["PlanDetail"]["versions"][0];
+  plan: components["schemas"]["PlanDetail"];
   activeKey: string;
 }
 export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
