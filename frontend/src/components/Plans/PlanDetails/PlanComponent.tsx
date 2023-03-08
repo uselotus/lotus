@@ -2,7 +2,6 @@
 /* eslint-disable no-shadow */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable camelcase */
-// @ts-ignore
 import React, { FC, useEffect, useRef, useState } from "react";
 import "./PlanDetails.css";
 import {
@@ -39,6 +38,7 @@ import createPlanTagsList from "../helpers/createPlanTagsList";
 import { AlertType, CreateAlertType } from "../../../types/alert-type";
 import { Plan } from "../../../api/api";
 import { components } from "../../../gen-types";
+import StateTabs from "./StateTabs";
 
 interface PlanComponentsProps {
   components?: components["schemas"]["PlanDetail"]["versions"][0]["components"];
@@ -327,7 +327,7 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
     return str;
   };
   const queryClient = useQueryClient();
-  const schedule = (duration: "monthly" | "yearly" | "quarterly") => {
+  const schedule = (duration: "monthly" | "yearly" | "quarterly" | "") => {
     switch (duration) {
       case "monthly":
         return "Start of Month";
@@ -375,14 +375,15 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
           <div>Plan Information</div>
         </Typography.Title>
         <div className="flex flex-row  items-center font-bold tabsContainer">
-          {/* <StateTabs
+          <StateTabs
             activeTab={capitalize(version.status)}
             version_id={version.version_id}
             version={version.version}
+            plan_id={plan.plan_id}
             activeVersion={version.version}
             tabs={["Active", "Grandfathered", "Retiring", "Inactive"]}
             plan={plan}
-          /> */}
+          />
           <span
             aria-hidden
             className="ml-auto"
@@ -422,7 +423,7 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-card-text gap-2 mb-1">
+          {/* <div className="flex items-center justify-between text-card-text gap-2 mb-1">
             <div className="font-normal whitespace-nowrap leading-4">
               Created At
             </div>
@@ -430,7 +431,7 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
               {" "}
               {dayjs(version?.created_on).format("YYYY/MM/DD")}
             </div>
-          </div>
+          </div> */}
         </div>
 
         <div className="w-[254px] ml-auto">
@@ -442,13 +443,13 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
               {" "}
               <div className="!text-card-grey">
                 {version?.transition_to
-                  ? capitalize(version.transition_to)
+                  ? capitalize(version.transition_to.plan_name)
                   : "Self"}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-card-text gap-2 mb-1">
+          {/* <div className="flex items-center justify-between text-card-text gap-2 mb-1">
             <div className="font-normal whitespace-nowrap leading-4">
               Recurring Bill Type
             </div>
@@ -463,7 +464,7 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
                 </Badge.Content>
               </Badge>
             </div>
-          </div>
+          </div> */}
 
           <div className="flex items-center justify-between text-card-text gap-2 mb-1">
             <div className="font-normal whitespace-nowrap leading-4">
@@ -471,7 +472,7 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
             </div>
             <div>
               {" "}
-              <span>{schedule(plan.plan_duration)}</span>
+              <span>{schedule(plan.plan_duration!)}</span>
             </div>
           </div>
         </div>

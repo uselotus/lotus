@@ -128,14 +128,14 @@ export interface components {
       initial_version: components["schemas"]["InitialAddOnVersionCreateRequest"];
     };
     AddOnDetail: {
-      /** @description This addon's versions. */
-      versions: components["schemas"]["AddOnVersion"][];
-      /** @description The description of the add-on plan. */
-      addon_description: string;
       /** @description The name of the add-on plan. */
       addon_name: string;
       /** @description The ID of the add-on plan. */
       addon_id: string;
+      /** @description This addon's versions. */
+      versions: components["schemas"]["AddOnVersion"][];
+      /** @description The description of the add-on plan. */
+      addon_description: string;
     };
     AddOnSubscriptionRecord: {
       addon_subscription_id: string;
@@ -816,21 +816,21 @@ export interface components {
       backtest_name: string;
     };
     BacktestDetail: {
+      kpis?: {
+        [key: string]: Record<string, never> | undefined;
+      };
+      /** @enum {string} */
+      status?: "running" | "completed" | "failed";
+      backtest_name: string;
+      backtest_substitutions: components["schemas"]["BacktestSubstitution"][];
       backtest_id: string;
       /** Format: date */
       end_date: string;
       /** Format: date */
       start_date: string;
-      backtest_results: components["schemas"]["AllSubstitutionResults"];
-      backtest_name: string;
-      backtest_substitutions: components["schemas"]["BacktestSubstitution"][];
-      /** @enum {string} */
-      status?: "running" | "completed" | "failed";
       /** Format: date-time */
       time_created?: string;
-      kpis?: {
-        [key: string]: Record<string, never> | undefined;
-      };
+      backtest_results: components["schemas"]["AllSubstitutionResults"];
     };
     BacktestSubstitution: {
       new_plan: components["schemas"]["PlanVersionDetail"];
@@ -2484,19 +2484,19 @@ export interface components {
       user: components["schemas"]["User"];
     };
     DraftInvoice: {
-      /** Format: date-time */
-      due_date: string;
-      /** Format: date */
-      end_date: string;
-      invoice_id: string;
-      /** Format: date */
-      start_date: string;
-      /** Format: date-time */
-      issue_date: string;
       currency: components["schemas"]["PricingUnit"];
+      line_items: readonly components["schemas"]["GroupedLineItem"][];
       /** Format: double */
       cost_due: number;
-      line_items: readonly components["schemas"]["GroupedLineItem"][];
+      /** Format: date-time */
+      due_date: string;
+      /** Format: date-time */
+      issue_date: string;
+      /** Format: date */
+      end_date: string;
+      /** Format: date */
+      start_date: string;
+      invoice_id: string;
     };
     DraftInvoiceResponse: {
       invoice?: components["schemas"]["DraftInvoice"][];
@@ -2631,14 +2631,14 @@ export interface components {
       email: string;
     };
     InitialAddOnVersionCreateRequest: {
-      currency_code: string;
-      components?: components["schemas"]["PlanComponentCreateRequest"][];
-      /** @enum {unknown} */
-      invoice_when: "invoice_on_attach" | "invoice_on_subscription_end";
-      recurring_charges?: components["schemas"]["RecurringChargeCreateRequest"][];
       /** @enum {unknown} */
       billing_frequency: "one_time" | "recurring";
+      recurring_charges?: components["schemas"]["RecurringChargeCreateRequest"][];
       features?: string[];
+      /** @enum {unknown} */
+      invoice_when: "invoice_on_attach" | "invoice_on_subscription_end";
+      components?: components["schemas"]["PlanComponentCreateRequest"][];
+      currency_code: string;
     };
     InitialExternalPlanLink: {
       /** @enum {string} */
@@ -2651,15 +2651,16 @@ export interface components {
       external_plan_id: string;
     };
     InitialPlanVersionCreateRequest: {
-      currency_code: string;
+      day_anchor?: number;
       target_customer_ids?: string[];
-      month_anchor?: number;
-      components?: components["schemas"]["PlanComponentCreateRequest"][];
-      price_adjustment?: components["schemas"]["PriceAdjustmentRequest"];
-      version: number;
       recurring_charges?: components["schemas"]["RecurringChargeCreateRequest"][];
       features?: string[];
-      day_anchor?: number;
+      price_adjustment?: components["schemas"]["PriceAdjustmentRequest"];
+      localized_name?: string;
+      version: number;
+      components?: components["schemas"]["PlanComponentCreateRequest"][];
+      currency_code: string;
+      month_anchor?: number;
     };
     InviteLinkResponse: {
       /** Format: email */
@@ -2851,35 +2852,34 @@ export interface components {
       address?: components["schemas"]["Address"] | null;
     };
     LightweightInvoice: {
-      /** Format: uri */
-      invoice_pdf: string;
-      /** Format: date-time */
-      due_date: string;
-      /** Format: date */
-      end_date: string;
-      external_payment_obj_id: string;
-      /** @enum {unknown} */
-      payment_status: "draft" | "voided" | "paid" | "unpaid";
-      seller: components["schemas"]["Seller"];
-      invoice_id: string;
-      /** Format: date */
-      start_date: string;
-      /** Format: date-time */
-      issue_date: string;
-      invoice_number: string;
       currency: components["schemas"]["PricingUnit"];
+      invoice_number: string;
       /** Format: double */
       cost_due: number;
+      /** Format: date-time */
+      due_date: string;
+      /** Format: date-time */
+      issue_date: string;
+      external_payment_obj_id: string;
       /** @enum {string|null} */
       external_payment_obj_type: "stripe" | "braintree" | "" | null;
+      /** Format: uri */
+      invoice_pdf: string;
+      /** @enum {unknown} */
+      payment_status: "draft" | "voided" | "paid" | "unpaid";
+      /** Format: date */
+      end_date: string;
+      /** Format: date */
+      start_date: string;
+      invoice_id: string;
+      seller: components["schemas"]["Seller"];
     };
     LightweightInvoiceLineItem: {
+      /** Format: double */
+      quantity: number;
+      subscription_filters: readonly components["schemas"]["SubscriptionCategoricalFilter"][];
       /** Format: date-time */
       end_date: string;
-      /** Format: double */
-      subtotal: number;
-      name: string;
-      subscription_filters: readonly components["schemas"]["SubscriptionCategoricalFilter"][];
       /** @enum {string|null} */
       billing_type:
         | "in_arrears"
@@ -2890,9 +2890,10 @@ export interface components {
         | null;
       /** Format: date-time */
       start_date: string;
-      /** Format: double */
-      quantity: number;
       plan: components["schemas"]["LightweightPlanVersion"] | null;
+      name: string;
+      /** Format: double */
+      subtotal: number;
     };
     LightweightMetric: {
       metric_id: string;
@@ -2911,6 +2912,11 @@ export interface components {
         | "Internal Demo";
       current: boolean;
     };
+    LightweightPlan: {
+      /** @description Name of the plan */
+      plan_name: string;
+      plan_id: string;
+    };
     LightweightPlanVersion: {
       plan_name: string;
       plan_id: string;
@@ -2921,45 +2927,45 @@ export interface components {
       plan_id: string;
     };
     LightweightSubscriptionRecord: {
+      billing_plan: components["schemas"]["LightweightPlanVersion"];
       addons: components["schemas"]["LightweightAddOnSubscriptionRecord"][];
+      subscription_filters: readonly components["schemas"]["SubscriptionCategoricalFilter"][];
+      fully_billed: boolean;
+      plan_detail: components["schemas"]["LightweightPlanVersion"];
+      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
+      is_new: boolean;
+      /** @description Whether the subscription automatically renews. Defaults to true. */
+      auto_renew: boolean;
       /**
        * Format: date-time
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
       end_date: string;
-      /** @description Whether the subscription automatically renews. Defaults to true. */
-      auto_renew: boolean;
-      plan_detail: components["schemas"]["LightweightPlanVersion"];
-      subscription_filters: readonly components["schemas"]["SubscriptionCategoricalFilter"][];
       /**
        * Format: date-time
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
       start_date: string;
-      fully_billed: boolean;
-      customer: components["schemas"]["LightweightCustomer"];
-      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
-      is_new: boolean;
-      billing_plan: components["schemas"]["LightweightPlanVersion"];
       subscription_id: string;
+      customer: components["schemas"]["LightweightCustomer"];
     };
     LightweightSubscriptionRecordRequest: {
+      billing_plan: components["schemas"]["LightweightPlanVersionRequest"];
       addons: components["schemas"]["LightweightAddOnSubscriptionRecordRequest"][];
-      /**
-       * Format: date-time
-       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
-       */
-      end_date: string;
+      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
+      is_new: boolean;
       /** @description Whether the subscription automatically renews. Defaults to true. */
       auto_renew: boolean;
       /**
        * Format: date-time
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
+      end_date: string;
+      /**
+       * Format: date-time
+       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
+       */
       start_date: string;
-      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
-      is_new: boolean;
-      billing_plan: components["schemas"]["LightweightPlanVersionRequest"];
       subscription_id: string;
     };
     LightweightUser: {
@@ -3164,11 +3170,20 @@ export interface components {
       numeric_filters?: components["schemas"]["NumericFilterDetailRequest"][];
     };
     MetricDetail: {
+      /** @description The name of the property of the event that should be used for this metric. Doesn't apply if the metric is of type 'counter' with an aggregation of count. */
+      property_name: string;
       /** @description Name of the event that this metric is tracking. */
       event_name: string;
-      categorical_filters: components["schemas"]["CategoricalFilter"][];
-      /** @description A custom SQL query that can be used to define the metric. Please refer to our documentation for more information. */
-      custom_sql: string;
+      /**
+       * @description Used only for metrics of type 'gauge'. Please refer to our documentation for an explanation of the different types.
+       * @enum {string|null}
+       */
+      event_type: "delta" | "total" | "" | null;
+      /**
+       * @description The type of metric that this is. Please refer to our documentation for an explanation of the different types.
+       * @enum {string}
+       */
+      metric_type: "counter" | "rate" | "custom" | "gauge";
       /**
        * @description The proration of the metric. Only applies to metrics of type 'gauge'.
        * @enum {string|null}
@@ -3185,14 +3200,6 @@ export interface components {
         | ""
         | null;
       /**
-       * @description Used only for metrics of type 'gauge'. Please refer to our documentation for an explanation of the different types.
-       * @enum {string|null}
-       */
-      event_type: "delta" | "total" | "" | null;
-      metric_id: string;
-      /** @description The name of the property of the event that should be used for this metric. Doesn't apply if the metric is of type 'counter' with an aggregation of count. */
-      property_name: string;
-      /**
        * @description The granularity of the metric. Only applies to metrics of type 'gauge' or 'rate'.
        * @enum {string|null}
        */
@@ -3207,15 +3214,14 @@ export interface components {
         | "total"
         | ""
         | null;
-      /**
-       * @description The type of metric that this is. Please refer to our documentation for an explanation of the different types.
-       * @enum {string}
-       */
-      metric_type: "counter" | "rate" | "custom" | "gauge";
+      /** @description A custom SQL query that can be used to define the metric. Please refer to our documentation for more information. */
+      custom_sql: string;
+      metric_id: string;
       /** @description Whether or not this metric is a cost metric (used to track costs to your business). */
       is_cost_metric: boolean;
-      metric_name: string;
       numeric_filters: components["schemas"]["NumericFilter"][];
+      categorical_filters: components["schemas"]["CategoricalFilter"][];
+      metric_name: string;
       /**
        * @description The type of aggregation that should be used for this metric. Please refer to our documentation for an explanation of the different types.
        * @enum {string}
@@ -4734,7 +4740,7 @@ export interface components {
       active_to?: string;
     };
     PatchedPlanVersionUpdateRequest: {
-      plan_version_name?: string;
+      localized_name?: string;
       /** Format: date-time */
       active_from?: string;
       /** Format: date-time */
@@ -4805,7 +4811,7 @@ export interface components {
       /** @description The number of active subscriptions that this plan has across all versions. */
       active_subscriptions: number;
       /** @description The tags that this plan has. */
-      tags: readonly components["schemas"]["TagName"][];
+      tags: readonly string[];
       /** @description This plan's versions. */
       versions: components["schemas"]["PlanVersion"][];
     };
@@ -4850,26 +4856,26 @@ export interface components {
       tags?: components["schemas"]["TagRequest"][];
     };
     PlanDetail: {
+      /** @description Description of the plan */
+      plan_description: string;
+      /** @description The external links that this plan has. */
+      external_links: components["schemas"]["InitialExternalPlanLink"][];
+      versions: readonly components["schemas"]["PlanVersionDetail"][];
       /** @description The number of active subscriptions that this plan has across all versions. */
       active_subscriptions: number;
-      /** @description The number of versions that this plan has. */
-      num_versions: number;
+      /** @description The tags that this plan has. */
+      tags: readonly components["schemas"]["Tag"][];
+      taxjar_code?: string;
       /**
        * @description Duration of the plan
        * @enum {string|null}
        */
       plan_duration: "monthly" | "quarterly" | "yearly" | "" | null;
-      versions: readonly components["schemas"]["PlanVersionDetail"][];
-      taxjar_code?: string;
-      /** @description Description of the plan */
-      plan_description: string;
       plan_id: string;
-      /** @description The tags that this plan has. */
-      tags: readonly components["schemas"]["TagName"][];
-      /** @description The external links that this plan has. */
-      external_links: components["schemas"]["InitialExternalPlanLink"][];
       /** @description Name of the plan */
       plan_name: string;
+      /** @description The number of versions that this plan has. */
+      num_versions: number;
     };
     PlanRepresentation: {
       plan_name: string;
@@ -4915,6 +4921,11 @@ export interface components {
         | "not_started";
       plan_name: string;
       currency: components["schemas"]["PricingUnit"];
+      /** Format: date-time */
+      active_from: string;
+      /** Format: date-time */
+      active_to: string;
+      localized_name: string;
     };
     PlanVersionCreateRequest: {
       /** Format: uuid */
@@ -4928,16 +4939,21 @@ export interface components {
       currency_code: string;
       version: number;
       target_customer_ids?: string[];
+      localized_name?: string;
     };
     PlanVersionDetail: {
-      version_id: string;
-      active_subscriptions: number;
-      alerts: readonly components["schemas"]["UsageAlert"][];
-      features: components["schemas"]["Feature"][];
+      /** Format: date-time */
+      active_from: string;
       currency: components["schemas"]["PricingUnit"];
-      price_adjustment: components["schemas"]["PriceAdjustment"] | null;
-      components: components["schemas"]["PlanComponent"][];
-      plan_id: string;
+      recurring_charges: readonly components["schemas"]["RecurringCharge"][];
+      features: components["schemas"]["Feature"][];
+      transition_to: components["schemas"]["LightweightPlan"];
+      replace_with: components["schemas"]["LightweightPlanVersion"];
+      localized_name: string;
+      /** @deprecated */
+      version: number | "custom_version";
+      plan_name: string;
+      alerts: readonly components["schemas"]["UsageAlert"][];
       /** @enum {string} */
       status:
         | "active"
@@ -4946,8 +4962,13 @@ export interface components {
         | "deleted"
         | "inactive"
         | "not_started";
-      recurring_charges: readonly components["schemas"]["RecurringCharge"][];
-      plan_name: string;
+      price_adjustment: components["schemas"]["PriceAdjustment"] | null;
+      active_subscriptions: number;
+      version_id: string;
+      plan_id: string;
+      /** Format: date-time */
+      active_to: string;
+      components: components["schemas"]["PlanComponent"][];
     };
     PlanVersionHistoricalSubscription: {
       customer_id: string;
@@ -4974,7 +4995,7 @@ export interface components {
       message: string;
     };
     PlanVersionUpdate: {
-      plan_version_name?: string;
+      localized_name?: string;
       /** Format: date-time */
       active_from?: string;
       /** Format: date-time */
@@ -5423,9 +5444,6 @@ export interface components {
       tag_name: string;
       tag_hex?: string;
       tag_color?: string;
-    };
-    TagName: {
-      tag_name: string;
     };
     TagRequest: {
       tag_name: string;
@@ -6841,6 +6859,24 @@ export interface operations {
   };
   app_plans_list: {
     /** @description ViewSet for viewing and editing Plans. */
+    parameters?: {
+      /** @description Filter to plans that have this duration. */
+      /** @description Filter to plans that do not have any of the tags in this list. */
+      /** @description Filter to plans that have any of the tags in this list. */
+      /** @description Filter to plans that have all of the tags in this list. */
+      /** @description Filter to versions that have the currency specified by this currency code. */
+      /** @description Filter to versions that have this custom type. If you choose custom_only, you will only see versions that have target customers. If you choose public_only, you will only see versions that do not have target customers. */
+      /** @description Filter to versions that have this status. Ended means it has an active_to date in the past. Not started means it has an active_from date in the future or null. */
+      query?: {
+        duration?: "monthly" | "quarterly" | "yearly";
+        exclude_tags?: string[];
+        include_tags?: string[];
+        include_tags_all?: string[];
+        version_currency_code?: string;
+        version_custom_type?: "custom_only" | "public_only" | "all";
+        version_status?: ("active" | "ended" | "not_started")[];
+      };
+    };
     responses: {
       200: {
         content: {
@@ -6869,6 +6905,14 @@ export interface operations {
   app_plans_retrieve: {
     /** @description ViewSet for viewing and editing Plans. */
     parameters: {
+      /** @description Filter to versions that have the currency specified by this currency code. */
+      /** @description Filter to versions that have this custom type. If you choose custom_only, you will only see versions that have target customers. If you choose public_only, you will only see versions that do not have target customers. */
+      /** @description Filter to versions that have this status. Ended means it has an active_to date in the past. Not started means it has an active_from date in the future or null. */
+      query?: {
+        version_currency_code?: string;
+        version_custom_type?: "custom_only" | "public_only" | "all";
+        version_status?: ("active" | "ended" | "not_started")[];
+      };
       path: {
         plan_id: string;
       };

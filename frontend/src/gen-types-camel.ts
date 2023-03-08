@@ -13,7 +13,6 @@ type OneOf<T extends any[]> = T extends [infer Only]
   : T extends [infer A, infer B, ...infer Rest]
   ? OneOf<[XOR<A, B>, ...Rest]>
   : never;
-
 export interface components {
   schemas: {
     APIToken: {
@@ -128,14 +127,14 @@ export interface components {
       initialVersion: components["schemas"]["InitialAddOnVersionCreateRequest"];
     };
     AddOnDetail: {
-      /** @description This addon's versions. */
-      versions: components["schemas"]["AddOnVersion"][];
-      /** @description The description of the add-on plan. */
-      addonDescription: string;
       /** @description The name of the add-on plan. */
       addonName: string;
       /** @description The ID of the add-on plan. */
       addonId: string;
+      /** @description This addon's versions. */
+      versions: components["schemas"]["AddOnVersion"][];
+      /** @description The description of the add-on plan. */
+      addonDescription: string;
     };
     AddOnSubscriptionRecord: {
       addonSubscriptionId: string;
@@ -816,21 +815,21 @@ export interface components {
       backtestName: string;
     };
     BacktestDetail: {
+      kpis?: {
+        [key: string]: Record<string, never> | undefined;
+      };
+      /** @enum {string} */
+      status?: "running" | "completed" | "failed";
+      backtestName: string;
+      backtestSubstitutions: components["schemas"]["BacktestSubstitution"][];
       backtestId: string;
       /** Format: date */
       endDate: string;
       /** Format: date */
       startDate: string;
-      backtestResults: components["schemas"]["AllSubstitutionResults"];
-      backtestName: string;
-      backtestSubstitutions: components["schemas"]["BacktestSubstitution"][];
-      /** @enum {string} */
-      status?: "running" | "completed" | "failed";
       /** Format: date-time */
       timeCreated?: string;
-      kpis?: {
-        [key: string]: Record<string, never> | undefined;
-      };
+      backtestResults: components["schemas"]["AllSubstitutionResults"];
     };
     BacktestSubstitution: {
       newPlan: components["schemas"]["PlanVersionDetail"];
@@ -2484,19 +2483,19 @@ export interface components {
       user: components["schemas"]["User"];
     };
     DraftInvoice: {
-      /** Format: date-time */
-      dueDate: string;
-      /** Format: date */
-      endDate: string;
-      invoiceId: string;
-      /** Format: date */
-      startDate: string;
-      /** Format: date-time */
-      issueDate: string;
       currency: components["schemas"]["PricingUnit"];
+      lineItems: readonly components["schemas"]["GroupedLineItem"][];
       /** Format: double */
       costDue: number;
-      lineItems: readonly components["schemas"]["GroupedLineItem"][];
+      /** Format: date-time */
+      dueDate: string;
+      /** Format: date-time */
+      issueDate: string;
+      /** Format: date */
+      endDate: string;
+      /** Format: date */
+      startDate: string;
+      invoiceId: string;
     };
     DraftInvoiceResponse: {
       invoice?: components["schemas"]["DraftInvoice"][];
@@ -2631,14 +2630,14 @@ export interface components {
       email: string;
     };
     InitialAddOnVersionCreateRequest: {
-      currencyCode: string;
-      components?: components["schemas"]["PlanComponentCreateRequest"][];
-      /** @enum {unknown} */
-      invoiceWhen: "invoiceOnAttach" | "invoiceOnSubscriptionEnd";
-      recurringCharges?: components["schemas"]["RecurringChargeCreateRequest"][];
       /** @enum {unknown} */
       billingFrequency: "oneTime" | "recurring";
+      recurringCharges?: components["schemas"]["RecurringChargeCreateRequest"][];
       features?: string[];
+      /** @enum {unknown} */
+      invoiceWhen: "invoiceOnAttach" | "invoiceOnSubscriptionEnd";
+      components?: components["schemas"]["PlanComponentCreateRequest"][];
+      currencyCode: string;
     };
     InitialExternalPlanLink: {
       /** @enum {string} */
@@ -2651,15 +2650,16 @@ export interface components {
       externalPlanId: string;
     };
     InitialPlanVersionCreateRequest: {
-      currencyCode: string;
+      dayAnchor?: number;
       targetCustomerIds?: string[];
-      monthAnchor?: number;
-      components?: components["schemas"]["PlanComponentCreateRequest"][];
-      priceAdjustment?: components["schemas"]["PriceAdjustmentRequest"];
-      version: number;
       recurringCharges?: components["schemas"]["RecurringChargeCreateRequest"][];
       features?: string[];
-      dayAnchor?: number;
+      priceAdjustment?: components["schemas"]["PriceAdjustmentRequest"];
+      localizedName?: string;
+      version: number;
+      components?: components["schemas"]["PlanComponentCreateRequest"][];
+      currencyCode: string;
+      monthAnchor?: number;
     };
     InviteLinkResponse: {
       /** Format: email */
@@ -2851,35 +2851,34 @@ export interface components {
       address?: components["schemas"]["Address"] | null;
     };
     LightweightInvoice: {
-      /** Format: uri */
-      invoicePdf: string;
-      /** Format: date-time */
-      dueDate: string;
-      /** Format: date */
-      endDate: string;
-      externalPaymentObjId: string;
-      /** @enum {unknown} */
-      paymentStatus: "draft" | "voided" | "paid" | "unpaid";
-      seller: components["schemas"]["Seller"];
-      invoiceId: string;
-      /** Format: date */
-      startDate: string;
-      /** Format: date-time */
-      issueDate: string;
-      invoiceNumber: string;
       currency: components["schemas"]["PricingUnit"];
+      invoiceNumber: string;
       /** Format: double */
       costDue: number;
+      /** Format: date-time */
+      dueDate: string;
+      /** Format: date-time */
+      issueDate: string;
+      externalPaymentObjId: string;
       /** @enum {string|null} */
       externalPaymentObjType: "stripe" | "braintree" | "" | null;
+      /** Format: uri */
+      invoicePdf: string;
+      /** @enum {unknown} */
+      paymentStatus: "draft" | "voided" | "paid" | "unpaid";
+      /** Format: date */
+      endDate: string;
+      /** Format: date */
+      startDate: string;
+      invoiceId: string;
+      seller: components["schemas"]["Seller"];
     };
     LightweightInvoiceLineItem: {
+      /** Format: double */
+      quantity: number;
+      subscriptionFilters: readonly components["schemas"]["SubscriptionCategoricalFilter"][];
       /** Format: date-time */
       endDate: string;
-      /** Format: double */
-      subtotal: number;
-      name: string;
-      subscriptionFilters: readonly components["schemas"]["SubscriptionCategoricalFilter"][];
       /** @enum {string|null} */
       billingType:
         | "inArrears"
@@ -2890,9 +2889,10 @@ export interface components {
         | null;
       /** Format: date-time */
       startDate: string;
-      /** Format: double */
-      quantity: number;
       plan: components["schemas"]["LightweightPlanVersion"] | null;
+      name: string;
+      /** Format: double */
+      subtotal: number;
     };
     LightweightMetric: {
       metricId: string;
@@ -2907,6 +2907,11 @@ export interface components {
       organizationType: "Production" | "Development" | "Demo" | "Internal Demo";
       current: boolean;
     };
+    LightweightPlan: {
+      /** @description Name of the plan */
+      planName: string;
+      planId: string;
+    };
     LightweightPlanVersion: {
       planName: string;
       planId: string;
@@ -2917,45 +2922,45 @@ export interface components {
       planId: string;
     };
     LightweightSubscriptionRecord: {
+      billingPlan: components["schemas"]["LightweightPlanVersion"];
       addons: components["schemas"]["LightweightAddOnSubscriptionRecord"][];
+      subscriptionFilters: readonly components["schemas"]["SubscriptionCategoricalFilter"][];
+      fullyBilled: boolean;
+      planDetail: components["schemas"]["LightweightPlanVersion"];
+      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
+      isNew: boolean;
+      /** @description Whether the subscription automatically renews. Defaults to true. */
+      autoRenew: boolean;
       /**
        * Format: date-time
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
       endDate: string;
-      /** @description Whether the subscription automatically renews. Defaults to true. */
-      autoRenew: boolean;
-      planDetail: components["schemas"]["LightweightPlanVersion"];
-      subscriptionFilters: readonly components["schemas"]["SubscriptionCategoricalFilter"][];
       /**
        * Format: date-time
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
       startDate: string;
-      fullyBilled: boolean;
-      customer: components["schemas"]["LightweightCustomer"];
-      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
-      isNew: boolean;
-      billingPlan: components["schemas"]["LightweightPlanVersion"];
       subscriptionId: string;
+      customer: components["schemas"]["LightweightCustomer"];
     };
     LightweightSubscriptionRecordRequest: {
+      billingPlan: components["schemas"]["LightweightPlanVersionRequest"];
       addons: components["schemas"]["LightweightAddOnSubscriptionRecordRequest"][];
-      /**
-       * Format: date-time
-       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
-       */
-      endDate: string;
+      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
+      isNew: boolean;
       /** @description Whether the subscription automatically renews. Defaults to true. */
       autoRenew: boolean;
       /**
        * Format: date-time
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
+      endDate: string;
+      /**
+       * Format: date-time
+       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
+       */
       startDate: string;
-      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
-      isNew: boolean;
-      billingPlan: components["schemas"]["LightweightPlanVersionRequest"];
       subscriptionId: string;
     };
     LightweightUser: {
@@ -3160,11 +3165,20 @@ export interface components {
       numericFilters?: components["schemas"]["NumericFilterDetailRequest"][];
     };
     MetricDetail: {
+      /** @description The name of the property of the event that should be used for this metric. Doesn't apply if the metric is of type 'counter' with an aggregation of count. */
+      propertyName: string;
       /** @description Name of the event that this metric is tracking. */
       eventName: string;
-      categoricalFilters: components["schemas"]["CategoricalFilter"][];
-      /** @description A custom SQL query that can be used to define the metric. Please refer to our documentation for more information. */
-      customSql: string;
+      /**
+       * @description Used only for metrics of type 'gauge'. Please refer to our documentation for an explanation of the different types.
+       * @enum {string|null}
+       */
+      eventType: "delta" | "total" | "" | null;
+      /**
+       * @description The type of metric that this is. Please refer to our documentation for an explanation of the different types.
+       * @enum {string}
+       */
+      metricType: "counter" | "rate" | "custom" | "gauge";
       /**
        * @description The proration of the metric. Only applies to metrics of type 'gauge'.
        * @enum {string|null}
@@ -3181,14 +3195,6 @@ export interface components {
         | ""
         | null;
       /**
-       * @description Used only for metrics of type 'gauge'. Please refer to our documentation for an explanation of the different types.
-       * @enum {string|null}
-       */
-      eventType: "delta" | "total" | "" | null;
-      metricId: string;
-      /** @description The name of the property of the event that should be used for this metric. Doesn't apply if the metric is of type 'counter' with an aggregation of count. */
-      propertyName: string;
-      /**
        * @description The granularity of the metric. Only applies to metrics of type 'gauge' or 'rate'.
        * @enum {string|null}
        */
@@ -3203,15 +3209,14 @@ export interface components {
         | "total"
         | ""
         | null;
-      /**
-       * @description The type of metric that this is. Please refer to our documentation for an explanation of the different types.
-       * @enum {string}
-       */
-      metricType: "counter" | "rate" | "custom" | "gauge";
+      /** @description A custom SQL query that can be used to define the metric. Please refer to our documentation for more information. */
+      customSql: string;
+      metricId: string;
       /** @description Whether or not this metric is a cost metric (used to track costs to your business). */
       isCostMetric: boolean;
-      metricName: string;
       numericFilters: components["schemas"]["NumericFilter"][];
+      categoricalFilters: components["schemas"]["CategoricalFilter"][];
+      metricName: string;
       /**
        * @description The type of aggregation that should be used for this metric. Please refer to our documentation for an explanation of the different types.
        * @enum {string}
@@ -4730,7 +4735,7 @@ export interface components {
       activeTo?: string;
     };
     PatchedPlanVersionUpdateRequest: {
-      planVersionName?: string;
+      localizedName?: string;
       /** Format: date-time */
       activeFrom?: string;
       /** Format: date-time */
@@ -4801,7 +4806,7 @@ export interface components {
       /** @description The number of active subscriptions that this plan has across all versions. */
       activeSubscriptions: number;
       /** @description The tags that this plan has. */
-      tags: readonly components["schemas"]["TagName"][];
+      tags: readonly string[];
       /** @description This plan's versions. */
       versions: components["schemas"]["PlanVersion"][];
     };
@@ -4846,26 +4851,26 @@ export interface components {
       tags?: components["schemas"]["TagRequest"][];
     };
     PlanDetail: {
+      /** @description Description of the plan */
+      planDescription: string;
+      /** @description The external links that this plan has. */
+      externalLinks: components["schemas"]["InitialExternalPlanLink"][];
+      versions: readonly components["schemas"]["PlanVersionDetail"][];
       /** @description The number of active subscriptions that this plan has across all versions. */
       activeSubscriptions: number;
-      /** @description The number of versions that this plan has. */
-      numVersions: number;
+      /** @description The tags that this plan has. */
+      tags: readonly components["schemas"]["Tag"][];
+      taxjarCode?: string;
       /**
        * @description Duration of the plan
        * @enum {string|null}
        */
       planDuration: "monthly" | "quarterly" | "yearly" | "" | null;
-      versions: readonly components["schemas"]["PlanVersionDetail"][];
-      taxjarCode?: string;
-      /** @description Description of the plan */
-      planDescription: string;
       planId: string;
-      /** @description The tags that this plan has. */
-      tags: readonly components["schemas"]["TagName"][];
-      /** @description The external links that this plan has. */
-      externalLinks: components["schemas"]["InitialExternalPlanLink"][];
       /** @description Name of the plan */
       planName: string;
+      /** @description The number of versions that this plan has. */
+      numVersions: number;
     };
     PlanRepresentation: {
       planName: string;
@@ -4911,6 +4916,11 @@ export interface components {
         | "notStarted";
       planName: string;
       currency: components["schemas"]["PricingUnit"];
+      /** Format: date-time */
+      activeFrom: string;
+      /** Format: date-time */
+      activeTo: string;
+      localizedName: string;
     };
     PlanVersionCreateRequest: {
       /** Format: uuid */
@@ -4924,16 +4934,21 @@ export interface components {
       currencyCode: string;
       version: number;
       targetCustomerIds?: string[];
+      localizedName?: string;
     };
     PlanVersionDetail: {
-      versionId: string;
-      activeSubscriptions: number;
-      alerts: readonly components["schemas"]["UsageAlert"][];
-      features: components["schemas"]["Feature"][];
+      /** Format: date-time */
+      activeFrom: string;
       currency: components["schemas"]["PricingUnit"];
-      priceAdjustment: components["schemas"]["PriceAdjustment"] | null;
-      components: components["schemas"]["PlanComponent"][];
-      planId: string;
+      recurringCharges: readonly components["schemas"]["RecurringCharge"][];
+      features: components["schemas"]["Feature"][];
+      transitionTo: components["schemas"]["LightweightPlan"];
+      replaceWith: components["schemas"]["LightweightPlanVersion"];
+      localizedName: string;
+      /** @deprecated */
+      version: number | "customVersion";
+      planName: string;
+      alerts: readonly components["schemas"]["UsageAlert"][];
       /** @enum {string} */
       status:
         | "active"
@@ -4942,8 +4957,13 @@ export interface components {
         | "deleted"
         | "inactive"
         | "notStarted";
-      recurringCharges: readonly components["schemas"]["RecurringCharge"][];
-      planName: string;
+      priceAdjustment: components["schemas"]["PriceAdjustment"] | null;
+      activeSubscriptions: number;
+      versionId: string;
+      planId: string;
+      /** Format: date-time */
+      activeTo: string;
+      components: components["schemas"]["PlanComponent"][];
     };
     PlanVersionHistoricalSubscription: {
       customerId: string;
@@ -4970,7 +4990,7 @@ export interface components {
       message: string;
     };
     PlanVersionUpdate: {
-      planVersionName?: string;
+      localizedName?: string;
       /** Format: date-time */
       activeFrom?: string;
       /** Format: date-time */
@@ -5414,9 +5434,6 @@ export interface components {
       tagName: string;
       tagHex?: string;
       tagColor?: string;
-    };
-    TagName: {
-      tagName: string;
     };
     TagRequest: {
       tagName: string;
@@ -6832,6 +6849,24 @@ export interface operations {
   };
   appPlansList: {
     /** @description ViewSet for viewing and editing Plans. */
+    parameters?: {
+      /** @description Filter to plans that have this duration. */
+      /** @description Filter to plans that do not have any of the tags in this list. */
+      /** @description Filter to plans that have any of the tags in this list. */
+      /** @description Filter to plans that have all of the tags in this list. */
+      /** @description Filter to versions that have the currency specified by this currency code. */
+      /** @description Filter to versions that have this custom type. If you choose customOnly, you will only see versions that have target customers. If you choose publicOnly, you will only see versions that do not have target customers. */
+      /** @description Filter to versions that have this status. Ended means it has an activeTo date in the past. Not started means it has an activeFrom date in the future or null. */
+      query?: {
+        duration?: "monthly" | "quarterly" | "yearly";
+        excludeTags?: string[];
+        includeTags?: string[];
+        includeTagsAll?: string[];
+        versionCurrencyCode?: string;
+        versionCustomType?: "customOnly" | "publicOnly" | "all";
+        versionStatus?: ("active" | "ended" | "notStarted")[];
+      };
+    };
     responses: {
       200: {
         content: {
@@ -6860,6 +6895,14 @@ export interface operations {
   appPlansRetrieve: {
     /** @description ViewSet for viewing and editing Plans. */
     parameters: {
+      /** @description Filter to versions that have the currency specified by this currency code. */
+      /** @description Filter to versions that have this custom type. If you choose customOnly, you will only see versions that have target customers. If you choose publicOnly, you will only see versions that do not have target customers. */
+      /** @description Filter to versions that have this status. Ended means it has an activeTo date in the past. Not started means it has an activeFrom date in the future or null. */
+      query?: {
+        versionCurrencyCode?: string;
+        versionCustomType?: "customOnly" | "publicOnly" | "all";
+        versionStatus?: ("active" | "ended" | "notStarted")[];
+      };
       path: {
         planId: string;
       };
@@ -7543,6 +7586,7 @@ export interface operations {
     };
   };
 }
+
 export interface paths {
   "/app/actions/": {
     /** @description API endpoint that allows events to be viewed. */

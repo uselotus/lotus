@@ -1,4 +1,6 @@
-// @ts-ignore
+/* eslint-disable no-shadow */
+/* eslint-disable camelcase */
+
 import React, { FC, Fragment, useEffect, useState } from "react";
 import "./StateTabs.css";
 import { Tooltip, Modal, Select } from "antd";
@@ -10,6 +12,7 @@ interface StateTabsProps {
   activeTab: string;
   version: number | string;
   version_id: string;
+  plan_id: string;
   activeVersion: number | string | undefined;
 }
 
@@ -18,6 +21,7 @@ const StateTabs: FC<StateTabsProps> = ({
   activeTab,
   version,
   version_id,
+  plan_id,
   activeVersion,
 }) => {
   const [currentActiveTab, setCurrentActiveTab] = useState(activeTab);
@@ -32,6 +36,7 @@ const StateTabs: FC<StateTabsProps> = ({
       Plan.replacePlanVersionLater(version_id, {
         status: "active",
         make_active_type: activeType,
+        transition_to_plan_id: plan_id,
       }),
     {
       onSuccess: () => {
@@ -102,7 +107,7 @@ const StateTabs: FC<StateTabsProps> = ({
         onCancel={() => {
           setVisible(false);
         }}
-        title={`Are you sure you want to make v${  version  } active?`}
+        title={`Are you sure you want to make v${version} active?`}
       >
         <div className="space-y-4 ">
           <div className="grid grid-row-3 items-center my-5">
