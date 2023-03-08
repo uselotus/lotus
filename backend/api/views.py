@@ -121,6 +121,7 @@ from metering_billing.serializers.serializer_utils import (
     AddOnVersionUUIDField,
     BalanceAdjustmentUUIDField,
     InvoiceUUIDField,
+    MetricUUIDField,
     OrganizationUUIDField,
     PlanUUIDField,
     SubscriptionRecordUUIDField,
@@ -582,6 +583,7 @@ class SubscriptionViewSet(
         return context
 
     def get_serializer_class(self):
+        print("self.action", self.action)
         if self.action == "edit":
             return SubscriptionRecordUpdateSerializerOld
         elif self.action == "update_subscription":
@@ -602,7 +604,7 @@ class SubscriptionViewSet(
             return AddOnSubscriptionRecordCreateSerializer
         elif self.action == "update_addon":
             return AddOnSubscriptionRecordUpdateSerializer
-        elif self.action == "change_prepaid_amount":
+        elif self.action == "change_prepaid_units":
             return ChangePrepaidUnitsSerializer
         else:
             return SubscriptionRecordSerializer
@@ -938,10 +940,14 @@ class SubscriptionViewSet(
         current_sr = self.get_object()
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        parsed_metric_id = MetricUUIDField().to_internal_value(kwargs["metric_id"])
+        metric = Metric.objects.get(
+            metric_id=parsed_metric_id, organization=organization
+        )
         units = serializer.validated_data["units"]
         current_billing_plan = current_sr.billing_plan
         target_plan_component = current_billing_plan.plan_components.filter(
-            billable_metric=kwargs["metric_id"]
+            billable_metric=metric
         ).first()
         if not target_plan_component:
             raise ValidationError(
@@ -953,18 +959,17 @@ class SubscriptionViewSet(
             )
         future_component_records = ComponentChargeRecord.objects.filter(
             billing_record__subscription=current_sr,
-            component=current_billing_plan,
+            component=target_plan_component,
             start_date__gt=now,
         )
+        print("future_component_records", future_component_records)
         current_component_record = ComponentChargeRecord.objects.get(
             start_date__lte=now,
             end_date__gt=now,
             billing_record__subscription=current_sr,
-            component=current_billing_plan,
+            component=target_plan_component,
         )
-        current_component_record.end_date = now
-        current_component_record.fully_billed = False
-        current_component_record.save()
+        print("current_component_record", current_component_record)
         ComponentChargeRecord.objects.create(
             billing_record=current_component_record.billing_record,
             organization=organization,
@@ -974,8 +979,15 @@ class SubscriptionViewSet(
             end_date=current_component_record.end_date,
             units=units,
         )
+        current_component_record.end_date = now
+        current_component_record.fully_billed = False
+        current_component_record.save()
         future_component_records.update(units=units)
         if serializer.validated_data.get("invoice_now"):
+            br = current_component_record.billing_record
+            br.invoicing_dates = sorted(set(br.invoicing_dates + [now]))
+            br.next_invoicing_date = now
+            br.save()
             generate_invoice(current_sr)
         return Response(
             SubscriptionRecordSerializer(current_sr).data, status=status.HTTP_200_OK

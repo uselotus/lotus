@@ -49,7 +49,6 @@ from metering_billing.utils.enums import (
     METRIC_TYPE,
     ORGANIZATION_SETTING_NAMES,
     PLAN_DURATION,
-    PLAN_VERSION_STATUS,
 )
 from model_bakery import baker
 
@@ -209,10 +208,7 @@ def setup_demo3(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     free_bp = PlanVersion.objects.create(
-        organization=organization,
-        description="The free tier",
-        plan=plan,
-        status=PLAN_VERSION_STATUS.ACTIVE,
+        organization=organization, plan=plan, version=1
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -220,7 +216,7 @@ def setup_demo3(
         amount=0,
         name="Flat Rate",
         charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
-        pricing_unit=free_bp.pricing_unit,
+        pricing_unit=free_bp.currency,
     )
     create_pc_and_tiers(
         organization, plan_version=free_bp, billable_metric=sum_words, free_units=2_000
@@ -235,10 +231,7 @@ def setup_demo3(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_10_og = PlanVersion.objects.create(
-        organization=organization,
-        description="10K Words Plan",
-        plan=plan,
-        status=PLAN_VERSION_STATUS.ACTIVE,
+        organization=organization, plan=plan, version=1
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -246,7 +239,7 @@ def setup_demo3(
         amount=49,
         name="Flat Rate",
         charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
-        pricing_unit=bp_10_og.pricing_unit,
+        pricing_unit=bp_10_og.currency,
     )
     create_pc_and_tiers(
         organization,
@@ -264,10 +257,7 @@ def setup_demo3(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_25_og = PlanVersion.objects.create(
-        organization=organization,
-        description="25K words per month",
-        plan=plan,
-        status=PLAN_VERSION_STATUS.ACTIVE,
+        organization=organization, plan=plan, version=1
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -275,7 +265,7 @@ def setup_demo3(
         amount=99,
         name="Flat Rate",
         charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
-        pricing_unit=bp_25_og.pricing_unit,
+        pricing_unit=bp_25_og.currency,
     )
     create_pc_and_tiers(
         organization,
@@ -293,10 +283,7 @@ def setup_demo3(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_50_og = PlanVersion.objects.create(
-        organization=organization,
-        description="50K words per month",
-        plan=plan,
-        status=PLAN_VERSION_STATUS.ACTIVE,
+        organization=organization, plan=plan, version=1
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -304,7 +291,7 @@ def setup_demo3(
         amount=279,
         name="Flat Rate",
         charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
-        pricing_unit=bp_50_og.pricing_unit,
+        pricing_unit=bp_50_og.currency,
     )
     create_pc_and_tiers(
         organization,
@@ -322,10 +309,7 @@ def setup_demo3(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_10_compute_seats = PlanVersion.objects.create(
-        organization=organization,
-        description="10K words per month + usage based pricing on Compute Time and Seats",
-        plan=plan,
-        status=PLAN_VERSION_STATUS.ACTIVE,
+        organization=organization, plan=plan, version=1
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -333,7 +317,7 @@ def setup_demo3(
         amount=19,
         name="Flat Rate",
         charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
-        pricing_unit=bp_10_compute_seats.pricing_unit,
+        pricing_unit=bp_10_compute_seats.currency,
     )
     create_pc_and_tiers(
         organization,
@@ -364,10 +348,7 @@ def setup_demo3(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_25_compute_seats = PlanVersion.objects.create(
-        organization=organization,
-        description="25K words per month + usage based pricing on Compute Time and Seats",
-        plan=plan,
-        status=PLAN_VERSION_STATUS.ACTIVE,
+        organization=organization, plan=plan, version=1
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -375,7 +356,7 @@ def setup_demo3(
         amount=59,
         name="Flat Rate",
         charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
-        pricing_unit=bp_25_compute_seats.pricing_unit,
+        pricing_unit=bp_25_compute_seats.currency,
     )
     create_pc_and_tiers(
         organization,
@@ -406,10 +387,7 @@ def setup_demo3(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_50_compute_seats = PlanVersion.objects.create(
-        organization=organization,
-        description="50K words per month + usage based pricing on Compute Time and Seats",
-        plan=plan,
-        status=PLAN_VERSION_STATUS.ACTIVE,
+        organization=organization, plan=plan, version=1
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -417,7 +395,7 @@ def setup_demo3(
         amount=179,
         name="Flat Rate",
         charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
-        pricing_unit=bp_50_compute_seats.pricing_unit,
+        pricing_unit=bp_50_compute_seats.currency,
     )
     create_pc_and_tiers(
         organization,
@@ -791,10 +769,7 @@ def setup_demo4(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     free_bp = PlanVersion.objects.create(
-        organization=organization,
-        description="The free tier",
-        plan=plan,
-        status=PLAN_VERSION_STATUS.ACTIVE,
+        organization=organization, plan=plan, version=1
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -802,7 +777,7 @@ def setup_demo4(
         amount=0,
         name="Flat Rate",
         charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
-        pricing_unit=free_bp.pricing_unit,
+        pricing_unit=free_bp.currency,
     )
     create_pc_and_tiers(
         organization, plan_version=free_bp, billable_metric=calls, free_units=50
@@ -821,10 +796,7 @@ def setup_demo4(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_basic_events = PlanVersion.objects.create(
-        organization=organization,
-        description="Basic plan, with access to only analytics events. $29/month flat fee + 20 cents per_usage",
-        plan=plan,
-        status=PLAN_VERSION_STATUS.ACTIVE,
+        organization=organization, plan=plan, version=1
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -832,7 +804,7 @@ def setup_demo4(
         amount=29,
         name="Flat Rate",
         charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
-        pricing_unit=bp_basic_events.pricing_unit,
+        pricing_unit=bp_basic_events.currency,
     )
     create_pc_and_tiers(
         organization,
@@ -856,10 +828,7 @@ def setup_demo4(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_pro_events = PlanVersion.objects.create(
-        organization=organization,
-        description="Pro plan, with access to only analytics events. $69/month flat fee + 25 cents charge for events",
-        plan=plan,
-        status=PLAN_VERSION_STATUS.ACTIVE,
+        organization=organization, plan=plan, version=1
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -867,7 +836,7 @@ def setup_demo4(
         amount=69,
         name="Flat Rate",
         charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
-        pricing_unit=bp_pro_events.pricing_unit,
+        pricing_unit=bp_pro_events.currency,
     )
     create_pc_and_tiers(
         organization,
@@ -891,10 +860,7 @@ def setup_demo4(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_basic_both = PlanVersion.objects.create(
-        organization=organization,
-        description="Basic plan, with access to analytics events + session recordings. $59/month flat fee + 20 cent per_usage charge for events + $0.35 per session recording",
-        plan=plan,
-        status=PLAN_VERSION_STATUS.ACTIVE,
+        organization=organization, plan=plan, version=1
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -902,7 +868,7 @@ def setup_demo4(
         amount=59,
         name="Flat Rate",
         charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
-        pricing_unit=bp_basic_both.pricing_unit,
+        pricing_unit=bp_basic_both.currency,
     )
     create_pc_and_tiers(
         organization,
@@ -933,10 +899,7 @@ def setup_demo4(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_pro_both = PlanVersion.objects.create(
-        organization=organization,
-        description="Pro plan, with access to analytics events + session recordings. $119/month flat fee + 25 cent per_usage charge + $0.35 per session recording",
-        plan=plan,
-        status=PLAN_VERSION_STATUS.ACTIVE,
+        organization=organization, plan=plan, version=1
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -944,7 +907,7 @@ def setup_demo4(
         amount=119,
         name="Flat Rate",
         charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
-        pricing_unit=bp_pro_both.pricing_unit,
+        pricing_unit=bp_pro_both.currency,
     )
     create_pc_and_tiers(
         organization,
@@ -975,10 +938,7 @@ def setup_demo4(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_experimental = PlanVersion.objects.create(
-        organization=organization,
-        description="Experimental Plan for charging based on Recording Time instead of number of recordings",
-        plan=plan,
-        status=PLAN_VERSION_STATUS.ACTIVE,
+        organization=organization, plan=plan, version=1
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -986,7 +946,7 @@ def setup_demo4(
         amount=89,
         name="Flat Rate",
         charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
-        pricing_unit=bp_experimental.pricing_unit,
+        pricing_unit=bp_experimental.currency,
     )
     create_pc_and_tiers(
         organization,
@@ -1324,10 +1284,7 @@ def setup_paas_demo(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     basic_plan = PlanVersion.objects.create(
-        organization=organization,
-        description="Basic Plan with access to testnet",
-        plan=plan,
-        status=PLAN_VERSION_STATUS.ACTIVE,
+        organization=organization, plan=plan, version=1
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -1335,7 +1292,7 @@ def setup_paas_demo(
         amount=125,
         name="Flat Rate",
         charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
-        pricing_unit=basic_plan.pricing_unit,
+        pricing_unit=basic_plan.currency,
     )
     create_pc_and_tiers(
         organization,
@@ -1359,10 +1316,7 @@ def setup_paas_demo(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     professional_plan = PlanVersion.objects.create(
-        organization=organization,
-        description="Customizable Professional Pla",
-        plan=plan,
-        status=PLAN_VERSION_STATUS.ACTIVE,
+        organization=organization, plan=plan, version=1
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -1370,7 +1324,7 @@ def setup_paas_demo(
         amount=0,
         name="Flat Rate",
         charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
-        pricing_unit=professional_plan.pricing_unit,
+        pricing_unit=professional_plan.currency,
     )
     create_pc_and_tiers(
         organization,

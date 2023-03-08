@@ -2,11 +2,14 @@ import logging
 import re
 from decimal import Decimal
 
-import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import DecimalField, Q, Sum
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
+import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -61,8 +64,6 @@ from metering_billing.utils.enums import (
     TAX_PROVIDER,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -72,6 +73,11 @@ class TagSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Tag
         fields = ("tag_name", "tag_hex", "tag_color")
+        extra_kwargs = {
+            "tag_color": {"required": True, "allow_null": False},
+            "tag_hex": {"required": True, "allow_null": False},
+            "tag_name": {"required": True},
+        }
 
     def validate(self, data):
         match = re.search(r"^#(?:[0-9a-fA-F]{3}){1,2}$", data["tag_hex"])

@@ -4,14 +4,19 @@ from datetime import timedelta
 from decimal import Decimal
 
 import pytest
+from django.db.models import Sum
 from django.urls import reverse
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
 
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     BillingRecord,
+    ComponentChargeRecord,
+    ComponentFixedCharge,
+    CustomerBalanceAdjustment,
     Event,
     Invoice,
     Metric,
@@ -898,8 +903,14 @@ class TestResetAndInvoicingIntervals:
                 <= 5  # if one aligns perf. w/ start then have 5
                 or br.end_date == br.subscription.end_date
             )
-            assert br.next_invoicing_date == br.invoicing_dates[0] == br.end_date
-            assert br.fully_billed is False
+            if br.fully_billed:
+                assert br.next_invoicing_date == br.invoicing_dates[-1]
+            else:
+                # hasnt started the billing dates unless its the current BR
+                assert (
+                    br.next_invoicing_date == br.invoicing_dates[0]
+                    or br.start_date <= now_utc() <= br.end_date
+                )
             assert br.unadjusted_duration_microseconds == 7 * 86400000000 or (
                 br.end_date == br.subscription.end_date
             )
@@ -1017,21 +1028,24 @@ class TestResetAndInvoicingIntervals:
             br_before_ct + 28 <= br_after.count() <= br_before_ct + 31
         )  #  28-31 days for a single recurring charge
         for br in br_after:
-            assert len(br.invoicing_dates) == 2  # start and end of every day
+            assert (
+                len(br.invoicing_dates) == 1
+                or br.start_date == br.subscription.start_date
+            )  # only one invoicing date, the end of sub... doesnt apply to first BR
             assert br.unadjusted_duration_microseconds == 86400000000 or (
                 br.end_date == br.subscription.end_date
             )
-            if br.fully_billed is True:
-                assert br.next_invoicing_date == br.invoicing_dates[-1]
-            else:
-                assert (
-                    br.next_invoicing_date == br.invoicing_dates[0]
-                    or br.invoicing_dates[0] < now_utc()  # for the case of today
-                )
+            assert br.fully_billed is False
+            assert (
+                br.next_invoicing_date
+                == br.invoicing_dates[0]
+                == br.subscription.end_date
+                or br.start_date == br.subscription.start_date
+            )
 
         assert (
-            Invoice.objects.all().first().cost_due == 6 * 10
-        )  # 5 days ago, incl. todays in advance charge thats 60
+            Invoice.objects.all().first().cost_due == 10
+        )  # 5 days ago, incl. todays in advance charge thats 60 in theory... but the 2-5 have invoicing dates only at the end of the subscription, so only 1 charge
 
     def test_monthly_plan_with_mixed_reset_and_invoicing_generates_correct_brs_for_recurring_charges(
         self,
@@ -1301,3 +1315,930 @@ class TestResetAndInvoicingIntervals:
         # microseconds long, so its a tiny amount. The other 2 are full length so theyre 10. Plus
         # the 100 from the new recurring charge. So 20 plus a few microcents
         assert most_recent_invoice.cost_due > Decimal(120)
+
+
+@pytest.mark.django_db(transaction=True)
+class TestPrepaidComponentCharges:
+    def test_create_plan_with_prepaid_component_fixed_subscription_starts_as_expected(
+        self,
+        subscription_test_common_setup,
+    ):
+        num_subscriptions = 0
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        customer = setup_dict["customer"]
+        PlanVersion.objects.all().delete()
+        billing_plan = baker.make(
+            PlanVersion,
+            organization=setup_dict["org"],
+            plan=setup_dict["plan"],
+            currency=PricingUnit.objects.get(
+                organization=setup_dict["org"], code="USD"
+            ),
+        )
+        pc = PlanComponent.objects.create(
+            plan_version=billing_plan,
+            billable_metric=setup_dict["metrics"][-1],  # this is count of events
+            invoicing_interval_unit=PlanComponent.IntervalLengthType.WEEK,
+            invoicing_interval_count=1,
+        )
+        PriceTier.objects.create(
+            plan_component=pc,
+            type=PriceTier.PriceTierType.FREE,
+            range_start=0,
+            range_end=10,
+        )
+        PriceTier.objects.create(
+            plan_component=pc,
+            type=PriceTier.PriceTierType.PER_UNIT,
+            range_start=10,
+            cost_per_batch=1,
+            metric_units_per_batch=1,
+        )
+        charge = ComponentFixedCharge.objects.create(
+            organization=setup_dict["org"],
+            units=20,
+            charge_type=ComponentFixedCharge.ChargeType.PREDEFINED,
+            charge_behavior=ComponentFixedCharge.ChargeBehavior.FULL,
+        )
+        pc.fixed_charge = charge
+        pc.save()
+        payload = {
+            "start_date": now_utc() - timedelta(days=5),
+            "customer_id": customer.customer_id,
+            "version_id": billing_plan.version_id,
+        }
+        sr_before = SubscriptionRecord.objects.all().count()
+        br_before = BillingRecord.objects.all().count()
+        ccr_before = ComponentChargeRecord.objects.all().count()
+        response = setup_dict["client"].post(
+            reverse("subscription-list"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        sr_after = SubscriptionRecord.objects.all().count()
+        br_after = BillingRecord.objects.all().count()
+        ccr_after = ComponentChargeRecord.objects.all().count()
+        assert response.status_code == status.HTTP_201_CREATED
+        assert sr_after == sr_before + 1
+        assert br_after == br_before + 1
+        assert ccr_after == ccr_before + 1
+        ccr = ComponentChargeRecord.objects.first()
+        br = BillingRecord.objects.first()
+        sr = SubscriptionRecord.objects.first()
+        assert ccr.start_date == sr.start_date == br.start_date == payload["start_date"]
+        assert ccr.end_date == sr.end_date == br.end_date
+        assert ccr.fully_billed is True
+        assert ccr.units == 20
+        assert 5 <= len(br.invoicing_dates) <= 6  # have at 0, 7, 14, 21, 28, mayb 30-31
+        latest_invoice = Invoice.objects.latest("issue_date")
+        # since we prepaid for 20 units, first 10 are free, after that its $1 per unit, this should
+        # be 10 units, so $10
+        assert latest_invoice.cost_due == Decimal(10)
+
+    def test_create_plan_with_prepaid_component_dynamic_fails_if_not_set(
+        self, subscription_test_common_setup
+    ):
+        num_subscriptions = 0
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        customer = setup_dict["customer"]
+        PlanVersion.objects.all().delete()
+        billing_plan = baker.make(
+            PlanVersion,
+            organization=setup_dict["org"],
+            plan=setup_dict["plan"],
+            currency=PricingUnit.objects.get(
+                organization=setup_dict["org"], code="USD"
+            ),
+        )
+        pc = PlanComponent.objects.create(
+            plan_version=billing_plan,
+            billable_metric=setup_dict["metrics"][-1],  # this is count of events
+            invoicing_interval_unit=PlanComponent.IntervalLengthType.WEEK,
+            invoicing_interval_count=1,
+        )
+        PriceTier.objects.create(
+            plan_component=pc,
+            type=PriceTier.PriceTierType.FREE,
+            range_start=0,
+            range_end=10,
+        )
+        PriceTier.objects.create(
+            plan_component=pc,
+            type=PriceTier.PriceTierType.PER_UNIT,
+            range_start=10,
+            cost_per_batch=1,
+            metric_units_per_batch=1,
+        )
+        charge = ComponentFixedCharge.objects.create(
+            organization=setup_dict["org"],
+            charge_type=ComponentFixedCharge.ChargeType.DYNAMIC,
+            charge_behavior=ComponentFixedCharge.ChargeBehavior.FULL,
+        )
+        pc.fixed_charge = charge
+        pc.save()
+        payload = {
+            "start_date": now_utc() - timedelta(days=5),
+            "customer_id": customer.customer_id,
+            "version_id": billing_plan.version_id,
+        }
+        sr_before = SubscriptionRecord.objects.all().count()
+        br_before = BillingRecord.objects.all().count()
+        ccr_before = ComponentChargeRecord.objects.all().count()
+        response = setup_dict["client"].post(
+            reverse("subscription-list"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        sr_after = SubscriptionRecord.objects.all().count()
+        br_after = BillingRecord.objects.all().count()
+        ccr_after = ComponentChargeRecord.objects.all().count()
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert sr_after == sr_before
+        assert br_after == br_before
+        assert ccr_after == ccr_before
+
+    def test_create_plan_with_prepaid_component_dynamic_subscription_starts_as_expected(
+        self,
+        subscription_test_common_setup,
+    ):
+        num_subscriptions = 0
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        customer = setup_dict["customer"]
+        PlanVersion.objects.all().delete()
+        billing_plan = baker.make(
+            PlanVersion,
+            organization=setup_dict["org"],
+            plan=setup_dict["plan"],
+            currency=PricingUnit.objects.get(
+                organization=setup_dict["org"], code="USD"
+            ),
+        )
+        pc = PlanComponent.objects.create(
+            plan_version=billing_plan,
+            billable_metric=setup_dict["metrics"][-1],  # this is count of events
+            invoicing_interval_unit=PlanComponent.IntervalLengthType.WEEK,
+            invoicing_interval_count=1,
+        )
+        PriceTier.objects.create(
+            plan_component=pc,
+            type=PriceTier.PriceTierType.FREE,
+            range_start=0,
+            range_end=10,
+        )
+        PriceTier.objects.create(
+            plan_component=pc,
+            type=PriceTier.PriceTierType.PER_UNIT,
+            range_start=10,
+            cost_per_batch=1,
+            metric_units_per_batch=1,
+        )
+        charge = ComponentFixedCharge.objects.create(
+            organization=setup_dict["org"],
+            charge_type=ComponentFixedCharge.ChargeType.DYNAMIC,
+            charge_behavior=ComponentFixedCharge.ChargeBehavior.FULL,
+        )
+        pc.fixed_charge = charge
+        pc.save()
+        payload = {
+            "start_date": now_utc() - timedelta(days=5),
+            "customer_id": customer.customer_id,
+            "version_id": billing_plan.version_id,
+            "dynamic_fixed_charges_initial_units": [
+                {
+                    "metric_id": "metric_" + pc.billable_metric.metric_id.hex,
+                    "units": 15,
+                }
+            ],
+        }
+        sr_before = SubscriptionRecord.objects.all().count()
+        br_before = BillingRecord.objects.all().count()
+        ccr_before = ComponentChargeRecord.objects.all().count()
+        response = setup_dict["client"].post(
+            reverse("subscription-list"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        print(response.data)
+        sr_after = SubscriptionRecord.objects.all().count()
+        br_after = BillingRecord.objects.all().count()
+        ccr_after = ComponentChargeRecord.objects.all().count()
+        assert response.status_code == status.HTTP_201_CREATED
+        assert sr_after == sr_before + 1
+        assert br_after == br_before + 1
+        assert ccr_after == ccr_before + 1
+        ccr = ComponentChargeRecord.objects.first()
+        br = BillingRecord.objects.first()
+        sr = SubscriptionRecord.objects.first()
+        assert ccr.start_date == sr.start_date == br.start_date == payload["start_date"]
+        assert ccr.end_date == sr.end_date == br.end_date
+        assert ccr.fully_billed is True
+        assert ccr.units == 15
+        assert 5 <= len(br.invoicing_dates) <= 6  # have at 0, 7, 14, 21, 28, mayb 30-31
+        latest_invoice = Invoice.objects.latest("issue_date")
+        # since we prepaid for 15 units, first 10 are free, after that its $1 per unit, this should
+        # be 10 units, so $5
+        assert latest_invoice.cost_due == Decimal(5)
+
+    def test_invoicing_dates_get_added_to_billing_record(
+        self, subscription_test_common_setup
+    ):
+        # this tests changes from invociing frequency to reset frequency. Since its usage,
+        # normally the billing dates would be all pointing at the end of the billing period, but
+        # now they have soemthing at the beginning of the BP for their fixed charges
+        num_subscriptions = 0
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        customer = setup_dict["customer"]
+        PlanVersion.objects.all().delete()
+        billing_plan = baker.make(
+            PlanVersion,
+            organization=setup_dict["org"],
+            plan=setup_dict["plan"],
+            currency=PricingUnit.objects.get(
+                organization=setup_dict["org"], code="USD"
+            ),
+        )
+        pc = PlanComponent.objects.create(
+            plan_version=billing_plan,
+            billable_metric=setup_dict["metrics"][-1],  # this is count of events
+            reset_interval_unit=PlanComponent.IntervalLengthType.WEEK,
+            reset_interval_count=1,
+        )
+        PriceTier.objects.create(
+            plan_component=pc,
+            type=PriceTier.PriceTierType.FREE,
+            range_start=0,
+            range_end=10,
+        )
+        PriceTier.objects.create(
+            plan_component=pc,
+            type=PriceTier.PriceTierType.PER_UNIT,
+            range_start=10,
+            cost_per_batch=1,
+            metric_units_per_batch=1,
+        )
+        charge = ComponentFixedCharge.objects.create(
+            organization=setup_dict["org"],
+            charge_type=ComponentFixedCharge.ChargeType.DYNAMIC,
+            charge_behavior=ComponentFixedCharge.ChargeBehavior.FULL,
+        )
+        pc.fixed_charge = charge
+        pc.save()
+        payload = {
+            "start_date": now_utc() - timedelta(days=5),
+            "customer_id": customer.customer_id,
+            "version_id": billing_plan.version_id,
+            "dynamic_fixed_charges_initial_units": [
+                {
+                    "metric_id": "metric_" + pc.billable_metric.metric_id.hex,
+                    "units": 15,
+                }
+            ],
+        }
+        sr_before = SubscriptionRecord.objects.all().count()
+        br_before = BillingRecord.objects.all().count()
+        ccr_before = ComponentChargeRecord.objects.all().count()
+        response = setup_dict["client"].post(
+            reverse("subscription-list"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        sr_after = SubscriptionRecord.objects.all().count()
+        br_after = BillingRecord.objects.all().count()
+        ccr_after = ComponentChargeRecord.objects.all().count()
+        assert response.status_code == status.HTTP_201_CREATED
+        assert sr_after == sr_before + 1
+        assert br_before + 4 <= br_after <= br_before + 5  # per week
+        assert ccr_before + 4 <= ccr_after <= ccr_before + 5  # follows components
+        sr = SubscriptionRecord.objects.first()
+        for ccr in ComponentChargeRecord.objects.all():
+            assert ccr.start_date == ccr.billing_record.start_date
+            assert ccr.end_date == ccr.billing_record.end_date
+            if ccr.start_date == sr.start_date:
+                assert ccr.fully_billed is True
+            else:
+                assert ccr.fully_billed is False
+            assert ccr.units == 15
+        for br in BillingRecord.objects.all():
+            assert (
+                len(br.invoicing_dates) == 2
+            )  # one for fixed in advance, one for usage end of month
+            assert br.invoicing_dates[0] == br.start_date
+            assert br.invoicing_dates[1] == sr.end_date
+        latest_invoice = Invoice.objects.latest("issue_date")
+        # since we prepaid for 15 units, first 10 are free, after that its $1 per unit, this should
+        # be 10 units, so $5
+        assert latest_invoice.cost_due == Decimal(5)
+
+    def test_changing_prepaid_amount_changes_for_future_charge_records_not_past(
+        self,
+        subscription_test_common_setup,
+    ):
+        # this tests changes from invociing frequency to reset frequency. Since its usage,
+        # normally the billing dates would be all pointing at the end of the billing period, but
+        # now they have soemthing at the beginning of the BP for their fixed charges
+        num_subscriptions = 0
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        customer = setup_dict["customer"]
+        PlanVersion.objects.all().delete()
+        billing_plan = baker.make(
+            PlanVersion,
+            organization=setup_dict["org"],
+            plan=setup_dict["plan"],
+            currency=PricingUnit.objects.get(
+                organization=setup_dict["org"], code="USD"
+            ),
+        )
+        pc = PlanComponent.objects.create(
+            plan_version=billing_plan,
+            billable_metric=setup_dict["metrics"][-1],  # this is count of events
+            reset_interval_unit=PlanComponent.IntervalLengthType.WEEK,
+            reset_interval_count=1,
+        )
+        PriceTier.objects.create(
+            plan_component=pc,
+            type=PriceTier.PriceTierType.FREE,
+            range_start=0,
+            range_end=10,
+        )
+        PriceTier.objects.create(
+            plan_component=pc,
+            type=PriceTier.PriceTierType.PER_UNIT,
+            range_start=10,
+            cost_per_batch=1,
+            metric_units_per_batch=1,
+        )
+        charge = ComponentFixedCharge.objects.create(
+            organization=setup_dict["org"],
+            charge_type=ComponentFixedCharge.ChargeType.DYNAMIC,
+            charge_behavior=ComponentFixedCharge.ChargeBehavior.FULL,
+        )
+        pc.fixed_charge = charge
+        pc.save()
+        payload = {
+            "start_date": now_utc() - timedelta(days=5),
+            "customer_id": customer.customer_id,
+            "version_id": billing_plan.version_id,
+            "dynamic_fixed_charges_initial_units": [
+                {
+                    "metric_id": "metric_" + pc.billable_metric.metric_id.hex,
+                    "units": 15,
+                }
+            ],
+        }
+        sr_before = SubscriptionRecord.objects.all().count()
+        br_before = BillingRecord.objects.all().count()
+        ccr_before = ComponentChargeRecord.objects.all().count()
+        response = setup_dict["client"].post(
+            reverse("subscription-list"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        sr_after = SubscriptionRecord.objects.all().count()
+        br_after = BillingRecord.objects.all().count()
+        ccr_after = ComponentChargeRecord.objects.all().count()
+        assert response.status_code == status.HTTP_201_CREATED
+        assert sr_after == sr_before + 1
+        assert br_before + 4 <= br_after <= br_before + 5  # per week
+        assert ccr_before + 4 <= ccr_after <= ccr_before + 5  # follows components
+        sr = SubscriptionRecord.objects.first()
+        for ccr in ComponentChargeRecord.objects.all():
+            assert ccr.start_date == ccr.billing_record.start_date
+            assert ccr.end_date == ccr.billing_record.end_date
+            if ccr.start_date == sr.start_date:
+                assert ccr.fully_billed is True
+            else:
+                assert ccr.fully_billed is False
+            assert ccr.units == 15
+        for br in BillingRecord.objects.all():
+            assert (
+                len(br.invoicing_dates) == 2
+            )  # one for fixed in advance, one for usage end of month
+            assert br.invoicing_dates[0] == br.start_date
+            assert br.invoicing_dates[1] == sr.end_date
+        latest_invoice = Invoice.objects.latest("issue_date")
+        # since we prepaid for 15 units, first 10 are free, after that its $1 per unit, this should
+        # be 10 units, so $5
+        assert latest_invoice.cost_due == Decimal(5)
+
+        # now that we have that setup lets try to chasnge the amount
+        payload = {
+            "units": 20,
+            "invoice_now": True,
+        }
+        response = setup_dict["client"].post(
+            reverse(
+                "subscription-change_prepaid_units",
+                kwargs={
+                    "subscription_id": sr.subscription_record_id,
+                    "metric_id": pc.billable_metric.metric_id.hex,
+                },
+            ),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        ccr_latest = ComponentChargeRecord.objects.all().count()
+        assert ccr_latest == ccr_after + 1
+        for ccr in ComponentChargeRecord.objects.all():
+            assert ccr.start_date == ccr.billing_record.start_date or (
+                ccr.billing_record.start_date
+                <= now_utc()
+                <= ccr.billing_record.end_date
+            )  # either it matches or current billing record which we replaced
+            assert ccr.end_date == ccr.billing_record.end_date or (
+                ccr.billing_record.start_date
+                <= now_utc()
+                <= ccr.billing_record.end_date
+            )  # either it matches or current billing record which we replaced
+            if ccr.start_date == sr.start_date:
+                assert ccr.fully_billed is True or (
+                    ccr.billing_record.start_date
+                    <= now_utc()
+                    <= ccr.billing_record.end_date
+                )
+            else:
+                assert ccr.fully_billed is False or (
+                    ccr.billing_record.start_date
+                    <= now_utc()
+                    <= ccr.billing_record.end_date
+                )  # either it matches or current billing record which we replaced
+            if ccr.start_date > now_utc() - timedelta(seconds=30):
+                assert ccr.units == 20
+            else:
+                assert ccr.units == 15
+        latest_invoice = Invoice.objects.latest("issue_date")
+        # charge full, no prorated, prepaid for 15, now 20, so 5 more, so $5
+        assert latest_invoice.cost_due == Decimal(5)
+
+    def test_prorated_gives_correct_amount(self, subscription_test_common_setup):
+        # this tests changes from invociing frequency to reset frequency. Since its usage,
+        # normally the billing dates would be all pointing at the end of the billing period, but
+        # now they have soemthing at the beginning of the BP for their fixed charges
+        num_subscriptions = 0
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        customer = setup_dict["customer"]
+        PlanVersion.objects.all().delete()
+        billing_plan = baker.make(
+            PlanVersion,
+            organization=setup_dict["org"],
+            plan=setup_dict["plan"],
+            currency=PricingUnit.objects.get(
+                organization=setup_dict["org"], code="USD"
+            ),
+        )
+        pc = PlanComponent.objects.create(
+            plan_version=billing_plan,
+            billable_metric=setup_dict["metrics"][-1],  # this is count of events
+            reset_interval_unit=PlanComponent.IntervalLengthType.WEEK,
+            reset_interval_count=1,
+        )
+        PriceTier.objects.create(
+            plan_component=pc,
+            type=PriceTier.PriceTierType.FREE,
+            range_start=0,
+            range_end=10,
+        )
+        PriceTier.objects.create(
+            plan_component=pc,
+            type=PriceTier.PriceTierType.PER_UNIT,
+            range_start=10,
+            cost_per_batch=1,
+            metric_units_per_batch=1,
+        )
+        charge = ComponentFixedCharge.objects.create(
+            organization=setup_dict["org"],
+            charge_type=ComponentFixedCharge.ChargeType.DYNAMIC,
+            charge_behavior=ComponentFixedCharge.ChargeBehavior.PRORATE,
+        )
+        pc.fixed_charge = charge
+        pc.save()
+        payload = {
+            "start_date": now_utc() - timedelta(days=5),
+            "customer_id": customer.customer_id,
+            "version_id": billing_plan.version_id,
+            "dynamic_fixed_charges_initial_units": [
+                {
+                    "metric_id": "metric_" + pc.billable_metric.metric_id.hex,
+                    "units": 15,
+                }
+            ],
+        }
+        sr_before = SubscriptionRecord.objects.all().count()
+        br_before = BillingRecord.objects.all().count()
+        ccr_before = ComponentChargeRecord.objects.all().count()
+        response = setup_dict["client"].post(
+            reverse("subscription-list"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        sr_after = SubscriptionRecord.objects.all().count()
+        br_after = BillingRecord.objects.all().count()
+        ccr_after = ComponentChargeRecord.objects.all().count()
+        assert response.status_code == status.HTTP_201_CREATED
+        assert sr_after == sr_before + 1
+        assert br_before + 4 <= br_after <= br_before + 5  # per week
+        assert ccr_before + 4 <= ccr_after <= ccr_before + 5  # follows components
+        sr = SubscriptionRecord.objects.first()
+        for ccr in ComponentChargeRecord.objects.all():
+            assert ccr.start_date == ccr.billing_record.start_date
+            assert ccr.end_date == ccr.billing_record.end_date
+            if ccr.start_date == sr.start_date:
+                assert ccr.fully_billed is True
+            else:
+                assert ccr.fully_billed is False
+            assert ccr.units == 15
+        for br in BillingRecord.objects.all():
+            assert (
+                len(br.invoicing_dates) == 2
+            )  # one for fixed in advance, one for usage end of month
+            assert br.invoicing_dates[0] == br.start_date
+            assert br.invoicing_dates[1] == sr.end_date
+        latest_invoice = Invoice.objects.latest("issue_date")
+        # since we prepaid for 15 units, first 10 are free, after that its $1 per unit, this should
+        # be 10 units, so $5
+        assert latest_invoice.cost_due == Decimal(5)
+
+        # now that we have that setup lets try to chasnge the amount
+        payload = {
+            "units": 20,
+            "invoice_now": True,
+        }
+        response = setup_dict["client"].post(
+            reverse(
+                "subscription-change_prepaid_units",
+                kwargs={
+                    "subscription_id": sr.subscription_record_id,
+                    "metric_id": pc.billable_metric.metric_id.hex,
+                },
+            ),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        ccr_latest = ComponentChargeRecord.objects.all().count()
+        assert ccr_latest == ccr_after + 1
+        for ccr in ComponentChargeRecord.objects.all():
+            assert ccr.start_date == ccr.billing_record.start_date or (
+                ccr.billing_record.start_date
+                <= now_utc()
+                <= ccr.billing_record.end_date
+            )  # either it matches or current billing record which we replaced
+            assert ccr.end_date == ccr.billing_record.end_date or (
+                ccr.billing_record.start_date
+                <= now_utc()
+                <= ccr.billing_record.end_date
+            )  # either it matches or current billing record which we replaced
+            if ccr.start_date == sr.start_date:
+                assert ccr.fully_billed is True or (
+                    ccr.billing_record.start_date
+                    <= now_utc()
+                    <= ccr.billing_record.end_date
+                )
+            else:
+                assert ccr.fully_billed is False or (
+                    ccr.billing_record.start_date
+                    <= now_utc()
+                    <= ccr.billing_record.end_date
+                )  # either it matches or current billing record which we replaced
+            if ccr.start_date > now_utc() - timedelta(seconds=30):
+                assert ccr.units == 20
+            else:
+                assert ccr.units == 15
+        latest_invoice = Invoice.objects.latest("issue_date")
+        # charge full, no prorated, prepaid for 15, now 20, so 5 more, so $5
+        assert latest_invoice.cost_due < Decimal(2 * 5) / Decimal(7)
+
+    def test_gives_correct_amount_when_reduced(self, subscription_test_common_setup):
+        # this tests changes from invociing frequency to reset frequency. Since its usage,
+        # normally the billing dates would be all pointing at the end of the billing period, but
+        # now they have soemthing at the beginning of the BP for their fixed charges
+        num_subscriptions = 0
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        customer = setup_dict["customer"]
+        PlanVersion.objects.all().delete()
+        billing_plan = baker.make(
+            PlanVersion,
+            organization=setup_dict["org"],
+            plan=setup_dict["plan"],
+            currency=PricingUnit.objects.get(
+                organization=setup_dict["org"], code="USD"
+            ),
+        )
+        pc = PlanComponent.objects.create(
+            plan_version=billing_plan,
+            billable_metric=setup_dict["metrics"][-1],  # this is count of events
+            reset_interval_unit=PlanComponent.IntervalLengthType.WEEK,
+            reset_interval_count=1,
+        )
+        PriceTier.objects.create(
+            plan_component=pc,
+            type=PriceTier.PriceTierType.FREE,
+            range_start=0,
+            range_end=10,
+        )
+        PriceTier.objects.create(
+            plan_component=pc,
+            type=PriceTier.PriceTierType.PER_UNIT,
+            range_start=10,
+            cost_per_batch=1,
+            metric_units_per_batch=1,
+        )
+        charge = ComponentFixedCharge.objects.create(
+            organization=setup_dict["org"],
+            charge_type=ComponentFixedCharge.ChargeType.DYNAMIC,
+            charge_behavior=ComponentFixedCharge.ChargeBehavior.PRORATE,
+        )
+        pc.fixed_charge = charge
+        pc.save()
+        payload = {
+            "start_date": now_utc() - timedelta(days=5),
+            "customer_id": customer.customer_id,
+            "version_id": billing_plan.version_id,
+            "dynamic_fixed_charges_initial_units": [
+                {
+                    "metric_id": "metric_" + pc.billable_metric.metric_id.hex,
+                    "units": 15,
+                }
+            ],
+        }
+        sr_before = SubscriptionRecord.objects.all().count()
+        br_before = BillingRecord.objects.all().count()
+        ccr_before = ComponentChargeRecord.objects.all().count()
+        response = setup_dict["client"].post(
+            reverse("subscription-list"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        sr_after = SubscriptionRecord.objects.all().count()
+        br_after = BillingRecord.objects.all().count()
+        ccr_after = ComponentChargeRecord.objects.all().count()
+        assert response.status_code == status.HTTP_201_CREATED
+        assert sr_after == sr_before + 1
+        assert br_before + 4 <= br_after <= br_before + 5  # per week
+        assert ccr_before + 4 <= ccr_after <= ccr_before + 5  # follows components
+        sr = SubscriptionRecord.objects.first()
+        for ccr in ComponentChargeRecord.objects.all():
+            assert ccr.start_date == ccr.billing_record.start_date
+            assert ccr.end_date == ccr.billing_record.end_date
+            if ccr.start_date == sr.start_date:
+                assert ccr.fully_billed is True
+            else:
+                assert ccr.fully_billed is False
+            assert ccr.units == 15
+        for br in BillingRecord.objects.all():
+            assert (
+                len(br.invoicing_dates) == 2
+            )  # one for fixed in advance, one for usage end of month
+            assert br.invoicing_dates[0] == br.start_date
+            assert br.invoicing_dates[1] == sr.end_date
+        latest_invoice = Invoice.objects.latest("issue_date")
+        # since we prepaid for 15 units, first 10 are free, after that its $1 per unit, this should
+        # be 10 units, so $5
+        assert latest_invoice.cost_due == Decimal(5)
+
+        # now that we have that setup lets try to chasnge the amount
+        payload = {
+            "units": 10,
+            "invoice_now": True,
+        }
+        credits_before = CustomerBalanceAdjustment.objects.all().count()
+        response = setup_dict["client"].post(
+            reverse(
+                "subscription-change_prepaid_units",
+                kwargs={
+                    "subscription_id": sr.subscription_record_id,
+                    "metric_id": pc.billable_metric.metric_id.hex,
+                },
+            ),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        ccr_latest = ComponentChargeRecord.objects.all().count()
+        assert ccr_latest == ccr_after + 1
+        for ccr in ComponentChargeRecord.objects.all():
+            assert ccr.start_date == ccr.billing_record.start_date or (
+                ccr.billing_record.start_date
+                <= now_utc()
+                <= ccr.billing_record.end_date
+            )  # either it matches or current billing record which we replaced
+            assert ccr.end_date == ccr.billing_record.end_date or (
+                ccr.billing_record.start_date
+                <= now_utc()
+                <= ccr.billing_record.end_date
+            )  # either it matches or current billing record which we replaced
+            if ccr.start_date == sr.start_date:
+                assert ccr.fully_billed is True or (
+                    ccr.billing_record.start_date
+                    <= now_utc()
+                    <= ccr.billing_record.end_date
+                )
+            else:
+                assert ccr.fully_billed is False or (
+                    ccr.billing_record.start_date
+                    <= now_utc()
+                    <= ccr.billing_record.end_date
+                )  # either it matches or current billing record which we replaced
+            if ccr.start_date > now_utc() - timedelta(seconds=30):
+                assert ccr.units == 10
+            else:
+                assert ccr.units == 15
+        latest_invoice = Invoice.objects.latest("issue_date")
+        # charge full, no prorated, prepaid for 15, now 20, so 5 more, so $5
+        assert latest_invoice.cost_due == 0
+        credits_after = CustomerBalanceAdjustment.objects.all().count()
+        assert credits_after == credits_before + 1
+
+    def test_included_units_are_not_in_overage(self, subscription_test_common_setup):
+        # this tests changes from invociing frequency to reset frequency. Since its usage,
+        # normally the billing dates would be all pointing at the end of the billing period, but
+        # now they have soemthing at the beginning of the BP for their fixed charges
+        num_subscriptions = 0
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        customer = setup_dict["customer"]
+        PlanVersion.objects.all().delete()
+        billing_plan = baker.make(
+            PlanVersion,
+            organization=setup_dict["org"],
+            plan=setup_dict["plan"],
+            currency=PricingUnit.objects.get(
+                organization=setup_dict["org"], code="USD"
+            ),
+        )
+        pc = PlanComponent.objects.create(
+            plan_version=billing_plan,
+            billable_metric=setup_dict["metrics"][-1],  # this is count of events
+            reset_interval_unit=PlanComponent.IntervalLengthType.WEEK,
+            reset_interval_count=1,
+        )
+        PriceTier.objects.create(
+            plan_component=pc,
+            type=PriceTier.PriceTierType.FREE,
+            range_start=0,
+            range_end=10,
+        )
+        PriceTier.objects.create(
+            plan_component=pc,
+            type=PriceTier.PriceTierType.PER_UNIT,
+            range_start=10,
+            cost_per_batch=1,
+            metric_units_per_batch=1,
+        )
+        charge = ComponentFixedCharge.objects.create(
+            organization=setup_dict["org"],
+            charge_type=ComponentFixedCharge.ChargeType.DYNAMIC,
+            charge_behavior=ComponentFixedCharge.ChargeBehavior.PRORATE,
+        )
+        pc.fixed_charge = charge
+        pc.save()
+        payload = {
+            "start_date": now_utc() - timedelta(days=5),
+            "customer_id": customer.customer_id,
+            "version_id": billing_plan.version_id,
+            "dynamic_fixed_charges_initial_units": [
+                {
+                    "metric_id": "metric_" + pc.billable_metric.metric_id.hex,
+                    "units": 15,
+                }
+            ],
+        }
+        sr_before = SubscriptionRecord.objects.all().count()
+        br_before = BillingRecord.objects.all().count()
+        ccr_before = ComponentChargeRecord.objects.all().count()
+        response = setup_dict["client"].post(
+            reverse("subscription-list"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        sr_after = SubscriptionRecord.objects.all().count()
+        br_after = BillingRecord.objects.all().count()
+        ccr_after = ComponentChargeRecord.objects.all().count()
+        assert response.status_code == status.HTTP_201_CREATED
+        assert sr_after == sr_before + 1
+        assert br_before + 4 <= br_after <= br_before + 5  # per week
+        assert ccr_before + 4 <= ccr_after <= ccr_before + 5  # follows components
+        sr = SubscriptionRecord.objects.first()
+        for ccr in ComponentChargeRecord.objects.all():
+            assert ccr.start_date == ccr.billing_record.start_date
+            assert ccr.end_date == ccr.billing_record.end_date
+            if ccr.start_date == sr.start_date:
+                assert ccr.fully_billed is True
+            else:
+                assert ccr.fully_billed is False
+            assert ccr.units == 15
+        for br in BillingRecord.objects.all():
+            assert (
+                len(br.invoicing_dates) == 2
+            )  # one for fixed in advance, one for usage end of month
+            assert br.invoicing_dates[0] == br.start_date
+            assert br.invoicing_dates[1] == sr.end_date
+        latest_invoice = Invoice.objects.latest("issue_date")
+        # since we prepaid for 15 units, first 10 are free, after that its $1 per unit, this should
+        # be 10 units, so $5
+        assert latest_invoice.cost_due == Decimal(5)
+
+        # now that we have that setup lets try to chasnge the amount
+        payload = {
+            "units": 20,
+            "invoice_now": True,
+        }
+        response = setup_dict["client"].post(
+            reverse(
+                "subscription-change_prepaid_units",
+                kwargs={
+                    "subscription_id": sr.subscription_record_id,
+                    "metric_id": pc.billable_metric.metric_id.hex,
+                },
+            ),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        ccr_latest = ComponentChargeRecord.objects.all().count()
+        assert ccr_latest == ccr_after + 1
+        for ccr in ComponentChargeRecord.objects.all():
+            assert ccr.start_date == ccr.billing_record.start_date or (
+                ccr.billing_record.start_date
+                <= now_utc()
+                <= ccr.billing_record.end_date
+            )  # either it matches or current billing record which we replaced
+            assert ccr.end_date == ccr.billing_record.end_date or (
+                ccr.billing_record.start_date
+                <= now_utc()
+                <= ccr.billing_record.end_date
+            )  # either it matches or current billing record which we replaced
+            if ccr.start_date == sr.start_date:
+                assert ccr.fully_billed is True or (
+                    ccr.billing_record.start_date
+                    <= now_utc()
+                    <= ccr.billing_record.end_date
+                )
+            else:
+                assert ccr.fully_billed is False or (
+                    ccr.billing_record.start_date
+                    <= now_utc()
+                    <= ccr.billing_record.end_date
+                )  # either it matches or current billing record which we replaced
+            if ccr.start_date > now_utc() - timedelta(seconds=30):
+                assert ccr.units == 20
+            else:
+                assert ccr.units == 15
+        latest_invoice = Invoice.objects.latest("issue_date")
+        # charge full, no prorated, prepaid for 15, now 20, so 5 more, so $5
+        assert latest_invoice.cost_due < Decimal(2 * 5) / Decimal(7)
+
+        # ok nolw log soem usage events, and check invociing to see if we discount units
+        for i in range(0, 25):  # prepaid 20, so 5 more
+            Event.objects.create(
+                organization=setup_dict["org"],
+                event_name="email_sent",
+                time_created=now_utc()
+                - timedelta(
+                    seconds=30
+                ),  # see if it picks up that we need to use the "latest" prepaid units
+                properties={"email": "test@test.com"},
+                cust_id=customer.customer_id,
+                idempotency_id=f"test_idempotency_{i}",
+            )
+        invoices = generate_invoice(sr, issue_date=sr.end_date)
+        invoice = invoices[0]
+        current_br = BillingRecord.objects.get(
+            subscription=sr, start_date__lte=now_utc(), end_date__gte=now_utc()
+        )
+        invoice.line_items.filter(associated_billing_record=current_br).aggregate(
+            Sum("subtotal")
+        )["subtotal__sum"] == Decimal(
+            5
+        )  # 5 units above the 20 prepaid

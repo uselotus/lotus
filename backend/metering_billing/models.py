@@ -2871,16 +2871,6 @@ class SubscriptionRecord(models.Model):
                         one_past_end_added = True
             br_invoicing_dates = sorted(list(br_invoicing_dates))
 
-            print(
-                "start_date",
-                start_date,
-                "end_date",
-                end_date,
-                "unadjusted_duration_microseconds",
-                unadjusted_duration_microseconds,
-                "br_invoicing_dates",
-                br_invoicing_dates,
-            )
             br = BillingRecord.objects.create(
                 organization=self.organization,
                 subscription=self,
@@ -2890,7 +2880,7 @@ class SubscriptionRecord(models.Model):
                 invoicing_dates=br_invoicing_dates,
                 unadjusted_duration_microseconds=unadjusted_duration_microseconds,
             )
-            brs.append(br)
+            new_invoicing_dates = set(br_invoicing_dates)
             if prepaid_charge and not ignore_prepaid:
                 if initial_units is None:
                     units = prepaid_charge.units
@@ -2901,6 +2891,7 @@ class SubscriptionRecord(models.Model):
                         "No units specified for prepayment. This is usually an input error but may possibly be caused by inconsistent state in the backend."
                     )
                 ComponentChargeRecord.objects.create(
+                    organization=self.organization,
                     billing_record=br,
                     component_charge=prepaid_charge,
                     component=component,
@@ -2908,6 +2899,23 @@ class SubscriptionRecord(models.Model):
                     end_date=end_date,
                     units=units,
                 )
+                new_invoicing_dates |= {start_date}
+            new_invoicing_dates = sorted(list(new_invoicing_dates))
+            print(
+                "start_date",
+                start_date,
+                "end_date",
+                end_date,
+                "unadjusted_duration_microseconds",
+                unadjusted_duration_microseconds,
+                "br_invoicing_dates",
+                new_invoicing_dates,
+            )
+            if new_invoicing_dates != br_invoicing_dates:
+                br.invoicing_dates = new_invoicing_dates
+                br.next_invoicing_date = new_invoicing_dates[0]
+                br.save()
+            brs.append(br)
         return brs
 
     def _create_recurring_charge_billing_records(self, recurring_charge):
@@ -3407,9 +3415,8 @@ class BillingRecord(models.Model):
         assert (
             self.component is not None
         ), "Can't call get_usage_and_revenue for a recurring charge."
-        most_recent_prepaid_units = self.component_charge_records.order_by(
-            "-start_date"
-        ).first()
+        ccr = self.component_charge_records.order_by("-start_date").first()
+        most_recent_prepaid_units = ccr.units
         plan_component_summary = self.component.calculate_total_revenue(
             self, prepaid_units=most_recent_prepaid_units
         )
@@ -3554,18 +3561,30 @@ class BillingRecord(models.Model):
         ):
             total_amt = Decimal(0.0)
             for component_charge_record in self.component_charge_records.all():
-                total_microseconds = (
-                    component_charge.end_date - component_charge.start_date
-                ).total_seconds() * 10**6
+                total_microseconds = int(
+                    (
+                        component_charge_record.end_date
+                        - component_charge_record.start_date
+                    ).total_seconds()
+                    * 10**6
+                )
                 unadjusted_microseconds = (
                     component_charge_record.billing_record.unadjusted_duration_microseconds
                 )
                 full_amt_due = component.tier_rating_function(
                     component_charge_record.units
                 )
+                print(
+                    "totasl amt",
+                    component_charge_record,
+                    component_charge_record.end_date,
+                    component_charge_record.start_date,
+                    full_amt_due,
+                )
                 total_amt += full_amt_due * total_microseconds / unadjusted_microseconds
         else:
             total_amt = component.tier_rating_function(component_charge_record.units)
+        print("total_amt", total_amt)
         # 2. how much has been invoiced already
         amt_already_invoiced = self.prepaid_already_invoiced()
         # 3. how much is left to invoice

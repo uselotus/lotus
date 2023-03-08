@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from django.db.models.query import QuerySet
+
 from metering_billing.kafka.producer import Producer
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.taxes import get_lotus_tax_rates, get_taxjar_tax_rates
@@ -257,6 +258,11 @@ def calculate_subscription_record_usage_fees(subscription_record, invoice, draft
         for br in subscription_record.billing_records.filter(
             component__isnull=False, fully_billed=False
         ):
+            print("BR", br, br.next_invoicing_date, invoice.issue_date, br.fully_billed)
+            if (
+                br.next_invoicing_date > invoice.issue_date and not draft
+            ) or br.fully_billed:
+                continue
             for component_charge_record in br.component_charge_records.filter(
                 fully_billed=False
             ):
@@ -278,10 +284,6 @@ def calculate_subscription_record_usage_fees(subscription_record, invoice, draft
                 if not draft:
                     component_charge_record.fully_billed = True
                     component_charge_record.save()
-            if (
-                br.next_invoicing_date > invoice.issue_date and not draft
-            ) or br.fully_billed:
-                continue
             usg_rev = br.get_usage_and_revenue()
             qty = usg_rev["usage_qty"]
             rev = usg_rev["revenue"]
