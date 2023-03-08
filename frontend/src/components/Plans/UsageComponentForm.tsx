@@ -8,6 +8,7 @@ import {
   Select,
   Table,
   Input,
+  Checkbox,
 } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import "./UsageComponentForm.css";
@@ -306,12 +307,21 @@ function UsageComponentForm({
   const [metricObjects, setMetricObjects] = useState<MetricType[]>([]);
   const [metricGauge, setMetricGauge] = useState<boolean>(false);
   const selectedMetricName = Form.useWatch("metric", form);
+  const [prepaidType, setPrepaidType] = useState<
+    "dynamic" | "predefined" | null
+  >(editComponentItem?.prepaid_charge?.charge_type ?? null);
 
-  const [prorationGranularity, setProrationGranularity] = useState<string>(
-    editComponentItem?.proration_granularity ?? "total"
+  const backupDefaultFormValues = {
+    charge_behavior:
+      editComponentItem?.prepaid_charge?.charge_behavior ?? "full",
+    units: editComponentItem?.prepaid_charge?.units ?? null,
+  };
+
+  const initalData = Object.assign(
+    {},
+    backupDefaultFormValues,
+    editComponentItem
   );
-
-  const initalData = editComponentItem ?? null;
   const [errorMessage, setErrorMessage] = useState("");
   const buttonRef = useRef<HTMLButtonElement | undefined>(undefined!);
   const initialTier: Tier[] = [
@@ -608,11 +618,14 @@ function UsageComponentForm({
                 invoicing_interval_count: values.invoicing_interval_count,
                 invoicing_interval_unit: values.invoicing_interval_unit,
                 id: initalData?.id,
-                prepaid_charge: {
-                  units: values.units,
-                  charge_type: values.charge_type,
-                  charge_behavior: values.charge_behavior,
-                },
+                prepaid_charge:
+                  prepaidType !== null
+                    ? {
+                        units: values.units,
+                        charge_type: prepaidType,
+                        charge_behavior: values.charge_behavior,
+                      }
+                    : null,
               });
 
               form.submit();
@@ -686,39 +699,73 @@ function UsageComponentForm({
         <div className="mt-8 mb-12 space-y-6">
           <Collapse
             className="col-span-full bg-white py-8 rounded"
-            defaultActiveKey={initalData ? [1] : []}
+            defaultActiveKey={initalData?.prepaid_charge ? [1] : []}
           >
             <Panel header="Pre-Paid Usage" key="1">
-              <div className="mb-8">
-                Add a number of pre-paid units to the plan. These units will be
-                charged at the start of the invoicing period.
-              </div>
-
-              <div className="grid grid-cols-3 gap-8">
-                <Form.Item name="units">
-                  <Input type="number" placeholder="Pre-paid units" />
+              <div className="grid grid-cols-2 gap-8">
+                <Form.Item>
+                  <Checkbox
+                    checked={prepaidType === "predefined"}
+                    onChange={(e) => {
+                      setPrepaidType(e.target.checked ? "predefined" : null);
+                      if (e.target.checked) {
+                        form.setFieldValue("units", 0);
+                      } else {
+                        form.setFieldValue("units", null);
+                      }
+                    }}
+                  >
+                    Predefined. Manually adjust the number of units a user has
+                    paid for.
+                  </Checkbox>
                 </Form.Item>
                 <Form.Item>
-                  <InputNumber
-                    controls={false}
-                    addonBefore={currency ? currency.symbol : "-"}
-                    defaultValue={0}
-                    precision={2}
-                  />
-                </Form.Item>
-                <Form.Item name="charge_type">
-                  <Select defaultValue={"predefined"}>
-                    <Option value="predefined">Predefined</Option>
-                    <Option value="dynamic">Dynamic</Option>
-                  </Select>
-                </Form.Item>
-                <Form.Item name="charge_behavior">
-                  <Select defaultValue={"full"}>
-                    <Option value="full">Full</Option>
-                    <Option value="prorate">Prorate</Option>
-                  </Select>
+                  <Checkbox
+                    checked={prepaidType === "dynamic"}
+                    onChange={(e) => {
+                      setPrepaidType(e.target.checked ? "dynamic" : null);
+                    }}
+                  >
+                    Dynamic. New units will be automatically charged as they get
+                    reported through track event.
+                  </Checkbox>
                 </Form.Item>
               </div>
+
+              {prepaidType === "predefined" && (
+                <div>
+                  <div className="mb-8">
+                    Add a number of initial pre-paid units to the plan.
+                  </div>
+
+                  <Form.Item
+                    name="units"
+                    rules={[
+                      {
+                        required: prepaidType === "predefined",
+                        message: "Please input a number of units",
+                      },
+                    ]}
+                  >
+                    <Input type="number" placeholder="Pre-paid units" />
+                  </Form.Item>
+                </div>
+              )}
+
+              {prepaidType !== null && (
+                <div>
+                  <div className="mb-8">
+                    How should pre-paid usage be charged in the middle of a
+                    billing cycle?
+                  </div>
+                  <Form.Item name="charge_behavior">
+                    <Select>
+                      <Option value="full">Full</Option>
+                      <Option value="prorate">Prorate</Option>
+                    </Select>
+                  </Form.Item>
+                </div>
+              )}
 
               {/* <div className="grid grid-flow-col items-center mb-8">
                 <p>Property:</p>

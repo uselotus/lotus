@@ -166,7 +166,7 @@ function CreatePlan() {
       (item) => item.metric_id === newData.metric_id
     );
 
-    if (metricComponentExists) {
+    if (metricComponentExists && !editComponentItem) {
       toast.error("Metric already exists in another component", {
         position: toast.POSITION.TOP_CENTER,
       });
@@ -241,6 +241,7 @@ function CreatePlan() {
               reset_interval_unit: components[i].reset_interval_unit,
               invoicing_interval_count: components[i].invoicing_interval_count,
               invoicing_interval_unit: components[i].invoicing_interval_unit,
+              prepaid_charge: components[i].prepaid_charge,
             };
             usagecomponentslist.push(usagecomponent);
           }
