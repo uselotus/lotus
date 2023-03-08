@@ -2,7 +2,14 @@ import React, { FC, useState, useEffect } from "react";
 import { PageLayout } from "../components/base/PageLayout";
 import { Button } from "antd";
 import { useQuery } from "react-query";
-import { Events } from "../api/api";
+import {
+  Events,
+  APIKey,
+  Metrics,
+  Plan,
+  Webhook,
+  PaymentProcessorIntegration,
+} from "../api/api";
 
 interface Props {
   text: string;
@@ -15,6 +22,7 @@ interface Props {
 }
 
 interface QuickStartCheckProps {
+  setHasAPIKey?: (value: boolean) => void;
   setHasTrackedEvent?: (value: boolean) => void;
   setHasCreatedMetric?: (value: boolean) => void;
   setHasCreatedPlan?: (value: boolean) => void;
@@ -23,19 +31,87 @@ interface QuickStartCheckProps {
 }
 
 const quickStartCheck = async ({
+  setHasAPIKey,
   setHasTrackedEvent,
   setHasCreatedMetric,
   setHasCreatedPlan,
   setHasPaymentConnected,
   setUsersInOrg,
 }: QuickStartCheckProps) => {
-  const eventsDataPromise = useQuery(
-    ["preview events", ""],
-    Events.getEventPreviews("")
-  );
-  const eventsData = await eventsDataPromise;
+  // Check if user has created a metric
+  try {
+    const apiKeys = await APIKey.getKeys();
 
-  const userTrackedEvent = eventsData?.results.length > 0;
+    if (apiKeys && apiKeys.length > 0 && setHasAPIKey) {
+      setHasAPIKey(true);
+    }
+  } catch (error) {
+    console.log("Error fetching API keys:", error);
+  }
+
+  // Check if user has created an event
+  try {
+    const response = await Events.getEventPreviews("");
+    const eventData = response;
+
+    if (
+      eventData &&
+      eventData.results &&
+      eventData.results.length > 0 &&
+      setHasTrackedEvent
+    ) {
+      setHasTrackedEvent(true);
+    }
+  } catch (error) {
+    console.log("Error fetching event data:", error);
+  }
+
+  // Check if user has created a metric
+  try {
+    const metrics = await Metrics.getMetrics();
+    console.log("metrics", metrics);
+
+    if (metrics && metrics.length > 0 && setHasCreatedMetric) {
+      setHasCreatedMetric(true);
+    }
+  } catch (error) {
+    console.log("Error fetching metrics:", error);
+  }
+
+  // Check if user has created a plan
+  try {
+    const plans = await Plan.getPlans();
+
+    if (plans && plans.length > 0 && setHasCreatedPlan) {
+      setHasCreatedPlan(true);
+    }
+  } catch (error) {
+    console.log("Error fetching plans:", error);
+  }
+
+  // Check if user has connected a payment method or hooked up to a webhook for invoice.created
+  try {
+    const paymentProcessors =
+      await PaymentProcessorIntegration.getPaymentProcessorConnectionStatus();
+    if (
+      paymentProcessors &&
+      paymentProcessors.length > 0 &&
+      setHasPaymentConnected
+    ) {
+      for (let i = 0; i < paymentProcessors.length; i++) {
+        if (paymentProcessors[i].connected) {
+          setHasPaymentConnected(true);
+          break;
+        }
+      }
+      const webhooks = await Webhook.getEndpoints();
+      if (webhooks && webhooks.length > 0 && setHasPaymentConnected) {
+        setHasPaymentConnected(true);
+      }
+    }
+  } catch (error) {
+    console.log("Error fetching payment processors:", error);
+  }
 };
 
 const quickStartItem = ({
@@ -133,6 +209,7 @@ const QuickstartPage: FC = () => {
 
   useEffect(() => {
     quickStartCheck({
+      setHasAPIKey,
       setHasTrackedEvent,
       setHasCreatedMetric,
       setHasCreatedPlan,
@@ -211,35 +288,34 @@ const QuickstartPage: FC = () => {
           {quickStartItem({
             text: "Track your first event",
             subText: "",
-            complete: false,
+            complete: hasTrackedEvent,
             icon: "ri-user-add-line",
             time: "3 min",
-            link: `/settings/team`,
           })}
           {quickStartItem({
             text: "Create a Metric",
             subText: "Use a template provide for the quickest start.",
-            complete: false,
+            complete: hasCreatedMetric,
             icon: "ri-user-add-line",
             time: "1 min",
-            link: `/settings/team`,
+            link: `/metrics`,
           })}
           {quickStartItem({
             text: "Create a Plan",
             subText: "",
-            complete: false,
+            complete: hasCreatedPlan,
             icon: "ri-user-add-line",
             time: "2 min",
-            link: `/metrics`,
+            link: `/plans/create-plan`,
           })}
           {quickStartItem({
             text: "Connect a payment method or a webhook endpoint",
             subText:
               "Ensure that you have a way to collect payment for invoices that are generated in Lotus, either through Stripe, Braintree, or your own integration built ontop of our webhooks.",
-            complete: false,
+            complete: hasPaymentConnected,
             icon: "ri-user-add-line",
             time: "2 min",
-            link: `/metrics`,
+            link: `/settings/integrations`,
           })}
           {quickStartItem({
             text: "Join Lotus Slack",

@@ -270,7 +270,7 @@ export const Plan = {
 };
 
 export const Webhook = {
-  getEndpoints: (): Promise<WebhookEndpoint> => requests.get("app/webhooks/"),
+  getEndpoints: (): Promise<WebhookEndpoint[]> => requests.get("app/webhooks/"),
   createEndpoint: (post: WebhookEndpointCreate): Promise<WebhookEndpoint> =>
     requests.post("app/webhooks/", post),
   deleteEndpoint: (wh_id: string): Promise<WebhookEndpoint> =>
