@@ -608,6 +608,11 @@ function UsageComponentForm({
                 invoicing_interval_count: values.invoicing_interval_count,
                 invoicing_interval_unit: values.invoicing_interval_unit,
                 id: initalData?.id,
+                prepaid_charge: {
+                  units: values.units,
+                  charge_type: values.charge_type,
+                  charge_behavior: values.charge_behavior,
+                },
               });
 
               form.submit();
@@ -690,7 +695,7 @@ function UsageComponentForm({
               </div>
 
               <div className="grid grid-cols-3 gap-8">
-                <Form.Item name="prepaid_units">
+                <Form.Item name="units">
                   <Input type="number" placeholder="Pre-paid units" />
                 </Form.Item>
                 <Form.Item>
@@ -701,7 +706,13 @@ function UsageComponentForm({
                     precision={2}
                   />
                 </Form.Item>
-                <Form.Item name="prepaid_amount">
+                <Form.Item name="charge_type">
+                  <Select defaultValue={"predefined"}>
+                    <Option value="predefined">Predefined</Option>
+                    <Option value="dynamic">Dynamic</Option>
+                  </Select>
+                </Form.Item>
+                <Form.Item name="charge_behavior">
                   <Select defaultValue={"full"}>
                     <Option value="full">Full</Option>
                     <Option value="prorate">Prorate</Option>
