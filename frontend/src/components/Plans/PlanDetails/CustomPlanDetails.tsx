@@ -16,8 +16,8 @@ import PlanCustomerSubscriptions from "./PlanCustomerSubscriptions";
 import { components } from "../../../gen-types";
 
 interface CustomPlanDetailsProps {
-  version: components["schemas"]["Plan"]["versions"][0];
-  plan: components["schemas"]["Plan"];
+  version: components["schemas"]["PlanDetail"]["versions"][0];
+  plan: components["schemas"]["PlanDetail"];
   refetch: VoidFunction;
   activeKey: string;
   createPlanExternalLink: (link: string) => void;

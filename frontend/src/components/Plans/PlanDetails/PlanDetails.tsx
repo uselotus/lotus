@@ -35,7 +35,7 @@ type PlanDetailParams = {
 const PlanDetails: FC = () => {
   const navigate = useNavigate();
   const [customPlans, setCustomPlans] = useState<
-    components["schemas"]["Plan"][]
+    components["schemas"]["PlanDetail"][]
   >([]);
   const [activeKey, setActiveKey] = useState("0");
   const { planId } = useParams<PlanDetailParams>();
@@ -167,15 +167,15 @@ const PlanDetails: FC = () => {
   );
   const {
     data: plans,
-  }: UseQueryResult<components["schemas"]["Plan"][] | PlanType[]> = useQuery<
-    components["schemas"]["Plan"][] | PlanType[]
+  }: UseQueryResult<components["schemas"]["PlanDetail"][] | PlanType[]> = useQuery<
+    components["schemas"]["PlanDetail"][] | PlanType[]
   >(
     ["plan_list"],
     () =>
       Plan.getPlans({ version_custom_type: "custom_only" }).then((res) => res),
     {
       onSuccess: () => {
-        setCustomPlans(plans as components["schemas"]["Plan"][]);
+        setCustomPlans(plans as components["schemas"]["PlanDetail"][]);
       },
     }
   );
