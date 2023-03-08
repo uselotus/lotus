@@ -307,6 +307,12 @@ function UsageComponentForm({
   const [metricObjects, setMetricObjects] = useState<MetricType[]>([]);
   const [metricGauge, setMetricGauge] = useState<boolean>(false);
   const selectedMetricName = Form.useWatch("metric", form);
+  const [componentIntervalOptions, setComponentIntervalOptions] = useState<
+    string[]
+  >([]);
+  const [componentIntervalUnitLimit, setComponentIntervalUnitLimit] =
+    useState<number>(100);
+
   const [prepaidType, setPrepaidType] = useState<
     "dynamic" | "predefined" | null
   >(editComponentItem?.prepaid_charge?.charge_type ?? null);
@@ -338,33 +344,15 @@ function UsageComponentForm({
       undefined
   );
 
-  /// Ouput accepted proration grandularities for a given metric
-  /// with a given period
-  const generateValidProrationGranularity = () => {
-    const all_proration_granularity = [
-      "seconds",
-      "minutes",
-      "hours",
-      "days",
-      "months",
-    ];
-    const currentMetric = metricObjects.find(
-      (metric) => metric.metric_name === form.getFieldValue("metric")
-    );
-
-    const valid_granularities: string[] = [];
-    if (currentMetric) {
-      for (let i = 0; i < all_proration_granularity.length; i++) {
-        if (currentMetric.granularity === all_proration_granularity[i]) {
-          valid_granularities.push(all_proration_granularity[i]);
-          break;
-        } else {
-          valid_granularities.push(all_proration_granularity[i]);
-        }
-      }
+  useEffect(() => {
+    if (planDuration === "monthly") {
+      setComponentIntervalOptions(["day", "week"]);
+    } else if (planDuration === "yearly") {
+      setComponentIntervalOptions(["day", "month"]);
+    } else if (planDuration === "quarterly") {
+      setComponentIntervalOptions(["day", "week", "month"]);
     }
-    return valid_granularities;
-  };
+  }, [planDuration]);
 
   useEffect(() => {
     setMetricGauge(
@@ -834,10 +822,9 @@ function UsageComponentForm({
                   </Form.Item>
                   <Form.Item name="invoicing_interval_unit">
                     <Select>
-                      <Option value="day">days</Option>
-                      <Option value="week">weeks</Option>
-                      <Option value="month">months</Option>
-                      <Option value="year">years</Option>
+                      {componentIntervalOptions.map((option) => (
+                        <Option value={option}>{option}s</Option>
+                      ))}
                       <Option value={null}>Same as plan duration</Option>
                     </Select>
                   </Form.Item>
@@ -866,10 +853,10 @@ function UsageComponentForm({
                     ]}
                   >
                     <Select>
-                      <Option value="day">days</Option>
-                      <Option value="week">weeks</Option>
-                      <Option value="month">months</Option>
-                      <Option value="year">years</Option>
+                      {componentIntervalOptions.map((option) => (
+                        <Option value={option}>{option}s</Option>
+                      ))}
+                      <Option value={null}>Same as plan duration</Option>
                     </Select>
                   </Form.Item>
                 </div>
