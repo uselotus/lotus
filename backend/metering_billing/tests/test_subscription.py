@@ -1,13 +1,10 @@
 import itertools
 import json
 from datetime import timedelta
+from decimal import Decimal
 
 import pytest
 from django.urls import reverse
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
-
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     BillingRecord,
@@ -19,6 +16,7 @@ from metering_billing.models import (
     PlanVersion,
     PriceTier,
     PricingUnit,
+    RecurringCharge,
     SubscriptionRecord,
 )
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
@@ -30,6 +28,9 @@ from metering_billing.utils.enums import (
     PLAN_DURATION,
     USAGE_BEHAVIOR,
 )
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -810,16 +811,15 @@ class TestResetAndInvoicingIntervals:
         assert (
             br_before_ct + 3 * 28 <= br_after.count() <= br_before_ct + 3 * 31
         )  # 3 billing records for 3 plan components, 28-31 days
-        new_br = br_after.exclude(id__in=br_before)
-        # new billign record should have a billing date at 7, 14, 21, 28 days from start date, plus end date, so 5
-        for br in new_br:
-            assert len(br.invoicing_dates) == 1
+        for br in br_after:
+            assert len(br.invoicing_dates) == 1  # just the subscription end date!
             assert br.next_invoicing_date == br.invoicing_dates[0]
             assert br.fully_billed is False
             assert br.unadjusted_duration_microseconds == 86400000000 or (
                 br.start_date == br.subscription.start_date
                 or br.end_date == br.subscription.end_date
             )
+            assert br.next_invoicing_date == br.subscription.end_date
 
     def test_monthly_plan_with_mixed_reset_and_invoicing_generates_correct_brs_for_pcs(
         self,
@@ -901,3 +901,196 @@ class TestResetAndInvoicingIntervals:
             assert br.unadjusted_duration_microseconds == 7 * 86400000000 or (
                 br.end_date == br.subscription.end_date
             )
+
+    def test_monthly_plan_with_weekly_invoicing_creates_correct_number_of_billing_records_for_recurring_charges(
+        self,
+        subscription_test_common_setup,
+    ):
+        num_subscriptions = 0
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        customer = setup_dict["customer"]
+        PlanVersion.objects.all().delete()
+        billing_plan = baker.make(
+            PlanVersion,
+            organization=setup_dict["org"],
+            plan=setup_dict["plan"],
+            currency=PricingUnit.objects.get(
+                organization=setup_dict["org"], code="USD"
+            ),
+        )
+        RecurringCharge.objects.create(
+            organization=billing_plan.organization,
+            plan_version=billing_plan,
+            charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+            charge_behavior=RecurringCharge.ChargeBehaviorType.PRORATE,
+            amount=10,
+            pricing_unit=billing_plan.currency,
+            invoicing_interval_unit=RecurringCharge.IntervalLengthType.WEEK,
+            invoicing_interval_count=1,
+        )
+        payload = {
+            "start_date": now_utc() - timedelta(days=5),
+            "customer_id": customer.customer_id,
+            "version_id": billing_plan.version_id,
+        }
+        sr_before = SubscriptionRecord.objects.all().count()
+        br_before = BillingRecord.objects.all().count()
+        response = setup_dict["client"].post(
+            reverse("subscription-list"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        sr_after = SubscriptionRecord.objects.all().count()
+        br_after = BillingRecord.objects.all().count()
+        assert response.status_code == status.HTTP_201_CREATED
+        assert sr_after == sr_before + 1
+        assert br_after == br_before + 1  # 1 billing record for 1 recurring charge
+        new_br = BillingRecord.objects.all().order_by("-id").first()
+        # new billign record should have a billing date at 0, 7, 14, 21, 28 days from start date, plus end date, so 5
+        assert len(new_br.invoicing_dates) == 6
+        assert (
+            new_br.next_invoicing_date == new_br.invoicing_dates[1]
+        )  # Only the initial date has passed
+        assert (
+            new_br.fully_billed is False
+        )  # until we're done with all the invoicing dates
+        new_invoice = Invoice.objects.all().order_by("-id").first()
+        min_value = 10 * (Decimal("28") - Decimal("1")) / Decimal("28")
+        assert min_value < new_invoice.cost_due < 10
+
+    def test_monthly_plan_with_daily_reset_creates_correct_amount_of_billing_records_for_recurring_charges(
+        self,
+        subscription_test_common_setup,
+    ):
+        num_subscriptions = 0
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        customer = setup_dict["customer"]
+        PlanVersion.objects.all().delete()
+        billing_plan = baker.make(
+            PlanVersion,
+            organization=setup_dict["org"],
+            plan=setup_dict["plan"],
+            currency=PricingUnit.objects.get(
+                organization=setup_dict["org"], code="USD"
+            ),
+        )
+        RecurringCharge.objects.create(
+            organization=billing_plan.organization,
+            plan_version=billing_plan,
+            charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+            charge_behavior=RecurringCharge.ChargeBehaviorType.PRORATE,
+            amount=10,
+            pricing_unit=billing_plan.currency,
+            reset_interval_unit=RecurringCharge.IntervalLengthType.DAY,
+            reset_interval_count=1,
+        )
+        payload = {
+            "start_date": now_utc() - timedelta(days=5),
+            "customer_id": customer.customer_id,
+            "version_id": billing_plan.version_id,
+        }
+        sr_before = SubscriptionRecord.objects.all()
+        sr_before_ct = len(sr_before)
+        br_before = BillingRecord.objects.all()
+        br_before_ct = len(br_before)
+        response = setup_dict["client"].post(
+            reverse("subscription-list"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        sr_after = SubscriptionRecord.objects.all()
+        br_after = BillingRecord.objects.all()
+        assert response.status_code == status.HTTP_201_CREATED
+        assert sr_after.count() == sr_before_ct + 1
+        assert (
+            br_before_ct + 28 <= br_after.count() <= br_before_ct + 31
+        )  #  28-31 days for a single recurring charge
+        for br in br_after:
+            assert len(br.invoicing_dates) == 2  # start and end of every day
+            assert br.unadjusted_duration_microseconds == 86400000000 or (
+                br.end_date == br.subscription.end_date
+            )
+            if br.fully_billed is True:
+                assert br.next_invoicing_date == br.invoicing_dates[-1]
+            else:
+                assert (
+                    br.next_invoicing_date == br.invoicing_dates[0]
+                    or br.invoicing_dates[0] < now_utc()  # for the case of today
+                )
+
+        assert (
+            Invoice.objects.all().first().cost_due == 6 * 10
+        )  # 5 days ago, incl. todays in advance charge thats 60
+
+    # def test_monthly_plan_with_mixed_reset_and_invoicing_generates_correct_brs_for_recurring_charges(
+    #     self,
+    #     subscription_test_common_setup,
+    # ):
+    #     num_subscriptions = 0
+    #     setup_dict = subscription_test_common_setup(
+    #         num_subscriptions=num_subscriptions,
+    #         auth_method="api_key",
+    #         user_org_and_api_key_org_different=False,
+    #     )
+    #     customer = setup_dict["customer"]
+    #     PlanVersion.objects.all().delete()
+    #     billing_plan = baker.make(
+    #         PlanVersion,
+    #         organization=setup_dict["org"],
+    #         plan=setup_dict["plan"],
+    #         currency=PricingUnit.objects.get(
+    #             organization=setup_dict["org"], code="USD"
+    #         ),
+    #     )
+    #     RecurringCharge.objects.create(
+    #         organization=billing_plan.organization,
+    #         plan_version=billing_plan,
+    #         charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+    #         charge_behavior=RecurringCharge.ChargeBehaviorType.PRORATE,
+    #         amount=10,
+    #         pricing_unit=billing_plan.currency,
+    #         reset_interval_unit=PlanComponent.IntervalLengthType.WEEK,
+    #             reset_interval_count=1,
+    #             invoicing_interval_unit=PlanComponent.IntervalLengthType.DAY,
+    #             invoicing_interval_count=2,
+    #     )
+    #     payload = {
+    #         "start_date": now_utc() - timedelta(days=5),
+    #         "customer_id": customer.customer_id,
+    #         "version_id": billing_plan.version_id,
+    #     }
+    #     sr_before = SubscriptionRecord.objects.all()
+    #     sr_before_ct = len(sr_before)
+    #     br_before = BillingRecord.objects.all()
+    #     br_before_ct = len(br_before)
+    #     response = setup_dict["client"].post(
+    #         reverse("subscription-list"),
+    #         data=json.dumps(payload, cls=DjangoJSONEncoder),
+    #         content_type="application/json",
+    #     )
+    #     sr_after = SubscriptionRecord.objects.all()
+    #     br_after = BillingRecord.objects.all()
+    #     assert response.status_code == status.HTTP_201_CREATED
+    #     assert sr_after.count() == sr_before_ct + 1
+    #     assert (
+    #         br_before_ct + 4 <= br_after.count() <= br_before_ct + 5
+    #     )  # 1 billing records for 1 recurring charge, 4-5 weeks
+    #     # new billign record should have a billing date at 7, 14, 21, 28 days from start date, plus end date, so 5
+    #     for br in br_after:
+    #         assert (
+    #             3 <= len(br.invoicing_dates) <= 4
+    #             or br.end_date == br.subscription.end_date
+    #         )
+    #         assert br.next_invoicing_date == br.invoicing_dates[0]
+    #         assert br.fully_billed is False
+    #         assert br.unadjusted_duration_microseconds == 7 * 86400000000 or (
+    #             br.end_date == br.subscription.end_date
+    #         )

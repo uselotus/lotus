@@ -26,15 +26,6 @@ from django.db.models import Count, F, FloatField, Prefetch, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
-
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     NotEditable,
@@ -82,6 +73,14 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -2029,9 +2028,9 @@ class RecurringCharge(models.Model):
         }
         return label_map[label]
 
-    def get_recurring_charge_invoicing_dates(self, subscription_record):
-        from metering_billing.models import AddOnSpecification
-
+    def get_recurring_charge_invoicing_dates(
+        self, subscription_record, append_range_start=False
+    ):
         # FOR RECURRIG CHARGES
         # first we get the actual star tdate and end date of this subscription. However, if this is an addon, we need to calculate the periods w.r.t the parent subscription
         sr_start_date = subscription_record.start_date
@@ -2070,20 +2069,6 @@ class RecurringCharge(models.Model):
         invoicing_dates = []
 
         invoicing_date = range_start_date
-        # sometime, we need to charge this at the beginning of the period. This is if the charge
-        # is in advance, AND its not an addon that has invoice with end of subscription
-        append_range_start = True
-        if self.charge_timing == RecurringCharge.ChargeTimingType.IN_ADVANCE:
-            addon_spec = self.plan_version.addon_spec
-            if (
-                addon_spec
-                and addon_spec.flat_fee_invoicing_behavior_on_attach
-                == AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_SUBSCRIPTION_END
-            ):
-                append_range_start = False
-        if append_range_start:
-            invoicing_dates.append(range_start_date)
-
         # now generate invoicing dates
         while invoicing_date < range_end_date:
             invoicing_date += interval_delta
@@ -2110,17 +2095,17 @@ class RecurringCharge(models.Model):
         else:
             range_start_date = sr_start_date
             range_end_date = sr_end_date
-        invoicing_interval_unit = self.invoicing_interval_unit
-        invoicing_interval_count = self.invoicing_interval_count
-        # if we don't have a sub-plan length invoicing interval, use the plan length
-        if not invoicing_interval_unit:
+        reset_interval_unit = self.reset_interval_unit
+        reset_interval_count = self.reset_interval_count
+        # if we don't have a sub-plan length reset interval, use the plan length
+        if not reset_interval_unit:
             # problem here is for addons. Their plans do not have durations as they depend on the parent subscription.
-            invoicing_interval_unit = (
+            reset_interval_unit = (
                 self.plan_version.plan.plan_duration
                 or subscription_record.parent.billing_plan.plan.plan_duration
             )
-            if invoicing_interval_unit == PLAN_DURATION.QUARTERLY:
-                invoicing_interval_count = 3
+            if reset_interval_unit == PLAN_DURATION.QUARTERLY:
+                reset_interval_count = 3
 
         unit_map = {
             PlanComponent.IntervalLengthType.DAY: "days",
@@ -2133,7 +2118,7 @@ class RecurringCharge(models.Model):
         }
 
         interval_delta = relativedelta(
-            **{unit_map[invoicing_interval_unit]: invoicing_interval_count or 1}
+            **{unit_map[reset_interval_unit]: reset_interval_count or 1}
         )
         if not self.reset_interval_unit:
             unadjusted_duration_microseconds = (
@@ -2145,19 +2130,19 @@ class RecurringCharge(models.Model):
 
         reset_date = range_start_date
         while reset_date < range_end_date:
-            reset_date += interval_delta
             append_date = min(reset_date, range_end_date)
             reset_dates.append(append_date)
-
+            reset_date += interval_delta
         # Construct non-overlapping date ranges
         reset_ranges = []
-        for i in range(len(reset_dates) - 1):
+        for i in range(len(reset_dates)):
             if sr_start_date > reset_dates[i]:
                 continue
             start = max(reset_dates[i], sr_start_date)
-            end = reset_dates[i + 1] - datetime.timedelta(microseconds=1)
-            if reset_dates[i + 1] == sr_end_date:
+            if i == len(reset_dates) - 1:
                 end = sr_end_date
+            else:
+                end = reset_dates[i + 1] - datetime.timedelta(microseconds=1)
             unadjusted_duration_microseconds = (
                 (reset_dates[i] + interval_delta) - reset_dates[i]
             ).total_seconds() * 10**6
@@ -2869,23 +2854,54 @@ class SubscriptionRecord(models.Model):
         return brs
 
     def _create_recurring_charge_billing_records(self, recurring_charge):
-        invoicing_dates = recurring_charge.get_recurring_charge_invoicing_dates(self)
+        # first thign we want to see is if we need to charge "in advance" at all, that will
+        # affect the way we calculate the reset ranges and invociing dates
+        append_range_start = False
+        if (
+            recurring_charge.charge_timing
+            == RecurringCharge.ChargeTimingType.IN_ADVANCE
+        ):
+            addon_spec = recurring_charge.plan_version.addon_spec
+            if (
+                addon_spec
+                and addon_spec.flat_fee_invoicing_behavior_on_attach
+                == AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_SUBSCRIPTION_END
+            ):
+                # this is the ONLY case where its in advance and we don't want to append the range start. in this case they explicitly do not want to charge the flat fee on attach
+                append_range_start = False
+            else:
+                append_range_start = True
+
+        invoicing_dates = recurring_charge.get_recurring_charge_invoicing_dates(
+            self, append_range_start
+        )
         reset_ranges = recurring_charge.get_recurring_charge_reset_dates(self)
         i = 0
         brs = []
         for start_date, end_date, unadjusted_duration_microseconds in reset_ranges:
-            br_invoicing_dates = []
+            br_invoicing_dates = set()
             for j in range(i, len(invoicing_dates)):
                 if invoicing_dates[j] > end_date:
                     break
-                br_invoicing_dates.append(invoicing_dates[j])
-            br_invoicing_dates = sorted(list(set(br_invoicing_dates).union({end_date})))
+                br_invoicing_dates.add(invoicing_dates[j])
+
             i += len(br_invoicing_dates)
+            br_invoicing_dates = br_invoicing_dates.union({end_date})
+            if append_range_start:
+                br_invoicing_dates = br_invoicing_dates.union({start_date})
+            print(
+                "start_date",
+                start_date,
+                "end_date",
+                end_date,
+                "br_invoicing_dates",
+                br_invoicing_dates,
+            )
             br = BillingRecord.objects.create(
                 organization=self.organization,
                 subscription=self,
                 recurring_charge=recurring_charge,
-                invoicing_dates=invoicing_dates,
+                invoicing_dates=br_invoicing_dates,
                 start_date=start_date,
                 end_date=end_date,
                 unadjusted_duration_microseconds=unadjusted_duration_microseconds,
@@ -3364,6 +3380,7 @@ class BillingRecord(models.Model):
                     break
             if not found_next:
                 self.fully_billed = True
+                self.next_invoicing_date = self.invoicing_dates[-1]
                 self.save()
         else:
             # do nothing, we have an invociing date coming up. This invoice was likely from attaching a subscription or something

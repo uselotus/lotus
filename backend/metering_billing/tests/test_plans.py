@@ -3,12 +3,13 @@ import json
 import pytest
 from dateutil.relativedelta import relativedelta
 from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.models import Customer, Feature, Plan, PlanVersion, Tag
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PLAN_DURATION
-from rest_framework import status
-from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -82,7 +83,6 @@ class TestCreatePlan:
             data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        print(response.data)
         assert response.status_code == status.HTTP_201_CREATED
 
     def test_plan_dont_specify_version_fails_doesnt_create_plan(
@@ -128,7 +128,6 @@ class TestCreatePlanVersion:
             data=json.dumps(setup_dict["plan_version_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        print(response.data)
         assert response.status_code == status.HTTP_201_CREATED
         assert PlanVersion.objects.all().count() == 2
         assert len(plan.versions.all()) == 2
