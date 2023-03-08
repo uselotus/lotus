@@ -903,6 +903,7 @@ class SubscriptionViewSet(
                 "dynamic_fixed_charges_initial_units", []
             ),
         )
+        print("HELLOOOO new_sr", new_sr)
         return Response(
             SubscriptionRecordSerializer(new_sr).data, status=status.HTTP_200_OK
         )

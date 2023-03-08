@@ -26,6 +26,15 @@ from django.db.models import Count, F, FloatField, Prefetch, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
+
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     NotEditable,
@@ -73,14 +82,6 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -1638,40 +1639,79 @@ class PlanComponent(models.Model):
 
     def get_component_reset_dates(self, subscription_record, override_start_date=None):
         # FOR PLAN COMPONENTS
-        start_date = override_start_date or subscription_record.start_date
-        end_date = subscription_record.end_date
-        if self.reset_interval_unit is None:
-            return [(start_date, end_date)]
+
+        sr_start_date = subscription_record.start_date
+        sr_end_date = subscription_record.end_date
+        if subscription_record.parent:
+            range_start_date = subscription_record.parent.start_date
+            range_end_date = subscription_record.parent.end_date
+        else:
+            range_start_date = sr_start_date
+            range_end_date = sr_end_date
+        if override_start_date:
+            range_start_date = override_start_date
+        print(
+            "WTFFFFFFFFFF",
+            subscription_record.start_date,
+            subscription_record.end_date,
+            "range",
+            range_start_date,
+            range_end_date,
+            "override",
+            override_start_date,
+            "\n",
+        )
+        reset_interval_unit = self.reset_interval_unit
+        reset_interval_count = self.reset_interval_count
+        # if we don't have a sub-plan length reset interval, use the plan length
+        if not reset_interval_unit:
+            # problem here is for addons. Their plans do not have durations as they depend on the parent subscription.
+            reset_interval_unit = (
+                self.plan_version.plan.plan_duration
+                or subscription_record.parent.billing_plan.plan.plan_duration
+            )
+            if reset_interval_unit == PLAN_DURATION.QUARTERLY:
+                reset_interval_count = 3
 
         unit_map = {
             PlanComponent.IntervalLengthType.DAY: "days",
             PlanComponent.IntervalLengthType.WEEK: "weeks",
             PlanComponent.IntervalLengthType.MONTH: "months",
             PlanComponent.IntervalLengthType.YEAR: "years",
+            PLAN_DURATION.MONTHLY: "months",
+            PLAN_DURATION.QUARTERLY: "months",
+            PLAN_DURATION.YEARLY: "years",
         }
 
         interval_delta = relativedelta(
-            **{unit_map[self.reset_interval_unit]: self.reset_interval_count or 1}
+            **{unit_map[reset_interval_unit]: reset_interval_count or 1}
         )
+        if not self.reset_interval_unit:
+            unadjusted_duration_microseconds = (
+                (range_start_date + interval_delta) - range_start_date
+            ).total_seconds() * 10**6
+            return [(sr_start_date, sr_end_date, unadjusted_duration_microseconds)]
 
         reset_dates = []
 
-        reset_date = start_date
-        while reset_date < end_date:
-            reset_date += interval_delta
-            append_date = min(reset_date, end_date)
+        reset_date = range_start_date
+        while reset_date < range_end_date:
+            append_date = min(reset_date, range_end_date)
             reset_dates.append(append_date)
-
-        reset_dates = reset_dates
-
+            reset_date += interval_delta
+        print("reset_dates", reset_dates, "\n")
         # Construct non-overlapping date ranges
         reset_ranges = []
-        for i in range(len(reset_dates) - 1):
+        for i in range(len(reset_dates)):
             start = reset_dates[i]
-            end = reset_dates[i + 1] - datetime.timedelta(microseconds=1)
-            if reset_dates[i + 1] == end_date:
-                end = end_date
-            reset_ranges.append((start, end))
+            if i == len(reset_dates) - 1:
+                end = sr_end_date
+            else:
+                end = reset_dates[i + 1] - datetime.timedelta(microseconds=1)
+            unadjusted_duration_microseconds = (
+                (reset_dates[i] + interval_delta) - reset_dates[i]
+            ).total_seconds() * 10**6
+            reset_ranges.append((start, end, unadjusted_duration_microseconds))
 
         return reset_ranges
 
@@ -2760,12 +2800,14 @@ class SubscriptionRecord(models.Model):
             quantity=quantity,
         )
         for component in sr.billing_plan.plan_components.all():
+            print("CREATING FOR COMPONENT", component, "\n")
             metric = component.billable_metric
             kwargs = {}
             if metric in dynamic_fixed_charges_initial_units:
                 kwargs["initial_units"] = dynamic_fixed_charges_initial_units[metric]
             sr._create_component_billing_records(component, **kwargs)
         for recurring_charge in sr.billing_plan.recurring_charges.all():
+            print("CREATING FOR RECURRING CHARGE", recurring_charge, "\n")
             sr._create_recurring_charge_billing_records(recurring_charge)
         generate_invoice(sr)
         return sr
@@ -2813,18 +2855,32 @@ class SubscriptionRecord(models.Model):
         invoicing_dates = component.get_component_invoicing_dates(
             self, override_start_date
         )
+        print("invoicing_dates", invoicing_dates, "\n")
         reset_ranges = component.get_component_reset_dates(self, override_start_date)
-        i = 0
+        print("reset_ranges", reset_ranges)
         brs = []
-        for start_date, end_date in reset_ranges:
+        for start_date, end_date, unadjusted_duration_microseconds in reset_ranges:
+            one_past_end_added = False
             br_invoicing_dates = set()
-            for j in range(i, len(invoicing_dates)):
-                if invoicing_dates[j] > end_date:
+            for inv_date in invoicing_dates:
+                if one_past_end_added:
                     break
-                br_invoicing_dates.add(invoicing_dates[j])
-            br_invoicing_dates = br_invoicing_dates.union({end_date})
+                if inv_date >= start_date:
+                    br_invoicing_dates.add(inv_date)
+                    if inv_date >= end_date:
+                        one_past_end_added = True
             br_invoicing_dates = sorted(list(br_invoicing_dates))
-            i += len(br_invoicing_dates)
+
+            print(
+                "start_date",
+                start_date,
+                "end_date",
+                end_date,
+                "unadjusted_duration_microseconds",
+                unadjusted_duration_microseconds,
+                "br_invoicing_dates",
+                br_invoicing_dates,
+            )
             br = BillingRecord.objects.create(
                 organization=self.organization,
                 subscription=self,
@@ -2832,6 +2888,7 @@ class SubscriptionRecord(models.Model):
                 start_date=start_date,
                 end_date=end_date,
                 invoicing_dates=br_invoicing_dates,
+                unadjusted_duration_microseconds=unadjusted_duration_microseconds,
             )
             brs.append(br)
             if prepaid_charge and not ignore_prepaid:
@@ -2876,24 +2933,27 @@ class SubscriptionRecord(models.Model):
             self, append_range_start
         )
         reset_ranges = recurring_charge.get_recurring_charge_reset_dates(self)
-        i = 0
         brs = []
+        print("invoicing_dates", invoicing_dates, "\n")
+        print("reset_ranges", reset_ranges, "\n")
         for start_date, end_date, unadjusted_duration_microseconds in reset_ranges:
+            one_past_end_added = False
             br_invoicing_dates = set()
-            for j in range(i, len(invoicing_dates)):
-                if invoicing_dates[j] > end_date:
+            for inv_date in invoicing_dates:
+                if one_past_end_added:
                     break
-                br_invoicing_dates.add(invoicing_dates[j])
-
-            i += len(br_invoicing_dates)
-            br_invoicing_dates = br_invoicing_dates.union({end_date})
-            if append_range_start:
-                br_invoicing_dates = br_invoicing_dates.union({start_date})
+                if inv_date >= start_date:
+                    br_invoicing_dates.add(inv_date)
+                    if inv_date >= end_date:
+                        one_past_end_added = True
+            br_invoicing_dates = sorted(list(br_invoicing_dates))
             print(
                 "start_date",
                 start_date,
                 "end_date",
                 end_date,
+                "unadjusted_duration_microseconds",
+                unadjusted_duration_microseconds,
                 "br_invoicing_dates",
                 br_invoicing_dates,
             )
@@ -3141,20 +3201,37 @@ class SubscriptionRecord(models.Model):
                 )
             else:
                 metric = component.billable_metric
+                print(
+                    "\nCOMPONENT: ",
+                    component,
+                    "STRAIGHT DELETE:",
+                    metric not in new_version_metrics_map,
+                )
                 if metric in new_version_metrics_map:
                     # if the metric is in the new plan, we perform the surgery to switch the billing record to the new plan. Don't create from scratch.
                     transfer = SubscriptionRecord._check_should_transfer_cancel_if_not(
                         billing_record, now, invoice_now=invoice_now
                     )
+                    print(
+                        "BEING TRANSFERRED",
+                        transfer,
+                        "\n",
+                    )
                     if transfer:
-                        pcs_to_create_charges_for.remove(
-                            new_version_metrics_map[metric]
+                        new_component = new_version_metrics_map[metric]
+                        pcs_to_create_charges_for.remove(new_component)
+                        print(
+                            "NEW BILLING RECORDS for current BR",
+                            billing_record,
+                            billing_record.start_date,
+                            billing_record.end_date,
                         )
                         new_billing_records = sr._create_component_billing_records(
-                            component,
+                            new_component,
                             override_start_date=billing_record.start_date,
                             ignore_prepaid=True,
                         )
+                        print("END NEW BILLING RECORDS: MADE", len(new_billing_records))
                         override_billing_record = new_billing_records[0]
                         # heres the surgery... open to improvements... this allows us to keep
                         # info about what's been paid already though which is nice
@@ -3176,6 +3253,7 @@ class SubscriptionRecord(models.Model):
                             override_billing_record.fully_billed
                         )
                         billing_record.save()
+
                         charge_records = (
                             billing_record.component_charge_records.all().order_by(
                                 "start_date"
@@ -3208,6 +3286,7 @@ class SubscriptionRecord(models.Model):
         self.auto_renew = False
         self.save()
         generate_invoice([self, sr])
+        return sr
 
     def calculate_earned_revenue_per_day(self):
         return_dict = {}

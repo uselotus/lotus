@@ -7,7 +7,6 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from django.db.models.query import QuerySet
-
 from metering_billing.kafka.producer import Producer
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.taxes import get_lotus_tax_rates, get_taxjar_tax_rates
@@ -186,7 +185,12 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice, draft)
         flat_fee_due = billing_record.calculate_recurring_charge_due(relative_end_date)
         # we check how much has already been billed
         amt_already_invoiced = billing_record.amt_already_invoiced()
-        if abs(amt_already_invoiced - flat_fee_due) < Decimal("0.01"):
+        print("BILLING RECORD STUFF")
+        print("billing_record", billing_record, amt_already_invoiced, flat_fee_due)
+        if (
+            abs(amt_already_invoiced - flat_fee_due) < Decimal("0.01")
+            and amt_already_invoiced > 0
+        ):
             pass
         else:
             billing_plan = subscription_record.billing_plan
@@ -682,7 +686,8 @@ def calculate_due_date(issue_date, organization):
 def finalize_cost_due(invoice, draft):
     from metering_billing.models import Invoice
 
-    invoice.cost_due = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
+    tot = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
+    invoice.cost_due = tot
     if abs(invoice.cost_due) < 0.01 and not draft:
         invoice.payment_status = Invoice.PaymentStatus.PAID
     invoice.save()
