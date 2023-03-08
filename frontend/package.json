@@ -9,7 +9,9 @@
     "dev": "vite",
     "start": "vite",
     "lint": "eslint . --ext .ts,.tsx",
-    "pretty": "prettier --write ."
+    "pretty": "prettier --write .",
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run"
   },
   "dependencies": {
     "@ant-design/plots": "1.2.1",
