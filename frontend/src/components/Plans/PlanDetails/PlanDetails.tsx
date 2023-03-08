@@ -1,9 +1,18 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable no-use-before-define */
+/* eslint-disable no-shadow */
+/* eslint-disable camelcase */
 // @ts-ignore
-import React, { FC, Fragment } from "react";
+import React, { FC, Fragment, useState } from "react";
 import "./PlanDetails.css";
-import { Button } from "antd";
+import { Button, Tabs } from "antd";
 import { useNavigate, useParams } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  UseQueryResult,
+} from "react-query";
 import { PlusOutlined } from "@ant-design/icons";
 import { toast } from "react-toastify";
 import { PageLayout } from "../../base/PageLayout";
@@ -13,9 +22,11 @@ import {
   CreatePlanExternalLinkType,
   InitialExternalLinks,
   PlanDetailType,
+  PlanType,
 } from "../../../types/plan-type";
 import LoadingSpinner from "../../LoadingSpinner";
 import { components } from "../../../gen-types";
+import CustomPlanDetails from "./CustomPlanDetails";
 
 type PlanDetailParams = {
   planId: string;
@@ -23,7 +34,10 @@ type PlanDetailParams = {
 
 const PlanDetails: FC = () => {
   const navigate = useNavigate();
-
+  const [customPlans, setCustomPlans] = useState<
+    components["schemas"]["Plan"][]
+  >([]);
+  const [activeKey, setActiveKey] = useState("0");
   const { planId } = useParams<PlanDetailParams>();
   const queryClient = useQueryClient();
 
@@ -151,7 +165,23 @@ const PlanDetails: FC = () => {
     () => Plan.getPlan(planId as string).then((res) => res),
     { refetchOnMount: "always" }
   );
-
+  const {
+    data: plans,
+  }: UseQueryResult<components["schemas"]["Plan"][] | PlanType[]> = useQuery<
+    components["schemas"]["Plan"][] | PlanType[]
+  >(
+    ["plan_list"],
+    () =>
+      Plan.getPlans({ version_custom_type: "custom_only" }).then((res) => res),
+    {
+      onSuccess: () => {
+        setCustomPlans(plans as components["schemas"]["Plan"][]);
+      },
+    }
+  );
+  const changeTab = (activeKey: string) => {
+    setActiveKey(activeKey);
+  };
   const navigateCreateCustomPlan = () => {
     navigate(`/create-custom/${planId}`);
   };
@@ -224,16 +254,37 @@ const PlanDetails: FC = () => {
             ]}
           />
           <div className="mx-10">
-            {plan.versions.length > 0 && (
-              <SwitchVersions
-                refetch={refetch}
-                versions={plan.versions}
-                createPlanExternalLink={createPlanExternalLink}
-                deletePlanExternalLink={deletePlanExternalLink}
-                plan={plan}
-                className="flex items-center mx-10 my-5"
-              />
-            )}
+            <Tabs
+              onChange={changeTab}
+              defaultActiveKey="0"
+              activeKey={activeKey}
+            >
+              <Tabs.TabPane tab="Versions" key="0">
+                {plan.versions.length > 0 && (
+                  <SwitchVersions
+                    refetch={refetch}
+                    activeKey={activeKey}
+                    versions={plan.versions}
+                    createPlanExternalLink={createPlanExternalLink}
+                    deletePlanExternalLink={deletePlanExternalLink}
+                    plan={plan}
+                    className="flex items-center mx-10 my-5"
+                  />
+                )}
+              </Tabs.TabPane>
+              <Tabs.TabPane tab="Custom_Plans" key="1">
+                {customPlans && customPlans.length > 0 && (
+                  <CustomPlanDetails
+                    activeKey={activeKey}
+                    refetch={refetch}
+                    version={customPlans[0].versions[0]}
+                    createPlanExternalLink={createPlanExternalLink}
+                    deletePlanExternalLink={deletePlanExternalLink}
+                    plan={customPlans[0]}
+                  />
+                )}
+              </Tabs.TabPane>
+            </Tabs>
           </div>
           <div className="separator mt-4" />
         </div>

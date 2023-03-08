@@ -100,7 +100,7 @@ import {
 import { CreateCreditType, CreditType } from "../types/balance-adjustment";
 import { CurrencyType } from "../types/pricing-unit-type";
 import { AlertType, CreateAlertType } from "../types/alert-type";
-import { components } from "../gen-types";
+import { components, operations } from "../gen-types";
 
 const cookies = new Cookies();
 
@@ -120,6 +120,7 @@ export const instance = axios.create({
 // this allows us to pass in arrays as query params without them being encoded
 
 const responseBody = (response: AxiosResponse) => response.data;
+type GetPlansQuery = operations["app_plans_list"]["parameters"];
 
 const requests = {
   get: (url: string, params?: object) =>
@@ -238,7 +239,16 @@ export const AddOn = {
 
 export const Plan = {
   // get methods
-  getPlans: (): Promise<PlanType[]> => requests.get("app/plans/"),
+  getPlans: (params?: {
+    duration?: "monthly" | "quarterly" | "yearly";
+    exclude_tags?: string[];
+    include_tags?: string[];
+    include_tags_all?: string[];
+    version_currency_code?: string;
+    version_custom_type?: "custom_only" | "public_only" | "all";
+    version_status?: ("active" | "ended" | "not_started")[];
+  }): Promise<PlanType[] | components["schemas"]["Plan"][]> =>
+    requests.get("app/plans/", params),
   getPlan: (plan_id: string): Promise<components["schemas"]["PlanDetail"]> =>
     requests.get(`app/plans/${plan_id}/`),
   // create plan

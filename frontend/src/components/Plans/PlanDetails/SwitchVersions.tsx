@@ -22,6 +22,7 @@ interface SwitchVersionProps {
   versions: components["schemas"]["PlanDetail"]["versions"];
   plan: components["schemas"]["PlanDetail"];
   refetch: VoidFunction;
+  activeKey: string;
   className: string;
   createPlanExternalLink: (link: string) => void;
   deletePlanExternalLink: (link: string) => void;
@@ -53,6 +54,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
   versions,
   plan,
   refetch,
+  activeKey,
   createPlanExternalLink,
   deletePlanExternalLink,
   className,

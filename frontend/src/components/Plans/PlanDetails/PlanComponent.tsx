@@ -42,7 +42,7 @@ import StateTabs from "./StateTabs";
 
 interface PlanComponentsProps {
   components?: components["schemas"]["PlanDetail"]["versions"][0]["components"];
-  plan: components["schemas"]["PlanDetail"];
+  plan: components["schemas"]["Plan"];
   refetch: VoidFunction;
   alerts?: components["schemas"]["PlanDetail"]["versions"][0]["alerts"];
   plan_version_id: string;
@@ -85,7 +85,7 @@ const renderCost = (record: Tier, pricing_unit: CurrencyType) => {
 interface PlanSummaryProps {
   createPlanExternalLink: (link: string) => void;
   deletePlanExternalLink: (link: string) => void;
-  plan: components["schemas"]["PlanDetail"];
+  plan: components["schemas"]["Plan"];
   createTagMutation: (variables: {
     plan_id: string;
     tags: PlanType["tags"];
@@ -125,7 +125,7 @@ export function PlanSummary({
   return (
     <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card">
       <Typography.Title className="pt-4 whitespace-pre-wrap !text-[18px] level={2}">
-        Summary (All Versions)
+        Plan Information
       </Typography.Title>
 
       <div>
@@ -313,10 +313,11 @@ export function PlanSummary({
 }
 
 interface PlanInfoProps {
-  version: components["schemas"]["PlanDetail"]["versions"][0];
-  plan: components["schemas"]["PlanDetail"];
+  version: components["schemas"]["Plan"]["versions"][0];
+  plan: components["schemas"]["Plan"];
+  activeKey: string;
 }
-export function PlanInfo({ version, plan }: PlanInfoProps) {
+export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
   const constructBillType = (str: string) => {
     if (str.includes("_")) {
       return str
@@ -349,6 +350,7 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
       },
     }
   );
+  const windowWidth = useMediaQuery();
   const menu = (
     <Menu>
       <Menu.Item
@@ -372,7 +374,7 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
     <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card ">
       <div className="flex justify-between">
         <Typography.Title className="pt-4 whitespace-pre-wrap grid gap-4 !text-[18px] items-center grid-cols-1 md:grid-cols-2">
-          <div>Plan Information</div>
+          <div>Version Information</div>
         </Typography.Title>
         <div className="flex flex-row  items-center font-bold tabsContainer">
           <StateTabs
@@ -382,7 +384,6 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
             plan_id={plan.plan_id}
             activeVersion={version.version}
             tabs={["Active", "Grandfathered", "Retiring", "Inactive"]}
-            plan={plan}
           />
           <span
             aria-hidden
@@ -402,81 +403,185 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
         </div>
       </div>
       <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
-      <div className="grid  items-center grid-cols-1 md:grid-cols-2">
-        <div className="w-[240px]">
-          <div className="flex items-center text-card-text justify-between mb-1">
-            <div className=" font-normal whitespace-nowrap leading-4">
-              Recurring Price
+      {activeKey === "1" ? (
+        <div className="grid  items-center grid-cols-1 md:grid-cols-2">
+          <div className="w-[240px]">
+            <div className="flex items-center text-card-text justify-between mb-1">
+              <div className=" font-normal whitespace-nowrap leading-4">
+                Overriden Name
+              </div>
+              <div className="flex gap-1">
+                {" "}
+                <div className="text-grey">
+                  {version.localized_name ? version.localized_name : "-"}
+                </div>
+              </div>
             </div>
-            <div className="flex gap-1">
-              {" "}
-              <div className="text-gold">{`${version.currency.symbol}${plan.display_version.flat_rate}`}</div>
-            </div>
-          </div>
 
-          <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-            <div className="font-normal whitespace-nowrap leading-4">
-              Plan Duration
+            <div className="flex items-center text-card-text justify-between gap-2 mb-1">
+              <div className=" font-normal whitespace-nowrap leading-4">
+                Version ID
+              </div>
+              <div className="flex gap-1 text-card-grey font-menlo">
+                {" "}
+                <div>
+                  {createShortenedText(version.version_id, windowWidth >= 2500)}
+                </div>
+                <CopyText showIcon onlyIcon textToCopy={version.version_id} />
+              </div>
             </div>
-            <div className="!text-card-grey">
-              {capitalize(plan.plan_duration!)}
-            </div>
-          </div>
 
-          {/* <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-            <div className="font-normal whitespace-nowrap leading-4">
-              Created At
-            </div>
-            <div className="!text-card-grey">
-              {" "}
-              {dayjs(version?.created_on).format("YYYY/MM/DD")}
-            </div>
-          </div> */}
-        </div>
-
-        <div className="w-[254px] ml-auto">
-          <div className="flex items-center text-card-text justify-between gap-2 mb-1">
-            <div className=" font-normal whitespace-nowrap leading-4">
-              Plan on next cycle
-            </div>
-            <div className="flex gap-1 ">
-              {" "}
+            <div className="flex items-center justify-between text-card-text gap-2 mb-1">
+              <div className="font-normal whitespace-nowrap leading-4">
+                Currency
+              </div>
               <div className="!text-card-grey">
-                {version?.transition_to
-                  ? capitalize(version.transition_to.plan_name)
+                {" "}
+                {`${version.currency.code}-${version.currency.symbol}`}
+              </div>
+            </div>
+            <div className="flex items-center justify-between text-card-text gap-2 mb-1">
+              <div className="font-normal whitespace-nowrap leading-4">
+                Target Customers
+              </div>
+              <div className="!text-gold underline underline-offset-2">
+                {" "}
+                {version.active_subscriptions}
+                {version.active_subscriptions >= 1 ? "Customers" : "Customer"}
+              </div>
+            </div>
+            <div className="flex items-center justify-between text-card-text gap-2 mb-1">
+              <div className="font-normal whitespace-nowrap leading-4">
+                Plan on next cycle
+              </div>
+              <div className="!text-card-grey">
+                {" "}
+                {version.transition_to.plan_name
+                  ? version.replace_with.plan_name
                   : "Self"}
               </div>
             </div>
           </div>
 
-          {/* <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-            <div className="font-normal whitespace-nowrap leading-4">
-              Recurring Bill Type
+          <div className="w-[254px] ml-auto">
+            <div className="flex items-center text-card-text justify-between gap-2 mb-1">
+              <div className=" font-normal whitespace-nowrap leading-4">
+                Active From
+              </div>
+              <div className="flex gap-1 ">
+                {" "}
+                <div className="!text-card-grey">
+                  {version.active_from
+                    ? dayjs(version.active_from).format("YYYY/MM/DD")
+                    : "-"}
+                </div>
+              </div>
             </div>
-            <div>
-              <Badge>
-                <Badge.Content>
-                  <div className="p-1">
-                    {constructBillType(
-                      plan.display_version.flat_fee_billing_type
-                    )}
-                  </div>
-                </Badge.Content>
-              </Badge>
-            </div>
-          </div> */}
 
-          <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-            <div className="font-normal whitespace-nowrap leading-4">
-              Schedule
+            <div className="flex items-center text-card-text justify-between gap-2 mb-1">
+              <div className=" font-normal whitespace-nowrap leading-4">
+                Active To
+              </div>
+              <div className="flex gap-1 ">
+                {" "}
+                <div className="!text-card-grey">
+                  {version.active_to
+                    ? dayjs(version.active_to).format("YYYY/MM/DD")
+                    : "-"}
+                </div>
+              </div>
             </div>
-            <div>
-              {" "}
-              <span>{schedule(plan.plan_duration!)}</span>
+
+            <div className="flex items-center justify-between text-card-text gap-2 mb-1">
+              <div className="font-normal whitespace-nowrap leading-4">
+                Date Created
+              </div>
+              <div>
+                {" "}
+                <span>
+                  {" "}
+                  {version.active_from
+                    ? dayjs(version.active_from).format("YYYY/MM/DD")
+                    : "-"}
+                </span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="grid  items-center grid-cols-1 md:grid-cols-2">
+          <div className="w-[240px]">
+            <div className="flex items-center text-card-text justify-between mb-1">
+              <div className=" font-normal whitespace-nowrap leading-4">
+                Overriden Name
+              </div>
+              <div className="flex gap-1">
+                {" "}
+                <div className="text-grey">
+                  {version.localized_name ? version.localized_name : "-"}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-card-text gap-2 mb-1">
+              <div className="font-normal whitespace-nowrap leading-4">
+                Plan on next cycle
+              </div>
+              <div className="!text-card-grey">
+                {" "}
+                {version.transition_to.plan_name
+                  ? capitalize(version.replace_with.plan_name)
+                  : "Self"}
+              </div>
+            </div>
+
+            <div className="flex items-center text-card-text justify-between gap-2 mb-1">
+              <div className=" font-normal whitespace-nowrap leading-4">
+                Active From
+              </div>
+              <div className="flex gap-1 ">
+                {" "}
+                <div className="!text-card-grey">
+                  {version.active_from
+                    ? dayjs(version.active_from).format("YYYY/MM/DD")
+                    : "-"}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center text-card-text justify-between gap-2 mb-1">
+              <div className=" font-normal whitespace-nowrap leading-4">
+                Active To
+              </div>
+              <div className="flex gap-1 ">
+                {" "}
+                <div className="!text-card-grey">
+                  {version.active_to
+                    ? dayjs(version.active_to).format("YYYY/MM/DD")
+                    : "-"}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-card-text gap-2 mb-1">
+              <div className="font-normal whitespace-nowrap leading-4">
+                Date Created
+              </div>
+              <div>
+                {" "}
+                <span>
+                  {" "}
+                  {version.active_from
+                    ? dayjs(version.active_from).format("YYYY/MM/DD")
+                    : "-"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="w-[254px] ml-auto"></div>
+        </div>
+      )}
     </div>
   );
 }
