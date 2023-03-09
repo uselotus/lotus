@@ -13,14 +13,12 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+import api.views as api_views
 from django.conf import settings
 from django.conf.urls import include
 from django.contrib import admin
 from django.urls import path, re_path
 from django.views.generic import TemplateView
-from rest_framework import routers
-
-import api.views as api_views
 from metering_billing.views import auth_views, organization_views, webhook_views
 from metering_billing.views.model_views import (
     ActionViewSet,
@@ -61,6 +59,7 @@ from metering_billing.views.views import (
     TimezonesView,
     TransferSubscriptionsView,
 )
+from rest_framework import routers
 
 DEBUG = settings.DEBUG
 PROFILER_ENABLED = settings.PROFILER_ENABLED
@@ -132,6 +131,16 @@ urlpatterns = [
         "api/feature_access/",
         api_views.FeatureAccessView.as_view(),
         name="feature_access",
+    ),
+    path(
+        "api/customer_metric_access/",
+        api_views.GetCustomerEventAccessView.as_view(),
+        name="customer_metric_access",
+    ),
+    path(
+        "api/customer_feature_access/",
+        api_views.GetCustomerFeatureAccessView.as_view(),
+        name="customer_feature_access",
     ),
     path(
         "api/verify_idems_received/",
