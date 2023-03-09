@@ -168,6 +168,12 @@ const SideBar: FC = () => {
           style={{ background: "#fafafa" }}
           items={[
             {
+              key: "/quickstart",
+              icon: <BookOutlined />,
+              label: "Quickstart",
+              onClick: () => navigate("/quickstart"),
+            },
+            {
               type: "divider",
             },
             {
