@@ -34,7 +34,12 @@ from django.db.utils import IntegrityError
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiParameter,
+    extend_schema,
+    inline_serializer,
+)
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import (
     action,
@@ -1883,14 +1888,24 @@ class Ping(APIView):
     permission_classes = [HasUserAPIKey & ValidOrganization]
 
     @extend_schema(
+        description="Ping the API to check if the API key is valid.",
         responses={
             200: inline_serializer(
                 name="ConfirmConnected",
                 fields={
                     "organization_id": serializers.CharField(),
                 },
-            ),
+            )
         },
+        examples=[
+            OpenApiExample(
+                "ConfirmConnected",
+                summary="Example response for ConfirmConnected",
+                value={
+                    "organization_id": "org_088c5d194bef40ed9aaeb72d42bd7945",
+                },
+            )
+        ],
     )
     def get(self, request, format=None):
         organization = request.organization
