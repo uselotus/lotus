@@ -2,11 +2,14 @@ import logging
 import re
 from decimal import Decimal
 
-import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import DecimalField, Q, Sum
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
+import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -61,8 +64,6 @@ from metering_billing.utils.enums import (
     TAX_PROVIDER,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -2102,17 +2103,20 @@ class AddOnCreateSerializer(serializers.ModelSerializer):
         model = Plan
         fields = (
             "addon_name",
-            "plan_description",
+            "addon_description",
             "initial_version",
         )
         extra_kwargs = {
             "addon_name": {"write_only": True, "required": True},
-            "plan_description": {"write_only": True, "required": False},
+            "addon_description": {"write_only": True, "required": False},
             "initial_version": {"write_only": True},
         }
 
     addon_name = serializers.CharField(
-        help_text="The name of the add-on plan.",
+        help_text="The name of the add-on plan.", source="plan_name"
+    )
+    addon_description = serializers.CharField(
+        help_text="The description of the add-on plan.", source="plan_description"
     )
     initial_version = InitialAddOnVersionCreateSerializer(
         help_text="The initial version of the add-on plan.",

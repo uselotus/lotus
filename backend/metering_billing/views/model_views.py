@@ -119,6 +119,7 @@ from metering_billing.serializers.serializer_utils import (
     OrganizationUUIDField,
     PlanUUIDField,
     PlanVersionUUIDField,
+    SubscriptionUUIDField,
     UsageAlertUUIDField,
     WebhookEndpointUUIDField,
 )
@@ -1096,13 +1097,16 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         responses=PlanVersionHistoricalSubscriptionSerializer(many=True),
     )
     @action(
-        detail=True,
-        methods=["post"],
-        url_path="subscriptions",
+        detail=False,
+        methods=["get"],
+        url_path="(?P<subscription_id>[^/.]+)/subscriptions",
         url_name="subscriptions",
     )
     def subscriptions(self, request, *args, **kwargs):
-        plan_version = self.get_object()
+        qs = self.get_queryset()
+        subscription_id = self.kwargs["subscription_id"]
+        subscription_uuid = SubscriptionUUIDField().to_internal_value(subscription_id)
+        plan_version = qs.get(subscription_record_id=subscription_uuid)
         organization = self.request.organization
         subscriptions = SubscriptionRecord.objects.filter(
             billing_plan=plan_version, organization=organization
