@@ -487,6 +487,13 @@ class InvoiceSerializer(
     end_date = serializers.SerializerMethodField()
     seller = SellerSerializer(source="organization")
     payment_status = serializers.SerializerMethodField()
+    invoice_pdf = serializers.SerializerMethodField()
+
+    def get_invoice_pdf(self, obj) -> serializers.URLField(allow_null=True):
+        print(obj.invoice_pdf)
+        if obj.invoice_pdf:
+            return obj.invoice_pdf
+        return None
 
     def get_payment_status(
         self, obj
@@ -1201,9 +1208,10 @@ class RecurringChargeSerializer(
 
 @extend_schema_serializer(
     deprecate_fields=[
+        "usage_billing_frequency",
         "flat_fee_billing_type",
         "flat_rate",
-        "version",
+        "description",
     ]
 )
 class PlanVersionSerializer(
@@ -1212,8 +1220,6 @@ class PlanVersionSerializer(
     class Meta:
         model = PlanVersion
         fields = (
-            "flat_fee_billing_type",
-            "flat_rate",
             "recurring_charges",
             "components",
             "features",
@@ -1226,10 +1232,13 @@ class PlanVersionSerializer(
             "active_from",
             "active_to",
             "localized_name",
+            # DEPRECATED
+            "usage_billing_frequency",
+            "flat_fee_billing_type",
+            "flat_rate",
+            "description",
         )
         extra_kwargs = {
-            "flat_fee_billing_type": {"required": True, "read_only": True},
-            "flat_rate": {"required": True, "read_only": True},
             "components": {"required": True, "read_only": True},
             "recurring_charges": {"required": True, "read_only": True},
             "features": {"required": True, "read_only": True},
@@ -1240,23 +1249,31 @@ class PlanVersionSerializer(
             },
             "version": {"required": True, "read_only": True},
             "plan_name": {"required": True, "read_only": True},
-            "status": {"required": True, "read_only": True},
             "active_from": {"required": True, "read_only": True},
             "active_to": {"required": True, "read_only": True},
             "localized_name": {"required": True, "read_only": True},
+            "status": {"required": False, "read_only": True},
+            # DEPRECATED
+            "flat_fee_billing_type": {"required": False, "read_only": True},
+            "flat_rate": {"required": False, "read_only": True},
+            "usage_billing_frequency": {"required": False, "read_only": True},
+            "description": {"required": False, "read_only": True},
         }
 
-    flat_rate = serializers.SerializerMethodField()
-    flat_fee_billing_type = serializers.SerializerMethodField()
     components = PlanComponentSerializer(many=True, source="plan_components")
     features = FeatureSerializer(many=True)
     recurring_charges = serializers.SerializerMethodField()
     price_adjustment = PriceAdjustmentSerializer(allow_null=True)
-
     plan_name = serializers.SerializerMethodField()
     currency = PricingUnitSerializer()
-    status = serializers.SerializerMethodField()
     version = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+
+    # DEPRECATED
+    description = serializers.SerializerMethodField()
+    usage_billing_frequency = serializers.SerializerMethodField()
+    flat_rate = serializers.SerializerMethodField()
+    flat_fee_billing_type = serializers.SerializerMethodField()
 
     def get_plan_name(self, obj) -> serializers.CharField():
         return str(obj)
@@ -1277,32 +1294,6 @@ class PlanVersionSerializer(
                 obj.recurring_charges.all(), many=True
             ).data
 
-    def get_flat_fee_billing_type(
-        self, obj
-    ) -> serializers.ChoiceField(choices=RecurringCharge.ChargeTimingType.labels):
-        try:
-            charges = obj.recurring_charges_prefetched
-            if len(charges) == 0:
-                return RecurringCharge.ChargeTimingType.IN_ADVANCE.label
-            else:
-                return charges[0].get_charge_timing_display()
-        except AttributeError as e:
-            logger.error("Error getting flat_fee_billing_type: %s", e)
-            recurring_charge = obj.recurring_charges.first()
-            if recurring_charge is not None:
-                return recurring_charge.get_charge_timing_display()
-            else:
-                return RecurringCharge.ChargeTimingType.IN_ADVANCE.label
-
-    def get_flat_rate(
-        self, obj
-    ) -> serializers.DecimalField(max_digits=20, decimal_places=10, min_value=0):
-        try:
-            return sum(x.amount for x in obj.recurring_charges_prefetched)
-        except AttributeError as e:
-            logger.error("Error getting get_flat_rate: %s", e)
-            return sum(x.amount for x in obj.recurring_charges.all())
-
     def get_created_by(self, obj) -> str:
         if obj.created_by is not None:
             return obj.created_by.username
@@ -1320,6 +1311,39 @@ class PlanVersionSerializer(
             return "custom_version"
         else:
             return obj.version
+
+    # DEPRECATED
+    def get_usage_billing_frequency(self, obj) -> None:
+        return None
+
+    def get_description(self, obj) -> Union[str, None]:
+        return obj.plan.plan_description
+
+    def get_flat_rate(
+        self, obj
+    ) -> serializers.DecimalField(max_digits=20, decimal_places=10, min_value=0):
+        try:
+            return sum(x.amount for x in obj.recurring_charges_prefetched)
+        except AttributeError as e:
+            logger.error("Error getting get_flat_rate: %s", e)
+            return sum(x.amount for x in obj.recurring_charges.all())
+
+    def get_flat_fee_billing_type(
+        self, obj
+    ) -> serializers.ChoiceField(choices=RecurringCharge.ChargeTimingType.labels):
+        try:
+            charges = obj.recurring_charges_prefetched
+            if len(charges) == 0:
+                return RecurringCharge.ChargeTimingType.IN_ADVANCE.label
+            else:
+                return charges[0].get_charge_timing_display()
+        except AttributeError as e:
+            logger.error("Error getting flat_fee_billing_type: %s", e)
+            recurring_charge = obj.recurring_charges.first()
+            if recurring_charge is not None:
+                return recurring_charge.get_charge_timing_display()
+            else:
+                return RecurringCharge.ChargeTimingType.IN_ADVANCE.label
 
 
 class PlanNameAndIDSerializer(
@@ -1383,7 +1407,9 @@ class InitialExternalPlanLinkSerializer(
         fields = ("source", "external_plan_id")
 
 
-@extend_schema_serializer(deprecate_fields=["display_version"])
+@extend_schema_serializer(
+    deprecate_fields=["display_version", "parent_plan", "target_customer", "status"]
+)
 class PlanSerializer(
     ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
@@ -1395,11 +1421,15 @@ class PlanSerializer(
             "plan_duration",
             "plan_description",
             "external_links",
-            "display_version",
             "num_versions",
             "active_subscriptions",
             "tags",
             "versions",
+            # DEPRECATED
+            "parent_plan",
+            "target_customer",
+            "display_version",
+            "status",
         )
         extra_kwargs = {
             "plan_name": {"required": True},
@@ -1407,17 +1437,18 @@ class PlanSerializer(
             "plan_description": {"required": True},
             "external_links": {"required": True},
             "plan_id": {"required": True},
-            "display_version": {"required": True},
             "num_versions": {"required": True},
             "active_subscriptions": {"required": True},
             "tags": {"required": True},
             "versions": {"required": True},
+            # DEPRECATED
+            "parent_plan": {"required": False},
+            "target_customer": {"required": False},
+            "status": {"required": False},
+            "display_version": {"required": False},
         }
 
     plan_id = PlanUUIDField()
-    display_version = serializers.SerializerMethodField(
-        help_text="Display version has been deprecated. Use 'versions' instead. We will still return this field for now with some heuristics for figuring out what the desired version is, but it will be removed in the near future."
-    )
     num_versions = serializers.SerializerMethodField(
         help_text="The number of versions that this plan has."
     )
@@ -1430,8 +1461,19 @@ class PlanSerializer(
     tags = serializers.SerializerMethodField(help_text="The tags that this plan has.")
     versions = PlanVersionSerializer(many=True, help_text="This plan's versions.")
 
-    def get_display_version(self, obj) -> PlanVersionSerializer:
-        return PlanVersionSerializer(obj.versions.first()).data
+    # DEPRECATED
+    parent_plan = serializers.SerializerMethodField(
+        help_text="[DEPRECATED] The parent plan that this plan has."
+    )
+    target_customer = serializers.SerializerMethodField(
+        help_text="[DEPRECATED] The target customer that this plan has."
+    )
+    display_version = serializers.SerializerMethodField(
+        help_text="[DEPRECATED] Display version has been deprecated. Use 'versions' instead. We will still return this field for now with some heuristics for figuring out what the desired version is, but it will be removed in the near future."
+    )
+    status = serializers.SerializerMethodField(
+        help_text="[DEPRECATED] The status of this plan."
+    )
 
     def get_num_versions(self, obj) -> int:
         try:
@@ -1458,6 +1500,21 @@ class PlanSerializer(
 
     def get_tags(self, obj) -> serializers.ListField(child=serializers.SlugField()):
         return obj.tags.all().values_list("tag_name", flat=True)
+
+    # DEPRECATED
+    def get_status(self, obj) -> str:
+        return "active"
+
+    def get_parent_plan(self, obj) -> PlanNameAndIDSerializer(allow_null=True):
+        return None
+
+    def get_target_customer(
+        self, obj
+    ) -> LightweightCustomerSerializer(allow_null=True):
+        return None
+
+    def get_display_version(self, obj) -> PlanVersionSerializer:
+        return PlanVersionSerializer(obj.versions.active().first()).data
 
 
 class EventSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
@@ -1513,8 +1570,6 @@ class SubscriptionRecordCreateSerializerOld(
         required=False,
         help_text="Add filter key, value pairs that define which events will be applied to this plan subscription.",
     )
-
-    # WRITE ONLY
     customer_id = SlugRelatedFieldWithOrganization(
         slug_field="customer_id",
         source="customer",

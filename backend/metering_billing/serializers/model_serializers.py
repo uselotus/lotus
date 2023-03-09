@@ -1436,6 +1436,10 @@ class PlanVersionDetailSerializer(api_serializers.PlanVersionSerializer):
             - {
                 "flat_fee_billing_type",
                 "flat_rate",
+                "usage_billing_frequency",
+                "flat_fee_billing_type",
+                "flat_rate",
+                "description",
             }
         )
         extra_kwargs = {
@@ -1503,7 +1507,7 @@ class PlanDetailSerializer(api_serializers.PlanSerializer):
                     "taxjar_code",
                 }
             )
-            - {"display_version"}
+            - {"display_version", "parent_plan", "target_customer", "status"}
         )
 
     versions = serializers.SerializerMethodField()

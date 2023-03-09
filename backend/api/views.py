@@ -13,40 +13,6 @@ from typing import Optional
 
 import posthog
 import pytz
-from dateutil import parser
-from dateutil.relativedelta import relativedelta
-from django.conf import settings
-from django.db.models import (
-    Count,
-    DecimalField,
-    F,
-    Max,
-    Min,
-    OuterRef,
-    Prefetch,
-    Q,
-    Subquery,
-    Sum,
-    Value,
-)
-from django.db.models.functions import Coalesce
-from django.db.utils import IntegrityError
-from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import (
-    action,
-    api_view,
-    authentication_classes,
-    permission_classes,
-)
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
 from api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
     AddOnSubscriptionRecordSerializer,
@@ -85,6 +51,28 @@ from api.serializers.nonmodel_serializers import (
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
 )
+from dateutil import parser
+from dateutil.relativedelta import relativedelta
+from django.conf import settings
+from django.db.models import (
+    Count,
+    DecimalField,
+    F,
+    Max,
+    Min,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
+from django.db.utils import IntegrityError
+from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from metering_billing.auth.auth_utils import (
     PermissionPolicyMixin,
     fast_api_key_validation_and_cache,
@@ -139,6 +127,17 @@ from metering_billing.utils.enums import (
     USAGE_BILLING_BEHAVIOR,
 )
 from metering_billing.webhooks import customer_created_webhook
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import (
+    action,
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -1203,23 +1202,12 @@ class SubscriptionViewSet(
         flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
         usage_behavior = serializer.validated_data["usage_behavior"]
         invoicing_behavior = serializer.validated_data["invoicing_behavior"]
-        now = now_utc()
-        qs_pks = list(qs.values_list("pk", flat=True))
-        qs.update(
-            flat_fee_behavior=flat_fee_behavior,
-            invoice_usage_charges=usage_behavior == USAGE_BILLING_BEHAVIOR.BILL_FULL,
-            auto_renew=False,
-            end_date=now,
-            fully_billed=invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW,
-        )
-        qs = SubscriptionRecord.objects.filter(pk__in=qs_pks, organization=organization)
-        customer_ids = qs.values_list("customer", flat=True).distinct()
-        customer_set = Customer.objects.filter(
-            id__in=customer_ids, organization=organization
-        )
-        if invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
-            for customer in customer_set:
-                generate_invoice(qs.filter(customer=customer))
+        for sr in qs:
+            sr.cancel_subscription(
+                bill_usage=usage_behavior == USAGE_BILLING_BEHAVIOR.BILL_FULL,
+                flat_fee_behavior=flat_fee_behavior,
+                invoice_now=invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW,
+            )
 
         return_qs = SubscriptionRecord.base_objects.filter(
             pk__in=original_qs, organization=organization

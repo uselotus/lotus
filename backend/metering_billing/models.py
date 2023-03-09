@@ -872,11 +872,12 @@ class CustomerBalanceAdjustment(models.Model):
                 or orig.created != self.created
                 or orig.effective_at != self.effective_at
                 or orig.parent_adjustment != self.parent_adjustment
-                or orig.expires_at != self.expires_at
             ):
                 raise NotEditable(
                     "Cannot update any fields in a balance adjustment other than status and description"
                 )
+            if now_utc() > self.expires_at:
+                raise NotEditable("Cannot change the expiry date to the past")
         if self.amount < 0:
             assert (
                 self.parent_adjustment is not None
@@ -3416,10 +3417,10 @@ class BillingRecord(models.Model):
             self.component is not None
         ), "Can't call get_usage_and_revenue for a recurring charge."
         ccr = self.component_charge_records.order_by("-start_date").first()
-        most_recent_prepaid_units = ccr.units
-        plan_component_summary = self.component.calculate_total_revenue(
-            self, prepaid_units=most_recent_prepaid_units
-        )
+        kwargs = {}
+        if ccr is not None:
+            kwargs["prepaid_units"] = ccr.units
+        plan_component_summary = self.component.calculate_total_revenue(self, **kwargs)
         return plan_component_summary
 
     def calculate_recurring_charge_due(self, proration_end_date):

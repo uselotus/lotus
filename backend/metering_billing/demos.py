@@ -8,6 +8,8 @@ import uuid
 import numpy as np
 import pytz
 from dateutil.relativedelta import relativedelta
+from model_bakery import baker
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     APIToken,
@@ -50,7 +52,6 @@ from metering_billing.utils.enums import (
     ORGANIZATION_SETTING_NAMES,
     PLAN_DURATION,
 )
-from model_bakery import baker
 
 logger = logging.getLogger("django.server")
 
@@ -208,7 +209,10 @@ def setup_demo3(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     free_bp = PlanVersion.objects.create(
-        organization=organization, plan=plan, version=1
+        organization=organization,
+        plan=plan,
+        version=1,
+        currency=PricingUnit.objects.get(organization=organization, code="USD"),
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -231,7 +235,10 @@ def setup_demo3(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_10_og = PlanVersion.objects.create(
-        organization=organization, plan=plan, version=1
+        organization=organization,
+        plan=plan,
+        version=1,
+        currency=PricingUnit.objects.get(organization=organization, code="USD"),
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -257,7 +264,10 @@ def setup_demo3(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_25_og = PlanVersion.objects.create(
-        organization=organization, plan=plan, version=1
+        organization=organization,
+        plan=plan,
+        version=1,
+        currency=PricingUnit.objects.get(organization=organization, code="USD"),
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -283,7 +293,10 @@ def setup_demo3(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_50_og = PlanVersion.objects.create(
-        organization=organization, plan=plan, version=1
+        organization=organization,
+        plan=plan,
+        version=1,
+        currency=PricingUnit.objects.get(organization=organization, code="USD"),
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -309,7 +322,10 @@ def setup_demo3(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_10_compute_seats = PlanVersion.objects.create(
-        organization=organization, plan=plan, version=1
+        organization=organization,
+        plan=plan,
+        version=1,
+        currency=PricingUnit.objects.get(organization=organization, code="USD"),
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -348,7 +364,10 @@ def setup_demo3(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_25_compute_seats = PlanVersion.objects.create(
-        organization=organization, plan=plan, version=1
+        organization=organization,
+        plan=plan,
+        version=1,
+        currency=PricingUnit.objects.get(organization=organization, code="USD"),
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -387,7 +406,10 @@ def setup_demo3(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_50_compute_seats = PlanVersion.objects.create(
-        organization=organization, plan=plan, version=1
+        organization=organization,
+        plan=plan,
+        version=1,
+        currency=PricingUnit.objects.get(organization=organization, code="USD"),
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -769,7 +791,10 @@ def setup_demo4(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     free_bp = PlanVersion.objects.create(
-        organization=organization, plan=plan, version=1
+        organization=organization,
+        plan=plan,
+        version=1,
+        currency=PricingUnit.objects.get(organization=organization, code="USD"),
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -796,7 +821,10 @@ def setup_demo4(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_basic_events = PlanVersion.objects.create(
-        organization=organization, plan=plan, version=1
+        organization=organization,
+        plan=plan,
+        version=1,
+        currency=PricingUnit.objects.get(organization=organization, code="USD"),
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -828,7 +856,10 @@ def setup_demo4(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_pro_events = PlanVersion.objects.create(
-        organization=organization, plan=plan, version=1
+        organization=organization,
+        plan=plan,
+        version=1,
+        currency=PricingUnit.objects.get(organization=organization, code="USD"),
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -860,7 +891,10 @@ def setup_demo4(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_basic_both = PlanVersion.objects.create(
-        organization=organization, plan=plan, version=1
+        organization=organization,
+        plan=plan,
+        version=1,
+        currency=PricingUnit.objects.get(organization=organization, code="USD"),
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -899,7 +933,10 @@ def setup_demo4(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_pro_both = PlanVersion.objects.create(
-        organization=organization, plan=plan, version=1
+        organization=organization,
+        plan=plan,
+        version=1,
+        currency=PricingUnit.objects.get(organization=organization, code="USD"),
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -938,7 +975,10 @@ def setup_demo4(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     bp_experimental = PlanVersion.objects.create(
-        organization=organization, plan=plan, version=1
+        organization=organization,
+        plan=plan,
+        version=1,
+        currency=PricingUnit.objects.get(organization=organization, code="USD"),
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -1284,7 +1324,10 @@ def setup_paas_demo(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     basic_plan = PlanVersion.objects.create(
-        organization=organization, plan=plan, version=1
+        organization=organization,
+        plan=plan,
+        version=1,
+        currency=PricingUnit.objects.get(organization=organization, code="USD"),
     )
     RecurringCharge.objects.create(
         organization=organization,
@@ -1316,7 +1359,10 @@ def setup_paas_demo(
         plan_duration=PLAN_DURATION.MONTHLY,
     )
     professional_plan = PlanVersion.objects.create(
-        organization=organization, plan=plan, version=1
+        organization=organization,
+        plan=plan,
+        version=1,
+        currency=PricingUnit.objects.get(organization=organization, code="USD"),
     )
     RecurringCharge.objects.create(
         organization=organization,

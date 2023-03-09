@@ -6,6 +6,7 @@ from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
+
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
@@ -42,13 +43,17 @@ def update_subscription_filter_settings_task(org_pk, subscription_filter_keys):
 
 @shared_task
 def generate_invoice_pdf_async(invoice_pk):
-    from metering_billing.invoice_pdf import generate_invoice_pdf
+    from metering_billing.invoice_pdf import get_invoice_presigned_url
     from metering_billing.models import Invoice
 
     invoice = Invoice.objects.get(pk=invoice_pk)
-    pdf_url = generate_invoice_pdf(
-        invoice,
-    )
+    try:
+        pdf_url_dict = get_invoice_presigned_url(invoice)
+        pdf_url = pdf_url_dict.get("url")
+    except Exception as e:
+        print("RAN INTO ERROR GENERATING PDF: {}".format(e))
+        pdf_url = None
+
     invoice.invoice_pdf = pdf_url
     invoice.save()
 
@@ -59,22 +64,43 @@ def calculate_invoice():
     # get ending subs
 
     from metering_billing.invoice import generate_invoice
-    from metering_billing.models import Invoice, SubscriptionRecord
+    from metering_billing.models import BillingRecord, Invoice, SubscriptionRecord
 
     now_minus_30 = now_utc() + relativedelta(
         minutes=-30
     )  # grace period of 30 minutes for sending events
     sub_records_to_bill = SubscriptionRecord.objects.filter(
-        (Q(end_date__lt=now_minus_30) | Q(next_billing_date__lt=now_minus_30))
-        & Q(fully_billed=False),
+        Q(end_date__lt=now_minus_30) & Q(fully_billed=False),
+    )
+    billing_records_to_bill = BillingRecord.objects.filter(
+        Q(next_invoicing_date__lt=now_minus_30) & Q(fully_billed=False),
+    )
+    # Get a list of distinct subscription IDs from the billing records
+    subscription_id_from_br = billing_records_to_bill.values_list(
+        "subscription", flat=True
+    ).distinct()
+    subscription_id_from_sr = sub_records_to_bill.values_list(
+        "id", flat=True
+    ).distinct()
+    # Get the subscription records for the subscriptions
+    all_sub_records = SubscriptionRecord.objects.filter(
+        Q(id__in=subscription_id_from_br) | Q(id__in=subscription_id_from_sr)
+    ).prefetch_related(
+        "customer",
+        "organization",
+        "billing_plan",
+        "billing_plan__recurring_charges",
+        "billing_plan__plan_components",
+        "billing_plan__plan_components__metric",
+        "billing_plan__plan_components__tiers",
+        "filters",
+        "billing_records",
     )
 
     # now generate invoices and new subs
-    cust_info = sub_records_to_bill.values_list("customer", "organization").distinct()
+    cust_info = all_sub_records.values_list("customer", "organization").distinct()
     for customer_id, organization_id in cust_info:
-        customer_subscription_records = sub_records_to_bill.filter(
-            customer_id=customer_id
-        )
+        customer_subscription_records = all_sub_records.filter(customer_id=customer_id)
         # Generate the invoice
         try:
             generate_invoice(
