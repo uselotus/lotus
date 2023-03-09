@@ -139,6 +139,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
               <DropdownComponent.Trigger>
                 <div className="flex gap-2 items-center">
                   v{version.version}
+                  {version.currency && `-${version.currency.symbol}`}
                   <ChevronDown />
                 </div>
               </DropdownComponent.Trigger>
