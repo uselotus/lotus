@@ -39,8 +39,7 @@ export interface CreateRecurringCharge {
 }
 
 export interface PrepaidType {
-  units: number;
-  charge_type: "predefined" | "dynamic";
+  units: number | null;
   charge_behavior: "prorate" | "full";
 }
 

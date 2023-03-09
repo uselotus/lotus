@@ -121,6 +121,7 @@
             "api-reference/customers/create-customer",
             "api-reference/customers/retrieve-customer",
             "api-reference/customers/list-customers"
+            
           ]
         },
         {
@@ -136,7 +137,15 @@
             "api-reference/subscriptions/create-subscription",
             "api-reference/subscriptions/cancel-subscription",
             "api-reference/subscriptions/change-subscription",
-            "api-reference/subscriptions/list-subscriptions"
+            "api-reference/subscriptions/list-subscriptions",
+            {
+              "group": "Deprecated Methods",
+              "pages": [
+                "api-reference/subscriptions/create-subscription-old",
+                "api-reference/subscriptions/cancel-subscription-old",
+                "api-reference/subscriptions/change-subscription-old"
+              ]
+            }
           ]
         },
         {

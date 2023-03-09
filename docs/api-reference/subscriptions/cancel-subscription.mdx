@@ -2,49 +2,27 @@
 title: "Cancel a subscription"
 description: "Cancels a subscription. You can modify the behavior of the cancellation based on
 the arguments passed to the call."
-openapi: "POST /api/subscriptions/cancel/"
+openapi: "POST /api/subscriptions/{subscription_id}/cancel/"
 ---
 
 <CodeGroup>
 
 ```py Python
 lotus.cancel_subscription(
-    customer_id='cust_0569173ee6654369',
-    subscription_filters=[
-        {
-            "property_name": "status",
-            "value": "active",
-        },
-    ],
-    flat_fee_behavior='charge_prorated',
+    subscription_id='sub_a623349004cd4947aca1851c64aa6fbd',
     bill_usage=True,
     invoicing_behavior='add_to_next_invoice',
-)
-
-lotus.cancel_subscription(
-    plan_id='plan_A',
-    subscription_filters=[
-        {
-            "property_name": "created_date",
-            "value": "2020-08-15",
-        },
-    ],
-    flat_fee_behavior='charge_full',
-    bill_usage=False,
-    invoicing_behavior='invoice_now',
 )
 ```
 
 ```ts Typescript
 
 await lotus.cancelSubscription({
-  planId: "plan234234"
-  billUsage: "false";
-  customerId: string;
+  subscription_id: "plan234234"
+  bill_usage: "false";
   invoicingBehavior?: "add_to_next_invoice";
   flatFeeBehavior:"prorate";
   usageBehavior:"bill_none"
-  subscriptionFilters?: [{property_name:project_id, value:23414}];
 });
 ```
 

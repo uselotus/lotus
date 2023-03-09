@@ -39,7 +39,7 @@ from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     NotEditable,
     OverlappingPlans,
-    PrepaymentEngineFailure,
+    PrepaymentMissingUnits,
     SubscriptionAlreadyEnded,
 )
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
@@ -1482,10 +1482,6 @@ class PriceTier(models.Model):
 
 
 class ComponentFixedCharge(models.Model):
-    class ChargeType(models.IntegerChoices):
-        PREDEFINED = (1, _("predefined"))
-        DYNAMIC = (2, _("dynamic"))
-
     class ChargeBehavior(models.IntegerChoices):
         PRORATE = (1, _("prorate"))
         FULL = (2, _("full"))
@@ -1500,33 +1496,15 @@ class ComponentFixedCharge(models.Model):
         null=True,
         validators=[MinValueValidator(0)],
     )
-    charge_type = models.PositiveSmallIntegerField(
-        choices=ChargeType.choices, default=ChargeType.PREDEFINED
-    )
     charge_behavior = models.PositiveSmallIntegerField(
         choices=ChargeBehavior.choices, default=ChargeBehavior.PRORATE
     )
 
     def __str__(self):
-        return f"Fixed Charge for {self.component}"
-
-    class Meta:
-        constraints = [
-            # check that if the charge type is predefined, units must be set, and vice versa
-            models.CheckConstraint(
-                check=(Q(charge_type=1) & Q(units__isnull=False))  # predefined
-                | (Q(charge_type=2) & Q(units__isnull=True)),  # dynamic
-                name="charge_type_units_check",
-            ),
-        ]
-
-    @staticmethod
-    def get_charge_type_from_label(label):
-        mapping = {
-            ComponentFixedCharge.ChargeType.PREDEFINED.label: ComponentFixedCharge.ChargeType.PREDEFINED.value,
-            ComponentFixedCharge.ChargeType.DYNAMIC.label: ComponentFixedCharge.ChargeType.DYNAMIC.value,
-        }
-        return mapping.get(label, label)
+        try:
+            return f"Fixed Charge for {self.component}"
+        except AttributeError:
+            return "Fixed Charge"
 
     @staticmethod
     def get_charge_behavior_from_label(label):
@@ -2778,14 +2756,14 @@ class SubscriptionRecord(models.Model):
         subscription_filters=None,
         is_new=True,
         quantity=1,
-        dynamic_fixed_charges_initial_units=None,
+        component_fixed_charges_initial_units=None,
     ):
         from metering_billing.invoice import generate_invoice
 
-        if dynamic_fixed_charges_initial_units is None:
-            dynamic_fixed_charges_initial_units = []
-        dynamic_fixed_charges_initial_units = {
-            d["metric"]: d["units"] for d in dynamic_fixed_charges_initial_units
+        if component_fixed_charges_initial_units is None:
+            component_fixed_charges_initial_units = []
+        component_fixed_charges_initial_units = {
+            d["metric"]: d["units"] for d in component_fixed_charges_initial_units
         }
         assert (
             billing_plan.addon_spec is None
@@ -2804,8 +2782,8 @@ class SubscriptionRecord(models.Model):
             print("CREATING FOR COMPONENT", component, "\n")
             metric = component.billable_metric
             kwargs = {}
-            if metric in dynamic_fixed_charges_initial_units:
-                kwargs["initial_units"] = dynamic_fixed_charges_initial_units[metric]
+            if metric in component_fixed_charges_initial_units:
+                kwargs["initial_units"] = component_fixed_charges_initial_units[metric]
             sr._create_component_billing_records(component, **kwargs)
         for recurring_charge in sr.billing_plan.recurring_charges.all():
             print("CREATING FOR RECURRING CHARGE", recurring_charge, "\n")
@@ -2883,12 +2861,9 @@ class SubscriptionRecord(models.Model):
             )
             new_invoicing_dates = set(br_invoicing_dates)
             if prepaid_charge and not ignore_prepaid:
-                if initial_units is None:
-                    units = prepaid_charge.units
-                else:
-                    units = initial_units
+                units = initial_units or prepaid_charge.units
                 if units is None:
-                    raise PrepaymentEngineFailure(
+                    raise PrepaymentMissingUnits(
                         "No units specified for prepayment. This is usually an input error but may possibly be caused by inconsistent state in the backend."
                     )
                 ComponentChargeRecord.objects.create(
@@ -3159,14 +3134,14 @@ class SubscriptionRecord(models.Model):
         new_version,
         transfer_usage=True,
         invoice_now=True,
-        dynamic_fixed_charges_initial_units=None,
+        component_fixed_charges_initial_units=None,
     ):
         from metering_billing.invoice import generate_invoice
 
-        if dynamic_fixed_charges_initial_units is None:
-            dynamic_fixed_charges_initial_units = []
-        dynamic_fixed_charges_initial_units = {
-            d["metric"]: d["units"] for d in dynamic_fixed_charges_initial_units
+        if component_fixed_charges_initial_units is None:
+            component_fixed_charges_initial_units = []
+        component_fixed_charges_initial_units = {
+            d["metric"]: d["units"] for d in component_fixed_charges_initial_units
         }
         # when switching a plan, there's a few things we need to take into account:
         # 1. flat fees dont transfer. Just end them.
@@ -3288,8 +3263,8 @@ class SubscriptionRecord(models.Model):
         for pc in pcs_to_create_charges_for:
             metric = pc.billable_metric
             kwargs = {}
-            if metric in dynamic_fixed_charges_initial_units:
-                kwargs["initial_units"] = dynamic_fixed_charges_initial_units[metric]
+            if metric in component_fixed_charges_initial_units:
+                kwargs["initial_units"] = component_fixed_charges_initial_units[metric]
             sr._create_component_billing_records(pc, **kwargs)
         self.end_date = now
         self.auto_renew = False

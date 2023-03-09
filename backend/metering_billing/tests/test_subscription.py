@@ -1361,7 +1361,6 @@ class TestPrepaidComponentCharges:
         charge = ComponentFixedCharge.objects.create(
             organization=setup_dict["org"],
             units=20,
-            charge_type=ComponentFixedCharge.ChargeType.PREDEFINED,
             charge_behavior=ComponentFixedCharge.ChargeBehavior.FULL,
         )
         pc.fixed_charge = charge
@@ -1439,7 +1438,6 @@ class TestPrepaidComponentCharges:
         )
         charge = ComponentFixedCharge.objects.create(
             organization=setup_dict["org"],
-            charge_type=ComponentFixedCharge.ChargeType.DYNAMIC,
             charge_behavior=ComponentFixedCharge.ChargeBehavior.FULL,
         )
         pc.fixed_charge = charge
@@ -1506,7 +1504,6 @@ class TestPrepaidComponentCharges:
         )
         charge = ComponentFixedCharge.objects.create(
             organization=setup_dict["org"],
-            charge_type=ComponentFixedCharge.ChargeType.DYNAMIC,
             charge_behavior=ComponentFixedCharge.ChargeBehavior.FULL,
         )
         pc.fixed_charge = charge
@@ -1515,7 +1512,7 @@ class TestPrepaidComponentCharges:
             "start_date": now_utc() - timedelta(days=5),
             "customer_id": customer.customer_id,
             "version_id": billing_plan.version_id,
-            "dynamic_fixed_charges_initial_units": [
+            "component_fixed_charges_initial_units": [
                 {
                     "metric_id": "metric_" + pc.billable_metric.metric_id.hex,
                     "units": 15,
@@ -1594,7 +1591,6 @@ class TestPrepaidComponentCharges:
         )
         charge = ComponentFixedCharge.objects.create(
             organization=setup_dict["org"],
-            charge_type=ComponentFixedCharge.ChargeType.DYNAMIC,
             charge_behavior=ComponentFixedCharge.ChargeBehavior.FULL,
         )
         pc.fixed_charge = charge
@@ -1603,7 +1599,7 @@ class TestPrepaidComponentCharges:
             "start_date": now_utc() - timedelta(days=5),
             "customer_id": customer.customer_id,
             "version_id": billing_plan.version_id,
-            "dynamic_fixed_charges_initial_units": [
+            "component_fixed_charges_initial_units": [
                 {
                     "metric_id": "metric_" + pc.billable_metric.metric_id.hex,
                     "units": 15,
@@ -1689,7 +1685,6 @@ class TestPrepaidComponentCharges:
         )
         charge = ComponentFixedCharge.objects.create(
             organization=setup_dict["org"],
-            charge_type=ComponentFixedCharge.ChargeType.DYNAMIC,
             charge_behavior=ComponentFixedCharge.ChargeBehavior.FULL,
         )
         pc.fixed_charge = charge
@@ -1698,7 +1693,7 @@ class TestPrepaidComponentCharges:
             "start_date": now_utc() - timedelta(days=5),
             "customer_id": customer.customer_id,
             "version_id": billing_plan.version_id,
-            "dynamic_fixed_charges_initial_units": [
+            "component_fixed_charges_initial_units": [
                 {
                     "metric_id": "metric_" + pc.billable_metric.metric_id.hex,
                     "units": 15,
@@ -1831,7 +1826,6 @@ class TestPrepaidComponentCharges:
         )
         charge = ComponentFixedCharge.objects.create(
             organization=setup_dict["org"],
-            charge_type=ComponentFixedCharge.ChargeType.DYNAMIC,
             charge_behavior=ComponentFixedCharge.ChargeBehavior.PRORATE,
         )
         pc.fixed_charge = charge
@@ -1840,7 +1834,7 @@ class TestPrepaidComponentCharges:
             "start_date": now_utc() - timedelta(days=5),
             "customer_id": customer.customer_id,
             "version_id": billing_plan.version_id,
-            "dynamic_fixed_charges_initial_units": [
+            "component_fixed_charges_initial_units": [
                 {
                     "metric_id": "metric_" + pc.billable_metric.metric_id.hex,
                     "units": 15,
@@ -1973,7 +1967,6 @@ class TestPrepaidComponentCharges:
         )
         charge = ComponentFixedCharge.objects.create(
             organization=setup_dict["org"],
-            charge_type=ComponentFixedCharge.ChargeType.DYNAMIC,
             charge_behavior=ComponentFixedCharge.ChargeBehavior.PRORATE,
         )
         pc.fixed_charge = charge
@@ -1982,7 +1975,7 @@ class TestPrepaidComponentCharges:
             "start_date": now_utc() - timedelta(days=5),
             "customer_id": customer.customer_id,
             "version_id": billing_plan.version_id,
-            "dynamic_fixed_charges_initial_units": [
+            "component_fixed_charges_initial_units": [
                 {
                     "metric_id": "metric_" + pc.billable_metric.metric_id.hex,
                     "units": 15,
@@ -2118,7 +2111,6 @@ class TestPrepaidComponentCharges:
         )
         charge = ComponentFixedCharge.objects.create(
             organization=setup_dict["org"],
-            charge_type=ComponentFixedCharge.ChargeType.DYNAMIC,
             charge_behavior=ComponentFixedCharge.ChargeBehavior.PRORATE,
         )
         pc.fixed_charge = charge
@@ -2127,7 +2119,7 @@ class TestPrepaidComponentCharges:
             "start_date": now_utc() - timedelta(days=5),
             "customer_id": customer.customer_id,
             "version_id": billing_plan.version_id,
-            "dynamic_fixed_charges_initial_units": [
+            "component_fixed_charges_initial_units": [
                 {
                     "metric_id": "metric_" + pc.billable_metric.metric_id.hex,
                     "units": 15,

@@ -1,17 +1,17 @@
 ---
-openapi: "POST /api/subscriptions/add/"
+openapi: "POST /api/subscriptions/"
 title: Create a subscription
 description: Add a plan to a customer's subscription
 ---
 
-A subscription associates one of your customers with one of your billing plans. You can define multiple subscriptions of the same plan for a single customer by using the subscription filters.
+A subscription associates one of your customers with one of your billing plans. You can define multiple subscriptions of the same plan for a ssingle customer by using the subscription filters.
 
 <CodeGroup>
 ```py Python
 lotus.create_subscription(
-  customer_id='cust_0569173ee6654369',
-  plan_id='premium_plan_7ui9op',
-  start_date='2020-01-01',
+  customer_id='cust_6c237d6c149c47db8f64246b78ecac13',
+  plan_id='plan_f17c6153807d4f4b812265a09cf06680',
+  start_date=datetime.datetime(2022, 2, 23, 0, 0),
 )
 ```
 

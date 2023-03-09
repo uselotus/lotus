@@ -994,10 +994,9 @@ class PriceTierCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer)
 class ComponentChargeCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = ComponentFixedCharge
-        fields = ("units", "charge_type", "charge_behavior")
+        fields = ("units", "charge_behavior")
         extra_kwargs = {
             "units": {"required": True, "read_only": True},
-            "charge_type": {"required": True, "read_only": True},
             "charge_behavior": {"required": True, "read_only": True},
         }
 
@@ -1006,10 +1005,7 @@ class ComponentChargeCreateSerializer(TimezoneFieldMixin, serializers.ModelSeria
         decimal_places=10,
         min_value=0,
         allow_null=True,
-        help_text="The number of units to charge for. If the charge type is 'dynamic', this field should be null.",
-    )
-    charge_type = serializers.ChoiceField(
-        choices=ComponentFixedCharge.ChargeType.labels,
+        help_text="The number of units to charge for. If left null, then it will be required at subscription create time.",
     )
     charge_behavior = serializers.ChoiceField(
         choices=ComponentFixedCharge.ChargeBehavior.labels,
@@ -1017,9 +1013,6 @@ class ComponentChargeCreateSerializer(TimezoneFieldMixin, serializers.ModelSeria
 
     def validate(self, data):
         data = super().validate(data)
-        data["charge_type"] = ComponentFixedCharge.get_charge_type_from_label(
-            data["charge_type"]
-        )
         data["charge_behavior"] = ComponentFixedCharge.get_charge_behavior_from_label(
             data["charge_behavior"]
         )

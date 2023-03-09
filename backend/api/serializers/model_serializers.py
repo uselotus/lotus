@@ -6,6 +6,9 @@ from typing import Literal, Union
 from django.conf import settings
 from django.db.models import Max, Min, Sum
 from drf_spectacular.utils import extend_schema_serializer
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
 from metering_billing.invoice import generate_balance_adjustment_invoice
 from metering_billing.models import (
     AddOnSpecification,
@@ -66,8 +69,6 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -1043,10 +1044,9 @@ class ComponentChargeSerializer(
 ):
     class Meta:
         model = ComponentFixedCharge
-        fields = ("units", "charge_type", "charge_behavior")
+        fields = ("units", "charge_behavior")
         extra_kwargs = {
             "units": {"required": True, "read_only": True},
-            "charge_type": {"required": True, "read_only": True},
             "charge_behavior": {"required": True, "read_only": True},
         }
 
@@ -1055,15 +1055,9 @@ class ComponentChargeSerializer(
         decimal_places=10,
         min_value=0,
         allow_null=True,
-        help_text="The number of units to charge for. If the charge type is 'dynamic', this field will be null.",
+        help_text="The number of units to charge for. If left null, then it will be required at subscription create time.",
     )
-    charge_type = serializers.SerializerMethodField()
     charge_behavior = serializers.SerializerMethodField()
-
-    def get_charge_type(
-        self, obj
-    ) -> serializers.ChoiceField(choices=ComponentFixedCharge.ChargeType.labels):
-        return obj.get_charge_type_display()
 
     def get_charge_behavior(
         self, obj
@@ -1635,7 +1629,7 @@ class SubscriptionRecordCreateSerializerOld(
         return sr
 
 
-class DynamicFixedChargeInitialValueSerializer(serializers.Serializer):
+class ComponentsFixedChargeInitialValueSerializer(serializers.Serializer):
     metric_id = SlugRelatedFieldWithOrganization(
         slug_field="metric_id",
         queryset=Metric.objects.all(),
@@ -1647,6 +1641,7 @@ class DynamicFixedChargeInitialValueSerializer(serializers.Serializer):
         max_digits=20,
         decimal_places=10,
         help_text="The number of units of the metric that this initial value is for",
+        min_value=0,
     )
 
 
@@ -1664,7 +1659,7 @@ class SubscriptionRecordCreateSerializer(
             "customer_id",
             "version_id",
             "plan_id",
-            "dynamic_fixed_charges_initial_units",
+            "component_fixed_charges_initial_units",
         )
 
     start_date = serializers.DateTimeField(
@@ -1709,10 +1704,10 @@ class SubscriptionRecordCreateSerializer(
         required=False,
         help_text="The Lotus plan_id, found in the billing plan object. We will make a best-effort attempt to find the correct plan version (matching preferred currencies, prioritizing custom plans), but if more than one plan version or no plan version matches these criteria this will return an error.",
     )
-    dynamic_fixed_charges_initial_units = DynamicFixedChargeInitialValueSerializer(
+    component_fixed_charges_initial_units = ComponentsFixedChargeInitialValueSerializer(
         many=True,
         required=False,
-        help_text="The initial units for dynamic fixed charges. This is only required if the plan has dynamic fixed charges for components.",
+        help_text="The initial units for the plan components' prepaid fixed charges. This is only required if the plan has plan components where you did not specify the initial units.",
     )
 
     def validate(self, data):
@@ -1767,8 +1762,8 @@ class SubscriptionRecordCreateSerializer(
             subscription_filters=subscription_filters,
             is_new=validated_data.get("is_new", True),
             quantity=validated_data.get("quantity", 1),
-            dynamic_fixed_charges_initial_units=validated_data.get(
-                "dynamic_fixed_charges_initial_units", []
+            component_fixed_charges_initial_units=validated_data.get(
+                "component_fixed_charges_initial_units", []
             ),
         )
         return sr
@@ -1889,7 +1884,7 @@ class SubscriptionRecordSwitchPlanSerializer(
             "switch_plan_id",
             "invoicing_behavior",
             "usage_behavior",
-            "dynamic_fixed_charges_initial_units",
+            "component_fixed_charges_initial_units",
         )
 
     switch_plan_id = SlugRelatedFieldWithOrganization(
@@ -1921,10 +1916,10 @@ class SubscriptionRecordSwitchPlanSerializer(
         default=USAGE_BEHAVIOR.TRANSFER_TO_NEW_SUBSCRIPTION,
         help_text="The usage behavior to use when replacing the plan. Transfer to new subscription will transfer the usage from the old subscription to the new subscription, whereas reset_usage will reset the usage to 0 for the new subscription, while keeping the old usage on the old subscription and charging for that appropriately at the end of the month.",
     )
-    dynamic_fixed_charges_initial_units = DynamicFixedChargeInitialValueSerializer(
+    component_fixed_charges_initial_units = ComponentsFixedChargeInitialValueSerializer(
         many=True,
         required=False,
-        help_text="The initial units for dynamic fixed charges. This is only required if the plan has dynamic fixed charges for components.",
+        help_text="The initial units for the plan components' prepaid fixed charges. This is only required if the plan has plan components where you did not specify the initial units.",
     )
 
     def validate(self, attrs):

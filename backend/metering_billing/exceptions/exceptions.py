@@ -147,10 +147,10 @@ class ServerError(APIException):
     default_code = "server_error"
 
 
-class PrepaymentEngineFailure(APIException):
-    status_code = 500
-    default_detail = "Internal error"
-    default_code = "prepayment_engine_failure"
+class PrepaymentMissingUnits(APIException):
+    status_code = 400
+    default_detail = "Input error"
+    default_code = "prepayment_cant_determine_units"
 
 
 class InvalidRequest(APIException):
