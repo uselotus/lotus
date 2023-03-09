@@ -5,6 +5,7 @@ import React from "react";
 import { Form, Cascader, Input } from "antd";
 import { DefaultOptionType } from "antd/lib/select";
 import { SubscriptionType } from "../../types/subscription-type";
+import { CascaderOptions } from "./CustomerSubscriptionView";
 
 interface ChangeOption {
   value:
@@ -32,19 +33,14 @@ const SwitchMenuComponent = ({
   subscriptions,
   plansWithSwitchOptions,
   setCascaderOptions,
+  cascaderOptions,
 }: {
   plan_id: string;
   subscription_filters: SubscriptionType["subscription_filters"];
   subscriptions: SubscriptionType[];
   plansWithSwitchOptions: (plan_id: string) => PlanOption[] | undefined;
-  setCascaderOptions: (args: {
-    value: string;
-    plan_id: string;
-    subscriptionFilters: {
-      value: string;
-      property_name: string;
-    }[];
-  }) => void;
+  setCascaderOptions: (args: CascaderOptions) => void;
+  cascaderOptions: CascaderOptions;
 }) => (
   <div>
     <Form.Item>
@@ -75,6 +71,7 @@ const SwitchMenuComponent = ({
               subscriptionFilters: subscription_filters,
             })
           }
+          value={[cascaderOptions?.value]}
           expandTrigger="hover"
           placeholder="Please select"
           showSearch={{ filter }}
