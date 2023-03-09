@@ -3,7 +3,7 @@
 /* eslint-disable no-shadow */
 /* eslint-disable camelcase */
 // @ts-ignore
-import React, { FC, Fragment, useState } from "react";
+import React, { FC, Fragment, useRef, useState } from "react";
 import "./PlanDetails.css";
 import { Button, Tabs } from "antd";
 import { useNavigate, useParams } from "react-router-dom";
@@ -27,6 +27,7 @@ import {
 import LoadingSpinner from "../../LoadingSpinner";
 import { components } from "../../../gen-types";
 import CustomPlanDetails from "./CustomPlanDetails";
+import Select from "../../base/Select/Select";
 
 type PlanDetailParams = {
   planId: string;
@@ -37,6 +38,8 @@ const PlanDetails: FC = () => {
   const [customPlans, setCustomPlans] = useState<
     components["schemas"]["PlanDetail"][]
   >([]);
+  const [selection, setSelection] = React.useState<(typeof customPlans)[0]>();
+  const selectRef = useRef<HTMLSelectElement | null>(null!);
   const [activeKey, setActiveKey] = useState("0");
   const { planId } = useParams<PlanDetailParams>();
   const queryClient = useQueryClient();
@@ -167,18 +170,21 @@ const PlanDetails: FC = () => {
   );
   const {
     data: plans,
-  }: UseQueryResult<components["schemas"]["PlanDetail"][] | PlanType[]> = useQuery<
-    components["schemas"]["PlanDetail"][] | PlanType[]
-  >(
-    ["plan_list"],
-    () =>
-      Plan.getPlans({ version_custom_type: "custom_only" }).then((res) => res),
-    {
-      onSuccess: () => {
-        setCustomPlans(plans as components["schemas"]["PlanDetail"][]);
-      },
-    }
-  );
+  }: UseQueryResult<components["schemas"]["PlanDetail"][] | PlanType[]> =
+    useQuery<components["schemas"]["PlanDetail"][] | PlanType[]>(
+      ["plan_list"],
+      () =>
+        // Plan.getPlans({ version_custom_type: "custom_only" }).then(
+        //   (res) => res
+        // ),
+        Plan.getPlans().then((res) => res),
+      {
+        onSuccess: (plans) => {
+          setCustomPlans(plans as components["schemas"]["PlanDetail"][]);
+          setSelection(plans[0] as (typeof customPlans)[0]);
+        },
+      }
+    );
   const changeTab = (activeKey: string) => {
     setActiveKey(activeKey);
   };
@@ -272,16 +278,42 @@ const PlanDetails: FC = () => {
                   />
                 )}
               </Tabs.TabPane>
-              <Tabs.TabPane tab="Custom_Plans" key="1">
+              <Tabs.TabPane tab="Custom Plans" key="1">
                 {customPlans && customPlans.length > 0 && (
-                  <CustomPlanDetails
-                    activeKey={activeKey}
-                    refetch={refetch}
-                    version={customPlans[0].versions[0]}
-                    createPlanExternalLink={createPlanExternalLink}
-                    deletePlanExternalLink={deletePlanExternalLink}
-                    plan={customPlans[0]}
-                  />
+                  <div>
+                    <div className="mx-10 flex items-center gap-4">
+                      <span>Filters</span>
+                      <Select>
+                        <Select.Label className="hidden">Filters</Select.Label>
+                        <Select.Select
+                          onChange={() => {
+                            const selectedType = customPlans.find(
+                              (el) => el.plan_name === selectRef.current?.value
+                            );
+
+                            setSelection(selectedType);
+                          }}
+                          className="!w-full !border !border-black"
+                          ref={selectRef}
+                        >
+                          {/* <Select.Option selected>{selection}</Select.Option> */}
+                          {customPlans.map((el) => (
+                            <Select.Option key={el.plan_id}>
+                              {el.plan_name}
+                            </Select.Option>
+                          ))}
+                        </Select.Select>
+                      </Select>
+                    </div>
+                    <CustomPlanDetails
+                      activeKey={activeKey}
+                      refetch={refetch}
+                      version={selection!.versions[0]}
+                      createPlanExternalLink={createPlanExternalLink}
+                      deletePlanExternalLink={deletePlanExternalLink}
+                      plan={selection!}
+                    />
+                  </div>
                 )}
               </Tabs.TabPane>
             </Tabs>

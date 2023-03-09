@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable camelcase */
 
-import React, { FC, useEffect, useState } from "react";
+import React, { FC, useCallback, useEffect, useState } from "react";
 import "./PlanDetails.css";
 import { Typography } from "antd";
 import { useMutation, useQueryClient } from "react-query";
@@ -33,15 +33,20 @@ const PlanCustomerSubscriptions: FC<PlanCustomerSubscriptionProps> = ({
       },
     }
   );
-  useEffect(() => {
-    mutation.mutate();
+  const mutationHandler = useCallback(async () => {
+    const data = await mutation.mutateAsync();
 
-    if (mutation.data) {
-      const newData = [...tableData, ...mutation.data];
-      setTableData(newData);
+    if (data && data.length > 0) {
+      if (tableData.length < data.length) {
+        const newData = [...tableData, ...data];
+        setTableData(newData);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan_id, version_id]);
+  }, []);
+  useEffect(() => {
+    mutationHandler();
+  }, [plan_id, version_id, mutationHandler]);
   return (
     <div className="">
       {tableData && tableData.length > 0 ? (
@@ -92,8 +97,8 @@ const PlanCustomerSubscriptions: FC<PlanCustomerSubscriptionProps> = ({
                             <Badge
                               className={` ${
                                 !info.auto_renew
-                                  ? "bg-rose-700 text-white"
-                                  : "bg-emerald-100"
+                                  ? "bg-rose-700 text-black"
+                                  : "bg-emerald-100 text-black w-40"
                               }`}
                             >
                               <Badge.Content>
@@ -114,11 +119,9 @@ const PlanCustomerSubscriptions: FC<PlanCustomerSubscriptionProps> = ({
         </div>
       ) : (
         <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card">
-          <Typography.Title level={2}>Recurring Charges</Typography.Title>
+          <Typography.Title level={2}>Current Subscriptions</Typography.Title>
           <div className="w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
-          <div className="text-card-grey text-base">
-            No recurring charges added
-          </div>
+          <div className="text-card-grey text-base">No subscriptions added</div>
         </div>
       )}
     </div>

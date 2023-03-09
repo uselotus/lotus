@@ -124,7 +124,11 @@ type GetPlansQuery = operations["app_plans_list"]["parameters"];
 
 const requests = {
   get: (url: string, params?: object) =>
-    instance.get(url, params).then(responseBody),
+    instance
+      .get(url, {
+        params,
+      })
+      .then(responseBody),
   post: (url: string, body: object, params?: object) =>
     instance.post(url, body, { params }).then(responseBody),
   patch: (url: string, body: object, params?: object) =>
@@ -247,15 +251,19 @@ export const Plan = {
     version_currency_code?: string;
     version_custom_type?: "custom_only" | "public_only" | "all";
     version_status?: ("active" | "ended" | "not_started")[];
-  }): Promise<PlanType[] | components["schemas"]["PlanDetail"][]> =>
-    requests.get("app/plans/", params),
+  }): Promise<PlanType[] | components["schemas"]["PlanDetail"][]> => {
+    console.log(params);
+    return requests.get("app/plans/", params);
+  },
   getPlan: (plan_id: string): Promise<components["schemas"]["PlanDetail"]> =>
     requests.get(`app/plans/${plan_id}/`),
   // create plan
   createPlan: (post: CreatePlanType): Promise<PlanType> =>
     requests.post("app/plans/", post),
   // create plan version
-  createVersion: (post: CreatePlanVersionType): Promise<PlanVersionType> =>
+  createVersion: (
+    post: components["schemas"]["InitialPlanVersionCreateRequest"]
+  ): Promise<components["schemas"]["InitialPlanVersionCreateRequest"]> =>
     requests.post("app/plan_versions/", post),
   // create plan external links
   createExternalLinks: (

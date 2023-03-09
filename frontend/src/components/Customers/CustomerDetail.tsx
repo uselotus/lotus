@@ -320,8 +320,8 @@ function CustomerDetail() {
         >
           <p>
             Are you sure you want to delete this customer? This action cannot be
-            undone and will cancel all of the customer's current subscriptions
-            without billing.
+            undone and will cancel all of the customer&apos;s current
+            subscriptions without billing.
           </p>
         </Modal>
       )}

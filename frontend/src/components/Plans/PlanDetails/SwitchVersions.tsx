@@ -17,6 +17,10 @@ import PlanRecurringCharges from "./PlanRecurringCharges";
 import PlanCustomerSubscriptions from "./PlanCustomerSubscriptions";
 import { components } from "../../../gen-types";
 import Select from "../../base/Select/Select";
+import ChevronDown from "../../base/ChevronDown";
+import DropdownComponent from "../../base/Dropdown/Dropdown";
+import AddCurrencyModal from "./AddCurrencyModal";
+import DeleteVersionModal from "./DeleteVersionModal";
 
 interface SwitchVersionProps {
   versions: components["schemas"]["PlanDetail"]["versions"];
@@ -64,7 +68,8 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
   const [selectedVersion, setSelectedVersion] = useState<
     components["schemas"]["PlanDetail"]["versions"][0] | undefined
   >(activePlanVersion);
-
+  const [triggerCurrencyModal, setTriggerCurrencyModal] = useState(false);
+  const [triggerDeleteModal, setTriggerDeleteModal] = useState(false);
   const [capitalizedState, setCapitalizedState] = useState<string>("");
   const queryClient = useQueryClient();
 
@@ -112,16 +117,16 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
   return (
     <div>
       <div className={className}>
-        {versions.map((version, index) => (
+        {versions.map((version) => (
           <div
             aria-hidden
             key={version.version_id}
-            onClick={(e) => {
+            onClick={() => {
               refetch();
               setSelectedVersion(version);
             }}
             className={[
-              "flex items-center justify-center p-4 cursor-pointer mx-1",
+              "flex items-center justify-center p-6 cursor-pointer mx-1 gap-4",
               isSelectedVersion(version.version_id)
                 ? "bg-[#c3986b] text-white opacity-100 ml-2 mr-2"
                 : "bg-[#EAEAEB] text-black ml-2 mr-2",
@@ -129,7 +134,37 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
                 "border-2 border-[#c3986b] border-opacity-100 ml-2 mr-2",
             ].join(" ")}
           >
-            v{index}
+            {/* v{version.version} <ChevronDown /> */}
+            <DropdownComponent>
+              <DropdownComponent.Trigger>
+                <div className="flex gap-2 items-center">
+                  v{version.version}
+                  <ChevronDown />
+                </div>
+              </DropdownComponent.Trigger>
+              <DropdownComponent.Container className="bg-primary-50 whitespace-nowrap">
+                {["Add Currency", "Delete"].map((el) => (
+                  <DropdownComponent.MenuItem
+                    key={el}
+                    onSelect={() => {
+                      if (el === "Add Currency") {
+                        setTriggerCurrencyModal(true);
+                        setTriggerDeleteModal(false);
+                      } else {
+                        setTriggerCurrencyModal(false);
+                        setTriggerDeleteModal(true);
+                      }
+                    }}
+                  >
+                    <span className="flex gap-2 justify-between ">
+                      <span className="flex gap-2 items-center">
+                        <span className="text-black">{el}</span>
+                      </span>
+                    </span>
+                  </DropdownComponent.MenuItem>
+                ))}
+              </DropdownComponent.Container>
+            </DropdownComponent>
           </div>
         ))}
         <Link
@@ -148,7 +183,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
           <Select>
             <Select.Select
               disabled
-              className="!w-1/4"
+              className="!w-full"
               onChange={() => {
                 //
               }}
@@ -171,7 +206,11 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
             />
           </div>
           <div className="col-span-2">
-            <PlanInfo plan={plan} version={selectedVersion!} />
+            <PlanInfo
+              activeKey={activeKey}
+              plan={plan}
+              version={selectedVersion!}
+            />
           </div>
         </div>
         <div>
@@ -227,6 +266,18 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
           </div>
         </div> */}
       </div>
+      <AddCurrencyModal
+        plan_id={plan.plan_id}
+        showModal={triggerCurrencyModal}
+        setShowModal={(show) => setTriggerCurrencyModal(show)}
+        version={selectedVersion?.version as number}
+      />
+      <DeleteVersionModal
+        version_id={selectedVersion?.version_id as string}
+        plan_id={plan.plan_id}
+        showModal={triggerCurrencyModal}
+        setShowModal={(show) => setTriggerCurrencyModal(show)}
+      />
     </div>
   );
 };

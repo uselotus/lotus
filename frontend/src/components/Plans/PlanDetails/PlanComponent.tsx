@@ -447,7 +447,7 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
               <div className="!text-gold underline underline-offset-2">
                 {" "}
                 {version.active_subscriptions}
-                {version.active_subscriptions >= 1 ? "Customers" : "Customer"}
+                {version.active_subscriptions > 1 ? " Customers" : " Customer"}
               </div>
             </div>
             <div className="flex items-center justify-between text-card-text gap-2 mb-1">
@@ -456,7 +456,7 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
               </div>
               <div className="!text-card-grey">
                 {" "}
-                {version.transition_to.plan_name
+                {version?.transition_to?.plan_name
                   ? version.replace_with.plan_name
                   : "Self"}
               </div>
@@ -529,7 +529,7 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
               </div>
               <div className="!text-card-grey">
                 {" "}
-                {version.transition_to.plan_name
+                {version?.transition_to?.plan_name
                   ? capitalize(version.replace_with.plan_name)
                   : "Self"}
               </div>
@@ -724,7 +724,6 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                           </div>
                         ),
                       },
-                      [{}],
                     ]}
                   />
                   {component.invoicing_interval_count && (
