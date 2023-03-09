@@ -10,19 +10,18 @@ openapi: "POST /api/subscriptions/{subscription_id}/cancel/"
 ```py Python
 lotus.cancel_subscription(
     subscription_id='sub_a623349004cd4947aca1851c64aa6fbd',
-    bill_usage=True,
-    invoicing_behavior='add_to_next_invoice',
+    flat_fee_behavior='charge_prorated',
+    usage_behavior='bill_full',
+    invoicing_behavior='invoice_now'
 )
 ```
 
 ```ts Typescript
-
 await lotus.cancelSubscription({
-  subscription_id: "plan234234"
-  bill_usage: "false";
-  invoicingBehavior?: "add_to_next_invoice";
-  flatFeeBehavior:"prorate";
-  usageBehavior:"bill_none"
+  subscription_id: "sub_a623349004cd4947aca1851c64aa6fbd",
+  flat_fee_behavior: "charge_prorated",
+  usage_behavior: "bill_full",
+  invoicing_behavior: "invoice_now",
 });
 ```
 

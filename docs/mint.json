@@ -51,6 +51,11 @@
       "name": "Github",
       "icon": "github",
       "url": "https://github.com/uselotus/lotus"
+    },
+    {
+      "name": "Community",
+      "icon": "slack",
+      "url": "https://join.slack.com/t/lotus-community/shared_invite/zt-1ghi61p9j-ADYbp3tEL~N16AxQr2mlzA"
     }
   ],
   "navigation": [
@@ -137,6 +142,9 @@
             "api-reference/subscriptions/create-subscription",
             "api-reference/subscriptions/cancel-subscription",
             "api-reference/subscriptions/change-subscription",
+            "api-reference/subscriptions/switch-subscription-plan",
+            "api-reference/subscriptions/attach-addon",
+            "api-reference/subscriptions/cancel-addon",
             "api-reference/subscriptions/list-subscriptions",
             {
               "group": "Deprecated Methods",

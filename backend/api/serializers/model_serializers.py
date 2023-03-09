@@ -1645,6 +1645,7 @@ class ComponentsFixedChargeInitialValueSerializer(serializers.Serializer):
     )
 
 
+@extend_schema_serializer(exclude_fields=["version_id"])
 class SubscriptionRecordCreateSerializer(
     ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
@@ -1680,7 +1681,6 @@ class SubscriptionRecordCreateSerializer(
         help_text="Add filter key, value pairs that define which events will be applied to this plan subscription.",
     )
 
-    # WRITE ONLY
     customer_id = SlugRelatedFieldWithOrganization(
         slug_field="customer_id",
         source="customer",
@@ -1826,7 +1826,7 @@ class SubscriptionRecordUpdateSerializerOld(
     usage_behavior = serializers.ChoiceField(
         choices=USAGE_BEHAVIOR.choices,
         default=USAGE_BEHAVIOR.TRANSFER_TO_NEW_SUBSCRIPTION,
-        help_text="The usage behavior to use when replacing the plan. Transfer to new subscription will transfer the usage from the old subscription to the new subscription, whereas reset_usage will reset the usage to 0 for the new subscription, while keeping the old usage on the old subscription and charging for that appropriately at the end of the month.",
+        help_text="The usage behavior to use when replacing the plan. Transfer to new subscription will transfer the usage from the old subscription to the new subscription, whereas keep_separate will reset the usage to 0 for the new subscription, while keeping the old usage on the old subscription and charging for that appropriately at the end of the month.",
     )
     turn_off_auto_renew = serializers.BooleanField(
         required=False, help_text="Turn off auto renew for the subscription"
@@ -1874,6 +1874,7 @@ class SubscriptionRecordUpdateSerializer(
         return instance
 
 
+@extend_schema_serializer(exclude_fields=["switch_plan_version_id"])
 class SubscriptionRecordSwitchPlanSerializer(
     ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
 ):
@@ -1914,12 +1915,12 @@ class SubscriptionRecordSwitchPlanSerializer(
     usage_behavior = serializers.ChoiceField(
         choices=USAGE_BEHAVIOR.choices,
         default=USAGE_BEHAVIOR.TRANSFER_TO_NEW_SUBSCRIPTION,
-        help_text="The usage behavior to use when replacing the plan. Transfer to new subscription will transfer the usage from the old subscription to the new subscription, whereas reset_usage will reset the usage to 0 for the new subscription, while keeping the old usage on the old subscription and charging for that appropriately at the end of the month.",
+        help_text="The usage behavior to use when replacing the plan. Transfer to new subscription will transfer the usage from the old subscription to the new subscription, whereas keep_separate will reset the usage to 0 for the new subscription, while keeping the old usage on the old subscription and charging for that appropriately at the end of the month.",
     )
     component_fixed_charges_initial_units = ComponentsFixedChargeInitialValueSerializer(
         many=True,
         required=False,
-        help_text="The initial units for the plan components' prepaid fixed charges. This is only required if the plan has plan components where you did not specify the initial units.",
+        help_text="The initial units for the plan components' prepaid fixed charges. In the context of swithciong plans, this is only required if the new plan has a component the old plan did not have, that has a prepaid charge, that deos not have a default.",
     )
 
     def validate(self, attrs):
@@ -2601,6 +2602,7 @@ class AddOnSubscriptionRecordSerializer(
         return all(obj.billing_records.values_list("fully_billed", flat=True))
 
 
+@extend_schema_serializer(exclude_fields=["addon_version_id"])
 class AddOnSubscriptionRecordCreateSerializer(
     TimezoneFieldMixin, serializers.ModelSerializer
 ):
@@ -2612,23 +2614,23 @@ class AddOnSubscriptionRecordCreateSerializer(
             "quantity",
         )
         extra_kwargs = {
-            "addon_version_id": {"required": True, "write_only": True},
+            "addon_version_id": {"required": False, "write_only": True},
+            "addon_id": {"required": False, "write_only": True},
             "quantity": {"required": False, "write_only": True},
-            "addon_id": {"required": True, "write_only": True},
         }
 
     addon_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
         queryset=Plan.addons.all(),
         required=False,
-        help_text="The add-on to be applied to the subscription. You can use either this field or addon_version_id, but not both.",
+        help_text="The add-on to be applied to the subscription. ",
         source="addon",
     )
     addon_version_id = SlugRelatedFieldWithOrganization(
         slug_field="version_id",
         queryset=PlanVersion.addon_versions.all(),
         required=False,
-        help_text="The add-on to be applied to the subscription.",
+        help_text="The add-on to be applied to the subscription. You can use either this field or addon_id, but not both.",
         source="addon_version",
     )
     quantity = serializers.IntegerField(

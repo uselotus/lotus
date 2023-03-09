@@ -14,14 +14,15 @@ lotus.update_subscription(
 
 lotus.update_subscription(
   subscription_id='sub_a623349004cd4947aca1851c64aa6fbd',
-  end_date=datetime.date(2022, 12, 8),
+  end_date='2022-02-23 03:30:00+00:00',
 )
 ```
 
 ```ts Typescript
 await lotus.updateSubscription({
-  subscription_id: "sub_a623349004cd4947aca1851c64aa6fbd";
-  turn_off_auto_renew: true;
+  subscription_id: "sub_a623349004cd4947aca1851c64aa6fbd",
+  turn_off_auto_renew: true,
+  end_date: "2022-02-23 03:30:00+00:00",
 });
 ```
 
