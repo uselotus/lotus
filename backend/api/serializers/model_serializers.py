@@ -1311,7 +1311,7 @@ class PlanVersionSerializer(
             return obj.version
 
     # DEPRECATED
-    def get_usage_billing_frequency(self, obj) -> None:
+    def get_usage_billing_frequency(self, obj) -> Union[str, None]:
         return None
 
     def get_description(self, obj) -> Union[str, None]:
@@ -1898,7 +1898,7 @@ class SubscriptionRecordSwitchPlanSerializer(
         source="plan",
         queryset=Plan.objects.all(),
         write_only=True,
-        required=True,
+        required=False,
         help_text="The new plan to switch to.",
     )
     switch_plan_version_id = SlugRelatedFieldWithOrganization(
@@ -1907,7 +1907,7 @@ class SubscriptionRecordSwitchPlanSerializer(
         source="plan_version",
         queryset=PlanVersion.plan_versions.all(),
         write_only=True,
-        required=True,
+        required=False,
         help_text="The new plan version to switch to.",
     )
     invoicing_behavior = serializers.ChoiceField(
