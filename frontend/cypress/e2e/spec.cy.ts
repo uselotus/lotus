@@ -82,3 +82,55 @@ describe("Testing Create Customer and Attach Subscription", () => {
     cy.get(".ant-table-row").first().click();
   });
 });
+
+describe("Testing Event Tracking Details On Metrics Page", () => {
+  it("Test event details on Metrics page", () => {
+    Login();
+    // Navigate to the Settings -> Developer Settings page
+    cy.visit("http://localhost:3000/settings/developer-settings");
+    cy.contains("API Keys");
+    // Click the "Add API Key" button
+    cy.get(".ant-btn.ant-btn-primary").first().click();
+    cy.contains("Create API Key");
+    const apiKeyName = getId(16);
+    // Enter text for the "API Key Name" field
+    cy.get(".ant-input").type(apiKeyName);
+    cy.get(".ant-input[type=text]").should("have.value", apiKeyName);
+    // Select a date for the "Expiry Date + Time" field
+    cy.get("[placeholder='Select date']").click();
+    cy.get(".ant-picker-cell-today").click();
+    cy.get(".ant-picker-time-panel-column .ant-picker-time-panel-cell").last().click();
+    // Click OK button in date picker
+    cy.get(".ant-btn.ant-btn-primary.ant-btn-sm").click();
+    // Click the "Confirm" button
+    cy.get(".ant-modal-footer .ant-btn.ant-btn-primary").click();
+    cy.contains("Your new key is:");
+    // Copy the API key that is displayed
+    const apiKey = cy.get(".text-lg.font-main .ant-input").invoke("text");
+    // Click Okay button in modal
+    cy.get(".ant-modal-footer .ant-btn.ant-btn-primary").last().click();
+    // Send request to /api/track/ endpoint
+    // cy.request({
+    //   url: "http://localhost:3000/api/track/",
+    //   method: "POST",
+    //   headers: {
+    //     "X-API-KEY": apiKey,
+    //     "Content-Type": "application/json"
+    //   },
+    //   body: {
+    //     "batch": [{
+    //       "event_name":"",
+    //       "properties":"",
+    //       "time_created":"",
+    //       "idempotency_id":"",
+    //       "customer_id":""
+    //     }]
+    //   }
+    // });
+    // Navigate to the Metrics page
+    cy.visit("http://localhost:3000/metrics");
+    cy.contains("Create Metric");
+    // Verify that the event details section displays a new event with the following fields: customer_id, event_name, ID, time_created
+    // Verify fields of newly created event match the data that was supplied in the request
+  });
+});
