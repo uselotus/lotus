@@ -1,6 +1,6 @@
 import React, { FC, useState, useEffect } from "react";
 import { PageLayout } from "../components/base/PageLayout";
-import { Button } from "antd";
+
 import { useQuery } from "react-query";
 import {
   Events,
@@ -38,6 +38,7 @@ const CodeExample = () => {
   const codeExamples = {
     curl: {
       label: "Curl",
+      language: "bash",
       code: `curl --request POST \
       --url https://api.uselotus.io/api/track/ \
       --header 'X-API-KEY: AUTH_VALUE' \
@@ -48,6 +49,7 @@ const CodeExample = () => {
     },
     pythonSDK: {
       label: "Python SDK",
+      language: "python",
       code: `lotus.track_event(
         customer_id='customer123',
         event_name='api_call',
@@ -61,6 +63,7 @@ const CodeExample = () => {
     },
     typescriptSDK: {
       label: "TypeScript SDK",
+      language: "typescript",
       code: `await lotus.trackEvent({
         batch: [
           {
@@ -100,6 +103,7 @@ const CodeExample = () => {
         textToCopy={codeExamples[selectedTab].code}
         className=" text-sm mx-8"
         showIcon
+        language={codeExamples[selectedTab].language}
       />
     </div>
   );
@@ -331,7 +335,7 @@ const QuickstartPage: FC = () => {
   ]);
 
   return (
-    <PageLayout title="Get Started Fast" extra={[]}>
+    <PageLayout title="Quickstart" extra={[]}>
       <div>
         <div className="flex relative flex-col items-center text-lg mx-auto space-y-6 px-6 max-w-3xl lg:max-w-4xl xl:max-w-5xl py-6">
           <div className="text-4xl font-bold text-left w-full mt-12">
