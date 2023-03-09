@@ -89,7 +89,7 @@ class NotFoundException(APIException):
 
 class DatabaseOperationFailed(APIException):
     status_code = 500
-    default_detail = "Database operation failed. Please double check your metrics/events and make sure you're not using a text field where you should be using a numeric field."
+    default_detail = "Database operation failed. Please double-check your metrics/events and make sure you're not using a text field where you should be using a numeric field."
     default_code = "aggregation_engine_failure"
 
 
@@ -126,7 +126,7 @@ class NotEditable(APIException):
 class RegistrationFailure(APIException):
     status_code = 400
     default_detail = "Registration failed"
-    default_code = "refistration_failure"
+    default_code = "registration_failure"
 
 
 class ServerError(APIException):

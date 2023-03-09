@@ -59,7 +59,7 @@ const Register: React.FC = () => {
         navigate("/login");
       },
       onError: (error: QueryErrors) => {
-        toast.error(error.response.data.title);
+        toast.error(error.response.data.detail);
       },
     }
   );
