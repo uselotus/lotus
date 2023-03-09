@@ -11,6 +11,7 @@ from api.serializers.webhook_serializers import (
     InvoicePaidSerializer,
     InvoicePastDueSerializer,
     UsageAlertTriggeredSerializer,
+    SubscriptionCancelledSerializer,
     SubscriptionCreatedSerializer
 )
 from django.conf import settings
@@ -323,11 +324,27 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 ),
             ),
             OpenApiCallback(
+                WEBHOOK_TRIGGER_EVENTS.USAGE_ALERT_TRIGGERED.value,
+                "{$request.body#/webhook_url}",
+                extend_schema(
+                    description="Usage alert triggered webhook",
+                    responses={200: UsageAlertTriggeredSerializer},
+                ),
+            ),
+            OpenApiCallback(
+                WEBHOOK_TRIGGER_EVENTS.SUBSCRIPTION_CANCELLED.value,
+                "{$request.body#/webhook_url}",
+                extend_schema(
+                    description="Subscription cancelled webhook",
+                    responses={200: SubscriptionCancelledSerializer}
+                )
+            ),
+            OpenApiCallback(
                 WEBHOOK_TRIGGER_EVENTS.INVOICE_PAST_DUE.value,
                 "{$request.body#/webhook_url}",
                 extend_schema(
-                    description="Invoice Past Due webhook",
-                    responses={200: InvoicePastDueSerializer},
+                    description="Usage alert triggered webhook",
+                    responses={200: UsageAlertTriggeredSerializer},
                 ),
             ),
             OpenApiCallback(
@@ -336,14 +353,6 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 extend_schema(
                     description="Subscription created webhook",
                     responses={200: SubscriptionCreatedSerializer},
-                ),
-            ),
-            OpenApiCallback(
-                WEBHOOK_TRIGGER_EVENTS.USAGE_ALERT_TRIGGERED.value,
-                "{$request.body#/webhook_url}",
-                extend_schema(
-                    description="Usage alert triggered webhook",
-                    responses={200: UsageAlertTriggeredSerializer},
                 ),
             ),
         ]

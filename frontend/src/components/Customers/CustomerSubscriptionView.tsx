@@ -90,7 +90,7 @@ interface PlanOption {
 export interface CascaderOptions {
   value: string;
   plan_id: string;
-  subscriptionFilters: SubscriptionType["subscription_filters"]
+  subscriptionFilters: SubscriptionType["subscription_filters"];
 }
 
 const dropDownOptions = [
@@ -429,9 +429,7 @@ const SubscriptionView: FC<Props> = ({
                 options={planList}
                 optionLabelProp="label"
                 value={selectedPlan}
-              >
-                {" "}
-              </Select>
+              />
             </Form.Item>
             <Form.Item>
               <Button htmlType="submit">
@@ -642,7 +640,7 @@ const SubscriptionView: FC<Props> = ({
                           cascaderOptions!.subscriptionFilters
                         );
                         setShowModal(false);
-                        setCascaderOptions(null)
+                        setCascaderOptions(null);
                       }}
                     >
                       Switch
@@ -760,13 +758,15 @@ const SubscriptionView: FC<Props> = ({
                   placeholder="Select a plan"
                   onChange={selectPlan}
                   options={planList}
+                  value={selectedPlan}
                   optionLabelProp="label"
-                >
-                  {" "}
-                </Select>
+                ></Select>
               ) : indexRef.current === 2 ? null : indexRef.current ===
                 6 ? null : indexRef.current === 3 ? (
                 <CancelMenu
+                  recurringBehavior={cancelBody.flat_fee_behavior}
+                  usageBehavior={cancelBody.usage_behavior}
+                  invoiceBehavior={cancelBody.invoicing_behavior}
                   setRecurringBehavior={(e) =>
                     setCancelBody({
                       ...cancelBody,
@@ -808,7 +808,10 @@ const SubscriptionView: FC<Props> = ({
                           }
                         }}
                         style={{ width: "100%" }}
-                        value={addOns.find((addOn) => addOn.addon_id === addOnId)?.addon_name}
+                        value={
+                          addOns.find((addOn) => addOn.addon_id === addOnId)
+                            ?.addon_name
+                        }
                       >
                         {addOns && !isLoading
                           ? addOns.map((addOn) => (
