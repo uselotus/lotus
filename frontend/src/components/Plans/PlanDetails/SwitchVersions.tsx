@@ -1,7 +1,8 @@
+/* eslint-disable no-shadow */
 /* eslint-disable camelcase */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
-import React, { FC, useEffect, useState } from "react";
+import React, { FC, useCallback, useEffect, useRef, useState } from "react";
 
 import "./SwitchVersions.css";
 import { PlusOutlined } from "@ant-design/icons";
@@ -68,11 +69,66 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
   const [selectedVersion, setSelectedVersion] = useState<
     components["schemas"]["PlanDetail"]["versions"][0] | undefined
   >(activePlanVersion);
+  const [dropDownVersions, setDropDownVersions] = useState<
+    components["schemas"]["PlanDetail"]["versions"]
+  >([]);
+  const [deduplicatedVersions, setDeduplicatedVersions] = useState<
+    components["schemas"]["PlanDetail"]["versions"]
+  >([]);
   const [triggerCurrencyModal, setTriggerCurrencyModal] = useState(false);
+  const selectRef = useRef<HTMLSelectElement | null>(null!);
   const [triggerDeleteModal, setTriggerDeleteModal] = useState(false);
   const [capitalizedState, setCapitalizedState] = useState<string>("");
   const queryClient = useQueryClient();
+  const removeDuplicateVersions = useCallback(
+    (versions: components["schemas"]["PlanDetail"]["versions"]) => {
+      let seen: { [key: string]: boolean } = {};
 
+      const arr = [...dropDownVersions, ...[selectedVersion]];
+      if (versions.length === 1) {
+        const newVersion = [selectedVersion];
+        setDeduplicatedVersions(
+          newVersion as components["schemas"]["PlanDetail"]["versions"]
+        );
+        setDropDownVersions(newVersion);
+        return [];
+      }
+
+      const v = versions.filter((obj) => {
+        if (seen[obj.version]) {
+          arr.push(obj);
+
+          return false;
+          // eslint-disable-next-line no-else-return
+        } else {
+          seen[obj.version] = true;
+          seen[obj.version_id] = true;
+          return true;
+        }
+      });
+      seen = {};
+      setDropDownVersions(
+        arr.filter((obj) => {
+          if (seen[obj.version] && seen[obj?.version_id]) {
+            return false;
+            // eslint-disable-next-line no-else-return
+          } else {
+            seen[obj.version] = true;
+            seen[obj?.version_id] = true;
+            return true;
+          }
+        })
+      );
+      const newVersions = [...v];
+      setDeduplicatedVersions(
+        newVersions as components["schemas"]["PlanDetail"]["versions"]
+      );
+    },
+    []
+  );
+  useEffect(() => {
+    removeDuplicateVersions(versions);
+  }, [selectedVersion, versions, removeDuplicateVersions]);
   const isSelectedVersion = (other_id: string) =>
     selectedVersion?.version_id === other_id;
   const createTag = useMutation(
@@ -87,23 +143,6 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
       },
     }
   );
-  // const updateBillingFrequency = useMutation(
-  //   (plan_duration: "monthly" | "quarterly" | "yearly") =>
-  //     Plan.updatePlan(plan.plan_id, {
-  //       plan_duration,
-  //     }),
-  //   {
-  //     onSuccess: () => {
-  //       queryClient.invalidateQueries("plan_list");
-  //       queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
-  //       queryClient.invalidateQueries("organization");
-  //     },
-  //   }
-  // );
-
-  // useEffect(() => {
-  //   setSelectedVersion(versions.find((x) => x.status === "active")!);
-  // }, [versions]);
   useEffect(() => {
     setSelectedVersion(plan.versions.find((x) => x.status === "active")!);
   }, [plan]);
@@ -117,20 +156,20 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
   return (
     <div>
       <div className={className}>
-        {versions.map((version) => (
+        {deduplicatedVersions.map((version) => (
           <div
             aria-hidden
-            key={version.version_id}
+            key={version?.version_id}
             onClick={() => {
               refetch();
               setSelectedVersion(version);
             }}
             className={[
               "flex items-center justify-center p-6 cursor-pointer mx-1 gap-4",
-              isSelectedVersion(version.version_id)
+              isSelectedVersion(version!.version_id)
                 ? "bg-[#c3986b] text-white opacity-100 ml-2 mr-2"
                 : "bg-[#EAEAEB] text-black ml-2 mr-2",
-              version.status === "active" &&
+              version?.status === "active" &&
                 "border-2 border-[#c3986b] border-opacity-100 ml-2 mr-2",
             ].join(" ")}
           >
@@ -139,7 +178,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
               <DropdownComponent.Trigger>
                 <div className="flex gap-2 items-center">
                   v{version.version}
-                  {version.currency && `-${version.currency.symbol}`}
+                  {/* {version.currency && `-${version.currency.symbol}`} */}
                   <ChevronDown />
                 </div>
               </DropdownComponent.Trigger>
@@ -183,15 +222,35 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         <div>
           <Select>
             <Select.Select
-              disabled
               className="!w-full"
+              ref={selectRef}
               onChange={() => {
-                //
+                // const arr = [
+                //   ...[selectedVersion],
+                //   ...removeDuplicateVersions(versions),
+                // ];
+                const [versionNum, symbol] =
+                  selectRef.current!.value.split("-");
+                const version = versionNum.split("v")[1];
+
+                const newSelectedVersion = dropDownVersions.find(
+                  (el) =>
+                    el?.version === Number(version) &&
+                    el.currency &&
+                    el.currency.symbol === symbol
+                );
+
+                if (newSelectedVersion) {
+                  console.log("Expecting log");
+                  setSelectedVersion(newSelectedVersion);
+                }
               }}
             >
-              <Select.Option selected>
-                {`${selectedVersion?.currency.code}-${selectedVersion?.currency.symbol}`}
-              </Select.Option>
+              {dropDownVersions.map((el) => (
+                <Select.Option key={el?.version_id}>
+                  {`v${el?.version}-${el?.currency?.symbol}`}
+                </Select.Option>
+              ))}
             </Select.Select>
           </Select>
         </div>
@@ -276,8 +335,8 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
       <DeleteVersionModal
         version_id={selectedVersion?.version_id as string}
         plan_id={plan.plan_id}
-        showModal={triggerCurrencyModal}
-        setShowModal={(show) => setTriggerCurrencyModal(show)}
+        showModal={triggerDeleteModal}
+        setShowModal={(show) => setTriggerDeleteModal(show)}
       />
     </div>
   );

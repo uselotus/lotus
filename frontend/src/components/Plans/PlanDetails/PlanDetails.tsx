@@ -40,6 +40,7 @@ const PlanDetails: FC = () => {
   >([]);
   const [selection, setSelection] = React.useState<(typeof customPlans)[0]>();
   const selectRef = useRef<HTMLSelectElement | null>(null!);
+  const dropdownSelectRef = useRef<HTMLSelectElement | null>(null!);
   const [activeKey, setActiveKey] = useState("0");
   const { planId } = useParams<PlanDetailParams>();
   const queryClient = useQueryClient();
@@ -174,10 +175,10 @@ const PlanDetails: FC = () => {
     useQuery<components["schemas"]["PlanDetail"][] | PlanType[]>(
       ["plan_list"],
       () =>
-        // Plan.getPlans({ version_custom_type: "custom_only" }).then(
-        //   (res) => res
-        // ),
-        Plan.getPlans().then((res) => res),
+        Plan.getPlans({ version_custom_type: "custom_only" }).then(
+          (res) => res
+        ),
+
       {
         onSuccess: (plans) => {
           setCustomPlans(plans as components["schemas"]["PlanDetail"][]);
