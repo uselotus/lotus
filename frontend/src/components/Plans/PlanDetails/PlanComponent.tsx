@@ -577,10 +577,10 @@ const PlanComponents: FC<PlanComponentsProps> = ({
           <div>
             <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
           </div>
-          <div className="grid gap-6 grid-cols-1 items-start xl:grid-cols-4">
+          <div className="grid gap-6 grid-cols-1 xl:grid-cols-4">
             {components.map((component) => (
               <div
-                className="pt-2 bg-primary-50 mt-2 relative  mb-2 px-4 min-h-[152px] min-w-[270px]"
+                className="pt-2 bg-primary-50 mt-2 relative mb-2 px-4 min-h-[152px] min-w-[270px]"
                 key={component.id}
               >
                 <div className="text-base text-card-text align-middle">
@@ -593,7 +593,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                     pagination={false}
                     showHeader={false}
                     bordered={false}
-                    className="noborderTable mb-8"
+                    className="noborderTable h-48 overflow-auto"
                     size="middle"
                     columns={[
                       {
@@ -626,7 +626,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                     ]}
                   />
                 </div>
-                <div className="w-[96%] h-[1.5px] mt-8 bg-card-divider" />
+                <div className="w-[96%] h-[1.5px] bg-card-divider" />
                 <div className="self-end">
                   <div
                     className="flex py-6"
