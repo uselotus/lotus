@@ -45,7 +45,6 @@ const CancelMenuComponent = ({
 
     <Radio.Group
       onChange={(e) => {
-        console.log(e.target.value); // check if value is being captured correctly
         setUsageBehavior(e.target.value);
       }}
       buttonStyle="solid"
