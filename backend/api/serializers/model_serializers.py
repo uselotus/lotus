@@ -99,7 +99,7 @@ class LightweightCustomerSerializer(
         )
         extra_kwargs = {
             "customer_id": {"required": True, "read_only": True},
-            "customer_name": {"required": True, "read_only": True},
+            "customer_name": {"required": True, "read_only": True, "allow_null": True},
             "email": {"required": True, "read_only": True},
         }
 
@@ -600,7 +600,6 @@ class CustomerSerializer(
 
     customer_id = serializers.CharField()
     email = serializers.EmailField()
-    customer_name = serializers.CharField()
     subscriptions = serializers.SerializerMethodField()
     invoices = serializers.SerializerMethodField()
     total_amount_due = serializers.SerializerMethodField()
