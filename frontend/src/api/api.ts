@@ -232,8 +232,9 @@ export const AddOn = {
     requests.get(`app/addons/${addon_id}/`),
   deleteAddOn: (addon_id: string): Promise<PlanVersionsType> =>
     requests.get(`app/addons/${addon_id}/delete/`),
-  createAddOn: (post: CreateAddOnType): Promise<AddOnType> =>
-    requests.post("app/addons/", post),
+  createAddOn: (
+    post: components["schemas"]["AddOnCreateRequest"]
+  ): Promise<AddOnType> => requests.post("app/addons/", post),
   createAddOnFeatures: (
     addon_id: string,
     post: CreateAddOnFeatureBody

@@ -1,3 +1,5 @@
+/* eslint-disable no-plusplus */
+/* eslint-disable camelcase */
 import { Button, Card, Form, Input, InputNumber, Select } from "antd";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -17,6 +19,7 @@ import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import { CurrencyType } from "../types/pricing-unit-type";
 import { AddOnTypeOption, CreateAddOnType } from "../types/addon-type";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
+import { components } from "../gen-types";
 
 interface ComponentDisplay {
   metric: string;
@@ -87,7 +90,8 @@ function CreateAddOns() {
   }, []);
 
   const mutation = useMutation(
-    (add_on: CreateAddOnType) => AddOn.createAddOn(add_on),
+    (add_on: components["schemas"]["AddOnCreateRequest"]) =>
+      AddOn.createAddOn(add_on),
     {
       onSuccess: () => {
         toast.success("Successfully created Add-on", {
@@ -112,6 +116,7 @@ function CreateAddOns() {
           (feat) => feat.feature_id === newFeatures[i].feature_id
         )
       ) {
+        //
       } else {
         setPlanFeatures((prev) => [...prev, newFeatures[i]]);
       }
@@ -194,12 +199,17 @@ function CreateAddOns() {
     const components: any = Object.values(componentsData);
     if (components) {
       for (let i = 0; i < components.length; i++) {
-        const usagecomponent: CreateComponent = {
+        const usagecomponent = {
           metric_id: components[i].metric_id,
           tiers: components[i].tiers,
-          proration_granularity: components[i].proration_granularity,
+          reset_interval_count: components[i].reset_interval_count,
+          reset_interval_unit: components[i].reset_interval_unit,
+          invoicing_interval_count: components[i].invoicing_interval_count,
+          invoicing_interval_unit: components[i].invoicing_interval_unit,
+
+          prepaid_charge: components[i].prepaid_charge,
         };
-        usagecomponentslist.push(usagecomponent);
+        usagecomponentslist.push(usagecomponent as any);
       }
     }
     const featureIdList: string[] = [];
@@ -218,16 +228,20 @@ function CreateAddOns() {
       charge_behavior: "prorate",
     });
 
-    const addons: CreateAddOnType = {
-      addon_name: addon_name,
-      description: description,
-      addon_type: addon_type,
-      billing_frequency: billing_frequency,
-      recurring_charges: recurring_charges,
-      components: usagecomponentslist.length ? usagecomponentslist : [],
-      features: featureIdList.length ? featureIdList : [],
-      invoice_when: invoice_when,
-      currency_code: selectedCurrency.code,
+    const addons: components["schemas"]["AddOnCreateRequest"] = {
+      addon_name: addon_name as string,
+      plan_description: description as string,
+      initial_version: {
+        invoice_when: invoice_when as
+          | "invoice_on_attach"
+          | "invoice_on_subscription_end",
+        billing_frequency: billing_frequency as "one_time" | "recurring",
+        components: usagecomponentslist.length
+          ? (usagecomponentslist as any)
+          : [],
+        features: featureIdList.length ? featureIdList : [],
+        currency_code: selectedCurrency.code,
+      },
     };
     mutation.mutate(addons);
   };
