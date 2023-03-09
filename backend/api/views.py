@@ -13,40 +13,6 @@ from typing import Optional
 
 import posthog
 import pytz
-from dateutil import parser
-from dateutil.relativedelta import relativedelta
-from django.conf import settings
-from django.db.models import (
-    Count,
-    DecimalField,
-    F,
-    Max,
-    Min,
-    OuterRef,
-    Prefetch,
-    Q,
-    Subquery,
-    Sum,
-    Value,
-)
-from django.db.models.functions import Coalesce
-from django.db.utils import IntegrityError
-from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import (
-    action,
-    api_view,
-    authentication_classes,
-    permission_classes,
-)
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
 from api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
     AddOnSubscriptionRecordSerializer,
@@ -86,6 +52,28 @@ from api.serializers.nonmodel_serializers import (
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
 )
+from dateutil import parser
+from dateutil.relativedelta import relativedelta
+from django.conf import settings
+from django.db.models import (
+    Count,
+    DecimalField,
+    F,
+    Max,
+    Min,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
+from django.db.utils import IntegrityError
+from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from metering_billing.auth.auth_utils import (
     PermissionPolicyMixin,
     fast_api_key_validation_and_cache,
@@ -126,7 +114,7 @@ from metering_billing.serializers.serializer_utils import (
     OrganizationUUIDField,
     PlanUUIDField,
     SlugRelatedFieldWithOrganizationPK,
-    SubscriptionRecordUUIDField,
+    SubscriptionUUIDField,
 )
 from metering_billing.utils import calculate_end_date, convert_to_datetime, now_utc
 from metering_billing.utils.enums import (
@@ -141,6 +129,17 @@ from metering_billing.utils.enums import (
     USAGE_BILLING_BEHAVIOR,
 )
 from metering_billing.webhooks import customer_created_webhook
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import (
+    action,
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -545,12 +544,18 @@ class SubscriptionViewSet(
 
     def get_object(self):
         subscription_id = self.kwargs.get("subscription_id")
-        subscription_uuid = SubscriptionRecordUUIDField().to_internal_value(
-            subscription_id
-        )
-        addon_version_id = self.kwargs.get("addon_version_id")
-        if addon_version_id:
-            addon_uuid = AddOnVersionUUIDField().to_internal_value(addon_version_id)
+        subscription_uuid = SubscriptionUUIDField().to_internal_value(subscription_id)
+        addon_id = self.kwargs.get("addon_id")
+        is_addon_version = False
+        if addon_id:
+            try:
+                addon_uuid = AddOnUUIDField().to_internal_value(addon_id)
+            except Exception as e:
+                try:
+                    addon_uuid = AddOnVersionUUIDField().to_internal_value(addon_id)
+                    is_addon_version = True
+                except Exception:
+                    raise e
         else:
             addon_uuid = None
         if not subscription_uuid:
@@ -564,16 +569,21 @@ class SubscriptionViewSet(
                 f"Subscription with subscription_id {subscription_id} not found"
             )
         if addon_uuid:
-            addons_for_sr = obj.addon_subscription_records.filter(
-                billing_plan__version_id=addon_uuid
-            )
+            if is_addon_version:
+                addons_for_sr = obj.addon_subscription_records.filter(
+                    billing_plan__version_id=addon_uuid
+                )
+            else:
+                addons_for_sr = obj.addon_subscription_records.filter(
+                    billing_plan__plan__plan_id=addon_uuid
+                )
             if not addons_for_sr.exists():
                 raise NotFoundException(
-                    f"Addon with addon_version_id {addon_version_id} not found for subscription {subscription_id}"
+                    f"Addon with addon_id {addon_uuid} not found for subscription {subscription_id}"
                 )
             elif addons_for_sr.count() > 1:
                 raise ServerError(
-                    f"Unexpected state. More than one addon found for subscription {subscription_id} and addon_id {addon_version_id}"
+                    f"Unexpected state. More than one addon found for subscription {subscription_id} and addon_id {addon_uuid}"
                 )
             obj = addons_for_sr.first()
         return obj
@@ -585,7 +595,6 @@ class SubscriptionViewSet(
         return context
 
     def get_serializer_class(self):
-        print("self.action", self.action)
         if self.action == "edit":
             return SubscriptionRecordUpdateSerializerOld
         elif self.action == "update_subscription":
@@ -873,7 +882,11 @@ class SubscriptionViewSet(
         current_sr = self.get_object()
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        new_billing_plan = serializer.validated_data["plan_version"]
+        if "plan_version" in serializer.validated_data:
+            new_billing_plan = serializer.validated_data["plan_version"]
+        else:
+            plan = serializer.validated_data["plan"]
+            new_billing_plan = plan.get_version_for_customer(current_sr.customer)
         if new_billing_plan == current_sr.billing_plan:
             raise ValidationError("Cannot switch to the same plan.")
         if (
@@ -886,10 +899,10 @@ class SubscriptionViewSet(
             for sub_rec in current_sr.addon_subscription_records.all()
             for pc in sub_rec.billing_plan.plan_components.all()
         }
-        replace_plan_metrics = {
+        switch_plan_metrics = {
             pc.billable_metric for pc in new_billing_plan.plan_components.all()
         }
-        if replace_plan_metrics.intersection(sr_plan_metrics):
+        if switch_plan_metrics.intersection(sr_plan_metrics):
             logger.debug(
                 "Cannot switch to a plan with overlapping metrics with the current addons."
             )
@@ -1232,9 +1245,9 @@ class SubscriptionViewSet(
         plan_to_replace = qs.first().billing_plan
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        replace_plan = serializer.validated_data.get("plan")
-        if replace_plan:
-            possible_billing_plans = replace_plan.versions.all()
+        switch_plan = serializer.validated_data.get("plan")
+        if switch_plan:
+            possible_billing_plans = switch_plan.versions.all()
             current_currency = qs.first().billing_plan.currency
             possible_billing_plans = possible_billing_plans.filter(
                 currency=current_currency
@@ -1286,7 +1299,7 @@ class SubscriptionViewSet(
             qs = qs.filter(
                 billing_plan__addon_spec__isnull=True
             )  # no addons in replace
-            replace_plan_metrics = {
+            switch_plan_metrics = {
                 pc.billable_metric for pc in replace_billing_plan.plan_components.all()
             }
             for subscription_record in qs:
@@ -1295,7 +1308,7 @@ class SubscriptionViewSet(
                     for sub_rec in subscription_record.addon_subscription_records.all()
                     for pc in sub_rec.billing_plan.plan_components.all()
                 }
-                if replace_plan_metrics.intersection(original_sub_record_plan_metrics):
+                if switch_plan_metrics.intersection(original_sub_record_plan_metrics):
                     logger.debug(
                         "Cannot switch to a plan with overlapping metrics with the current addons."
                     )

@@ -670,9 +670,9 @@ paths:
             - not_started
             type: string
           default:
+          - ended
           - not_started
           - active
-          - ended
         description: Filter to versions that have this status. Ended means it has
           an active_to date in the past. Not started means it has an active_from date
           in the future or null.
@@ -732,9 +732,9 @@ paths:
             - not_started
             type: string
           default:
+          - ended
           - not_started
           - active
-          - ended
         description: Filter to versions that have this status. Ended means it has
           an active_to date in the past. Not started means it has an active_from date
           in the future or null.
@@ -3596,9 +3596,9 @@ paths:
             - not_started
             type: string
           default:
+          - ended
           - not_started
           - active
-          - ended
         description: Filter to versions that have this status. Ended means it has
           an active_to date in the past. Not started means it has an active_from date
           in the future or null.
@@ -3687,9 +3687,9 @@ paths:
             - not_started
             type: string
           default:
+          - ended
           - not_started
           - active
-          - ended
         description: Filter to versions that have this status. Ended means it has
           an active_to date in the past. Not started means it has an active_from date
           in the future or null.
@@ -5183,12 +5183,6 @@ components:
     AddOnDetail:
       type: object
       properties:
-        addon_description:
-          type: string
-          description: The description of the add-on plan.
-        addon_name:
-          type: string
-          description: The name of the add-on plan.
         addon_id:
           type: string
           description: The ID of the add-on plan.
@@ -5197,6 +5191,12 @@ components:
           items:
             $ref: '#/components/schemas/AddOnVersion'
           description: This addon's versions.
+        addon_name:
+          type: string
+          description: The name of the add-on plan.
+        addon_description:
+          type: string
+          description: The description of the add-on plan.
       required:
       - addon_description
       - addon_id
@@ -6118,17 +6118,16 @@ components:
     BacktestDetail:
       type: object
       properties:
-        backtest_name:
-          type: string
-          maxLength: 100
-        status:
-          enum:
-          - running
-          - completed
-          - failed
-          type: string
         backtest_results:
           $ref: '#/components/schemas/AllSubstitutionResults'
+        start_date:
+          type: string
+          format: date
+        time_created:
+          type: string
+          format: date-time
+        backtest_id:
+          type: string
         backtest_substitutions:
           type: array
           items:
@@ -6136,14 +6135,15 @@ components:
         end_date:
           type: string
           format: date
-        backtest_id:
+        status:
+          enum:
+          - running
+          - completed
+          - failed
           type: string
-        time_created:
+        backtest_name:
           type: string
-          format: date-time
-        start_date:
-          type: string
-          format: date
+          maxLength: 100
         kpis:
           type: object
           additionalProperties: {}
@@ -8438,15 +8438,23 @@ components:
     DraftInvoice:
       type: object
       properties:
+        invoice_id:
+          type: string
+        issue_date:
+          type: string
+          format: date-time
+          readOnly: true
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
+        end_date:
+          type: string
+          format: date
+          readOnly: true
         due_date:
           type: string
           format: date-time
           readOnly: true
           nullable: true
-        issue_date:
-          type: string
-          format: date-time
-          readOnly: true
         cost_due:
           type: number
           format: double
@@ -8455,7 +8463,7 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           readOnly: true
-        end_date:
+        start_date:
           type: string
           format: date
           readOnly: true
@@ -8464,14 +8472,6 @@ components:
           items:
             $ref: '#/components/schemas/GroupedLineItem'
           readOnly: true
-        invoice_id:
-          type: string
-        start_date:
-          type: string
-          format: date
-          readOnly: true
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
       required:
       - cost_due
       - currency
@@ -8862,14 +8862,6 @@ components:
     InitialAddOnVersionCreateRequest:
       type: object
       properties:
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponentCreateRequest'
-          nullable: true
-        currency_code:
-          type: string
-          minLength: 1
         invoice_when:
           enum:
           - invoice_on_attach
@@ -8879,15 +8871,23 @@ components:
           items:
             $ref: '#/components/schemas/RecurringChargeCreateRequest'
           nullable: true
-        billing_frequency:
-          enum:
-          - one_time
-          - recurring
+        currency_code:
+          type: string
+          minLength: 1
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponentCreateRequest'
+          nullable: true
         features:
           type: array
           items:
             type: string
             format: uuid
+        billing_frequency:
+          enum:
+          - one_time
+          - recurring
       required:
       - billing_frequency
       - currency_code
@@ -8924,33 +8924,27 @@ components:
     InitialPlanVersionCreateRequest:
       type: object
       properties:
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponentCreateRequest'
-        currency_code:
-          type: string
-          minLength: 1
-        version:
-          type: integer
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustmentRequest'
-        recurring_charges:
-          type: array
-          items:
-            $ref: '#/components/schemas/RecurringChargeCreateRequest'
         day_anchor:
           type: integer
           maximum: 31
           minimum: 1
           writeOnly: true
           nullable: true
+        recurring_charges:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecurringChargeCreateRequest'
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustmentRequest'
         month_anchor:
           type: integer
           maximum: 12
           minimum: 1
           writeOnly: true
           nullable: true
+        currency_code:
+          type: string
+          minLength: 1
         target_customer_ids:
           type: array
           items:
@@ -8959,6 +8953,10 @@ components:
             minLength: 1
             description: The id provided when creating the customer, we suggest matching
               with your internal customer id in your backend
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponentCreateRequest'
         localized_name:
           type: string
           writeOnly: true
@@ -8968,6 +8966,8 @@ components:
           items:
             type: string
             format: uuid
+        version:
+          type: integer
       required:
       - currency_code
       - version
@@ -9466,19 +9466,27 @@ components:
     LightweightInvoice:
       type: object
       properties:
-        due_date:
+        invoice_id:
+          type: string
+        start_date:
+          type: string
+          format: date
+          readOnly: true
+        issue_date:
           type: string
           format: date-time
           readOnly: true
-          nullable: true
-        invoice_id:
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
+        seller:
+          $ref: '#/components/schemas/Seller'
+        end_date:
           type: string
-        external_payment_obj_type:
-          enum:
-          - stripe
-          - braintree
-          - null
+          format: date
+          readOnly: true
+        external_payment_obj_id:
           type: string
+          readOnly: true
           nullable: true
         payment_status:
           enum:
@@ -9487,11 +9495,11 @@ components:
           - paid
           - unpaid
           readOnly: true
-        invoice_pdf:
+        due_date:
           type: string
-          format: uri
-          nullable: true
+          format: date-time
           readOnly: true
+          nullable: true
         cost_due:
           type: number
           format: double
@@ -9500,29 +9508,21 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           readOnly: true
-        external_payment_obj_id:
-          type: string
-          readOnly: true
-          nullable: true
-        seller:
-          $ref: '#/components/schemas/Seller'
-        end_date:
-          type: string
-          format: date
-          readOnly: true
         invoice_number:
           type: string
           readOnly: true
-        issue_date:
+        invoice_pdf:
           type: string
-          format: date-time
+          format: uri
+          nullable: true
           readOnly: true
-        start_date:
+        external_payment_obj_type:
+          enum:
+          - stripe
+          - braintree
+          - null
           type: string
-          format: date
-          readOnly: true
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
+          nullable: true
       required:
       - cost_due
       - currency
@@ -9540,28 +9540,21 @@ components:
     LightweightInvoiceLineItem:
       type: object
       properties:
-        name:
-          type: string
-          maxLength: 100
-        quantity:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: 0
-          exclusiveMaximum: true
-          nullable: true
-        plan:
-          allOf:
-          - $ref: '#/components/schemas/LightweightPlanVersion'
-          nullable: true
-          readOnly: true
-        end_date:
-          type: string
-          format: date-time
         subscription_filters:
           type: array
           items:
             $ref: '#/components/schemas/SubscriptionCategoricalFilter'
+          nullable: true
+          readOnly: true
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+        plan:
+          allOf:
+          - $ref: '#/components/schemas/LightweightPlanVersion'
           nullable: true
           readOnly: true
         billing_type:
@@ -9573,9 +9566,13 @@ components:
           - null
           type: string
           nullable: true
-        start_date:
-          type: string
-          format: date-time
+        quantity:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
+          nullable: true
         subtotal:
           type: number
           format: double
@@ -9583,6 +9580,9 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+        name:
+          type: string
+          maxLength: 100
       required:
       - billing_type
       - end_date
@@ -9677,46 +9677,46 @@ components:
     LightweightSubscriptionRecord:
       type: object
       properties:
-        addons:
-          type: array
-          items:
-            $ref: '#/components/schemas/LightweightAddOnSubscriptionRecord'
-        billing_plan:
-          $ref: '#/components/schemas/LightweightPlanVersion'
-        customer:
-          $ref: '#/components/schemas/LightweightCustomer'
-        is_new:
-          type: boolean
-          description: Whether this subscription came from a renewal or from a first-time.
-            Defaults to true on creation.
-        subscription_id:
-          type: string
-        end_date:
-          type: string
-          format: date-time
-          description: The time the subscription starts. This will be a string in
-            yyyy-mm-dd HH:mm:ss format in UTC time.
+        plan_detail:
+          allOf:
+          - $ref: '#/components/schemas/LightweightPlanVersion'
+          readOnly: true
         subscription_filters:
           type: array
           items:
             $ref: '#/components/schemas/SubscriptionCategoricalFilter'
           readOnly: true
-        fully_billed:
+        is_new:
           type: boolean
-          readOnly: true
+          description: Whether this subscription came from a renewal or from a first-time.
+            Defaults to true on creation.
+        addons:
+          type: array
+          items:
+            $ref: '#/components/schemas/LightweightAddOnSubscriptionRecord'
+        end_date:
+          type: string
+          format: date-time
+          description: The time the subscription starts. This will be a string in
+            yyyy-mm-dd HH:mm:ss format in UTC time.
+        subscription_id:
+          type: string
         auto_renew:
           type: boolean
           description: Whether the subscription automatically renews. Defaults to
             true.
-        plan_detail:
-          allOf:
-          - $ref: '#/components/schemas/LightweightPlanVersion'
+        fully_billed:
+          type: boolean
           readOnly: true
+        customer:
+          $ref: '#/components/schemas/LightweightCustomer'
         start_date:
           type: string
           format: date-time
           description: The time the subscription starts. This will be a string in
             yyyy-mm-dd HH:mm:ss format in UTC time.
+        billing_plan:
+          $ref: '#/components/schemas/LightweightPlanVersion'
       required:
       - addons
       - auto_renew
@@ -9732,24 +9732,22 @@ components:
     LightweightSubscriptionRecordRequest:
       type: object
       properties:
-        addons:
-          type: array
-          items:
-            $ref: '#/components/schemas/LightweightAddOnSubscriptionRecordRequest'
-        billing_plan:
-          $ref: '#/components/schemas/LightweightPlanVersionRequest'
         is_new:
           type: boolean
           description: Whether this subscription came from a renewal or from a first-time.
             Defaults to true on creation.
-        subscription_id:
-          type: string
-          minLength: 1
+        addons:
+          type: array
+          items:
+            $ref: '#/components/schemas/LightweightAddOnSubscriptionRecordRequest'
         end_date:
           type: string
           format: date-time
           description: The time the subscription starts. This will be a string in
             yyyy-mm-dd HH:mm:ss format in UTC time.
+        subscription_id:
+          type: string
+          minLength: 1
         auto_renew:
           type: boolean
           description: Whether the subscription automatically renews. Defaults to
@@ -9759,6 +9757,8 @@ components:
           format: date-time
           description: The time the subscription starts. This will be a string in
             yyyy-mm-dd HH:mm:ss format in UTC time.
+        billing_plan:
+          $ref: '#/components/schemas/LightweightPlanVersionRequest'
       required:
       - addons
       - auto_renew
@@ -10171,6 +10171,10 @@ components:
     MetricDetail:
       type: object
       properties:
+        event_name:
+          type: string
+          readOnly: true
+          description: Name of the event that this metric is tracking.
         property_name:
           type: string
           readOnly: true
@@ -10178,22 +10182,15 @@ components:
           description: The name of the property of the event that should be used for
             this metric. Doesn't apply if the metric is of type 'counter' with an
             aggregation of count.
-        event_name:
-          type: string
-          readOnly: true
-          description: Name of the event that this metric is tracking.
-        custom_sql:
-          type: string
-          readOnly: true
-          nullable: true
-          description: A custom SQL query that can be used to define the metric. Please
-            refer to our documentation for more information.
-        metric_name:
-          type: string
         numeric_filters:
           type: array
           items:
             $ref: '#/components/schemas/NumericFilter'
+        is_cost_metric:
+          type: boolean
+          readOnly: true
+          description: Whether or not this metric is a cost metric (used to track
+            costs to your business).
         granularity:
           enum:
           - seconds
@@ -10210,10 +10207,18 @@ components:
           nullable: true
           description: The granularity of the metric. Only applies to metrics of type
             'gauge' or 'rate'.
+        metric_id:
+          type: string
         categorical_filters:
           type: array
           items:
             $ref: '#/components/schemas/CategoricalFilter'
+        custom_sql:
+          type: string
+          readOnly: true
+          nullable: true
+          description: A custom SQL query that can be used to define the metric. Please
+            refer to our documentation for more information.
         event_type:
           enum:
           - delta
@@ -10224,11 +10229,8 @@ components:
           nullable: true
           description: Used only for metrics of type 'gauge'. Please refer to our
             documentation for an explanation of the different types.
-        is_cost_metric:
-          type: boolean
-          readOnly: true
-          description: Whether or not this metric is a cost metric (used to track
-            costs to your business).
+        metric_name:
+          type: string
         proration:
           enum:
           - seconds
@@ -10245,8 +10247,6 @@ components:
           nullable: true
           description: The proration of the metric. Only applies to metrics of type
             'gauge'.
-        metric_id:
-          type: string
         metric_type:
           enum:
           - counter
@@ -12419,22 +12419,14 @@ components:
     PlanDetail:
       type: object
       properties:
-        plan_description:
-          type: string
-          nullable: true
-          description: Description of the plan
-        external_links:
-          type: array
-          items:
-            $ref: '#/components/schemas/InitialExternalPlanLink'
-          description: The external links that this plan has.
-        num_versions:
-          type: integer
-          readOnly: true
-          description: The number of versions that this plan has.
         plan_name:
           type: string
           description: Name of the plan
+        active_subscriptions:
+          type: integer
+          readOnly: true
+          description: The number of active subscriptions that this plan has across
+            all versions.
         plan_duration:
           enum:
           - monthly
@@ -12444,28 +12436,36 @@ components:
           type: string
           nullable: true
           description: Duration of the plan
+        num_versions:
+          type: integer
+          readOnly: true
+          description: The number of versions that this plan has.
+        external_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/InitialExternalPlanLink'
+          description: The external links that this plan has.
+        plan_id:
+          type: string
+        plan_description:
+          type: string
+          nullable: true
+          description: Description of the plan
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanVersionDetail'
+          readOnly: true
+        taxjar_code:
+          type: string
+          nullable: true
+          maxLength: 30
         tags:
           type: array
           items:
             $ref: '#/components/schemas/Tag'
           readOnly: true
           description: The tags that this plan has.
-        plan_id:
-          type: string
-        taxjar_code:
-          type: string
-          nullable: true
-          maxLength: 30
-        versions:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanVersionDetail'
-          readOnly: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
-          description: The number of active subscriptions that this plan has across
-            all versions.
       required:
       - active_subscriptions
       - external_links
@@ -12675,13 +12675,36 @@ components:
     PlanVersionDetail:
       type: object
       properties:
-        version_id:
+        plan_name:
           type: string
+          readOnly: true
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        transition_to:
+          $ref: '#/components/schemas/LightweightPlan'
+        recurring_charges:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecurringCharge'
+          readOnly: true
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/UsageAlert'
           readOnly: true
         components:
           type: array
           items:
             $ref: '#/components/schemas/PlanComponent'
+        localized_name:
+          type: string
+          readOnly: true
+          nullable: true
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
         version:
           oneOf:
           - type: integer
@@ -12689,25 +12712,27 @@ components:
             - custom_version
             type: string
           readOnly: true
-        alerts:
-          type: array
-          items:
-            $ref: '#/components/schemas/UsageAlert'
+        version_id:
+          type: string
           readOnly: true
+        active_to:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
         replace_with:
           $ref: '#/components/schemas/LightweightPlanVersion'
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
         active_from:
           type: string
           format: date-time
           readOnly: true
           nullable: true
-        recurring_charges:
-          type: array
-          items:
-            $ref: '#/components/schemas/RecurringCharge'
-          readOnly: true
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
+        price_adjustment:
+          allOf:
+          - $ref: '#/components/schemas/PriceAdjustment'
+          nullable: true
         status:
           enum:
           - active
@@ -12718,34 +12743,9 @@ components:
           - not_started
           type: string
           readOnly: true
-        plan_name:
-          type: string
-          readOnly: true
-        active_to:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
-        transition_to:
-          $ref: '#/components/schemas/LightweightPlan'
-        price_adjustment:
-          allOf:
-          - $ref: '#/components/schemas/PriceAdjustment'
-          nullable: true
         plan_id:
           type: string
           readOnly: true
-        localized_name:
-          type: string
-          readOnly: true
-          nullable: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/Feature'
       required:
       - active_from
       - active_subscriptions
@@ -13785,11 +13785,16 @@ components:
     SubscriptionRecordSwitchPlanRequest:
       type: object
       properties:
-        new_version_id:
+        switch_plan_version_id:
           type: string
           format: uuid
           writeOnly: true
           description: The new plan version to switch to.
+        switch_plan_id:
+          type: string
+          format: uuid
+          writeOnly: true
+          description: The new plan to switch to.
         invoicing_behavior:
           enum:
           - add_to_next_invoice
@@ -13818,7 +13823,8 @@ components:
           description: The initial units for dynamic fixed charges. This is only required
             if the plan has dynamic fixed charges for components.
       required:
-      - new_version_id
+      - switch_plan_id
+      - switch_plan_version_id
     SubscriptionRecordUpdateRequest:
       type: object
       properties:

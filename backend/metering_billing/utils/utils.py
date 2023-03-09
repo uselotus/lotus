@@ -506,7 +506,7 @@ def addon_version_uuid():
 
 
 def addon_sr_uuid():
-    return "addon_sr_" + str(uuid.uuid4().hex)
+    return "addon_subscription_" + str(uuid.uuid4().hex)
 
 
 def usage_alert_uuid():

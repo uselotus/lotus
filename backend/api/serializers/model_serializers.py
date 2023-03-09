@@ -6,9 +6,6 @@ from typing import Literal, Union
 from django.conf import settings
 from django.db.models import Max, Min, Sum
 from drf_spectacular.utils import extend_schema_serializer
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-
 from metering_billing.invoice import generate_balance_adjustment_invoice
 from metering_billing.models import (
     AddOnSpecification,
@@ -69,6 +66,8 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -580,7 +579,7 @@ class CustomerSerializer(
         extra_kwargs = {
             "customer_id": {"required": True, "read_only": True},
             "email": {"required": True, "read_only": True},
-            "customer_name": {"required": True, "read_only": True},
+            "customer_name": {"required": True, "read_only": True, "allow_null": True},
             "invoices": {"required": True, "read_only": True},
             "total_amount_due": {"required": True, "read_only": True},
             "subscriptions": {"required": True, "read_only": True},
@@ -1887,13 +1886,23 @@ class SubscriptionRecordSwitchPlanSerializer(
     class Meta:
         model = SubscriptionRecord
         fields = (
-            "new_version_id",
+            "switch_plan_version_id",
+            "switch_plan_id",
             "invoicing_behavior",
             "usage_behavior",
             "dynamic_fixed_charges_initial_units",
         )
 
-    new_version_id = SlugRelatedFieldWithOrganization(
+    switch_plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        read_only=False,
+        source="plan",
+        queryset=Plan.objects.all(),
+        write_only=True,
+        required=True,
+        help_text="The new plan to switch to.",
+    )
+    switch_plan_version_id = SlugRelatedFieldWithOrganization(
         slug_field="version_id",
         read_only=False,
         source="plan_version",
@@ -1918,6 +1927,15 @@ class SubscriptionRecordSwitchPlanSerializer(
         required=False,
         help_text="The initial units for dynamic fixed charges. This is only required if the plan has dynamic fixed charges for components.",
     )
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        # ensure either plan or plan_version is set
+        if "plan" not in attrs and "plan_version" not in attrs:
+            raise serializers.ValidationError(
+                "Must specify either plan or plan_version."
+            )
+        return attrs
 
 
 class AddOnSubscriptionRecordUpdateSerializer(

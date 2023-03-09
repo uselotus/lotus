@@ -116,6 +116,7 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             Organization,
             Plan,
             PlanVersion,
+            SubscriptionRecord,
         )
 
         if self.queryset.model is CustomerBalanceAdjustment:
@@ -138,6 +139,11 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             data = OrganizationUUIDField().to_internal_value(data)
         elif self.queryset.model is Invoice:
             data = InvoiceUUIDField().to_internal_value(data)
+        elif self.queryset.model is SubscriptionRecord:
+            try:
+                data = SubscriptionUUIDField().to_internal_value(data)
+            except ValidationError:
+                data = AddOnSubscriptionUUIDField().to_internal_value(data)
         return super().to_internal_value(data)
 
     def to_representation(self, obj):
@@ -149,6 +155,7 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             Organization,
             Plan,
             PlanVersion,
+            SubscriptionRecord,
         )
 
         repr = super().to_representation(obj)
@@ -168,6 +175,15 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             return OrganizationUUIDField().to_representation(obj.organization_id)
         elif isinstance(obj, Invoice):
             return InvoiceUUIDField().to_representation(obj.invoice_id)
+        elif isinstance(obj, SubscriptionRecord):
+            if obj.plan_version.addon_spec is None:
+                return SubscriptionUUIDField().to_representation(
+                    obj.susbcription_record_id
+                )
+            else:
+                return AddOnSubscriptionUUIDField().to_representation(
+                    obj.susbcription_record_id
+                )
         return repr
 
 
@@ -277,22 +293,16 @@ class FeatureUUIDField(UUIDPrefixField):
         super().__init__("feature_", *args, **kwargs)
 
 
+@extend_schema_field(serializers.RegexField(regex=r"addon_sub_[0-9a-f]{32}"))
+class AddOnSubscriptionUUIDField(UUIDPrefixField):
+    def __init__(self, *args, **kwargs):
+        super().__init__("addon_sub_", *args, **kwargs)
+
+
 @extend_schema_field(serializers.RegexField(regex=r"sub_[0-9a-f]{32}"))
 class SubscriptionUUIDField(UUIDPrefixField):
     def __init__(self, *args, **kwargs):
         super().__init__("sub_", *args, **kwargs)
-
-
-@extend_schema_field(serializers.RegexField(regex=r"addon_sub_[0-9a-f]{32}"))
-class AddOnSubscriptionUUIDField(UUIDPrefixField):
-    def __init__(self, *args, **kwargs):
-        super().__init__("addon_", *args, **kwargs)
-
-
-@extend_schema_field(serializers.RegexField(regex=r"sr_[0-9a-f]{32}"))
-class SubscriptionRecordUUIDField(UUIDPrefixField):
-    def __init__(self, *args, **kwargs):
-        super().__init__("sr_", *args, **kwargs)
 
 
 @extend_schema_field(serializers.RegexField(regex=r"usg_alert_[0-9a-f]{32}"))
