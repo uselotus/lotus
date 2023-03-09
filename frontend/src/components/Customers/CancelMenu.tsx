@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Radio } from "antd";
 import { CancelSubscriptionBody } from "../../types/subscription-type";
 
@@ -30,7 +30,6 @@ const CancelMenuComponent = ({
     >
       <div className="flex flex-row items-center gap-4">
         <Radio.Button value="refund">Refund As Credit</Radio.Button>
-
         <Radio.Button value="charge_prorated">Prorated Amount</Radio.Button>
         <Radio.Button value="charge_full">Full Amount</Radio.Button>
       </div>
@@ -38,7 +37,10 @@ const CancelMenuComponent = ({
     <h3 className="mt-10">Usage Behavior</h3>
 
     <Radio.Group
-      onChange={(e) => setUsageBehavior(e.target.value)}
+      onChange={(e) => {
+        console.log(e.target.value); // check if value is being captured correctly
+        setUsageBehavior(e.target.value);
+      }}
       buttonStyle="solid"
       style={{ width: "100%" }}
       defaultValue="bill_full"
@@ -55,7 +57,6 @@ const CancelMenuComponent = ({
       onChange={(e) => setInvoiceBehavior(e.target.value)}
       buttonStyle="solid"
       style={{ width: "100%" }}
-      defaultValue="invoice_now"
     >
       <div className="flex flex-row items-center gap-4">
         <Radio.Button value="add_to_next_invoice">
