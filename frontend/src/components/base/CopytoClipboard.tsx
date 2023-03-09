@@ -1,14 +1,16 @@
 // @ts-ignore
-import React, { useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { CheckCircleOutlined, CopyOutlined } from "@ant-design/icons";
 import "./CopytoClipboard.css";
 import { Tooltip } from "antd";
+import Prism from "prismjs";
 
 interface CopyTextProps {
   textToCopy: string;
   className?: string;
   showIcon?: boolean;
   onlyIcon?: boolean;
+  language?: string;
 }
 
 const CopyText: React.FC<CopyTextProps> = ({
@@ -16,8 +18,16 @@ const CopyText: React.FC<CopyTextProps> = ({
   className,
   showIcon,
   onlyIcon,
+  language,
 }) => {
   const [copySuccess, setCopySuccess] = useState(false);
+  const codeRef = useRef(null);
+
+  useEffect(() => {
+    if (codeRef.current) {
+      Prism.highlightElement(codeRef.current);
+    }
+  }, [textToCopy]);
 
   const copyToClipBoard = async (copyMe) => {
     try {
@@ -49,7 +59,12 @@ const CopyText: React.FC<CopyTextProps> = ({
           }
         >
           {!onlyIcon && (
-            <span className="text-to-copy font-menlo">{textToCopy}</span>
+            <code
+              ref={codeRef}
+              className={`language-${language} text-to-copy font-menlo`}
+            >
+              {textToCopy}
+            </code>
           )}
           {!!showIcon && <CopyOutlined />}
         </Tooltip>
