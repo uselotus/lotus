@@ -212,7 +212,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
           to={`/create-version/${selectedVersion?.plan_id}`}
           className="mx-4"
         >
-          <div className="flex items-center justify-center px-2 py-2 rounded-[20px] hover:bg-[#EAEAEB]">
+          <div className="flex items-center justify-center px-2 py-2  hover:bg-[#EAEAEB]">
             <div className="addVersionButton">
               <PlusOutlined />
             </div>

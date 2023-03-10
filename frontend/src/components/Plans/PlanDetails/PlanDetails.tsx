@@ -27,7 +27,7 @@ import {
 import LoadingSpinner from "../../LoadingSpinner";
 import { components } from "../../../gen-types";
 import CustomPlanDetails from "./CustomPlanDetails";
-import Select from "../../base/Select/Select";
+import { Select } from "antd";
 
 type PlanDetailParams = {
   planId: string;
@@ -283,16 +283,17 @@ const PlanDetails: FC = () => {
                 <div>
                   <div className="mx-10 flex items-center gap-4">
                     <span>Filters</span>
-                    <Select>
-                      <Select.Label className="hidden">Filters</Select.Label>
-                      <Select.Select
-                        onChange={() => {
-                          const selectedType = customPlans.find(
-                            (el) => el.plan_name === selectRef.current?.value
-                          );
+                    <Select
+                      className="hidden !w-min-150px"
+                      onChange={() => {
+                        const selectedType = customPlans.find(
+                          (el) => el.plan_name === selectRef.current?.value
+                        );
 
-                          setSelection(selectedType);
-                        }}
+                        setSelection(selectedType);
+                      }}
+                    >
+                      <Select.Select
                         className="!w-full !border !border-black"
                         ref={selectRef}
                       >
