@@ -239,7 +239,6 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         </Link>
         <div>
           <Select
-            ref={selectRef}
             value={`Currency:${selectedVersion?.currency?.code}-${selectedVersion?.currency?.symbol}`}
             onChange={(e) => {
               // const arr = [
@@ -317,35 +316,6 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
             version_id={selectedVersion!.version_id}
           />
         </div>
-
-        <div className=" mt-4 min-w-[246px] -mx-10 p-8 cursor-pointer font-main rounded-sm bg-card">
-          <Typography.Title className="!text-[18px]">
-            Price Adjustments:{" "}
-            {getPriceAdjustmentEnding(
-              selectedVersion?.price_adjustment?.price_adjustment_type,
-              selectedVersion?.price_adjustment?.price_adjustment_amount,
-              selectedVersion!.currency.symbol
-            )}
-          </Typography.Title>
-        </div>
-
-        {/* <div className="px-4 flex justify-start align-middle ">
-          <div className="pb-5 font-main font-bold">Transition To:</div>
-          <div className="mb-5 px-4 font-main font-bold self-center">
-            {selectedVersion.transition_to || "------"}
-          </div>
-        </div> */}
-
-        {/* <div className="px-4 py-4 flex items-center justify-between">
-          <div className="pb-5 pt-3 font-main font-bold text-[20px]">
-            Localisation:
-          </div>
-          <div>
-            <Button size="large" key="use lotus recommended">
-              Use Lotus Recommended
-            </Button>
-          </div>
-        </div> */}
       </div>
       <AddCurrencyModal
         plan_id={plan.plan_id}

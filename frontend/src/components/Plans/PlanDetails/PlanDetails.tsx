@@ -175,7 +175,6 @@ const PlanDetails: FC = () => {
 
       {
         onSuccess: (plan) => {
-          console.log(plan);
           setCustomPlans(plan.versions);
           setSelectedCustomPlan(plan.versions[0]);
         },
@@ -187,7 +186,7 @@ const PlanDetails: FC = () => {
   const navigateCreateCustomPlan = () => {
     navigate(`/create-custom/${planId}`);
   };
-  console.log(customPlans);
+
   return (
     <>
       {isLoading && (
@@ -285,7 +284,7 @@ const PlanDetails: FC = () => {
                         const selectedType = customPlans?.find(
                           (el) => el.plan_name === e
                         );
-                        console.log("tyoe", e);
+
                         setSelectedCustomPlan(selectedType);
                       }}
                       value={selectedCustomPlan?.plan_name}
