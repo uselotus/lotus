@@ -124,11 +124,7 @@ type GetPlansQuery = operations["app_plans_list"]["parameters"];
 
 const requests = {
   get: (url: string, params?: object) =>
-    instance
-      .get(url, {
-        params,
-      })
-      .then(responseBody),
+    instance.get(url, params).then(responseBody),
   post: (url: string, body: object, params?: object) =>
     instance.post(url, body, { params }).then(responseBody),
   patch: (url: string, body: object, params?: object) =>
