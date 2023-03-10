@@ -280,32 +280,32 @@ const PlanDetails: FC = () => {
                 )}
               </Tabs.TabPane>
               <Tabs.TabPane tab="Custom Plans" key="1">
-                {customPlans && customPlans.length > 0 && (
-                  <div>
-                    <div className="mx-10 flex items-center gap-4">
-                      <span>Filters</span>
-                      <Select>
-                        <Select.Label className="hidden">Filters</Select.Label>
-                        <Select.Select
-                          onChange={() => {
-                            const selectedType = customPlans.find(
-                              (el) => el.plan_name === selectRef.current?.value
-                            );
+                <div>
+                  <div className="mx-10 flex items-center gap-4">
+                    <span>Filters</span>
+                    <Select>
+                      <Select.Label className="hidden">Filters</Select.Label>
+                      <Select.Select
+                        onChange={() => {
+                          const selectedType = customPlans.find(
+                            (el) => el.plan_name === selectRef.current?.value
+                          );
 
-                            setSelection(selectedType);
-                          }}
-                          className="!w-full !border !border-black"
-                          ref={selectRef}
-                        >
-                          {/* <Select.Option selected>{selection}</Select.Option> */}
-                          {customPlans.map((el) => (
-                            <Select.Option key={el.plan_id}>
-                              {el.plan_name}
-                            </Select.Option>
-                          ))}
-                        </Select.Select>
-                      </Select>
-                    </div>
+                          setSelection(selectedType);
+                        }}
+                        className="!w-full !border !border-black"
+                        ref={selectRef}
+                      >
+                        {/* <Select.Option selected>{selection}</Select.Option> */}
+                        {customPlans.map((el) => (
+                          <Select.Option key={el.plan_id}>
+                            {el.plan_name}
+                          </Select.Option>
+                        ))}
+                      </Select.Select>
+                    </Select>
+                  </div>
+                  {selection && (
                     <CustomPlanDetails
                       activeKey={activeKey}
                       refetch={refetch}
@@ -314,8 +314,8 @@ const PlanDetails: FC = () => {
                       deletePlanExternalLink={deletePlanExternalLink}
                       plan={selection!}
                     />
-                  </div>
-                )}
+                  )}
+                </div>
               </Tabs.TabPane>
             </Tabs>
           </div>

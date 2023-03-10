@@ -119,9 +119,11 @@ const PlanCustomerSubscriptions: FC<PlanCustomerSubscriptionProps> = ({
         </div>
       ) : (
         <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card">
-          <Typography.Title level={2}>Current Subscriptions</Typography.Title>
+          <Typography.Title className="pt-4 whitespace-pre-wrap !text-[18px]">
+            Current Subscriptions
+          </Typography.Title>
           <div className="w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
-          <div className="text-card-grey text-base">No subscriptions added</div>
+          <div className="text-card-grey ">No subscriptions</div>
         </div>
       )}
     </div>

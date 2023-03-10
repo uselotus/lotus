@@ -106,11 +106,6 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
       </Typography.Title>
 
       <div>
-        {plan.parent_plan !== null ? (
-          <Tag className="!text-[12px]" color="#C3986B">
-            {plan.parent_plan?.plan_name}
-          </Tag>
-        ) : null}
         <div>
           <div className="mb-2">
             <div className="pr-1 font-normal font-alliance not-italic whitespace-nowrap  text-darkgold">
