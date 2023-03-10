@@ -35,11 +35,10 @@ type PlanDetailParams = {
 
 const PlanDetails: FC = () => {
   const navigate = useNavigate();
-  const [customPlans, setCustomPlans] = useState<
-    components["schemas"]["PlanDetail"][]
-  >([]);
+  const [customPlans, setCustomPlans] =
+    useState<components["schemas"]["PlanDetail"]["versions"]>();
   const [selectedCustomPlan, setSelectedCustomPlan] =
-    React.useState<(typeof customPlans)[0]>();
+    React.useState<components["schemas"]["PlanDetail"]["versions"][0]>();
   const selectRef = useRef<HTMLSelectElement | null>(null!);
   const dropdownSelectRef = useRef<HTMLSelectElement | null>(null!);
   const [activeKey, setActiveKey] = useState("0");
@@ -170,20 +169,19 @@ const PlanDetails: FC = () => {
     () => Plan.getPlan(planId as string).then((res) => res),
     { refetchOnMount: "always" }
   );
-  const {
-    data: plans,
-  }: UseQueryResult<components["schemas"]["PlanDetail"][] | PlanType[]> =
-    useQuery<components["schemas"]["PlanDetail"][] | PlanType[]>(
+  const { data: plans }: UseQueryResult<components["schemas"]["PlanDetail"]> =
+    useQuery<components["schemas"]["PlanDetail"]>(
       ["plan_list"],
       () =>
-        Plan.getPlans({ version_custom_type: "custom_only" }).then(
+        Plan.getPlan({ planID: planId, version: "custom_only" }).then(
           (res) => res
         ),
 
       {
-        onSuccess: (plans) => {
-          setCustomPlans(plans as components["schemas"]["PlanDetail"][]);
-          setSelectedCustomPlan(plans[0] as (typeof customPlans)[0]);
+        onSuccess: (plan) => {
+          setCustomPlans(plan.versions);
+          setSelectedCustomPlan(plan.versions[0]);
+          å;
         },
       }
     );
@@ -289,7 +287,7 @@ const PlanDetails: FC = () => {
                       className="hidden "
                       onChange={() => {
                         const selectedType = customPlans.find(
-                          (el) => el.plan_name === selectRef.current?.value
+                          (el) => el.localized_name === selectRef.current?.value
                         );
 
                         setSelectedCustomPlan(selectedType);
@@ -301,10 +299,10 @@ const PlanDetails: FC = () => {
                     <CustomPlanDetails
                       activeKey={activeKey}
                       refetch={refetch}
-                      version={selectedCustomPlan!.versions[0]}
+                      version={selectedCustomPlan}
                       createPlanExternalLink={createPlanExternalLink}
                       deletePlanExternalLink={deletePlanExternalLink}
-                      plan={selectedCustomPlan!}
+                      plan={plan!}
                     />
                   )}
                 </div>
