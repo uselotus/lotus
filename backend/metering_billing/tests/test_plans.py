@@ -3,13 +3,12 @@ import json
 import pytest
 from dateutil.relativedelta import relativedelta
 from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIClient
-
 from metering_billing.models import Customer, Feature, Plan, PlanVersion, Tag
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PLAN_DURATION
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -835,7 +834,7 @@ class TestPlanVersionOperations:
 
         params = {"version_status[]": ["active"]}
         list_plans = setup_dict["client"].get(reverse("plan-list"), params=params)
-        assert len(list_plans.data[0]["versions"]) == 0
+        assert len(list_plans.data) == 0  # all plans remvoed cuz no versions left
 
     def test_edit_active_from_no_longer_in_list_plans(self, plan_test_common_setup):
         setup_dict = plan_test_common_setup()
@@ -885,4 +884,4 @@ class TestPlanVersionOperations:
 
         params = {"version_status[]": ["active"]}
         list_plans = setup_dict["client"].get(reverse("plan-list"), params=params)
-        assert len(list_plans.data[0]["versions"]) == 0
+        assert len(list_plans.data) == 0  # all plans remvoed cuz no versions left

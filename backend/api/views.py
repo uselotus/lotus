@@ -13,45 +13,6 @@ from typing import Optional
 
 import posthog
 import pytz
-from dateutil import parser
-from dateutil.relativedelta import relativedelta
-from django.conf import settings
-from django.db.models import (
-    Count,
-    DecimalField,
-    F,
-    Max,
-    Min,
-    OuterRef,
-    Prefetch,
-    Q,
-    Subquery,
-    Sum,
-    Value,
-)
-from django.db.models.functions import Coalesce
-from django.db.utils import IntegrityError
-from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import (
-    OpenApiExample,
-    OpenApiParameter,
-    extend_schema,
-    inline_serializer,
-)
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import (
-    action,
-    api_view,
-    authentication_classes,
-    permission_classes,
-)
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
 from api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
     AddOnSubscriptionRecordSerializer,
@@ -90,6 +51,33 @@ from api.serializers.nonmodel_serializers import (
     GetInvoicePdfURLResponseSerializer,
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
+)
+from dateutil import parser
+from dateutil.relativedelta import relativedelta
+from django.conf import settings
+from django.db.models import (
+    Count,
+    DecimalField,
+    F,
+    Max,
+    Min,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
+from django.db.utils import IntegrityError
+from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiParameter,
+    extend_schema,
+    inline_serializer,
 )
 from metering_billing.auth.auth_utils import (
     PermissionPolicyMixin,
@@ -146,6 +134,17 @@ from metering_billing.utils.enums import (
     USAGE_BILLING_BEHAVIOR,
 )
 from metering_billing.webhooks import customer_created_webhook
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import (
+    action,
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -565,14 +564,12 @@ class SubscriptionViewSet(
         subscription_id = self.kwargs.get("subscription_id")
         subscription_uuid = SubscriptionUUIDField().to_internal_value(subscription_id)
         addon_id = self.kwargs.get("addon_id")
-        is_addon_version = False
         if addon_id:
             try:
                 addon_uuid = AddOnUUIDField().to_internal_value(addon_id)
             except Exception as e:
                 try:
                     addon_uuid = AddOnVersionUUIDField().to_internal_value(addon_id)
-                    is_addon_version = True
                 except Exception:
                     raise e
         else:
@@ -588,11 +585,11 @@ class SubscriptionViewSet(
                 f"Subscription with subscription_id {subscription_id} not found"
             )
         if addon_uuid:
-            if is_addon_version:
+            try:
                 addons_for_sr = obj.addon_subscription_records.filter(
                     billing_plan__version_id=addon_uuid
                 )
-            else:
+            except Exception:
                 addons_for_sr = obj.addon_subscription_records.filter(
                     billing_plan__plan__plan_id=addon_uuid
                 )
@@ -939,7 +936,6 @@ class SubscriptionViewSet(
                 "component_fixed_charges_initial_units", []
             ),
         )
-        print("HELLOOOO new_sr", new_sr)
         return Response(
             SubscriptionRecordSerializer(new_sr).data, status=status.HTTP_200_OK
         )
@@ -996,14 +992,12 @@ class SubscriptionViewSet(
             component=target_plan_component,
             start_date__gt=now,
         )
-        print("future_component_records", future_component_records)
         current_component_record = ComponentChargeRecord.objects.get(
             start_date__lte=now,
             end_date__gt=now,
             billing_record__subscription=current_sr,
             component=target_plan_component,
         )
-        print("current_component_record", current_component_record)
         ComponentChargeRecord.objects.create(
             billing_record=current_component_record.billing_record,
             organization=organization,
@@ -1053,6 +1047,7 @@ class SubscriptionViewSet(
             context={
                 "attach_to_subscription_record": attach_to_sr,
                 "organization": organization,
+                "customer": attach_to_sr.customer,
             },
         )
         serializer.is_valid(raise_exception=True)
@@ -1061,68 +1056,6 @@ class SubscriptionViewSet(
             AddOnSubscriptionRecordSerializer(sr).data,
             status=status.HTTP_201_CREATED,
         )
-
-    # @extend_schema(
-    #     responses=AddOnSubscriptionRecordSerializer(many=True),
-    #     parameters=[
-    #         OpenApiParameter(
-    #             name="subscription_id",
-    #             location=OpenApiParameter.PATH,
-    #             type=OpenApiTypes.STR,
-    #             description="The ID of the subscription to update.",
-    #         ),
-    #         OpenApiParameter(
-    #             name="addon_id",
-    #             location=OpenApiParameter.PATH,
-    #             type=OpenApiTypes.STR,
-    #             description="The ID of the addon within the subscription update.",
-    #         ),
-    #     ],
-    # )
-    # @action(
-    #     detail=True,
-    #     methods=["post"],
-    #     url_path="addons/(?P<addon_id>[^/.]+)/update",
-    #     url_name="update_addon",
-    # )
-    # def update_addon(self, request, *args, **kwargs):
-    #     qs = self.get_queryset()
-    #     organization = self.request.organization
-    #     original_qs = list(copy.copy(qs).values_list("pk", flat=True))
-    #     if qs.count() == 0:
-    #         raise NotFoundException("Subscription matching the given filters not found")
-    #     serializer = self.get_serializer(data=request.data)
-    #     serializer.is_valid(raise_exception=True)
-    #     billing_behavior = serializer.validated_data.get("invoicing_behavior")
-    #     turn_off_auto_renew = serializer.validated_data.get("turn_off_auto_renew")
-    #     end_date = serializer.validated_data.get("end_date")
-    #     quantity = serializer.validated_data.get("quantity")
-    #     update_dict = {}
-    #     if turn_off_auto_renew:
-    #         update_dict["auto_renew"] = False
-    #     if end_date:
-    #         update_dict["end_date"] = end_date
-    #     if quantity:
-    #         update_dict["quantity"] = quantity
-    #     if len(update_dict) > 0:
-    #         qs.update(**update_dict)
-    #     if (
-    #         billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW
-    #         and "quantity" in update_dict
-    #     ):
-    #         new_qs = SubscriptionRecord.addon_objects.filter(
-    #             pk__in=original_qs, organization=organization
-    #         )
-    #         if billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
-    #             generate_invoice(new_qs)
-
-    #     return_qs = SubscriptionRecord.addon_objects.filter(
-    #         pk__in=original_qs, organization=organization
-    #     )
-    #     return Response(
-    #         AddOnSubscriptionRecordSerializer(return_qs, many=True).data,
-    #         status=status.HTTP_200_OK,
-    #     )
 
     @extend_schema(
         parameters=[

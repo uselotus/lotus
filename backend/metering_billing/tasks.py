@@ -6,7 +6,6 @@ from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
-
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
@@ -51,7 +50,7 @@ def generate_invoice_pdf_async(invoice_pk):
         pdf_url_dict = get_invoice_presigned_url(invoice)
         pdf_url = pdf_url_dict.get("url")
     except Exception as e:
-        print("RAN INTO ERROR GENERATING PDF: {}".format(e))
+        logger.error("RAN INTO ERROR GENERATING PDF: {}".format(e))
         pdf_url = None
 
     invoice.invoice_pdf = pdf_url

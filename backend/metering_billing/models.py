@@ -1629,17 +1629,6 @@ class PlanComponent(models.Model):
             range_end_date = sr_end_date
         if override_start_date:
             range_start_date = override_start_date
-        print(
-            "WTFFFFFFFFFF",
-            subscription_record.start_date,
-            subscription_record.end_date,
-            "range",
-            range_start_date,
-            range_end_date,
-            "override",
-            override_start_date,
-            "\n",
-        )
         reset_interval_unit = self.reset_interval_unit
         reset_interval_count = self.reset_interval_count
         # if we don't have a sub-plan length reset interval, use the plan length
@@ -1678,7 +1667,6 @@ class PlanComponent(models.Model):
             append_date = min(reset_date, range_end_date)
             reset_dates.append(append_date)
             reset_date += interval_delta
-        print("reset_dates", reset_dates, "\n")
         # Construct non-overlapping date ranges
         reset_ranges = []
         for i in range(len(reset_dates)):
@@ -2779,14 +2767,12 @@ class SubscriptionRecord(models.Model):
             quantity=quantity,
         )
         for component in sr.billing_plan.plan_components.all():
-            print("CREATING FOR COMPONENT", component, "\n")
             metric = component.billable_metric
             kwargs = {}
             if metric in component_fixed_charges_initial_units:
                 kwargs["initial_units"] = component_fixed_charges_initial_units[metric]
             sr._create_component_billing_records(component, **kwargs)
         for recurring_charge in sr.billing_plan.recurring_charges.all():
-            print("CREATING FOR RECURRING CHARGE", recurring_charge, "\n")
             sr._create_recurring_charge_billing_records(recurring_charge)
         generate_invoice(sr)
         return sr
@@ -2829,14 +2815,13 @@ class SubscriptionRecord(models.Model):
         override_start_date=None,
         initial_units=None,
         ignore_prepaid=False,
+        fail_on_no_prepaid=True,
     ):
         prepaid_charge = component.fixed_charge
         invoicing_dates = component.get_component_invoicing_dates(
             self, override_start_date
         )
-        print("invoicing_dates", invoicing_dates, "\n")
         reset_ranges = component.get_component_reset_dates(self, override_start_date)
-        print("reset_ranges", reset_ranges)
         brs = []
         for start_date, end_date, unadjusted_duration_microseconds in reset_ranges:
             one_past_end_added = False
@@ -2862,31 +2847,22 @@ class SubscriptionRecord(models.Model):
             new_invoicing_dates = set(br_invoicing_dates)
             if prepaid_charge and not ignore_prepaid:
                 units = initial_units or prepaid_charge.units
-                if units is None:
+                if units is None and fail_on_no_prepaid:
                     raise PrepaymentMissingUnits(
                         "No units specified for prepayment. This is usually an input error but may possibly be caused by inconsistent state in the backend."
                     )
-                ComponentChargeRecord.objects.create(
-                    organization=self.organization,
-                    billing_record=br,
-                    component_charge=prepaid_charge,
-                    component=component,
-                    start_date=start_date,
-                    end_date=end_date,
-                    units=units,
-                )
-                new_invoicing_dates |= {start_date}
+                if units:
+                    ComponentChargeRecord.objects.create(
+                        organization=self.organization,
+                        billing_record=br,
+                        component_charge=prepaid_charge,
+                        component=component,
+                        start_date=start_date,
+                        end_date=end_date,
+                        units=units,
+                    )
+                    new_invoicing_dates |= {start_date}
             new_invoicing_dates = sorted(list(new_invoicing_dates))
-            print(
-                "start_date",
-                start_date,
-                "end_date",
-                end_date,
-                "unadjusted_duration_microseconds",
-                unadjusted_duration_microseconds,
-                "br_invoicing_dates",
-                new_invoicing_dates,
-            )
             if new_invoicing_dates != br_invoicing_dates:
                 br.invoicing_dates = new_invoicing_dates
                 br.next_invoicing_date = new_invoicing_dates[0]
@@ -2918,8 +2894,6 @@ class SubscriptionRecord(models.Model):
         )
         reset_ranges = recurring_charge.get_recurring_charge_reset_dates(self)
         brs = []
-        print("invoicing_dates", invoicing_dates, "\n")
-        print("reset_ranges", reset_ranges, "\n")
         for start_date, end_date, unadjusted_duration_microseconds in reset_ranges:
             one_past_end_added = False
             br_invoicing_dates = set()
@@ -2931,16 +2905,6 @@ class SubscriptionRecord(models.Model):
                     if inv_date >= end_date:
                         one_past_end_added = True
             br_invoicing_dates = sorted(list(br_invoicing_dates))
-            print(
-                "start_date",
-                start_date,
-                "end_date",
-                end_date,
-                "unadjusted_duration_microseconds",
-                unadjusted_duration_microseconds,
-                "br_invoicing_dates",
-                br_invoicing_dates,
-            )
             br = BillingRecord.objects.create(
                 organization=self.organization,
                 subscription=self,
@@ -3185,37 +3149,19 @@ class SubscriptionRecord(models.Model):
                 )
             else:
                 metric = component.billable_metric
-                print(
-                    "\nCOMPONENT: ",
-                    component,
-                    "STRAIGHT DELETE:",
-                    metric not in new_version_metrics_map,
-                )
                 if metric in new_version_metrics_map:
                     # if the metric is in the new plan, we perform the surgery to switch the billing record to the new plan. Don't create from scratch.
                     transfer = SubscriptionRecord._check_should_transfer_cancel_if_not(
                         billing_record, now, invoice_now=invoice_now
                     )
-                    print(
-                        "BEING TRANSFERRED",
-                        transfer,
-                        "\n",
-                    )
                     if transfer:
                         new_component = new_version_metrics_map[metric]
                         pcs_to_create_charges_for.remove(new_component)
-                        print(
-                            "NEW BILLING RECORDS for current BR",
-                            billing_record,
-                            billing_record.start_date,
-                            billing_record.end_date,
-                        )
                         new_billing_records = sr._create_component_billing_records(
                             new_component,
                             override_start_date=billing_record.start_date,
                             ignore_prepaid=True,
                         )
-                        print("END NEW BILLING RECORDS: MADE", len(new_billing_records))
                         override_billing_record = new_billing_records[0]
                         # heres the surgery... open to improvements... this allows us to keep
                         # info about what's been paid already though which is nice
@@ -3550,17 +3496,9 @@ class BillingRecord(models.Model):
                 full_amt_due = component.tier_rating_function(
                     component_charge_record.units
                 )
-                print(
-                    "totasl amt",
-                    component_charge_record,
-                    component_charge_record.end_date,
-                    component_charge_record.start_date,
-                    full_amt_due,
-                )
                 total_amt += full_amt_due * total_microseconds / unadjusted_microseconds
         else:
             total_amt = component.tier_rating_function(component_charge_record.units)
-        print("total_amt", total_amt)
         # 2. how much has been invoiced already
         amt_already_invoiced = self.prepaid_already_invoiced()
         # 3. how much is left to invoice

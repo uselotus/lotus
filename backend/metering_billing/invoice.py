@@ -186,8 +186,6 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice, draft)
         flat_fee_due = billing_record.calculate_recurring_charge_due(relative_end_date)
         # we check how much has already been billed
         amt_already_invoiced = billing_record.amt_already_invoiced()
-        print("BILLING RECORD STUFF")
-        print("billing_record", billing_record, amt_already_invoiced, flat_fee_due)
         if (
             abs(amt_already_invoiced - flat_fee_due) < Decimal("0.01")
             and amt_already_invoiced > 0
@@ -258,7 +256,6 @@ def calculate_subscription_record_usage_fees(subscription_record, invoice, draft
         for br in subscription_record.billing_records.filter(
             component__isnull=False, fully_billed=False
         ):
-            print("BR", br, br.next_invoicing_date, invoice.issue_date, br.fully_billed)
             if (
                 br.next_invoicing_date > invoice.issue_date and not draft
             ) or br.fully_billed:

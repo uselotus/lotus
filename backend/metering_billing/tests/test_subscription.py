@@ -6,6 +6,10 @@ from decimal import Decimal
 import pytest
 from django.db.models import Sum
 from django.urls import reverse
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
@@ -33,9 +37,6 @@ from metering_billing.utils.enums import (
     PLAN_DURATION,
     USAGE_BEHAVIOR,
 )
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -403,7 +404,7 @@ class TestUpdateSub:
             plan=new_plan,
         )
         payload = {
-            "new_version_id": pv.version_id,
+            "switch_plan_version_id": pv.version_id,
         }
         sub = SubscriptionRecord.objects.all()[0]
         response = setup_dict["client"].post(
@@ -495,7 +496,7 @@ class TestUpdateSub:
                 metric_units_per_batch=mupb,
             )
         payload = {
-            "new_version_id": pv.version_id,
+            "switch_plan_version_id": pv.version_id,
         }
         sub = SubscriptionRecord.objects.all()[0]
         response = setup_dict["client"].post(
@@ -591,7 +592,7 @@ class TestUpdateSub:
                 metric_units_per_batch=mupb,
             )
         payload = {
-            "new_version_id": pv.version_id,
+            "switch_plan_version_id": pv.version_id,
             "usage_behavior": USAGE_BEHAVIOR.KEEP_SEPARATE,
         }
         sub = SubscriptionRecord.objects.all()[0]
@@ -1251,7 +1252,7 @@ class TestResetAndInvoicingIntervals:
         )
         sub = SubscriptionRecord.objects.first()
         payload = {
-            "new_version_id": billing_plan_2.version_id,
+            "switch_plan_version_id": billing_plan_2.version_id,
             "invoicing_behavior": "invoice_now",
             "usage_behavior": "transfer_to_new_subscription",
         }
@@ -1283,7 +1284,6 @@ class TestResetAndInvoicingIntervals:
         )
         assert 22 <= billing_records_in_both.count() <= 25
         assert len(set(x.subscription_id for x in billing_records_in_both)) == 2
-        print(billing_records_in_both.count())
         assert (
             len([x for x in billing_records_in_both if x.subscription_id == sub.id])
             == 3
@@ -1295,7 +1295,6 @@ class TestResetAndInvoicingIntervals:
         billing_record_in_new = BillingRecord.objects.filter(
             component__billable_metric=metric_in_new
         )
-        print(billing_record_in_new.count())
         assert billing_record_in_new.count() + 3 == billing_records_in_both.count()
         assert 19 <= billing_record_in_new.count() <= 22
         assert all(x.subscription_id == new_sub.id for x in billing_record_in_new)
@@ -1396,7 +1395,7 @@ class TestPrepaidComponentCharges:
         # be 10 units, so $10
         assert latest_invoice.cost_due == Decimal(10)
 
-    def test_create_plan_with_prepaid_component_dynamic_fails_if_not_set(
+    def test_create_plan_with_prepaid_component_dynamic_set_doesnt_create_charge_record(
         self, subscription_test_common_setup
     ):
         num_subscriptions = 0
@@ -1457,8 +1456,8 @@ class TestPrepaidComponentCharges:
         br_after = BillingRecord.objects.all().count()
         ccr_after = ComponentChargeRecord.objects.all().count()
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert sr_after == sr_before
-        assert br_after == br_before
+        assert sr_after == sr_before + 1
+        assert br_after == br_before + 1
         assert ccr_after == ccr_before
 
     def test_create_plan_with_prepaid_component_dynamic_subscription_starts_as_expected(
@@ -1525,7 +1524,6 @@ class TestPrepaidComponentCharges:
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        print(response.data)
         sr_after = SubscriptionRecord.objects.all().count()
         br_after = BillingRecord.objects.all().count()
         ccr_after = ComponentChargeRecord.objects.all().count()
