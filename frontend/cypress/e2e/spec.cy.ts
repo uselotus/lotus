@@ -106,31 +106,31 @@ describe("Testing Event Tracking Details On Metrics Page", () => {
     cy.contains("Your new key is:");
     // Copy the API key that is displayed
     cy.get(".text-lg.font-main .ant-input").then(($input) => {
-      // const apiKey = $input.text();
-      cy.log(`$input.text(): ${$input.text()}`);
-      cy.log(`$input.val(): ${$input.val()}`);
+      const apiKey = $input.val();
     // Click Okay button in modal
     cy.get(".ant-modal-footer .ant-btn.ant-btn-primary").last().click();
     // Send request to /api/track/ endpoint
-    // cy.request({
-    //   url: "http://localhost:3000/api/track/",
-    //   method: "POST",
-    //   headers: {
-    //     "X-API-KEY": apiKey,
-    //     "Content-Type": "application/json"
-    //   },
-    //   body: {
-    //     "batch": [{
-      //       "event_name":"api_call",
-      //       "properties": {
-      //         "region": "US"
-      //       },
-      //       "time_created": new Date(),
-      //       "idempotency_id": "test_idempotency_id_123",
-      //       "customer_id":"test_customer_id_123"
-    //     }]
-    //   }
-    // });
+      cy.request({
+        url: "http://localhost:8000/api/track/",
+        method: "POST",
+        headers: {
+          "X-API-KEY": apiKey,
+          "Content-Type": "application/json"
+        },
+        body: {
+          "batch": [{
+            "event_name": "api_call",
+            "properties": {
+              "region": "US"
+            },
+            "time_created": new Date(),
+            "idempotency_id": "test_idempotency_id_123",
+            "customer_id": "test_customer_id_123"
+          }]
+        }
+      }).then(({ body }) => {
+        cy.log(`body: ${body}`);
+      });
     });
     // Navigate to the Metrics page
     cy.visit("http://localhost:3000/metrics");
