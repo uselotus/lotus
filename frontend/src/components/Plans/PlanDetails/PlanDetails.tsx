@@ -262,8 +262,9 @@ const PlanDetails: FC = () => {
               </Button>,
             ]}
           />
-          <div className="mx-10">
+          <div>
             <Tabs
+              className="mx-10"
               onChange={changeTab}
               defaultActiveKey="0"
               activeKey={activeKey}
@@ -295,7 +296,13 @@ const PlanDetails: FC = () => {
                         setSelectedCustomPlan(selectedType);
                       }}
                       value={selectedCustomPlan?.plan_name}
-                    ></Select>
+                    >
+                      {customPlans.map((el) => (
+                        <Select.Option key={el.plan_id}>
+                          {el.plan_name}
+                        </Select.Option>
+                      ))}
+                    </Select>
                   </div>
                   {selectedCustomPlan && (
                     <CustomPlanDetails
