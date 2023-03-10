@@ -12,6 +12,7 @@ interface AddCurrencyModalProps {
   version: number;
   setShowModal: (show: boolean) => void;
   plan_id: string;
+  version_id: string;
 }
 type BodyType = components["schemas"]["InitialPlanVersionCreateRequest"] & {
   plan_id: string;
@@ -22,6 +23,7 @@ const AddCurrencyModal = ({
   setShowModal,
   plan_id,
   version,
+  version_id,
 }: AddCurrencyModalProps) => {
   const queryClient = useQueryClient();
   const [currency, setCurrency] = useState("");
@@ -29,6 +31,7 @@ const AddCurrencyModal = ({
     onSuccess: () => {
       queryClient.invalidateQueries("plan_list");
       queryClient.invalidateQueries(["plan_detail", plan_id]);
+      queryClient.invalidateQueries(["plan_subscriptions_get", version_id]);
     },
   });
   return (

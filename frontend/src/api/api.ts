@@ -293,6 +293,11 @@ export const Plan = {
     post: CreateTagsPlanBody
   ): Promise<CreateTagsType> =>
     requests.post(`app/plans/${plan_id}/tags/add/`, post),
+  removeTagsPlan: (
+    plan_id: string,
+    post: CreateTagsPlanBody
+  ): Promise<CreateTagsType> =>
+    requests.post(`app/plans/${plan_id}/tags/add/`, post),
   // update plan versions methods
   updatePlanVersionDescription: (
     version_id: string,
@@ -326,7 +331,7 @@ export const Plan = {
   subscriptionsPlanVersions: (
     version_id: string
   ): Promise<components["schemas"]["PlanVersionHistoricalSubscription"][]> =>
-    requests.post(`app/plan_versions/${version_id}/subscriptions/`, {}),
+    requests.get(`app/plan_versions/${version_id}/subscriptions/`, {}),
   makeReplacementPlanVersion: (
     version_id: string,
     post: PlanVersionReplacementMakeBody

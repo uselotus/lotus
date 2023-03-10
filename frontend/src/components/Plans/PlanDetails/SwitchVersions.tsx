@@ -143,6 +143,18 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
       },
     }
   );
+  const deleteTag = useMutation(
+    ({ plan_id, tags }: { plan_id: string; tags: PlanType["tags"] }) =>
+      Plan.removeTagsPlan(plan_id, {
+        tags,
+      }),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("plan_list");
+        queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
+      },
+    }
+  );
   useEffect(() => {
     setSelectedVersion(plan.versions.find((x) => x.status === "active")!);
   }, [plan]);
@@ -259,6 +271,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
               plan={plan}
               createPlanExternalLink={createPlanExternalLink}
               createTagMutation={createTag.mutate}
+              deleteTagMutation={deleteTag.mutate}
               deletePlanExternalLink={deletePlanExternalLink}
             />
           </div>
@@ -325,6 +338,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
       </div>
       <AddCurrencyModal
         plan_id={plan.plan_id}
+        version_id={selectedVersion?.version_id as string}
         showModal={triggerCurrencyModal}
         setShowModal={(show) => setTriggerCurrencyModal(show)}
         version={selectedVersion?.version as number}

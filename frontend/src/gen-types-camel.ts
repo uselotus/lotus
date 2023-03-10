@@ -195,9 +195,11 @@ export interface paths {
     get: operations["appPeriodSubscriptionsRetrieve"];
   };
   "/app/planVersions/": {
+    get: operations["appPlanVersionsList"];
     post: operations["appPlanVersionsCreate"];
   };
   "/app/planVersions/{versionId}/": {
+    get: operations["appPlanVersionsRetrieve"];
     patch: operations["appPlanVersionsPartialUpdate"];
   };
   "/app/planVersions/{versionId}/delete/": {
@@ -214,6 +216,9 @@ export interface paths {
   };
   "/app/planVersions/{versionId}/replacement/set/": {
     post: operations["appPlanVersionsReplacementSetCreate"];
+  };
+  "/app/planVersions/{versionId}/subscriptions/": {
+    get: operations["appPlanVersionsSubscriptionsList"];
   };
   "/app/planVersions/{versionId}/targetCustomers/add/": {
     post: operations["appPlanVersionsTargetCustomersAddCreate"];
@@ -289,7 +294,7 @@ export interface paths {
   "/app/subscriptions/{subscriptionId}/": {
     get: operations["appSubscriptionsRetrieve"];
   };
-  "/app/subscriptions/{subscriptionId}/addons/{addonVersionId}/cancel/": {
+  "/app/subscriptions/{subscriptionId}/addons/{addonId}/cancel/": {
     post: operations["appSubscriptionsAddonsCancelCreate"];
   };
   "/app/subscriptions/{subscriptionId}/addons/attach/": {
@@ -503,14 +508,9 @@ export interface components {
     AddOnSubscriptionRecordCreateRequest: {
       /**
        * Format: uuid 
-       * @description The add-on to be applied to the subscription. You can use either this field or addonVersionId, but not both.
-       */
-      addonId?: string;
-      /**
-       * Format: uuid 
        * @description The add-on to be applied to the subscription.
        */
-      addonVersionId?: string;
+      addonId?: string;
       /**
        * @description The quantity of the add-on to be applied to the subscription. Flat fees of add-ons will be multiplied by this quantity. Usage-based components of add-ons will be unaffected by the quantity. 
        * @default 1
@@ -650,21 +650,21 @@ export interface components {
       backtestName: string;
     };
     BacktestDetail: {
-      /** @enum {string} */
-      status?: "running" | "completed" | "failed";
+      backtestId: string;
+      backtestName: string;
+      backtestSubstitutions: (components["schemas"]["BacktestSubstitution"])[];
       /** Format: date-time */
       timeCreated?: string;
+      /** Format: date */
+      startDate: string;
       kpis?: {
         [key: string]: Record<string, never> | undefined;
       };
-      /** Format: date */
-      startDate: string;
       backtestResults: components["schemas"]["AllSubstitutionResults"];
-      backtestId: string;
+      /** @enum {string} */
+      status?: "running" | "completed" | "failed";
       /** Format: date */
       endDate: string;
-      backtestName: string;
-      backtestSubstitutions: (components["schemas"]["BacktestSubstitution"])[];
     };
     BacktestSubstitution: {
       newPlan: components["schemas"]["PlanVersionDetail"];
@@ -758,22 +758,18 @@ export interface components {
     ComponentCharge: {
       /**
        * Format: double 
-       * @description The number of units to charge for. If the charge type is 'dynamic', this field will be null.
+       * @description The number of units to charge for. If left null, then it will be required at subscription create time.
        */
       units: number;
-      /** @enum {unknown} */
-      chargeType: "predefined" | "dynamic";
       /** @enum {unknown} */
       chargeBehavior: "prorate" | "full";
     };
     ComponentChargeCreateRequest: {
       /**
        * Format: double 
-       * @description The number of units to charge for. If the charge type is 'dynamic', this field should be null.
+       * @description The number of units to charge for. If left null, then it will be required at subscription create time.
        */
       units: number;
-      /** @enum {unknown} */
-      chargeType: "predefined" | "dynamic";
       /** @enum {unknown} */
       chargeBehavior: "prorate" | "full";
     };
@@ -799,6 +795,18 @@ export interface components {
        * @description The total limit of the metric. Will be null if you did not specify a limit for this metric.
        */
       metricTotalLimit: number;
+    };
+    ComponentsFixedChargeInitialValueRequest: {
+      /**
+       * Format: uuid 
+       * @description The id of the metric that this initial value is for
+       */
+      metricId: string;
+      /**
+       * Format: double 
+       * @description The number of units of the metric that this initial value is for
+       */
+      units: number;
     };
     ConfirmConnected: {
       organizationId: string;
@@ -1051,34 +1059,22 @@ export interface components {
       user: components["schemas"]["User"];
     };
     DraftInvoice: {
-      /** Format: date-time */
-      issueDate: string;
       invoiceId: string;
+      lineItems: readonly (components["schemas"]["GroupedLineItem"])[];
       /** Format: date-time */
       dueDate: string;
-      /** Format: date */
-      startDate: string;
-      lineItems: readonly (components["schemas"]["GroupedLineItem"])[];
-      /** Format: date */
-      endDate: string;
-      currency: components["schemas"]["PricingUnit"];
       /** Format: double */
       costDue: number;
+      /** Format: date */
+      startDate: string;
+      /** Format: date-time */
+      issueDate: string;
+      currency: components["schemas"]["PricingUnit"];
+      /** Format: date */
+      endDate: string;
     };
     DraftInvoiceResponse: {
       invoice?: (components["schemas"]["DraftInvoice"])[];
-    };
-    DynamicFixedChargeInitialValueRequest: {
-      /**
-       * Format: uuid 
-       * @description The id of the metric that this initial value is for
-       */
-      metricId: string;
-      /**
-       * Format: double 
-       * @description The number of units of the metric that this initial value is for
-       */
-      units: number;
     };
     EmailRequest: {
       /** Format: email */
@@ -1216,14 +1212,14 @@ export interface components {
       email: string;
     };
     InitialAddOnVersionCreateRequest: {
+      /** @enum {unknown} */
+      billingFrequency: "oneTime" | "recurring";
+      currencyCode: string;
       features?: (string)[];
       /** @enum {unknown} */
       invoiceWhen: "invoiceOnAttach" | "invoiceOnSubscriptionEnd";
-      currencyCode: string;
-      /** @enum {unknown} */
-      billingFrequency: "oneTime" | "recurring";
-      components?: (components["schemas"]["PlanComponentCreateRequest"])[];
       recurringCharges?: (components["schemas"]["RecurringChargeCreateRequest"])[];
+      components?: (components["schemas"]["PlanComponentCreateRequest"])[];
     };
     InitialExternalPlanLink: {
       /** @enum {string} */
@@ -1236,16 +1232,16 @@ export interface components {
       externalPlanId: string;
     };
     InitialPlanVersionCreateRequest: {
-      monthAnchor?: number;
-      version: number;
-      features?: (string)[];
       localizedName?: string;
-      currencyCode: string;
-      priceAdjustment?: components["schemas"]["PriceAdjustmentRequest"];
-      components?: (components["schemas"]["PlanComponentCreateRequest"])[];
+      version: number;
       targetCustomerIds?: (string)[];
+      currencyCode: string;
+      features?: (string)[];
       recurringCharges?: (components["schemas"]["RecurringChargeCreateRequest"])[];
       dayAnchor?: number;
+      monthAnchor?: number;
+      components?: (components["schemas"]["PlanComponentCreateRequest"])[];
+      priceAdjustment?: components["schemas"]["PriceAdjustmentRequest"];
     };
     InviteLinkResponse: {
       /** Format: email */
@@ -1426,41 +1422,41 @@ export interface components {
     };
     LightweightInvoice: {
       invoiceId: string;
+      /** @enum {string|null} */
+      externalPaymentObjType: "stripe" | "braintree" | "" | null;
+      /** Format: uri */
+      invoicePdf: string;
+      /** Format: double */
+      costDue: number;
       /** Format: date-time */
       dueDate: string;
       /** Format: date */
       startDate: string;
-      currency: components["schemas"]["PricingUnit"];
+      seller: components["schemas"]["Seller"];
       /** @enum {unknown} */
       paymentStatus: "draft" | "voided" | "paid" | "unpaid";
-      externalPaymentObjId: string;
-      /** Format: uri */
-      invoicePdf: string;
-      /** Format: date */
-      endDate: string;
-      /** @enum {string|null} */
-      externalPaymentObjType: "stripe" | "braintree" | "" | null;
       /** Format: date-time */
       issueDate: string;
-      seller: components["schemas"]["Seller"];
-      /** Format: double */
-      costDue: number;
+      currency: components["schemas"]["PricingUnit"];
+      externalPaymentObjId: string;
       invoiceNumber: string;
+      /** Format: date */
+      endDate: string;
     };
     LightweightInvoiceLineItem: {
       /** Format: double */
-      subtotal: number;
-      name: string;
-      /** Format: date-time */
-      startDate: string;
-      /** Format: double */
       quantity: number;
       subscriptionFilters: readonly (components["schemas"]["SubscriptionCategoricalFilter"])[];
+      /** Format: date-time */
+      startDate: string;
+      plan: components["schemas"]["LightweightPlanVersion"] | null;
+      name: string;
+      /** Format: double */
+      subtotal: number;
       /** @enum {string|null} */
       billingType: "inArrears" | "intermediate" | "inAdvance" | "oneTime" | "" | null;
       /** Format: date-time */
       endDate: string;
-      plan: components["schemas"]["LightweightPlanVersion"] | null;
     };
     LightweightMetric: {
       metricId: string;
@@ -1490,46 +1486,46 @@ export interface components {
       planId: string;
     };
     LightweightSubscriptionRecord: {
+      planDetail: components["schemas"]["LightweightPlanVersion"];
+      /** @description Whether the subscription automatically renews. Defaults to true. */
+      autoRenew: boolean;
+      subscriptionFilters: readonly (components["schemas"]["SubscriptionCategoricalFilter"])[];
+      subscriptionId: string;
       /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
       isNew: boolean;
-      addons: (components["schemas"]["LightweightAddOnSubscriptionRecord"])[];
       /**
        * Format: date-time 
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
       startDate: string;
       billingPlan: components["schemas"]["LightweightPlanVersion"];
-      planDetail: components["schemas"]["LightweightPlanVersion"];
-      subscriptionId: string;
-      subscriptionFilters: readonly (components["schemas"]["SubscriptionCategoricalFilter"])[];
+      fullyBilled: boolean;
+      addons: (components["schemas"]["LightweightAddOnSubscriptionRecord"])[];
+      customer: components["schemas"]["LightweightCustomer"];
       /**
        * Format: date-time 
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
       endDate: string;
-      fullyBilled: boolean;
-      /** @description Whether the subscription automatically renews. Defaults to true. */
-      autoRenew: boolean;
-      customer: components["schemas"]["LightweightCustomer"];
     };
     LightweightSubscriptionRecordRequest: {
+      /** @description Whether the subscription automatically renews. Defaults to true. */
+      autoRenew: boolean;
+      subscriptionId: string;
       /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
       isNew: boolean;
-      addons: (components["schemas"]["LightweightAddOnSubscriptionRecordRequest"])[];
       /**
        * Format: date-time 
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
       startDate: string;
       billingPlan: components["schemas"]["LightweightPlanVersionRequest"];
-      subscriptionId: string;
+      addons: (components["schemas"]["LightweightAddOnSubscriptionRecordRequest"])[];
       /**
        * Format: date-time 
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
       endDate: string;
-      /** @description Whether the subscription automatically renews. Defaults to true. */
-      autoRenew: boolean;
     };
     LightweightUser: {
       /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
@@ -1677,38 +1673,38 @@ export interface components {
       numericFilters?: (components["schemas"]["NumericFilterDetailRequest"])[];
     };
     MetricDetail: {
-      metricName: string;
+      /** @description A custom SQL query that can be used to define the metric. Please refer to our documentation for more information. */
+      customSql: string;
+      /** @description The name of the property of the event that should be used for this metric. Doesn't apply if the metric is of type 'counter' with an aggregation of count. */
+      propertyName: string;
       numericFilters: (components["schemas"]["NumericFilter"])[];
-      /** @description Whether or not this metric is a cost metric (used to track costs to your business). */
-      isCostMetric: boolean;
-      /**
-       * @description The type of metric that this is. Please refer to our documentation for an explanation of the different types. 
-       * @enum {string}
-       */
-      metricType: "counter" | "rate" | "custom" | "gauge";
       /** @description Name of the event that this metric is tracking. */
       eventName: string;
       categoricalFilters: (components["schemas"]["CategoricalFilter"])[];
+      metricName: string;
       /**
        * @description The granularity of the metric. Only applies to metrics of type 'gauge' or 'rate'. 
        * @enum {string|null}
        */
       granularity: "seconds" | "minutes" | "hours" | "days" | "months" | "quarters" | "years" | "total" | "" | null;
-      /** @description A custom SQL query that can be used to define the metric. Please refer to our documentation for more information. */
-      customSql: string;
-      /** @description The name of the property of the event that should be used for this metric. Doesn't apply if the metric is of type 'counter' with an aggregation of count. */
-      propertyName: string;
-      /**
-       * @description The proration of the metric. Only applies to metrics of type 'gauge'. 
-       * @enum {string|null}
-       */
-      proration: "seconds" | "minutes" | "hours" | "days" | "months" | "quarters" | "years" | "total" | "" | null;
       metricId: string;
       /**
        * @description Used only for metrics of type 'gauge'. Please refer to our documentation for an explanation of the different types. 
        * @enum {string|null}
        */
       eventType: "delta" | "total" | "" | null;
+      /**
+       * @description The type of metric that this is. Please refer to our documentation for an explanation of the different types. 
+       * @enum {string}
+       */
+      metricType: "counter" | "rate" | "custom" | "gauge";
+      /**
+       * @description The proration of the metric. Only applies to metrics of type 'gauge'. 
+       * @enum {string|null}
+       */
+      proration: "seconds" | "minutes" | "hours" | "days" | "months" | "quarters" | "years" | "total" | "" | null;
+      /** @description Whether or not this metric is a cost metric (used to track costs to your business). */
+      isCostMetric: boolean;
       /**
        * @description The type of aggregation that should be used for this metric. Please refer to our documentation for an explanation of the different types. 
        * @enum {string}
@@ -2033,26 +2029,26 @@ export interface components {
       tags?: (components["schemas"]["TagRequest"])[];
     };
     PlanDetail: {
-      taxjarCode?: string;
-      /** @description Description of the plan */
-      planDescription: string;
       /** @description Name of the plan */
       planName: string;
+      versions: readonly (components["schemas"]["PlanVersionDetail"])[];
       /**
        * @description Duration of the plan 
        * @enum {string|null}
        */
       planDuration: "monthly" | "quarterly" | "yearly" | "" | null;
+      /** @description The tags that this plan has. */
+      tags: readonly (components["schemas"]["Tag"])[];
+      /** @description Description of the plan */
+      planDescription: string;
+      taxjarCode?: string;
+      /** @description The number of versions that this plan has. */
+      numVersions: number;
       /** @description The number of active subscriptions that this plan has across all versions. */
       activeSubscriptions: number;
       planId: string;
       /** @description The external links that this plan has. */
       externalLinks: (components["schemas"]["InitialExternalPlanLink"])[];
-      versions: readonly (components["schemas"]["PlanVersionDetail"])[];
-      /** @description The tags that this plan has. */
-      tags: readonly (components["schemas"]["Tag"])[];
-      /** @description The number of versions that this plan has. */
-      numVersions: number;
     };
     PlanNameAndID: {
       /** @description Name of the plan */
@@ -2121,26 +2117,42 @@ export interface components {
       localizedName?: string;
     };
     PlanVersionDetail: {
+      replaceWith: components["schemas"]["LightweightPlanVersion"];
+      planName: string;
       /** Format: date-time */
       activeFrom: string;
+      recurringCharges: readonly (components["schemas"]["RecurringCharge"])[];
+      localizedName: string;
       /** Format: date-time */
       activeTo: string;
-      localizedName: string;
+      features: (components["schemas"]["Feature"])[];
       planId: string;
-      priceAdjustment: components["schemas"]["PriceAdjustment"] | null;
+      versionId: string;
       currency: components["schemas"]["PricingUnit"];
-      replaceWith: components["schemas"]["LightweightPlanVersion"];
-      transitionTo: components["schemas"]["LightweightPlan"];
-      recurringCharges: readonly (components["schemas"]["RecurringCharge"])[];
+      components: (components["schemas"]["PlanComponent"])[];
+      version: number | "customVersion";
       alerts: readonly (components["schemas"]["UsageAlert"])[];
+      activeSubscriptions: number;
+      transitionTo: components["schemas"]["LightweightPlan"];
       /** @enum {string} */
       status: "active" | "retiring" | "grandfathered" | "deleted" | "inactive" | "notStarted";
-      version: number | "customVersion";
-      planName: string;
-      features: (components["schemas"]["Feature"])[];
-      activeSubscriptions: number;
-      components: (components["schemas"]["PlanComponent"])[];
-      versionId: string;
+      priceAdjustment: components["schemas"]["PriceAdjustment"] | null;
+    };
+    PlanVersionHistoricalSubscription: {
+      customerId: string;
+      customerName: string;
+      /**
+       * Format: date-time 
+       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
+       */
+      startDate: string;
+      /**
+       * Format: date-time 
+       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
+       */
+      endDate: string;
+      /** @description Whether the subscription automatically renews. Defaults to true. */
+      autoRenew: boolean;
     };
     PlanVersionNumberSetReplaceWithResponse: {
       success: boolean;
@@ -2488,16 +2500,11 @@ export interface components {
       customerId: string;
       /**
        * Format: uuid 
-       * @description The Lotus versionId, found in the billing plan object. For maximum specificity, you can use this to control exactly what plan version becomes part of the subscription.
-       */
-      versionId?: string;
-      /**
-       * Format: uuid 
        * @description The Lotus planId, found in the billing plan object. We will make a best-effort attempt to find the correct plan version (matching preferred currencies, prioritizing custom plans), but if more than one plan version or no plan version matches these criteria this will return an error.
        */
       planId?: string;
-      /** @description The initial units for dynamic fixed charges. This is only required if the plan has dynamic fixed charges for components. */
-      dynamicFixedChargesInitialUnits?: (components["schemas"]["DynamicFixedChargeInitialValueRequest"])[];
+      /** @description The initial units for the plan components' prepaid fixed charges. This is only required if the plan has plan components where you did not specify the initial units. */
+      componentFixedChargesInitialUnits?: (components["schemas"]["ComponentsFixedChargeInitialValueRequest"])[];
     };
     SubscriptionRecordCreateSerializerOldRequest: {
       /**
@@ -2526,11 +2533,6 @@ export interface components {
     SubscriptionRecordSwitchPlanRequest: {
       /**
        * Format: uuid 
-       * @description The new plan version to switch to.
-       */
-      switchPlanVersionId?: string;
-      /**
-       * Format: uuid 
        * @description The new plan to switch to.
        */
       switchPlanId?: string;
@@ -2541,13 +2543,13 @@ export interface components {
        */
       invoicingBehavior?: "addToNextInvoice" | "invoiceNow";
       /**
-       * @description The usage behavior to use when replacing the plan. Transfer to new subscription will transfer the usage from the old subscription to the new subscription, whereas resetUsage will reset the usage to 0 for the new subscription, while keeping the old usage on the old subscription and charging for that appropriately at the end of the month. 
+       * @description The usage behavior to use when replacing the plan. Transfer to new subscription will transfer the usage from the old subscription to the new subscription, whereas keepSeparate will reset the usage to 0 for the new subscription, while keeping the old usage on the old subscription and charging for that appropriately at the end of the month. 
        * @default transferToNewSubscription 
        * @enum {string}
        */
       usageBehavior?: "transferToNewSubscription" | "keepSeparate";
-      /** @description The initial units for dynamic fixed charges. This is only required if the plan has dynamic fixed charges for components. */
-      dynamicFixedChargesInitialUnits?: (components["schemas"]["DynamicFixedChargeInitialValueRequest"])[];
+      /** @description The initial units for the plan components' prepaid fixed charges. In the context of swithciong plans, this is only required if the new plan has a component the old plan did not have, that has a prepaid charge, that deos not have a default. */
+      componentFixedChargesInitialUnits?: (components["schemas"]["ComponentsFixedChargeInitialValueRequest"])[];
     };
     SubscriptionRecordUpdateRequest: {
       /** @description Turn off auto renew for the subscription */
@@ -2571,7 +2573,7 @@ export interface components {
        */
       invoicingBehavior?: "addToNextInvoice" | "invoiceNow";
       /**
-       * @description The usage behavior to use when replacing the plan. Transfer to new subscription will transfer the usage from the old subscription to the new subscription, whereas resetUsage will reset the usage to 0 for the new subscription, while keeping the old usage on the old subscription and charging for that appropriately at the end of the month. 
+       * @description The usage behavior to use when replacing the plan. Transfer to new subscription will transfer the usage from the old subscription to the new subscription, whereas keepSeparate will reset the usage to 0 for the new subscription, while keeping the old usage on the old subscription and charging for that appropriately at the end of the month. 
        * @default transferToNewSubscription 
        * @enum {string}
        */
@@ -3790,6 +3792,15 @@ export interface operations {
       };
     };
   };
+  appPlanVersionsList: {
+    responses: {
+      200: {
+        content: {
+          "application/json": (components["schemas"]["PlanVersionDetail"])[];
+        };
+      };
+    };
+  };
   appPlanVersionsCreate: {
     requestBody: {
       content: {
@@ -3800,6 +3811,20 @@ export interface operations {
     };
     responses: {
       201: {
+        content: {
+          "application/json": components["schemas"]["PlanVersionDetail"];
+        };
+      };
+    };
+  };
+  appPlanVersionsRetrieve: {
+    parameters: {
+      path: {
+        versionId: string;
+      };
+    };
+    responses: {
+      200: {
         content: {
           "application/json": components["schemas"]["PlanVersionDetail"];
         };
@@ -3921,6 +3946,20 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["SetReplaceWithResponse"];
+        };
+      };
+    };
+  };
+  appPlanVersionsSubscriptionsList: {
+    parameters: {
+      path: {
+        versionId: string;
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": (components["schemas"]["PlanVersionHistoricalSubscription"])[];
         };
       };
     };
@@ -4381,7 +4420,6 @@ export interface operations {
         /** @description The ID of the subscription to update. */
       path: {
         addonId: string;
-        addonVersionId: string;
         subscriptionId: string;
       };
     };

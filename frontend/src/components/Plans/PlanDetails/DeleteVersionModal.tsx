@@ -23,6 +23,7 @@ const DeleteVersionModal = ({
   const mutation = useMutation(() => Plan.deletePlanVersion(version_id), {
     onSuccess: () => {
       queryClient.invalidateQueries("plan_list");
+      queryClient.invalidateQueries(["plan_subscriptions_get", version_id]);
       queryClient.invalidateQueries(["plan_detail", plan_id]);
     },
   });

@@ -90,10 +90,15 @@ interface PlanSummaryProps {
     plan_id: string;
     tags: PlanType["tags"];
   }) => void;
+  deleteTagMutation: (variables: {
+    plan_id: string;
+    tags: PlanType["tags"];
+  }) => void;
 }
 export function PlanSummary({
   plan,
   createTagMutation,
+  deleteTagMutation,
   createPlanExternalLink,
   deletePlanExternalLink,
 }: PlanSummaryProps) {
@@ -270,7 +275,7 @@ export function PlanSummary({
                           const tags = planTags.filter(
                             (el) => el.tag_name !== tag.tag_name
                           );
-                          createTagMutation({
+                          deleteTagMutation({
                             plan_id: plan.plan_id,
                             tags,
                           });

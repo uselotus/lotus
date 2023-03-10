@@ -64,6 +64,18 @@ const CustomPlanDetails: FC<CustomPlanDetailsProps> = ({
       },
     }
   );
+  const deleteTag = useMutation(
+    ({ plan_id, tags }: { plan_id: string; tags: PlanType["tags"] }) =>
+      Plan.removeTagsPlan(plan_id, {
+        tags,
+      }),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("plan_list");
+        queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
+      },
+    }
+  );
 
   return (
     <div>
@@ -74,6 +86,7 @@ const CustomPlanDetails: FC<CustomPlanDetailsProps> = ({
               plan={plan}
               createPlanExternalLink={createPlanExternalLink}
               createTagMutation={createTag.mutate}
+              deleteTagMutation={deleteTag.mutate}
               deletePlanExternalLink={deletePlanExternalLink}
             />
           </div>

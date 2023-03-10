@@ -4,7 +4,7 @@
 import React, { FC, useCallback, useEffect, useState } from "react";
 import "./PlanDetails.css";
 import { Typography } from "antd";
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQuery, useQueryClient } from "react-query";
 import capitalize from "../../../helpers/capitalize";
 import { Plan } from "../../../api/api";
 import { components } from "../../../gen-types";
@@ -24,29 +24,22 @@ const PlanCustomerSubscriptions: FC<PlanCustomerSubscriptionProps> = ({
     components["schemas"]["PlanVersionHistoricalSubscription"][]
   >([]);
   const queryClient = useQueryClient();
-  const mutation = useMutation(
+  useQuery(
+    ["plan_subscriptions_get", version_id],
     () => Plan.subscriptionsPlanVersions(version_id),
     {
-      onSuccess: () => {
+      onSuccess: (data) => {
+        if (tableData.length < data.length) {
+          const newData = [...tableData, ...data];
+          setTableData(newData);
+        }
         queryClient.invalidateQueries("plan_list");
         queryClient.invalidateQueries(["plan_detail", plan_id]);
       },
+      refetchOnMount: "always",
     }
   );
-  const mutationHandler = useCallback(async () => {
-    const data = await mutation.mutateAsync();
 
-    if (data && data.length > 0) {
-      if (tableData.length < data.length) {
-        const newData = [...tableData, ...data];
-        setTableData(newData);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  useEffect(() => {
-    mutationHandler();
-  }, [plan_id, version_id, mutationHandler]);
   return (
     <div className="">
       {tableData && tableData.length > 0 ? (
