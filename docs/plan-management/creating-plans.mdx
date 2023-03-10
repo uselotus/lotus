@@ -67,7 +67,7 @@ at the plan level (coming to the component level soon!):
 - **Fixed Amount**: This is a flat discount or surcharge that will be applied to
   the total price of the plan. For example, if you want to give a $200 discount
   to all customers on this plan, you would specify a flat amount of 200\. Keep
-  in mind flat discounts will never give a credit to a customer, and will simply
+  in mind flat discounts will never give credit to a customer, and will simply
   make the invoice 0.
 
 ## Charges & Features
@@ -76,7 +76,11 @@ at the plan level (coming to the component level soon!):
 
 This section is where you define the prices in the plan and effectively where you define the line items.
 
-A recurring charge is a non-usage based, flat subscription fee. Usually a plan will include a base fee that can be mapped as a recurring charge.
+### Recurring Charges
+
+A recurring charge is a non-usage-based, flat subscription fee. Usually a plan will include a base fee that can be mapped as a recurring charge.
+
+### Usage Components
 
 Usage components are simply charges/line items that are dependent on a metric. These are configured through. This format can represent per-unit
 pricing, packaged pricing, traditional tiered pricing, stair-step pricing, or
@@ -85,9 +89,17 @@ free pricing. Even bps pricing by changing the rounding_type to no_roundig.
 Plan components associate metrics to your given plan, and include the price you
 want to charge for them.
 
-Charges are configured through tiers. This format can represent per-unit
+Components are configured through tiers. This format can represent per-unit
 pricing, packaged pricing, traditional tiered pricing, stair-step pricing, or
 free pricing.
+
+Each component can optionally have a separate invoicing interval from the general plan duration. A use case for this would be an annual plan that bills usage overages monthly. The component also has a reset interval which determines how often the usage is reset back to 0 for the component.
+
+These are both found under additional settings and are optional (both default to the plan duration).
+
+### Pre-paying For Usage Components
+
+An important use case is for pre-paying usage, either in an enterprise deal or via a self-serve pricing model like Figma where you pre-pay for seats. This is made possible under the optional pre-paid tab, where you can specify if the component is pre-paid or not and optionally add an initial amount of usage to the plan by default.
 
 In addition, since you can set ranges, you can also dictate whether the metric
 has a limit that the user cannot exceed, which can then be checked in your
@@ -121,9 +133,13 @@ the next range can be 4 -> 100 which will start at 4 and go to 100.
 ![Features Section](/images/plan-management/feature-72d0da85a702bd716c20d3ccd357c25a.png)
 
 Plan features are meant to represent boolean features that you want to enable
-for your customers. For example, you might want to enable a feature like
+for your customers.
+
+For example, you might want to enable a feature like
 "Advanced Reporting" for a customer on a certain plan. In the feature creation
 screen, you must either choose the feature you want to associate with this plan
-or create a new one. For more detail on how you can use plan features to enable
+or create a new one.
+
+For more detail on how you can use plan features to enable
 or disable certain features in your application, please refer to the
 [managing feature access](/subscription-lifecycle/managing-access) guide.
