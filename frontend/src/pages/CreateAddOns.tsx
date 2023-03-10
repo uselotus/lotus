@@ -230,7 +230,7 @@ function CreateAddOns() {
 
     const addons: components["schemas"]["AddOnCreateRequest"] = {
       addon_name: addon_name as string,
-      plan_description: description as string,
+      addon_description: description as string,
       initial_version: {
         invoice_when: invoice_when as
           | "invoice_on_attach"
