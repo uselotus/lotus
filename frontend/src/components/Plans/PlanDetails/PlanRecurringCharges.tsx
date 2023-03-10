@@ -65,14 +65,6 @@ const PlanRecurringCharges: FC<PlanRecurringChargesProps> = ({
                     {capitalize(recurringCharge.charge_behavior)}
                   </div>
                 </div>
-                <div className="flex items-center justify-between text-card-grey gap-2 mb-1">
-                  <div className="font-normal whitespace-nowrap leading-4">
-                    Charge Behavior
-                  </div>
-                  <div className="!text-card-text">
-                    {capitalize(recurringCharge.charge_behavior)}
-                  </div>
-                </div>
               </div>
             </div>
           ))}
