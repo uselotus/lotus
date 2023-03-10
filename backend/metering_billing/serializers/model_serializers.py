@@ -1942,7 +1942,7 @@ class InvoiceListFilterSerializer(api_serializers.InvoiceListFilterSerializer):
 class GroupedLineItemSerializer(serializers.Serializer):
     plan_name = serializers.CharField()
     subscription_filters = SubscriptionCategoricalFilterSerializer(many=True)
-    subtotal = serializers.DecimalField(max_digits=10, decimal_places=2)
+    base = serializers.DecimalField(max_digits=10, decimal_places=2)
     start_date = serializers.DateTimeField()
     end_date = serializers.DateTimeField()
     sub_items = LightweightInvoiceLineItemSerializer(many=True)
@@ -1978,12 +1978,12 @@ class DraftInvoiceSerializer(InvoiceSerializer):
         for associated_subscription_record in associated_subscription_records:
             line_items = obj.line_items.filter(
                 associated_subscription_record=associated_subscription_record
-            ).order_by("name", "start_date", "subtotal")
+            ).order_by("name", "start_date", "base")
             sr = line_items[0].associated_subscription_record
             grouped_line_item_dict = {
                 "plan_name": sr.billing_plan.plan.plan_name,
                 "subscription_filters": sr.filters.all(),
-                "subtotal": line_items.aggregate(Sum("subtotal"))["subtotal__sum"] or 0,
+                "base": line_items.aggregate(Sum("base"))["base__sum"] or 0,
                 "start_date": sr.start_date,
                 "end_date": sr.end_date,
                 "sub_items": line_items,

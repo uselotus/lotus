@@ -1718,9 +1718,9 @@ class Invoice(models.Model):
 
 
 class InvoiceLineItem(models.Model):
-    class AdjustmentType(models.IntegerChoices):
-        SALES_TAX = (1, _("sales tax"))
-        PLAN_ADJUSTMENT = (2, _("plan adjustment"))
+    class AdjustmentType(models.TextChoices):
+        SALES_TAX = ("sales_tax", _("Sales Tax"))
+        PLAN_ADJUSTMENT = ("plan_adjustment", _("Plan Adjustment"))
 
     invoice_line_item_id = models.UUIDField(
         default=uuid.uuid4, unique=True, editable=False
@@ -1759,6 +1759,7 @@ class InvoiceLineItem(models.Model):
             #     "adjustment_type": models.PositiveSmallIntegerField(
             #         choices=AdjustmentType.choices
             #     ),
+            #     "name": models.CharField(max_length=100),
             # },
         ),
         default=list,

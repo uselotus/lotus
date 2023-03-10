@@ -5,8 +5,9 @@ from decimal import Decimal
 import sentry_sdk
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.db.models.query import QuerySet
+
 from metering_billing.kafka.producer import Producer
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.taxes import get_lotus_tax_rates, get_taxjar_tax_rates
@@ -83,7 +84,7 @@ def generate_invoice(
     try:
         distinct_currencies_pks = (
             subscription_records.order_by()
-            .values_list("billing_plan__currency", flat=True)
+            .values_list("billing_plan__pricing_unit", flat=True)
             .distinct()
         )
         distinct_currencies = PricingUnit.objects.filter(pk__in=distinct_currencies_pks)
@@ -408,6 +409,7 @@ def charge_next_plan_flat_fee(
 
 def apply_plan_discounts(invoice):
     from metering_billing.models import InvoiceLineItem, PlanVersion, SubscriptionRecord
+    from metering_billing.utils.enums import PRICE_ADJUSTMENT_TYPE
 
     distinct_sr_pv_combos = (
         invoice.line_items.filter(
@@ -417,47 +419,80 @@ def apply_plan_discounts(invoice):
         .values("associated_subscription_record", "associated_plan_version")
         .distinct()
     )
-    srs = SubscriptionRecord.objects.filter(
+    SubscriptionRecord.objects.filter(
         pk__in=[x["associated_subscription_record"] for x in distinct_sr_pv_combos]
     )
     pvs = PlanVersion.objects.filter(
         pk__in=[x["associated_plan_version"] for x in distinct_sr_pv_combos]
     )
-    for combo in distinct_sr_pv_combos:
-        sr = srs.get(pk=combo["associated_subscription_record"])
-        pv = pvs.get(pk=combo["associated_plan_version"])
+    for pv in pvs:
         if pv.price_adjustment:
-            plan_amount = (
-                invoice.line_items.filter(
-                    associated_subscription_record=sr,
-                    associated_plan_version=pv,
-                ).aggregate(tot=Sum("base"))["tot"]
-                or 0
-            )
             price_adj_name = str(pv.price_adjustment)
-            new_amount_due = pv.price_adjustment.apply(plan_amount)
-            new_amount_due = max(new_amount_due, Decimal(0))
-            difference = new_amount_due - plan_amount
-            if difference != 0:
-                InvoiceLineItem.objects.create(
-                    name=f"{pv.plan.plan_name} {price_adj_name}",
-                    start_date=invoice.issue_date,
-                    end_date=invoice.issue_date,
-                    quantity=None,
-                    base=difference,
-                    billing_type=INVOICE_CHARGE_TIMING_TYPE.IN_ARREARS,
-                    chargeable_item_type=CHARGEABLE_ITEM_TYPE.PLAN_ADJUSTMENT,
-                    invoice=invoice,
-                    associated_subscription_record=sr,
-                    organization=sr.organization,
+            if (
+                pv.price_adjustment.price_adjustment_type
+                == PRICE_ADJUSTMENT_TYPE.PERCENTAGE
+            ):
+                for line_item in invoice.line_items.filter(associated_plan_version=pv):
+                    discount_amount = pv.price_adjustment.apply(line_item.base)
+                    adjustments = line_item.adjustments
+                    new_adjustment = {
+                        "amount": str(discount_amount),
+                        "account": "21000",
+                        "adjustment_type": "plan_adjustment",
+                    }
+                    new_adjustments = adjustments + [new_adjustment]
+                    line_item.adjustments = new_adjustments
+                    line_item.save()
+            else:
+                distinct_srs = (
+                    invoice.line_items.filter(associated_plan_version=pv)
+                    .values("associated_subscription_record")
+                    .distinct()
                 )
+                for sr in distinct_srs:
+                    billing_line_items = invoice.line_items.filter(
+                        ~Q(chargeable_item_type=CHARGEABLE_ITEM_TYPE.PLAN_ADJUSTMENT),
+                        associated_subscription_record=sr[
+                            "associated_subscription_record"
+                        ],
+                        associated_plan_version=pv,
+                    )
+                    past_discount_items = invoice.line_items.filter(
+                        chargeable_item_type=CHARGEABLE_ITEM_TYPE.PLAN_ADJUSTMENT,
+                        associated_subscription_record=sr[
+                            "associated_subscription_record"
+                        ],
+                        associated_plan_version=pv,
+                    )
+                    total_due = (
+                        billing_line_items.aggregate(tot=Sum("base"))["tot"] or 0
+                    )
+                    total_discounted = (
+                        past_discount_items.aggregate(tot=Sum("base"))["tot"] or 0
+                    )
+                    discount_amount = (
+                        pv.price_adjustment.apply(total_due) - total_discounted
+                    )
+                    if discount_amount > 0:
+                        InvoiceLineItem.objects.create(
+                            name=f"{pv.plan.plan_name} {price_adj_name}",
+                            start_date=invoice.issue_date,
+                            end_date=invoice.issue_date,
+                            quantity=None,
+                            base=discount_amount,
+                            billing_type=INVOICE_CHARGE_TIMING_TYPE.IN_ARREARS,
+                            chargeable_item_type=CHARGEABLE_ITEM_TYPE.PLAN_ADJUSTMENT,
+                            invoice=invoice,
+                            associated_subscription_record=sr,
+                            organization=sr.organization,
+                        )
 
 
 def apply_taxes(invoice, customer, organization, draft):
     """
     Apply taxes to an invoice
     """
-    from metering_billing.models import Invoice, InvoiceLineItem, Organization
+    from metering_billing.models import Invoice, Organization
 
     if invoice.payment_status == Invoice.PaymentStatus.PAID:
         return
@@ -510,21 +545,20 @@ def apply_taxes(invoice, customer, organization, draft):
         if tax_rate == 0:
             continue
 
-        name = f"Tax - {round(tax_rate, 2)}%"
         tax_amount = current_base * (tax_rate / Decimal(100))
         if tax_amount > 0:
-            InvoiceLineItem.objects.create(
-                name=name,
-                start_date=invoice.issue_date,
-                end_date=invoice.issue_date,
-                quantity=None,
-                base=tax_amount,
-                billing_type=INVOICE_CHARGE_TIMING_TYPE.IN_ARREARS,
-                chargeable_item_type=CHARGEABLE_ITEM_TYPE.TAX,
-                invoice=invoice,
-                organization=invoice.organization,
-                associated_subscription_record=sr,
-            )
+            for line_item in invoice.line_items.filter(
+                associated_subscription_record=sr
+            ):
+                adjustments = line_item.adjustments
+                new_adjustment = {
+                    "amount": str(tax_amount),
+                    "account": "41100",
+                    "adjustment_type": "sales_tax",
+                }
+                new_adjustments = adjustments + [new_adjustment]
+                line_item.adjustments = new_adjustments
+                line_item.save()
 
 
 def apply_customer_balance_adjustments(invoice, customer, organization, draft):
@@ -683,7 +717,7 @@ def calculate_due_date(issue_date, organization):
 def finalize_amount(invoice, draft):
     from metering_billing.models import Invoice
 
-    invoice.amount = invoice.line_items.aggregate(tot=Sum("amount"))["tot"] or 0
+    invoice.amount = invoice.line_items.aggregate(tot=Sum("./"))["tot"] or 0
     if abs(invoice.amount) < 0.01 and not draft:
         invoice.payment_status = Invoice.PaymentStatus.PAID
     invoice.save()
