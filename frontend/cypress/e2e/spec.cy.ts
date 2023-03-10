@@ -31,6 +31,7 @@ const Login = () => {
 
 describe("Testing Successful Login", () => {
   it("Navigates to Dashboard After Login", () => {
+    cy.visit("http://localhost:3000"); // add this line to start on a fresh page
     Login();
     cy.contains("Dashboard");
     cy.url().should("eq", "http://localhost:3000/dashboard"); // => true
@@ -136,3 +137,4 @@ describe("Testing Event Tracking Details On Metrics Page", () => {
     cy.get(".travelcompany-input .input-label").should("include.text", "region : US");
   });
 });
+

@@ -49,7 +49,7 @@ function VersionActiveForm(props: {
             buttonStyle="solid"
           >
             <Radio.Button value={false}>Inactive</Radio.Button>
-            <Radio.Button value>Active</Radio.Button>
+            <Radio.Button value={true}>Active</Radio.Button>
           </Radio.Group>
         </div>
       </div>

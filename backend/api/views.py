@@ -144,6 +144,7 @@ from metering_billing.utils.enums import (
 from metering_billing.webhooks import (
     customer_created_webhook,
     subscription_created_webhook,
+    subscription_cancelled_webhook,
 )
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -974,7 +975,13 @@ class SubscriptionViewSet(
         return_qs = SubscriptionRecord.base_objects.filter(
             pk__in=original_qs, organization=organization
         )
+
         ret = SubscriptionRecordSerializer(return_qs, many=True).data
+
+        for subscription in qs:
+            subscription_data = SubscriptionRecordSerializer(subscription).data
+            subscription_cancelled_webhook(subscription, subscription_data)
+
         return Response(ret, status=status.HTTP_200_OK)
 
     @extend_schema(

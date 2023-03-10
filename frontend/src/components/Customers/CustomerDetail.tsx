@@ -138,7 +138,7 @@ function CustomerDetail() {
         toast.success("Subscription switched successfully");
       },
       onError: (error: QueryErrors) => {
-        toast.error(error.response.data.title);
+        toast.error(error.response.data.detail);
       },
     }
   );
