@@ -253,7 +253,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         </div>
       </div>
       <div className="bg-white mb-6 flex flex-col py-4 px-10 rounded-lg space-y-12">
-        <div className="grid gap-12 grid-cols-1  md:grid-cols-3">
+        <div className="grid gap-12 grid-cols-1 -mx-10  md:grid-cols-3">
           <div className="col-span-1">
             <PlanSummary
               plan={plan}
@@ -270,12 +270,12 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
             />
           </div>
         </div>
-        <div>
+        <div className="-mx-10">
           <PlanRecurringCharges
             recurringCharges={selectedVersion!.recurring_charges}
           />
         </div>
-        <div>
+        <div className="-mx-10">
           <PlanComponents
             refetch={refetch}
             plan={plan}
@@ -284,17 +284,17 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
             plan_version_id={selectedVersion!.version_id}
           />
         </div>
-        <div>
+        <div className="-mx-10">
           <PlanFeatures features={selectedVersion?.features} />
         </div>
-        <div>
+        <div className="-mx-10">
           <PlanCustomerSubscriptions
             plan_id={plan.plan_id}
             version_id={selectedVersion!.version_id}
           />
         </div>
 
-        <div className=" mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card">
+        <div className=" mt-4 min-w-[246px] -mx-10 p-8 cursor-pointer font-main rounded-sm bg-card">
           <Typography.Title className="!text-[18px]">
             Price Adjustments:{" "}
             {getPriceAdjustmentEnding(

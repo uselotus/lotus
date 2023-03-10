@@ -212,62 +212,61 @@ const PlanDetails: FC = () => {
         </div>
       )}
       {plan && (
-        <div>
-          <PageLayout
-            title={
-              <div>
-                {plan.plan_name}
-                <span className="block mt-4  text-neutral-500 text-base">
-                  {plan.plan_description}
-                </span>
-              </div>
-            }
-            hasBackButton
-            aboveTitle
-            mx={false}
-            backButton={
-              <div>
-                <Button
-                  onClick={() => navigate(-1)}
-                  type="primary"
-                  size="large"
-                  key="go-back"
-                  style={{
-                    background: "#FAFAFA",
-                    borderColor: "#FAFAFA",
-                  }}
-                >
-                  <div className="flex items-center justify-between text-black">
-                    <div>&larr; Go back</div>
-                  </div>
-                </Button>
-              </div>
-            }
-            backIcon
-            extra={[
+        <PageLayout
+          title={
+            <div>
+              {plan.plan_name}
+              <span className="block mt-4  text-neutral-500 text-base">
+                {plan.plan_description}
+              </span>
+            </div>
+          }
+          hasBackButton
+          aboveTitle
+          mx={false}
+          backButton={
+            <div>
               <Button
-                onClick={navigateCreateCustomPlan}
+                onClick={() => navigate(-1)}
                 type="primary"
                 size="large"
-                key="create-custom-plan"
-                className="hover:!bg-primary-700"
-                style={{ background: "#C3986B", borderColor: "#C3986B" }}
+                key="go-back"
+                style={{
+                  background: "#FAFAFA",
+                  borderColor: "#FAFAFA",
+                }}
               >
-                <div className="flex items-center justify-between text-white">
-                  <div>
-                    <PlusOutlined className="!text-white w-12 h-12 cursor-pointer" />
-                    Create Custom Plan
-                  </div>
+                <div className="flex items-center justify-between text-black">
+                  <div>&larr; Go back</div>
                 </div>
-              </Button>,
-            ]}
-          />
+              </Button>
+            </div>
+          }
+          backIcon
+          extra={[
+            <Button
+              onClick={navigateCreateCustomPlan}
+              type="primary"
+              size="large"
+              key="create-custom-plan"
+              className="hover:!bg-primary-700"
+              style={{ background: "#C3986B", borderColor: "#C3986B" }}
+            >
+              <div className="flex items-center justify-between text-white">
+                <div>
+                  <PlusOutlined className="!text-white w-12 h-12 cursor-pointer" />
+                  Create Custom Plan
+                </div>
+              </div>
+            </Button>,
+          ]}
+        >
           <div>
             <Tabs
-              className="mx-10"
               onChange={changeTab}
               defaultActiveKey="0"
               activeKey={activeKey}
+              size="large"
             >
               <Tabs.TabPane tab="Versions" key="0">
                 {plan.versions.length > 0 && (
@@ -318,7 +317,7 @@ const PlanDetails: FC = () => {
               </Tabs.TabPane>
             </Tabs>
           </div>
-        </div>
+        </PageLayout>
       )}
     </>
   );
