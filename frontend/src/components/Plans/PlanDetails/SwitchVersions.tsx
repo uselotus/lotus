@@ -17,11 +17,11 @@ import { Plan } from "../../../api/api";
 import PlanRecurringCharges from "./PlanRecurringCharges";
 import PlanCustomerSubscriptions from "./PlanCustomerSubscriptions";
 import { components } from "../../../gen-types";
-import Select from "../../base/Select/Select";
 import ChevronDown from "../../base/ChevronDown";
 import DropdownComponent from "../../base/Dropdown/Dropdown";
 import AddCurrencyModal from "./AddCurrencyModal";
 import DeleteVersionModal from "./DeleteVersionModal";
+import { Select } from "antd";
 
 interface SwitchVersionProps {
   versions: components["schemas"]["PlanDetail"]["versions"];
@@ -165,7 +165,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
               setSelectedVersion(version);
             }}
             className={[
-              "flex items-center justify-center p-6 cursor-pointer mx-1 gap-4",
+              "flex items-center justify-center p-6 cursor-pointer mx-1 gap-4 h-33px",
               isSelectedVersion(version!.version_id)
                 ? "bg-[#c3986b] text-white opacity-100 ml-2 mr-2"
                 : "bg-[#EAEAEB] text-black ml-2 mr-2",
@@ -212,7 +212,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
           to={`/create-version/${selectedVersion?.plan_id}`}
           className="mx-4"
         >
-          <div className="flex items-center justify-center px-2 py-2  hover:bg-[#EAEAEB]">
+          <div className="flex items-center justify-center px-2 py-2  hover:bg-[#EAEAEB] hover:bg-4">
             <div className="addVersionButton">
               <PlusOutlined />
             </div>
@@ -220,38 +220,35 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
           </div>
         </Link>
         <div>
-          <Select>
-            <Select.Select
-              className="!w-full"
-              ref={selectRef}
-              onChange={() => {
-                // const arr = [
-                //   ...[selectedVersion],
-                //   ...removeDuplicateVersions(versions),
-                // ];
-                const [versionNum, symbol] =
-                  selectRef.current!.value.split("-");
-                const version = versionNum.split("v")[1];
+          <Select
+            ref={selectRef}
+            value={`Currency:${selectedVersion?.currency.code}-${selectedVersion?.currency?.symbol}`}
+            onChange={() => {
+              // const arr = [
+              //   ...[selectedVersion],
+              //   ...removeDuplicateVersions(versions),
+              // ];
+              const [versionNum, symbol] = selectRef.current!.value.split("-");
+              const version = versionNum.split("v")[1];
 
-                const newSelectedVersion = dropDownVersions.find(
-                  (el) =>
-                    el?.version === Number(version) &&
-                    el.currency &&
-                    el.currency.symbol === symbol
-                );
+              const newSelectedVersion = dropDownVersions.find(
+                (el) =>
+                  el?.version === Number(version) &&
+                  el.currency &&
+                  el.currency.symbol === symbol
+              );
 
-                if (newSelectedVersion) {
-                  console.log("Expecting log");
-                  setSelectedVersion(newSelectedVersion);
-                }
-              }}
-            >
-              {dropDownVersions.map((el) => (
-                <Select.Option key={el?.version_id}>
-                  {`v${el?.version}-${el?.currency?.symbol}`}
-                </Select.Option>
-              ))}
-            </Select.Select>
+              if (newSelectedVersion) {
+                console.log("Expecting log");
+                setSelectedVersion(newSelectedVersion);
+              }
+            }}
+          >
+            {dropDownVersions.map((el) => (
+              <Select.Option key={el?.version_id}>
+                {`Currency:${el?.currency.code}-${el?.currency?.symbol}`}
+              </Select.Option>
+            ))}
           </Select>
         </div>
       </div>

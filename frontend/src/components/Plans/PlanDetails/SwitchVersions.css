@@ -6,6 +6,9 @@
   font-size: 14px;
   cursor: pointer;
 }
+.ant-select-selector {
+  min-width: 200px;
+}
 
 .versionChip:hover {
   transform: scale(1.08);

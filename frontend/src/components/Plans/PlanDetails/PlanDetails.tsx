@@ -38,7 +38,8 @@ const PlanDetails: FC = () => {
   const [customPlans, setCustomPlans] = useState<
     components["schemas"]["PlanDetail"][]
   >([]);
-  const [selection, setSelection] = React.useState<(typeof customPlans)[0]>();
+  const [selectedCustomPlan, setSelectedCustomPlan] =
+    React.useState<(typeof customPlans)[0]>();
   const selectRef = useRef<HTMLSelectElement | null>(null!);
   const dropdownSelectRef = useRef<HTMLSelectElement | null>(null!);
   const [activeKey, setActiveKey] = useState("0");
@@ -182,7 +183,7 @@ const PlanDetails: FC = () => {
       {
         onSuccess: (plans) => {
           setCustomPlans(plans as components["schemas"]["PlanDetail"][]);
-          setSelection(plans[0] as (typeof customPlans)[0]);
+          setSelectedCustomPlan(plans[0] as (typeof customPlans)[0]);
         },
       }
     );
@@ -223,6 +224,7 @@ const PlanDetails: FC = () => {
             }
             hasBackButton
             aboveTitle
+            mx={false}
             backButton={
               <div>
                 <Button
@@ -275,52 +277,40 @@ const PlanDetails: FC = () => {
                     createPlanExternalLink={createPlanExternalLink}
                     deletePlanExternalLink={deletePlanExternalLink}
                     plan={plan}
-                    className="flex items-center mx-10 my-5"
+                    className="flex items-center my-5"
                   />
                 )}
               </Tabs.TabPane>
               <Tabs.TabPane tab="Custom Plans" key="1">
                 <div>
-                  <div className="mx-10 flex items-center gap-4">
+                  <div className="flex items-center gap-4">
                     <span>Filters</span>
                     <Select
-                      className="hidden !w-min-150px"
+                      className="hidden "
                       onChange={() => {
                         const selectedType = customPlans.find(
                           (el) => el.plan_name === selectRef.current?.value
                         );
 
-                        setSelection(selectedType);
+                        setSelectedCustomPlan(selectedType);
                       }}
-                    >
-                      <Select.Select
-                        className="!w-full !border !border-black"
-                        ref={selectRef}
-                      >
-                        {/* <Select.Option selected>{selection}</Select.Option> */}
-                        {customPlans.map((el) => (
-                          <Select.Option key={el.plan_id}>
-                            {el.plan_name}
-                          </Select.Option>
-                        ))}
-                      </Select.Select>
-                    </Select>
+                      value={selectedCustomPlan?.plan_name}
+                    ></Select>
                   </div>
-                  {selection && (
+                  {selectedCustomPlan && (
                     <CustomPlanDetails
                       activeKey={activeKey}
                       refetch={refetch}
-                      version={selection!.versions[0]}
+                      version={selectedCustomPlan!.versions[0]}
                       createPlanExternalLink={createPlanExternalLink}
                       deletePlanExternalLink={deletePlanExternalLink}
-                      plan={selection!}
+                      plan={selectedCustomPlan!}
                     />
                   )}
                 </div>
               </Tabs.TabPane>
             </Tabs>
           </div>
-          <div className="separator mt-4" />
         </div>
       )}
     </>
