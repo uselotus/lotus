@@ -7,7 +7,7 @@ import React, { FC, useCallback, useEffect, useRef, useState } from "react";
 import "./SwitchVersions.css";
 import { PlusOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
-import { Typography } from "antd";
+import { Typography, Dropdown, Select, Menu } from "antd";
 import { useMutation, useQueryClient } from "react-query";
 import { PlanType } from "../../../types/plan-type";
 import PlanComponents, { PlanInfo, PlanSummary } from "./PlanComponent";
@@ -21,7 +21,6 @@ import ChevronDown from "../../base/ChevronDown";
 import DropdownComponent from "../../base/Dropdown/Dropdown";
 import AddCurrencyModal from "./AddCurrencyModal";
 import DeleteVersionModal from "./DeleteVersionModal";
-import { Select } from "antd";
 
 interface SwitchVersionProps {
   versions: components["schemas"]["PlanDetail"]["versions"];
@@ -186,37 +185,44 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
             ].join(" ")}
           >
             {/* v{version.version} <ChevronDown /> */}
-            <DropdownComponent>
-              <DropdownComponent.Trigger>
-                <div className="flex gap-2 items-center">
-                  v{version.version}
-                  {/* {version.currency && `-${version.currency.symbol}`} */}
-                  <ChevronDown />
-                </div>
-              </DropdownComponent.Trigger>
-              <DropdownComponent.Container className="bg-primary-50 whitespace-nowrap">
-                {["Add Currency", "Delete"].map((el) => (
-                  <DropdownComponent.MenuItem
-                    key={el}
-                    onSelect={() => {
-                      if (el === "Add Currency") {
-                        setTriggerCurrencyModal(true);
-                        setTriggerDeleteModal(false);
-                      } else {
-                        setTriggerCurrencyModal(false);
-                        setTriggerDeleteModal(true);
-                      }
+            <Dropdown
+              overlay={
+                <Menu className="!bg-primary-50 !whitespace-nowrap">
+                  <Menu.Item
+                    key="1"
+                    onClick={() => {
+                      setTriggerCurrencyModal(true);
+                      setTriggerDeleteModal(false);
                     }}
                   >
                     <span className="flex gap-2 justify-between ">
                       <span className="flex gap-2 items-center">
-                        <span className="text-black">{el}</span>
+                        <span className="text-black">Add Currency</span>
                       </span>
                     </span>
-                  </DropdownComponent.MenuItem>
-                ))}
-              </DropdownComponent.Container>
-            </DropdownComponent>
+                  </Menu.Item>
+                  <Menu.Item
+                    key="2"
+                    onClick={() => {
+                      setTriggerCurrencyModal(false);
+                      setTriggerDeleteModal(true);
+                    }}
+                  >
+                    <span className="flex gap-2 justify-between ">
+                      <span className="flex gap-2 items-center">
+                        <span className="text-black">Delete</span>
+                      </span>
+                    </span>
+                  </Menu.Item>
+                </Menu>
+              }
+            >
+              <div className="flex gap-2 items-center">
+                v{version.version}
+                {/* {version.currency && `-${version.currency.symbol}`} */}
+                <ChevronDown />
+              </div>
+            </Dropdown>
           </div>
         ))}
         <Link
@@ -234,13 +240,16 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         <div>
           <Select
             ref={selectRef}
-            value={`Currency:${selectedVersion?.currency.code}-${selectedVersion?.currency?.symbol}`}
-            onChange={() => {
+            value={`Currency:${selectedVersion?.currency?.code}-${selectedVersion?.currency?.symbol}`}
+            onChange={(e) => {
               // const arr = [
               //   ...[selectedVersion],
               //   ...removeDuplicateVersions(versions),
               // ];
-              const [versionNum, symbol] = selectRef.current!.value.split("-");
+              if (e.split("-")[0] === "undefined") {
+                return;
+              }
+              const [versionNum, symbol] = e.split("-");
               const version = versionNum.split("v")[1];
 
               const newSelectedVersion = dropDownVersions.find(
@@ -251,14 +260,16 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
               );
 
               if (newSelectedVersion) {
-                console.log("Expecting log");
                 setSelectedVersion(newSelectedVersion);
               }
             }}
           >
             {dropDownVersions.map((el) => (
-              <Select.Option key={el?.version_id}>
-                {`Currency:${el?.currency.code}-${el?.currency?.symbol}`}
+              <Select.Option
+                value={`${el?.currency?.code}-${el?.currency?.symbol}`}
+                key={el?.version_id}
+              >
+                {`Currency:${el?.currency?.code}-${el?.currency?.symbol}`}
               </Select.Option>
             ))}
           </Select>

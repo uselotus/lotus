@@ -115,7 +115,7 @@ const CustomPlanDetails: FC<CustomPlanDetailsProps> = ({
             {getPriceAdjustmentEnding(
               version.price_adjustment?.price_adjustment_type,
               version.price_adjustment?.price_adjustment_amount,
-              version.currency.symbol
+              version.currency?.symbol
             )}
           </Typography.Title>
         </div>

@@ -5,7 +5,7 @@
 // @ts-ignore
 import React, { FC, Fragment, useRef, useState } from "react";
 import "./PlanDetails.css";
-import { Button, Tabs } from "antd";
+import { Button, Tabs, Select } from "antd";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   useMutation,
@@ -27,7 +27,6 @@ import {
 import LoadingSpinner from "../../LoadingSpinner";
 import { components } from "../../../gen-types";
 import CustomPlanDetails from "./CustomPlanDetails";
-import { Select } from "antd";
 
 type PlanDetailParams = {
   planId: string;
@@ -172,16 +171,13 @@ const PlanDetails: FC = () => {
   const { data: plans }: UseQueryResult<components["schemas"]["PlanDetail"]> =
     useQuery<components["schemas"]["PlanDetail"]>(
       ["plan_list"],
-      () =>
-        Plan.getPlan({ planID: planId, version: "custom_only" }).then(
-          (res) => res
-        ),
+      () => Plan.getPlan(planId as string, "custom_only").then((res) => res),
 
       {
         onSuccess: (plan) => {
+          console.log(plan);
           setCustomPlans(plan.versions);
           setSelectedCustomPlan(plan.versions[0]);
-          å;
         },
       }
     );
@@ -191,7 +187,7 @@ const PlanDetails: FC = () => {
   const navigateCreateCustomPlan = () => {
     navigate(`/create-custom/${planId}`);
   };
-
+  console.log(customPlans);
   return (
     <>
       {isLoading && (
@@ -284,18 +280,18 @@ const PlanDetails: FC = () => {
                   <div className="flex items-center gap-4">
                     <span>Filters</span>
                     <Select
-                      className="hidden "
-                      onChange={() => {
-                        const selectedType = customPlans.find(
-                          (el) => el.localized_name === selectRef.current?.value
+                      className=""
+                      onChange={(e) => {
+                        const selectedType = customPlans?.find(
+                          (el) => el.plan_name === e
                         );
-
+                        console.log("tyoe", e);
                         setSelectedCustomPlan(selectedType);
                       }}
                       value={selectedCustomPlan?.plan_name}
                     >
-                      {customPlans.map((el) => (
-                        <Select.Option key={el.plan_id}>
+                      {customPlans?.map((el, index) => (
+                        <Select.Option value={el.plan_name} key={index}>
                           {el.plan_name}
                         </Select.Option>
                       ))}

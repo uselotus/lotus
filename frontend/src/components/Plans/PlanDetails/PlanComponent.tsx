@@ -442,7 +442,7 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
               </div>
               <div className="!text-card-grey">
                 {" "}
-                {`${version.currency.code}-${version.currency.symbol}`}
+                {`${version.currency?.code}-${version.currency?.symbol}`}
               </div>
             </div>
             <div className="flex items-center justify-between text-card-text gap-2 mb-1">

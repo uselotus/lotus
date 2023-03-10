@@ -1,3 +1,4 @@
+/* eslint-disable react/no-array-index-key */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable camelcase */
 
@@ -78,8 +79,8 @@ const PlanCustomerSubscriptions: FC<PlanCustomerSubscriptionProps> = ({
                   </thead>
                   <tbody className="divide-y divide-gray-200 Inter bg-white">
                     {tableData && tableData.length > 0 ? (
-                      tableData.map((info) => (
-                        <tr key={info.customer_id}>
+                      tableData.map((info, index) => (
+                        <tr key={index}>
                           <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm Inter font-medium text-table-black sm:pl-6">
                             {createShortenedText(info.customer_id, false)}
                           </td>
