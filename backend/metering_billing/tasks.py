@@ -6,6 +6,7 @@ from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
+
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
@@ -69,7 +70,7 @@ def calculate_invoice():
         minutes=-30
     )  # grace period of 30 minutes for sending events
     sub_records_to_bill = SubscriptionRecord.objects.filter(
-        Q(end_date__lt=now_minus_30) & Q(fully_billed=False),
+        Q(end_date__lt=now_minus_30)
     )
     billing_records_to_bill = BillingRecord.objects.filter(
         Q(next_invoicing_date__lt=now_minus_30) & Q(fully_billed=False),
