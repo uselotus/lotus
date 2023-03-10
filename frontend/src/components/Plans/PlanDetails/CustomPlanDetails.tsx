@@ -68,7 +68,7 @@ const CustomPlanDetails: FC<CustomPlanDetailsProps> = ({
   return (
     <div>
       <div className="bg-white mb-6 flex flex-col py-4 px-10 rounded-lg space-y-12">
-        <div className="grid gap-12 grid-cols-1  md:grid-cols-3">
+        <div className="grid gap-12 grid-cols-1 -mx-10 md:grid-cols-3">
           <div className="col-span-1">
             <PlanSummary
               plan={plan}
@@ -81,10 +81,10 @@ const CustomPlanDetails: FC<CustomPlanDetailsProps> = ({
             <PlanInfo activeKey={activeKey} plan={plan} version={version!} />
           </div>
         </div>
-        <div>
+        <div className="-mx-10">
           <PlanRecurringCharges recurringCharges={version!.recurring_charges} />
         </div>
-        <div>
+        <div className="-mx-10">
           <PlanComponents
             refetch={refetch}
             plan={plan}
@@ -93,10 +93,10 @@ const CustomPlanDetails: FC<CustomPlanDetailsProps> = ({
             plan_version_id={version.version_id}
           />
         </div>
-        <div>
+        <div className="-mx-10">
           <PlanFeatures features={version.features} />
         </div>
-        <div className=" mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card">
+        <div className=" mt-4 -mx-10 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card">
           <Typography.Title className="!text-[18px]">
             Price Adjustments:{" "}
             {getPriceAdjustmentEnding(
@@ -106,7 +106,7 @@ const CustomPlanDetails: FC<CustomPlanDetailsProps> = ({
             )}
           </Typography.Title>
         </div>
-        <div>
+        <div className="-mx-10">
           <PlanCustomerSubscriptions
             plan_id={plan.plan_id}
             version_id={version!.version_id}

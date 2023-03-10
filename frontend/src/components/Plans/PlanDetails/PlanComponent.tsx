@@ -123,7 +123,7 @@ export function PlanSummary({
   );
 
   return (
-    <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card">
+    <div className="h-[210px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card">
       <Typography.Title className="pt-4 whitespace-pre-wrap !text-[18px] level={2}">
         Plan Information
       </Typography.Title>
@@ -371,7 +371,7 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
   );
 
   return (
-    <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card ">
+    <div className="h-[210px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card ">
       <div className="flex justify-between">
         <Typography.Title className="pt-4 whitespace-pre-wrap grid gap-4 !text-[18px] items-center grid-cols-1 md:grid-cols-2">
           <div>Version Information</div>
