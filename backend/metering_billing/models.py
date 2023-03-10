@@ -1666,6 +1666,11 @@ class Invoice(models.Model):
     )
     invoice_past_due_webhook_sent = models.BooleanField(default=False)
     history = HistoricalRecords()
+    __original_payment_status = None
+
+    def __init__(self, *args, **kwargs):
+        super(Invoice, self).__init__(*args, **kwargs)
+        self.__original_payment_status = self.payment_status
 
     class Meta:
         indexes = [
@@ -1702,13 +1707,14 @@ class Invoice(models.Model):
                 next_invoice_number = "{0:06d}".format(last_invoice_number + 1)
 
             self.invoice_number = issue_date_string + "-" + next_invoice_number
-            # if not self.due_date:
-            #     self.due_date = self.issue_date + datetime.timedelta(days=1)
-        paid_before = self.payment_status == Invoice.PaymentStatus.PAID
         super().save(*args, **kwargs)
-        paid_after = self.payment_status == Invoice.PaymentStatus.PAID
-        if not paid_before and paid_after and self.amount > 0:
+        if (
+            self.__original_payment_status != self.payment_status
+            and self.payment_status == Invoice.PaymentStatus.PAID
+            and self.cost_due > 0
+        ):
             invoice_paid_webhook(self, self.organization)
+        self.__original_payment_status = self.payment_status
 
 
 class InvoiceLineItem(models.Model):

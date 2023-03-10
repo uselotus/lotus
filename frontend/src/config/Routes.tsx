@@ -22,6 +22,7 @@ import ViewAddOns from "../pages/ViewAddOns";
 import CreateAddOns from "../pages/CreateAddOns";
 import AddonDetails from "../components/Addons/AddonsDetails/AddonDetails";
 import CustomerDetail from "../components/Customers/CustomerDetail";
+import QuickstartPage from "../pages/Quickstart";
 
 const { Sider } = Layout;
 
@@ -85,6 +86,7 @@ const AppRoutes: FC = () => {
               element={<EditPlanLoader type="backtest" />}
             />
             <Route path="/plan" />
+            <Route path="/quickstart" element={<QuickstartPage />} />
             <Route path="/customers" element={<ViewCustomers />} />
             <Route path="/customers/:customerId" element={<CustomerDetail />} />
             <Route path="/metrics" element={<ViewMetrics />} />

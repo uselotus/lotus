@@ -31,6 +31,7 @@ const Login = () => {
 
 describe("Testing Successful Login", () => {
   it("Navigates to Dashboard After Login", () => {
+    cy.visit("http://localhost:3000"); // add this line to start on a fresh page
     Login();
     cy.contains("Dashboard");
     cy.url().should("eq", "http://localhost:3000/dashboard"); // => true
@@ -51,28 +52,63 @@ describe("Testing Successful Plan Creation", () => {
   });
 });
 
-// TODO uncomment and make tests to pass. A ticket is available: https://github.com/uselotus/lotus/issues/633
+describe("Testing Successful Metric Creation", () => {
+  it("Test Metric creation flow", () => {
+    Login();
+    cy.visit("http://localhost:3000/metrics");
+    cy.wait(10000);
+    cy.get("#create-metric-button").click();
+    cy.contains("Create Metric");
+    cy.get("#Metric-Name-input").type("New Metric");
+    cy.get("#event-name-input").type("New event");
+    cy.get("#Create-metric-button").click();
+  });
+});
 
-// describe("Testing Successful Metric Creation", () => {
-//   it("Test Metric creation flow", () => {
-//     Login();
-//     cy.visit("http://localhost:3000/metrics");
-//     cy.wait(10000);
-//     cy.get("#create-metric-button").click();
-//     cy.contains("Create a new Metric");
-//     cy.get("#Metric-Name-input").type("New Metric");
-//     cy.get("#event-name-input").type("New event");
-//     cy.get("#Create-metric-button").click();
-//   });
-// });
+describe("Testing Create Customer and Attach Subscription", () => {
+  it("Test Create customer flow", () => {
+    Login();
+    cy.visit("http://localhost:3000/customers");
+    cy.wait(10000);
+    cy.contains("Customers");
+    cy.get("#create-cutsomer-model").click();
+    cy.contains("Create a Customer");
+    const randomId = getId(5);
+    const randomEmail = getEmail(5);
+    cy.get("#customer-name").type("Testing Customer");
+    cy.get("#customer-email").type(randomEmail);
+    cy.get("#customer-id").type(randomId);
+    cy.get("#Create-customer-button").click();
+    cy.wait(10000);
+    cy.get(".ant-table-row").first().click();
+  });
+});
 
-// describe("Testing Create Customer and Attach Subscription", () => {
+// describe("Testing Event Ingested", () => {
 //   it("Test Create customer flow", () => {
 //     Login();
-//     cy.visit("http://localhost:3000/customers");
+//     cy.visit("http://localhost:3000/metrics");
+
+//     const headers = {
+//       "Content-Type": "application/json",
+//       Authorization: "X-API-TOKEN ",
+//     };
+
+//     const event = {
+//       event_name: "event_3",
+//       properties: {
+//         regions: "us-east-1",
+//         instance_type: "t2.micro",
+//       },
+//       idempotency_id: "1234567890",
+//       time_created: new Date().toISOString(),
+//     };
+
 //     cy.wait(10000);
-//     cy.contains("Customers");
-//     cy.get("#create-cutsomer-model").click();
+//     cy.contains("Metrics");
+
+//     cy.get(".ant-table-row").first().check();
+
 //     cy.contains("Create a Customer");
 //     const randomId = getId(5);
 //     const randomEmail = getEmail(5);
@@ -81,6 +117,6 @@ describe("Testing Successful Plan Creation", () => {
 //     cy.get("#customer-id").type(randomId);
 //     cy.get("#Create-customer-button").click();
 //     cy.wait(10000);
-//     cy.get(".ant-table-row")[0].click();
+//     cy.get(".ant-table-row").first().click();
 //   });
 // });
