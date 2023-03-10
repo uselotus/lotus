@@ -618,7 +618,9 @@ class CustomerSerializer(
     billing_address = serializers.SerializerMethodField()
     shipping_address = serializers.SerializerMethodField()
     timezone = TimeZoneSerializerField(use_pytz=True)
-    tax_providers = serializers.SerializerMethodField()
+    tax_providers = serializers.SerializerMethodField(
+        help_text="A list of tax providers that are enabled for this customer. The list is ordered, meaning we will succesively try to calculate taxes using each provider until we find one that works."
+    )
 
     def get_tax_providers(
         self, obj
