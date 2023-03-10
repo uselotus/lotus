@@ -86,30 +86,25 @@ describe("Testing Create Customer and Attach Subscription", () => {
 describe("Testing Event Tracking Details On Metrics Page", () => {
   it("Test event details on Metrics page", () => {
     Login();
-    // Navigate to the Settings -> Developer Settings page
     cy.visit("http://localhost:3000/settings/developer-settings");
     cy.contains("API Keys");
-    // Click the "Add API Key" button
     cy.get(".ant-btn.ant-btn-primary").first().click();
     cy.contains("Create API Key");
     const apiKeyName = getId(16);
-    // Enter text for the "API Key Name" field
     cy.get(".ant-input").type(apiKeyName);
     cy.get(".ant-input[type=text]").should("have.value", apiKeyName);
-    // Select a date for the "Expiry Date + Time" field
     cy.get("[placeholder='Select date']").click();
     cy.get(".ant-picker-cell-today").siblings().last().click();
-    // Click OK button in date picker
     cy.get(".ant-btn.ant-btn-primary.ant-btn-sm").click();
-    // Click the "Confirm" button
     cy.get(".ant-modal-footer .ant-btn.ant-btn-primary").click();
     cy.contains("Your new key is:");
-    // Copy the API key that is displayed
+    const eventName = "api_call";
+    const date = new Date();
+    const idempotencyId = getId(16);
+    const customerId = getId(16);
     cy.get(".text-lg.font-main .ant-input").then(($input) => {
       const apiKey = $input.val();
-    // Click Okay button in modal
-    cy.get(".ant-modal-footer .ant-btn.ant-btn-primary").last().click();
-    // Send request to /api/track/ endpoint
+      cy.get(".ant-modal-footer .ant-btn.ant-btn-primary").last().click();
       cy.request({
         url: "http://localhost:8000/api/track/",
         method: "POST",
@@ -119,23 +114,25 @@ describe("Testing Event Tracking Details On Metrics Page", () => {
         },
         body: {
           "batch": [{
-            "event_name": "api_call",
+            "event_name": eventName,
             "properties": {
               "region": "US"
             },
-            "time_created": new Date(),
-            "idempotency_id": "test_idempotency_id_123",
-            "customer_id": "test_customer_id_123"
+            "time_created": date,
+            "idempotency_id": idempotencyId,
+            "customer_id": customerId
           }]
         }
-      }).then(({ body }) => {
-        cy.log(`body: ${body}`);
       });
     });
-    // Navigate to the Metrics page
     cy.visit("http://localhost:3000/metrics");
     cy.contains("Create Metric");
-    // Verify that the event details section displays a new event with the following fields: customer_id, event_name, ID, time_created
-    // Verify fields of newly created event match the data that was supplied in the request
+    cy.get(".ant-collapse-header").first().click();
+    cy.contains("event_name").siblings().should("include.text", eventName);
+    cy.contains("customer_id").siblings().should("include.text", customerId);
+    cy.contains("ID").siblings().should("include.text", idempotencyId);
+    const dateString = date.toLocaleString("en-ZA").replace(",", "");
+    cy.contains("time_created").siblings().should("include.text", dateString);
+    cy.get(".travelcompany-input .input-label").should("include.text", "region : US");
   });
 });
