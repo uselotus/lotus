@@ -392,6 +392,19 @@ if KAFKA_HOST:
             )
         except TopicAlreadyExistsError:
             pass
+    if KAFKA_INVOICE_TOPIC not in existing_topics and SELF_HOSTED:
+        try:
+            ADMIN_CLIENT.create_topics(
+                new_topics=[
+                    NewTopic(
+                        name=KAFKA_INVOICE_TOPIC,
+                        num_partitions=KAFKA_NUM_PARTITIONS,
+                        replication_factor=KAFKA_REPLICATION_FACTOR,
+                    )
+                ]
+            )
+        except TopicAlreadyExistsError:
+            pass
 else:
     PRODUCER_CONFIG = None
     CONSUMER = None
