@@ -326,6 +326,7 @@ class SubscriptionRecordSerializer(
             "billing_plan",
             "fully_billed",
             "addons",
+            "metadata",
         )
         extra_kwargs = {
             "subscription_id": {"required": True},
@@ -337,6 +338,7 @@ class SubscriptionRecordSerializer(
             "customer": {"required": True},
             "fully_billed": {"required": True},
             "addons": {"required": True},
+            "metadata": {"required": True},
         }
 
     subscription_id = SubscriptionUUIDField(source="subscription_record_id")
@@ -1661,6 +1663,7 @@ class SubscriptionRecordCreateSerializer(
             "version_id",
             "plan_id",
             "component_fixed_charges_initial_units",
+            "metadata",
         )
 
     start_date = serializers.DateTimeField(
@@ -1708,6 +1711,10 @@ class SubscriptionRecordCreateSerializer(
         many=True,
         required=False,
         help_text="The initial units for the plan components' prepaid fixed charges. This is only required if the plan has plan components where you did not specify the initial units.",
+    )
+    metadata = serializers.JSONField(
+        required=False,
+        help_text="A JSON object containing additional information about the subscription.",
     )
 
     def validate(self, data):
@@ -1766,6 +1773,8 @@ class SubscriptionRecordCreateSerializer(
                 "component_fixed_charges_initial_units", []
             ),
         )
+        sr.metadata = validated_data.get("metadata", {})
+        sr.save()
         return sr
 
 
@@ -1844,6 +1853,7 @@ class SubscriptionRecordUpdateSerializer(
         fields = (
             "turn_off_auto_renew",
             "end_date",
+            "metadata",
         )
 
     turn_off_auto_renew = serializers.BooleanField(
@@ -1851,6 +1861,9 @@ class SubscriptionRecordUpdateSerializer(
     )
     end_date = serializers.DateTimeField(
         required=False, help_text="Change the end date for the subscription."
+    )
+    metadata = serializers.JSONField(
+        required=False, help_text="Update the metadata for the subscription."
     )
 
     def validate(self, attrs):
@@ -1870,6 +1883,8 @@ class SubscriptionRecordUpdateSerializer(
             and validated_data["turn_off_auto_renew"]
         ):
             instance.auto_renew = False
+        if "metadata" in validated_data:
+            instance.metadata = validated_data["metadata"]
         instance.save()
         return instance
 
@@ -1943,6 +1958,7 @@ class AddOnSubscriptionRecordUpdateSerializer(
             "turn_off_auto_renew",
             "end_date",
             "quantity",
+            "metadata",
         )
 
     quantity = serializers.IntegerField(
@@ -1960,6 +1976,10 @@ class AddOnSubscriptionRecordUpdateSerializer(
     )
     end_date = serializers.DateTimeField(
         required=False, help_text="Change the end date for the addon."
+    )
+    metadata = serializers.JSONField(
+        required=False,
+        help_text="Change the metadata for the addon. The current metadata will be replaced with this value.",
     )
 
 
@@ -2578,6 +2598,7 @@ class AddOnSubscriptionRecordSerializer(
             "parent",
             "fully_billed",
             "auto_renew",
+            "metadata",
         )
         extra_kwargs = {
             "addon_subscription_id": {"read_only": True, "required": True},
@@ -2588,6 +2609,7 @@ class AddOnSubscriptionRecordSerializer(
             "parent": {"read_only": True, "required": True},
             "fully_billed": {"read_only": True, "required": True},
             "auto_renew": {"read_only": True, "required": True},
+            "metadata": {"read_only": True, "required": True},
         }
 
     addon_subscription_id = AddOnSubscriptionUUIDField(
@@ -2612,11 +2634,13 @@ class AddOnSubscriptionRecordCreateSerializer(
             "addon_id",
             "addon_version_id",
             "quantity",
+            "metadata",
         )
         extra_kwargs = {
             "addon_version_id": {"required": False, "write_only": True},
             "addon_id": {"required": False, "write_only": True},
             "quantity": {"required": False, "write_only": True},
+            "metadata": {"required": False, "write_only": True},
         }
 
     addon_id = SlugRelatedFieldWithOrganization(
@@ -2637,6 +2661,10 @@ class AddOnSubscriptionRecordCreateSerializer(
         default=1,
         min_value=1,
         help_text="The quantity of the add-on to be applied to the subscription. Flat fees of add-ons will be multiplied by this quantity. Usage-based components of add-ons will be unaffected by the quantity.",
+    )
+    metadata = serializers.JSONField(
+        required=False,
+        help_text="A JSON object containing additional information about the add-on subscription. This will be returned in the response when you retrieve the add-on subscription.",
     )
 
     def validate(self, data):
@@ -2684,4 +2712,6 @@ class AddOnSubscriptionRecordCreateSerializer(
             addon_billing_plan=validated_data["addon_version"],
             quantity=validated_data["quantity"],
         )
+        sr.metadata = validated_data.get("metadata", {})
+        sr.save()
         return sr
