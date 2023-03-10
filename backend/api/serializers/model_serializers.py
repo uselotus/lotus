@@ -2452,7 +2452,7 @@ class AddOnVersionSerializer(
         return obj.addon_spec.get_billing_frequency_display()
 
     def get_active_instances(self, obj) -> int:
-        return sum(x.active_subscriptions for x in obj.active_subs_by_version())
+        return obj.subscription_records.active().count()
 
 
 @extend_schema_serializer(
