@@ -223,8 +223,9 @@ export const Customer = {
 };
 
 export const AddOn = {
-  getAddOns: (): Promise<AddOnType[]> => requests.get("app/addons/"),
-  getAddOn: (addon_id: string): Promise<AddOnType> =>
+  getAddOns: (): Promise<components["schemas"]["AddOnDetail"][]> =>
+    requests.get("app/addons/"),
+  getAddOn: (addon_id: string): Promise<components["schemas"]["AddOnDetail"]> =>
     requests.get(`app/addons/${addon_id}/`),
   deleteAddOn: (addon_id: string): Promise<PlanVersionsType> =>
     requests.get(`app/addons/${addon_id}/delete/`),
@@ -248,10 +249,8 @@ export const Plan = {
     version_currency_code?: string;
     version_custom_type?: "custom_only" | "public_only" | "all";
     version_status?: ("active" | "ended" | "not_started")[];
-  }): Promise<PlanType[] | components["schemas"]["PlanDetail"][]> => {
-    console.log(params);
-    return requests.get("app/plans/", params);
-  },
+  }): Promise<PlanType[] | components["schemas"]["PlanDetail"][]> =>
+    requests.get("app/plans/", params),
   getPlan: (
     plan_id: string,
     version_custom_type?: "all" | "custom_only" | "public_only"

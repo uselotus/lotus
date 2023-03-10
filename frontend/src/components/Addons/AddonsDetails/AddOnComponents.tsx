@@ -8,10 +8,11 @@ import { AlertType, CreateAlertType } from "../../../types/alert-type";
 import { Component, Tier } from "../../../types/plan-type";
 import Select from "../../base/Select/Select";
 import { CurrencyType } from "../../../types/pricing-unit-type";
+import { components } from "../../../gen-types";
 
 interface AddOnsComponentsProps {
-  components?: Component[];
-  plan: AddOnType;
+  components?: components["schemas"]["AddOnDetail"]["versions"][0]["components"];
+  plan: components["schemas"]["AddOnDetail"];
   refetch: VoidFunction;
   alerts?: AlertType[];
   plan_version_id?: string;
@@ -145,10 +146,11 @@ const AddOnComponents: FC<AddOnsComponentsProps> = ({
             <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
           </div>
           <div className="grid gap-6 grid-cols-1 xl:grid-cols-4">
-            {components.map((component) => (
+            {components.map((component, index) => (
               <div
                 className="pt-2 pb-4 bg-primary-50 mt-2  mb-2 p-4 min-h-[152px] min-w-[270px]"
-                key={component.id}
+                // eslint-disable-next-line react/no-array-index-key
+                key={index}
               >
                 <div className="text-base text-card-text align-middle">
                   <div> {component.billable_metric.metric_name}</div>

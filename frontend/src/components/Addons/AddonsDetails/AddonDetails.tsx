@@ -10,6 +10,7 @@ import { AddOnType } from "../../../types/addon-type";
 import AddOnInfo from "./AddOnInfo";
 import AddOnComponents from "./AddOnComponents";
 import AddOnFeatures from "./AddOnFeatures";
+import { components } from "../../../gen-types";
 
 type AddOnDetailsParams = {
   addOnId: string;
@@ -42,7 +43,7 @@ const AddOnDetails: FC = () => {
     isLoading,
     isError,
     refetch,
-  } = useQuery<AddOnType>(
+  } = useQuery<components["schemas"]["AddOnDetail"]>(
     ["addon_detail", addOnId],
     () => AddOn.getAddOn(addOnId as string).then((res) => res),
     { refetchOnMount: "always" }
@@ -72,7 +73,7 @@ const AddOnDetails: FC = () => {
               <div>
                 <div className="font-alliance">{addon.addon_name}</div>
                 <div className="text-base Inter text-card-grey ml-2">
-                  {addon.description}
+                  {addon.addon_description}
                 </div>
               </div>
             }
@@ -104,14 +105,14 @@ const AddOnDetails: FC = () => {
               </div>
 
               <div className="grid gap-18 grid-cols-1  md:grid-cols-2 w-full">
-                {addon?.components.length > 0 && (
+                {addon?.versions[0].components.length > 0 && (
                   <AddOnComponents
                     refetch={refetch}
                     plan={addon}
-                    components={addon?.components}
+                    components={addon?.versions[0].components}
                   />
                 )}
-                <AddOnFeatures features={addon?.features} />
+                <AddOnFeatures features={addon?.versions[0].features} />
               </div>
             </div>
           </div>

@@ -9,12 +9,16 @@ import { PageLayout } from "../components/base/PageLayout";
 import LoadingSpinner from "../components/LoadingSpinner";
 import AddOnsCard from "../components/AddOns/AddOnsCard/AddOnCard";
 import { AddOnType } from "../types/addon-type";
+import { components } from "../gen-types";
 
 const ViewAddOns: FC = () => {
   const navigate = useNavigate();
 
-  const { data: addOns, isLoading }: UseQueryResult<AddOnType[]> = useQuery<
-    AddOnType[]
+  const {
+    data: addOns,
+    isLoading,
+  }: UseQueryResult<components["schemas"]["AddOnDetail"][]> = useQuery<
+    components["schemas"]["AddOnDetail"][]
   >(["add-ons"], () => AddOn.getAddOns().then((res) => res), {
     refetchOnMount: "always",
   });
@@ -52,8 +56,8 @@ const ViewAddOns: FC = () => {
       <div className="flex flex-col">
         {addOns?.length ? (
           <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-            {addOns?.map((item, key) => (
-              <AddOnsCard add_on={item} key={key} />
+            {addOns?.map((item) => (
+              <AddOnsCard add_on={item} key={item.addon_id} />
             ))}
           </div>
         ) : (
