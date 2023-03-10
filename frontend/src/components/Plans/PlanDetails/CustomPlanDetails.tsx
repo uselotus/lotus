@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/label-has-associated-control */
 /* eslint-disable camelcase */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
@@ -32,11 +33,30 @@ function getPriceAdjustmentEnding(
 ) {
   switch (type) {
     case "percentage":
-      return `${amount}%`;
+      return (
+        <div className="flex flex-col gap-2">
+          <label className="required">Discount Amount</label>
+          <div className="text-[#f0f0f0]">%{amount}</div>
+        </div>
+      );
     case "fixed":
-      return `${code} ${amount}`;
+      return (
+        <div className="flex flex-col gap-2">
+          <label className="required">Discount Amount</label>
+          <div className="text-[#f0f0f0]">
+            {code} {amount}
+          </div>
+        </div>
+      );
     case "price_override":
-      return `${code} ${amount}`;
+      return (
+        <div className="flex flex-col gap-2">
+          <label className="required">Discount Amount</label>
+          <div className="text-[#f0f0f0]">
+            {code} {amount}
+          </div>
+        </div>
+      );
     default:
       return "No discount added";
   }
