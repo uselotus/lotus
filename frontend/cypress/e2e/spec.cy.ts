@@ -84,39 +84,57 @@ describe("Testing Create Customer and Attach Subscription", () => {
   });
 });
 
-// describe("Testing Event Ingested", () => {
-//   it("Test Create customer flow", () => {
-//     Login();
-//     cy.visit("http://localhost:3000/metrics");
+describe("Testing Event Tracking Details On Metrics Page", () => {
+  it("Test event details on Metrics page", () => {
+    Login();
+    cy.visit("http://localhost:3000/settings/developer-settings");
+    cy.contains("API Keys");
+    cy.get(".ant-btn.ant-btn-primary").first().click();
+    cy.contains("Create API Key");
+    const apiKeyName = getId(16);
+    cy.get(".ant-input").type(apiKeyName);
+    cy.get(".ant-input[type=text]").should("have.value", apiKeyName);
+    cy.get("[placeholder='Select date']").click();
+    cy.get(".ant-picker-cell-today").siblings().last().click();
+    cy.get(".ant-btn.ant-btn-primary.ant-btn-sm").click();
+    cy.get(".ant-modal-footer .ant-btn.ant-btn-primary").click();
+    cy.contains("Your new key is:");
+    const eventName = "api_call";
+    const date = new Date();
+    const idempotencyId = getId(16);
+    const customerId = getId(16);
+    cy.get(".text-lg.font-main .ant-input").then(($input) => {
+      const apiKey = $input.val();
+      cy.get(".ant-modal-footer .ant-btn.ant-btn-primary").last().click();
+      cy.request({
+        url: "http://localhost:8000/api/track/",
+        method: "POST",
+        headers: {
+          "X-API-KEY": apiKey,
+          "Content-Type": "application/json"
+        },
+        body: {
+          "batch": [{
+            "event_name": eventName,
+            "properties": {
+              "region": "US"
+            },
+            "time_created": date,
+            "idempotency_id": idempotencyId,
+            "customer_id": customerId
+          }]
+        }
+      });
+    });
+    cy.visit("http://localhost:3000/metrics");
+    cy.contains("Create Metric");
+    cy.get(".ant-collapse-header").first().click();
+    cy.contains("event_name").siblings().should("include.text", eventName);
+    cy.contains("customer_id").siblings().should("include.text", customerId);
+    cy.contains("ID").siblings().should("include.text", idempotencyId);
+    const dateString = date.toLocaleString("en-ZA").replace(",", "");
+    cy.contains("time_created").siblings().should("include.text", dateString);
+    cy.get(".travelcompany-input .input-label").should("include.text", "region : US");
+  });
+});
 
-//     const headers = {
-//       "Content-Type": "application/json",
-//       Authorization: "X-API-TOKEN ",
-//     };
-
-//     const event = {
-//       event_name: "event_3",
-//       properties: {
-//         regions: "us-east-1",
-//         instance_type: "t2.micro",
-//       },
-//       idempotency_id: "1234567890",
-//       time_created: new Date().toISOString(),
-//     };
-
-//     cy.wait(10000);
-//     cy.contains("Metrics");
-
-//     cy.get(".ant-table-row").first().check();
-
-//     cy.contains("Create a Customer");
-//     const randomId = getId(5);
-//     const randomEmail = getEmail(5);
-//     cy.get("#customer-name").type("Testing Customer");
-//     cy.get("#customer-email").type(randomEmail);
-//     cy.get("#customer-id").type(randomId);
-//     cy.get("#Create-customer-button").click();
-//     cy.wait(10000);
-//     cy.get(".ant-table-row").first().click();
-//   });
-// });
