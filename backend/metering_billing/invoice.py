@@ -323,7 +323,11 @@ def charge_next_plan_flat_fee(
 
 
 def apply_plan_discounts(invoice):
-    from metering_billing.models import InvoiceLineItem, InvoiceLineItemAdjustment
+    from metering_billing.models import (
+        InvoiceLineItem,
+        InvoiceLineItemAdjustment,
+        PlanVersion,
+    )
     from metering_billing.utils.enums import PRICE_ADJUSTMENT_TYPE
 
     distinct_pvs = (
@@ -335,7 +339,8 @@ def apply_plan_discounts(invoice):
         .distinct()
     )
     for version_dict in distinct_pvs:
-        pv = version_dict["associated_plan_version"]
+        pv_id = version_dict["associated_plan_version"]
+        pv = PlanVersion.objects.get(id=pv_id)
         if pv.price_adjustment:
             price_adj_name = str(pv.price_adjustment)
             if (
@@ -449,13 +454,11 @@ def apply_taxes(invoice, customer, organization, draft):
                         break
         tax_rate = tax_rate or Decimal(0)
         tax_rate_dict[plan] = tax_rate
-        print("tax rate for plan", plan, tax_rate)
         if tax_rate == 0:
             continue
 
         for line_item in invoice.line_items.filter(associated_subscription_record=sr):
             tax_amount = line_item.base * (tax_rate / Decimal(100))
-            print("tax amount", tax_amount)
             InvoiceLineItemAdjustment.objects.create(
                 invoice_line_item=line_item,
                 adjustment_type=InvoiceLineItemAdjustment.AdjustmentType.SALES_TAX,
