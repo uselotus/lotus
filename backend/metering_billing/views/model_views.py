@@ -1,23 +1,28 @@
 # import lotus_python
 import logging
 
-import api.views as api_views
 import posthog
 import sentry_sdk
 from actstream.models import Action
-from api.serializers.webhook_serializers import (
-    CustomerCreatedSerializer,
-    InvoiceCreatedSerializer,
-    InvoicePaidSerializer,
-    InvoicePastDueSerializer,
-    UsageAlertTriggeredSerializer,
-    SubscriptionCancelledSerializer,
-    SubscriptionCreatedSerializer
-)
 from django.conf import settings
 from django.core.cache import cache
 from django.db.utils import IntegrityError
 from drf_spectacular.utils import OpenApiCallback, extend_schema, inline_serializer
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.pagination import CursorPagination
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+import api.views as api_views
+from api.serializers.webhook_serializers import (
+    CustomerCreatedSerializer,
+    InvoiceCreatedSerializer,
+    InvoicePaidSerializer,
+    SubscriptionCancelledSerializer,
+    SubscriptionCreatedSerializer,
+    UsageAlertTriggeredSerializer,
+)
 from metering_billing.exceptions import (
     DuplicateMetric,
     DuplicateWebhookEndpoint,
@@ -103,11 +108,6 @@ from metering_billing.utils.enums import (
     PAYMENT_PROCESSORS,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import action
-from rest_framework.pagination import CursorPagination
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -336,8 +336,8 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 "{$request.body#/webhook_url}",
                 extend_schema(
                     description="Subscription cancelled webhook",
-                    responses={200: SubscriptionCancelledSerializer}
-                )
+                    responses={200: SubscriptionCancelledSerializer},
+                ),
             ),
             OpenApiCallback(
                 WEBHOOK_TRIGGER_EVENTS.INVOICE_PAST_DUE.value,

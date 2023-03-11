@@ -7,6 +7,10 @@ from decimal import Decimal
 import pytest
 from dateutil import parser
 from django.urls import reverse
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
@@ -25,9 +29,6 @@ from metering_billing.models import (
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PLAN_VERSION_STATUS
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -293,7 +294,7 @@ class TestAttachAddon:
         assert invoice_before + 1 == invoice_after
         recent_inv = Invoice.objects.all().order_by("-issue_date").first()
         assert (
-            recent_inv.cost_due
+            recent_inv.amount
             == setup_dict["flat_fee_addon_version"].recurring_charges.first().amount
         )
 
@@ -353,7 +354,7 @@ class TestAttachAddon:
         assert data["end_date"] == end_date
         assert invoice_before == invoice_after
         invoices = generate_invoice(SubscriptionRecord.objects.all())
-        assert Decimal("10.00") - invoices[0].cost_due < Decimal("0.01")
+        assert Decimal("10.00") - invoices[0].amount < Decimal("0.01")
 
     def test_flat_addon_invoice_later_and_recurring_prorates_current_charge_and_charges_full_next(
         self,
@@ -420,8 +421,8 @@ class TestAttachAddon:
         max_value = 10 * (Decimal("31") - Decimal("5")) / Decimal("31")
         min_value = 10 * (Decimal("28") - Decimal("6")) / Decimal("28")
         # were gonna charge the 30 from the base plan, 10 for new plan, and ~8.20-8.39 for the addon
-        assert invoices[0].cost_due - Decimal("40") >= min_value
-        assert invoices[0].cost_due - Decimal("40") <= max_value
+        assert invoices[0].amount - Decimal("40") >= min_value
+        assert invoices[0].amount - Decimal("40") <= max_value
 
     def test_attaching_addon_grants_access_to_feature(
         self,
@@ -487,7 +488,7 @@ class TestAttachAddon:
         assert invoice_before + 1 == invoice_after
         recent_inv = Invoice.objects.all().order_by("-issue_date").first()
         assert (
-            recent_inv.cost_due
+            recent_inv.amount
             == setup_dict["flat_fee_addon_version"].recurring_charges.first().amount
         )
 
@@ -569,7 +570,7 @@ class TestAttachAddon:
         # prorated flat fee
         assert (
             0
-            < recent_inv.cost_due
+            < recent_inv.amount
             < setup_dict["recurring_addon_version"].recurring_charges.first().amount
         )
 
@@ -623,7 +624,7 @@ class TestAttachAddon:
         # prorated flat fee
         assert (
             0
-            < recent_inv.cost_due
+            < recent_inv.amount
             < setup_dict["recurring_addon_version"].recurring_charges.first().amount
         )
 
@@ -732,8 +733,8 @@ class TestAttachAddon:
         max_value = 10 * (Decimal("31") - Decimal("5")) / Decimal("31")
         min_value = 10 * (Decimal("28") - Decimal("6")) / Decimal("28")
         # were gonna charge the 30 from the base plan, 3*10 for new plan, and 3*~8.21-8.38 for the addon
-        assert invoices[0].cost_due - Decimal("60") >= 3 * min_value
-        assert invoices[0].cost_due - Decimal("60") <= 3 * max_value
+        assert invoices[0].amount - Decimal("60") >= 3 * min_value
+        assert invoices[0].amount - Decimal("60") <= 3 * max_value
 
     def test_can_attach_flat_addon_with_full_name(
         self,
@@ -786,7 +787,7 @@ class TestAttachAddon:
         assert invoice_before + 1 == invoice_after
         recent_inv = Invoice.objects.all().order_by("-issue_date").first()
         assert (
-            recent_inv.cost_due
+            recent_inv.amount
             == setup_dict["flat_fee_addon_version"].recurring_charges.first().amount
         )
 
@@ -843,7 +844,7 @@ class TestUpdateAddon:
         # prorated flat fee
         assert (
             0
-            < recent_inv.cost_due
+            < recent_inv.amount
             < setup_dict["recurring_addon_version"].recurring_charges.first().amount
         )
         assert data["auto_renew"] is True
@@ -948,7 +949,7 @@ class TestUpdateAddon:
         data = response.json()[0]
 
         invoices = generate_invoice(SubscriptionRecord.objects.all())
-        assert Decimal("20.00") - invoices[0].cost_due < Decimal("0.01")
+        assert Decimal("20.00") - invoices[0].amount < Decimal("0.01")
 
     def test_update_quantity_on_invoice_invoice_now(
         self,
@@ -1028,7 +1029,7 @@ class TestUpdateAddon:
 
         invoices = generate_invoice(SubscriptionRecord.objects.all())
         # already charged so should be 0
-        assert Decimal("0") - invoices[0].cost_due < Decimal("0.01")
+        assert Decimal("0") - invoices[0].amount < Decimal("0.01")
 
     def test_update_quantity_on_invoice_reduce_quantity(
         self,
@@ -1107,7 +1108,7 @@ class TestUpdateAddon:
 
         invoices = generate_invoice(SubscriptionRecord.objects.all())
         # already charged so should be 0
-        assert Decimal("0") - invoices[0].cost_due < Decimal("0.01")
+        assert Decimal("0") - invoices[0].amount < Decimal("0.01")
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1162,7 +1163,7 @@ class TestCancelAddon:
         # prorated flat fee
         assert (
             0
-            < recent_inv.cost_due
+            < recent_inv.amount
             < setup_dict["recurring_addon_version"].recurring_charges.first().amount
         )
         assert data["auto_renew"] is True
@@ -1192,7 +1193,7 @@ class TestCancelAddon:
         recenter_inv = Invoice.objects.all().order_by("-issue_date").first()
         # prorated flat fee
         assert (
-            recenter_inv.cost_due + recent_inv.cost_due
+            recenter_inv.amount + recent_inv.amount
             == setup_dict["recurring_addon_version"].recurring_charges.first().amount
         )
 
@@ -1246,7 +1247,7 @@ class TestCancelAddon:
         # prorated flat fee
         assert (
             0
-            < recent_inv.cost_due
+            < recent_inv.amount
             < setup_dict["recurring_addon_version"].recurring_charges.first().amount
         )
         assert data["auto_renew"] is True
