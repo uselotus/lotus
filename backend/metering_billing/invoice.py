@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q, Sum
 from django.db.models.query import QuerySet
+
 from metering_billing.kafka.producer import Producer
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.taxes import get_lotus_tax_rates, get_taxjar_tax_rates
@@ -367,34 +368,71 @@ def apply_plan_discounts(invoice):
                     id__in=[sr["associated_subscription_record"] for sr in distinct_srs]
                 )
                 for sr in sub_records:
-                    billing_line_items = invoice.line_items.filter(
-                        ~Q(chargeable_item_type=CHARGEABLE_ITEM_TYPE.PLAN_ADJUSTMENT),
-                        associated_subscription_record=sr.associated_subscription_record,
-                        associated_plan_version=pv,
-                    )
-                    past_discount_items = invoice.line_items.filter(
-                        chargeable_item_type=CHARGEABLE_ITEM_TYPE.PLAN_ADJUSTMENT,
-                        associated_subscription_record=sr[
-                            "associated_subscription_record"
-                        ],
-                        associated_plan_version=pv,
-                    )
-                    total_due = (
-                        billing_line_items.aggregate(tot=Sum("base"))["tot"] or 0
-                    )
-                    total_discounted = (
-                        past_discount_items.aggregate(tot=Sum("base"))["tot"] or 0
-                    )
-                    discount_amount = (
-                        pv.price_adjustment.apply(total_due) - total_discounted
-                    )
-                    if discount_amount > 0:
+                    if (
+                        pv.price_adjustment.price_adjustment_type
+                        == PRICE_ADJUSTMENT_TYPE.FIXED
+                    ):
+                        billing_line_items = invoice.line_items.filter(
+                            ~Q(
+                                chargeable_item_type=CHARGEABLE_ITEM_TYPE.PLAN_ADJUSTMENT
+                            ),
+                            associated_subscription_record=sr,
+                            associated_plan_version=pv,
+                        )
+                        print("billing_line_items", billing_line_items)
+                        total_due = (
+                            billing_line_items.aggregate(tot=Sum("base"))["tot"] or 0
+                        )
+                        print("total_due", total_due)
+                        past_discount_items = InvoiceLineItem.objects.filter(
+                            chargeable_item_type=CHARGEABLE_ITEM_TYPE.PLAN_ADJUSTMENT,
+                            associated_subscription_record=sr,
+                            associated_plan_version=pv,
+                        )
+                        print("past_discount_items", past_discount_items)
+                        new_total = pv.price_adjustment.apply(total_due)
+                        print("new_total", new_total)
+                        already_discounted = (
+                            past_discount_items.aggregate(tot=Sum("base"))["tot"] or 0
+                        )
+                        print("already_discounted", already_discounted)
+                        discount_amount = new_total - total_due
+                        print("discount_amount", discount_amount)
+                        real_discount = discount_amount - already_discounted
+                        print("real_discount", real_discount)
+                    else:
+                        # this is everything we've charged with the plan/subscription
+                        all_plan_line_items = InvoiceLineItem.objects.filter(
+                            ~Q(
+                                chargeable_item_type=CHARGEABLE_ITEM_TYPE.PLAN_ADJUSTMENT
+                            ),
+                            associated_subscription_record=sr,
+                            associated_plan_version=pv,
+                        )
+                        total_due = (
+                            all_plan_line_items.aggregate(tot=Sum("base"))["tot"] or 0
+                        )
+                        # here, we take it to a fixed price
+                        new_total = pv.price_adjustment.apply(total_due)
+                        # the total discount is the difference between the two
+                        discount_amount = new_total - total_due
+                        # but we need to make sure we don't double discount
+                        past_discount_items = InvoiceLineItem.objects.filter(
+                            chargeable_item_type=CHARGEABLE_ITEM_TYPE.PLAN_ADJUSTMENT,
+                            associated_subscription_record=sr,
+                            associated_plan_version=pv,
+                        )
+                        already_discounted = (
+                            past_discount_items.aggregate(tot=Sum("base"))["tot"] or 0
+                        )
+                        real_discount = discount_amount - already_discounted
+                    if real_discount != 0:
                         InvoiceLineItem.objects.create(
                             name=f"{pv.plan.plan_name} {price_adj_name}",
                             start_date=invoice.issue_date,
                             end_date=invoice.issue_date,
                             quantity=None,
-                            base=discount_amount,
+                            base=real_discount,
                             billing_type=INVOICE_CHARGE_TIMING_TYPE.IN_ARREARS,
                             chargeable_item_type=CHARGEABLE_ITEM_TYPE.PLAN_ADJUSTMENT,
                             invoice=invoice,
