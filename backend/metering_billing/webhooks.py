@@ -317,3 +317,48 @@ def subscription_cancelled_webhook(subscription, subscription_data=None):
                     },
                 ),
             ) 
+
+
+def subscription_renewed_webhook(subscription, subscription_data=None):
+    from api.serializers.model_serializers import SubscriptionRecordSerializer
+    from metering_billing.models import WebhookEndpoint
+
+    if SVIX_CONNECTOR is not None:
+        endpoints = (
+            WebhookEndpoint.objects.prefetch_related("triggers")
+            .filter(triggers__trigger_name=WEBHOOK_TRIGGER_EVENTS.SUBSCRIPTION_RENEWED)
+            .distinct()
+        )
+        if endpoints.count() > 0:
+            svix = SVIX_CONNECTOR
+            now = str(now_utc())
+            payload = (
+                subscription_data if subscription_data else SubscriptionRecordSerializer(subscription).data
+            )
+            payload = make_all_decimals_floats(payload)
+            payload = make_all_dates_times_strings(payload)
+            response = {
+                "event_type": WEBHOOK_TRIGGER_EVENTS.SUBSCRIPTION_RENEWED,
+                "payload": payload,
+            }
+            event_id = (
+                slugify(str(subscription.customer))
+                + "_"
+                + slugify(str(subscription.billing_plan))
+                + "_"
+                + slugify(str(subscription.subscription_record_id.hex)[:50])
+                + "_"
+                + "created"
+            )
+            response = svix.message.create(
+                subscription.organization.organization_id.hex,
+                MessageIn(
+                    event_type=WEBHOOK_TRIGGER_EVENTS.SUBSCRIPTION_RENEWED,
+                    event_id=event_id,
+                    payload={
+                        "attempt": 5,
+                        "created_at": now,
+                        "properties": response,
+                    },
+                ),
+            )
