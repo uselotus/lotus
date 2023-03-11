@@ -7,7 +7,6 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q, Sum
 from django.db.models.query import QuerySet
-
 from metering_billing.kafka.producer import Producer
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.taxes import get_lotus_tax_rates, get_taxjar_tax_rates
@@ -338,9 +337,10 @@ def apply_plan_discounts(invoice):
         .values("associated_plan_version")
         .distinct()
     )
-    for version_dict in distinct_pvs:
-        pv_id = version_dict["associated_plan_version"]
-        pv = PlanVersion.objects.get(id=pv_id)
+    pvs = PlanVersion.objects.filter(
+        id__in=[pv["associated_plan_version"] for pv in distinct_pvs]
+    )
+    for pv in pvs:
         if pv.price_adjustment:
             price_adj_name = str(pv.price_adjustment)
             if (
