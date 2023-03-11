@@ -7,7 +7,6 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q, Sum
 from django.db.models.query import QuerySet
-
 from metering_billing.kafka.producer import Producer
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.taxes import get_lotus_tax_rates, get_taxjar_tax_rates
@@ -327,6 +326,7 @@ def apply_plan_discounts(invoice):
         InvoiceLineItem,
         InvoiceLineItemAdjustment,
         PlanVersion,
+        SubscriptionRecord,
     )
     from metering_billing.utils.enums import PRICE_ADJUSTMENT_TYPE
 
@@ -363,12 +363,13 @@ def apply_plan_discounts(invoice):
                     .values("associated_subscription_record")
                     .distinct()
                 )
-                for sr in distinct_srs:
+                sub_records = SubscriptionRecord.objects.filter(
+                    id__in=[sr["associated_subscription_record"] for sr in distinct_srs]
+                )
+                for sr in sub_records:
                     billing_line_items = invoice.line_items.filter(
                         ~Q(chargeable_item_type=CHARGEABLE_ITEM_TYPE.PLAN_ADJUSTMENT),
-                        associated_subscription_record=sr[
-                            "associated_subscription_record"
-                        ],
+                        associated_subscription_record=sr.associated_subscription_record,
                         associated_plan_version=pv,
                     )
                     past_discount_items = invoice.line_items.filter(
