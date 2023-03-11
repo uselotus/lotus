@@ -304,7 +304,8 @@ class Organization(models.Model):
                 organization=self, code="USD"
             )
             self.save()
-        self.provision_subscription_filter_settings()
+        if not self.subscription_filters_setting_provisioned:
+            self.provision_subscription_filter_settings()
         if not self.webhooks_provisioned:
             self.provision_webhooks()
 
@@ -364,14 +365,14 @@ class Organization(models.Model):
             )
 
     def provision_webhooks(self):
-        if SVIX_CONNECTOR is not None:
+        if SVIX_CONNECTOR is not None and not self.webhooks_provisioned:
             logger.info("provisioning webhooks")
             svix = SVIX_CONNECTOR
             svix.application.create(
                 ApplicationIn(uid=self.organization_id.hex, name=self.organization_name)
             )
             self.webhooks_provisioned = True
-        self.save()
+            self.save()
 
     def provision_currencies(self):
         if SUPPORTED_CURRENCIES_VERSION != self.currencies_provisioned:
