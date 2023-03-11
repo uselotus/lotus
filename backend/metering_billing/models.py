@@ -12,7 +12,6 @@ import pycountry
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
-from django.contrib.postgres.fields import ArrayField
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.validators import (
@@ -26,6 +25,15 @@ from django.db.models import Count, F, FloatField, Prefetch, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
+
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     NotEditable,
@@ -78,14 +86,6 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -305,6 +305,8 @@ class Organization(models.Model):
             )
             self.save()
         self.provision_subscription_filter_settings()
+        if not self.webhooks_provisioned:
+            self.provision_webhooks()
 
     def get_tax_provider_values(self):
         return self.tax_providers
@@ -1711,17 +1713,42 @@ class Invoice(models.Model):
         if (
             self.__original_payment_status != self.payment_status
             and self.payment_status == Invoice.PaymentStatus.PAID
-            and self.cost_due > 0
+            and self.amount > 0
         ):
             invoice_paid_webhook(self, self.organization)
         self.__original_payment_status = self.payment_status
 
 
-class InvoiceLineItem(models.Model):
-    class AdjustmentType(models.TextChoices):
-        SALES_TAX = ("sales_tax", _("Sales Tax"))
-        PLAN_ADJUSTMENT = ("plan_adjustment", _("Plan Adjustment"))
+class InvoiceLineItemAdjustment(models.Model):
+    class AdjustmentType(models.IntegerChoices):
+        SALES_TAX = (1, _("sales_tax"))
+        PLAN_ADJUSTMENT = (2, _("plan_adjustment"))
 
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="invoice_line_item_adjustments",
+        null=True,
+    )
+    invoice_line_item = models.ForeignKey(
+        "InvoiceLineItem",
+        on_delete=models.CASCADE,
+        related_name="adjustments",
+        null=True,
+    )
+    amount = models.DecimalField(
+        decimal_places=10,
+        max_digits=20,
+    )
+    account = models.PositiveBigIntegerField()
+    adjustment_type = models.PositiveSmallIntegerField(choices=AdjustmentType.choices)
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self.invoice_line_item.save()
+
+
+class InvoiceLineItem(models.Model):
     invoice_line_item_id = models.UUIDField(
         default=uuid.uuid4, unique=True, editable=False
     )
@@ -1746,25 +1773,6 @@ class InvoiceLineItem(models.Model):
         max_digits=20,
         default=Decimal(0.0),
         help_text="Base price of the line item. This is the price before any adjustments are applied.",
-    )
-    adjustments = ArrayField(
-        models.JSONField(
-            null=False,
-            blank=False,
-            default=dict,
-            help_text="Adjustment data. Must be a dict with keys: amount, account, adjustment_type.",
-            # fields={
-            #     "amount": models.DecimalField(max_digits=20, decimal_places=10),
-            #     "account": models.PositiveBigIntegerField(),
-            #     "adjustment_type": models.PositiveSmallIntegerField(
-            #         choices=AdjustmentType.choices
-            #     ),
-            #     "name": models.CharField(max_length=100),
-            # },
-        ),
-        default=list,
-        blank=True,
-        help_text="List of adjustments.",
     )
     amount = models.DecimalField(
         decimal_places=10,
@@ -1818,8 +1826,9 @@ class InvoiceLineItem(models.Model):
         return self.name + " " + str(self.invoice.invoice_number) + f"[{self.base}]"
 
     def save(self, *args, **kwargs):
-        if not self.pricing_unit:
-            self.pricing_unit = self.invoice.organization.default_currency
+        self.amount = self.base + sum(
+            [adjustment.amount for adjustment in self.adjustments.all()]
+        )
         super().save(*args, **kwargs)
 
 

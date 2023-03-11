@@ -7,16 +7,16 @@ import boto3
 from botocore.exceptions import ClientError
 from django.conf import settings
 from django.forms.models import model_to_dict
+from metering_billing.models import InvoiceLineItemAdjustment
+from metering_billing.serializers.serializer_utils import PlanUUIDField
+from metering_billing.utils import make_hashable
+from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
 from reportlab.lib.colors import Color, HexColor
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.rl_config import TTFSearchPath
-
-from metering_billing.serializers.serializer_utils import PlanUUIDField
-from metering_billing.utils import make_hashable
-from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
 
 logger = logging.getLogger("django.server")
 
@@ -480,11 +480,17 @@ class InvoicePDF:
                     line_item["billing_type"],
                     line_item_start_y,
                 )
-                for adjustment in line_item["adjustments"]:
-                    if adjustment["adjustment_type"] == "sales_tax":
-                        tax_within_line_items += Decimal(adjustment["amount"])
-                    if adjustment["adjustment_type"] == "plan_adjustment":
-                        total_discounts += Decimal(adjustment["amount"])
+                for adjustment in line_item_model.adjustments.all():
+                    if (
+                        adjustment.adjustment_type
+                        == InvoiceLineItemAdjustment.AdjustmentType.SALES_TAX
+                    ):
+                        tax_within_line_items += adjustment.amount
+                    if (
+                        adjustment.adjustment_type
+                        == InvoiceLineItemAdjustment.AdjustmentType.PLAN_ADJUSTMENT
+                    ):
+                        total_discounts += adjustment.amount
 
                 if line_item_start_y > 655:
                     self.PDF.showPage()

@@ -22,6 +22,7 @@ from metering_billing.models import (
     Feature,
     Invoice,
     InvoiceLineItem,
+    InvoiceLineItemAdjustment,
     Metric,
     NumericFilter,
     Organization,
@@ -316,6 +317,34 @@ class SubscriptionRecordSerializer(
     )
 
 
+class InvoiceLineItemAdjustmentSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+):
+    class Meta:
+        model = InvoiceLineItemAdjustment
+        fields = (
+            "amount",
+            "account",
+            "adjustment_type",
+        )
+
+    adjustment_type = serializers.SerializerMethodField()
+    account = serializers.SerializerMethodField()
+    amount = serializers.DecimalField(
+        max_digits=20, decimal_places=10, coerce_to_string=True
+    )
+
+    def get_adjustment_type(
+        self, obj
+    ) -> serializers.ChoiceField(
+        choices=InvoiceLineItemAdjustment.AdjustmentType.labels
+    ):
+        return obj.get_adjustment_type_display()
+
+    def get_account(self, obj) -> str:
+        return str(obj.account)
+
+
 @extend_schema_serializer(
     deprecate_fields=[
         "subtotal",
@@ -331,24 +360,31 @@ class InvoiceLineItemSerializer(
             "start_date",
             "end_date",
             "quantity",
-            "subtotal",
-            "amount",
             "billing_type",
             "metadata",
             "plan",
             "subscription_filters",
+            # amounts
+            "base",
+            "adjustments",
+            "amount",
+            # deprecated
+            "subtotal",
         )
         extra_kwargs = {
             "name": {"required": True},
             "start_date": {"required": True},
             "end_date": {"required": True},
             "quantity": {"required": True},
-            "subtotal": {"required": True},
-            "amount": {"required": True},
             "billing_type": {"required": True, "allow_blank": False},
             "metadata": {"required": True},
             "plan": {"required": True, "allow_null": True},
-            "subscription_filters": {"required": True, "allow_null": True},
+            # amounts
+            "base": {"required": True},
+            "adjustments": {"required": True},
+            "amount": {"required": True},
+            # deprecated
+            "subtotal": {"required": True},
         }
 
     plan = serializers.SerializerMethodField(allow_null=True)
@@ -356,8 +392,14 @@ class InvoiceLineItemSerializer(
     subtotal = serializers.DecimalField(
         max_digits=20,
         decimal_places=10,
-        source="amount",
+        source="base",
     )
+    adjustments = serializers.SerializerMethodField()
+
+    def get_adjustments(self, obj) -> InvoiceLineItemAdjustmentSerializer(many=True):
+        return InvoiceLineItemAdjustmentSerializer(
+            obj.adjustments.all(), many=True
+        ).data
 
     def get_subscription_filters(
         self, obj
