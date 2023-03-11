@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q, Sum
 from django.db.models.query import QuerySet
+
 from metering_billing.kafka.producer import Producer
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.taxes import get_lotus_tax_rates, get_taxjar_tax_rates
@@ -322,29 +323,19 @@ def charge_next_plan_flat_fee(
 
 
 def apply_plan_discounts(invoice):
-    from metering_billing.models import (
-        InvoiceLineItem,
-        InvoiceLineItemAdjustment,
-        PlanVersion,
-        SubscriptionRecord,
-    )
+    from metering_billing.models import InvoiceLineItem, InvoiceLineItemAdjustment
     from metering_billing.utils.enums import PRICE_ADJUSTMENT_TYPE
 
-    distinct_sr_pv_combos = (
+    distinct_pvs = (
         invoice.line_items.filter(
             associated_subscription_record__isnull=False,
             associated_plan_version__isnull=False,
         )
-        .values("associated_subscription_record", "associated_plan_version")
+        .values("associated_plan_version")
         .distinct()
     )
-    SubscriptionRecord.objects.filter(
-        pk__in=[x["associated_subscription_record"] for x in distinct_sr_pv_combos]
-    )
-    pvs = PlanVersion.objects.filter(
-        pk__in=[x["associated_plan_version"] for x in distinct_sr_pv_combos]
-    )
-    for pv in pvs:
+    for version_dict in distinct_pvs:
+        pv = version_dict["associated_plan_version"]
         if pv.price_adjustment:
             price_adj_name = str(pv.price_adjustment)
             if (
@@ -630,10 +621,6 @@ def calculate_due_date(issue_date, organization):
 def finalize_invoice_amount(invoice, draft):
     from metering_billing.models import Invoice
 
-    invoice.amount = invoice.line_items.aggregate(tot=Sum("amount"))["tot"] or 0
-    if abs(invoice.amount) < 0.01 and not draft:
-        invoice.payment_status = Invoice.PaymentStatus.PAID
-    invoice.save()
     invoice.amount = invoice.line_items.aggregate(tot=Sum("amount"))["tot"] or 0
     if abs(invoice.amount) < 0.01 and not draft:
         invoice.payment_status = Invoice.PaymentStatus.PAID
