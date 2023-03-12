@@ -23,11 +23,44 @@ jobs:
         project: "5324"
         tag: ${{ steps.vars.outputs.sha_short }}
         token: ${{ secrets.PORTER_TOKEN_5324 }}
+    - name: Event Guidance
+      timeout-minutes: 20
+      uses: porter-dev/porter-update-action@v0.1.0
+      with:
+        app: event-guidance
+        cluster: "2539"
+        host: https://dashboard.getporter.dev
+        namespace: default
+        project: "5324"
+        tag: ${{ steps.vars.outputs.sha_short }}
+        token: ${{ secrets.PORTER_TOKEN_5324 }}
+    - name: Celery Worker
+      timeout-minutes: 20
+      uses: porter-dev/porter-update-action@v0.1.0
+      with:
+        app: celery-worker
+        cluster: "2539"
+        host: https://dashboard.getporter.dev
+        namespace: default
+        project: "5324"
+        tag: ${{ steps.vars.outputs.sha_short }}
+        token: ${{ secrets.PORTER_TOKEN_5324 }}
     - name: Django Mono
       timeout-minutes: 20
       uses: porter-dev/porter-update-action@v0.1.0
       with:
         app: django-mono
+        cluster: "2539"
+        host: https://dashboard.getporter.dev
+        namespace: default
+        project: "5324"
+        tag: ${{ steps.vars.outputs.sha_short }}
+        token: ${{ secrets.PORTER_TOKEN_5324 }}
+    - name: Celery Beat
+      timeout-minutes: 20
+      uses: porter-dev/porter-update-action@v0.1.0
+      with:
+        app: celery-beat
         cluster: "2539"
         host: https://dashboard.getporter.dev
         namespace: default
