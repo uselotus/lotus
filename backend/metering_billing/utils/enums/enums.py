@@ -283,3 +283,4 @@ class ORGANIZATION_SETTING_GROUPS(models.TextChoices):
 class TAX_PROVIDER(models.IntegerChoices):
     TAXJAR = (1, _("taxjar"))
     LOTUS = (2, _("lotus"))
+    NETSUITE = (3, _("netsuite"))

@@ -492,6 +492,9 @@ def apply_taxes(invoice, customer, organization, draft):
                     if success:
                         tax_rate = txr
                         break
+                elif tax_provider == TAX_PROVIDER.NETSUITE:
+                    # in the case of netsuite, we never decide taxes, they do
+                    tax_rate = Decimal(0)
         tax_rate = tax_rate or Decimal(0)
         tax_rate_dict[plan] = tax_rate
         if tax_rate == 0:

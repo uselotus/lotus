@@ -577,5 +577,24 @@ export const PricingUnits = {
 };
 
 export const Netsuite = {
-  invoices: (): Promise<{ url: URL }> => requests.get("app/netsuite_invoices/"),
+  invoices: (
+    startDate?: Date | null,
+    endDate?: Date | null
+  ): Promise<{ url: URL }> =>
+    requests.get("app/netsuite_invoices/", {
+      params: {
+        start_date: startDate?.toISOString().split("T")[0] ?? undefined,
+        end_date: endDate?.toISOString().split("T")[0] ?? undefined,
+      },
+    }),
+  customers: (
+    startDate?: Date | null,
+    endDate?: Date | null
+  ): Promise<{ url: URL }> =>
+    requests.get("app/netsuite_customers/", {
+      params: {
+        start_date: startDate?.toISOString().split("T")[0] ?? undefined,
+        end_date: endDate?.toISOString().split("T")[0] ?? undefined,
+      },
+    }),
 };
