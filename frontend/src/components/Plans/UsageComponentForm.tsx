@@ -487,7 +487,7 @@ function UsageComponentForm({
       align: "center",
     },
     {
-      title: `Amount (${currency.symbol})`,
+      title: `Amount (${currency?.symbol})`,
       dataIndex: "cost_per_batch",
       editable: true,
       align: "center",

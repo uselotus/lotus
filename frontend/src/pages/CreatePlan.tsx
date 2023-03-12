@@ -1,7 +1,7 @@
 /* eslint-disable no-shadow */
 /* eslint-disable camelcase */
 /* eslint-disable no-plusplus */
-import { Button, Col, Form, Row } from "antd";
+import { Button, Col, Form, Modal, Row } from "antd";
 // @ts-ignore
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -32,6 +32,8 @@ import ChargesAndFeatures, {
 } from "../components/Plans/CreatePlan/ChargesAndFeatures";
 import BreadCrumbs from "../components/BreadCrumbs";
 import clsx from "clsx";
+import RecurringChargeForm from "../components/Plans/RecurringChargeForm";
+import { components } from "../gen-types";
 
 interface ComponentDisplay {
   metric: string;
@@ -49,16 +51,18 @@ const durationConversion = {
 };
 
 function CreatePlan() {
+  const [showRecurringChargeModal, setShowRecurringChargeModal] =
+    useState<boolean>(false);
   const [isCurrentStepValid, setIsCurrentStepValid] = useState<boolean>(false);
+  const [showCreateCustomPlanModal, setShowCreateCustomPlanModal] =
+    useState<boolean>(false);
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [componentVisible, setcomponentVisible] = useState<boolean>();
   const [allPlans, setAllPlans] = useState<PlanType[]>([]);
   const [allCurrencies, setAllCurrencies] = useState<CurrencyType[]>([]);
-  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>({
-    symbol: "",
-    code: "",
-    name: "",
-  });
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType | null>(
+    null
+  );
   const [featureVisible, setFeatureVisible] = useState<boolean>(false);
   const [priceAdjustmentType, setPriceAdjustmentType] =
     useState<string>("none");
@@ -66,6 +70,9 @@ function CreatePlan() {
   const [componentsData, setComponentsData] = useState<CreateComponent[]>([]);
   const [form] = Form.useForm();
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>([]);
+  const [recurringCharges, setRecurringCharges] = useState<
+    components["schemas"]["PlanDetail"]["versions"][0]["recurring_charges"]
+  >([]);
   const [month, setMonth] = useState(1);
   const [editComponentItem, setEditComponentsItem] =
     useState<CreateComponent>();
@@ -154,7 +161,6 @@ function CreatePlan() {
 
   const handleComponentAdd = (newData: any) => {
     const old = componentsData;
-    console.log(newData);
 
     /// check if the metricId on newdata is already in a component in componentsData
     // if it is then raise an alert with toast
@@ -193,7 +199,6 @@ function CreatePlan() {
   };
 
   const handleComponentEdit = (id: string) => {
-    console.log(componentsData);
     const currentComponent = componentsData.filter(
       (item) => item.metric_id === id
     )[0];
@@ -258,6 +263,7 @@ function CreatePlan() {
         }
 
         const recurring_charges: CreateRecurringCharge[] = [];
+
         recurring_charges.push({
           amount: values.flat_rate,
           charge_behavior: "prorate",
@@ -367,7 +373,6 @@ function CreatePlan() {
             plan_duration: "monthly",
             align_plan: "calendar_aligned",
             usage_billing_frequency: "monthly",
-            localized_name: "",
           }}
           onChange={async () => {
             const isValid = await step.validate(form);
@@ -379,6 +384,7 @@ function CreatePlan() {
           autoComplete="off"
           labelCol={{ span: 8 }}
           wrapperCol={{ span: 16 }}
+          layout="vertical"
           labelAlign="left"
         >
           <Row gutter={[24, 24]} justify="space-between">
@@ -410,13 +416,6 @@ function CreatePlan() {
                     opacity: !isCurrentStepValid ? 0.5 : 1,
                   }}
                   onClick={async () => {
-                    const isValid = await step.validate(form);
-
-                    if (!isValid) {
-                      setIsCurrentStepValid(false);
-                      return;
-                    }
-
                     if (currentStep < STEPS.length - 1) {
                       setIsCurrentStepValid(false);
                       setCurrentStep(currentStep + 1);
@@ -426,7 +425,7 @@ function CreatePlan() {
                     form.submit();
                   }}
                 >
-                  {currentStep === STEPS.length - 1 ? "Create" : "Next step"}
+                  {currentStep === STEPS.length - 1 ? "Publish" : "Next step"}
                 </Button>
               </div>
             </Col>
@@ -455,6 +454,11 @@ function CreatePlan() {
             handleComponentEdit={handleComponentEdit}
             deleteComponent={deleteComponent}
             showComponentModal={showComponentModal}
+            setIsCurrentStepValid={setIsCurrentStepValid}
+            showRecurringChargeModal={showRecurringChargeModal}
+            setShowRecurringChargeModal={setShowRecurringChargeModal}
+            recurringCharges={recurringCharges}
+            setRecurringCharges={setRecurringCharges}
           />
         </Form>
 
@@ -466,7 +470,7 @@ function CreatePlan() {
             handleComponentAdd={handleComponentAdd}
             editComponentItem={editComponentItem}
             setEditComponentsItem={setEditComponentsItem}
-            currency={selectedCurrency}
+            currency={selectedCurrency!}
             planDuration={form.getFieldValue("plan_duration")}
           />
         )}
@@ -477,6 +481,18 @@ function CreatePlan() {
             onAddFeatures={addFeatures}
           />
         )}
+
+        {showRecurringChargeModal ? (
+          <RecurringChargeForm
+            visible={showRecurringChargeModal}
+            selectedCurrency={selectedCurrency}
+            onCancel={() => setShowRecurringChargeModal(false)}
+            onAddRecurringCharges={(newRecurringCharge) => {
+              setRecurringCharges((prev) => [...prev, newRecurringCharge]);
+              setShowRecurringChargeModal(false);
+            }}
+          />
+        ) : null}
       </Form.Provider>
     </PageLayout>
   );

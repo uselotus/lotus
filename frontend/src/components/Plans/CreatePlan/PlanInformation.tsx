@@ -14,9 +14,9 @@ import {
 import { StepProps } from "./types";
 import LinkExternalIds from "../LinkExternalIds";
 
-export const validate = async (form: FormInstance<any>): Promise<boolean> => {
-  const fields = ["name", "plan_duration", "price_adjustment_amount"];
+const fields = ["name", "plan_duration"];
 
+export const validate = async (form: FormInstance<any>): Promise<boolean> => {
   try {
     await form.validateFields(fields);
     return true;
@@ -26,7 +26,11 @@ export const validate = async (form: FormInstance<any>): Promise<boolean> => {
 };
 
 const PlanInformation = ({ form, ...props }: StepProps) => {
-  const months = moment.months();
+  React.useEffect(() => {
+    const isValid = fields.every((field) => form.getFieldValue(field));
+
+    props.setIsCurrentStepValid(isValid);
+  }, [form, props]);
 
   return (
     <Row gutter={[24, 24]}>
@@ -34,78 +38,99 @@ const PlanInformation = ({ form, ...props }: StepProps) => {
         <Row gutter={[24, 24]}>
           <Col span="24">
             <Card title="Plan Information" className="w-full">
-              <Form.Item
-                label="Plan Name"
-                name="name"
-                rules={[
-                  {
-                    required: true,
-                    message: "Please Name Your Plan",
-                  },
-                ]}
-              >
-                <Input id="planNameInput" placeholder="Ex: Starter Plan" />
-              </Form.Item>
+              <Input.Group>
+                <Row gutter={[24, 24]}>
+                  <Col span={12}>
+                    <Form.Item
+                      label="Plan Name"
+                      name="name"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Please Name Your Plan",
+                        },
+                      ]}
+                    >
+                      <Input
+                        id="planNameInput"
+                        placeholder="Ex: Starter Plan"
+                      />
+                    </Form.Item>
+                  </Col>
 
-              <Form.Item label="Description" name="description">
-                <Input
-                  type="textarea"
-                  id="planDescInput"
-                  placeholder="Ex: Cheapest plan for small scale businesses"
-                />
-              </Form.Item>
+                  <Col span={12}>
+                    <Form.Item label="Description" name="description">
+                      <Input
+                        type="textarea"
+                        id="planDescInput"
+                        placeholder="Ex: Cheapest plan for small scale businesses"
+                      />
+                    </Form.Item>
+                  </Col>
 
-              <Form.Item
-                name="initial_external_links"
-                label="Link External IDs"
-              >
-                <LinkExternalIds
-                  externalIds={[]}
-                  setExternalLinks={props.setExternalLinks}
-                />
-              </Form.Item>
+                  <Col span={12}>
+                    <Form.Item
+                      name="initial_external_links"
+                      label="Link External IDs"
+                    >
+                      <LinkExternalIds
+                        externalIds={[]}
+                        setExternalLinks={props.setExternalLinks}
+                      />
+                    </Form.Item>
+                  </Col>
 
-              <Form.Item
-                label="Plan Duration"
-                name="plan_duration"
-                rules={[
-                  {
-                    required: true,
-                    message: "Please select a duration",
-                  },
-                ]}
-              >
-                <Radio.Group
-                  onChange={(e) => {
-                    if (e.target.value === "monthly") {
-                      props.setAvailableBillingTypes([
-                        { label: "Monthly", name: "monthly" },
-                      ]);
-                      form.setFieldValue("usage_billing_frequency", "monthly");
-                    } else if (e.target.value === "quarterly") {
-                      props.setAvailableBillingTypes([
-                        { label: "Monthly", name: "monthly" },
-                        { label: "Quarterly", name: "quarterly" },
-                      ]);
-                      form.setFieldValue(
-                        "usage_billing_frequency",
-                        "quarterly"
-                      );
-                    } else {
-                      props.setAvailableBillingTypes([
-                        { label: "Monthly", name: "monthly" },
-                        { label: "Quarterly", name: "quarterly" },
-                        { label: "Yearly", name: "yearly" },
-                      ]);
-                      form.setFieldValue("usage_billing_frequency", "yearly");
-                    }
-                  }}
-                >
-                  <Radio value="monthly">Monthly</Radio>
-                  <Radio value="quarterly">Quarterly</Radio>
-                  <Radio value="yearly">Yearly</Radio>
-                </Radio.Group>
-              </Form.Item>
+                  <Col span="12">
+                    <Form.Item
+                      label="Duration"
+                      name="plan_duration"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Please select a duration",
+                        },
+                      ]}
+                    >
+                      <Radio.Group
+                        onChange={(e) => {
+                          if (e.target.value === "monthly") {
+                            props.setAvailableBillingTypes([
+                              { label: "Monthly", name: "monthly" },
+                            ]);
+                            form.setFieldValue(
+                              "usage_billing_frequency",
+                              "monthly"
+                            );
+                          } else if (e.target.value === "quarterly") {
+                            props.setAvailableBillingTypes([
+                              { label: "Monthly", name: "monthly" },
+                              { label: "Quarterly", name: "quarterly" },
+                            ]);
+                            form.setFieldValue(
+                              "usage_billing_frequency",
+                              "quarterly"
+                            );
+                          } else {
+                            props.setAvailableBillingTypes([
+                              { label: "Monthly", name: "monthly" },
+                              { label: "Quarterly", name: "quarterly" },
+                              { label: "Yearly", name: "yearly" },
+                            ]);
+                            form.setFieldValue(
+                              "usage_billing_frequency",
+                              "yearly"
+                            );
+                          }
+                        }}
+                      >
+                        <Radio value="monthly">Monthly</Radio>
+                        <Radio value="quarterly">Quarterly</Radio>
+                        <Radio value="yearly">Yearly</Radio>
+                      </Radio.Group>
+                    </Form.Item>
+                  </Col>
+                </Row>
+              </Input.Group>
             </Card>
           </Col>
         </Row>

@@ -26,10 +26,12 @@ export interface Tier {
   range_start: number;
   range_end?: number;
 }
+
 export interface PriceAdjustment {
   price_adjustment_type: "percentage" | "fixed" | "fixed_override";
   price_adjustment_amount: number;
 }
+
 export interface CreateRecurringCharge {
   name: string;
   charge_timing: "in_advance" | "in_arrears";

@@ -3,6 +3,7 @@ import React from "react";
 import { FormInstance } from "antd";
 import { CurrencyType } from "../../../types/pricing-unit-type";
 import { CreateComponent, PlanType } from "../../../types/plan-type";
+import { components } from "../../../gen-types";
 
 interface BillingType {
   name: string;
@@ -24,8 +25,8 @@ export interface StepProps {
   allCurrencies: CurrencyType[];
   setAllCurrencies: React.Dispatch<React.SetStateAction<CurrencyType[]>>;
 
-  selectedCurrency: CurrencyType;
-  setSelectedCurrency: React.Dispatch<React.SetStateAction<CurrencyType>>;
+  selectedCurrency: CurrencyType | null;
+  setSelectedCurrency: React.Dispatch<React.SetStateAction<CurrencyType | null>>;
 
   priceAdjustmentType: string;
   setPriceAdjustmentType: React.Dispatch<React.SetStateAction<string>>;
@@ -36,6 +37,15 @@ export interface StepProps {
 
   showFeatureModal: () => void;
 
+  recurringCharges: components["schemas"]["PlanDetail"]["versions"][0]["recurring_charges"];
+  setRecurringCharges: React.Dispatch<
+    React.SetStateAction<
+      components["schemas"]["PlanDetail"]["versions"][0]["recurring_charges"]
+    >
+  >;
+  showRecurringChargeModal: boolean;
+  setShowRecurringChargeModal: React.Dispatch<React.SetStateAction<boolean>>;
+
   componentsData: CreateComponent[];
   handleComponentEdit: (component_id: string) => void;
   deleteComponent: (component_id: string) => void;
@@ -43,4 +53,6 @@ export interface StepProps {
   showComponentModal: () => void;
 
   setExternalLinks: (links: string[]) => void;
+
+  setIsCurrentStepValid: React.Dispatch<React.SetStateAction<boolean>>;
 }
