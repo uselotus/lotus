@@ -684,6 +684,7 @@ class Customer(models.Model):
     )
 
     # HISTORY FIELDS
+    created = models.DateTimeField(default=now_utc)
     history = HistoricalRecords()
     objects = BaseCustomerManager()
     deleted_objects = DeletedCustomerManager()
@@ -1516,6 +1517,9 @@ class PlanComponent(models.Model):
         related_name="plan_components",
         null=True,
     )
+    usage_component_id = models.UUIDField(
+        default=uuid.uuid4, editable=False, unique=True
+    )
     billable_metric = models.ForeignKey(
         Metric,
         on_delete=models.CASCADE,
@@ -1867,6 +1871,9 @@ class RecurringCharge(models.Model):
         PRORATE = (1, "prorate")
         CHARGE_FULL = (2, "full")
 
+    recurring_charge_id = models.UUIDField(
+        default=uuid.uuid4, unique=True, editable=False
+    )
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,

@@ -25,7 +25,9 @@ from metering_billing.models import (
     Organization,
     SubscriptionRecord,
 )
-from metering_billing.netsuite_csv import get_csv_presigned_url
+from metering_billing.netsuite_csv import (
+    get_invoices_csv_presigned_url,
+)
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.model_serializers import (
@@ -35,8 +37,10 @@ from metering_billing.serializers.model_serializers import (
 from metering_billing.serializers.request_serializers import (
     CostAnalysisRequestSerializer,
     DraftInvoiceRequestSerializer,
+    OptionalPeriodRequestSerializer,
     PeriodComparisonRequestSerializer,
     PeriodMetricUsageRequestSerializer,
+    URLResponseSerializer,
 )
 from metering_billing.serializers.response_serializers import (
     CostAnalysisSerializer,
@@ -743,23 +747,42 @@ class NetsuiteInvoiceCSVView(APIView):
     permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
-        request=inline_serializer(
-            name="PlansByNumCustomersRequest",
-            fields={},
-        ),
-        responses={
-            200: inline_serializer(
-                name="NetsuiteInvoiceCSVView",
-                fields={
-                    "url": serializers.URLField(),
-                },
-            ),
-        },
+        request=OptionalPeriodRequestSerializer,
+        responses=URLResponseSerializer,
     )
     def get(self, request, format=None):
         organization = request.organization
-        url = get_csv_presigned_url(organization)
+        serializer = OptionalPeriodRequestSerializer(
+            data=request.query_params, context={"organization": organization}
+        )
+        serializer.is_valid(raise_exception=True)
+        start_date = serializer.validated_data.get("start_date")
+        end_date = serializer.validated_data.get("end_date")
+        ret = get_invoices_csv_presigned_url(organization, start_date, end_date)
         return Response(
-            url,
+            URLResponseSerializer(ret).data,
+            status=status.HTTP_200_OK,
+        )
+
+
+class NetsuiteCustomerCSVView(APIView):
+    permission_classes = [IsAuthenticated | ValidOrganization]
+
+    @extend_schema(
+        request=OptionalPeriodRequestSerializer,
+        responses=URLResponseSerializer,
+    )
+    def get(self, request, format=None):
+        organization = request.organization
+        serializer = OptionalPeriodRequestSerializer(
+            data=request.query_params, context={"organization": organization}
+        )
+        serializer.is_valid(raise_exception=True)
+        # start_date = serializer.validated_data.get("start_date")
+        # end_date = serializer.validated_data.get("end_date")
+        # ret = get_customers_csv_presigned_url(organization, start_date, end_date)
+        # data = URLResponseSerializer(ret).data
+        return Response(
+            {},
             status=status.HTTP_200_OK,
         )
