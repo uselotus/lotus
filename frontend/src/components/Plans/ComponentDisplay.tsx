@@ -5,6 +5,7 @@ import { Paper } from "../base/Paper";
 import { CreateComponent, Tier } from "../../types/plan-type";
 import "./ComponentDisplay.css";
 import { CurrencyType } from "../../types/pricing-unit-type";
+import clsx from "clsx";
 
 const returnRoundingText = (rounding: string | undefined) => {
   if (!rounding) {
@@ -48,81 +49,62 @@ const renderCost = (record: Tier, pricing_unit: CurrencyType) => {
       return <span>Free</span>;
   }
 };
-// standard react component FC with props {componentsData}
-export const ComponentDisplay: FC<{
+
+interface Props {
   componentsData: CreateComponent[];
-  handleComponentEdit: (any) => void;
+  handleComponentEdit: (id: string) => void;
   deleteComponent: (id: string) => void;
   pricing_unit: CurrencyType;
-}> = ({
-  componentsData,
-  handleComponentEdit,
-  deleteComponent,
-  pricing_unit,
-}) => (
-  <Row gutter={[12, 12]} className="overflow-y-auto max-h-[400px]">
-    {componentsData.map((component: any, index: number) => (
-      <Col span="24" key={index}>
-        <Paper border className="items-stretch">
-          <Descriptions
-            title={component?.metric}
-            className="text-[20px]"
-            column={2}
-            extra={[
+}
+
+export const ComponentDisplay = ({ ...props }: Props) => (
+  <div className={clsx(["grid grid-cols-1 gap-6 xl:grid-cols-4"])}>
+    {props.componentsData.map((component) => (
+      <div
+        key={component.id}
+        className={clsx([
+          "pt-2 pb-4 px-4 my-2",
+          "bg-primary-50",
+          "min-h-[152px]",
+        ])}
+      >
+        <div className="text-base text-card-text">
+          <div className="flex justify-between items-center text-md">
+            {component?.metric}
+            <div className="flex items-center justify-end">
               <Button
                 key="edit"
                 type="text"
                 size="small"
                 icon={<EditOutlined />}
-                onClick={() => handleComponentEdit(component.metric_id)}
-              />,
+                onClick={() => props.handleComponentEdit(component.metric_id)}
+              />
+
               <Button
                 key="delete"
                 type="text"
                 size="small"
                 icon={<DeleteOutlined />}
                 danger
-                onClick={() => deleteComponent(component.metric_id)}
-              />,
-            ]}
-          />
-          <Table
-            dataSource={component.tiers}
-            pagination={false}
-            showHeader={false}
-            style={{ backgroundColor: "FAFAFA" }}
-            size="middle"
-            rowClassName="bg-[#FAFAFA]"
-            className="noborderTable"
-            columns={[
-              {
-                title: "Range",
-                dataIndex: "range_start",
-                key: "range_start",
-                align: "left",
-                width: "50%",
-                render: (value: any, record: any) => (
-                  <span>
-                    From {value} to{" "}
-                    {record.range_end == null ? "∞" : record.range_end}
-                  </span>
-                ),
-              },
-              {
-                title: "Cost",
-                align: "left",
-                dataIndex: "cost_per_batch",
-                key: "cost_per_batch",
-                render: (value: any, record: Tier) => (
-                  <div>{renderCost(record, pricing_unit)}</div>
-                ),
-              },
-            ]}
-          />
-        </Paper>
-      </Col>
+                onClick={() => props.deleteComponent(component.metric_id)}
+              />
+            </div>
+          </div>
+          {React.Children.toArray(
+            component.tiers.map((tier) => (
+              <div className="flex items-center justify-between">
+                <div>
+                  From {tier.range_start} to{" "}
+                  {tier.range_end == null ? "∞" : tier.range_end}
+                </div>
+                <div>{renderCost(tier, props.pricing_unit)}</div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     ))}
-  </Row>
+  </div>
 );
 
 export default ComponentDisplay;

@@ -8,11 +8,7 @@ import {
   CustomerCreateType,
   CustomerSummary,
 } from "../types/customer-type";
-import {
-  AddOnType,
-  CreateAddOnFeatureBody,
-  CreateAddOnType,
-} from "../types/addon-type";
+import { AddOnType, CreateAddOnFeatureBody } from "../types/addon-type";
 import {
   WebhookEndpoint,
   WebhookEndpointCreate,
@@ -25,12 +21,8 @@ import {
 } from "../types/apikey-type";
 import {
   PlanType,
-  CreatePlanType,
   UpdatePlanType,
   PlansByCustomerArray,
-  CreatePlanVersionType,
-  PlanDetailType,
-  PlanVersionType,
   ReplaceLaterType,
   ReplaceImmediatelyType,
   ArchivePlanVersionType,
@@ -45,6 +37,7 @@ import {
   PlanFeaturesAdd,
   CreateTagsPlanBody,
   CreateTagsType,
+  CreatePlanRequestType,
 } from "../types/plan-type";
 import {
   PaymentProcessorConnectionResponseType,
@@ -257,7 +250,7 @@ export const Plan = {
   ): Promise<components["schemas"]["PlanDetail"]> =>
     requests.get(`app/plans/${plan_id}/`, { version_custom_type }),
   // create plan
-  createPlan: (post: CreatePlanType): Promise<PlanType> =>
+  createPlan: (post: CreatePlanRequestType): Promise<PlanType> =>
     requests.post("app/plans/", post),
   // create plan version
   createVersion: (

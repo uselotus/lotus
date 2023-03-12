@@ -574,7 +574,7 @@ function UsageComponentForm({
     <Modal
       visible={visible}
       title="Create Component"
-      okText={initalData ? "Update Component" : "Create New Component"}
+      okText={editComponentItem ? "Update Component" : "Create New Component"}
       okType="primary"
       cancelText="Cancel"
       width={900}

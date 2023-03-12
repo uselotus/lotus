@@ -7,14 +7,15 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
+import clsx from "clsx";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
 
 import {
   CreateComponent,
-  CreateInitialVersionType,
-  CreatePlanType,
   PlanType,
   CreateRecurringCharge,
+  CreatePlanRequestType,
+  CreateComponentRequestType,
 } from "../types/plan-type";
 import { Plan, Organization } from "../api/api";
 import { FeatureType } from "../types/feature-type";
@@ -31,7 +32,6 @@ import ChargesAndFeatures, {
   validate as validateChargesAndFeatures,
 } from "../components/Plans/CreatePlan/ChargesAndFeatures";
 import BreadCrumbs from "../components/BreadCrumbs";
-import clsx from "clsx";
 import RecurringChargeForm from "../components/Plans/RecurringChargeForm";
 import { components } from "../gen-types";
 
@@ -102,7 +102,7 @@ function CreatePlan() {
   }, []);
 
   const mutation = useMutation(
-    (post: CreatePlanType) => Plan.createPlan(post),
+    (post: CreatePlanRequestType) => Plan.createPlan(post),
     {
       onSuccess: () => {
         toast.success("Successfully created Plan", {
@@ -233,12 +233,12 @@ function CreatePlan() {
     form
       .validateFields()
       .then((values) => {
-        const usagecomponentslist: CreateComponent[] = [];
+        const usagecomponentslist: CreateComponentRequestType[] = [];
         const components: any = Object.values(componentsData);
 
         if (components) {
           for (let i = 0; i < components.length; i++) {
-            const usagecomponent: CreateComponent = {
+            const usagecomponent: CreateComponentRequestType = {
               metric_id: components[i].metric_id,
               tiers: components[i].tiers,
               reset_interval_count: components[i].reset_interval_count,
@@ -262,28 +262,30 @@ function CreatePlan() {
           }
         }
 
-        const recurring_charges: CreateRecurringCharge[] = [];
-
-        recurring_charges.push({
-          amount: values.flat_rate,
-          charge_behavior: "prorate",
-          charge_timing: values.flat_fee_billing_type,
-          name: "Flat Fee",
-        });
+        const recurring_charges: CreateRecurringCharge[] = recurringCharges.map(
+          (recurringCharge) => ({
+            amount: recurringCharge.amount,
+            charge_behavior: recurringCharge.charge_behavior,
+            charge_timing: recurringCharge.charge_timing,
+            name: recurringCharge.name,
+          })
+        );
 
         if (values.usage_billing_frequency === "yearly") {
           values.usage_billing_frequency = "end_of_period";
         }
 
-        const initialPlanVersion: CreateInitialVersionType = {
-          description: values.description,
-          recurring_charges,
+        const initialPlanVersion: CreatePlanRequestType["initial_version"] = {
           version: 1,
+          localized_name: values.localized_name,
+          recurring_charges,
+          // @ts-expect-error TODO: fix this
           transition_to_plan_id: values.transition_to_plan_id,
           components: usagecomponentslist,
           features: featureIdList,
           usage_billing_frequency: values.usage_billing_frequency,
-          currency_code: values.plan_currency,
+          currency_code: selectedCurrency!.code,
+          plan_name: values.plan_name,
         };
 
         if (
@@ -317,8 +319,8 @@ function CreatePlan() {
           }
         }
 
-        const plan: CreatePlanType = {
-          plan_name: values.name,
+        const plan: CreatePlanRequestType = {
+          plan_name: values.plane_name,
           plan_duration: values.plan_duration,
           initial_version: initialPlanVersion,
         };

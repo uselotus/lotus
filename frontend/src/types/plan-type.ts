@@ -1,3 +1,4 @@
+import { components } from "../gen-types";
 import { MetricType } from "./metric-type";
 import { FeatureType } from "./feature-type";
 import { CurrencyType } from "./pricing-unit-type";
@@ -12,7 +13,7 @@ export interface RecurringCharge {
   pricing_unit: CurrencyType;
 }
 
-//create enum of day week month year null
+// create enum of day week month year null
 
 export interface Tier {
   type: "flat" | "free" | "per_unit";
@@ -56,10 +57,16 @@ export interface Component {
   invoicing_interval_count: number;
   prepaid_charge?: number;
 }
+
+export type CreateComponentRequestType = components["schemas"]["PlanComponentCreateRequest"]
+
 export interface CreateComponent
   extends Omit<Component, "billable_metric" | "pricing_unit"> {
   metric_id: string;
 }
+
+export type CreatePlanRequestType = components["schemas"]["PlanCreateRequest"]
+
 export interface CreatePlanVersionType {
   description?: string;
   plan_id?: string;
