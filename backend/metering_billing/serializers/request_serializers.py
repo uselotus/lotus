@@ -1,3 +1,5 @@
+from rest_framework import serializers
+
 from metering_billing.models import Customer
 from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganization,
@@ -6,7 +8,6 @@ from metering_billing.utils.enums import (
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
 )
-from rest_framework import serializers
 
 
 class PeriodComparisonRequestSerializer(serializers.Serializer):
@@ -14,6 +15,16 @@ class PeriodComparisonRequestSerializer(serializers.Serializer):
     period_1_end_date = serializers.DateField()
     period_2_start_date = serializers.DateField()
     period_2_end_date = serializers.DateField()
+
+
+class OptionalPeriodRequestSerializer(serializers.Serializer):
+    start_date = serializers.DateField(required=False)
+    end_date = serializers.DateField(required=False)
+
+
+class URLResponseSerializer(serializers.Serializer):
+    url = serializers.URLField()
+    exists = serializers.BooleanField()
 
 
 class PeriodRequestSerializer(serializers.Serializer):
