@@ -2,14 +2,11 @@ import logging
 import re
 from decimal import Decimal
 
+import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import DecimalField, Q, Sum
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-
-import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -64,6 +61,8 @@ from metering_billing.utils.enums import (
     TAX_PROVIDER,
     WEBHOOK_TRIGGER_EVENTS,
 )
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -1181,15 +1180,15 @@ class RecurringChargeCreateSerializer(TimezoneFieldMixin, serializers.ModelSeria
             "reset_interval_count",
         )
         extra_kwargs = {
-            "name": {"required": True},
-            "charge_timing": {"required": True},
-            "charge_behavior": {"required": False},
-            "amount": {"required": True},
-            "pricing_unit_code": {"required": False},
-            "invoicing_interval_unit": {"required": False},
-            "invoicing_interval_count": {"required": False},
-            "reset_interval_unit": {"required": False},
-            "reset_interval_count": {"required": False},
+            "name": {"required": True, "write_only": True},
+            "charge_timing": {"required": True, "write_only": True},
+            "charge_behavior": {"required": False, "write_only": True},
+            "amount": {"required": True, "write_only": True},
+            "pricing_unit_code": {"required": False, "write_only": True},
+            "invoicing_interval_unit": {"required": False, "write_only": True},
+            "invoicing_interval_count": {"required": False, "write_only": True},
+            "reset_interval_unit": {"required": False, "write_only": True},
+            "reset_interval_count": {"required": False, "write_only": True},
         }
 
     charge_timing = serializers.ChoiceField(
