@@ -30,7 +30,7 @@ const PlanRecurringCharges: FC<PlanRecurringChargesProps> = ({
               key={recurringCharge.name}
               className="pt-2 pb-4 bg-primary-50 mt-2  mb-2 p-4 min-h-[152px]"
             >
-              <Typography.Title className="pt-4 whitespace-pre-wrap !text-[18px] level={2}">
+              <Typography.Title className="pt-4 whitespace-pre-wrap !text-[16px] level={2}">
                 {recurringCharge.name}
               </Typography.Title>
 
