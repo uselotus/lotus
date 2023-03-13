@@ -2,11 +2,14 @@ import logging
 import re
 from decimal import Decimal
 
-import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import DecimalField, Q, Sum
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
+import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -61,8 +64,6 @@ from metering_billing.utils.enums import (
     TAX_PROVIDER,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -1390,9 +1391,10 @@ class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
             except PriceAdjustment.MultipleObjectsReturned:
                 pa = PriceAdjustment.objects.filter(**price_adjustment_data).first()
             billing_plan.price_adjustment = pa
-        billing_plan.save()
         if target_customers:
             billing_plan.target_customers.set(target_customers)
+            billing_plan.is_custom = True
+        billing_plan.save()
         return billing_plan
 
 

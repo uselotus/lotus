@@ -376,6 +376,12 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             versions_filters.append(reduce(operator.or_, status_combo))
         if version_currency:
             versions_filters.append(Q(currency=version_currency))
+        print(
+            "version_custom_type",
+            version_custom_type,
+            version_custom_type == PLAN_CUSTOM_TYPE.PUBLIC_ONLY,
+            version_custom_type == PLAN_CUSTOM_TYPE.CUSTOM_ONLY,
+        )
         if version_custom_type == PLAN_CUSTOM_TYPE.PUBLIC_ONLY:
             versions_filters.append(Q(is_custom=False))
         elif version_custom_type == PLAN_CUSTOM_TYPE.CUSTOM_ONLY:
