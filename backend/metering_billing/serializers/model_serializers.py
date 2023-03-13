@@ -1180,15 +1180,15 @@ class RecurringChargeCreateSerializer(TimezoneFieldMixin, serializers.ModelSeria
             "reset_interval_count",
         )
         extra_kwargs = {
-            "name": {"required": True},
-            "charge_timing": {"required": True},
-            "charge_behavior": {"required": False},
-            "amount": {"required": True},
-            "pricing_unit_code": {"required": False},
-            "invoicing_interval_unit": {"required": False},
-            "invoicing_interval_count": {"required": False},
-            "reset_interval_unit": {"required": False},
-            "reset_interval_count": {"required": False},
+            "name": {"required": True, "write_only": True},
+            "charge_timing": {"required": True, "write_only": True},
+            "charge_behavior": {"required": False, "write_only": True},
+            "amount": {"required": True, "write_only": True},
+            "pricing_unit_code": {"required": False, "write_only": True},
+            "invoicing_interval_unit": {"required": False, "write_only": True},
+            "invoicing_interval_count": {"required": False, "write_only": True},
+            "reset_interval_unit": {"required": False, "write_only": True},
+            "reset_interval_count": {"required": False, "write_only": True},
         }
 
     charge_timing = serializers.ChoiceField(
@@ -1390,9 +1390,10 @@ class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
             except PriceAdjustment.MultipleObjectsReturned:
                 pa = PriceAdjustment.objects.filter(**price_adjustment_data).first()
             billing_plan.price_adjustment = pa
-        billing_plan.save()
         if target_customers:
             billing_plan.target_customers.set(target_customers)
+            billing_plan.is_custom = True
+        billing_plan.save()
         return billing_plan
 
 

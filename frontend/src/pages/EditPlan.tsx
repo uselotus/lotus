@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
 import { ArrowLeftOutlined } from "@ant-design/icons";
-import { compact, noop } from "lodash";
+import { compact, noop, sortBy } from "lodash";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
 
 import {
@@ -75,6 +75,12 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     plan.versions[versionIndex].price_adjustment?.price_adjustment_type ??
       "none"
   );
+
+  const latestVersion = sortBy(
+    plan.versions.filter((v) => typeof v.version === "number"),
+    "version"
+  ).reverse()[0];
+  console.log("latestVersion", latestVersion);
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>(
     plan.versions[versionIndex].currency ?? {
       symbol: "",
@@ -363,7 +369,11 @@ function EditPlan({ type, plan, versionIndex }: Props) {
         if (type === "backtest") {
           newPlan.status = "experimental";
           createPlanMutation.mutate(newPlan);
-        } else if (type === "version" || type === "custom") {
+        } else if (
+          type === "version" ||
+          type === "custom" ||
+          type === "currency"
+        ) {
           const newVersion: CreatePlanVersionType = {
             plan_id: plan.plan_id,
             description: values.description,
@@ -371,13 +381,22 @@ function EditPlan({ type, plan, versionIndex }: Props) {
             transition_to_plan_id: values.transition_to_plan_id,
             components: usagecomponentslist,
             features: featureIdList,
+            localized_name: values.localized_name,
             usage_billing_frequency: values.usage_billing_frequency,
             make_active: activeVersion,
             make_active_type: activeVersionType,
             currency_code: values.plan_currency ?? selectedCurrency?.code,
-            target_customer_ids: compact([targetCustomerId]),
-            version: 0,
           };
+
+          if (type === "currency") {
+            console.log(plan[versionIndex]);
+            newVersion.version = plan.versions[versionIndex].version;
+          } else if (type === "version") {
+            newVersion.version = latestVersion.version + 1;
+          } else {
+            newVersion.version = plan.versions[versionIndex].version;
+            newVersion.target_customer_ids = compact([targetCustomerId]);
+          }
 
           if (values.align_plan === "calendar_aligned") {
             if (values.plan_duration === "yearly") {
@@ -405,14 +424,6 @@ function EditPlan({ type, plan, versionIndex }: Props) {
 
           mutation.mutate(newVersion);
           return;
-        }
-
-        if (type === "currency") {
-          mutation.mutate({
-            ...plan[versionIndex],
-            plan_id: plan.plan_id,
-            currency_code: values.plan_currency ?? selectedCurrency?.code,
-          });
         }
       })
       .catch((err) => {

@@ -50,6 +50,10 @@ function EditPlanLoader({ type }: EditPlanLoaderProps) {
         setVersionIndex(
           plan.versions.findIndex((x) => x.version_id === versionId)
         );
+        console.log(
+          "versionIndex",
+          plan.versions.findIndex((x) => x.version_id === versionId)
+        );
       } else {
         setVersionIndex(plan.versions.findIndex((x) => x.status === "active"));
       }
