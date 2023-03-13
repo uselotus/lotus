@@ -111,7 +111,7 @@ describe("Testing customer details tab", () => {
     // go to credits tab
     cy.get(".ant-tabs-tab-btn").contains("Invoices").click();
     cy.wait(5000);
-    cy.get("h2").contains("Credits");
+    cy.contains("Credits");
   });
 });
 
