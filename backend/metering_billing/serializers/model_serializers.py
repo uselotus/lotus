@@ -1333,7 +1333,8 @@ class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
         if data.get("components"):
             component_metrics = set()
             for component in data.get("components"):
-                metric = component.get("metric")
+                metric = component.get("billable_metric")
+                print(metric)
                 if metric in component_metrics:
                     raise serializers.ValidationError(
                         "Plan components must have unique metrics."

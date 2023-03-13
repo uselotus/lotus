@@ -248,7 +248,7 @@ export const Plan = {
     plan_id: string,
     version_custom_type?: "all" | "custom_only" | "public_only"
   ): Promise<components["schemas"]["PlanDetail"]> =>
-    requests.get(`app/plans/${plan_id}/`, { version_custom_type }),
+    requests.get(`app/plans/${plan_id}/`, { params: { version_custom_type } }),
   // create plan
   createPlan: (post: CreatePlanRequestType): Promise<PlanType> =>
     requests.post("app/plans/", post),
