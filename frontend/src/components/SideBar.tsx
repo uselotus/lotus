@@ -1,5 +1,5 @@
 import React, { FC } from "react";
-import { Menu } from "antd";
+import { Menu, Progress } from "antd";
 import {
   UserOutlined,
   DashboardOutlined,
@@ -15,12 +15,33 @@ import {
 import { useNavigate, useLocation } from "react-router-dom";
 import { ItemType } from "antd/lib/menu/hooks/useItems";
 import { Authentication } from "../api/api";
+import useGlobalStore, { GlobalStoreState } from "../stores/useGlobalstore";
+import { selectQuickStartProgress } from "../helpers/quickStartCheck";
+
+const CustomQuickStartMenuItem = ({
+  progressPercent = 0,
+}: {
+  progressPercent: number;
+}) => (
+  <div className="flex justify-start items-center">
+    <BookOutlined />
+    <span className="ml-1 mr-4">Quick Start</span>
+    <Progress
+      percent={progressPercent}
+      strokeColor="#BF9F79"
+      trailColor="#d7d5d5"
+      showInfo={false}
+      size="small"
+    />
+  </div>
+);
 
 const imgUrl = new URL("./Head.png", import.meta.url).href;
 
 const SideBar: FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const totalProgress = useGlobalStore(selectQuickStartProgress);
 
   const handleLogoutClick = () => {
     Authentication.logout().then(() => {
@@ -169,8 +190,9 @@ const SideBar: FC = () => {
           items={[
             {
               key: "/quickstart",
-              icon: <BookOutlined />,
-              label: "Quickstart",
+              icon: (
+                <CustomQuickStartMenuItem progressPercent={totalProgress} />
+              ),
               onClick: () => navigate("/quickstart"),
             },
             {
