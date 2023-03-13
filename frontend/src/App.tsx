@@ -32,8 +32,7 @@ function App() {
   const setOrgInfoToStore = useGlobalStore((state) => state.setOrgInfo);
   const { refetch } = useQuery(
     ["organization"],
-    () =>
-      Organization.get().then((res) => res[0]),
+    () => Organization.get().then((res) => res[0]),
     {
       onSuccess: (data) => {
         const storeOrgObject: IOrgStoreType = {
@@ -71,16 +70,15 @@ function App() {
     isAuthenticated: boolean;
   }>(["session"], fetchSessionInfo, { refetchInterval: 60000 });
 
-  const isAuthenticated = isLoading ? false : sessionData?.isAuthenticated;
+  const isAuthenticated =
+    isLoading && !sessionData ? false : sessionData?.isAuthenticated;
 
-  const contextClass = {
-    success: "bg-[#cca43b] text-[#cca43b]",
-  };
   useEffect(() => {
     if (isAuthenticated) {
       refetch();
     }
   }, [isAuthenticated]);
+
   if (isLoading) {
     return (
       <div className="flex h-screen">
@@ -90,32 +88,31 @@ function App() {
       </div>
     );
   }
-    if (isAuthenticated) {
-      return (
-        <div>
-          <ToastContainer
-            autoClose={3000}
-            bodyClassName=" text-gold font-main"
-            position="top-center"
-          />
-          <PlanProvider>
-            <AppRoutes />
-          </PlanProvider>
-        </div>
-      );
-    }
-      return (
-        <div>
-          <ToastContainer
-            autoClose={3000}
-            toastClassName="rounded-md bg-background font-main"
-            bodyClassName=" text-gold font-main"
-          />
-          <ExternalRoutes />
-        </div>
-      );
 
-
+  if (isAuthenticated) {
+    return (
+      <div>
+        <ToastContainer
+          autoClose={3000}
+          bodyClassName=" text-gold font-main"
+          position="top-center"
+        />
+        <PlanProvider>
+          <AppRoutes />
+        </PlanProvider>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <ToastContainer
+        autoClose={3000}
+        toastClassName="rounded-md bg-background font-main"
+        bodyClassName=" text-gold font-main"
+      />
+      <ExternalRoutes />
+    </div>
+  );
 }
 
 export default App;
