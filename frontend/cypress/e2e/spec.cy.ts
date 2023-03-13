@@ -1,3 +1,4 @@
+/* eslint-disable no-plusplus */
 /// <reference types="cypress" />
 
 function getId(length) {
@@ -22,7 +23,7 @@ const Login = () => {
   cy.get("[name='password']").type("demo4");
   cy.get("form").contains("Login").click();
   cy.wait(5000);
-  cy.on("uncaught:exception", (err, runnable) => {
+  cy.on("uncaught:exception", (err) => {
     if (err.message.includes("_a6.join is not a function")) {
       return false;
     }
