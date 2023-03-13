@@ -570,7 +570,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
   return (
     <div className="">
       {components && components.length > 0 ? (
-        <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card ">
+        <div className="mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card ">
           <Typography.Title className="pt-4 whitespace-pre-wrap !text-[18px]">
             Added Components
           </Typography.Title>
@@ -580,7 +580,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
           <div className="grid gap-6 grid-cols-1 xl:grid-cols-4">
             {components.map((component) => (
               <div
-                className="pt-2 pb-4 bg-primary-50 mt-2 relative  mb-2 p-4 min-h-[152px] min-w-[270px]"
+                className="pt-2 bg-primary-50 mt-2 relative mb-2 px-4 min-h-[152px] min-w-[270px]"
                 key={component.id}
               >
                 <div className="text-base text-card-text align-middle">
@@ -593,7 +593,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                     pagination={false}
                     showHeader={false}
                     bordered={false}
-                    className="noborderTable mb-12"
+                    className="noborderTable h-48 overflow-auto"
                     size="middle"
                     columns={[
                       {
@@ -626,10 +626,10 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                     ]}
                   />
                 </div>
-                <div className=" w-[96%] h-[1.5px] mt-8 mb-4 absolute bottom-16 bg-card-divider" />
-                <div className=" absolute bottom-[-4px] self-end">
+                <div className="w-[96%] h-[1.5px] bg-card-divider" />
+                <div className="self-end">
                   <div
-                    className="flex"
+                    className="flex py-6"
                     aria-hidden
                     onClick={() => {
                       if (component.billable_metric.metric_type !== "counter") {
@@ -664,14 +664,14 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                       <path d="M20 17h2v2H2v-2h2v-7a8 8 0 1 1 16 0v7zm-2 0v-7a6 6 0 1 0-12 0v7h12zm-9 4h6v2H9v-2z" />
                     </svg>
                     {findAlertForComponent(component, alerts) !== undefined ? (
-                      <p className="align-middle">
+                      <span className="align-middle">
                         Reaches:{" "}
                         {findAlertForComponent(component, alerts)?.threshold}
-                      </p>
+                      </span>
                     ) : (
-                      <p className=" text-small align-middle self-center">
+                      <span className=" text-small mb-0 align-middle self-center">
                         Set Alert
-                      </p>
+                      </span>
                     )}
                   </div>
                 </div>
