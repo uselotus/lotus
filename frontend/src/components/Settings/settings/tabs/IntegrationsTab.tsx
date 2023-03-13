@@ -159,6 +159,17 @@ const IntegrationsTab: FC = () => {
             handleClickConnect={() => {}}
           />
         </Col>
+        <Col span={6} className="h-full">
+          <AppCard
+            connected={false}
+            title="Segment"
+            description="Send Usage Events From Segment to Lotus"
+            icon={integrationsMap.segment.icon}
+            handleClickConnect={() =>
+              navigate("/settings/integrations/snowflake")
+            }
+          />
+        </Col>
       </Row>
       <Divider />
     </div>

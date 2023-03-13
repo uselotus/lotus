@@ -12,6 +12,7 @@ import {
 } from "../api/api";
 import useGlobalStore from "../stores/useGlobalstore";
 import CopyText from "../components/base/CopytoClipboard";
+import { toast } from "react-toastify";
 interface Props {
   text: string;
   subText: string;
@@ -108,6 +109,15 @@ const CodeExample = () => {
     </div>
   );
 };
+
+function demoLink(link) {
+  if (import.meta.env.VITE_IS_DEMO === "true") {
+    toast.error("This is not available in the demo.");
+    return;
+  } else {
+    return link;
+  }
+}
 
 const quickStartCheck = async ({
   setHasAPIKey,
@@ -352,7 +362,7 @@ const QuickstartPage: FC = () => {
             icon: "faHandPeace",
             time: "30 sec",
             userAction: "intro_cta_clicked",
-            link: `/settings/developer-settings`,
+            link: demoLink(`/settings/developer-settings`),
             highlighted: currentItem === 0,
           })}
 
@@ -390,7 +400,7 @@ const QuickstartPage: FC = () => {
             complete: hasPaymentConnected,
             icon: "ri-user-add-line",
             time: "2 min",
-            link: `/settings/integrations`,
+            link: demoLink(`/settings/integrations`),
             highlighted: currentItem === 4,
           })}
           {quickStartItem({

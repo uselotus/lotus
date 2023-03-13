@@ -86,7 +86,8 @@
     },
     {
       "group": "External Integrations",
-      "pages": ["external-integrations/stripe", "external-integrations/braintree", "external-integrations/netsuite"]
+      "pages": ["external-integrations/stripe", "external-integrations/braintree", "external-integrations/netsuite", "external-integrations/segment",
+    "external-integrations/salesforce"]
     },
     {
       "group": "Extensibility",

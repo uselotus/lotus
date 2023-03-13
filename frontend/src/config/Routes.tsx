@@ -17,7 +17,6 @@ import EditPlanLoader from "../pages/EditPlanLoader";
 import StripeIntegrationView from "../integrations/pages/StripeIntegrationView";
 import NetsuiteIntegrationView from "../integrations/pages/NetsuiteIntegrationView";
 import BraintreeIntegrationView from "../integrations/pages/BraintreeIntegrationView";
-import CreateCredit from "../pages/CreateBalanceAdjustment";
 import ViewAddOns from "../pages/ViewAddOns";
 import CreateAddOns from "../pages/CreateAddOns";
 import AddonDetails from "../components/Addons/AddonsDetails/AddonDetails";
