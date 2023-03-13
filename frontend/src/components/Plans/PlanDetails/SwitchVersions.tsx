@@ -201,7 +201,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
                       </span>
                     </span>
                   </Menu.Item>
-                  <Menu.Item
+                  {/* <Menu.Item
                     key="2"
                     onClick={() => {
                       setTriggerCurrencyModal(false);
@@ -213,7 +213,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
                         <span className="text-black">Delete</span>
                       </span>
                     </span>
-                  </Menu.Item>
+                  </Menu.Item> */}
                 </Menu>
               }
             >
