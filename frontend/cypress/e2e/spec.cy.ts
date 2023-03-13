@@ -84,6 +84,34 @@ describe("Testing Create Customer and Attach Subscription", () => {
   });
 });
 
+describe("Testing customer details tab", () => {
+  it("renders the customer details properly", () => {
+    Login();
+    cy.visit("http://localhost:3000/customers");
+    cy.wait(10000);
+    cy.contains("Customers");
+    cy.get(".ant-table-row").first().click();
+    // go through tabs
+    cy.wait(5000);
+    cy.get("h1").contains("Customer Details");
+    cy.get("h1").contains("Revenue Details");
+    cy.get("h1").contains("Revenue vs Cost Per Day");
+    // go to subscription tab
+    cy.get(".ant-tabs-tab-btn").contains("Subscriptions").click();
+    cy.wait(5000);
+    cy.get("h2").contains("No Subscription");
+    // go to Invoices tab
+    cy.get(".ant-tabs-tab-btn").contains("Invoices").click();
+    cy.wait(5000);
+    cy.get("h2").contains("Invoices");
+    cy.get(".ant-table-cell").first().contains("Source");
+    // go to credits tab
+    cy.get(".ant-tabs-tab-btn").contains("Invoices").click();
+    cy.wait(5000);
+    cy.get("h2").contains("Credits");
+  });
+});
+
 describe("Testing Event Tracking Details On Metrics Page", () => {
   it("Test event details on Metrics page", () => {
     Login();
@@ -111,19 +139,21 @@ describe("Testing Event Tracking Details On Metrics Page", () => {
         method: "POST",
         headers: {
           "X-API-KEY": apiKey,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: {
-          "batch": [{
-            "event_name": eventName,
-            "properties": {
-              "region": "US"
+          batch: [
+            {
+              event_name: eventName,
+              properties: {
+                region: "US",
+              },
+              time_created: date,
+              idempotency_id: idempotencyId,
+              customer_id: customerId,
             },
-            "time_created": date,
-            "idempotency_id": idempotencyId,
-            "customer_id": customerId
-          }]
-        }
+          ],
+        },
       });
     });
     cy.visit("http://localhost:3000/metrics");
@@ -134,7 +164,9 @@ describe("Testing Event Tracking Details On Metrics Page", () => {
     cy.contains("ID").siblings().should("include.text", idempotencyId);
     const dateString = date.toLocaleString("en-ZA").replace(",", "");
     cy.contains("time_created").siblings().should("include.text", dateString);
-    cy.get(".travelcompany-input .input-label").should("include.text", "region : US");
+    cy.get(".travelcompany-input .input-label").should(
+      "include.text",
+      "region : US"
+    );
   });
 });
-
