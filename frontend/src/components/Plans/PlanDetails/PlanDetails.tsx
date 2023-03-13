@@ -186,6 +186,7 @@ const PlanDetails: FC = () => {
   const changeTab = (activeKey: string) => {
     setActiveKey(activeKey);
   };
+
   const navigateCreateCustomPlan = () => {
     navigate(`/create-custom/${planId}`);
   };

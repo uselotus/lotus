@@ -6,8 +6,8 @@ import React, { FC, useCallback, useEffect, useRef, useState } from "react";
 
 import "./SwitchVersions.css";
 import { PlusOutlined } from "@ant-design/icons";
-import { Link } from "react-router-dom";
-import { Typography, Dropdown, Select, Menu } from "antd";
+import { Link, useNavigate } from "react-router-dom";
+import { Dropdown, Select, Menu } from "antd";
 import { useMutation, useQueryClient } from "react-query";
 import { PlanType } from "../../../types/plan-type";
 import PlanComponents, { PlanInfo, PlanSummary } from "./PlanComponent";
@@ -63,6 +63,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
   deletePlanExternalLink,
   className,
 }) => {
+  const navigate = useNavigate();
   const activePlanVersion = versions.find((x) => x.status === "active");
 
   const [selectedVersion, setSelectedVersion] = useState<
@@ -191,8 +192,9 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
                   <Menu.Item
                     key="1"
                     onClick={() => {
-                      setTriggerCurrencyModal(true);
-                      setTriggerDeleteModal(false);
+                      navigate(
+                        `/add-currency/${plan.plan_id}/${version.version_id}`
+                      );
                     }}
                   >
                     <span className="flex gap-2 justify-between ">

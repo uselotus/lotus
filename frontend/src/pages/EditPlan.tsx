@@ -404,11 +404,15 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           }
 
           mutation.mutate(newVersion);
-        } else if (type === "custom") {
-          newPlan.parent_plan_id = plan.plan_id;
-          newPlan.target_customer_id = targetCustomerId;
-          newPlan.initial_version.version = 1;
-          createPlanMutation.mutate(newPlan);
+          return;
+        }
+
+        if (type === "currency") {
+          mutation.mutate({
+            ...plan[versionIndex],
+            plan_id: plan.plan_id,
+            currency_code: values.plan_currency ?? selectedCurrency?.code,
+          });
         }
       })
       .catch((err) => {
@@ -439,6 +443,11 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     if (type === "version") {
       return "Publish version";
     }
+
+    if (type === "currency") {
+      return "Add currency";
+    }
+
     return "Create custom plan";
   }
 

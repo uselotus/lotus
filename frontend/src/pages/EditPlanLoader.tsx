@@ -11,15 +11,16 @@ import EditPlan from "./EditPlan";
 
 type PlanDetailParams = {
   planId: string;
+  versionId?: string;
 };
 
 interface EditPlanLoaderProps {
-  type: "backtest" | "version" | "custom";
+  type: "backtest" | "version" | "custom" | "currency";
 }
 
 function EditPlanLoader({ type }: EditPlanLoaderProps) {
   const navigate = useNavigate();
-  const { planId } = useParams<PlanDetailParams>();
+  const { planId, versionId } = useParams<PlanDetailParams>();
   const [versionIndex, setVersionIndex] = React.useState<number>();
   const { replacementPlanVersion } = usePlanState();
 
@@ -44,6 +45,10 @@ function EditPlanLoader({ type }: EditPlanLoaderProps) {
           plan.versions.findIndex(
             (v) => v.version_id === replacementPlanVersion?.version_id
           )
+        );
+      } else if (type === "currency") {
+        setVersionIndex(
+          plan.versions.findIndex((x) => x.version_id === versionId)
         );
       } else {
         setVersionIndex(plan.versions.findIndex((x) => x.status === "active"));
