@@ -106,7 +106,8 @@ describe("Testing customer details tab", () => {
     cy.get(".ant-tabs-tab-btn").contains("Invoices").click();
     cy.wait(5000);
     cy.get("h2").contains("Invoices");
-    cy.get(".ant-table-cell").first().contains("Source");
+    cy.contains("Source");
+    cy.contains("Amount");
     // go to credits tab
     cy.get(".ant-tabs-tab-btn").contains("Invoices").click();
     cy.wait(5000);
