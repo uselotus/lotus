@@ -82,7 +82,9 @@ export interface CreatePlanVersionType {
   month_anchor?: number;
   currency_code?: string;
   version: number;
+  target_customer_ids?: string[];
 }
+
 export interface CreateInitialVersionType extends CreatePlanVersionType {
   description?: string;
 }

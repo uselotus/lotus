@@ -173,6 +173,7 @@ const PlanInformation = ({ form, ...props }: StepProps) => {
             {props.priceAdjustmentType !== "none" && (
               <Form.Item
                 name="price_adjustment_amount"
+                label="Amount"
                 wrapperCol={{ span: 24, offset: 4 }}
                 shouldUpdate={(prevValues, curValues) =>
                   prevValues.price_adjustment_type !==

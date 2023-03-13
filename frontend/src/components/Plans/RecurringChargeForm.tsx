@@ -1,5 +1,5 @@
 import React from "react";
-import { Divider, Modal, Select, Input, Form, InputNumber } from "antd";
+import { Modal, Select, Input, Form, InputNumber } from "antd";
 import { CurrencyType } from "../../types/pricing-unit-type";
 import { components } from "../../gen-types";
 
@@ -12,25 +12,6 @@ interface Props {
   selectedCurrency: CurrencyType | null;
 }
 
-const INVOICING_INTERVAL_UNITS = [
-  {
-    label: "Daily",
-    value: "day",
-  },
-  {
-    label: "Weekly",
-    value: "week",
-  },
-  {
-    label: "Monthly",
-    value: "month",
-  },
-  {
-    label: "Yearly",
-    value: "year",
-  },
-];
-
 export default function RecurringChargeForm({
   visible,
   onCancel,
@@ -38,8 +19,6 @@ export default function RecurringChargeForm({
   selectedCurrency,
 }: Props) {
   const [form] = Form.useForm();
-
-  console.log(selectedCurrency);
 
   return (
     <Modal
@@ -138,43 +117,6 @@ export default function RecurringChargeForm({
               <InputNumber addonBefore={selectedCurrency?.symbol || null} />
             </Form.Item>
           </div>
-
-          <Divider />
-
-          <Input.Group>
-            <div className="flex flex-row justify-between">
-              <Form.Item
-                name="invoicing_interval_unit"
-                label="Invoice Interval Unit"
-              >
-                <Select options={INVOICING_INTERVAL_UNITS} />
-              </Form.Item>
-
-              <Form.Item
-                name="invoicing_interval_count"
-                label="Invoice Interval Count"
-                wrapperCol={{ span: 12 }}
-              >
-                <InputNumber precision={0} />
-              </Form.Item>
-            </div>
-          </Input.Group>
-
-          <Input.Group>
-            <div className="flex flex-row justify-between">
-              <Form.Item name="reset_interval_unit" label="Reset Interval Unit">
-                <Select options={INVOICING_INTERVAL_UNITS} />
-              </Form.Item>
-
-              <Form.Item
-                name="reset_interval_count"
-                label="Reset Interval Count"
-                wrapperCol={{ span: 12 }}
-              >
-                <InputNumber precision={0} />
-              </Form.Item>
-            </div>
-          </Input.Group>
         </div>
       </Form>
     </Modal>

@@ -1,20 +1,10 @@
-import {
-  Button,
-  Select,
-  Form,
-  Card,
-  Input,
-  InputNumber,
-  Row,
-  Col,
-  Radio,
-} from "antd";
+import { Button, Form, Row, Col } from "antd";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
 import { ArrowLeftOutlined } from "@ant-design/icons";
-import { noop } from "lodash";
+import { compact, noop } from "lodash";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
 
 import {
@@ -46,17 +36,8 @@ import ChargesAndFeatures, {
 import BreadCrumbs from "../components/BreadCrumbs";
 import RecurringChargeForm from "../components/Plans/RecurringChargeForm";
 
-interface CustomizedState {
-  plan: PlanType;
-}
-const durationConversion = {
-  monthly: "Month",
-  quarterly: "Quarter",
-  yearly: "Year",
-};
-
 interface Props {
-  type: "backtest" | "version" | "custom";
+  type: "backtest" | "version" | "custom" | "currency";
   plan: PlanDetailType;
   versionIndex: number;
 }
@@ -165,11 +146,11 @@ function EditPlan({ type, plan, versionIndex }: Props) {
       onSuccess: (res) => {
         queryClient.invalidateQueries(["plan_list"]);
         form.resetFields();
-        if (type == "backtest") {
+        if (type === "backtest") {
           setReplacementPlan(res);
           navigate("/create-experiment");
         }
-        if (type == "custom") {
+        if (type === "custom") {
           navigate("/plans");
         }
       },
@@ -302,9 +283,13 @@ function EditPlan({ type, plan, versionIndex }: Props) {
   const submitPricingPlan = () => {
     form
       .validateFields()
-      .then((values) => {
+      .then(() => {
+        const values = form.getFieldsValue(true);
+
         const usagecomponentslist: CreateComponent[] = [];
+
         const components: any = Object.values(componentsData);
+
         if (components) {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
@@ -335,8 +320,9 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           components: usagecomponentslist,
           features: featureIdList,
           usage_billing_frequency: values.usage_billing_frequency,
-          currency_code: values.plan_currency.code,
+          currency_code: values.plan_currency ?? selectedCurrency?.code,
         };
+
         if (values.align_plan === "calendar_aligned") {
           if (
             values.plan_duration === "yearly" ||
@@ -349,17 +335,19 @@ function EditPlan({ type, plan, versionIndex }: Props) {
             initialPlanVersion.day_anchor = values.day_of_month;
           }
         }
+
+        if (
+          values.price_adjustment_type === "percentage" ||
+          values.price_adjustment_type === "fixed"
+        ) {
+          values.price_adjustment_amount =
+            Math.abs(values.price_adjustment_amount) * -1;
+        }
+
         if (
           values.price_adjustment_type !== undefined &&
           values.price_adjustment_type !== "none"
         ) {
-          if (
-            values.price_adjustment_type === "percentage" ||
-            values.price_adjustment_type === "fixed"
-          ) {
-            values.price_adjustment_amount =
-              Math.abs(values.price_adjustment_amount) * -1;
-          }
           initialPlanVersion.price_adjustment = {
             price_adjustment_type: values.price_adjustment_type,
             price_adjustment_amount: values.price_adjustment_amount,
@@ -371,10 +359,11 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           plan_duration: values.plan_duration,
           initial_version: initialPlanVersion,
         };
+
         if (type === "backtest") {
           newPlan.status = "experimental";
           createPlanMutation.mutate(newPlan);
-        } else if (type === "version") {
+        } else if (type === "version" || type === "custom") {
           const newVersion: CreatePlanVersionType = {
             plan_id: plan.plan_id,
             description: values.description,
@@ -385,7 +374,9 @@ function EditPlan({ type, plan, versionIndex }: Props) {
             usage_billing_frequency: values.usage_billing_frequency,
             make_active: activeVersion,
             make_active_type: activeVersionType,
-            currency_code: values.plan_currency.code,
+            currency_code: values.plan_currency ?? selectedCurrency?.code,
+            target_customer_ids: compact([targetCustomerId]),
+            version: 0,
           };
 
           if (values.align_plan === "calendar_aligned") {
@@ -414,24 +405,31 @@ function EditPlan({ type, plan, versionIndex }: Props) {
 
           mutation.mutate(newVersion);
         } else if (type === "custom") {
-          // target_id = await targetCustomerFormVisible(true);
-
           newPlan.parent_plan_id = plan.plan_id;
           newPlan.target_customer_id = targetCustomerId;
+          newPlan.initial_version.version = 1;
           createPlanMutation.mutate(newPlan);
         }
       })
-      .catch(noop);
+      .catch((err) => {
+        console.error(err);
+      });
   };
 
   function returnPageTitle(): string {
     if (type === "backtest") {
       return "Backtest Plan";
     }
+
     if (type === "version") {
-      return `Create New Version:` + ` ${plan.plan_name}`;
+      return `Create New Version: ${plan.plan_name}`;
     }
-    return `Create Custom Plan:` + ` ${plan.plan_name}`;
+
+    if (type === "currency") {
+      return `Add Currency: ${plan.plan_name}`;
+    }
+
+    return `Create Custom Plan: ${plan.plan_name}`;
   }
 
   function returnSubmitButtonText(): string {
@@ -645,7 +643,10 @@ function EditPlan({ type, plan, versionIndex }: Props) {
         <TargetCustomerForm
           visible={targetCustomerFormVisible}
           onCancel={hideTargetCustomerForm}
-          onAddTargetCustomer={completeCustomPlan}
+          onAddTargetCustomer={(customerId) => {
+            completeCustomPlan(customerId);
+            hideTargetCustomerForm();
+          }}
         />
       ) : null}
 
