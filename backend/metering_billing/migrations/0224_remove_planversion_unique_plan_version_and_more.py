@@ -4,23 +4,29 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('metering_billing', '0223_remove_historicalsubscriptionrecord_fully_billed_and_more'),
+        (
+            "metering_billing",
+            "0223_remove_historicalsubscriptionrecord_fully_billed_and_more",
+        ),
     ]
 
     operations = [
         migrations.RemoveConstraint(
-            model_name='planversion',
-            name='unique_plan_version',
+            model_name="planversion",
+            name="unique_plan_version",
         ),
         migrations.AlterField(
-            model_name='planversion',
-            name='version',
+            model_name="planversion",
+            name="version",
             field=models.PositiveSmallIntegerField(default=1),
         ),
         migrations.AddConstraint(
-            model_name='planversion',
-            constraint=models.UniqueConstraint(fields=('plan', 'version', 'currency'), name='unique_plan_version_per_currency'),
+            model_name="planversion",
+            constraint=models.UniqueConstraint(
+                condition=models.Q(("is_custom", False)),
+                fields=("plan", "version", "currency"),
+                name="unique_plan_version_per_currency",
+            ),
         ),
     ]
