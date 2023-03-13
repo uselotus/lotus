@@ -81,6 +81,10 @@ const AppRoutes: FC = () => {
               element={<EditPlanLoader type="custom" />}
             />{" "}
             <Route
+              path="add-currency/:planId/:versionId"
+              element={<EditPlanLoader type="currency" />}
+            />{" "}
+            <Route
               path="backtest-plan/:planId"
               element={<EditPlanLoader type="backtest" />}
             />
