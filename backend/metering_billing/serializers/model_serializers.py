@@ -1043,7 +1043,7 @@ class PlanComponentCreateSerializer(TimezoneFieldMixin, serializers.ModelSeriali
     metric_id = SlugRelatedFieldWithOrganization(
         slug_field="metric_id",
         write_only=True,
-        source="billable_metric",
+        source="metric",
         queryset=Metric.objects.all(),
     )
     tiers = PriceTierCreateSerializer(many=True, required=False)
@@ -1334,6 +1334,7 @@ class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
             component_metrics = set()
             for component in data.get("components"):
                 metric = component.get("metric")
+                print(metric)
                 if metric in component_metrics:
                     raise serializers.ValidationError(
                         "Plan components must have unique metrics."
