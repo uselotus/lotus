@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { CheckCircleOutlined, CopyOutlined } from "@ant-design/icons";
 import "./CopytoClipboard.css";
 import { Tooltip } from "antd";
-import Prism from "prismjs";
+// import Prism from "prismjs";
 
 interface CopyTextProps {
   textToCopy: string;
