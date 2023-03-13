@@ -611,6 +611,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
             recurringCharges={recurringCharges}
             setRecurringCharges={setRecurringCharges}
             disabledFields={getDisabledFields(type)}
+            highlightedFields={type === "currency" ? ["plan_currency"] : []}
           />
         </Form>
 

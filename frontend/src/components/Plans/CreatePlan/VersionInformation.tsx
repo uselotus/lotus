@@ -12,6 +12,7 @@ import {
   FormInstance,
 } from "antd";
 import { StepProps } from "./types";
+import clsx from "clsx";
 
 const fields = ["align_plan", "localized_name", "plan_currency"];
 
@@ -131,6 +132,10 @@ const VersionInformation = ({ form, ...props }: StepProps) => {
                       ]}
                     >
                       <Select
+                        style={{
+                          border: "2px solid #C3986B",
+                          padding: "4px",
+                        }}
                         onChange={(value) => {
                           const selectedCurrency = props.allCurrencies.find(
                             (currency) => currency.code === value

@@ -59,4 +59,6 @@ export interface StepProps {
   setIsCurrentStepValid: React.Dispatch<React.SetStateAction<boolean>>;
 
   disabledFields?: string[];
+
+  highlightedFields?: string[];
 }

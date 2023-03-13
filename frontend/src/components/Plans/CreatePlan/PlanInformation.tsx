@@ -174,7 +174,7 @@ const PlanInformation = ({ form, ...props }: StepProps) => {
               <Form.Item
                 name="price_adjustment_amount"
                 label="Amount"
-                wrapperCol={{ span: 24, offset: 4 }}
+                wrapperCol={{ span: 24 }}
                 shouldUpdate={(prevValues, curValues) =>
                   prevValues.price_adjustment_type !==
                   curValues.price_adjustment_type

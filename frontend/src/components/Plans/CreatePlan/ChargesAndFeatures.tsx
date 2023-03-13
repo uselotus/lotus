@@ -43,7 +43,7 @@ const ChargesAndFeatures = ({ form, ...props }: StepProps) => {
                   prevValues.components !== curValues.components
                 }
               >
-                <div className="-mx-10">
+                <div>
                   <RecurringChargesDisplay
                     recurringCharges={props.recurringCharges}
                   />

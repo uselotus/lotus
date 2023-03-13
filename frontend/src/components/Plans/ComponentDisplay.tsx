@@ -1,5 +1,13 @@
 import React, { FC } from "react";
-import { Button, Row, Col, Descriptions, Table } from "antd";
+import {
+  Button,
+  Row,
+  Col,
+  Descriptions,
+  Table,
+  Typography,
+  Divider,
+} from "antd";
 import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { Paper } from "../base/Paper";
 import { CreateComponent, Tier } from "../../types/plan-type";
@@ -68,28 +76,40 @@ export const ComponentDisplay = ({ ...props }: Props) => (
           "min-h-[152px]",
         ])}
       >
-        <div className="text-base text-card-text">
-          <div className="flex justify-between items-center text-md">
+        <div className="flex items-center justify-between">
+          <Typography.Title
+            className="pt-4 whitespace-pre-wrap !text-[18px]"
+            level={2}
+          >
             {component?.metric}
-            <div className="flex items-center justify-end">
-              <Button
-                key="edit"
-                type="text"
-                size="small"
-                icon={<EditOutlined />}
-                onClick={() => props.handleComponentEdit(component.metric_id)}
-              />
+          </Typography.Title>
+          <div className="flex items-center justify-end">
+            <Button
+              key="edit"
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => props.handleComponentEdit(component.metric_id)}
+            />
 
-              <Button
-                key="delete"
-                type="text"
-                size="small"
-                icon={<DeleteOutlined />}
-                danger
-                onClick={() => props.deleteComponent(component.metric_id)}
-              />
-            </div>
+            <Button
+              key="delete"
+              type="text"
+              size="small"
+              icon={<DeleteOutlined />}
+              danger
+              onClick={() => props.deleteComponent(component.metric_id)}
+            />
           </div>
+        </div>
+
+        <Divider
+          style={{
+            marginBlock: "4px",
+          }}
+        />
+
+        <div className="text-base text-card-text">
           {React.Children.toArray(
             component.tiers.map((tier) => (
               <div className="flex items-center justify-between">
