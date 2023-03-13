@@ -544,7 +544,7 @@ export const Invoices = {
   sendToPaymentProcessor: (invoice_id: string): Promise<InvoiceType> =>
     requests.post(`app/invoices/${invoice_id}/send`, {}),
   getDraftInvoice: (customer_id: string): Promise<DraftInvoiceType> =>
-    requests.get("app/draft_invoice/", { params: { customer_id } }),
+    requests.get(`app/customers/${customer_id}/draft_invoice/`),
   getInvoiceUrl: (invoice_id: string): Promise<{ url: string }> =>
     requests.get(`app/invoices/${invoice_id}/pdf_url/`),
 };
