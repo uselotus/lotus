@@ -26,7 +26,9 @@ export interface StepProps {
   setAllCurrencies: React.Dispatch<React.SetStateAction<CurrencyType[]>>;
 
   selectedCurrency: CurrencyType | null;
-  setSelectedCurrency: React.Dispatch<React.SetStateAction<CurrencyType | null>>;
+  setSelectedCurrency: React.Dispatch<
+    React.SetStateAction<CurrencyType | null>
+  >;
 
   priceAdjustmentType: string;
   setPriceAdjustmentType: React.Dispatch<React.SetStateAction<string>>;
@@ -55,4 +57,6 @@ export interface StepProps {
   setExternalLinks: (links: string[]) => void;
 
   setIsCurrentStepValid: React.Dispatch<React.SetStateAction<boolean>>;
+
+  disabledFields?: string[];
 }

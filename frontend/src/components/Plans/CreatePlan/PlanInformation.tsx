@@ -52,6 +52,7 @@ const PlanInformation = ({ form, ...props }: StepProps) => {
                       ]}
                     >
                       <Input
+                        disabled={props.disabledFields?.includes("name")}
                         id="planNameInput"
                         placeholder="Ex: Starter Plan"
                       />
@@ -61,6 +62,7 @@ const PlanInformation = ({ form, ...props }: StepProps) => {
                   <Col span={12}>
                     <Form.Item label="Description" name="description">
                       <Input
+                        disabled={props.disabledFields?.includes("description")}
                         type="textarea"
                         id="planDescInput"
                         placeholder="Ex: Cheapest plan for small scale businesses"
@@ -92,6 +94,7 @@ const PlanInformation = ({ form, ...props }: StepProps) => {
                       ]}
                     >
                       <Radio.Group
+                        disabled={props.disabledFields?.includes("plan_duration")}
                         onChange={(e) => {
                           if (e.target.value === "monthly") {
                             props.setAvailableBillingTypes([
