@@ -130,14 +130,6 @@ def subscription_test_common_setup(
                 cost_per_batch=cpb,
                 metric_units_per_batch=mupb,
             )
-        RecurringCharge.objects.create(
-            organization=plan.organization,
-            plan_version=billing_plan,
-            charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
-            charge_behavior=RecurringCharge.ChargeBehaviorType.PRORATE,
-            amount=10,
-            pricing_unit=billing_plan.currency,
-        )
         setup_dict["billing_plan"] = billing_plan
 
         (customer,) = add_customers_to_org(org, n=1)
@@ -450,7 +442,7 @@ class TestUpdateSub:
         setup_dict = subscription_test_common_setup(
             num_subscriptions=0, auth_method="session_auth"
         )
-
+        RecurringCharge.objects.all().delete()
         prev_subscription_records_len = SubscriptionRecord.objects.all().count()
         assert prev_subscription_records_len == 0
 

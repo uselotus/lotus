@@ -1,14 +1,16 @@
 import json
+import urllib.parse
 
 import pytest
 from dateutil.relativedelta import relativedelta
 from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.models import Customer, Feature, Plan, PlanVersion, Tag
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PLAN_DURATION
-from rest_framework import status
-from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -846,7 +848,10 @@ class TestPlanVersionOperations:
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         first_version = plan.versions.first()
 
-        listed_plan = setup_dict["client"].get(reverse("plan-list")).data[0]
+        response = setup_dict["client"].get(reverse("plan-list"))
+        print(response.data)
+        assert response.status_code == status.HTTP_200_OK
+        listed_plan = response.data[0]
         assert len(listed_plan["versions"]) == 1
 
         first_version.active_to = now_utc() + relativedelta(days=3)
@@ -882,6 +887,9 @@ class TestPlanVersionOperations:
         )
         assert response.status_code == status.HTTP_200_OK
 
-        params = {"version_status[]": ["active"]}
-        list_plans = setup_dict["client"].get(reverse("plan-list"), params=params)
-        assert len(list_plans.data) == 0  # all plans remvoed cuz no versions left
+        params = {"version_status": ["active", "ended"]}
+        list_plans = setup_dict["client"].get(
+            reverse("plan-list") + "?" + urllib.parse.urlencode(params, doseq=True),
+        )
+        assert list_plans.status_code == status.HTTP_200_OK
+        assert len(list_plans.data) == 0  # all plans removed cuz no versions left
