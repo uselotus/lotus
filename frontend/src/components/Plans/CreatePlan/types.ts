@@ -61,4 +61,6 @@ export interface StepProps {
   disabledFields?: string[];
 
   highlightedFields?: string[];
+
+  type?: string;
 }

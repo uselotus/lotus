@@ -1,5 +1,5 @@
 import React from "react";
-import { Row, Card, Col, Form, Button, FormInstance, Typography } from "antd";
+import { Row, Card, Col, Form, Button, FormInstance, Typography, InputNumber, Select } from "antd";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { StepProps } from "./types";
 import FeatureDisplay from "../FeatureDisplay";
@@ -155,6 +155,73 @@ const ChargesAndFeatures = ({ form, ...props }: StepProps) => {
             </Card>
           </Col>
         </Row>
+
+              <Col span="24">
+        <Card
+          className="w-12/12 mb-20"
+          title="Discount"
+          style={{
+            borderRadius: "0.5rem",
+            borderWidth: "2px",
+            borderColor: "#EAEAEB",
+            borderStyle: "solid",
+          }}
+        >
+          <div className="grid grid-cols-2">
+            <Form.Item
+              wrapperCol={{ span: 20 }}
+              label="Type"
+              name="price_adjustment_type"
+            >
+              <Select
+                onChange={(value) => {
+                  props.setPriceAdjustmentType(value);
+                }}
+              >
+                <Select.Option value="none">None</Select.Option>
+                {/* <Select.Option value="price_override">
+                        Overwrite Price
+                      </Select.Option> */}
+                <Select.Option value="percentage">Percentage Off</Select.Option>
+                <Select.Option value="fixed">Flat Discount</Select.Option>
+              </Select>
+            </Form.Item>
+
+            {props.priceAdjustmentType !== "none" && (
+              <Form.Item
+                name="price_adjustment_amount"
+                label="Amount"
+                wrapperCol={{ span: 24 }}
+                shouldUpdate={(prevValues, curValues) =>
+                  prevValues.price_adjustment_type !==
+                  curValues.price_adjustment_type
+                }
+                rules={[
+                  {
+                    required:
+                      !!props.priceAdjustmentType ||
+                      props.priceAdjustmentType !== "none",
+                    message: "Please enter a price adjustment value",
+                  },
+                ]}
+              >
+                <InputNumber
+                  addonAfter={
+                    props.priceAdjustmentType === "percentage" ? "%" : null
+                  }
+                  addonBefore={
+                    (props.priceAdjustmentType === "fixed" ||
+                      props.priceAdjustmentType === "price_override") &&
+                    props.selectedCurrency
+                      ? props.selectedCurrency.symbol
+                      : null
+                  }
+                />
+              </Form.Item>
+            )}
+          </div>
+        </Card>
+      </Col>
       </Col>
     </Row>
   );
