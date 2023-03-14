@@ -243,7 +243,7 @@ export const Plan = {
     version_custom_type?: "custom_only" | "public_only" | "all";
     version_status?: ("active" | "ended" | "not_started")[];
   }): Promise<PlanType[] | components["schemas"]["PlanDetail"][]> =>
-    requests.get("app/plans/", params),
+    requests.get("app/plans/", { params }),
   getPlan: (
     plan_id: string,
     version_custom_type?: "all" | "custom_only" | "public_only"
