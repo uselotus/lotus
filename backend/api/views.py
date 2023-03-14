@@ -357,7 +357,6 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         # then filter plan versions
         versions_filters = []
 
-        print("query_params", self.request.query_params)
         plan_version_filter_serializer = ListPlanVersionsFilterSerializer(
             data=self.request.query_params
         )
@@ -365,7 +364,6 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         validated_data = plan_version_filter_serializer.validated_data
         version_currency = validated_data.get("version_currency")
         version_status = validated_data.get("version_status")
-        print("version_status", version_status)
         version_custom_type = validated_data.get("version_custom_type")
         status_combo = []
         if SUBSCRIPTION_STATUS.ACTIVE in version_status:
@@ -2088,10 +2086,10 @@ def track_event(request):
                 idempotency_id
             ] = "Time created too far in the past or future. Events must be within 30 days before or 1 day ahead of current time."
             continue
+        data["time_created"] = tc.isoformat()
         try:
             transformed_event = ingest_event(data, customer_id, organization_pk)
             stream_events = {
-                "events": [transformed_event],
                 "organization_id": organization_pk,
                 "event": transformed_event,
             }

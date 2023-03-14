@@ -7,7 +7,6 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q, Sum
 from django.db.models.query import QuerySet
-
 from metering_billing.kafka.producer import Producer
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.taxes import get_lotus_tax_rates, get_taxjar_tax_rates
@@ -730,7 +729,6 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
         organization=organization,
     )
 
-    apply_taxes(invoice, customer, organization, draft)
     finalize_invoice_amount(invoice, draft)
 
     if not draft:

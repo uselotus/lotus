@@ -8,6 +8,7 @@ require (
 	github.com/redis/go-redis/v9 v9.0.2
 	github.com/spf13/viper v1.15.0
 	github.com/twmb/franz-go v1.12.1
+	github.com/uselotus/lotus/go/pkg v0.0.0-20230314205529-90d8b0c18f00
 )
 
 require (
