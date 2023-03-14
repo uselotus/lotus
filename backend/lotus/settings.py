@@ -780,5 +780,13 @@ if SVIX_CONNECTOR is not None:
                     name="usage_alert.triggered",
                 )
             )
+        if "subscription.renewed" not in list_response_event_type_out:
+            event_type_out = svix.event_type.create(
+                EventTypeIn(
+                    description="Subscription is renewed",
+                    archived=False,
+                    name="subscription.renewed",
+                )
+            )
     except Exception:
         SVIX_CONNECTOR = None
