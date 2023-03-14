@@ -349,8 +349,7 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
   };
 
   const archivemutation = useMutation(
-    (version_id: string) =>
-      Plan.archivePlanVersion(version_id, { status: "archived" }),
+    (version_id: string) => Plan.archivePlanVersion(version_id),
     {
       onSuccess: () => {
         queryClient.invalidateQueries("plan_list");
@@ -364,9 +363,7 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
       <Menu.Item
         key="1"
         onClick={() => archivemutation.mutate(version!.version_id)}
-        disabled={
-          version?.status === "active" || version?.status === "grandfathered"
-        }
+        disabled={version?.status !== "inactive"}
       >
         <div className="planMenuArchiveIcon">
           <div>
@@ -393,21 +390,23 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
             activeVersion={version.version}
             tabs={["Active", "Grandfathered", "Retiring", "Inactive"]}
           />
-          <span
-            aria-hidden
-            className="ml-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Dropdown overlay={menu} trigger={["click"]}>
-              <Button
-                type="text"
-                size="small"
-                onClick={(e) => e.preventDefault()}
-              >
-                <EllipsisOutlined />
-              </Button>
-            </Dropdown>
-          </span>
+          {capitalize(version.status) !== "Inactive" ? (
+            <span
+              aria-hidden
+              className="ml-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Dropdown overlay={menu} trigger={["click"]}>
+                <Button
+                  type="text"
+                  size="small"
+                  onClick={(e) => e.preventDefault()}
+                >
+                  <EllipsisOutlined />
+                </Button>
+              </Dropdown>
+            </span>
+          ) : null}
         </div>
       </div>
       <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />

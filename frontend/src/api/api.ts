@@ -307,10 +307,9 @@ export const Plan = {
   ): Promise<ReplaceImmediatelyType> =>
     requests.patch(`app/plan_versions/${version_id}/`, post),
   archivePlanVersion: (
-    version_id: string,
-    post: ArchivePlanVersionType
-  ): Promise<ArchivePlanVersionType> =>
-    requests.patch(`app/plan_versions/${version_id}/`, post),
+    version_id: string
+  ): Promise<components["schemas"]["DeletePlanVersion"]> =>
+    requests.post(`app/plan_versions/${version_id}/delete/`, {}),
   deletePlanVersion: (version_id: string): Promise<PlanVersionsType> =>
     requests.post(`app/plan_versions/${version_id}/delete/`, {}),
   featureAddPlanVersion: (
