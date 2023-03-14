@@ -416,7 +416,7 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
           <div className="">
             <div className="flex items-center text-card-text justify-between mb-1">
               <div className=" font-normal whitespace-nowrap leading-4">
-                Overriden Name
+                Override Name
               </div>
               <div className="flex gap-1">
                 {" "}
@@ -521,12 +521,7 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
               </div>
               <div>
                 {" "}
-                <span>
-                  {" "}
-                  {version.active_from
-                    ? dayjs(version.active_from).format("YYYY/MM/DD")
-                    : "-"}
-                </span>
+                <span> {dayjs(version.created_on).format("YYYY/MM/DD")}</span>
               </div>
             </div>
           </div>
@@ -536,7 +531,7 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
           <div className="">
             <div className="flex items-center text-card-text justify-between mb-1">
               <div className=" font-normal whitespace-nowrap leading-4">
-                Overriden Name
+                Localized Name
               </div>
               <div className="flex gap-1">
                 {" "}
@@ -592,12 +587,7 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
               </div>
               <div>
                 {" "}
-                <span>
-                  {" "}
-                  {version.active_from
-                    ? dayjs(version.active_from).format("YYYY/MM/DD")
-                    : "-"}
-                </span>
+                <span> {dayjs(version.created_on).format("YYYY/MM/DD")}</span>
               </div>
             </div>
           </div>
