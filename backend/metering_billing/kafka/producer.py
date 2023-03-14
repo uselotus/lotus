@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from kafka import KafkaProducer
+
 from metering_billing.models import Invoice
 
 from .singleton import Singleton
