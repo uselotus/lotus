@@ -72,7 +72,9 @@ const PlanRecurringCharges: FC<PlanRecurringChargesProps> = ({
       </div>
     ) : (
       <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card">
-        <Typography.Title level={2}>Recurring Charges</Typography.Title>
+        <Typography.Title className="pt-4 whitespace-pre-wrap !text-[18px]">
+          Recurring Charges
+        </Typography.Title>
         <div className="w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
         <div className="text-card-grey text-base">
           No recurring charges added
