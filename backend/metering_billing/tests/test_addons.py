@@ -6,6 +6,10 @@ from decimal import Decimal
 import pytest
 from dateutil import parser
 from django.urls import reverse
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
@@ -24,9 +28,6 @@ from metering_billing.models import (
 )
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -287,7 +288,7 @@ class TestAttachAddOn:
         recent_inv = Invoice.objects.all().order_by("-issue_date").first()
         max_value = 10 * (Decimal("31") - Decimal("5")) / Decimal("31")
         min_value = 10 * (Decimal("28") - Decimal("6")) / Decimal("28")
-        assert min_value < recent_inv.cost_due < max_value
+        assert min_value < recent_inv.amount < max_value
 
     def test_flat_addon_invoice_later_doesnt_make_new_invoice_and_invoices(
         self,
@@ -352,7 +353,7 @@ class TestAttachAddOn:
         )
         max_value = 10 * (Decimal("31") - Decimal("5")) / Decimal("31")
         min_value = 10 * (Decimal("28") - Decimal("6")) / Decimal("28")
-        assert min_value < invoices[0].cost_due < max_value
+        assert min_value < invoices[0].amount < max_value
 
     def test_flat_addon_invoice_later_and_recurring_prorates_current_charge_and_charges_full_next(
         self,
@@ -495,7 +496,7 @@ class TestAttachAddOn:
         val = setup_dict["flat_fee_addon_version"].recurring_charges.first().amount
         max_value = val * (Decimal("31") - Decimal("5")) / Decimal("31")
         min_value = val * (Decimal("28") - Decimal("6")) / Decimal("28")
-        assert max_value >= recent_inv.cost_due >= min_value
+        assert max_value >= recent_inv.amount >= min_value
 
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
@@ -783,7 +784,7 @@ class TestAttachAddOn:
         recent_inv = Invoice.objects.all().order_by("-issue_date").first()
         max_value = 10 * (Decimal("31") - Decimal("5")) / Decimal("31")
         min_value = 10 * (Decimal("28") - Decimal("6")) / Decimal("28")
-        assert max_value >= recent_inv.cost_due >= min_value
+        assert max_value >= recent_inv.amount >= min_value
 
 
 @pytest.mark.django_db(transaction=True)

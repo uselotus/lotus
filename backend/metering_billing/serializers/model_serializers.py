@@ -2,15 +2,12 @@ import logging
 import re
 from decimal import Decimal
 
+import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from dateutil import relativedelta
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import DecimalField, F, Q, Sum
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-
-import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -67,6 +64,8 @@ from metering_billing.utils.enums import (
     TAX_PROVIDER,
     WEBHOOK_TRIGGER_EVENTS,
 )
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -1122,7 +1121,7 @@ class PlanVersionUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
     def update(self, instance, validated_data):
         new_nab = validated_data.get("active_from", instance.active_from)
         new_naa = validated_data.get("active_to", instance.active_to)
-        if new_naa is not None:
+        if new_naa is not None and new_nab is not None:
             # new nab can't be after new naa
             if new_nab > new_naa:
                 raise serializers.ValidationError(

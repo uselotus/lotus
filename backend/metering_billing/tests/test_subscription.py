@@ -1,19 +1,11 @@
 import itertools
 import json
 from datetime import timedelta
-<<<<<<< HEAD
 from decimal import Decimal
-=======
-from unittest.mock import patch
->>>>>>> main
 
 import pytest
 from django.db.models import Sum
 from django.urls import reverse
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
-
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
@@ -28,15 +20,11 @@ from metering_billing.models import (
     PlanComponent,
     PlanVersion,
     PriceTier,
-<<<<<<< HEAD
     PricingUnit,
-=======
->>>>>>> main
     RecurringCharge,
     SubscriptionRecord,
 )
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
-from metering_billing.tasks import check_past_due_invoices_inner
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     CHARGEABLE_ITEM_TYPE,
@@ -45,6 +33,9 @@ from metering_billing.utils.enums import (
     PLAN_DURATION,
     USAGE_BEHAVIOR,
 )
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -62,7 +53,7 @@ def subscription_test_common_setup(
         num_subscriptions,
         auth_method,
         user_org_and_api_key_org_different=False,
-        setup_grace_period_setting=False
+        setup_grace_period_setting=False,
     ):
         # set up organizations and api keys
         org, key = generate_org_and_api_key()
@@ -145,7 +136,7 @@ def subscription_test_common_setup(
             charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
             charge_behavior=RecurringCharge.ChargeBehaviorType.PRORATE,
             amount=10,
-            pricing_unit=billing_plan.pricing_unit,
+            pricing_unit=billing_plan.currency,
         )
         setup_dict["billing_plan"] = billing_plan
 
@@ -544,17 +535,9 @@ class TestUpdateSub:
         )
         assert response.status_code == status.HTTP_200_OK
         after_invoices = Invoice.objects.all().count()
-<<<<<<< HEAD
         # no new invoices since we transferred all the usage and that shouldn't have intermediate invoiced
         assert before_invoices == after_invoices
         assert sub.billing_records.count() == 0  # all transferred away!
-=======
-        assert before_invoices + 1 == after_invoices
-        most_recent_invoice = Invoice.objects.all().order_by("-id").first()
-        for li in most_recent_invoice.line_items.all():
-            assert li.base < 30.0
-            assert li.chargeable_item_type != CHARGEABLE_ITEM_TYPE.USAGE_CHARGE
->>>>>>> main
         new_sr = SubscriptionRecord.objects.all().order_by("-id").first()
         assert new_sr.billing_records.count() == 3  # all transferred away!
 
@@ -720,7 +703,6 @@ class TestRegressions:
 
 
 @pytest.mark.django_db(transaction=True)
-<<<<<<< HEAD
 class TestResetAndInvoicingIntervals:
     def test_monthly_plan_with_weekly_invoicing_creates_correct_number_of_billing_records_for_pcs(
         self,
@@ -1015,7 +997,7 @@ class TestResetAndInvoicingIntervals:
         )  # until we're done with all the invoicing dates
         new_invoice = Invoice.objects.all().order_by("-id").first()
         min_value = 10 * (Decimal("28") - Decimal("1")) / Decimal("28")
-        assert min_value < new_invoice.cost_due < 10
+        assert min_value < new_invoice.amount < 10
 
     def test_monthly_plan_with_daily_reset_creates_correct_amount_of_billing_records_for_recurring_charges(
         self,
@@ -1085,7 +1067,7 @@ class TestResetAndInvoicingIntervals:
             )
 
         assert (
-            Invoice.objects.all().first().cost_due == 10
+            Invoice.objects.all().first().amount == 10
         )  # 5 days ago, incl. todays in advance charge thats 60 in theory... but the 2-5 have invoicing dates only at the end of the subscription, so only 1 charge
 
     def test_monthly_plan_with_mixed_reset_and_invoicing_generates_correct_brs_for_recurring_charges(
@@ -1159,7 +1141,7 @@ class TestResetAndInvoicingIntervals:
                 br.end_date == br.subscription.end_date
             )
         inv = Invoice.objects.all().first()
-        assert inv.cost_due == 10
+        assert inv.amount == 10
 
     def test_has_recurring_charges_and_usage_components_switch_plan_transfer_usage(
         self,
@@ -1353,7 +1335,7 @@ class TestResetAndInvoicingIntervals:
         # theres 4 old `BRs, one was already invocied in advance, so tahts 3. One of them is
         # microseconds long, so its a tiny amount. The other 2 are full length so theyre 10. Plus
         # the 100 from the new recurring charge. So 20 plus a few microcents
-        assert most_recent_invoice.cost_due > Decimal(120)
+        assert most_recent_invoice.amount > Decimal(120)
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1435,7 +1417,7 @@ class TestPrepaidComponentCharges:
         latest_invoice = Invoice.objects.latest("issue_date")
         # since we prepaid for 20 units, first 10 are free, after that its $1 per unit, this should
         # be 10 units, so $10
-        assert latest_invoice.cost_due == Decimal(10)
+        assert latest_invoice.amount == Decimal(10)
 
     def test_create_plan_with_prepaid_component_dynamic_set_doesnt_create_charge_record(
         self, subscription_test_common_setup
@@ -1584,7 +1566,7 @@ class TestPrepaidComponentCharges:
         latest_invoice = Invoice.objects.latest("issue_date")
         # since we prepaid for 15 units, first 10 are free, after that its $1 per unit, this should
         # be 10 units, so $5
-        assert latest_invoice.cost_due == Decimal(5)
+        assert latest_invoice.amount == Decimal(5)
 
     def test_invoicing_dates_get_added_to_billing_record(
         self, subscription_test_common_setup
@@ -1677,7 +1659,7 @@ class TestPrepaidComponentCharges:
         latest_invoice = Invoice.objects.latest("issue_date")
         # since we prepaid for 15 units, first 10 are free, after that its $1 per unit, this should
         # be 10 units, so $5
-        assert latest_invoice.cost_due == Decimal(5)
+        assert latest_invoice.amount == Decimal(5)
 
     def test_changing_prepaid_amount_changes_for_future_charge_records_not_past(
         self,
@@ -1771,7 +1753,7 @@ class TestPrepaidComponentCharges:
         latest_invoice = Invoice.objects.latest("issue_date")
         # since we prepaid for 15 units, first 10 are free, after that its $1 per unit, this should
         # be 10 units, so $5
-        assert latest_invoice.cost_due == Decimal(5)
+        assert latest_invoice.amount == Decimal(5)
 
         # now that we have that setup lets try to chasnge the amount
         payload = {
@@ -1821,7 +1803,7 @@ class TestPrepaidComponentCharges:
                 assert ccr.units == 15
         latest_invoice = Invoice.objects.latest("issue_date")
         # charge full, no prorated, prepaid for 15, now 20, so 5 more, so $5
-        assert latest_invoice.cost_due == Decimal(5)
+        assert latest_invoice.amount == Decimal(5)
 
     def test_prorated_gives_correct_amount(self, subscription_test_common_setup):
         # this tests changes from invociing frequency to reset frequency. Since its usage,
@@ -1912,7 +1894,7 @@ class TestPrepaidComponentCharges:
         latest_invoice = Invoice.objects.latest("issue_date")
         # since we prepaid for 15 units, first 10 are free, after that its $1 per unit, this should
         # be 10 units, so $5
-        assert latest_invoice.cost_due == Decimal(5)
+        assert latest_invoice.amount == Decimal(5)
 
         # now that we have that setup lets try to chasnge the amount
         payload = {
@@ -1962,7 +1944,7 @@ class TestPrepaidComponentCharges:
                 assert ccr.units == 15
         latest_invoice = Invoice.objects.latest("issue_date")
         # charge full, no prorated, prepaid for 15, now 20, so 5 more, so $5
-        assert latest_invoice.cost_due < Decimal(2 * 5) / Decimal(7)
+        assert latest_invoice.amount < Decimal(2 * 5) / Decimal(7)
 
     def test_gives_correct_amount_when_reduced(self, subscription_test_common_setup):
         # this tests changes from invociing frequency to reset frequency. Since its usage,
@@ -2053,7 +2035,7 @@ class TestPrepaidComponentCharges:
         latest_invoice = Invoice.objects.latest("issue_date")
         # since we prepaid for 15 units, first 10 are free, after that its $1 per unit, this should
         # be 10 units, so $5
-        assert latest_invoice.cost_due == Decimal(5)
+        assert latest_invoice.amount == Decimal(5)
 
         # now that we have that setup lets try to chasnge the amount
         payload = {
@@ -2104,7 +2086,7 @@ class TestPrepaidComponentCharges:
                 assert ccr.units == 15
         latest_invoice = Invoice.objects.latest("issue_date")
         # charge full, no prorated, prepaid for 15, now 20, so 5 more, so $5
-        assert latest_invoice.cost_due == 0
+        assert latest_invoice.amount == 0
         credits_after = CustomerBalanceAdjustment.objects.all().count()
         assert credits_after == credits_before + 1
 
@@ -2197,7 +2179,7 @@ class TestPrepaidComponentCharges:
         latest_invoice = Invoice.objects.latest("issue_date")
         # since we prepaid for 15 units, first 10 are free, after that its $1 per unit, this should
         # be 10 units, so $5
-        assert latest_invoice.cost_due == Decimal(5)
+        assert latest_invoice.amount == Decimal(5)
 
         # now that we have that setup lets try to chasnge the amount
         payload = {
@@ -2247,7 +2229,7 @@ class TestPrepaidComponentCharges:
                 assert ccr.units == 15
         latest_invoice = Invoice.objects.latest("issue_date")
         # charge full, no prorated, prepaid for 15, now 20, so 5 more, so $5
-        assert latest_invoice.cost_due < Decimal(2 * 5) / Decimal(7)
+        assert latest_invoice.amount < Decimal(2 * 5) / Decimal(7)
 
         # ok nolw log soem usage events, and check invociing to see if we discount units
         for i in range(0, 25):  # prepaid 20, so 5 more
@@ -2268,118 +2250,7 @@ class TestPrepaidComponentCharges:
             subscription=sr, start_date__lte=now_utc(), end_date__gte=now_utc()
         )
         invoice.line_items.filter(associated_billing_record=current_br).aggregate(
-            Sum("subtotal")
-        )["subtotal__sum"] == Decimal(
+            Sum("base")
+        )["base__sum"] == Decimal(
             5
         )  # 5 units above the 20 prepaid
-=======
-class TestInvoiceWebhooks:
-    def test_invoice_paid_webhook(
-        self,
-        subscription_test_common_setup,
-    ):
-        setup_dict = subscription_test_common_setup(
-            num_subscriptions=1, auth_method="session_auth"
-        )
-
-        prev_invoices_len = Invoice.objects.all().count()
-
-        params = {
-            "customer_id": setup_dict["customer"].customer_id,
-        }
-        payload = {
-            "flat_fee_behavior": FLAT_FEE_BEHAVIOR.CHARGE_FULL,
-            "bill_usage": True,
-        }
-        response = setup_dict["client"].post(
-            reverse("subscription-cancel") + "?" + urllib.parse.urlencode(params),
-            data=json.dumps(payload, cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-
-        new_invoices_len = Invoice.objects.all().count()
-        assert response.status_code == status.HTTP_200_OK
-        assert new_invoices_len == prev_invoices_len + 1
-
-        payload = {
-            "payment_status": "paid",
-        }
-        invoice = Invoice.objects.last()
-        with patch("metering_billing.models.invoice_paid_webhook") as mock_webhook:
-            response = setup_dict["client"].patch(
-                reverse(
-                    "invoice-detail",
-                    kwargs={"invoice_id": invoice.invoice_id},
-                ),
-                data=json.dumps(payload, cls=DjangoJSONEncoder),
-                content_type="application/json",
-            )
-            mock_webhook.assert_called_once_with(invoice, invoice.organization)
-        assert response.status_code == status.HTTP_200_OK
-
-    def test_invoice_past_due_webhook_org_setting_not_set(
-        self,
-        subscription_test_common_setup,
-    ):
-        setup_dict = subscription_test_common_setup(
-            num_subscriptions=1,
-            auth_method="session_auth",
-        )
-
-        prev_invoices_len = Invoice.objects.all().count()
-
-        params = {
-            "customer_id": setup_dict["customer"].customer_id,
-        }
-        payload = {
-            "flat_fee_behavior": FLAT_FEE_BEHAVIOR.CHARGE_FULL,
-            "bill_usage": True,
-        }
-        response = setup_dict["client"].post(
-            reverse("subscription-cancel") + "?" + urllib.parse.urlencode(params),
-            data=json.dumps(payload, cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-
-        new_invoices_len = Invoice.objects.all().count()
-        assert response.status_code == status.HTTP_200_OK
-        assert new_invoices_len == prev_invoices_len + 1
-
-        with patch("metering_billing.tasks.invoice_past_due_webhook") as mock_webhook:
-            check_past_due_invoices_inner()
-            mock_webhook.assert_not_called()
-
-    def test_invoice_past_due_webhook_org_setting_set(
-        self,
-        subscription_test_common_setup,
-    ):
-        setup_dict = subscription_test_common_setup(
-            num_subscriptions=1,
-            auth_method="session_auth",
-            setup_grace_period_setting=True,
-        )
-
-        prev_invoices_len = Invoice.objects.all().count()
-
-        params = {
-            "customer_id": setup_dict["customer"].customer_id,
-        }
-        payload = {
-            "flat_fee_behavior": FLAT_FEE_BEHAVIOR.CHARGE_FULL,
-            "bill_usage": True,
-        }
-        response = setup_dict["client"].post(
-            reverse("subscription-cancel") + "?" + urllib.parse.urlencode(params),
-            data=json.dumps(payload, cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-
-        new_invoices_len = Invoice.objects.all().count()
-        assert response.status_code == status.HTTP_200_OK
-        assert new_invoices_len == prev_invoices_len + 1
-        invoice = Invoice.objects.last()
-
-        with patch("metering_billing.tasks.invoice_past_due_webhook") as mock_webhook:
-            check_past_due_invoices_inner()
-            mock_webhook.assert_called_once_with(invoice, invoice.organization)
->>>>>>> main
