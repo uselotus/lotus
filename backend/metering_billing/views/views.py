@@ -499,57 +499,6 @@ class TimezonesView(APIView):
         return Response(response, status=status.HTTP_200_OK)
 
 
-class DraftInvoiceView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
-
-    @extend_schema(
-        request=DraftInvoiceRequestSerializer,
-        parameters=[DraftInvoiceRequestSerializer],
-        responses={
-            200: inline_serializer(
-                name="DraftInvoiceResponse",
-                fields={"invoice": DraftInvoiceSerializer(required=False, many=True)},
-            )
-        },
-    )
-    def get(self, request, format=None):
-        """
-        Pagination-enabled endpoint for retrieving an organization's event stream.
-        """
-        organization = request.organization
-        serializer = DraftInvoiceRequestSerializer(
-            data=request.query_params, context={"organization": organization}
-        )
-        serializer.is_valid(raise_exception=True)
-        customer = serializer.validated_data.get("customer")
-        sub_records = SubscriptionRecord.objects.active().filter(
-            organization=organization,
-            customer=customer,
-        )
-        response = {"invoice": None}
-        if sub_records is None or len(sub_records) == 0:
-            response = {"invoices": []}
-        else:
-            sub_records = sub_records.select_related("billing_plan").prefetch_related(
-                "billing_plan__plan_components",
-                "billing_plan__plan_components__billable_metric",
-                "billing_plan__plan_components__tiers",
-                "billing_plan__pricing_unit",
-            )
-            invoices = generate_invoice(
-                sub_records,
-                draft=True,
-                charge_next_plan=serializer.validated_data.get(
-                    "include_next_period", True
-                ),
-            )
-            serializer = DraftInvoiceSerializer(invoices, many=True).data
-            for invoice in invoices:
-                invoice.delete()
-            response = {"invoices": serializer or []}
-        return Response(response, status=status.HTTP_200_OK)
-
-
 class ImportCustomersView(APIView):
     permission_classes = [IsAuthenticated | ValidOrganization]
 
