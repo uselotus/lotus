@@ -80,7 +80,6 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     plan.versions.filter((v) => typeof v.version === "number"),
     "version"
   ).reverse()[0];
-  console.log("latestVersion", latestVersion);
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>(
     plan.versions[versionIndex].currency ?? {
       symbol: "",
@@ -395,7 +394,6 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           };
 
           if (type === "currency") {
-            console.log(plan[versionIndex]);
             newVersion.version = plan.versions[versionIndex].version;
           } else if (type === "version") {
             newVersion.version = latestVersion.version + 1;

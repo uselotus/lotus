@@ -102,7 +102,6 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         );
         return [];
       }
-      console.log(versions, "versions");
 
       const v = versions.filter((obj) => {
         if (seen[obj.version]) {

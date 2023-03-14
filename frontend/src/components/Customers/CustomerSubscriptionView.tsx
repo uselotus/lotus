@@ -111,7 +111,6 @@ const SubscriptionView: FC<Props> = ({
   const [leftCursor, setLeftCursor] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [next, setNext] = useState<string>("");
-  console.log(plans, "plans");
   const [previous, setPrev] = useState<string>("");
   const [selectedSubPlan, setSelectedSubPlan] = useState<
     SubscriptionType | undefined
@@ -253,7 +252,6 @@ const SubscriptionView: FC<Props> = ({
         },
         [] as { label: string; value: string }[]
       );
-      console.log(plans, "newplanList");
       setPlanList(newplanList);
     }
   }, [customer_id, plans]);
