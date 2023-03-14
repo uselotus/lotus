@@ -379,7 +379,6 @@ function UsageComponentForm({
         setMetricObjects(data);
       }
     });
-    console.log(initalData);
   }, []);
 
   const handleAdd = () => {

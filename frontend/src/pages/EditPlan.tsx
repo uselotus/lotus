@@ -138,10 +138,16 @@ function EditPlan({ type, plan, versionIndex }: Props) {
         queryClient.invalidateQueries(["plan_list"]);
         navigate(`/plans/${plan.plan_id}`);
       },
-      onError: () => {
-        toast.error("Failed to create version", {
-          position: toast.POSITION.TOP_CENTER,
-        });
+      onError: (e) => {
+        if (e.response.status === 500) {
+          toast.error("Currency already exists on version", {
+            position: toast.POSITION.TOP_CENTER,
+          });
+        } else {
+          toast.error("Failed to create version", {
+            position: toast.POSITION.TOP_CENTER,
+          });
+        }
       },
     }
   );

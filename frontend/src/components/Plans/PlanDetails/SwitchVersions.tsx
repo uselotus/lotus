@@ -117,21 +117,19 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         }
       });
       seen = {};
-      console.log("arr", versions);
       setDropDownVersions(versions);
       const newVersions = [...v];
       setDeduplicatedVersions(
         newVersions as components["schemas"]["PlanDetail"]["versions"]
       );
-      console.log("newVersions", newVersions);
     },
     []
   );
   useEffect(() => {
     removeDuplicateVersions(versions);
   }, [selectedVersion, versions, removeDuplicateVersions]);
-  const isSelectedVersion = (other_id: string) =>
-    selectedVersion?.version_id === other_id;
+  const isSelectedVersion = (other_version: number) =>
+    selectedVersion?.version === other_version;
   const createTag = useMutation(
     ({ plan_id, tags }: { plan_id: string; tags: PlanType["tags"] }) =>
       Plan.createTagsPlan(plan_id, {
@@ -179,7 +177,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
             }}
             className={[
               "flex items-center justify-center p-6 cursor-pointer mx-1 gap-4 h-33px",
-              isSelectedVersion(version!.version_id)
+              isSelectedVersion(version!.version)
                 ? "bg-[#c3986b] text-white opacity-100 ml-2 mr-2"
                 : "bg-[#EAEAEB] text-black ml-2 mr-2",
               version?.status === "active" &&
