@@ -230,8 +230,8 @@ func main() {
 			err := json.Unmarshal(r.Value, &streamEvents)
 			if err != nil {
 				log.Printf("Error unmarshalling event: %s\n", err)
-				// since we check in the prevuious statement that the event has the correct format, an error unmarshalling should be a fatal error
-				panic(err)
+				// since we check in the previous statement that the event has the correct format, an error unmarshalling should be a fatal error
+				return
 			}
 
 			if streamEvents.Event == nil {
