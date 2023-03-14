@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/posthog/posthog-go v0.0.0-20221221115252-24dfed35d71a
 	github.com/twmb/franz-go v1.12.1
+	github.com/uselotus/lotus/go/pkg v0.0.0-20230314205529-90d8b0c18f00
 )
 
 require (
