@@ -1,8 +1,6 @@
 name: Cypress Tests
 
 on:
-  push:
-    branches: ["main"]
   pull_request:
     branches: ["main"]
 
@@ -89,11 +87,6 @@ jobs:
       - name: Run Django server
         run: |
           cd ./backend && pipenv run python manage.py runserver 0.0.0.0:8000 &
-
-      - name: Wait for backend to start
-        run: |
-          curl -IsS http://localhost:8000/api/healthcheck/ >/dev/null
-          echo "Backend is available"
 
       - name: Cypress run
         uses: cypress-io/github-action@v5

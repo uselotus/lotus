@@ -11,6 +11,7 @@ import "@tremor/react/dist/esm/tremor.css";
 import LoadingSpinner from "./components/LoadingSpinner";
 import { PlanProvider } from "./context/PlanContext";
 import useGlobalStore, { IOrgStoreType } from "./stores/useGlobalstore";
+import quickStartCheck from "./helpers/quickStartCheck";
 
 // telemetry for cloud version only
 if (import.meta.env.VITE_API_URL === "https://api.uselotus.io/") {
@@ -30,6 +31,9 @@ function App() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const setOrgInfoToStore = useGlobalStore((state) => state.setOrgInfo);
+  const setQuickStartProgress = useGlobalStore(
+    (state) => state.setQuickStartProgress
+  );
   const { refetch } = useQuery(
     ["organization"],
     () =>
@@ -78,9 +82,13 @@ function App() {
   };
   useEffect(() => {
     if (isAuthenticated) {
+      quickStartCheck({
+        setQuickStartProgress,
+      });
       refetch();
     }
   }, [isAuthenticated]);
+
   if (isLoading) {
     return (
       <div className="flex h-screen">

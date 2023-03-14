@@ -14,6 +14,7 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
+	"github.com/posthog/posthog-go"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/pkg/sasl/scram"
 	"github.com/uselotus/lotus/go/pkg/types"
@@ -67,10 +68,12 @@ func main() {
 	log.SetOutput(os.Stdout)
 	fmt.Printf("Starting event-guidance\n")
 
+	// setup kafkda envs
 	var kafkaURL string
 	if kafkaURL = os.Getenv("KAFKA_URL"); kafkaURL == "" {
 		kafkaURL = "localhost:9092"
 	}
+
 	var kafkaTopic string
 	if kafkaTopic = os.Getenv("EVENTS_TOPIC"); kafkaTopic == "" {
 		kafkaTopic = "test-topic"
@@ -99,13 +102,12 @@ func main() {
 	}
 
 	cl, err := kgo.NewClient(opts...)
-
 	if err != nil {
 		panic(err)
 	}
-
 	defer cl.Close()
 
+	// Setup postgres connection
 	var dbURL string
 	if dbURL = os.Getenv("DATABASE_URL"); dbURL == "" {
 		host := "localhost"
@@ -137,6 +139,7 @@ func main() {
 	}
 	defer db.Close()
 
+	// Setup prepared statement
 	insertStatement, err := db.Prepare("SELECT insert_metric($1, $2, $3, $4, $5, $6)")
 
 	if err != nil {
@@ -145,13 +148,35 @@ func main() {
 
 	defer insertStatement.Close()
 
+	// setup posthog envs + client
+	phWorks := false
+	phKey := os.Getenv("POSTHOG_API_KEY")
+	phClient, phErr := posthog.NewWithConfig(
+		phKey,
+		posthog.Config{},
+	)
+	if phKey == "" {
+		log.Printf("No posthog key found. Skipping posthog events.")
+	} else {
+		if phErr == nil {
+			phWorks = true
+			defer phClient.Close()
+			log.Printf("Posthog client created successfully")
+		} else {
+			log.Printf("Error creating posthog client: %s", phErr)
+		}
+	}
+
+	// confirm
 	fmt.Printf("Starting event fetching\n")
 
 	for {
+		log.Print("Before polling for messages...")
 		fetches := cl.PollFetches(ctx)
 		log.Print("Polling for messages...")
 
 		if fetches == nil {
+			log.Print("No fetches returned, retrying in 1s")
 			continue
 		}
 
@@ -185,8 +210,8 @@ func main() {
 
 			if err != nil {
 				log.Printf("Error unmarshalling event: %s\n", err)
-				// since we check in the prevuious statement that the event has the correct format, an error unmarshalling should be a fatal error
-				panic(err)
+				// since we check in the previous statement that the event has the correct format, an error unmarshalling should be a fatal error
+				return
 			}
 
 			if streamEvents.Event == nil {
@@ -209,13 +234,25 @@ func main() {
 				//only thing that can go wrong in batch is either bugs in the code or a serious database failure/network partition of some kind. Because the usual referential integrity issues are already dealt with (on conflict do nothing), all that's left is bad stuff.
 				log.Printf("Error inserting event: %s\n", err)
 				panic(err)
-			} else if committed {
-				if err := cl.CommitUncommittedOffsets(context.Background()); err != nil {
-					// this is a fatal error
-					log.Printf("commit records failed: %v", err)
-					panic(fmt.Errorf("commit records failed: %w", err))
+			} else {
+				if phWorks {
+					phClient.Enqueue(posthog.Capture{
+						DistinctId: fmt.Sprintf("%d (API Key)", event.OrganizationID),
+						Event:      "track_event",
+						Properties: posthog.NewProperties().
+							Set("customer", event.CustID),
+					})
+				}
+
+				if committed {
+					if err := cl.CommitUncommittedOffsets(context.Background()); err != nil {
+						// this is a fatal error
+						log.Printf("commit records failed: %v", err)
+						panic(fmt.Errorf("commit records failed: %w", err))
+					}
 				}
 			}
+
 		})
 
 		if batch.count > 0 {

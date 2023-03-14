@@ -63,11 +63,11 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
         },
         {
           title: "SUBTOTAL",
-          dataIndex: "subtotal",
+          dataIndex: "base",
           render: (_, record) => (
             <div className="flex flex-col">
               {invoice.currency.symbol}
-              {record.subtotal.toFixed(2)}
+              {record.base.toFixed(2)}
             </div>
           ),
         },
@@ -168,11 +168,11 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
                   },
                   {
                     title: "Subtotal",
-                    dataIndex: "subtotal",
+                    dataIndex: "base",
                     render: (_, record) => (
                       <div className="flex flex-col">
                         {invoice.currency.symbol}
-                        {record.subtotal.toFixed(2)}
+                        {record.base.toFixed(2)}
                       </div>
                     ),
                   },

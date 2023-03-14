@@ -91,4 +91,9 @@ export const integrationsMap = {
     icon: "https://pbs.twimg.com/profile_images/1159567930020941824/Xmp1cwhV_400x400.jpg",
     description: "Sync invoice + plan data to your NetSuite account",
   },
+  segment: {
+    name: "Segment",
+    icon: "https://pbs.twimg.com/profile_images/1610639285081759745/YaORGGYL_400x400.png",
+    description: "Sync data from your Segment account",
+  },
 };

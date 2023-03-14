@@ -28,19 +28,19 @@ lotus.create_credit(
 
 ```ts Typescript
 await lotus.createCredit({
-  customerId: "cust_0569173ee6654369",
-  amount: 120.00,
-  currencyCode: "USD"
+  customer_id: "cust_0569173ee6654369",
+  amount: 120.0,
+  currency_code: "USD",
 });
 
 await lotus.createCredit({
-  customerId: "cust_0569173ee6654369",
-  amount: 1000.00,
-  currencyCode: "USD",
+  customer_id: "cust_0569173ee6654369",
+  amount: 1000.0,
+  currency_code: "USD",
   description: "Prepurchased credit",
-  expiresAt: "2024-01-01T00:00:00Z",
-  amountPaid: 500.00,
-  amountPaidCurrencyCode: "USD"
+  expires_at: "2024-01-01T00:00:00Z",
+  amount_paid: 500.0,
+  amount_paid_currency_code: "USD",
 });
 ```
 

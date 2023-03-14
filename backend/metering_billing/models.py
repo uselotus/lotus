@@ -25,6 +25,15 @@ from django.db.models import Count, F, FloatField, Prefetch, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
+
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     NotEditable,
@@ -77,14 +86,6 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -303,7 +304,10 @@ class Organization(models.Model):
                 organization=self, code="USD"
             )
             self.save()
-        self.provision_subscription_filter_settings()
+        if not self.subscription_filters_setting_provisioned:
+            self.provision_subscription_filter_settings()
+        if not self.webhooks_provisioned:
+            self.provision_webhooks()
 
     def get_tax_provider_values(self):
         return self.tax_providers
@@ -361,14 +365,14 @@ class Organization(models.Model):
             )
 
     def provision_webhooks(self):
-        if SVIX_CONNECTOR is not None:
+        if SVIX_CONNECTOR is not None and not self.webhooks_provisioned:
             logger.info("provisioning webhooks")
             svix = SVIX_CONNECTOR
             svix.application.create(
                 ApplicationIn(uid=self.organization_id.hex, name=self.organization_name)
             )
             self.webhooks_provisioned = True
-        self.save()
+            self.save()
 
     def provision_currencies(self):
         if SUPPORTED_CURRENCIES_VERSION != self.currencies_provisioned:
@@ -680,6 +684,7 @@ class Customer(models.Model):
     )
 
     # HISTORY FIELDS
+    created = models.DateTimeField(default=now_utc)
     history = HistoricalRecords()
     objects = BaseCustomerManager()
     deleted_objects = DeletedCustomerManager()
@@ -753,7 +758,7 @@ class Customer(models.Model):
                 draft=True,
                 charge_next_plan=True,
             )
-            total += sum([inv.cost_due for inv in invs])
+            total += sum([inv.amount for inv in invs])
             for inv in invs:
                 inv.delete()
         return total
@@ -770,7 +775,7 @@ class Customer(models.Model):
     def get_outstanding_revenue(self):
         unpaid_invoice_amount_due = (
             self.invoices.filter(payment_status=Invoice.PaymentStatus.UNPAID)
-            .aggregate(unpaid_inv_amount=Sum("cost_due"))
+            .aggregate(unpaid_inv_amount=Sum("amount"))
             .get("unpaid_inv_amount")
         )
         total_amount_due = unpaid_invoice_amount_due or 0
@@ -1512,6 +1517,9 @@ class PlanComponent(models.Model):
         related_name="plan_components",
         null=True,
     )
+    usage_component_id = models.UUIDField(
+        default=uuid.uuid4, editable=False, unique=True
+    )
     billable_metric = models.ForeignKey(
         Metric,
         on_delete=models.CASCADE,
@@ -1627,7 +1635,7 @@ class Invoice(models.Model):
         PAID = (3, _("paid"))
         UNPAID = (4, _("unpaid"))
 
-    cost_due = models.DecimalField(
+    amount = models.DecimalField(
         decimal_places=10,
         max_digits=20,
         default=Decimal(0.0),
@@ -1665,6 +1673,11 @@ class Invoice(models.Model):
     )
     invoice_past_due_webhook_sent = models.BooleanField(default=False)
     history = HistoricalRecords()
+    __original_payment_status = None
+
+    def __init__(self, *args, **kwargs):
+        super(Invoice, self).__init__(*args, **kwargs)
+        self.__original_payment_status = self.payment_status
 
     class Meta:
         indexes = [
@@ -1701,13 +1714,43 @@ class Invoice(models.Model):
                 next_invoice_number = "{0:06d}".format(last_invoice_number + 1)
 
             self.invoice_number = issue_date_string + "-" + next_invoice_number
-            # if not self.due_date:
-            #     self.due_date = self.issue_date + datetime.timedelta(days=1)
-        paid_before = self.payment_status == Invoice.PaymentStatus.PAID
         super().save(*args, **kwargs)
-        paid_after = self.payment_status == Invoice.PaymentStatus.PAID
-        if not paid_before and paid_after and self.cost_due > 0:
+        if (
+            self.__original_payment_status != self.payment_status
+            and self.payment_status == Invoice.PaymentStatus.PAID
+            and self.amount > 0
+        ):
             invoice_paid_webhook(self, self.organization)
+        self.__original_payment_status = self.payment_status
+
+
+class InvoiceLineItemAdjustment(models.Model):
+    class AdjustmentType(models.IntegerChoices):
+        SALES_TAX = (1, _("sales_tax"))
+        PLAN_ADJUSTMENT = (2, _("plan_adjustment"))
+
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="invoice_line_item_adjustments",
+        null=True,
+    )
+    invoice_line_item = models.ForeignKey(
+        "InvoiceLineItem",
+        on_delete=models.CASCADE,
+        related_name="adjustments",
+        null=True,
+    )
+    amount = models.DecimalField(
+        decimal_places=10,
+        max_digits=20,
+    )
+    account = models.PositiveBigIntegerField()
+    adjustment_type = models.PositiveSmallIntegerField(choices=AdjustmentType.choices)
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self.invoice_line_item.save()
 
 
 class InvoiceLineItem(models.Model):
@@ -1730,8 +1773,17 @@ class InvoiceLineItem(models.Model):
         blank=True,
         validators=[MinValueValidator(0)],
     )
-    subtotal = models.DecimalField(
-        decimal_places=10, max_digits=20, default=Decimal(0.0)
+    base = models.DecimalField(
+        decimal_places=10,
+        max_digits=20,
+        default=Decimal(0.0),
+        help_text="Base price of the line item. This is the price before any adjustments are applied.",
+    )
+    amount = models.DecimalField(
+        decimal_places=10,
+        max_digits=20,
+        default=Decimal(0.0),
+        help_text="Amount of the line item. This is the price after any adjustments are applied.",
     )
     pricing_unit = models.ForeignKey(
         "PricingUnit",
@@ -1776,11 +1828,12 @@ class InvoiceLineItem(models.Model):
     metadata = models.JSONField(default=dict, blank=True, null=True)
 
     def __str__(self):
-        return self.name + " " + str(self.invoice.invoice_number) + f"[{self.subtotal}]"
+        return self.name + " " + str(self.invoice.invoice_number) + f"[{self.base}]"
 
     def save(self, *args, **kwargs):
-        if not self.pricing_unit:
-            self.pricing_unit = self.invoice.organization.default_currency
+        self.amount = self.base + sum(
+            [adjustment.amount for adjustment in self.adjustments.all()]
+        )
         super().save(*args, **kwargs)
 
 
@@ -1818,6 +1871,9 @@ class RecurringCharge(models.Model):
         PRORATE = (1, "prorate")
         CHARGE_FULL = (2, "full")
 
+    recurring_charge_id = models.UUIDField(
+        default=uuid.uuid4, unique=True, editable=False
+    )
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
@@ -1900,7 +1956,7 @@ class RecurringCharge(models.Model):
         return subscription_record.line_items.filter(
             Q(chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE),
             associated_recurring_charge=self,
-        ).aggregate(Sum("subtotal"))["subtotal__sum"] or Decimal(0.0)
+        ).aggregate(Sum("base"))["base__sum"] or Decimal(0.0)
 
 
 class PlanVersion(models.Model):
@@ -2522,8 +2578,8 @@ class SubscriptionRecord(models.Model):
         billed_invoices = self.line_items.filter(
             ~Q(invoice__payment_status=Invoice.PaymentStatus.VOIDED)
             & ~Q(invoice__payment_status=Invoice.PaymentStatus.DRAFT),
-            subtotal__isnull=False,
-        ).aggregate(tot=Sum("subtotal"))["tot"]
+            base__isnull=False,
+        ).aggregate(tot=Sum("base"))["tot"]
         return billed_invoices or 0
 
     def get_usage_and_revenue(self):

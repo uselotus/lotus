@@ -5,6 +5,10 @@ from decimal import Decimal
 
 import pytest
 from django.urls import reverse
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Event,
@@ -18,9 +22,6 @@ from metering_billing.models import (
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PRICE_ADJUSTMENT_TYPE
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -155,7 +156,7 @@ class TestGenerateInvoice:
         }
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
         assert response.status_code == status.HTTP_200_OK
-        before_cost = response.data["invoices"][0]["cost_due"]
+        before_cost = response.data["invoices"][0]["amount"]
         pct_price_adjustment = PriceAdjustment.objects.create(
             organization=setup_dict["org"],
             price_adjustment_name=r"1% discount",
@@ -168,7 +169,7 @@ class TestGenerateInvoice:
 
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
         assert response.status_code == status.HTTP_200_OK
-        after_cost = response.data["invoices"][0]["cost_due"]
+        after_cost = response.data["invoices"][0]["amount"]
         assert (before_cost * Decimal("0.99") - after_cost) < Decimal("0.01")
 
         fixed_price_adjustment = PriceAdjustment.objects.create(
@@ -184,7 +185,7 @@ class TestGenerateInvoice:
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        after_cost = response.data["invoices"][0]["cost_due"]
+        after_cost = response.data["invoices"][0]["amount"]
         assert before_cost - Decimal("1") == after_cost
 
         override_price_adjustment = PriceAdjustment.objects.create(
@@ -200,7 +201,7 @@ class TestGenerateInvoice:
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        after_cost = response.data["invoices"][0]["cost_due"]
+        after_cost = response.data["invoices"][0]["amount"]
         assert Decimal("20") == after_cost
 
     def test_generate_invoice_with_taxes(self, draft_invoice_test_common_setup):
@@ -212,20 +213,20 @@ class TestGenerateInvoice:
         }
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
         assert response.status_code == status.HTTP_200_OK
-        before_cost = response.data["invoices"][0]["cost_due"]
+        before_cost = response.data["invoices"][0]["amount"]
 
         setup_dict["org"].tax_rate = Decimal("10")
         setup_dict["org"].save()
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
         assert response.status_code == status.HTTP_200_OK
-        after_cost = response.data["invoices"][0]["cost_due"]
+        after_cost = response.data["invoices"][0]["amount"]
         assert (before_cost * Decimal("1.1") - after_cost) < Decimal("0.01")
 
         setup_dict["customer"].tax_rate = Decimal("20")
         setup_dict["customer"].save()
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
         assert response.status_code == status.HTTP_200_OK
-        after_cost = response.data["invoices"][0]["cost_due"]
+        after_cost = response.data["invoices"][0]["amount"]
         assert (before_cost * Decimal("1.2") - after_cost) < Decimal("0.01")
 
     def test_generate_invoice_pdf(self, draft_invoice_test_common_setup):
