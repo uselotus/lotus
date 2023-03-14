@@ -104,8 +104,8 @@ export default function RecurringChargeForm({
                     label: "Prorate",
                   },
                   {
-                    value: "Full",
-                    label: "full",
+                    value: "full",
+                    label: "Full",
                   },
                 ]}
               />

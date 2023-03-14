@@ -173,7 +173,7 @@ const PlanDetails: FC = () => {
   }: UseQueryResult<components["schemas"]["PlanDetail"]> = useQuery<
     components["schemas"]["PlanDetail"]
   >(
-    ["plan_list"],
+    ["plan_list", planId],
     () => Plan.getPlan(planId as string, "custom_only").then((res) => res),
 
     {
@@ -281,7 +281,7 @@ const PlanDetails: FC = () => {
               <Tabs.TabPane tab="Custom Plans" key="1">
                 <div>
                   <div className="flex items-center gap-4">
-                    <span>Filters</span>
+                    <span>Custom Plans</span>
                     <Select
                       className=""
                       onChange={(e) => {
