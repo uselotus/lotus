@@ -7,6 +7,10 @@ import dateutil.parser
 import pytest
 import pytz
 from django.urls import reverse
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     Customer,
@@ -19,9 +23,6 @@ from metering_billing.models import (
 )
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -299,7 +300,9 @@ class TestTimezones:
         }
         params = {"status": ["active", "not_started"]}
         response = setup_dict["client"].post(
-            reverse("subscription-list") + "?" + urllib.parse.urlencode(params),
+            reverse("subscription-list")
+            + "?"
+            + urllib.parse.urlencode(params, doseq=True),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
