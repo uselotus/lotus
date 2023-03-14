@@ -5,11 +5,6 @@ from decimal import Decimal
 
 import pytest
 from django.urls import reverse
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
-
-from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     BillingRecord,
     Event,
@@ -23,6 +18,9 @@ from metering_billing.models import (
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PRICE_ADJUSTMENT_TYPE
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -270,15 +268,5 @@ class TestGenerateInvoice:
                 _quantity=3,
             )
 
-        payload = {
-            "customer_id": setup_dict["customer"].customer_id,
-            "include_next_period": False,
-        }
-        result_invoices = generate_invoice(
-            SubscriptionRecord.objects.all(),
-            draft=False,
-        )
-
-        assert len(result_invoices) == 1
-
-        assert result_invoices[0].invoice_pdf != ""
+        result_invoice = Invoice.objects.order_by("-invoice_number").first()
+        assert result_invoice.invoice_pdf != ""

@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q, Sum
 from django.db.models.query import QuerySet
+
 from metering_billing.kafka.producer import Producer
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.taxes import get_lotus_tax_rates, get_taxjar_tax_rates
@@ -660,6 +661,7 @@ def apply_customer_balance_adjustments(invoice, customer, organization, draft):
                 created=issue_date,
                 effective_at=issue_date,
                 status=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
+                pricing_unit=invoice.currency,
             )
     elif amount > 0:
         customer_balance = CustomerBalanceAdjustment.get_pricing_unit_balance(
