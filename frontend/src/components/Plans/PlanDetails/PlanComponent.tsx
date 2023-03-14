@@ -694,13 +694,8 @@ const PlanComponents: FC<PlanComponentsProps> = ({
           <div className="grid gap-6 grid-cols-1 xl:grid-cols-4">
             {components.map((component, index) => (
               <div
-<<<<<<< HEAD
                 className="pt-2 pb-4 bg-primary-50 mt-2 relative  mb-2 p-4 min-h-[152px] min-w-[270px]"
                 key={index}
-=======
-                className="pt-2 bg-primary-50 mt-2 relative mb-2 px-4 min-h-[152px] min-w-[270px]"
-                key={component.id}
->>>>>>> main
               >
                 <div className="text-base text-card-text align-middle">
                   <div> {component.billable_metric.metric_name}</div>

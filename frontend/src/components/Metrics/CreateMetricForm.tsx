@@ -373,7 +373,6 @@ function CreateMetricForm(props: {
           event_type: "total",
         }}
       >
-<<<<<<< HEAD
         {(expandForm || preset !== "none") && (
           <div>
             <div className="grid grid-cols-2 gap-4">
@@ -388,102 +387,6 @@ function CreateMetricForm(props: {
                     {
                       required: true,
                       message: "Please define a unique name for this metric",
-=======
-        <div className="grid grid-cols-2 gap-4">
-          <Tooltip
-            placement="top"
-            title="Define a display name for this metric"
-          >
-            <Form.Item
-              name="metric_name"
-              label="Metric Name"
-              rules={[
-                {
-                  required: true,
-                  message: "Please define a unique name for this metric",
-                },
-              ]}
-            >
-              <Input id="Metric-Name-input" />
-            </Form.Item>
-          </Tooltip>
-          {eventType !== "custom" && (
-            <Tooltip
-              placement="left"
-              title="Define the name of the event you want to track"
-            >
-              <Form.Item
-                name="event_name"
-                label="Event Name"
-                rules={[
-                  {
-                    required: true,
-                    message:
-                      "Please input the name of the event you want to track",
-                  },
-                ]}
-              >
-                <Input id="event-name-input" />
-              </Form.Item>
-            </Tooltip>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <Form.Item
-            name="metric_type"
-            className="justify-center"
-            label="Type"
-            rules={[
-              {
-                required: true,
-                message: "Metric type is required",
-              },
-            ]}
-          >
-            <Radio.Group
-              optionType="button"
-              buttonStyle="solid"
-              value={eventType}
-              defaultValue={eventType}
-              onChange={(e) => {
-                handleCreateMetricTypeChange(e.target.value);
-                setPreset("none");
-              }}
-            >
-              <Radio value="counter">Counter</Radio>
-              <Radio value="gauge">Gauge</Radio>
-              <Radio value="rate">Rate</Radio>
-              <Radio value="custom">Custom (Beta)</Radio>
-            </Radio.Group>
-          </Form.Item>
-        </div>
-        <Form.Item
-          noStyle
-          shouldUpdate={(prevValues, currentValues) =>
-            prevValues.metric_type !== currentValues.metric_type
-          }
-        >
-          {(eventType === "counter" || eventType === "rate") && (
-            <>
-              <Form.Item
-                name="usage_aggregation_type"
-                label="Aggregation Type"
-                rules={[
-                  {
-                    required: true,
-                    message: "Aggregation type is required",
-                  },
-                  // if rate is selected, don't allow unique
-                  {
-                    validator: (_, value) => {
-                      if (eventType == "rate" && value === "unique") {
-                        return Promise.reject(
-                          new Error("Cannot use unique with rate")
-                        );
-                      }
-                      return Promise.resolve();
->>>>>>> main
                     },
                   ]}
                 >
