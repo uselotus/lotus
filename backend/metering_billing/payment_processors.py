@@ -29,7 +29,6 @@ from metering_billing.utils.enums import (
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
     PAYMENT_PROCESSORS,
-    PLAN_STATUS,
 )
 
 logger = logging.getLogger("django.server")
@@ -1119,7 +1118,7 @@ class StripeConnector(PaymentProcesor):
         for line_item in invoice.line_items.all().order_by(
             F("associated_subscription_record").desc(nulls_last=True)
         ):
-            name = line_item.namebase
+            name = line_item.name
             amount = line_item.base
             customer = stripe_customer_id
             period = {
@@ -1229,7 +1228,7 @@ class StripeConnector(PaymentProcesor):
             query="status:'active'", **stripe_cust_kwargs
         )
         plans_with_links = (
-            Plan.objects.filter(organization=organization, status=PLAN_STATUS.ACTIVE)
+            Plan.objects.filter(organization=organization)
             .prefetch_related(
                 Prefetch(
                     "external_links",
@@ -1273,12 +1272,14 @@ class StripeConnector(PaymentProcesor):
                 continue
             # great, in this case we transfer the subscription
             elif len(matching_plans) == 1:
-                billing_plan = Plan.objects.get(id=matching_plans[0][0])
+                billing_plan = Plan.objects.get(
+                    id=matching_plans[0][0]
+                ).versions.first()
                 # check to see if subscription exists
                 validated_data = {
                     "organization": organization,
                     "customer": customer,
-                    "billing_plan": billing_plan.display_version,
+                    "billing_plan": billing_plan,
                     "auto_renew": True,
                     "is_new": False,
                 }

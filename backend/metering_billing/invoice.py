@@ -46,7 +46,6 @@ def generate_invoice(
     generate_next_subscription_record=False,
     issue_date=None,
 ):
-    print("GENERATE INVOICE", issue_date)
     """
     Generate an invoice for a subscription.
 
@@ -135,6 +134,7 @@ def generate_invoice(
                     invoice,
                     draft,
                 )
+    return_list = []
     for invoice in invoices.values():
         if invoice.line_items.count() == 0:
             invoice.delete()
@@ -145,7 +145,9 @@ def generate_invoice(
         finalize_invoice_amount(invoice, draft)
 
         if not draft:
-            generate_external_payment_obj(invoice)
+            new_inv = generate_external_payment_obj(invoice)
+            if new_inv:
+                invoice = new_inv
             for subscription_record in subscription_records:
                 if subscription_record.end_date <= now_utc():
                     subscription_record.fully_billed = True
@@ -157,11 +159,15 @@ def generate_invoice(
 
             invoice_created_webhook(invoice, organization)
             kafka_producer.produce_invoice(invoice)
+        return_list.append(invoice)
+    return return_list
 
-    return list(invoices.values())
 
-
-def calculate_subscription_record_flat_fees(subscription_record, invoice, draft):
+def calculate_subscription_record_flat_fees(
+    subscription_record,
+    invoice,
+    draft,
+):
     from metering_billing.models import (
         AddOnSpecification,
         InvoiceLineItem,
@@ -173,12 +179,6 @@ def calculate_subscription_record_flat_fees(subscription_record, invoice, draft)
     for billing_record in subscription_record.billing_records.filter(
         recurring_charge__isnull=False
     ):
-        print(
-            "helloooooo",
-            billing_record,
-            billing_record.next_invoicing_date,
-            invoice.issue_date,
-        )
         # if the next invoicing date is in the future, we don't need to bill for it yet
         if (
             billing_record.next_invoicing_date > invoice.issue_date
@@ -402,9 +402,8 @@ def charge_next_plan_flat_fee(
 ):
     from metering_billing.models import InvoiceLineItem, RecurringCharge
 
-    print(f"Charging next plan flat fee for {subscription_record}")
-    print("draft: ", draft)
-    if draft:
+    if draft or subscription_record == next_subscription_record:
+        # if its a draft, OR if we are not generating the next subscription record
         timezone = subscription_record.customer.timezone
         for recurring_charge in next_bp.recurring_charges.all():
             charge_in_advance = (
@@ -440,7 +439,6 @@ def charge_next_plan_flat_fee(
                     organization=subscription_record.organization,
                 )
     else:
-        print("ohhh yeah")
         calculate_subscription_record_flat_fees(subscription_record, invoice, draft)
 
 
@@ -761,6 +759,8 @@ def generate_external_payment_obj(invoice):
                 invoice.external_payment_obj_id = external_id
                 invoice.external_payment_obj_type = pp
                 invoice.save()
+                return invoice
+    return None
 
 
 def calculate_due_date(issue_date, organization):
