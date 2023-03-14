@@ -132,10 +132,14 @@ const VersionInformation = ({ form, ...props }: StepProps) => {
                       ]}
                     >
                       <Select
-                        style={{
-                          border: "2px solid #C3986B",
-                          padding: "4px",
-                        }}
+                        style={
+                          props.highlightedFields?.includes("plan_currency")
+                            ? {
+                                border: "2px solid #C3986B",
+                                padding: "4px",
+                              }
+                            : undefined
+                        }
                         onChange={(value) => {
                           const selectedCurrency = props.allCurrencies.find(
                             (currency) => currency.code === value
