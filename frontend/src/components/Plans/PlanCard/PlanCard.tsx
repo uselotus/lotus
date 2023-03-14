@@ -76,6 +76,9 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
     navigate(`/plans/${plan.plan_id}`);
   };
 
+  // const computeNumVersions = (plan: PlanType) => {
+  //   if (plan.plan_versions.length === 0) return 0;
+
   const customerNameOrID = (target_customer: any | undefined) => {
     if (target_customer.customer_name) {
       return target_customer.customer_name;
@@ -137,11 +140,11 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
 
         <div className="flex items-center justify-between text-card-text gap-2 mb-1">
           <div className="font-normal whitespace-nowrap leading-4">
-            Active Versions
+            Active Version
           </div>
           <div className="text-card-grey font-main">
             {" "}
-            v{plan.display_version?.version}
+            v{plan.active_version}
           </div>
         </div>
 

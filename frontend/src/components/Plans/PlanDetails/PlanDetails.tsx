@@ -165,24 +165,28 @@ const PlanDetails: FC = () => {
     refetch,
   } = useQuery<components["schemas"]["PlanDetail"]>(
     ["plan_detail", planId],
-    () => Plan.getPlan(planId as string).then((res) => res),
+    () => Plan.getPlan(planId as string, "public_only").then((res) => res),
     { refetchOnMount: "always" }
   );
-  const { data: plans }: UseQueryResult<components["schemas"]["PlanDetail"]> =
-    useQuery<components["schemas"]["PlanDetail"]>(
-      ["plan_list"],
-      () => Plan.getPlan(planId as string, "custom_only").then((res) => res),
+  const {
+    data: customPlanData,
+  }: UseQueryResult<components["schemas"]["PlanDetail"]> = useQuery<
+    components["schemas"]["PlanDetail"]
+  >(
+    ["plan_list", planId],
+    () => Plan.getPlan(planId as string, "custom_only").then((res) => res),
 
-      {
-        onSuccess: (plan) => {
-          setCustomPlans(plan.versions);
-          setSelectedCustomPlan(plan.versions[0]);
-        },
-      }
-    );
+    {
+      onSuccess: (plan) => {
+        setCustomPlans(plan.versions);
+        setSelectedCustomPlan(plan.versions[0]);
+      },
+    }
+  );
   const changeTab = (activeKey: string) => {
     setActiveKey(activeKey);
   };
+
   const navigateCreateCustomPlan = () => {
     navigate(`/create-custom/${planId}`);
   };
@@ -277,7 +281,7 @@ const PlanDetails: FC = () => {
               <Tabs.TabPane tab="Custom Plans" key="1">
                 <div>
                   <div className="flex items-center gap-4">
-                    <span>Filters</span>
+                    <span>Custom Plans</span>
                     <Select
                       className=""
                       onChange={(e) => {

@@ -379,7 +379,6 @@ function UsageComponentForm({
         setMetricObjects(data);
       }
     });
-    console.log(initalData);
   }, []);
 
   const handleAdd = () => {
@@ -487,7 +486,7 @@ function UsageComponentForm({
       align: "center",
     },
     {
-      title: `Amount (${currency.symbol})`,
+      title: `Amount (${currency?.symbol})`,
       dataIndex: "cost_per_batch",
       editable: true,
       align: "center",
@@ -574,7 +573,7 @@ function UsageComponentForm({
     <Modal
       visible={visible}
       title="Create Component"
-      okText={initalData ? "Update Component" : "Create New Component"}
+      okText={editComponentItem ? "Update Component" : "Create New Component"}
       okType="primary"
       cancelText="Cancel"
       width={900}

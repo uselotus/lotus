@@ -323,6 +323,9 @@ interface PlanInfoProps {
   activeKey: string;
 }
 export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
+  const [isTargetCustomersVisible, setIsTargetCustomersVisible] =
+    useState(false);
+
   const constructBillType = (str: string) => {
     if (str.includes("_")) {
       return str
@@ -410,10 +413,10 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
       <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
       {activeKey === "1" ? (
         <div className="grid  items-center grid-cols-1 md:grid-cols-2">
-          <div className="w-[240px]">
+          <div className="">
             <div className="flex items-center text-card-text justify-between mb-1">
               <div className=" font-normal whitespace-nowrap leading-4">
-                Overriden Name
+                Override Name
               </div>
               <div className="flex gap-1">
                 {" "}
@@ -445,14 +448,29 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
                 {`${version.currency?.code}-${version.currency?.symbol}`}
               </div>
             </div>
-            <div className="flex items-center justify-between text-card-text gap-2 mb-1">
+            <div className="flex items-center justify-between text-card-text gap-2 mb-1 relative">
               <div className="font-normal whitespace-nowrap leading-4">
                 Target Customers
               </div>
-              <div className="!text-gold underline underline-offset-2">
+              <div
+                className="!text-gold underline underline-offset-2 "
+                onMouseLeave={() => setIsTargetCustomersVisible(false)}
+                onMouseEnter={() => setIsTargetCustomersVisible(true)}
+              >
                 {" "}
-                {version.active_subscriptions}
-                {version.active_subscriptions > 1 ? " Customers" : " Customer"}
+                {version.target_customers.length}
+                {version.target_customers.length > 1
+                  ? " Customers"
+                  : " Customer"}
+                {isTargetCustomersVisible && (
+                  <div className="absolute top-full left-0 bg-white py-2 px-4 rounded-lg shadow-md text-card-text">
+                    {version.target_customers.map((customer) => (
+                      <div className="flex items-center gap-2">
+                        {customer.customer_name}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex items-center justify-between text-card-text gap-2 mb-1">
@@ -503,22 +521,17 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
               </div>
               <div>
                 {" "}
-                <span>
-                  {" "}
-                  {version.active_from
-                    ? dayjs(version.active_from).format("YYYY/MM/DD")
-                    : "-"}
-                </span>
+                <span> {dayjs(version.created_on).format("YYYY/MM/DD")}</span>
               </div>
             </div>
           </div>
         </div>
       ) : (
         <div className="grid  items-center grid-cols-1 md:grid-cols-2">
-          <div className="w-[240px]">
+          <div className="">
             <div className="flex items-center text-card-text justify-between mb-1">
               <div className=" font-normal whitespace-nowrap leading-4">
-                Overriden Name
+                Localized Name
               </div>
               <div className="flex gap-1">
                 {" "}
@@ -574,12 +587,7 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
               </div>
               <div>
                 {" "}
-                <span>
-                  {" "}
-                  {version.active_from
-                    ? dayjs(version.active_from).format("YYYY/MM/DD")
-                    : "-"}
-                </span>
+                <span> {dayjs(version.created_on).format("YYYY/MM/DD")}</span>
               </div>
             </div>
           </div>

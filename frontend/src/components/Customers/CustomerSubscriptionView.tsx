@@ -232,12 +232,22 @@ const SubscriptionView: FC<Props> = ({
       setIDtoPlan(planMap);
       const newplanList: { label: string; value: string }[] = plans.reduce(
         (acc, plan) => {
-          if (
-            plan.target_customer === null ||
-            plan.target_customer?.customer_id === customer_id
-          ) {
-            acc.push({ label: plan.plan_name, value: plan.plan_id });
-          }
+          // for (let i = 0; i < plan.versions.length; i++) {
+          //   if (
+          //     plan.versions[i].status === "active" &&
+          //     (plan.versions[i].target_customer.length === 0 ||
+          //       plan.versions[i].target_customers.find(
+          //         (cust) => cust.customer_id == customer_id
+          //       ))
+          //   ) {
+          //     acc.push({
+          //       label: plan.versions[i].plan_name,
+          //       value: plan.plan_id,
+          //     });
+          //   }
+          // }
+
+          acc.push({ label: plan.plan_name, value: plan.plan_id });
           return acc;
         },
         [] as { label: string; value: string }[]

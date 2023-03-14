@@ -162,27 +162,11 @@ class METRIC_STATUS(models.TextChoices):
 
 
 class MAKE_PLAN_VERSION_ACTIVE_TYPE(models.TextChoices):
-    REPLACE_IMMEDIATELY = ("replace_immediately", _("Replace Immediately"))
-    REPLACE_ON_ACTIVE_VERSION_RENEWAL = (
-        "replace_on_active_version_renewal",
-        _("Replace on Active Version Renewal"),
+    REPLACE_ON_RENEWAL = (
+        "replace_on_renewal",
+        _("Replace on Renewal"),
     )
-    GRANDFATHER_ACTIVE = ("grandfather_active", _("Grandfather Active"))
-
-
-class REPLACE_IMMEDIATELY_TYPE(models.TextChoices):
-    END_CURRENT_SUBSCRIPTION_AND_BILL = (
-        "end_current_subscription_and_bill",
-        _("End Current Subscription and Bill"),
-    )
-    END_CURRENT_SUBSCRIPTION_DONT_BILL = (
-        "end_current_subscription_dont_bill",
-        _("End Current Subscription and Don't Bill"),
-    )
-    CHANGE_SUBSCRIPTION_PLAN = (
-        "change_subscription_plan",
-        _("Change Subscription Plan"),
-    )
+    GRANDFATHER = ("grandfather", _("Grandfather"))
 
 
 class ORGANIZATION_STATUS(models.TextChoices):

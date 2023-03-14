@@ -2,12 +2,19 @@
 /* eslint-disable camelcase */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
-import React, { FC, useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  version,
+} from "react";
 
 import "./SwitchVersions.css";
 import { PlusOutlined } from "@ant-design/icons";
-import { Link } from "react-router-dom";
-import { Typography, Dropdown, Select, Menu } from "antd";
+import { Link, useNavigate } from "react-router-dom";
+import { Dropdown, Select, Menu } from "antd";
 import { useMutation, useQueryClient } from "react-query";
 import { PlanType } from "../../../types/plan-type";
 import PlanComponents, { PlanInfo, PlanSummary } from "./PlanComponent";
@@ -63,6 +70,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
   deletePlanExternalLink,
   className,
 }) => {
+  const navigate = useNavigate();
   const activePlanVersion = versions.find((x) => x.status === "active");
 
   const [selectedVersion, setSelectedVersion] = useState<
@@ -89,7 +97,9 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         setDeduplicatedVersions(
           newVersion as components["schemas"]["PlanDetail"]["versions"]
         );
-        setDropDownVersions(newVersion);
+        setDropDownVersions(
+          newVersion as components["schemas"]["PlanDetail"]["versions"]
+        );
         return [];
       }
 
@@ -106,18 +116,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         }
       });
       seen = {};
-      setDropDownVersions(
-        arr.filter((obj) => {
-          if (seen[obj.version] && seen[obj?.version_id]) {
-            return false;
-            // eslint-disable-next-line no-else-return
-          } else {
-            seen[obj.version] = true;
-            seen[obj?.version_id] = true;
-            return true;
-          }
-        })
-      );
+      setDropDownVersions(versions);
       const newVersions = [...v];
       setDeduplicatedVersions(
         newVersions as components["schemas"]["PlanDetail"]["versions"]
@@ -128,8 +127,8 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
   useEffect(() => {
     removeDuplicateVersions(versions);
   }, [selectedVersion, versions, removeDuplicateVersions]);
-  const isSelectedVersion = (other_id: string) =>
-    selectedVersion?.version_id === other_id;
+  const isSelectedVersion = (other_version: number) =>
+    selectedVersion?.version === other_version;
   const createTag = useMutation(
     ({ plan_id, tags }: { plan_id: string; tags: PlanType["tags"] }) =>
       Plan.createTagsPlan(plan_id, {
@@ -177,7 +176,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
             }}
             className={[
               "flex items-center justify-center p-6 cursor-pointer mx-1 gap-4 h-33px",
-              isSelectedVersion(version!.version_id)
+              isSelectedVersion(version!.version)
                 ? "bg-[#c3986b] text-white opacity-100 ml-2 mr-2"
                 : "bg-[#EAEAEB] text-black ml-2 mr-2",
               version?.status === "active" &&
@@ -191,8 +190,9 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
                   <Menu.Item
                     key="1"
                     onClick={() => {
-                      setTriggerCurrencyModal(true);
-                      setTriggerDeleteModal(false);
+                      navigate(
+                        `/add-currency/${plan.plan_id}/${version.version_id}`
+                      );
                     }}
                   >
                     <span className="flex gap-2 justify-between ">
@@ -201,7 +201,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
                       </span>
                     </span>
                   </Menu.Item>
-                  <Menu.Item
+                  {/* <Menu.Item
                     key="2"
                     onClick={() => {
                       setTriggerCurrencyModal(false);
@@ -213,7 +213,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
                         <span className="text-black">Delete</span>
                       </span>
                     </span>
-                  </Menu.Item>
+                  </Menu.Item> */}
                 </Menu>
               }
             >
@@ -241,15 +241,11 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
           <Select
             value={`Currency:${selectedVersion?.currency?.code}-${selectedVersion?.currency?.symbol}`}
             onChange={(e) => {
-              // const arr = [
-              //   ...[selectedVersion],
-              //   ...removeDuplicateVersions(versions),
-              // ];
               if (e.split("-")[0] === "undefined") {
                 return;
               }
               const [versionNum, symbol] = e.split("-");
-              const version = versionNum.split("v")[1];
+              const version = selectedVersion?.version;
 
               const newSelectedVersion = dropDownVersions.find(
                 (el) =>
@@ -257,20 +253,21 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
                   el.currency &&
                   el.currency.symbol === symbol
               );
-
               if (newSelectedVersion) {
                 setSelectedVersion(newSelectedVersion);
               }
             }}
           >
-            {dropDownVersions.map((el) => (
-              <Select.Option
-                value={`${el?.currency?.code}-${el?.currency?.symbol}`}
-                key={el?.version_id}
-              >
-                {`Currency:${el?.currency?.code}-${el?.currency?.symbol}`}
-              </Select.Option>
-            ))}
+            {dropDownVersions
+              .filter((v) => v.version === selectedVersion?.version)
+              .map((el) => (
+                <Select.Option
+                  value={`${el?.currency?.code}-${el?.currency?.symbol}`}
+                  key={el?.version_id}
+                >
+                  {`Currency:${el?.currency?.code}-${el?.currency?.symbol}`}
+                </Select.Option>
+              ))}
           </Select>
         </div>
       </div>

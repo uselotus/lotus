@@ -49,7 +49,11 @@ function CustomerDetail() {
   const [endDate, setEndDate] = useState<string>(dayjs().format("YYYY-MM-DD"));
   const { data: plans }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
     ["plan_list"],
-    () => Plan.getPlans().then((res) => res)
+    () =>
+      Plan.getPlans({
+        version_custom_type: "public_only",
+        version_status: "active",
+      }).then((res) => res)
   );
 
   const { data: pricingUnits }: UseQueryResult<CurrencyType[]> = useQuery<

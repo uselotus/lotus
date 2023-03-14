@@ -4,9 +4,10 @@ from decimal import Decimal
 
 import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
+from dateutil import relativedelta
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import DecimalField, Q, Sum
+from django.db.models import DecimalField, F, Q, Sum
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -51,6 +52,7 @@ from metering_billing.serializers.serializer_utils import (
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     BATCH_ROUNDING_TYPE,
+    MAKE_PLAN_VERSION_ACTIVE_TYPE,
     METRIC_STATUS,
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
@@ -1180,15 +1182,15 @@ class RecurringChargeCreateSerializer(TimezoneFieldMixin, serializers.ModelSeria
             "reset_interval_count",
         )
         extra_kwargs = {
-            "name": {"required": True},
-            "charge_timing": {"required": True},
-            "charge_behavior": {"required": False},
-            "amount": {"required": True},
-            "pricing_unit_code": {"required": False},
-            "invoicing_interval_unit": {"required": False},
-            "invoicing_interval_count": {"required": False},
-            "reset_interval_unit": {"required": False},
-            "reset_interval_count": {"required": False},
+            "name": {"required": True, "write_only": True},
+            "charge_timing": {"required": True, "write_only": True},
+            "charge_behavior": {"required": False, "write_only": True},
+            "amount": {"required": True, "write_only": True},
+            "pricing_unit_code": {"required": False, "write_only": True},
+            "invoicing_interval_unit": {"required": False, "write_only": True},
+            "invoicing_interval_count": {"required": False, "write_only": True},
+            "reset_interval_unit": {"required": False, "write_only": True},
+            "reset_interval_count": {"required": False, "write_only": True},
         }
 
     charge_timing = serializers.ChoiceField(
@@ -1276,6 +1278,8 @@ class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
             "version",
             "target_customer_ids",
             "localized_name",
+            "make_active",
+            "make_active_type",
         )
         extra_kwargs = {
             "plan_id": {"write_only": True},
@@ -1292,6 +1296,16 @@ class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
                 "write_only": True,
                 "required": False,
                 "allow_null": True,
+            },
+            "make_active": {
+                "write_only": True,
+                "required": False,
+                "allow_null": False,
+            },
+            "make_active_type": {
+                "write_only": True,
+                "required": False,
+                "allow_null": False,
             },
         }
 
@@ -1326,6 +1340,12 @@ class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
         required=False,
         source="target_customers",
     )
+    make_active = serializers.BooleanField(required=False, default=False)
+    make_active_type = serializers.ChoiceField(
+        choices=MAKE_PLAN_VERSION_ACTIVE_TYPE.choices,
+        required=False,
+        default=MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_ON_RENEWAL,
+    )
 
     def validate(self, data):
         data = super().validate(data)
@@ -1333,7 +1353,7 @@ class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
         if data.get("components"):
             component_metrics = set()
             for component in data.get("components"):
-                metric = component.get("metric")
+                metric = component.get("billable_metric")
                 if metric in component_metrics:
                     raise serializers.ValidationError(
                         "Plan components must have unique metrics."
@@ -1349,6 +1369,12 @@ class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
         features = validated_data.pop("features", [])
         target_customers = validated_data.pop("target_customers", [])
         price_adjustment_data = validated_data.pop("price_adjustment", None)
+        make_active = validated_data.pop("make_active", False)
+        make_active_type = validated_data.pop("make_active_type", None)
+        if make_active is False:
+            validated_data["active_from"] = None
+        if len(target_customers) > 0:
+            validated_data["is_custom"] = True
 
         billing_plan = PlanVersion.objects.create(**validated_data)
         org = billing_plan.organization
@@ -1389,9 +1415,22 @@ class PlanVersionCreateSerializer(TimezoneFieldMixin, serializers.ModelSerialize
             except PriceAdjustment.MultipleObjectsReturned:
                 pa = PriceAdjustment.objects.filter(**price_adjustment_data).first()
             billing_plan.price_adjustment = pa
-        billing_plan.save()
         if target_customers:
             billing_plan.target_customers.set(target_customers)
+            # additionally, if the plan is custom it will always be active. In this case, we don't have to do anything, since the default is to make the active_from date the current date
+        elif make_active:
+            active_to = billing_plan.active_from - relativedelta.relativedelta(
+                microseconds=1
+            )
+            if make_active_type == MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_ON_RENEWAL:
+                billing_plan.plan.versions.exclude(
+                    Q(is_custom=True) | Q(replace_with=F("id"))
+                ).update(replace_with=billing_plan, active_to=active_to)
+            elif make_active_type == MAKE_PLAN_VERSION_ACTIVE_TYPE.GRANDFATHER:
+                billing_plan.plan.versions.filter(
+                    is_custom=False, replace_with__isnull=True
+                ).update(replace_with=F("id"), active_to=active_to)
+        billing_plan.save()
         return billing_plan
 
 

@@ -1,6 +1,6 @@
 // create react FC component called EditPlanLoader
 import React, { Fragment, useEffect } from "react";
-import { useParams , useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "react-query";
 import { Button } from "antd";
 import { Plan } from "../api/api";
@@ -11,15 +11,16 @@ import EditPlan from "./EditPlan";
 
 type PlanDetailParams = {
   planId: string;
+  versionId?: string;
 };
 
 interface EditPlanLoaderProps {
-  type: "backtest" | "version" | "custom";
+  type: "backtest" | "version" | "custom" | "currency";
 }
 
 function EditPlanLoader({ type }: EditPlanLoaderProps) {
   const navigate = useNavigate();
-  const { planId } = useParams<PlanDetailParams>();
+  const { planId, versionId } = useParams<PlanDetailParams>();
   const [versionIndex, setVersionIndex] = React.useState<number>();
   const { replacementPlanVersion } = usePlanState();
 
@@ -27,15 +28,15 @@ function EditPlanLoader({ type }: EditPlanLoaderProps) {
     data: plan,
     isLoading,
     isError,
-  } = useQuery<PlanDetailType>(
-    ["plan_detail", planId],
-    () =>
-      Plan.getPlan(planId).then((res) => res),
-
-    {
-      onSuccess: (data) => {},
+  } = useQuery<PlanDetailType>(["plan_detail", planId], async () => {
+    if (!planId) {
+      return Promise.reject(new Error("No plan id provided"));
     }
-  );
+
+    const res = Plan.getPlan(planId);
+
+    return res;
+  });
 
   useEffect(() => {
     if (plan !== undefined) {
@@ -45,11 +46,15 @@ function EditPlanLoader({ type }: EditPlanLoaderProps) {
             (v) => v.version_id === replacementPlanVersion?.version_id
           )
         );
+      } else if (type === "currency") {
+        setVersionIndex(
+          plan.versions.findIndex((x) => x.version_id === versionId)
+        );
       } else {
         setVersionIndex(plan.versions.findIndex((x) => x.status === "active"));
       }
     }
-  }, [plan]);
+  }, [plan, replacementPlanVersion?.version_id, type]);
 
   return (
     <>
@@ -66,9 +71,10 @@ function EditPlanLoader({ type }: EditPlanLoaderProps) {
           </Button>
         </div>
       )}
-      {plan !== undefined && versionIndex !== undefined && (
+
+      {plan !== undefined && versionIndex !== undefined ? (
         <EditPlan type={type} plan={plan} versionIndex={versionIndex} />
-      )}
+      ) : null}
     </>
   );
 }

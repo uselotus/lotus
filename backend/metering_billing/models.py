@@ -26,6 +26,15 @@ from django.db.models import Count, F, FloatField, Prefetch, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
+
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     NotEditable,
@@ -73,14 +82,6 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -2285,6 +2286,7 @@ class PlanVersion(models.Model):
             models.UniqueConstraint(
                 fields=["plan", "version", "currency"],
                 name="unique_plan_version_per_currency",
+                condition=Q(is_custom=False),
             ),
         ]
         indexes = [
@@ -2293,18 +2295,9 @@ class PlanVersion(models.Model):
         ]
 
     def __str__(self) -> str:
-        currency = self.currency
-        if currency is None:
-            prefix = ""
-        else:
-            prefix = f"[{currency.code}]"
-        if self.is_custom:
-            prefix += "[CUSTOM]"
         if self.localized_name is not None:
-            name = self.localized_name
-        else:
-            name = str(self.plan)
-        return prefix + name
+            return self.localized_name
+        return str(self.plan)
 
     def num_active_subs(self):
         cnt = self.subscription_records.active().count()
@@ -2321,12 +2314,20 @@ class PlanVersion(models.Model):
         now = now_utc()
         if self.deleted is not None:
             return PLAN_VERSION_STATUS.DELETED
+        if not self.active_from:
+            return PLAN_VERSION_STATUS.INACTIVE
         if self.active_from <= now:
             if self.active_to is None or self.active_to > now:
                 return PLAN_VERSION_STATUS.ACTIVE
             else:
                 n_active_subs = self.num_active_subs()
                 if self.replace_with is None:
+                    if n_active_subs > 0:
+                        # SHOULD NEVER HAPPEN. EXPIRED PLAN, ACTIVE SUBS, NO REPLACEMENT
+                        return PLAN_VERSION_STATUS.GRANDFATHERED
+                    else:
+                        return PLAN_VERSION_STATUS.INACTIVE
+                elif self.replace_with == self:
                     if n_active_subs > 0:
                         return PLAN_VERSION_STATUS.GRANDFATHERED
                     else:
@@ -2337,7 +2338,7 @@ class PlanVersion(models.Model):
                     else:
                         return PLAN_VERSION_STATUS.INACTIVE
         else:
-            return PLAN_VERSION_STATUS.NOT_STARTED
+            return PLAN_VERSION_STATUS.INACTIVE
 
 
 class PriceAdjustment(models.Model):

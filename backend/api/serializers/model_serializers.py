@@ -1226,6 +1226,8 @@ class PlanVersionSerializer(
             "active_from",
             "active_to",
             "localized_name",
+            "target_customers",
+            "created_on",
             # DEPRECATED
             "usage_billing_frequency",
             "flat_fee_billing_type",
@@ -1247,6 +1249,8 @@ class PlanVersionSerializer(
             "active_to": {"required": True, "read_only": True},
             "localized_name": {"required": True, "read_only": True},
             "status": {"required": False, "read_only": True},
+            "target_customers": {"required": False, "read_only": True},
+            "created_on": {"required": False, "read_only": True},
             # DEPRECATED
             "flat_fee_billing_type": {"required": False, "read_only": True},
             "flat_rate": {"required": False, "read_only": True},
@@ -1262,6 +1266,7 @@ class PlanVersionSerializer(
     currency = PricingUnitSerializer()
     version = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
+    target_customers = LightweightCustomerSerializer(many=True)
 
     # DEPRECATED
     description = serializers.SerializerMethodField()
@@ -1416,6 +1421,7 @@ class PlanSerializer(
             "plan_description",
             "external_links",
             "num_versions",
+            "active_version",
             "active_subscriptions",
             "tags",
             "versions",
@@ -1432,6 +1438,7 @@ class PlanSerializer(
             "external_links": {"required": True},
             "plan_id": {"required": True},
             "num_versions": {"required": True},
+            "active_version": {"required": True},
             "active_subscriptions": {"required": True},
             "tags": {"required": True},
             "versions": {"required": True},
@@ -1445,6 +1452,9 @@ class PlanSerializer(
     plan_id = PlanUUIDField()
     num_versions = serializers.SerializerMethodField(
         help_text="The number of versions that this plan has."
+    )
+    active_version = serializers.SerializerMethodField(
+        help_text="This plan's currently active version."
     )
     active_subscriptions = serializers.SerializerMethodField(
         help_text="The number of active subscriptions that this plan has across all versions.",
@@ -1471,12 +1481,27 @@ class PlanSerializer(
 
     def get_num_versions(self, obj) -> int:
         try:
-            return len(obj.versions_prefetched)
+            nv = len({x.version for x in obj.versions_prefetched if not x.is_custom})
+            return nv
         except AttributeError:
             logger.error(
                 "PlanSerializer.get_num_versions() called without prefetching 'versions_prefetched'"
             )
-            return obj.versions.all().count()
+            return (
+                obj.versions.filter(is_custom=False)
+                .values_list("version", flat=True)
+                .count()
+            )
+
+    def get_active_version(self, obj) -> int:
+        return (
+            obj.versions.active()
+            .filter(is_custom=False)
+            .values_list("version", flat=True)
+            .order_by("-version")
+            .first()
+            or 0
+        )
 
     def get_active_subscriptions(self, obj) -> int:
         try:
@@ -2029,6 +2054,16 @@ class ListPlanVersionsFilterSerializer(serializers.Serializer):
         default=PLAN_CUSTOM_TYPE.ALL,
         help_text="Filter to versions that have this custom type. If you choose custom_only, you will only see versions that have target customers. If you choose public_only, you will only see versions that do not have target customers.",
     )
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if not attrs.get("version_status"):
+            attrs["version_status"] = {
+                SUBSCRIPTION_STATUS.ACTIVE,
+                SUBSCRIPTION_STATUS.ENDED,
+                SUBSCRIPTION_STATUS.NOT_STARTED,
+            }
+        return attrs
 
 
 class SubscriptionRecordFilterSerializer(serializers.Serializer):

@@ -6,7 +6,6 @@ from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
-
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
@@ -91,7 +90,7 @@ def calculate_invoice():
         "billing_plan",
         "billing_plan__recurring_charges",
         "billing_plan__plan_components",
-        "billing_plan__plan_components__metric",
+        "billing_plan__plan_components__billable_metric",
         "billing_plan__plan_components__tiers",
         "filters",
         "billing_records",

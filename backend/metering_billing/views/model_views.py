@@ -33,7 +33,6 @@ from metering_billing.exceptions import (
     DuplicateMetric,
     DuplicateWebhookEndpoint,
     InvalidOperation,
-    MethodNotAllowed,
     ServerError,
 )
 from metering_billing.models import (
@@ -1105,8 +1104,12 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def subscriptions(self, request, *args, **kwargs):
         plan_version = self.get_object()
         organization = self.request.organization
+        now = now_utc()
         subscriptions = SubscriptionRecord.objects.filter(
-            billing_plan=plan_version, organization=organization
+            billing_plan=plan_version,
+            organization=organization,
+            start_date__lte=now,
+            end_date__gte=now,
         ).select_related("customer", "billing_plan")
         serializer = PlanVersionHistoricalSubscriptionSerializer(
             subscriptions, many=True
@@ -1642,17 +1645,18 @@ class PlanViewSet(api_views.PlanViewSet):
 
 
 class SubscriptionViewSet(api_views.SubscriptionViewSet):
-    @extend_schema(exclude=True)
-    def add(self, request, *args, **kwargs):
-        raise MethodNotAllowed(request.method)
+    pass
+    # @extend_schema(exclude=True)
+    # def add(self, request, *args, **kwargs):
+    #     raise MethodNotAllowed(request.method)
 
-    @extend_schema(exclude=True)
-    def cancel_multi(self, request, *args, **kwargs):
-        raise MethodNotAllowed(request.method)
+    # @extend_schema(exclude=True)
+    # def cancel_multi(self, request, *args, **kwargs):
+    #     raise MethodNotAllowed(request.method)
 
-    @extend_schema(exclude=True)
-    def edit(self, request, *args, **kwargs):
-        raise MethodNotAllowed(request.method)
+    # @extend_schema(exclude=True)
+    # def edit(self, request, *args, **kwargs):
+    #     raise MethodNotAllowed(request.method)
 
 
 class InvoiceViewSet(api_views.InvoiceViewSet):
