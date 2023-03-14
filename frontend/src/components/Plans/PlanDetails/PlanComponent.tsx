@@ -1,6 +1,7 @@
+/* eslint-disable react/no-array-index-key */
+/* eslint-disable no-shadow */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable camelcase */
-// @ts-ignore
 import React, { FC, useEffect, useRef, useState } from "react";
 import "./PlanDetails.css";
 import {
@@ -12,7 +13,6 @@ import {
   Button,
   InputNumber,
   Dropdown,
-  Divider,
 } from "antd";
 import {
   CheckCircleOutlined,
@@ -22,14 +22,7 @@ import {
 import dayjs from "dayjs";
 import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
-import StateTabs from "./StateTabs";
-import {
-  Component,
-  PlanDetailType,
-  PlanType,
-  PlanVersionType,
-  Tier,
-} from "../../../types/plan-type";
+import { Component, PlanType, Tier } from "../../../types/plan-type";
 import { CurrencyType } from "../../../types/pricing-unit-type";
 import createShortenedText from "../../../helpers/createShortenedText";
 import DropdownComponent from "../../base/Dropdown/Dropdown";
@@ -37,24 +30,21 @@ import PlansTags from "../PlanTags";
 import LinkExternalIds from "../LinkExternalIds";
 import capitalize from "../../../helpers/capitalize";
 import CopyText from "../../base/CopytoClipboard";
-import useVersionStore from "../../../stores/useVersionStore";
 import Badge from "../../base/Badges/Badges";
-import Select from "../../base/Select/Select";
 import useMediaQuery from "../../../hooks/useWindowQuery";
 import createTags from "../helpers/createTags";
 import useGlobalStore from "../../../stores/useGlobalstore";
 import createPlanTagsList from "../helpers/createPlanTagsList";
 import { AlertType, CreateAlertType } from "../../../types/alert-type";
 import { Plan } from "../../../api/api";
+import { components } from "../../../gen-types";
+import StateTabs from "./StateTabs";
 
 interface PlanComponentsProps {
-  components?: Component[];
-  plan: PlanType;
+  components?: components["schemas"]["PlanDetail"]["versions"][0]["components"];
+  plan: components["schemas"]["PlanDetail"];
   refetch: VoidFunction;
-  updateBillingFrequencyMutation: (
-    billing_frequency: "monthly" | "quarterly" | "yearly"
-  ) => void;
-  alerts?: AlertType[];
+  alerts?: components["schemas"]["PlanDetail"]["versions"][0]["alerts"];
   plan_version_id: string;
 }
 
@@ -95,8 +85,12 @@ const renderCost = (record: Tier, pricing_unit: CurrencyType) => {
 interface PlanSummaryProps {
   createPlanExternalLink: (link: string) => void;
   deletePlanExternalLink: (link: string) => void;
-  plan: PlanDetailType;
+  plan: components["schemas"]["PlanDetail"];
   createTagMutation: (variables: {
+    plan_id: string;
+    tags: PlanType["tags"];
+  }) => void;
+  deleteTagMutation: (variables: {
     plan_id: string;
     tags: PlanType["tags"];
   }) => void;
@@ -104,6 +98,7 @@ interface PlanSummaryProps {
 export function PlanSummary({
   plan,
   createTagMutation,
+  deleteTagMutation,
   createPlanExternalLink,
   deletePlanExternalLink,
 }: PlanSummaryProps) {
@@ -133,9 +128,9 @@ export function PlanSummary({
   );
 
   return (
-    <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card">
+    <div className="h-[210px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card">
       <Typography.Title className="pt-4 whitespace-pre-wrap !text-[18px] level={2}">
-        Summary (All Versions)
+        Plan Information
       </Typography.Title>
 
       <div>
@@ -175,6 +170,7 @@ export function PlanSummary({
               <div className="flex gap-1">
                 {" "}
                 <div
+                  aria-hidden
                   className="!text-card-grey"
                   onClick={() => setShowEditTaxJarModal(true)}
                 >
@@ -184,6 +180,7 @@ export function PlanSummary({
               </div>
             ) : (
               <div
+                aria-hidden
                 className="!text-card-grey"
                 onClick={() => setShowEditTaxJarModal(true)}
               >
@@ -257,6 +254,7 @@ export function PlanSummary({
                 {plan_tags &&
                   createPlanTagsList(plan.tags, plan_tags).map((tag, index) => (
                     <DropdownComponent.MenuItem
+                      key={tag.tag_name}
                       onSelect={() => {
                         if (tag.from !== "plans") {
                           const planTags = [...plan.tags];
@@ -277,7 +275,7 @@ export function PlanSummary({
                           const tags = planTags.filter(
                             (el) => el.tag_name !== tag.tag_name
                           );
-                          createTagMutation({
+                          deleteTagMutation({
                             plan_id: plan.plan_id,
                             tags,
                           });
@@ -320,10 +318,14 @@ export function PlanSummary({
 }
 
 interface PlanInfoProps {
-  version: PlanVersionType;
-  plan: PlanDetailType;
+  version: components["schemas"]["PlanDetail"]["versions"][0];
+  plan: components["schemas"]["PlanDetail"];
+  activeKey: string;
 }
-export function PlanInfo({ version, plan }: PlanInfoProps) {
+export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
+  const [isTargetCustomersVisible, setIsTargetCustomersVisible] =
+    useState(false);
+
   const constructBillType = (str: string) => {
     if (str.includes("_")) {
       return str
@@ -334,7 +336,7 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
     return str;
   };
   const queryClient = useQueryClient();
-  const schedule = (duration: "monthly" | "yearly" | "quarterly") => {
+  const schedule = (duration: "monthly" | "yearly" | "quarterly" | "") => {
     switch (duration) {
       case "monthly":
         return "Start of Month";
@@ -347,8 +349,7 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
   };
 
   const archivemutation = useMutation(
-    (version_id: string) =>
-      Plan.archivePlanVersion(version_id, { status: "archived" }),
+    (version_id: string) => Plan.archivePlanVersion(version_id),
     {
       onSuccess: () => {
         queryClient.invalidateQueries("plan_list");
@@ -356,14 +357,13 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
       },
     }
   );
+  const windowWidth = useMediaQuery();
   const menu = (
     <Menu>
       <Menu.Item
         key="1"
         onClick={() => archivemutation.mutate(version!.version_id)}
-        disabled={
-          version?.status === "active" || version?.status === "grandfathered"
-        }
+        disabled={version?.status !== "inactive"}
       >
         <div className="planMenuArchiveIcon">
           <div>
@@ -376,21 +376,26 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
   );
 
   return (
-    <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card ">
-      <div className='flex justify-between'>
+    <div className="h-[210px]  min-w-[246px] p-8 cursor-pointer font-alliance rounded-sm bg-card ">
+      <div className="flex justify-between">
         <Typography.Title className="pt-4 whitespace-pre-wrap grid gap-4 !text-[18px] items-center grid-cols-1 md:grid-cols-2">
-          <div>Plan Information</div>
+          <div>Version Information</div>
         </Typography.Title>
         <div className="flex flex-row  items-center font-bold tabsContainer">
-            <StateTabs
-              activeTab={capitalize(version.status)}
-              version_id={version.version_id}
-              version={version.version}
-              activeVersion={version.version}
-              tabs={["Active", "Grandfathered", "Retiring", "Inactive"]}
-              plan={plan}
-            />
-            <span className="ml-auto" onClick={(e) => e.stopPropagation()}>
+          <StateTabs
+            activeTab={capitalize(version.status)}
+            version_id={version.version_id}
+            version={version.version}
+            plan_id={plan.plan_id}
+            activeVersion={version.version}
+            tabs={["Active", "Grandfathered", "Retiring", "Inactive"]}
+          />
+          {capitalize(version.status) !== "Inactive" ? (
+            <span
+              aria-hidden
+              className="ml-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
               <Dropdown overlay={menu} trigger={["click"]}>
                 <Button
                   type="text"
@@ -401,84 +406,194 @@ export function PlanInfo({ version, plan }: PlanInfoProps) {
                 </Button>
               </Dropdown>
             </span>
-          </div>
+          ) : null}
+        </div>
       </div>
       <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
-      <div className="grid  items-center grid-cols-1 md:grid-cols-2">
-        <div className="w-[240px]">
-          <div className="flex items-center text-card-text justify-between mb-1">
-            <div className=" font-normal whitespace-nowrap leading-4">
-              Recurring Price
+      {activeKey === "1" ? (
+        <div className="grid  items-center grid-cols-1 md:grid-cols-2">
+          <div className="">
+            <div className="flex items-center text-card-text justify-between mb-1">
+              <div className=" font-normal whitespace-nowrap leading-4">
+                Override Name
+              </div>
+              <div className="flex gap-1">
+                {" "}
+                <div className="text-grey">
+                  {version.localized_name ? version.localized_name : "-"}
+                </div>
+              </div>
             </div>
-            <div className="flex gap-1">
-              {" "}
-              <div className="text-gold">{`${plan.display_version.currency.symbol}${plan.display_version.flat_rate}`}</div>
-            </div>
-          </div>
 
-          <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-            <div className="font-normal whitespace-nowrap leading-4">
-              Plan Duration
+            <div className="flex items-center text-card-text justify-between gap-2 mb-1">
+              <div className=" font-normal whitespace-nowrap leading-4">
+                Version ID
+              </div>
+              <div className="flex gap-1 text-card-grey font-menlo">
+                {" "}
+                <div>
+                  {createShortenedText(version.version_id, windowWidth >= 2500)}
+                </div>
+                <CopyText showIcon onlyIcon textToCopy={version.version_id} />
+              </div>
             </div>
-            <div className="!text-card-grey">
-              {capitalize(plan.plan_duration)}
-            </div>
-          </div>
 
-          <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-            <div className="font-normal whitespace-nowrap leading-4">
-              Created At
-            </div>
-            <div className="!text-card-grey">
-              {" "}
-              {dayjs(version?.created_on).format("YYYY/MM/DD")}
-            </div>
-          </div>
-        </div>
-
-        <div className="w-[254px] ml-auto">
-          <div className="flex items-center text-card-text justify-between gap-2 mb-1">
-            <div className=" font-normal whitespace-nowrap leading-4">
-              Plan on next cycle
-            </div>
-            <div className="flex gap-1 ">
-              {" "}
+            <div className="flex items-center justify-between text-card-text gap-2 mb-1">
+              <div className="font-normal whitespace-nowrap leading-4">
+                Currency
+              </div>
               <div className="!text-card-grey">
-                {version?.transition_to
-                  ? capitalize(version.transition_to)
+                {" "}
+                {`${version.currency?.code}-${version.currency?.symbol}`}
+              </div>
+            </div>
+            <div className="flex items-center justify-between text-card-text gap-2 mb-1 relative">
+              <div className="font-normal whitespace-nowrap leading-4">
+                Target Customers
+              </div>
+              <div
+                className="!text-gold underline underline-offset-2 "
+                onMouseLeave={() => setIsTargetCustomersVisible(false)}
+                onMouseEnter={() => setIsTargetCustomersVisible(true)}
+              >
+                {" "}
+                {version.target_customers.length}
+                {version.target_customers.length > 1
+                  ? " Customers"
+                  : " Customer"}
+                {isTargetCustomersVisible && (
+                  <div className="absolute top-full left-0 bg-white py-2 px-4 rounded-lg shadow-md text-card-text">
+                    {version.target_customers.map((customer) => (
+                      <div className="flex items-center gap-2">
+                        {customer.customer_name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center justify-between text-card-text gap-2 mb-1">
+              <div className="font-normal whitespace-nowrap leading-4">
+                Plan on next cycle
+              </div>
+              <div className="!text-card-grey">
+                {" "}
+                {version?.transition_to?.plan_name
+                  ? version.replace_with.plan_name
                   : "Self"}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-            <div className="font-normal whitespace-nowrap leading-4">
-              Recurring Bill Type
+          <div className="w-[254px] ml-auto">
+            <div className="flex items-center text-card-text justify-between gap-2 mb-1">
+              <div className=" font-normal whitespace-nowrap leading-4">
+                Active From
+              </div>
+              <div className="flex gap-1 ">
+                {" "}
+                <div className="!text-card-grey">
+                  {version.active_from
+                    ? dayjs(version.active_from).format("YYYY/MM/DD")
+                    : "-"}
+                </div>
+              </div>
             </div>
-            <div>
-              <Badge>
-                <Badge.Content>
-                  <div className="p-1">
-                    {constructBillType(
-                      plan.display_version.flat_fee_billing_type
-                    )}
-                  </div>
-                </Badge.Content>
-              </Badge>
-            </div>
-          </div>
 
-          <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-            <div className="font-normal whitespace-nowrap leading-4">
-              Schedule
+            <div className="flex items-center text-card-text justify-between gap-2 mb-1">
+              <div className=" font-normal whitespace-nowrap leading-4">
+                Active To
+              </div>
+              <div className="flex gap-1 ">
+                {" "}
+                <div className="!text-card-grey">
+                  {version.active_to
+                    ? dayjs(version.active_to).format("YYYY/MM/DD")
+                    : "-"}
+                </div>
+              </div>
             </div>
-            <div>
-              {" "}
-              <span>{schedule(plan.plan_duration)}</span>
+
+            <div className="flex items-center justify-between text-card-text gap-2 mb-1">
+              <div className="font-normal whitespace-nowrap leading-4">
+                Date Created
+              </div>
+              <div>
+                {" "}
+                <span> {dayjs(version.created_on).format("YYYY/MM/DD")}</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="grid  items-center grid-cols-1 md:grid-cols-2">
+          <div className="">
+            <div className="flex items-center text-card-text justify-between mb-1">
+              <div className=" font-normal whitespace-nowrap leading-4">
+                Localized Name
+              </div>
+              <div className="flex gap-1">
+                {" "}
+                <div className="text-grey">
+                  {version.localized_name ? version.localized_name : "-"}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-card-text gap-2 mb-1">
+              <div className="font-normal whitespace-nowrap leading-4">
+                Plan on next cycle
+              </div>
+              <div className="!text-card-grey">
+                {" "}
+                {version?.transition_to?.plan_name
+                  ? capitalize(version.replace_with.plan_name)
+                  : "Self"}
+              </div>
+            </div>
+
+            <div className="flex items-center text-card-text justify-between gap-2 mb-1">
+              <div className=" font-normal whitespace-nowrap leading-4">
+                Active From
+              </div>
+              <div className="flex gap-1 ">
+                {" "}
+                <div className="!text-card-grey">
+                  {version.active_from
+                    ? dayjs(version.active_from).format("YYYY/MM/DD")
+                    : "-"}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center text-card-text justify-between gap-2 mb-1">
+              <div className=" font-normal whitespace-nowrap leading-4">
+                Active To
+              </div>
+              <div className="flex gap-1 ">
+                {" "}
+                <div className="!text-card-grey">
+                  {version.active_to
+                    ? dayjs(version.active_to).format("YYYY/MM/DD")
+                    : "-"}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-card-text gap-2 mb-1">
+              <div className="font-normal whitespace-nowrap leading-4">
+                Date Created
+              </div>
+              <div>
+                {" "}
+                <span> {dayjs(version.created_on).format("YYYY/MM/DD")}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="w-[254px] ml-auto"></div>
+        </div>
+      )}
     </div>
   );
 }
@@ -486,11 +601,9 @@ const PlanComponents: FC<PlanComponentsProps> = ({
   components,
   plan,
   refetch,
-  updateBillingFrequencyMutation,
   alerts,
   plan_version_id,
 }) => {
-  const selectRef = useRef<HTMLSelectElement | null>(null!);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [alertThreshold, setAlertThreshold] = useState(0);
   const [isCreateAlert, setIsCreateAlert] = useState(true);
@@ -578,10 +691,10 @@ const PlanComponents: FC<PlanComponentsProps> = ({
             <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
           </div>
           <div className="grid gap-6 grid-cols-1 xl:grid-cols-4">
-            {components.map((component) => (
+            {components.map((component, index) => (
               <div
-                className="pt-2 bg-primary-50 mt-2 relative mb-2 px-4 min-h-[152px] min-w-[270px]"
-                key={component.id}
+                className="pt-2 pb-4 bg-primary-50 mt-2 relative  mb-2 p-4 min-h-[152px] min-w-[270px]"
+                key={index}
               >
                 <div className="text-base text-card-text align-middle">
                   <div> {component.billable_metric.metric_name}</div>
@@ -625,6 +738,81 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                       },
                     ]}
                   />
+                  {component.invoicing_interval_count && (
+                    <Table
+                      dataSource={[
+                        { count: component.invoicing_interval_count },
+                      ]}
+                      pagination={false}
+                      showHeader={false}
+                      bordered={false}
+                      className="noborderTable mb-12"
+                      size="middle"
+                      columns={[
+                        {
+                          title: "Charge Interval",
+                          dataIndex: "charge_interval",
+                          key: "charge_interval",
+                          align: "left",
+                          width: "50%",
+                          className: "bg-primary-50 pointer-events-none",
+                          render: () => <span>Charge Interval</span>,
+                        },
+                        {
+                          title: "Cost",
+                          align: "left",
+                          dataIndex: "cost_per_batch",
+                          key: "cost_per_batch",
+                          className:
+                            "bg-primary-50 pointer-events-none !text-card-grey arr",
+                          render: (_, record) => (
+                            <div>
+                              {record.count} {record.count > 1 ? "Days" : "Day"}
+                            </div>
+                          ),
+                        },
+                      ]}
+                    />
+                  )}
+                  {component.prepaid_charge && (
+                    <Table
+                      dataSource={[component.prepaid_charge]}
+                      pagination={false}
+                      showHeader={false}
+                      bordered={false}
+                      className="noborderTable mb-12"
+                      size="middle"
+                      columns={[
+                        {
+                          title: "Prepaid Quantity",
+                          dataIndex: "prepaid_quantity",
+                          key: "prepaid_quantity",
+                          align: "left",
+                          width: "50%",
+                          className: "bg-primary-50 pointer-events-none",
+                          render: () => (
+                            <span className="underline underline-offset-2">
+                              Prepaid Quantity
+                            </span>
+                          ),
+                        },
+                        {
+                          title: "units",
+                          align: "left",
+                          dataIndex: "units",
+                          key: "units",
+                          className:
+                            "bg-primary-50 pointer-events-none !text-card-grey arr",
+                          render: (_, record) => (
+                            <div>
+                              {record.units}{" "}
+                              {record.units > 1 ? "Units" : "Unit"}
+                            </div>
+                          ),
+                        },
+                      ]}
+                    />
+                  )}
                 </div>
                 <div className="w-[96%] h-[1.5px] bg-card-divider" />
                 <div className="self-end">
@@ -742,7 +930,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
               </div>
             </Modal>
           </div>
-          <div>
+          {/* <div>
             <Select>
               <Select.Label className="">Billing Frequency</Select.Label>
               <Select.Select
@@ -761,7 +949,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                 ))}
               </Select.Select>
             </Select>
-          </div>
+          </div> */}
         </div>
       ) : (
         <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card">

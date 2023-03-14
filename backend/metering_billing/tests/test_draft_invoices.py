@@ -5,12 +5,8 @@ from decimal import Decimal
 
 import pytest
 from django.urls import reverse
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
-
-from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
+    BillingRecord,
     Event,
     Invoice,
     Metric,
@@ -22,6 +18,9 @@ from metering_billing.models import (
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PRICE_ADJUSTMENT_TYPE
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -116,8 +115,6 @@ def draft_invoice_test_common_setup(
                 metric_units_per_batch=mupb,
             )
         setup_dict["billing_plan"] = plan_version
-        plan.display_version = plan_version
-        plan.save()
         subscription_record = add_subscription_record_to_org(
             org, plan_version, customer, now_utc() - timedelta(days=3)
         )
@@ -148,8 +145,13 @@ class TestGenerateInvoice:
     def test_generate_invoice_with_price_adjustments(
         self, draft_invoice_test_common_setup
     ):
-        setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
+        # deleting inv objects because it marks it as already paid and we get 0s everywhere
 
+        setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
+        Invoice.objects.all().delete()
+        br = BillingRecord.objects.filter(recurring_charge__isnull=False).first()
+        br.next_invoicing_date = br.invoicing_dates[0]
+        br.save()
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
             "include_next_period": False,
@@ -237,7 +239,7 @@ class TestGenerateInvoice:
         payload = {
             "start_date": now_utc() - timedelta(days=5),
             "customer_id": setup_dict["customer"].customer_id,
-            "plan_id": setup_dict["billing_plan"].plan.plan_id,
+            "version_id": setup_dict["billing_plan"].version_id,
         }
         for i in range(5):
             payload["subscription_filters"] = [
@@ -245,7 +247,7 @@ class TestGenerateInvoice:
             ]
 
             response = setup_dict["client"].post(
-                reverse("subscription-add"),
+                reverse("subscription-list"),
                 data=json.dumps(payload, cls=DjangoJSONEncoder),
                 content_type="application/json",
             )
@@ -266,15 +268,5 @@ class TestGenerateInvoice:
                 _quantity=3,
             )
 
-        payload = {
-            "customer_id": setup_dict["customer"].customer_id,
-            "include_next_period": False,
-        }
-        result_invoices = generate_invoice(
-            SubscriptionRecord.objects.all(),
-            draft=False,
-        )
-
-        assert len(result_invoices) == 1
-
-        assert result_invoices[0].invoice_pdf != ""
+        result_invoice = Invoice.objects.order_by("-invoice_number").first()
+        assert result_invoice.invoice_pdf != ""

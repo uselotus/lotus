@@ -49,7 +49,11 @@ function CustomerDetail() {
   const [endDate, setEndDate] = useState<string>(dayjs().format("YYYY-MM-DD"));
   const { data: plans }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
     ["plan_list"],
-    () => Plan.getPlans().then((res) => res)
+    () =>
+      Plan.getPlans({
+        version_custom_type: "public_only",
+        version_status: "active",
+      }).then((res) => res)
   );
 
   const { data: pricingUnits }: UseQueryResult<CurrencyType[]> = useQuery<
@@ -106,10 +110,8 @@ function CustomerDetail() {
   );
 
   const cancelSubscriptionMutation = useMutation(
-    (obj: {
-      post: CancelSubscriptionBody;
-      params: CancelSubscriptionQueryParams;
-    }) => Customer.cancelSubscription(obj.params, obj.post),
+    (obj: { post: CancelSubscriptionBody; subscription_id: string }) =>
+      Customer.cancelSubscription(obj.subscription_id, obj.post),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
@@ -160,11 +162,11 @@ function CustomerDetail() {
 
   const cancelSubscription = (
     props: CancelSubscriptionBody,
-    params: CancelSubscriptionQueryParams
+    subscription_id: string
   ) => {
     cancelSubscriptionMutation.mutate({
       post: props,
-      params,
+      subscription_id,
     });
   };
 
@@ -322,8 +324,8 @@ function CustomerDetail() {
         >
           <p>
             Are you sure you want to delete this customer? This action cannot be
-            undone and will cancel all of the customer's current subscriptions
-            without billing.
+            undone and will cancel all of the customer&apos;s current
+            subscriptions without billing.
           </p>
         </Modal>
       )}

@@ -45,7 +45,6 @@ def org_test_common_setup(
         }
         setup_dict["plan_version_payload"] = {
             "description": "test_plan_version_description",
-            "make_active": True,
             "recurring_charges": [
                 {
                     "name": "test_recurring_charge",

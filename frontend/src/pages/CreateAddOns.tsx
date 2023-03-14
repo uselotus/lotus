@@ -1,3 +1,5 @@
+/* eslint-disable no-plusplus */
+/* eslint-disable camelcase */
 import { Button, Card, Form, Input, InputNumber, Select } from "antd";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -8,15 +10,16 @@ import {
   CreateRecurringCharge,
   PlanType,
 } from "../types/plan-type";
-import { Plan, Organization, Addon } from "../api/api";
+import { Plan, Organization, AddOn } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
 import { PageLayout } from "../components/base/PageLayout";
 import { ComponentDisplay } from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import { CurrencyType } from "../types/pricing-unit-type";
-import { AddonTypeOption, CreateAddonType } from "../types/addon-type";
+import { AddOnTypeOption, CreateAddOnType } from "../types/addon-type";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
+import { components } from "../gen-types";
 
 interface ComponentDisplay {
   metric: string;
@@ -49,12 +52,12 @@ function CreateAddOns() {
   const navigate = useNavigate();
   const [componentsData, setComponentsData] = useState<CreateComponent[]>([]);
   const [form] = Form.useForm();
-  const [addon_name, setAddonName] = useState<string | null>("Ex: words count");
+  const [addon_name, setAddOnName] = useState<string | null>(null!);
   const [description, setDescription] = useState<string | null>(null);
   const [billing_frequency, setBillingFrequency] = useState<string | null>(
     "one_time"
   );
-  const [addon_type, setAddonType] = useState<AddonTypeOption>("flat_fee");
+  const [addon_type, setAddOnType] = useState<AddOnTypeOption>("flat_fee");
   const [base_cost, setBaseCost] = useState<number | null>(0.0);
   const [recurring_flat_fee_timing, setRecurringFlatFeeTiming] = useState<
     "in_advance" | "in_arrears"
@@ -87,7 +90,8 @@ function CreateAddOns() {
   }, []);
 
   const mutation = useMutation(
-    (add_on: CreateAddonType) => Addon.createAddon(add_on),
+    (add_on: components["schemas"]["AddOnCreateRequest"]) =>
+      AddOn.createAddOn(add_on),
     {
       onSuccess: () => {
         toast.success("Successfully created Add-on", {
@@ -112,6 +116,7 @@ function CreateAddOns() {
           (feat) => feat.feature_id === newFeatures[i].feature_id
         )
       ) {
+        //
       } else {
         setPlanFeatures((prev) => [...prev, newFeatures[i]]);
       }
@@ -189,17 +194,22 @@ function CreateAddOns() {
     navigate(-1);
   };
 
-  const submitAddons = () => {
+  const submitAddOns = () => {
     const usagecomponentslist: CreateComponent[] = [];
     const components: any = Object.values(componentsData);
     if (components) {
       for (let i = 0; i < components.length; i++) {
-        const usagecomponent: CreateComponent = {
+        const usagecomponent = {
           metric_id: components[i].metric_id,
           tiers: components[i].tiers,
-          proration_granularity: components[i].proration_granularity,
+          reset_interval_count: components[i].reset_interval_count,
+          reset_interval_unit: components[i].reset_interval_unit,
+          invoicing_interval_count: components[i].invoicing_interval_count,
+          invoicing_interval_unit: components[i].invoicing_interval_unit,
+
+          prepaid_charge: components[i].prepaid_charge,
         };
-        usagecomponentslist.push(usagecomponent);
+        usagecomponentslist.push(usagecomponent as any);
       }
     }
     const featureIdList: string[] = [];
@@ -218,16 +228,20 @@ function CreateAddOns() {
       charge_behavior: "prorate",
     });
 
-    const addons: CreateAddonType = {
-      addon_name: addon_name,
-      description: description,
-      addon_type: addon_type,
-      billing_frequency: billing_frequency,
-      recurring_charges: recurring_charges,
-      components: usagecomponentslist.length ? usagecomponentslist : [],
-      features: featureIdList.length ? featureIdList : [],
-      invoice_when: invoice_when,
-      currency_code: selectedCurrency.code,
+    const addons: components["schemas"]["AddOnCreateRequest"] = {
+      addon_name: addon_name as string,
+      addon_description: description as string,
+      initial_version: {
+        invoice_when: invoice_when as
+          | "invoice_on_attach"
+          | "invoice_on_subscription_end",
+        billing_frequency: billing_frequency as "one_time" | "recurring",
+        components: usagecomponentslist.length
+          ? (usagecomponentslist as any)
+          : [],
+        features: featureIdList.length ? featureIdList : [],
+        currency_code: selectedCurrency.code,
+      },
     };
     mutation.mutate(addons);
   };
@@ -310,7 +324,7 @@ function CreateAddOns() {
         <Form
           form={form}
           name="create_addons"
-          onFinish={submitAddons}
+          onFinish={submitAddOns}
           onFinishFailed={onFinishFailed}
           autoComplete="off"
           labelCol={{ span: 8 }}
@@ -333,8 +347,7 @@ function CreateAddOns() {
                 <Input
                   className="w-full"
                   placeholder="Ex: words count"
-                  onChange={(e) => setAddonName(e.target.value)}
-                  defaultValue={addon_name}
+                  onChange={(e) => setAddOnName(e.target.value)}
                 />
               </Form.Item>
               <Form.Item name="description">
@@ -356,7 +369,7 @@ function CreateAddOns() {
                     } else {
                       setShowInvoicing(true);
                     }
-                    setAddonType(e);
+                    setAddOnType(e);
                   }}
                   className="w-full"
                   defaultValue={addon_type}

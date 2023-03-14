@@ -62,6 +62,4 @@ def add_plan_id_parent_plan_target_customer_to_required(result, **kwargs):
         schemas["Plan"]["required"].append("parent_plan")
     if "target_customer" not in schemas["Plan"]["required"]:
         schemas["Plan"]["required"].append("target_customer")
-    if "status" not in schemas["Plan"]["required"]:
-        schemas["Plan"]["required"].append("status")
     return result

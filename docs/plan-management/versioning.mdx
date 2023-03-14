@@ -1,6 +1,6 @@
 ---
 title: "Plan Versioning"
-description: "Using Lotus' plan versioning feature, you can easily
+description: "With Lotus' plan versioning, you can easily
 create new versions of your plans, and control the behavior of users who are on
 older versions of your plans."
 ---
@@ -14,7 +14,7 @@ Our versioning system works by having all versions of a plan be either `active`
 only specify a plan id and not a specific version), `grandfathered` (no longer
 displayed by default, but still available to customers who are already on that
 plan), and `inactive`/`archived` (no active subscriptions, the only difference
-is archived won't show up in the versions screen to reduce clutter).
+is that archived won't show up in the versions screen to reduce clutter).
 
 Currently, we support:
 
@@ -26,5 +26,11 @@ Currently, we support:
 - Creating plan versions as inactive, giving you the flexibility to
   [run backtests](/experimentation/backtests) or do other necessary testing
   before making a plan version active
+
+## Multi-Currency Versions
+
+In addition, each version can have multiple currencies. You have to define the prices for each currency (we don't currently integrate with an exchange rate api nor do we believe that is the smartest behavior for your business).
+
+This enables you to define multiple currency plans under the same version, so that you can serve customers globally.
 
 ![Plan Versioning](/images/plan-management/plan_versioning-e8c31c8a1244fe5d34f9e66d6385a525.png)

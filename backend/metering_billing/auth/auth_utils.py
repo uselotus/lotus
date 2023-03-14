@@ -2,6 +2,7 @@ from django.core.cache import cache
 from django.http import HttpResponseBadRequest
 from django.utils.translation import gettext_lazy as _
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
+
 from metering_billing.exceptions import (
     NoMatchingAPIKey,
     OrganizationMismatch,
@@ -86,3 +87,27 @@ def fast_api_key_validation_and_cache(request):
         )
         cache.set(key, organization_pk, timeout)
     return organization_pk, True
+
+
+class PermissionPolicyMixin:
+    def check_permissions(self, request):
+        try:
+            # This line is heavily inspired from `APIView.dispatch`.
+            # It returns the method associated with an endpoint.
+            handler = getattr(self, request.method.lower())
+        except AttributeError:
+            handler = None
+
+        try:
+            if (
+                handler
+                and self.permission_classes_per_method
+                and self.permission_classes_per_method.get(handler.__name__)
+            ):
+                self.permission_classes = self.permission_classes_per_method.get(
+                    handler.__name__
+                )
+        except Exception:
+            pass
+
+        super().check_permissions(request)

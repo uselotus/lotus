@@ -7,6 +7,8 @@ import {
   Modal,
   Select,
   Table,
+  Input,
+  Checkbox,
 } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import "./UsageComponentForm.css";
@@ -19,6 +21,30 @@ import { CurrencyType } from "../../types/pricing-unit-type";
 
 const { Option } = Select;
 const { Panel } = Collapse;
+
+function resetValidationLogic(reset_unit, invoicing_unit) {
+  if (invoicing_unit && reset_unit) {
+    if (reset_unit === "week" && invoicing_unit === "day") {
+      return Promise.reject(
+        "Reset interval unit must be less than or equal to invoicing interval unit"
+      );
+    }
+    if (reset_unit === "month" && ["day", "week"].includes(invoicing_unit)) {
+      return Promise.reject(
+        "Reset interval unit must be less than or equal to invoicing interval unit"
+      );
+    }
+    if (
+      reset_unit === "year" &&
+      ["day", "week", "month"].includes(invoicing_unit)
+    ) {
+      return Promise.reject(
+        "Reset interval unit must be less than or equal to invoicing interval unit"
+      );
+    }
+  }
+  return Promise.resolve();
+}
 
 const EditableContext = React.createContext<FormInstance<any> | null>(null);
 type EditableTableProps = Parameters<typeof Table>[0];
@@ -281,12 +307,27 @@ function UsageComponentForm({
   const [metricObjects, setMetricObjects] = useState<MetricType[]>([]);
   const [metricGauge, setMetricGauge] = useState<boolean>(false);
   const selectedMetricName = Form.useWatch("metric", form);
+  const [componentIntervalOptions, setComponentIntervalOptions] = useState<
+    string[]
+  >([]);
+  const [componentIntervalUnitLimit, setComponentIntervalUnitLimit] =
+    useState<number>(100);
 
-  const [prorationGranularity, setProrationGranularity] = useState<string>(
-    editComponentItem?.proration_granularity ?? "total"
+  const [prepaidType, setPrepaidType] = useState<
+    "dynamic" | "predefined" | null
+  >(editComponentItem?.prepaid_charge?.charge_type ?? null);
+
+  const backupDefaultFormValues = {
+    charge_behavior:
+      editComponentItem?.prepaid_charge?.charge_behavior ?? "full",
+    units: editComponentItem?.prepaid_charge?.units ?? null,
+  };
+
+  const initalData = Object.assign(
+    {},
+    backupDefaultFormValues,
+    editComponentItem
   );
-
-  const initalData = editComponentItem ?? null;
   const [errorMessage, setErrorMessage] = useState("");
   const buttonRef = useRef<HTMLButtonElement | undefined>(undefined!);
   const initialTier: Tier[] = [
@@ -303,33 +344,15 @@ function UsageComponentForm({
       undefined
   );
 
-  /// Ouput accepted proration grandularities for a given metric
-  /// with a given period
-  const generateValidProrationGranularity = () => {
-    const all_proration_granularity = [
-      "seconds",
-      "minutes",
-      "hours",
-      "days",
-      "months",
-    ];
-    const currentMetric = metricObjects.find(
-      (metric) => metric.metric_name === form.getFieldValue("metric")
-    );
-
-    const valid_granularities: string[] = [];
-    if (currentMetric) {
-      for (let i = 0; i < all_proration_granularity.length; i++) {
-        if (currentMetric.granularity === all_proration_granularity[i]) {
-          valid_granularities.push(all_proration_granularity[i]);
-          break;
-        } else {
-          valid_granularities.push(all_proration_granularity[i]);
-        }
-      }
+  useEffect(() => {
+    if (planDuration === "monthly") {
+      setComponentIntervalOptions(["day", "week"]);
+    } else if (planDuration === "yearly") {
+      setComponentIntervalOptions(["day", "month"]);
+    } else if (planDuration === "quarterly") {
+      setComponentIntervalOptions(["day", "week", "month"]);
     }
-    return valid_granularities;
-  };
+  }, [planDuration]);
 
   useEffect(() => {
     setMetricGauge(
@@ -398,6 +421,14 @@ function UsageComponentForm({
       row.cost_per_batch = 0;
       row.metric_units_per_batch = undefined;
     }
+
+    if (row.type === "per_unit" && !row.batch_rounding_type) {
+      row.batch_rounding_type = "no_rounding";
+    }
+    if (row.type === "per_unit" && !row.metric_units_per_batch) {
+      row.metric_units_per_batch = 1;
+    }
+
     setRangeEnd(row.range_end);
     const item = newData[index];
     newData.splice(index, 1, {
@@ -455,7 +486,7 @@ function UsageComponentForm({
       align: "center",
     },
     {
-      title: `Amount (${currency.symbol})`,
+      title: `Amount (${currency?.symbol})`,
       dataIndex: "cost_per_batch",
       editable: true,
       align: "center",
@@ -542,7 +573,7 @@ function UsageComponentForm({
     <Modal
       visible={visible}
       title="Create Component"
-      okText="Create New Component"
+      okText={editComponentItem ? "Update Component" : "Create New Component"}
       okType="primary"
       cancelText="Cancel"
       width={900}
@@ -568,8 +599,20 @@ function UsageComponentForm({
               handleComponentAdd({
                 metric: values.metric,
                 tiers: currentTiers,
-                proration_granularity: prorationGranularity,
                 metric_id: currentMetric?.metric_id,
+                reset_interval_count: values.reset_interval_count,
+                reset_interval_unit: values.reset_interval_unit,
+                invoicing_interval_count: values.invoicing_interval_count,
+                invoicing_interval_unit: values.invoicing_interval_unit,
+                id: initalData?.id,
+                prepaid_charge:
+                  prepaidType !== null
+                    ? {
+                        units: values.units,
+                        charge_type: prepaidType,
+                        charge_behavior: values.charge_behavior,
+                      }
+                    : null,
               });
 
               form.submit();
@@ -591,6 +634,8 @@ function UsageComponentForm({
             label="Metric"
             className="col-span-11"
             name="metric"
+            labelCol={{ span: 24 }}
+            wrapperCol={{ span: 24 }}
             rules={[
               {
                 required: true,
@@ -604,25 +649,6 @@ function UsageComponentForm({
               ))}
             </Select>
           </Form.Item>
-
-          {/* TODO
-          <Form.Item
-            label="Reset Frequency"
-            className="col-span-11"
-            name="metric"
-            rules={[
-              {
-                required: true,
-                message: "Please select a metric",
-              },
-            ]}
-          >
-            <Select>
-              {metrics?.map((metric_name) => (
-                <Option value={metric_name}>{metric_name}</Option>
-              ))}
-            </Select>
-          </Form.Item> */}
         </div>
         {gaugeGranularity && gaugeGranularity !== "total" && (
           <p className="text-darkgold mb-4">
@@ -657,17 +683,78 @@ function UsageComponentForm({
         {errorMessage !== "" && (
           <p className="flex justify-center text-danger">{errorMessage}</p>
         )}
-        <div className="mt-8 mb-12">
-          {/* <Collapse
+        <div className="mt-8 mb-12 space-y-6">
+          <Collapse
             className="col-span-full bg-white py-8 rounded"
-            defaultActiveKey={"1"}
+            defaultActiveKey={initalData?.prepaid_charge ? [1] : []}
           >
-            <Panel header="Advanced Settings" key="1"> */}
-          {/* <div className="mb-8">
-                (Optional) Separate Reporting Based on Distinct Property Value
+            <Panel header="Pre-Paid Usage" key="1">
+              <div className="grid grid-cols-2 gap-8">
+                <Form.Item>
+                  <Checkbox
+                    checked={prepaidType === "predefined"}
+                    onChange={(e) => {
+                      setPrepaidType(e.target.checked ? "predefined" : null);
+                      if (e.target.checked) {
+                        form.setFieldValue("units", 0);
+                      } else {
+                        form.setFieldValue("units", null);
+                      }
+                    }}
+                  >
+                    Predefined. Manually adjust the number of units a user has
+                    paid for.
+                  </Checkbox>
+                </Form.Item>
+                <Form.Item>
+                  <Checkbox
+                    checked={prepaidType === "dynamic"}
+                    onChange={(e) => {
+                      setPrepaidType(e.target.checked ? "dynamic" : null);
+                    }}
+                  >
+                    Dynamic. New units will be automatically charged as they get
+                    reported through track event.
+                  </Checkbox>
+                </Form.Item>
               </div>
 
-              <div className="grid grid-flow-col items-center mb-8">
+              {prepaidType === "predefined" && (
+                <div>
+                  <div className="mb-8">
+                    Add a number of initial pre-paid units to the plan.
+                  </div>
+
+                  <Form.Item
+                    name="units"
+                    rules={[
+                      {
+                        required: prepaidType === "predefined",
+                        message: "Please input a number of units",
+                      },
+                    ]}
+                  >
+                    <Input type="number" placeholder="Pre-paid units" />
+                  </Form.Item>
+                </div>
+              )}
+
+              {prepaidType !== null && (
+                <div>
+                  <div className="mb-8">
+                    How should pre-paid usage be charged in the middle of a
+                    billing cycle?
+                  </div>
+                  <Form.Item name="charge_behavior">
+                    <Select>
+                      <Option value="full">Full</Option>
+                      <Option value="prorate">Prorate</Option>
+                    </Select>
+                  </Form.Item>
+                </div>
+              )}
+
+              {/* <div className="grid grid-flow-col items-center mb-8">
                 <p>Property:</p>
                 <Input
                   onChange={(e) => {
@@ -685,7 +772,7 @@ function UsageComponentForm({
                   </p>
                 )} */}
 
-          {/* {metricGauge === true && (
+              {/* {metricGauge === true && (
                 <Fragment>
                   <div className="separator mb-8"></div>
                   <div className="grid grid-flow-col items-center mb-4">
@@ -711,8 +798,70 @@ function UsageComponentForm({
                   )}
                 </Fragment>
               )} */}
-          {/* </Panel>
-          </Collapse> */}
+            </Panel>
+          </Collapse>
+          <Collapse
+            className="col-span-full bg-white py-8 rounded"
+            defaultActiveKey={initalData ? [1] : []}
+          >
+            <Panel header="Component Settings" key="1">
+              <div className="mb-8">
+                <p className="mb-4">
+                  <b>
+                    How often does the usage for this component get invoiced?
+                  </b>
+                </p>
+
+                <div className="grid grid-cols-2 mb-4 gap-8">
+                  <Form.Item
+                    name="invoicing_interval_count"
+                    label="Invoicing Interval"
+                  >
+                    <Input type="number" placeholder="N/A" />
+                  </Form.Item>
+                  <Form.Item name="invoicing_interval_unit">
+                    <Select>
+                      {componentIntervalOptions.map((option) => (
+                        <Option value={option}>{option}s</Option>
+                      ))}
+                      <Option value={null}>Same as plan duration</Option>
+                    </Select>
+                  </Form.Item>
+                </div>
+                <p className="mb-4">
+                  <b>How often does the usage reset for this component?</b>
+                </p>
+                <div className="grid grid-cols-2 mb-4 gap-8">
+                  <Form.Item name="reset_interval_count" label="Reset Interval">
+                    <Input type="number" placeholder="N/A" />
+                  </Form.Item>
+                  <Form.Item
+                    name="reset_interval_unit"
+                    rules={[
+                      ({ getFieldValue }) => ({
+                        validator(_, value) {
+                          const invoicingIntervalUnit = getFieldValue(
+                            "invoicing_interval_unit"
+                          );
+                          return resetValidationLogic(
+                            value,
+                            invoicingIntervalUnit
+                          );
+                        },
+                      }),
+                    ]}
+                  >
+                    <Select>
+                      {componentIntervalOptions.map((option) => (
+                        <Option value={option}>{option}s</Option>
+                      ))}
+                      <Option value={null}>Same as plan duration</Option>
+                    </Select>
+                  </Form.Item>
+                </div>
+              </div>
+            </Panel>
+          </Collapse>
         </div>
       </Form>
     </Modal>

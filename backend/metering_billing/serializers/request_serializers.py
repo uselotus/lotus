@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from metering_billing.models import Customer
+from metering_billing.models import Customer, PlanVersion
 from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganization,
 )
@@ -64,4 +64,61 @@ class OrganizationSettingFilterSerializer(serializers.Serializer):
         required=False,
         help_text="Filters organization_settings to a single setting_group. Defaults to returning all settings.",
         choices=ORGANIZATION_SETTING_GROUPS.choices,
+    )
+
+
+class TargetCustomersSerializer(serializers.Serializer):
+    customer_ids = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        required=True,
+        many=True,
+        source="customers",
+    )
+
+
+class SetReplaceWithSerializer(serializers.Serializer):
+    replace_with = SlugRelatedFieldWithOrganization(
+        slug_field="version_id",
+        queryset=PlanVersion.plan_versions.all(),
+        required=True,
+        help_text="The plan version to replace the current version with.",
+    )
+
+
+class MakeReplaceWithSerializer(serializers.Serializer):
+    versions_to_replace = SlugRelatedFieldWithOrganization(
+        slug_field="version_id",
+        queryset=PlanVersion.plan_versions.all(),
+        required=True,
+        many=True,
+        help_text="The plan versions that will get replaced by the current version.",
+    )
+
+
+class PlansChangeActiveDatesForVersionNumberSerializer(serializers.Serializer):
+    versions_to_edit = SlugRelatedFieldWithOrganization(
+        slug_field="version_id",
+        queryset=PlanVersion.plan_versions.all(),
+        required=True,
+        many=True,
+        help_text="The plan versions that will get their active dates changed.",
+    )
+
+
+class PlansSetReplaceWithForVersionNumberSerializer(serializers.Serializer):
+    replacement_version_number = serializers.IntegerField(
+        required=True,
+        help_text="The version number of the plan that will replace the current version.",
+        min_value=1,
+    )
+
+
+class PlansSetTransitionToForVersionNumberSerializer(serializers.Serializer):
+    transition_to_plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        queryset=PlanVersion.plan_versions.all(),
+        required=True,
+        help_text="The plan that the current version will transition to.",
+        source="transition_to_plan",
     )

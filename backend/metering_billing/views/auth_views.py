@@ -91,7 +91,6 @@ class LoginView(LoginViewMixin, APIView):
 
         username = data.get("username")
         password = data.get("password")
-
         if username is None or password is None:
             return Response(
                 {"detail": "Please provide username and password."},

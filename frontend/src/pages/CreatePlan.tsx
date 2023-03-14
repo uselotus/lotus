@@ -1,40 +1,39 @@
 /* eslint-disable no-shadow */
 /* eslint-disable camelcase */
 /* eslint-disable no-plusplus */
-import {
-  Button,
-  Card,
-  Col,
-  Form,
-  Input,
-  InputNumber,
-  Radio,
-  Row,
-  Select,
-} from "antd";
+import { Button, Col, Form, Modal, Row } from "antd";
 // @ts-ignore
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
+import clsx from "clsx";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
-import moment from "moment";
 
 import {
   CreateComponent,
-  CreateInitialVersionType,
-  CreatePlanType,
   PlanType,
+  CreateRecurringCharge,
+  CreatePlanRequestType,
+  CreateComponentRequestType,
 } from "../types/plan-type";
 import { Plan, Organization } from "../api/api";
-import { CreateFeatureType, FeatureType } from "../types/feature-type";
+import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
-import LinkExternalIds from "../components/Plans/LinkExternalIds";
 import { PageLayout } from "../components/base/PageLayout";
-import { ComponentDisplay } from "../components/Plans/ComponentDisplay";
-import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import { CurrencyType } from "../types/pricing-unit-type";
-import { CreateRecurringCharge } from "../types/plan-type";
+import PlanInformation, {
+  validate as validatePlanInformation,
+} from "../components/Plans/CreatePlan/PlanInformation";
+import VersionInformation, {
+  validate as validateVersionInformation,
+} from "../components/Plans/CreatePlan/VersionInformation";
+import ChargesAndFeatures, {
+  validate as validateChargesAndFeatures,
+} from "../components/Plans/CreatePlan/ChargesAndFeatures";
+import BreadCrumbs from "../components/BreadCrumbs";
+import RecurringChargeForm from "../components/Plans/RecurringChargeForm";
+import { components } from "../gen-types";
 
 interface ComponentDisplay {
   metric: string;
@@ -52,14 +51,18 @@ const durationConversion = {
 };
 
 function CreatePlan() {
+  const [showRecurringChargeModal, setShowRecurringChargeModal] =
+    useState<boolean>(false);
+  const [isCurrentStepValid, setIsCurrentStepValid] = useState<boolean>(false);
+  const [showCreateCustomPlanModal, setShowCreateCustomPlanModal] =
+    useState<boolean>(false);
+  const [currentStep, setCurrentStep] = useState<number>(0);
   const [componentVisible, setcomponentVisible] = useState<boolean>();
   const [allPlans, setAllPlans] = useState<PlanType[]>([]);
   const [allCurrencies, setAllCurrencies] = useState<CurrencyType[]>([]);
-  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>({
-    symbol: "",
-    code: "",
-    name: "",
-  });
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType | null>(
+    null
+  );
   const [featureVisible, setFeatureVisible] = useState<boolean>(false);
   const [priceAdjustmentType, setPriceAdjustmentType] =
     useState<string>("none");
@@ -67,6 +70,9 @@ function CreatePlan() {
   const [componentsData, setComponentsData] = useState<CreateComponent[]>([]);
   const [form] = Form.useForm();
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>([]);
+  const [recurringCharges, setRecurringCharges] = useState<
+    components["schemas"]["PlanDetail"]["versions"][0]["recurring_charges"]
+  >([]);
   const [month, setMonth] = useState(1);
   const [editComponentItem, setEditComponentsItem] =
     useState<CreateComponent>();
@@ -95,9 +101,8 @@ function CreatePlan() {
     }
   }, []);
 
-  const months = moment.months();
   const mutation = useMutation(
-    (post: CreatePlanType) => Plan.createPlan(post),
+    (post: CreatePlanRequestType) => Plan.createPlan(post),
     {
       onSuccess: () => {
         toast.success("Successfully created Plan", {
@@ -157,9 +162,24 @@ function CreatePlan() {
   const handleComponentAdd = (newData: any) => {
     const old = componentsData;
 
+    /// check if the metricId on newdata is already in a component in componentsData
+    // if it is then raise an alert with toast
+    // if not then add the new data to the componentsData
+
+    const metricComponentExists = componentsData.some(
+      (item) => item.metric_id === newData.metric_id
+    );
+
+    if (metricComponentExists && !editComponentItem) {
+      toast.error("Metric already exists in another component", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+      return;
+    }
+
     if (editComponentItem) {
       const index = componentsData.findIndex(
-        (item) => item.id === editComponentItem.id
+        (item) => item.metric_id === editComponentItem.metric_id
       );
       old[index] = newData;
       setComponentsData(old);
@@ -173,12 +193,15 @@ function CreatePlan() {
       ];
       setComponentsData(newComponentsData);
     }
+
     setEditComponentsItem(undefined);
     setcomponentVisible(false);
   };
 
-  const handleComponentEdit = (id: any) => {
-    const currentComponent = componentsData.filter((item) => item.id === id)[0];
+  const handleComponentEdit = (id: string) => {
+    const currentComponent = componentsData.filter(
+      (item) => item.metric_id === id
+    )[0];
 
     setEditComponentsItem(currentComponent);
     setcomponentVisible(true);
@@ -189,6 +212,7 @@ function CreatePlan() {
       componentsData.filter((item) => item.metric_id !== metric_id)
     );
   };
+
   const hideFeatureModal = () => {
     setFeatureVisible(false);
   };
@@ -209,46 +233,61 @@ function CreatePlan() {
     form
       .validateFields()
       .then((values) => {
-        const usagecomponentslist: CreateComponent[] = [];
+        const usagecomponentslist: CreateComponentRequestType[] = [];
         const components: any = Object.values(componentsData);
+
         if (components) {
           for (let i = 0; i < components.length; i++) {
-            const usagecomponent: CreateComponent = {
+            const usagecomponent: CreateComponentRequestType = {
               metric_id: components[i].metric_id,
               tiers: components[i].tiers,
-              proration_granularity: components[i].proration_granularity,
+              reset_interval_count: components[i].reset_interval_count,
+              reset_interval_unit: components[i].reset_interval_unit,
+              invoicing_interval_count: components[i].invoicing_interval_count,
+              invoicing_interval_unit: components[i].invoicing_interval_unit,
+              prepaid_charge: components[i].prepaid_charge,
             };
+
             usagecomponentslist.push(usagecomponent);
           }
         }
 
         const featureIdList: string[] = [];
+
         const features: any = Object.values(planFeatures);
+
         if (features) {
           for (let i = 0; i < features.length; i++) {
             featureIdList.push(features[i].feature_id);
           }
         }
-        const recurring_charges: CreateRecurringCharge[] = [];
-        recurring_charges.push({
-          amount: values.flat_rate,
-          charge_behavior: "prorate",
-          charge_timing: values.flat_fee_billing_type,
-          name: "Flat Fee",
-        });
+
+        const recurring_charges: CreateRecurringCharge[] = recurringCharges.map(
+          (recurringCharge) => ({
+            amount: recurringCharge.amount,
+            charge_behavior: recurringCharge.charge_behavior,
+            charge_timing: recurringCharge.charge_timing,
+            name: recurringCharge.name,
+          })
+        );
 
         if (values.usage_billing_frequency === "yearly") {
           values.usage_billing_frequency = "end_of_period";
         }
-        const initialPlanVersion: CreateInitialVersionType = {
-          description: values.description,
-          recurring_charges: recurring_charges,
+
+        const initialPlanVersion: CreatePlanRequestType["initial_version"] = {
+          version: 1,
+          localized_name: values.localized_name,
+          recurring_charges,
+          // @ts-expect-error TODO: fix this
           transition_to_plan_id: values.transition_to_plan_id,
           components: usagecomponentslist,
           features: featureIdList,
           usage_billing_frequency: values.usage_billing_frequency,
-          currency_code: values.plan_currency,
+          currency_code: selectedCurrency!.code,
+          plan_name: values.plan_name,
         };
+
         if (
           values.price_adjustment_type !== undefined &&
           values.price_adjustment_type !== "none"
@@ -279,39 +318,52 @@ function CreatePlan() {
             initialPlanVersion.day_anchor = values.day_of_month;
           }
         }
-        const plan: CreatePlanType = {
-          plan_name: values.name,
+
+        const plan: CreatePlanRequestType = {
+          plan_name: values.plane_name,
           plan_duration: values.plan_duration,
           initial_version: initialPlanVersion,
         };
+
         const links = values.initial_external_links;
+
         if (links?.length) {
           plan.initial_external_links = links.map((link) => ({
             source: "stripe",
             external_plan_id: link,
           }));
         }
+
         mutation.mutate(plan);
       })
       .catch((info) => {});
   };
 
+  const STEPS = [
+    {
+      title: "Plan Information",
+      slug: "plan-information",
+      Component: PlanInformation,
+      validate: validatePlanInformation,
+    },
+    {
+      title: "Version Information",
+      slug: "version-information",
+      Component: VersionInformation,
+      validate: validateVersionInformation,
+    },
+    {
+      title: "Charges & Features",
+      slug: "setup-charges-and-features",
+      Component: ChargesAndFeatures,
+      validate: validateChargesAndFeatures,
+    },
+  ];
+
+  const step = STEPS[currentStep];
+
   return (
-    <PageLayout
-      title="Create Plan"
-      onBack={goBackPage}
-      extra={[
-        <Button
-          key="create"
-          id="create-plan-button"
-          onClick={() => form.submit()}
-          size="large"
-          type="primary"
-        >
-          Create new plan
-        </Button>,
-      ]}
-    >
+    <PageLayout title="Create a plan" onBack={goBackPage}>
       <Form.Provider>
         <Form
           form={form}
@@ -324,375 +376,92 @@ function CreatePlan() {
             align_plan: "calendar_aligned",
             usage_billing_frequency: "monthly",
           }}
+          onChange={async () => {
+            const isValid = await step.validate(form);
+
+            setIsCurrentStepValid(isValid);
+          }}
           onFinish={submitPricingPlan}
           onFinishFailed={onFinishFailed}
           autoComplete="off"
           labelCol={{ span: 8 }}
           wrapperCol={{ span: 16 }}
+          layout="vertical"
           labelAlign="left"
         >
-          <Row gutter={[24, 24]}>
-            <Col span={10}>
-              <Row gutter={[24, 24]}>
-                <Col span="24">
-                  <Card title="Plan Information">
-                    <Form.Item
-                      label="Plan Name"
-                      name="name"
-                      rules={[
-                        {
-                          required: true,
-                          message: "Please Name Your Plan",
-                        },
-                      ]}
-                    >
-                      <Input  id="planNameInput" placeholder="Ex: Starter Plan" />
-                    </Form.Item>
-                    <Form.Item label="Description" name="description">
-                      <Input
-                        type="textarea"
-                        id="planDescInput"
-                        placeholder="Ex: Cheapest plan for small scale businesses"
-                      />
-                    </Form.Item>
-                    <Form.Item
-                      label="Plan Duration"
-                      name="plan_duration"
-                      rules={[
-                        {
-                          required: true,
-                          message: "Please select a duration",
-                        },
-                      ]}
-                    >
-                      <Radio.Group
-                        onChange={(e) => {
-                          if (e.target.value === "monthly") {
-                            setAvailableBillingTypes([
-                              { label: "Monthly", name: "monthly" },
-                            ]);
-                            form.setFieldValue(
-                              "usage_billing_frequency",
-                              "monthly"
-                            );
-                          } else if (e.target.value === "quarterly") {
-                            setAvailableBillingTypes([
-                              { label: "Monthly", name: "monthly" },
-                              { label: "Quarterly", name: "quarterly" },
-                            ]);
-                            form.setFieldValue(
-                              "usage_billing_frequency",
-                              "quarterly"
-                            );
-                          } else {
-                            setAvailableBillingTypes([
-                              { label: "Monthly", name: "monthly" },
-                              { label: "Quarterly", name: "quarterly" },
-                              { label: "Yearly", name: "yearly" },
-                            ]);
-                            form.setFieldValue(
-                              "usage_billing_frequency",
-                              "yearly"
-                            );
-                          }
-                        }}
-                      >
-                        <Radio value="monthly">Monthly</Radio>
-                        <Radio value="quarterly">Quarterly</Radio>
-                        <Radio value="yearly">Yearly</Radio>
-                      </Radio.Group>
-                    </Form.Item>
-                    <Form.Item
-                      label="When To Invoice"
-                      name="align_plan"
-                      rules={[
-                        {
-                          required: true,
-                          message: "Please Select One",
-                        },
-                      ]}
-                    >
-                      <Radio.Group>
-                        <Radio value="calendar_aligned">
-                          Every{" "}
-                          <Form.Item name="day_of_month" noStyle>
-                            <InputNumber
-                              min={1}
-                              max={31}
-                              size="small"
-                              style={{ width: "50px" }}
-                              placeholder="Day"
-                            />
-                          </Form.Item>{" "}
-                          {["quarterly", "yearly"].includes(
-                            form.getFieldValue("plan_duration")
-                          ) && (
-                            <>
-                              of{" "}
-                              <Form.Item name="month_of_year" noStyle>
-                                <select
-                                  className="border border-black rounded-sm outline-none"
-                                  onChange={(e) =>
-                                    setMonth(Number(e.target.value))
-                                  }
-                                  name="month_of_year"
-                                  id="month_of_year"
-                                >
-                                  {months.map((month, i) => (
-                                    <option value={i + 1} key={month}>
-                                      {month}
-                                    </option>
-                                  ))}
-                                </select>
-                              </Form.Item>
-                            </>
-                          )}
-                          {["monthly"].includes(
-                            form.getFieldValue("plan_duration")
-                          ) && "of the Month"}
-                        </Radio>
-                        <Radio value="subscription_aligned">
-                          Start of Subscription
-                        </Radio>
-                      </Radio.Group>
-                    </Form.Item>
-
-                    <Form.Item name="flat_rate" label="Base Cost">
-                      <InputNumber
-                        controls={false}
-                        addonBefore={
-                          selectedCurrency ? selectedCurrency.symbol : "-"
-                        }
-                        defaultValue={0}
-                        precision={2}
-                      />
-                    </Form.Item>
-                    <Form.Item
-                      name="flat_fee_billing_type"
-                      label="Base Billing Type"
-                    >
-                      <Select>
-                        <Select.Option value="in_advance">
-                          Pay in advance
-                        </Select.Option>
-                        <Select.Option value="in_arrears">
-                          Pay in arrears
-                        </Select.Option>
-                      </Select>
-                    </Form.Item>
-                    <Form.Item
-                      name="transition_to_plan_id"
-                      label="Plan on next cycle"
-                    >
-                      <Select>
-                        {allPlans.map((plan) => (
-                          <Select.Option
-                            key={plan.plan_id}
-                            value={plan.plan_id}
-                          >
-                            {plan.plan_name}
-                          </Select.Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                    <Form.Item
-                      name="initial_external_links"
-                      label="Link External IDs"
-                    >
-                      <LinkExternalIds
-                        externalIds={[]}
-                        setExternalLinks={setExternalLinks}
-                      />
-                    </Form.Item>
-                    <Form.Item name="plan_currency" label="Plan Currency">
-                      <Select
-                        onChange={(value) => {
-                          const selectedCurrency = allCurrencies.find(
-                            (currency) => currency.code === value
-                          );
-                          if (selectedCurrency) {
-                            setSelectedCurrency(selectedCurrency);
-                          }
-                        }}
-                        value={selectedCurrency?.symbol}
-                      >
-                        {allCurrencies.map((currency) => (
-                          <Select.Option
-                            key={currency.code}
-                            value={currency.code}
-                          >
-                            {currency.name} {currency.symbol}
-                          </Select.Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                  </Card>
-                </Col>
-              </Row>
-            </Col>
-
-            <Col span={14}>
-              <Card
-                title="Added Components"
-                className="h-full"
-                style={{
-                  borderRadius: "0.5rem",
-                  borderWidth: "2px",
-                  borderColor: "#EAEAEB",
-                  borderStyle: "solid",
-                }}
-                extra={[
-                  <Button
-                    key="add-component"
-                    htmlType="button"
-                    onClick={() => showComponentModal()}
-                  >
-                    Add Component
-                  </Button>,
-                ]}
+          <Row gutter={[24, 24]} justify="space-between">
+            <Col span={24}>
+              <div
+                className={clsx(["flex items-center justify-between", "mb-6"])}
               >
-                <Form.Item
-                  wrapperCol={{ span: 24 }}
-                  shouldUpdate={(prevValues, curValues) =>
-                    prevValues.components !== curValues.components
-                  }
-                >
-                  <ComponentDisplay
-                    componentsData={componentsData}
-                    handleComponentEdit={handleComponentEdit}
-                    deleteComponent={deleteComponent}
-                    pricing_unit={selectedCurrency}
-                  />
-                </Form.Item>
-                {/* <div className="inset-x-0 bottom-0 justify-center self-end">
-                  <div className="w-full border-t border-gray-300 py-2" />
-                  <div className="mx-4">
-                    <Form.Item
-                      label="Billing Frequency"
-                      name="usage_billing_frequency"
-                      shouldUpdate={(prevValues, currentValues) =>
-                        prevValues.plan_duration !== currentValues.plan_duration
+                <BreadCrumbs
+                  items={STEPS.map((step) => step.title)}
+                  activeItem={currentStep}
+                  onItemClick={async (idx) => {
+                    if (idx > currentStep) {
+                      const isValid = await step.validate(form);
+                      if (!isValid) {
+                        return;
                       }
-                      rules={[
-                        {
-                          required: true,
-                          message: "Please select an interval",
-                        },
-                      ]}
-                    >
-                      <Radio.Group>
-                        {availableBillingTypes.map((type) => (
-                          <Radio value={type.name}>{type.label}</Radio>
-                        ))}
-                      </Radio.Group>
-                    </Form.Item>
-                  </div>
-                </div> */}
-              </Card>
-            </Col>
+                    }
 
-            <Col span="24">
-              <Card
-                className="w-full my-6"
-                title="Added Features"
-                style={{
-                  borderRadius: "0.5rem",
-                  borderWidth: "2px",
-                  borderColor: "#EAEAEB",
-                  borderStyle: "solid",
-                }}
-                extra={[
-                  <Button
-                    key="add-feature"
-                    htmlType="button"
-                    onClick={showFeatureModal}
-                  >
-                    Add Feature
-                  </Button>,
-                ]}
-              >
-                <Form.Item
-                  wrapperCol={{ span: 24 }}
-                  shouldUpdate={(prevValues, curValues) =>
-                    prevValues.components !== curValues.components
-                  }
+                    setCurrentStep(idx);
+                  }}
+                />
+                <Button
+                  type="primary"
+                  disabled={!isCurrentStepValid}
+                  style={{
+                    background: "#C3986B",
+                    color: "#FFFFFF",
+                    borderColor: "#C3986B",
+                    opacity: !isCurrentStepValid ? 0.5 : 1,
+                  }}
+                  onClick={async () => {
+                    if (currentStep < STEPS.length - 1) {
+                      setIsCurrentStepValid(false);
+                      setCurrentStep(currentStep + 1);
+                      return;
+                    }
+
+                    form.submit();
+                  }}
                 >
-                  <FeatureDisplay
-                    planFeatures={planFeatures}
-                    removeFeature={removeFeature}
-                    editFeatures={editFeatures}
-                  />
-                </Form.Item>
-              </Card>
-            </Col>
-            <Col span="24">
-              <Card
-                className="w-6/12 mb-20"
-                title="Discount"
-                style={{
-                  borderRadius: "0.5rem",
-                  borderWidth: "2px",
-                  borderColor: "#EAEAEB",
-                  borderStyle: "solid",
-                }}
-              >
-                <div className="grid grid-cols-2">
-                  <Form.Item
-                    wrapperCol={{ span: 20 }}
-                    label="Type"
-                    name="price_adjustment_type"
-                  >
-                    <Select
-                      onChange={(value) => {
-                        setPriceAdjustmentType(value);
-                      }}
-                    >
-                      <Select.Option value="none">None</Select.Option>
-                      {/* <Select.Option value="price_override">
-                        Overwrite Price
-                      </Select.Option> */}
-                      <Select.Option value="percentage">
-                        Percentage Off
-                      </Select.Option>
-                      <Select.Option value="fixed">Flat Discount</Select.Option>
-                    </Select>
-                  </Form.Item>
-
-                  {priceAdjustmentType !== "none" && (
-                    <Form.Item
-                      name="price_adjustment_amount"
-                      wrapperCol={{ span: 24, offset: 4 }}
-                      shouldUpdate={(prevValues, curValues) =>
-                        prevValues.price_adjustment_type !==
-                        curValues.price_adjustment_type
-                      }
-                      rules={[
-                        {
-                          required:
-                            priceAdjustmentType !== undefined ||
-                            priceAdjustmentType !== "none",
-                          message: "Please enter a price adjustment value",
-                        },
-                      ]}
-                    >
-                      <InputNumber
-                        addonAfter={
-                          priceAdjustmentType === "percentage" ? "%" : null
-                        }
-                        addonBefore={
-                          (priceAdjustmentType === "fixed" ||
-                            priceAdjustmentType === "price_override") &&
-                          selectedCurrency
-                            ? selectedCurrency.symbol
-                            : null
-                        }
-                      />
-                    </Form.Item>
-                  )}
-                </div>
-              </Card>
+                  {currentStep === STEPS.length - 1 ? "Publish" : "Next step"}
+                </Button>
+              </div>
             </Col>
           </Row>
+
+          <step.Component
+            form={form}
+            allPlans={allPlans}
+            setAllPlans={setAllPlans}
+            availableBillingTypes={availableBillingTypes}
+            setAvailableBillingTypes={setAvailableBillingTypes}
+            month={month}
+            setMonth={setMonth}
+            allCurrencies={allCurrencies}
+            setAllCurrencies={setAllCurrencies}
+            selectedCurrency={selectedCurrency}
+            setSelectedCurrency={setSelectedCurrency}
+            priceAdjustmentType={priceAdjustmentType}
+            setPriceAdjustmentType={setPriceAdjustmentType}
+            setExternalLinks={setExternalLinks}
+            planFeatures={planFeatures}
+            editFeatures={editFeatures}
+            removeFeature={removeFeature}
+            showFeatureModal={showFeatureModal}
+            componentsData={componentsData}
+            handleComponentEdit={handleComponentEdit}
+            deleteComponent={deleteComponent}
+            showComponentModal={showComponentModal}
+            setIsCurrentStepValid={setIsCurrentStepValid}
+            showRecurringChargeModal={showRecurringChargeModal}
+            setShowRecurringChargeModal={setShowRecurringChargeModal}
+            recurringCharges={recurringCharges}
+            setRecurringCharges={setRecurringCharges}
+          />
         </Form>
 
         {componentVisible && (
@@ -703,7 +472,7 @@ function CreatePlan() {
             handleComponentAdd={handleComponentAdd}
             editComponentItem={editComponentItem}
             setEditComponentsItem={setEditComponentsItem}
-            currency={selectedCurrency}
+            currency={selectedCurrency!}
             planDuration={form.getFieldValue("plan_duration")}
           />
         )}
@@ -714,6 +483,18 @@ function CreatePlan() {
             onAddFeatures={addFeatures}
           />
         )}
+
+        {showRecurringChargeModal ? (
+          <RecurringChargeForm
+            visible={showRecurringChargeModal}
+            selectedCurrency={selectedCurrency}
+            onCancel={() => setShowRecurringChargeModal(false)}
+            onAddRecurringCharges={(newRecurringCharge) => {
+              setRecurringCharges((prev) => [...prev, newRecurringCharge]);
+              setShowRecurringChargeModal(false);
+            }}
+          />
+        ) : null}
       </Form.Provider>
     </PageLayout>
   );

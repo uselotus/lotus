@@ -1,9 +1,9 @@
 import React from "react";
-import { PlanType } from "../../types/plan-type";
+import { components } from "../../gen-types";
 import Badge from "../base/Badges/Badges";
 
 interface PlanTagsProps {
-  tags: PlanType["tags"];
+  tags: components["schemas"]["PlanDetail"]["tags"];
   showAddTagButton?: boolean;
 }
 
