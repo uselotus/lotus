@@ -25,7 +25,10 @@ from metering_billing.utils.enums import (
     ORGANIZATION_SETTING_NAMES,
     TAX_PROVIDER,
 )
-from metering_billing.webhooks import invoice_created_webhook
+from metering_billing.webhooks import (
+    invoice_created_webhook,
+    subscription_renewed_webhook,
+)
 
 logger = logging.getLogger("django.server")
 
@@ -278,6 +281,7 @@ def create_next_subscription_record(subscription_record, next_bp):
     next_subscription_record = SubscriptionRecord.objects.create(**subrec_dict)
     for f in subscription_record.filters.all():
         next_subscription_record.filters.add(f)
+    subscription_renewed_webhook(subscription=next_subscription_record)
     return next_subscription_record
 
 

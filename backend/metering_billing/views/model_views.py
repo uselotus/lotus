@@ -4,6 +4,16 @@ import logging
 import posthog
 import sentry_sdk
 from actstream.models import Action
+from api.serializers.webhook_serializers import (
+    CustomerCreatedSerializer,
+    InvoiceCreatedSerializer,
+    InvoicePaidSerializer,
+    InvoicePastDueSerializer,
+    UsageAlertTriggeredSerializer,
+    SubscriptionCancelledSerializer,
+    SubscriptionCreatedSerializer,
+    SubscriptionRenewedSerializer,
+)
 from django.conf import settings
 from django.core.cache import cache
 from django.db.utils import IntegrityError
@@ -15,14 +25,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 import api.views as api_views
-from api.serializers.webhook_serializers import (
-    CustomerCreatedSerializer,
-    InvoiceCreatedSerializer,
-    InvoicePaidSerializer,
-    SubscriptionCancelledSerializer,
-    SubscriptionCreatedSerializer,
-    UsageAlertTriggeredSerializer,
-)
+
 from metering_billing.exceptions import (
     DuplicateMetric,
     DuplicateWebhookEndpoint,
@@ -344,7 +347,7 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 "{$request.body#/webhook_url}",
                 extend_schema(
                     description="Usage alert triggered webhook",
-                    responses={200: UsageAlertTriggeredSerializer},
+                    responses={200: InvoicePastDueSerializer},
                 ),
             ),
             OpenApiCallback(
@@ -353,6 +356,14 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 extend_schema(
                     description="Subscription created webhook",
                     responses={200: SubscriptionCreatedSerializer},
+                ),
+            ),
+            OpenApiCallback(
+                WEBHOOK_TRIGGER_EVENTS.SUBSCRIPTION_RENEWED.value,
+                "{$request.body#/webhook_url}",
+                extend_schema(
+                    description="Subscription renewed webhook",
+                    responses={200: SubscriptionRenewedSerializer},
                 ),
             ),
         ]
