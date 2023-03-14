@@ -3,4 +3,5 @@ go 1.20
 use (
 	./go/event-ingestion
 	./go/event-guidance
+	./go/pkg
 )
