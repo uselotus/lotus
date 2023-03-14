@@ -410,7 +410,7 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
       <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
       {activeKey === "1" ? (
         <div className="grid  items-center grid-cols-1 md:grid-cols-2">
-          <div className="w-[240px]">
+          <div className="">
             <div className="flex items-center text-card-text justify-between mb-1">
               <div className=" font-normal whitespace-nowrap leading-4">
                 Overriden Name
@@ -515,7 +515,7 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
         </div>
       ) : (
         <div className="grid  items-center grid-cols-1 md:grid-cols-2">
-          <div className="w-[240px]">
+          <div className="">
             <div className="flex items-center text-card-text justify-between mb-1">
               <div className=" font-normal whitespace-nowrap leading-4">
                 Overriden Name

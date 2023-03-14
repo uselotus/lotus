@@ -2,7 +2,14 @@
 /* eslint-disable camelcase */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
-import React, { FC, useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  version,
+} from "react";
 
 import "./SwitchVersions.css";
 import { PlusOutlined } from "@ant-design/icons";
@@ -90,9 +97,12 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         setDeduplicatedVersions(
           newVersion as components["schemas"]["PlanDetail"]["versions"]
         );
-        setDropDownVersions(newVersion);
+        setDropDownVersions(
+          newVersion as components["schemas"]["PlanDetail"]["versions"]
+        );
         return [];
       }
+      console.log(versions, "versions");
 
       const v = versions.filter((obj) => {
         if (seen[obj.version]) {
@@ -107,22 +117,13 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         }
       });
       seen = {};
-      setDropDownVersions(
-        arr.filter((obj) => {
-          if (seen[obj.version] && seen[obj?.version_id]) {
-            return false;
-            // eslint-disable-next-line no-else-return
-          } else {
-            seen[obj.version] = true;
-            seen[obj?.version_id] = true;
-            return true;
-          }
-        })
-      );
+      console.log("arr", versions);
+      setDropDownVersions(versions);
       const newVersions = [...v];
       setDeduplicatedVersions(
         newVersions as components["schemas"]["PlanDetail"]["versions"]
       );
+      console.log("newVersions", newVersions);
     },
     []
   );
@@ -243,15 +244,11 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
           <Select
             value={`Currency:${selectedVersion?.currency?.code}-${selectedVersion?.currency?.symbol}`}
             onChange={(e) => {
-              // const arr = [
-              //   ...[selectedVersion],
-              //   ...removeDuplicateVersions(versions),
-              // ];
               if (e.split("-")[0] === "undefined") {
                 return;
               }
               const [versionNum, symbol] = e.split("-");
-              const version = versionNum.split("v")[1];
+              const version = selectedVersion?.version;
 
               const newSelectedVersion = dropDownVersions.find(
                 (el) =>
@@ -259,20 +256,21 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
                   el.currency &&
                   el.currency.symbol === symbol
               );
-
               if (newSelectedVersion) {
                 setSelectedVersion(newSelectedVersion);
               }
             }}
           >
-            {dropDownVersions.map((el) => (
-              <Select.Option
-                value={`${el?.currency?.code}-${el?.currency?.symbol}`}
-                key={el?.version_id}
-              >
-                {`Currency:${el?.currency?.code}-${el?.currency?.symbol}`}
-              </Select.Option>
-            ))}
+            {dropDownVersions
+              .filter((v) => v.version === selectedVersion?.version)
+              .map((el) => (
+                <Select.Option
+                  value={`${el?.currency?.code}-${el?.currency?.symbol}`}
+                  key={el?.version_id}
+                >
+                  {`Currency:${el?.currency?.code}-${el?.currency?.symbol}`}
+                </Select.Option>
+              ))}
           </Select>
         </div>
       </div>

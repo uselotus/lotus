@@ -109,15 +109,17 @@ export const ComponentDisplay = ({ ...props }: Props) => (
           }}
         />
 
-        <div className="text-base text-card-text">
+        <div className=" text-card-text">
           {React.Children.toArray(
             component.tiers.map((tier) => (
               <div className="flex items-center justify-between">
-                <div>
+                <div className=" font-normal whitespace-nowrap leading-4">
                   From {tier.range_start} to{" "}
                   {tier.range_end == null ? "∞" : tier.range_end}
                 </div>
-                <div>{renderCost(tier, props.pricing_unit)}</div>
+                <div className="!text-card-text">
+                  {renderCost(tier, props.pricing_unit)}
+                </div>
               </div>
             ))
           )}
