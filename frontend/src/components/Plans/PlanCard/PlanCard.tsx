@@ -76,6 +76,9 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
     navigate(`/plans/${plan.plan_id}`);
   };
 
+  // const computeNumVersions = (plan: PlanType) => {
+  //   if (plan.plan_versions.length === 0) return 0;
+
   const customerNameOrID = (target_customer: any | undefined) => {
     if (target_customer.customer_name) {
       return target_customer.customer_name;
