@@ -323,6 +323,9 @@ interface PlanInfoProps {
   activeKey: string;
 }
 export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
+  const [isTargetCustomersVisible, setIsTargetCustomersVisible] =
+    useState(false);
+
   const constructBillType = (str: string) => {
     if (str.includes("_")) {
       return str
@@ -445,14 +448,29 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
                 {`${version.currency?.code}-${version.currency?.symbol}`}
               </div>
             </div>
-            <div className="flex items-center justify-between text-card-text gap-2 mb-1">
+            <div className="flex items-center justify-between text-card-text gap-2 mb-1 relative">
               <div className="font-normal whitespace-nowrap leading-4">
                 Target Customers
               </div>
-              <div className="!text-gold underline underline-offset-2">
+              <div
+                className="!text-gold underline underline-offset-2 "
+                onMouseLeave={() => setIsTargetCustomersVisible(false)}
+                onMouseEnter={() => setIsTargetCustomersVisible(true)}
+              >
                 {" "}
-                {version.active_subscriptions}
-                {version.active_subscriptions > 1 ? " Customers" : " Customer"}
+                {version.target_customers.length}
+                {version.target_customers.length > 1
+                  ? " Customers"
+                  : " Customer"}
+                {isTargetCustomersVisible && (
+                  <div className="absolute top-full left-0 bg-white py-2 px-4 rounded-lg shadow-md text-card-text">
+                    {version.target_customers.map((customer) => (
+                      <div className="flex items-center gap-2">
+                        {customer.customer_name}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex items-center justify-between text-card-text gap-2 mb-1">
