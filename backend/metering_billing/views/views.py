@@ -25,7 +25,9 @@ from metering_billing.models import (
     Organization,
     SubscriptionRecord,
 )
-from metering_billing.netsuite_csv import get_csv_presigned_url
+from metering_billing.netsuite_csv import (
+    get_invoices_csv_presigned_url,
+)
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.model_serializers import (
@@ -35,8 +37,10 @@ from metering_billing.serializers.model_serializers import (
 from metering_billing.serializers.request_serializers import (
     CostAnalysisRequestSerializer,
     DraftInvoiceRequestSerializer,
+    OptionalPeriodRequestSerializer,
     PeriodComparisonRequestSerializer,
     PeriodMetricUsageRequestSerializer,
+    URLResponseSerializer,
 )
 from metering_billing.serializers.response_serializers import (
     CostAnalysisSerializer,
@@ -57,7 +61,11 @@ from metering_billing.utils import (
     make_all_dates_times_strings,
     make_all_decimals_floats,
 )
-from metering_billing.utils.enums import METRIC_STATUS, METRIC_TYPE, PAYMENT_PROCESSORS
+from metering_billing.utils.enums import (
+    METRIC_STATUS,
+    METRIC_TYPE,
+    PAYMENT_PROCESSORS,
+)
 
 logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -101,13 +109,13 @@ class PeriodMetricRevenueView(APIView):
             issue_date__gte=p1_start,
             issue_date__lte=p1_end,
             payment_status=Invoice.PaymentStatus.PAID,
-        ).aggregate(tot=Sum("cost_due"))["tot"]
+        ).aggregate(tot=Sum("amount"))["tot"]
         p2_collected = Invoice.objects.filter(
             organization=organization,
             issue_date__gte=p2_start,
             issue_date__lte=p2_end,
             payment_status=Invoice.PaymentStatus.PAID,
-        ).aggregate(tot=Sum("cost_due"))["tot"]
+        ).aggregate(tot=Sum("amount"))["tot"]
         return_dict["total_revenue_period_1"] = p1_collected or Decimal(0)
         return_dict["total_revenue_period_2"] = p2_collected or Decimal(0)
         # earned
@@ -734,23 +742,42 @@ class NetsuiteInvoiceCSVView(APIView):
     permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
-        request=inline_serializer(
-            name="PlansByNumCustomersRequest",
-            fields={},
-        ),
-        responses={
-            200: inline_serializer(
-                name="NetsuiteInvoiceCSVView",
-                fields={
-                    "url": serializers.URLField(),
-                },
-            ),
-        },
+        request=OptionalPeriodRequestSerializer,
+        responses=URLResponseSerializer,
     )
     def get(self, request, format=None):
         organization = request.organization
-        url = get_csv_presigned_url(organization)
+        serializer = OptionalPeriodRequestSerializer(
+            data=request.query_params, context={"organization": organization}
+        )
+        serializer.is_valid(raise_exception=True)
+        start_date = serializer.validated_data.get("start_date")
+        end_date = serializer.validated_data.get("end_date")
+        ret = get_invoices_csv_presigned_url(organization, start_date, end_date)
         return Response(
-            url,
+            URLResponseSerializer(ret).data,
+            status=status.HTTP_200_OK,
+        )
+
+
+class NetsuiteCustomerCSVView(APIView):
+    permission_classes = [IsAuthenticated | ValidOrganization]
+
+    @extend_schema(
+        request=OptionalPeriodRequestSerializer,
+        responses=URLResponseSerializer,
+    )
+    def get(self, request, format=None):
+        organization = request.organization
+        serializer = OptionalPeriodRequestSerializer(
+            data=request.query_params, context={"organization": organization}
+        )
+        serializer.is_valid(raise_exception=True)
+        # start_date = serializer.validated_data.get("start_date")
+        # end_date = serializer.validated_data.get("end_date")
+        # ret = get_customers_csv_presigned_url(organization, start_date, end_date)
+        # data = URLResponseSerializer(ret).data
+        return Response(
+            {},
             status=status.HTTP_200_OK,
         )

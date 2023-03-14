@@ -34,7 +34,7 @@ export interface ExternalLineItem {
   end_date: string;
   plan_name: string;
   start_date: string;
-  subtotal: number;
+  base: number;
   subscription_filters?: { property_name: string; value: string }[];
   sub_items: LineItem[];
 }
@@ -44,7 +44,7 @@ export interface LineItem {
   start_date: string;
   end_date: string;
   quantity: number;
-  subtotal: number;
+  base: number;
   billing_type: string;
   plan: string; // TODO::: fix
   metadata: object;

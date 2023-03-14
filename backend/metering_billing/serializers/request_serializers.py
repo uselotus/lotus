@@ -17,6 +17,16 @@ class PeriodComparisonRequestSerializer(serializers.Serializer):
     period_2_end_date = serializers.DateField()
 
 
+class OptionalPeriodRequestSerializer(serializers.Serializer):
+    start_date = serializers.DateField(required=False)
+    end_date = serializers.DateField(required=False)
+
+
+class URLResponseSerializer(serializers.Serializer):
+    url = serializers.URLField()
+    exists = serializers.BooleanField()
+
+
 class PeriodRequestSerializer(serializers.Serializer):
     start_date = serializers.DateField()
     end_date = serializers.DateField()

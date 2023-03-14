@@ -116,6 +116,10 @@ EVENT_NAME_NAMESPACE = uuid.UUID("843D7005-63DE-4B72-B731-77E2866DCCFF")
 IDEMPOTENCY_ID_NAMESPACE = uuid.UUID("904C0FFB-7005-414E-9B7D-8E3C5DDE266D")
 
 if SENTRY_DSN != "":
+    if not DEBUG:
+        trace_rate = 1.0
+    else:
+        trace_rate = 0.1
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         integrations=[
@@ -124,7 +128,7 @@ if SENTRY_DSN != "":
         # Set traces_sample_rate to 1.0 to capture 100%
         # of transactions for performance monitoring.
         # We recommend adjusting this value in production.
-        traces_sample_rate=1.0,
+        traces_sample_rate=trace_rate,
         # If you wish to associate users to errors (assuming you are using
         # django.contrib.auth) you may enable sending PII data.
         send_default_pii=True,
@@ -718,6 +722,14 @@ if SVIX_CONNECTOR is not None:
     try:
         svix = SVIX_CONNECTOR
         list_response_event_type_out = [x.name for x in svix.event_type.list().data]
+        if "customer.created" not in list_response_event_type_out:
+            event_type_out = svix.event_type.create(
+                EventTypeIn(
+                    description="Customer is created",
+                    archived=False,
+                    name="customer.created",
+                )
+            )
         if "invoice.created" not in list_response_event_type_out:
             event_type_out = svix.event_type.create(
                 EventTypeIn(
@@ -734,6 +746,30 @@ if SVIX_CONNECTOR is not None:
                     name="invoice.paid",
                 )
             )
+        if "invoice.past_due" not in list_response_event_type_out:
+            event_type_out = svix.event_type.create(
+                EventTypeIn(
+                    description="Invoice is past due",
+                    archived=False,
+                    name="invoice.past_due",
+                )
+            )
+        if "subscription.created" not in list_response_event_type_out:
+            event_type_out = svix.event_type.create(
+                EventTypeIn(
+                    description="Subscription is created",
+                    archived=False,
+                    name="subscription.created",
+                )
+            )
+        if "subscription.cancelled" not in list_response_event_type_out:
+            event_type_out = svix.event_type.create(
+                EventTypeIn(
+                    description="Subscription is cancelled",
+                    archived=False,
+                    name="subscription.cancelled",
+                )
+            )
         if "usage_alert.triggered" not in list_response_event_type_out:
             event_type_out = svix.event_type.create(
                 EventTypeIn(
@@ -742,20 +778,12 @@ if SVIX_CONNECTOR is not None:
                     name="usage_alert.triggered",
                 )
             )
-        if "customer.created" not in list_response_event_type_out:
+        if "subscription.renewed" not in list_response_event_type_out:
             event_type_out = svix.event_type.create(
                 EventTypeIn(
-                    description="Customer is created",
+                    description="Subscription is renewed",
                     archived=False,
-                    name="customer.created",
-                )
-            )
-        if "invoice.past_due" not in list_response_event_type_out:
-            event_type_out = svix.event_type.create(
-                EventTypeIn(
-                    description="Invoice is past due",
-                    archived=False,
-                    name="invoice.past_due",
+                    name="subscription.renewed",
                 )
             )
     except Exception:

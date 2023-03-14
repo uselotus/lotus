@@ -46,7 +46,7 @@ function CreateAddOns() {
     name: "",
   });
   const [featureVisible, setFeatureVisible] = useState<boolean>(false);
-  const [showInvoicing, setShowInvoicing] = useState(false);
+  const [showInvoicing, setShowInvoicing] = useState(true);
   const [priceAdjustmentType, setPriceAdjustmentType] =
     useState<string>("none");
   const navigate = useNavigate();
@@ -55,7 +55,7 @@ function CreateAddOns() {
   const [addon_name, setAddOnName] = useState<string | null>(null!);
   const [description, setDescription] = useState<string | null>(null);
   const [billing_frequency, setBillingFrequency] = useState<string | null>(
-    null
+    "one_time"
   );
   const [addon_type, setAddOnType] = useState<AddOnTypeOption>("flat_fee");
   const [base_cost, setBaseCost] = useState<number | null>(0.0);
@@ -293,7 +293,7 @@ function CreateAddOns() {
           onClick={() => form.submit()}
           size="large"
           type="primary"
-          disabled={!addon_name || !billing_frequency || !base_cost}
+          disabled={!addon_name || !billing_frequency || base_cost === null}
         >
           Preview & publish
         </Button>,
@@ -372,6 +372,7 @@ function CreateAddOns() {
                     setAddOnType(e);
                   }}
                   className="w-full"
+                  defaultValue={addon_type}
                 >
                   <Select.Option value="flat_fee">Flat</Select.Option>
                   <Select.Option value="usage">Usage Based</Select.Option>
@@ -383,6 +384,7 @@ function CreateAddOns() {
                   onChange={(e) => setBillingFrequency(e)}
                   className="w-full"
                   placeholder="One-Time"
+                  defaultValue={billing_frequency}
                 >
                   <Select.Option value="one_time">One-Time</Select.Option>
                   <Select.Option value="recurring">Recurring</Select.Option>
@@ -397,7 +399,7 @@ function CreateAddOns() {
                     onChange={(e) => {
                       setBaseCost(e!);
                     }}
-                    defaultValue={0}
+                    defaultValue={base_cost}
                     precision={2}
                     controls={false}
                   />
@@ -434,6 +436,7 @@ function CreateAddOns() {
                     onChange={(e) => setInvoiceWhen(e)}
                     placeholder="On Attach"
                     className="w-full"
+                    defaultValue={invoice_when}
                   >
                     <Select.Option value="invoice_on_attach">
                       On Attach
@@ -451,6 +454,7 @@ function CreateAddOns() {
                     onChange={(e) => setRecurringFlatFeeTiming(e)}
                     className="w-full"
                     placeholder="Pay in advance"
+                    defaultValue={recurring_flat_fee_timing}
                   >
                     <Select.Option value="in_advance">
                       Pay in advance

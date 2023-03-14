@@ -13,45 +13,6 @@ from typing import Optional
 
 import posthog
 import pytz
-from dateutil import parser
-from dateutil.relativedelta import relativedelta
-from django.conf import settings
-from django.db.models import (
-    Count,
-    DecimalField,
-    F,
-    Max,
-    Min,
-    OuterRef,
-    Prefetch,
-    Q,
-    Subquery,
-    Sum,
-    Value,
-)
-from django.db.models.functions import Coalesce
-from django.db.utils import IntegrityError
-from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import (
-    OpenApiExample,
-    OpenApiParameter,
-    extend_schema,
-    inline_serializer,
-)
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import (
-    action,
-    api_view,
-    authentication_classes,
-    permission_classes,
-)
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
 from api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
     AddOnSubscriptionRecordSerializer,
@@ -90,6 +51,33 @@ from api.serializers.nonmodel_serializers import (
     GetInvoicePdfURLResponseSerializer,
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
+)
+from dateutil import parser
+from dateutil.relativedelta import relativedelta
+from django.conf import settings
+from django.db.models import (
+    Count,
+    DecimalField,
+    F,
+    Max,
+    Min,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
+from django.db.utils import IntegrityError
+from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiParameter,
+    extend_schema,
+    inline_serializer,
 )
 from metering_billing.auth.auth_utils import (
     PermissionPolicyMixin,
@@ -145,7 +133,22 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
-from metering_billing.webhooks import customer_created_webhook
+from metering_billing.webhooks import (
+    customer_created_webhook,
+    subscription_cancelled_webhook,
+    subscription_created_webhook,
+)
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import (
+    action,
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -218,7 +221,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         )
         qs = qs.annotate(
             total_amount_due=Sum(
-                "invoices__cost_due",
+                "invoices__amount",
                 filter=Q(invoices__payment_status=Invoice.PaymentStatus.UNPAID),
                 output_field=DecimalField(),
             )
@@ -1149,6 +1152,7 @@ class SubscriptionViewSet(
 
         # now we can actually create the subscription record
         response = SubscriptionRecordSerializer(subscription_record).data
+        subscription_created_webhook(subscription_record, subscription_data=response)
         return Response(
             response,
             status=status.HTTP_201_CREATED,
@@ -1181,7 +1185,13 @@ class SubscriptionViewSet(
         return_qs = SubscriptionRecord.base_objects.filter(
             pk__in=original_qs, organization=organization
         )
+
         ret = SubscriptionRecordSerializer(return_qs, many=True).data
+
+        for subscription in qs:
+            subscription_data = SubscriptionRecordSerializer(subscription).data
+            subscription_cancelled_webhook(subscription, subscription_data)
+
         return Response(ret, status=status.HTTP_200_OK)
 
     @extend_schema(
@@ -1853,6 +1863,25 @@ class Ping(APIView):
         )
 
 
+class Healthcheck(APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="HealthcheckResponse",
+                fields={},
+            ),
+        },
+    )
+    def get(self, request, format=None):
+        return Response(
+            {},
+            status=status.HTTP_200_OK,
+        )
+
+
 class GetInvoicePdfURL(APIView):
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
@@ -1976,6 +2005,7 @@ def ingest_event(data: dict, customer_id: str, organization_pk: int) -> None:
     event_kwargs = {
         "organization_id": organization_pk,
         "cust_id": customer_id,
+        "customer_id": customer_id,
         "event_name": data["event_name"],
         "idempotency_id": data["idempotency_id"],
         "time_created": data["time_created"],

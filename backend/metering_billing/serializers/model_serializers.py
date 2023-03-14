@@ -2,12 +2,15 @@ import logging
 import re
 from decimal import Decimal
 
-import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from dateutil import relativedelta
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import DecimalField, F, Q, Sum
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
+import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -19,6 +22,7 @@ from metering_billing.models import (
     ExternalPlanLink,
     Feature,
     Invoice,
+    InvoiceLineItemAdjustment,
     Metric,
     Organization,
     OrganizationSetting,
@@ -63,8 +67,6 @@ from metering_billing.utils.enums import (
     TAX_PROVIDER,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -728,9 +730,7 @@ class CustomerWithRevenueSerializer(TimezoneFieldMixin, serializers.ModelSeriali
         except AttributeError:
             return (
                 obj.invoices.filter(payment_status=Invoice.PaymentStatus.UNPAID)
-                .aggregate(
-                    unpaid_inv_amount=Sum("cost_due", output_field=DecimalField())
-                )
+                .aggregate(unpaid_inv_amount=Sum("amount", output_field=DecimalField()))
                 .get("unpaid_inv_amount")
             )
 
@@ -1946,7 +1946,7 @@ class InvoiceListFilterSerializer(api_serializers.InvoiceListFilterSerializer):
 class GroupedLineItemSerializer(serializers.Serializer):
     plan_name = serializers.CharField()
     subscription_filters = SubscriptionCategoricalFilterDetailSerializer(many=True)
-    subtotal = serializers.DecimalField(max_digits=10, decimal_places=2)
+    base = serializers.DecimalField(max_digits=10, decimal_places=2)
     start_date = serializers.DateTimeField()
     end_date = serializers.DateTimeField()
     sub_items = LightweightInvoiceLineItemSerializer(many=True)
@@ -1979,21 +1979,73 @@ class DraftInvoiceSerializer(InvoiceDetailSerializer):
             .distinct()
         )
         srs = []
+        taxes = []
+        discounts = []
         for associated_subscription_record in associated_subscription_records:
             line_items = obj.line_items.filter(
                 associated_subscription_record=associated_subscription_record
-            ).order_by("name", "start_date", "subtotal")
+            ).order_by("name", "start_date", "base")
             sr = line_items[0].associated_subscription_record
             grouped_line_item_dict = {
                 "plan_name": sr.billing_plan.plan.plan_name,
                 "subscription_filters": sr.filters.all(),
-                "subtotal": line_items.aggregate(Sum("subtotal"))["subtotal__sum"] or 0,
+                "base": line_items.aggregate(Sum("amount"))["amount__sum"] or 0,
                 "start_date": sr.start_date,
                 "end_date": sr.end_date,
                 "sub_items": line_items,
             }
+            tax_owed = Decimal(0)
+            plan_discounts = Decimal(0)
+            for line_item in line_items:
+                for adjustment in line_item.adjustments.all():
+                    if (
+                        adjustment.adjustment_type
+                        == InvoiceLineItemAdjustment.AdjustmentType.SALES_TAX
+                    ):
+                        tax_owed += adjustment.amount
+                    elif (
+                        adjustment.adjustment_type
+                        == InvoiceLineItemAdjustment.AdjustmentType.PLAN_ADJUSTMENT
+                    ):
+                        plan_discounts += adjustment.amount
             srs.append(grouped_line_item_dict)
+            taxes.append(tax_owed)
+            discounts.append(plan_discounts)
         data = GroupedLineItemSerializer(srs, many=True).data
+        for i, (tax, discount) in enumerate(zip(taxes, discounts)):
+            group = data[i]
+            if tax > 0:
+                group["sub_items"].append(
+                    {
+                        "subtotal": tax,
+                        "base": tax,
+                        "amount": tax,
+                        "subscription_filters": group["sub_items"][0][
+                            "subscription_filters"
+                        ],
+                        "billing_type": "in_arrears",
+                        "plan": group["sub_items"][0]["plan"],
+                        "quantity": None,
+                        "name": "Sales Tax",
+                        "start_date": group["start_date"],
+                        "end_date": group["end_date"],
+                    }
+                )
+            if discount > 0:
+                group["sub_items"].append(
+                    {
+                        "subtotal": discount,
+                        "subscription_filters": group["sub_items"][0][
+                            "subscription_filters"
+                        ],
+                        "billing_type": "in_arrears",
+                        "plan": group["sub_items"][0]["plan"],
+                        "quantity": None,
+                        "name": "Plan Discount",
+                        "start_date": group["start_date"],
+                        "end_date": group["end_date"],
+                    }
+                )
         return data
 
 

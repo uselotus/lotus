@@ -87,6 +87,12 @@ interface PlanOption {
   disabled?: boolean;
 }
 
+export interface CascaderOptions {
+  value: string;
+  plan_id: string;
+  subscriptionFilters: SubscriptionType["subscription_filters"];
+}
+
 const dropDownOptions = [
   "Switch Plan",
   "Attach Add-On",
@@ -128,11 +134,7 @@ const SubscriptionView: FC<Props> = ({
   const [showModal, setShowModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [title, setTitle] = useState("");
-  const [cascaderOptions, setCascaderOptions] = useState<{
-    value: string;
-    plan_id: string;
-    subscriptionFilters: SubscriptionType["subscription_filters"];
-  }>();
+  const [cascaderOptions, setCascaderOptions] = useState<CascaderOptions>();
   const [cancelBody, setCancelBody] = useState<CancelSubscriptionBody>({
     usage_behavior: "bill_full",
     flat_fee_behavior: "charge_full",
@@ -432,9 +434,7 @@ const SubscriptionView: FC<Props> = ({
                 options={planList}
                 optionLabelProp="label"
                 value={selectedPlan}
-              >
-                {" "}
-              </Select>
+              />
             </Form.Item>
             <Form.Item>
               <Button htmlType="submit">
@@ -645,6 +645,7 @@ const SubscriptionView: FC<Props> = ({
                           cascaderOptions!.subscriptionFilters
                         );
                         setShowModal(false);
+                        setCascaderOptions(null);
                       }}
                     >
                       Switch
@@ -751,6 +752,7 @@ const SubscriptionView: FC<Props> = ({
                     plansWithSwitchOptions(plan_id)
                   }
                   setCascaderOptions={(args) => setCascaderOptions(args)}
+                  cascaderOptions={cascaderOptions}
                 />
               ) : indexRef.current === 5 ? (
                 <Select
@@ -758,13 +760,15 @@ const SubscriptionView: FC<Props> = ({
                   placeholder="Select a plan"
                   onChange={selectPlan}
                   options={planList}
+                  value={selectedPlan}
                   optionLabelProp="label"
-                >
-                  {" "}
-                </Select>
+                ></Select>
               ) : indexRef.current === 2 ? null : indexRef.current ===
                 6 ? null : indexRef.current === 3 ? (
                 <CancelMenu
+                  recurringBehavior={cancelBody.flat_fee_behavior}
+                  usageBehavior={cancelBody.usage_behavior}
+                  invoiceBehavior={cancelBody.invoicing_behavior}
                   setRecurringBehavior={(e) =>
                     setCancelBody({
                       ...cancelBody,
@@ -806,6 +810,10 @@ const SubscriptionView: FC<Props> = ({
                           }
                         }}
                         style={{ width: "100%" }}
+                        value={
+                          addOns.find((addOn) => addOn.addon_id === addOnId)
+                            ?.addon_name
+                        }
                       >
                         {addOns && !isLoading
                           ? addOns.map((addOn) => (

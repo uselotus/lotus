@@ -596,17 +596,25 @@ def setup_demo3(
                     )
                 )
                 if months == 0:
-                    run_generate_invoice.delay(
-                        [sr.pk],
-                        issue_date=sr.start_date,
-                    )
+                    try:
+                        run_generate_invoice.delay(
+                            [sr.pk],
+                            issue_date=sr.start_date,
+                        )
+                    except Exception as e:
+                        print(e)
+                        pass
                 if months != 5:
                     cur_replace_with = sr.billing_plan.replace_with
                     sr.billing_plan.replace_with = next_plan
                     sr.save()
-                    run_generate_invoice.delay(
-                        [sr.pk], issue_date=sr.end_date, charge_next_plan=True
-                    )
+                    try:
+                        run_generate_invoice.delay(
+                            [sr.pk], issue_date=sr.end_date, charge_next_plan=True
+                        )
+                    except Exception as e:
+                        print(e)
+                        pass
                     sr.billing_plan.replace_with = cur_replace_with
                     sr.save()
     now = now_utc()
@@ -624,7 +632,11 @@ def setup_demo3(
         new_plan=bp_10_og,
         organization=organization,
     )
-    run_backtest.delay(backtest.backtest_id)
+    try:
+        run_backtest.delay(backtest.backtest_id)
+    except Exception as e:
+        print(e)
+        pass
     return user
 
 
@@ -1174,17 +1186,25 @@ def setup_demo4(
 
                 next_plan = plan_dict[cust_set_name].get(months + 1, plan)
                 if months == 0:
-                    run_generate_invoice.delay(
-                        [sr.pk],
-                        issue_date=sr.start_date,
-                    )
+                    try:
+                        run_generate_invoice.delay(
+                            [sr.pk],
+                            issue_date=sr.start_date,
+                        )
+                    except Exception as e:
+                        print(e)
+                        pass
                 if months != 5:
                     cur_replace_with = sr.billing_plan.replace_with
                     sr.billing_plan.replace_with = next_plan
                     sr.save()
-                    run_generate_invoice.delay(
-                        [sr.pk], issue_date=sr.end_date, charge_next_plan=True
-                    )
+                    try:
+                        run_generate_invoice.delay(
+                            [sr.pk], issue_date=sr.end_date, charge_next_plan=True
+                        )
+                    except Exception as e:
+                        print(e)
+                        pass
                     sr.fully_billed = True
                     sr.billing_plan.replace_with = cur_replace_with
                     sr.save()

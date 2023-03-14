@@ -16,6 +16,9 @@ from api.serializers.webhook_serializers import (
     InvoiceCreatedSerializer,
     InvoicePaidSerializer,
     InvoicePastDueSerializer,
+    SubscriptionCancelledSerializer,
+    SubscriptionCreatedSerializer,
+    SubscriptionRenewedSerializer,
     UsageAlertTriggeredSerializer,
 )
 from django.conf import settings
@@ -326,6 +329,14 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     @extend_schema(
         callbacks=[
             OpenApiCallback(
+                WEBHOOK_TRIGGER_EVENTS.CUSTOMER_CREATED.value,
+                "{$request.body#/webhook_url}",
+                extend_schema(
+                    description="Customer created webhook",
+                    responses={200: CustomerCreatedSerializer},
+                ),
+            ),
+            OpenApiCallback(
                 WEBHOOK_TRIGGER_EVENTS.INVOICE_CREATED.value,
                 "{$request.body#/webhook_url}",
                 extend_schema(
@@ -350,19 +361,35 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 ),
             ),
             OpenApiCallback(
-                WEBHOOK_TRIGGER_EVENTS.CUSTOMER_CREATED.value,
+                WEBHOOK_TRIGGER_EVENTS.SUBSCRIPTION_CANCELLED.value,
                 "{$request.body#/webhook_url}",
                 extend_schema(
-                    description="Customer created webhook",
-                    responses={200: CustomerCreatedSerializer},
+                    description="Subscription cancelled webhook",
+                    responses={200: SubscriptionCancelledSerializer},
                 ),
             ),
             OpenApiCallback(
                 WEBHOOK_TRIGGER_EVENTS.INVOICE_PAST_DUE.value,
                 "{$request.body#/webhook_url}",
                 extend_schema(
-                    description="Invoice Past Due webhook",
+                    description="Usage alert triggered webhook",
                     responses={200: InvoicePastDueSerializer},
+                ),
+            ),
+            OpenApiCallback(
+                WEBHOOK_TRIGGER_EVENTS.SUBSCRIPTION_CREATED.value,
+                "{$request.body#/webhook_url}",
+                extend_schema(
+                    description="Subscription created webhook",
+                    responses={200: SubscriptionCreatedSerializer},
+                ),
+            ),
+            OpenApiCallback(
+                WEBHOOK_TRIGGER_EVENTS.SUBSCRIPTION_RENEWED.value,
+                "{$request.body#/webhook_url}",
+                extend_schema(
+                    description="Subscription renewed webhook",
+                    responses={200: SubscriptionRenewedSerializer},
                 ),
             ),
         ]
