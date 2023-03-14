@@ -27,8 +27,8 @@ const StateTabs: FC<StateTabsProps> = ({
   const [currentActiveTab, setCurrentActiveTab] = useState(activeTab);
   const [visible, setVisible] = useState(false);
   const [activeType, setActiveType] = useState<
-    "replace_on_active_version_renewal" | "grandfather_active"
-  >("replace_on_active_version_renewal");
+    "replace_on_renewal" | "grandfather"
+  >("replace_on_renewal");
   const queryClient = useQueryClient();
 
   const mutation = useMutation(
@@ -119,13 +119,10 @@ const StateTabs: FC<StateTabsProps> = ({
                 setActiveType(value);
               }}
             >
-              <Select.Option
-                value="replace_on_active_version_renewal"
-                className="my-3"
-              >
+              <Select.Option value="replace_on_renewal" className="my-3">
                 Migrate When Subscriptions Renew
               </Select.Option>
-              <Select.Option value="grandfather_active">
+              <Select.Option value="grandfather">
                 Grandfather Subscriptions, Do Not Migrate
               </Select.Option>
             </Select>
@@ -147,7 +144,7 @@ const StateTabs: FC<StateTabsProps> = ({
                 <h3>Active</h3>
                 <h3>to</h3>
                 <h3>
-                  {activeType === "replace_on_active_version_renewal"
+                  {activeType === "replace_on_renewal"
                     ? "Retiring"
                     : "Grandfathered"}
                 </h3>

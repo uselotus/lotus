@@ -58,14 +58,15 @@ export interface Component {
   prepaid_charge?: number;
 }
 
-export type CreateComponentRequestType = components["schemas"]["PlanComponentCreateRequest"]
+export type CreateComponentRequestType =
+  components["schemas"]["PlanComponentCreateRequest"];
 
 export interface CreateComponent
   extends Omit<Component, "billable_metric" | "pricing_unit"> {
   metric_id: string;
 }
 
-export type CreatePlanRequestType = components["schemas"]["PlanCreateRequest"]
+export type CreatePlanRequestType = components["schemas"]["PlanCreateRequest"];
 
 export interface CreatePlanVersionType {
   description?: string;
@@ -191,8 +192,8 @@ export interface PlanVersionUpdateType {
   status?: "active" | "archived";
   make_active_type?:
     | "replace_immediately"
-    | "replace_on_active_version_renewal"
-    | "grandfather_active";
+    | "replace_on_renewal"
+    | "grandfather";
   replace_immediately_type?:
     | "end_current_subscription_and_bill"
     | "end_current_subscription_dont_bill"
@@ -244,7 +245,7 @@ export interface ReplaceImmediatelyType extends PlanVersionUpdateType {
 // if we have repalce on renewal or grandfather active as the make active type, then omit the replace immediately type
 export interface ReplaceLaterType extends PlanVersionUpdateType {
   status: "active";
-  make_active_type: "replace_on_active_version_renewal" | "grandfather_active";
+  make_active_type: "replace_on_renewal" | "grandfather";
 }
 
 // UPDATE PLANS

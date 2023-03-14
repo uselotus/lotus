@@ -373,15 +373,10 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         if SUBSCRIPTION_STATUS.NOT_STARTED in version_status:
             status_combo.append((Q(active_from__gt=now) | Q(active_from__isnull=True)))
         if status_combo:
-            versions_filters.append(reduce(operator.or_, status_combo))
+            combined_filter = reduce(operator.or_, status_combo)
+            versions_filters.append(combined_filter)
         if version_currency:
             versions_filters.append(Q(currency=version_currency))
-        print(
-            "version_custom_type",
-            version_custom_type,
-            version_custom_type == PLAN_CUSTOM_TYPE.PUBLIC_ONLY,
-            version_custom_type == PLAN_CUSTOM_TYPE.CUSTOM_ONLY,
-        )
         if version_custom_type == PLAN_CUSTOM_TYPE.PUBLIC_ONLY:
             versions_filters.append(Q(is_custom=False))
         elif version_custom_type == PLAN_CUSTOM_TYPE.CUSTOM_ONLY:
@@ -414,8 +409,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         qs = qs.prefetch_related(
             Prefetch(
                 "versions",
-                queryset=PlanVersion.plan_versions.active()
-                .filter(
+                queryset=PlanVersion.plan_versions.filter(
                     *versions_filters,
                     organization=organization,
                 )
