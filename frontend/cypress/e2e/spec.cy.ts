@@ -1,3 +1,4 @@
+/* eslint-disable no-plusplus */
 /// <reference types="cypress" />
 
 function getId(length) {
@@ -22,7 +23,7 @@ const Login = () => {
   cy.get("[name='password']").type("demo4");
   cy.get("form").contains("Login").click();
   cy.wait(5000);
-  cy.on("uncaught:exception", (err, runnable) => {
+  cy.on("uncaught:exception", (err) => {
     if (err.message.includes("_a6.join is not a function")) {
       return false;
     }
@@ -81,6 +82,36 @@ describe("Testing Create Customer and Attach Subscription", () => {
     cy.get("#Create-customer-button").click();
     cy.wait(10000);
     cy.get(".ant-table-row").first().click();
+  });
+});
+
+describe("Testing customer details tab", () => {
+  it("renders the customer details properly", () => {
+    Login();
+    cy.visit("http://localhost:3000/customers");
+    cy.wait(10000);
+    cy.contains("Customers");
+    cy.get(".ant-table-row").first().click();
+    // go through tabs
+    cy.wait(5000);
+    cy.get("h1").contains("Customer Details");
+    cy.get("h1").contains("Revenue Details");
+    cy.get("h1").contains("Revenue vs Cost Per Day");
+    // go to subscription tab
+    cy.get(".ant-tabs-tab-btn").contains("Subscriptions").click();
+    cy.wait(5000);
+    cy.contains("Active Plans");
+    cy.get("h2").contains("Draft Invoice View");
+    // go to Invoices tab
+    cy.get(".ant-tabs-tab-btn").contains("Invoices").click();
+    cy.wait(5000);
+    cy.get("h2").contains("Invoices");
+    cy.contains("Source");
+    cy.contains("Amount");
+    // go to credits tab
+    cy.get(".ant-tabs-tab-btn").contains("Invoices").click();
+    cy.wait(5000);
+    cy.contains("Credits");
   });
 });
 

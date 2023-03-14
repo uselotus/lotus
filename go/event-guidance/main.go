@@ -108,7 +108,7 @@ func main() {
 	if kafkaURL = os.Getenv("KAFKA_URL"); kafkaURL == "" {
 		kafkaURL = "localhost:9092"
 	}
-	fmt.Printf("Kafka URL: %s\n", kafkaURL)
+
 	var kafkaTopic string
 	if kafkaTopic = os.Getenv("EVENTS_TOPIC"); kafkaTopic == "" {
 		kafkaTopic = "test-topic"
@@ -199,9 +199,11 @@ func main() {
 	// confirm
 	fmt.Printf("Starting event fetching\n")
 	for {
+		log.Print("Before polling for messages...")
 		fetches := cl.PollFetches(ctx)
 		log.Print("Polling for messages...")
 		if fetches == nil {
+			log.Print("No fetches returned, retrying in 1s")
 			continue
 		}
 		if fetches.IsClientClosed() {
@@ -230,8 +232,8 @@ func main() {
 			err := json.Unmarshal(r.Value, &streamEvents)
 			if err != nil {
 				log.Printf("Error unmarshalling event: %s\n", err)
-				// since we check in the prevuious statement that the event has the correct format, an error unmarshalling should be a fatal error
-				panic(err)
+				// since we check in the previous statement that the event has the correct format, an error unmarshalling should be a fatal error
+				return
 			}
 
 			if streamEvents.Event == nil {

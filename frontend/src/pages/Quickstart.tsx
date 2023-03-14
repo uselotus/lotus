@@ -1,17 +1,9 @@
-import React, { FC, useState, useEffect } from "react";
+import React, { FC, useState, useEffect, useMemo } from "react";
 import { PageLayout } from "../components/base/PageLayout";
-
 import { useQuery } from "react-query";
-import {
-  Events,
-  APIKey,
-  Metrics,
-  Plan,
-  Webhook,
-  PaymentProcessorIntegration,
-} from "../api/api";
 import useGlobalStore from "../stores/useGlobalstore";
 import CopyText from "../components/base/CopytoClipboard";
+import quickStartCheck from "../helpers/quickStartCheck";
 import { toast } from "react-toastify";
 interface Props {
   text: string;
@@ -22,15 +14,6 @@ interface Props {
   userAction?: string;
   link?: string;
   highlighted?: boolean;
-}
-
-interface QuickStartCheckProps {
-  setHasAPIKey?: (value: boolean) => void;
-  setHasTrackedEvent?: (value: boolean) => void;
-  setHasCreatedMetric?: (value: boolean) => void;
-  setHasCreatedPlan?: (value: boolean) => void;
-  setHasPaymentConnected?: (value: boolean) => void;
-  setUsersInOrg?: (value: boolean) => void;
 }
 
 const CodeExample = () => {
@@ -119,90 +102,6 @@ function demoLink(link) {
   }
 }
 
-const quickStartCheck = async ({
-  setHasAPIKey,
-  setHasTrackedEvent,
-  setHasCreatedMetric,
-  setHasCreatedPlan,
-  setHasPaymentConnected,
-  setUsersInOrg,
-}: QuickStartCheckProps) => {
-  // Check if user has created a metric
-  try {
-    const apiKeys = await APIKey.getKeys();
-
-    if (apiKeys && apiKeys.length > 0 && setHasAPIKey) {
-      setHasAPIKey(true);
-    }
-  } catch (error) {
-    console.log("Error fetching API keys:", error);
-  }
-
-  // Check if user has created an event
-  try {
-    const response = await Events.getEventPreviews("");
-    const eventData = response;
-
-    if (
-      eventData &&
-      eventData.results &&
-      eventData.results.length > 0 &&
-      setHasTrackedEvent
-    ) {
-      setHasTrackedEvent(true);
-    }
-  } catch (error) {
-    console.log("Error fetching event data:", error);
-  }
-
-  // Check if user has created a metric
-  try {
-    const metrics = await Metrics.getMetrics();
-    console.log("metrics", metrics);
-
-    if (metrics && metrics.length > 0 && setHasCreatedMetric) {
-      setHasCreatedMetric(true);
-    }
-  } catch (error) {
-    console.log("Error fetching metrics:", error);
-  }
-
-  // Check if user has created a plan
-  try {
-    const plans = await Plan.getPlans();
-
-    if (plans && plans.length > 0 && setHasCreatedPlan) {
-      setHasCreatedPlan(true);
-    }
-  } catch (error) {
-    console.log("Error fetching plans:", error);
-  }
-
-  // Check if user has connected a payment method or hooked up to a webhook for invoice.created
-  try {
-    const paymentProcessors =
-      await PaymentProcessorIntegration.getPaymentProcessorConnectionStatus();
-    if (
-      paymentProcessors &&
-      paymentProcessors.length > 0 &&
-      setHasPaymentConnected
-    ) {
-      for (let i = 0; i < paymentProcessors.length; i++) {
-        if (paymentProcessors[i].connected) {
-          setHasPaymentConnected(true);
-          break;
-        }
-      }
-      const webhooks = await Webhook.getEndpoints();
-      if (webhooks && webhooks.length > 0 && setHasPaymentConnected) {
-        setHasPaymentConnected(true);
-      }
-    }
-  } catch (error) {
-    console.log("Error fetching payment processors:", error);
-  }
-};
-
 const quickStartItem = ({
   text,
   subText,
@@ -286,26 +185,24 @@ const quickStartItem = ({
 };
 
 const QuickstartPage: FC = () => {
-  const [hasAPIKey, setHasAPIKey] = useState(false);
-  const [hasTrackedEvent, setHasTrackedEvent] = useState(false);
-  const [hasCreatedMetric, setHasCreatedMetric] = useState(false);
-  const [hasCreatedPlan, setHasCreatedPlan] = useState(false);
-  const [hasPaymentConnected, setHasPaymentConnected] = useState(false);
   const [usersInOrg, setUsersInOrg] = useState(false);
   const [currentItem, setCurrentItem] = useState(0);
   const { current_user, environment, organization_name } = useGlobalStore(
     (state) => state.org
   );
+  const setQuickStartProgress = useGlobalStore(
+    (state) => state.setQuickStartProgress
+  );
+  const {
+    hasAPIKey,
+    hasCreatedMetric,
+    hasCreatedPlan,
+    hasPaymentConnected,
+    hasTrackedEvent,
+  } = useGlobalStore((state) => state.quickStartProgress);
 
   useEffect(() => {
-    quickStartCheck({
-      setHasAPIKey,
-      setHasTrackedEvent,
-      setHasCreatedMetric,
-      setHasCreatedPlan,
-      setHasPaymentConnected,
-      setUsersInOrg,
-    });
+    quickStartCheck({ setQuickStartProgress });
   }, []);
 
   useEffect(() => {

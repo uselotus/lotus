@@ -32,6 +32,10 @@ This webhook is generated when a subscription is created.
 
 This webhook is generated when a usage alert is triggered. This is useful for notifying your users when they are approaching their usage limit.
 
+### subscription.renewed
+
+This webhook is generated when a subscription is renewed.
+
 ## Creating Webhooks
 
 You can create webhooks from the Developer Settings tab of the Settings page. After creating a webhook, you will be able to see the folloowing information, including the webhook secret, which is used for verifying the authenticity of the request.
@@ -58,7 +62,7 @@ Lotus uses a service called Svix to handle the complexity behind webhooks, most 
 
 <ParamField body="event_type" type="string (WebhookTriggerEventEnum)" required>
   Enum: `"customer.created"` `"invoice.created"` `"invoice.past_due"` `"invoice.paid"`
-  `"subscription.created"` `"usage_alert.triggered"`
+  `"subscription.created"` `"usage_alert.triggered"` `"subscription.renewed"`
 </ParamField>
 
 <ParamField body="payload" type="object" required>
@@ -69,6 +73,7 @@ Lotus uses a service called Svix to handle the complexity behind webhooks, most 
   For `subscription.created`, the response will be a [subscription](../api-reference/subscriptions/list-subscriptions).
   For `usage_alert.triggered`, the response will be a `UsageAlertPayload`,
   explained below.
+  For `subscription.renewed`, the response will be a [subscription](../api-reference/subscriptions/list-subscriptions).
 </ParamField>
 
 ### UsageAlertPayload
