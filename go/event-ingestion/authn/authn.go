@@ -2,6 +2,7 @@ package authn
 
 import (
 	"database/sql"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -48,6 +49,9 @@ func Middleware(cacheClient cache.Cache) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			key := getAPIKeyFromHeader(c.Request().Header)
+
+			log.Printf("Request: %v", c.Request())
+			
 			if key == "" {
 				return echo.NewHTTPError(http.StatusBadRequest, "No API key found in request")
 			}
