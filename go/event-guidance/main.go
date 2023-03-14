@@ -108,7 +108,7 @@ func main() {
 	if kafkaURL = os.Getenv("KAFKA_URL"); kafkaURL == "" {
 		kafkaURL = "localhost:9092"
 	}
-	fmt.Printf("Kafka URL: %s\n", kafkaURL)
+
 	var kafkaTopic string
 	if kafkaTopic = os.Getenv("EVENTS_TOPIC"); kafkaTopic == "" {
 		kafkaTopic = "test-topic"
