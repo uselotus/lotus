@@ -187,6 +187,7 @@ const SubscriptionView: FC<Props> = ({
     const query_params: CancelSubscriptionQueryParams = {
       customer_id,
     };
+    console.log(customer_id);
     const body: CancelSubscriptionBody = {
       usage_behavior: "bill_full",
       flat_fee_behavior: "charge_prorated",
@@ -891,7 +892,7 @@ const SubscriptionView: FC<Props> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Button
+          {/* <Button
             type="primary"
             className="hover:!bg-rose-700"
             size="large"
@@ -904,7 +905,7 @@ const SubscriptionView: FC<Props> = ({
             }}
           >
             Cancel All
-          </Button>
+          </Button> */}
           <Button
             type="primary"
             className="hover:!bg-primary-700"
