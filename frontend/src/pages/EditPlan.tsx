@@ -386,7 +386,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
             transition_to_plan_id: values.transition_to_plan_id,
             components: usagecomponentslist,
             features: featureIdList,
-            localized_name: values.localized_name,
+            localized_name: values.localized_name ?? null,
             usage_billing_frequency: values.usage_billing_frequency,
             make_active: activeVersion,
             make_active_type: activeVersionType,
@@ -478,13 +478,15 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     return [];
   };
 
-  const STEPS = [
-    {
-      title: "Plan Information",
-      slug: "plan-information",
-      Component: PlanInformation,
-      validate: validatePlanInformation,
-    },
+  const STEPS = compact([
+    ["version", "custom"].includes(type)
+      ? undefined
+      : {
+          title: "Plan Information",
+          slug: "plan-information",
+          Component: PlanInformation,
+          validate: validatePlanInformation,
+        },
     {
       title: "Version Information",
       slug: "version-information",
@@ -497,12 +499,19 @@ function EditPlan({ type, plan, versionIndex }: Props) {
       Component: ChargesAndFeatures,
       validate: validateChargesAndFeatures,
     },
-  ];
+  ]);
 
   const step = STEPS[currentStep];
 
   return (
-    <PageLayout title={returnPageTitle()}>
+    <PageLayout
+      title={returnPageTitle()}
+      extra={[
+        <Button key="back" onClick={goBackPage} type="default">
+          Cancel
+        </Button>,
+      ]}
+    >
       <Form.Provider>
         <Form
           form={form}
@@ -563,11 +572,13 @@ function EditPlan({ type, plan, versionIndex }: Props) {
                 <div className="inline-flex justify-end items-center gap-2">
                   <Button
                     key="back"
-                    onClick={goBackPage}
-                    icon={<ArrowLeftOutlined />}
+                    onClick={() => {
+                      setCurrentStep((s) => Math.min(0, s - 1));
+                    }}
                     type="default"
+                    hidden={currentStep === 0}
                   >
-                    Back
+                    Previous step
                   </Button>
                   <Button
                     type="primary"
@@ -598,6 +609,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           </Row>
 
           <step.Component
+            type={type}
             form={form}
             allPlans={allPlans}
             setAllPlans={setAllPlans}

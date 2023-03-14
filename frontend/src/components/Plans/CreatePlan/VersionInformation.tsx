@@ -102,15 +102,9 @@ const VersionInformation = ({ form, ...props }: StepProps) => {
 
                   <Col span="12">
                     <Form.Item
-                      label="Localized Name"
+                      label={props.type === "custom" ? "Overridden Name" : "Localized Name"}
+                      help={props.type === "custom" ? "Use a name override for this plan to uniquely identify it" : undefined}
                       name="localized_name"
-                      rules={[
-                        {
-                          required: true,
-                          message: "Please Enter a Name",
-                        },
-                      ]}
-                      initialValue={form.getFieldValue("name")}
                     >
                       <Input
                         type="text"

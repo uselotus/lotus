@@ -375,6 +375,7 @@ function CreatePlan() {
             plan_duration: "monthly",
             align_plan: "calendar_aligned",
             usage_billing_frequency: "monthly",
+            localized_name: null,
           }}
           onChange={async () => {
             const isValid = await step.validate(form);
