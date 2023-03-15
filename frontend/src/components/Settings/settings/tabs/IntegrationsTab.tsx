@@ -141,7 +141,7 @@ const IntegrationsTab: FC = () => {
           <AppCard
             connected={false}
             title="Salesforce"
-            description="Sync your products, customers, and invoices to Salesforce"
+            description="Sync your customers, subscriptions, and invoices to Salesforce"
             icon={integrationsMap.salesforce.icon}
             handleClickConnect={() =>
               navigate("/settings/integrations/snowflake")

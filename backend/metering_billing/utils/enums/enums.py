@@ -278,3 +278,7 @@ class TAX_PROVIDER(models.IntegerChoices):
     TAXJAR = (1, _("taxjar"))
     LOTUS = (2, _("lotus"))
     NETSUITE = (3, _("netsuite"))
+
+
+class CRM_PROVIDER(models.IntegerChoices):
+    SALESFORCE = (1, _("salesforce"))

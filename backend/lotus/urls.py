@@ -13,15 +13,14 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+import api.views as api_views
 from django.conf import settings
 from django.conf.urls import include
 from django.contrib import admin
 from django.urls import path, re_path
 from django.views.generic import TemplateView
-from rest_framework import routers
-
-import api.views as api_views
 from metering_billing.views import auth_views, organization_views, webhook_views
+from metering_billing.views.crm_views import CRMUnifiedAPIView
 from metering_billing.views.model_views import (
     ActionViewSet,
     AddOnVersionViewSet,
@@ -61,6 +60,7 @@ from metering_billing.views.views import (
     TimezonesView,
     TransferSubscriptionsView,
 )
+from rest_framework import routers
 
 DEBUG = settings.DEBUG
 PROFILER_ENABLED = settings.PROFILER_ENABLED
@@ -259,6 +259,17 @@ urlpatterns = [
     # Stripe
     path(
         "stripe/webhook/", webhook_views.stripe_webhook_endpoint, name="stripe-webhook"
+    ),
+    # crm
+    path(
+        "crm/link_token/",
+        CRMUnifiedAPIView.as_view({"post": "link_token"}),
+        name="link_token",
+    ),
+    path(
+        "crm/store_token/",
+        CRMUnifiedAPIView.as_view({"post": "store_token"}),
+        name="store_token",
     ),
 ]
 

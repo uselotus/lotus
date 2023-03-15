@@ -26,6 +26,15 @@ from django.db.models import Count, F, FloatField, Prefetch, Q, QuerySet, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
+
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     NotEditable,
@@ -73,14 +82,6 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -91,6 +92,7 @@ CUSTOMER_ID_NAMESPACE = settings.CUSTOMER_ID_NAMESPACE
 class Team(models.Model):
     name = models.CharField(max_length=100, blank=False, null=False)
     team_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    crm_integration_allowed = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
@@ -3961,3 +3963,39 @@ class BraintreeOrganizationIntegration(models.Model):
                 name="unique_braintree_merchant_id",
             ),
         ]
+
+
+class UnifiedCRMOrganizationIntegration(models.Model):
+    class CRMProvider(models.IntegerChoices):
+        SALESFORCE = (1, "salesforce")
+
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="unified_crm_organization_links",
+    )
+    crm_type = models.IntegerField(choices=CRMProvider.choices)
+    access_token = models.TextField()
+    native_org_url = models.TextField()
+    native_org_id = models.TextField()
+    connection_id = models.TextField()
+    created = models.DateTimeField(default=now_utc)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["organization", "crm_type", "native_org_id"],
+                name="unique_unified_crm_native_id",
+            ),
+            UniqueConstraint(
+                fields=["organization", "crm_type", "connection_id"],
+                name="unique_unified_crm_connection_id",
+            ),
+        ]
+
+    @staticmethod
+    def get_crm_provider_from_label(label):
+        mapping = {
+            UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE.label: UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE.value,
+        }
+        return mapping.get(label, label)
