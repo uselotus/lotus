@@ -1,6 +1,6 @@
 #!/bin/bash
 # check to see what plarform
-if [[ "$OSTYPE" == "win32" ]]; then
+if [[ "$OSTYPE" == "win32" ]] || [[ "$OSTYPE" == "win64" ]]; then
   # debian or Windows
   FILE=env/.env.dev
   if [ -f "$FILE" ]; then
