@@ -1,55 +1,79 @@
 import React, { useState } from "react";
-import { Modal, Select } from "antd";
+import { Form, Modal, Select } from "antd";
 import { UseQueryResult, useQuery } from "react-query";
 import { Customer } from "../../api/api";
 import { CustomerPlus } from "../../types/customer-type";
 
 const { Option } = Select;
 
-function TargetCustomerForm(props: {
+interface Props {
   visible: boolean;
   onCancel: () => void;
   onAddTargetCustomer: (target_customer_id: string) => void;
-}) {
+}
+
+function TargetCustomerForm({ ...props }: Props) {
+  const [form] = Form.useForm();
   const [targetCustomer, setTargetCustomer] = useState<string>(""); // id of the target customer
 
-  const { data: customers, isLoading }: UseQueryResult<CustomerPlus[]> =
-    useQuery<CustomerPlus[]>(["customer_list"], () =>
-      Customer.getCustomers().then((res) => res)
-    );
+  const { data: customers }: UseQueryResult<CustomerPlus[]> = useQuery<
+    CustomerPlus[]
+  >(["customer_list"], () => Customer.getCustomers().then((res) => res));
 
   return (
-    <Modal
-      visible={props.visible}
-      title="Choose Target Customer For Plan"
-      okText="Confirm and Create Plan"
-      okType="default"
-      okButtonProps={{
-        type: "primary",
-      }}
-      onCancel={props.onCancel}
-      onOk={() => {
-        props.onAddTargetCustomer(targetCustomer);
-      }}
-    >
-      <div className="grid grid-row-3">
-        <div className="flex flex-col">
-          <Select
-            placeholder="Choose Target Customer"
-            showSearch
-            onChange={(value) => {
-              setTargetCustomer(value);
-            }} // id of the target customer)}
-          >
-            {customers?.map((customer) => (
-              <Option value={customer.customer_id}>
-                {customer.customer_name}
-              </Option>
-            ))}
-          </Select>
-        </div>
-      </div>
-    </Modal>
+    <Form.Provider>
+      <Form
+        form={form}
+        name="target_customer_form"
+        layout="vertical"
+        initialValues={{
+          target_customer: targetCustomer,
+        }}
+        onFinish={() => {
+          props.onAddTargetCustomer(targetCustomer);
+        }}
+      >
+        <Modal
+          visible={props.visible}
+          title="Choose Target Customer For Plan"
+          okText="Confirm and Create Plan"
+          okType="default"
+          okButtonProps={{
+            type: "primary",
+          }}
+          onCancel={props.onCancel}
+          onOk={() => {
+            form.submit();
+          }}
+        >
+          <div className="grid grid-row-3">
+            <div className="flex flex-col">
+              <Form.Item
+                name="target_customer"
+                label="Customer"
+                rules={[{ required: true }]}
+              >
+                <Select
+                  placeholder="Choose Customer"
+                  showSearch
+                  onChange={(value) => {
+                    setTargetCustomer(value);
+                  }} // id of the target customer)}
+                >
+                  {React.Children.toArray(
+                    customers?.map((customer) => (
+                      <Option value={customer.customer_id}>
+                        {customer.customer_name}
+                      </Option>
+                    ))
+                  )}
+                </Select>
+              </Form.Item>
+            </div>
+          </div>
+        </Modal>
+      </Form>
+    </Form.Provider>
   );
 }
 

@@ -57,15 +57,14 @@ from metering_billing.utils import (
     convert_to_decimal,
     date_as_max_dt,
     date_as_min_dt,
+    dates_bwn_two_dts,
     make_all_dates_times_strings,
     make_all_decimals_floats,
-    periods_bwn_twodates,
 )
 from metering_billing.utils.enums import (
     METRIC_STATUS,
     METRIC_TYPE,
     PAYMENT_PROCESSORS,
-    USAGE_CALC_GRANULARITY,
 )
 
 logger = logging.getLogger("django.server")
@@ -136,9 +135,7 @@ class PeriodMetricRevenueView(APIView):
                 .prefetch_related("billing_plan__plan_components__tiers")
             )
             per_day_dict = {}
-            for period in periods_bwn_twodates(
-                USAGE_CALC_GRANULARITY.DAILY, start, end
-            ):
+            for period in dates_bwn_two_dts(start, end):
                 period = convert_to_date(period)
                 per_day_dict[period] = {
                     "date": period,
@@ -236,9 +233,7 @@ class CostAnalysisView(APIView):
                 f"Customer with customer_id: {customer_id} not found"
             )
         per_day_dict = {}
-        for period in periods_bwn_twodates(
-            USAGE_CALC_GRANULARITY.DAILY, start_date, end_date
-        ):
+        for period in dates_bwn_two_dts(start_date, end_date):
             period = convert_to_date(period)
             per_day_dict[period] = {
                 "date": period,
@@ -534,7 +529,7 @@ class DraftInvoiceView(APIView):
                 "billing_plan__plan_components",
                 "billing_plan__plan_components__billable_metric",
                 "billing_plan__plan_components__tiers",
-                "billing_plan__pricing_unit",
+                "billing_plan__currency",
             )
             invoices = generate_invoice(
                 sub_records,

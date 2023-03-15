@@ -1,25 +1,29 @@
 ---
-openapi: "POST /api/subscriptions/add/"
+openapi: "POST /api/subscriptions/"
 title: Create a subscription
 description: Add a plan to a customer's subscription
 ---
 
-A subscription associates one of your customers with one of your billing plans. You can define multiple subscriptions of the same plan for a single customer by using the subscription filters.
+A subscription associates one of your customers with one of your billing plans. You can safely give a custoemr multiple subscriptions to different plans.
+
+If you want to give a single customer multiple subscriptions to the same plan (for example, one for each of their environments), you can do that using `subscription_filters`. For more details on how to use them and what they do, see the [subscription filters](../../plan-management/creating-plans#plan-components) documentation.
+
+If any of your usage components has a [prepaid charge](../../plan-management/creating-plans#plan-components) associated with it, you can specify how many untis they prepaid for as part of this call. If you don't specify a value, the component's default value will be used. If there was no default value, the susbcription creation will fail.
 
 <CodeGroup>
 ```py Python
 lotus.create_subscription(
-  customer_id='cust_0569173ee6654369',
-  plan_id='premium_plan_7ui9op',
-  start_date='2020-01-01',
+  customer_id='cust_6c237d6c149c47db8f64246b78ecac13',
+  plan_id='plan_f17c6153807d4f4b812265a09cf06680',
+  start_date='2022-02-23 03:30:00+00:00',
 )
 ```
 
 ```ts Typescript
 await lotus.createSubscription({
-  customerId: "customer_123",
-  planId: "billing_plan_5",
-  startDate: "2022-02-23",
+  customer_id: "cust_6c237d6c149c47db8f64246b78ecac13",
+  plan_id: "plan_f17c6153807d4f4b812265a09cf06680",
+  start_date: "2022-02-23 03:30:00+00:00",
 });
 ```
 

@@ -45,6 +45,7 @@ class OrganizationInsertMiddleware:
             request.organization = organization
         except Exception as e:
             logger.error(f"OrganizationInsertMiddleware: {e}")
+            request.organization = None
             pass
         # Code to be executed for each request before
         # the view (and later middleware) are called.

@@ -1,28 +1,39 @@
-// @ts-ignore
+/* eslint-disable no-shadow */
+/* eslint-disable camelcase */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 
-import React, { FC, Fragment, useEffect, useState } from "react";
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  version,
+} from "react";
 
 import "./SwitchVersions.css";
-import { PlusOutlined, MoreOutlined, DeleteOutlined } from "@ant-design/icons";
-import { Link } from "react-router-dom";
-import { Dropdown, Menu, Button, Typography } from "antd";
-import dayjs from "dayjs";
+import { PlusOutlined } from "@ant-design/icons";
+import { Link, useNavigate } from "react-router-dom";
+import { Dropdown, Select, Menu } from "antd";
 import { useMutation, useQueryClient } from "react-query";
-import {
-  PlanDetailType,
-  PlanType,
-  PlanVersionType,
-} from "../../../types/plan-type";
+import { PlanType } from "../../../types/plan-type";
 import PlanComponents, { PlanInfo, PlanSummary } from "./PlanComponent";
 import PlanFeatures from "./PlanFeatures";
-import StateTabs from "./StateTabs";
-// @ts-ignore
+
 import { Plan } from "../../../api/api";
+import PlanRecurringCharges from "./PlanRecurringCharges";
+import PlanCustomerSubscriptions from "./PlanCustomerSubscriptions";
+import { components } from "../../../gen-types";
+import ChevronDown from "../../base/ChevronDown";
+import DropdownComponent from "../../base/Dropdown/Dropdown";
+import AddCurrencyModal from "./AddCurrencyModal";
+import DeleteVersionModal from "./DeleteVersionModal";
 
 interface SwitchVersionProps {
-  versions: PlanVersionType[];
-  plan: PlanDetailType;
+  versions: components["schemas"]["PlanDetail"]["versions"];
+  plan: components["schemas"]["PlanDetail"];
   refetch: VoidFunction;
+  activeKey: string;
   className: string;
   createPlanExternalLink: (link: string) => void;
   deletePlanExternalLink: (link: string) => void;
@@ -54,23 +65,73 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
   versions,
   plan,
   refetch,
+  activeKey,
   createPlanExternalLink,
   deletePlanExternalLink,
   className,
 }) => {
+  const navigate = useNavigate();
   const activePlanVersion = versions.find((x) => x.status === "active");
 
   const [selectedVersion, setSelectedVersion] = useState<
-    PlanVersionType | undefined
+    components["schemas"]["PlanDetail"]["versions"][0] | undefined
   >(activePlanVersion);
+  const [dropDownVersions, setDropDownVersions] = useState<
+    components["schemas"]["PlanDetail"]["versions"]
+  >([]);
+  const [deduplicatedVersions, setDeduplicatedVersions] = useState<
+    components["schemas"]["PlanDetail"]["versions"]
+  >([]);
+  const [triggerCurrencyModal, setTriggerCurrencyModal] = useState(false);
+  const selectRef = useRef<HTMLSelectElement | null>(null!);
+  const [triggerDeleteModal, setTriggerDeleteModal] = useState(false);
   const [capitalizedState, setCapitalizedState] = useState<string>("");
   const queryClient = useQueryClient();
+  const removeDuplicateVersions = useCallback(
+    (versions: components["schemas"]["PlanDetail"]["versions"]) => {
+      let seen: { [key: string]: boolean } = {};
 
-  const isSelectedVersion = (other_id: string) =>
-    selectedVersion?.version_id === other_id;
+      const arr = [...dropDownVersions, ...[selectedVersion]];
+      if (versions.length === 1) {
+        const newVersion = [selectedVersion];
+        setDeduplicatedVersions(
+          newVersion as components["schemas"]["PlanDetail"]["versions"]
+        );
+        setDropDownVersions(
+          newVersion as components["schemas"]["PlanDetail"]["versions"]
+        );
+        return [];
+      }
+
+      const v = versions.filter((obj) => {
+        if (seen[obj.version]) {
+          arr.push(obj);
+
+          return false;
+          // eslint-disable-next-line no-else-return
+        } else {
+          seen[obj.version] = true;
+          seen[obj.version_id] = true;
+          return true;
+        }
+      });
+      seen = {};
+      setDropDownVersions(versions);
+      const newVersions = [...v];
+      setDeduplicatedVersions(
+        newVersions as components["schemas"]["PlanDetail"]["versions"]
+      );
+    },
+    []
+  );
+  useEffect(() => {
+    removeDuplicateVersions(versions);
+  }, [selectedVersion, versions, removeDuplicateVersions]);
+  const isSelectedVersion = (other_version: number) =>
+    selectedVersion?.version === other_version;
   const createTag = useMutation(
     ({ plan_id, tags }: { plan_id: string; tags: PlanType["tags"] }) =>
-      Plan.updatePlan(plan_id, {
+      Plan.createTagsPlan(plan_id, {
         tags,
       }),
     {
@@ -80,23 +141,18 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
       },
     }
   );
-  const updateBillingFrequency = useMutation(
-    (plan_duration: "monthly" | "quarterly" | "yearly") =>
-      Plan.updatePlan(plan.plan_id, {
-        plan_duration,
+  const deleteTag = useMutation(
+    ({ plan_id, tags }: { plan_id: string; tags: PlanType["tags"] }) =>
+      Plan.removeTagsPlan(plan_id, {
+        tags,
       }),
     {
       onSuccess: () => {
         queryClient.invalidateQueries("plan_list");
         queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
-        queryClient.invalidateQueries("organization");
       },
     }
   );
-
-  // useEffect(() => {
-  //   setSelectedVersion(versions.find((x) => x.status === "active")!);
-  // }, [versions]);
   useEffect(() => {
     setSelectedVersion(plan.versions.find((x) => x.status === "active")!);
   }, [plan]);
@@ -110,22 +166,63 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
   return (
     <div>
       <div className={className}>
-        {versions.map((version) => (
+        {deduplicatedVersions.map((version) => (
           <div
-            onClick={(e) => {
+            aria-hidden
+            key={version?.version_id}
+            onClick={() => {
               refetch();
               setSelectedVersion(version);
             }}
             className={[
-              "flex items-center justify-center p-4 cursor-pointer mx-1",
-              isSelectedVersion(version.version_id)
+              "flex items-center justify-center p-6 cursor-pointer mx-1 gap-4 h-33px",
+              isSelectedVersion(version!.version)
                 ? "bg-[#c3986b] text-white opacity-100 ml-2 mr-2"
                 : "bg-[#EAEAEB] text-black ml-2 mr-2",
-              version.status === "active" &&
+              version?.status === "active" &&
                 "border-2 border-[#c3986b] border-opacity-100 ml-2 mr-2",
             ].join(" ")}
           >
-            v{version.version}
+            {/* v{version.version} <ChevronDown /> */}
+            <Dropdown
+              overlay={
+                <Menu className="!bg-primary-50 !whitespace-nowrap">
+                  <Menu.Item
+                    key="1"
+                    onClick={() => {
+                      navigate(
+                        `/add-currency/${plan.plan_id}/${version.version_id}`
+                      );
+                    }}
+                  >
+                    <span className="flex gap-2 justify-between ">
+                      <span className="flex gap-2 items-center">
+                        <span className="text-black">Add Currency</span>
+                      </span>
+                    </span>
+                  </Menu.Item>
+                  {/* <Menu.Item
+                    key="2"
+                    onClick={() => {
+                      setTriggerCurrencyModal(false);
+                      setTriggerDeleteModal(true);
+                    }}
+                  >
+                    <span className="flex gap-2 justify-between ">
+                      <span className="flex gap-2 items-center">
+                        <span className="text-black">Delete</span>
+                      </span>
+                    </span>
+                  </Menu.Item> */}
+                </Menu>
+              }
+            >
+              <div className="flex gap-2 items-center">
+                v{version.version}
+                {/* {version.currency && `-${version.currency.symbol}`} */}
+                <ChevronDown />
+              </div>
+            </Dropdown>
           </div>
         ))}
         <Link
@@ -133,72 +230,103 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
           to={`/create-version/${selectedVersion?.plan_id}`}
           className="mx-4"
         >
-          <div className="flex items-center justify-center px-2 py-2 rounded-[20px] hover:bg-[#EAEAEB]">
+          <div className="flex items-center justify-center px-2 py-2  hover:bg-[#EAEAEB] hover:bg-4">
             <div className="addVersionButton">
               <PlusOutlined />
             </div>
             <div className=" text-[#1d1d1f]">Add new version</div>
           </div>
         </Link>
+        <div>
+          <Select
+            value={`Currency:${selectedVersion?.currency?.code}-${selectedVersion?.currency?.symbol}`}
+            onChange={(e) => {
+              if (e.split("-")[0] === "undefined") {
+                return;
+              }
+              const [versionNum, symbol] = e.split("-");
+              const version = selectedVersion?.version;
+
+              const newSelectedVersion = dropDownVersions.find(
+                (el) =>
+                  el?.version === Number(version) &&
+                  el.currency &&
+                  el.currency.symbol === symbol
+              );
+              if (newSelectedVersion) {
+                setSelectedVersion(newSelectedVersion);
+              }
+            }}
+          >
+            {dropDownVersions
+              .filter((v) => v.version === selectedVersion?.version)
+              .map((el) => (
+                <Select.Option
+                  value={`${el?.currency?.code}-${el?.currency?.symbol}`}
+                  key={el?.version_id}
+                >
+                  {`Currency:${el?.currency?.code}-${el?.currency?.symbol}`}
+                </Select.Option>
+              ))}
+          </Select>
+        </div>
       </div>
       <div className="bg-white mb-6 flex flex-col py-4 px-10 rounded-lg space-y-12">
-        <div className="grid gap-12 grid-cols-1  md:grid-cols-3">
+        <div className="grid gap-12 grid-cols-1 -mx-10  md:grid-cols-3">
           <div className="col-span-1">
             <PlanSummary
               plan={plan}
               createPlanExternalLink={createPlanExternalLink}
               createTagMutation={createTag.mutate}
+              deleteTagMutation={deleteTag.mutate}
               deletePlanExternalLink={deletePlanExternalLink}
             />
           </div>
           <div className="col-span-2">
-            <PlanInfo plan={plan} version={selectedVersion!} />
+            <PlanInfo
+              activeKey={activeKey}
+              plan={plan}
+              version={selectedVersion!}
+            />
           </div>
         </div>
-
-        <div>
+        <div className="-mx-10">
+          <PlanRecurringCharges
+            recurringCharges={selectedVersion!.recurring_charges}
+          />
+        </div>
+        <div className="-mx-10">
           <PlanComponents
             refetch={refetch}
-            updateBillingFrequencyMutation={updateBillingFrequency.mutate}
             plan={plan}
             components={selectedVersion?.components}
             alerts={selectedVersion?.alerts}
             plan_version_id={selectedVersion!.version_id}
           />
         </div>
-        <div>
+        <div className="-mx-10">
           <PlanFeatures features={selectedVersion?.features} />
         </div>
-
-        <div className=" mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card">
-          <Typography.Title className="!text-[18px]">
-            Price Adjustments:{" "}
-            {getPriceAdjustmentEnding(
-              selectedVersion?.price_adjustment?.price_adjustment_type,
-              selectedVersion?.price_adjustment?.price_adjustment_amount,
-              selectedVersion!.currency.symbol
-            )}
-          </Typography.Title>
+        <div className="-mx-10">
+          <PlanCustomerSubscriptions
+            plan_id={plan.plan_id}
+            version_id={selectedVersion!.version_id}
+          />
         </div>
-
-        {/* <div className="px-4 flex justify-start align-middle ">
-          <div className="pb-5 font-main font-bold">Transition To:</div>
-          <div className="mb-5 px-4 font-main font-bold self-center">
-            {selectedVersion.transition_to || "------"}
-          </div>
-        </div> */}
-
-        {/* <div className="px-4 py-4 flex items-center justify-between">
-          <div className="pb-5 pt-3 font-main font-bold text-[20px]">
-            Localisation:
-          </div>
-          <div>
-            <Button size="large" key="use lotus recommended">
-              Use Lotus Recommended
-            </Button>
-          </div>
-        </div> */}
       </div>
+      <AddCurrencyModal
+        plan_id={plan.plan_id}
+        version_id={selectedVersion?.version_id as string}
+        showModal={triggerCurrencyModal}
+        setShowModal={(show) => setTriggerCurrencyModal(show)}
+        version={selectedVersion?.version as number}
+      />
+      <DeleteVersionModal
+        version_id={selectedVersion?.version_id as string}
+        plan_id={plan.plan_id}
+        showModal={triggerDeleteModal}
+        setShowModal={(show) => setTriggerDeleteModal(show)}
+      />
     </div>
   );
 };

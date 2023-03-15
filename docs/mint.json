@@ -51,6 +51,11 @@
       "name": "Github",
       "icon": "github",
       "url": "https://github.com/uselotus/lotus"
+    },
+    {
+      "name": "Community",
+      "icon": "slack",
+      "url": "https://join.slack.com/t/lotus-community/shared_invite/zt-1ghi61p9j-ADYbp3tEL~N16AxQr2mlzA"
     }
   ],
   "navigation": [
@@ -121,14 +126,8 @@
           "pages": [
             "api-reference/customers/create-customer",
             "api-reference/customers/retrieve-customer",
-            "api-reference/customers/list-customers",
-            {
-              "group": "Deprecated Methods",
-              "pages": [
-                "api-reference/customers/deprecated_methods/get-customer-access",
-                "api-reference/customers/deprecated_methods/customer-feature-access"
-              ]
-            }
+            "api-reference/customers/list-customers"
+            
           ]
         },
         {
@@ -144,14 +143,26 @@
             "api-reference/subscriptions/create-subscription",
             "api-reference/subscriptions/cancel-subscription",
             "api-reference/subscriptions/change-subscription",
-            "api-reference/subscriptions/list-subscriptions"
+            "api-reference/subscriptions/switch-subscription-plan",
+            "api-reference/subscriptions/attach-addon",
+            "api-reference/subscriptions/cancel-addon",
+            "api-reference/subscriptions/list-subscriptions",
+            {
+              "group": "Deprecated Methods",
+              "pages": [
+                "api-reference/subscriptions/create-subscription-old",
+                "api-reference/subscriptions/cancel-subscription-old",
+                "api-reference/subscriptions/change-subscription-old"
+              ]
+            }
           ]
         },
         {
           "group": "Plans",
           "pages": [
-            "api-reference/plans/retrieve-plan",
-            "api-reference/plans/list-plans"
+            "api-reference/plans/list-plans",
+            "api-reference/plans/retrieve-plan"
+            
           ]
         },
         {
