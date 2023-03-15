@@ -133,8 +133,12 @@ class TestGenerateInvoice:
         prev_invoices_len = Invoice.objects.filter(
             payment_status=Invoice.PaymentStatus.DRAFT
         ).count()
-        payload = {"customer_id": setup_dict["customer"].customer_id}
-        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+        response = setup_dict["client"].get(
+            reverse(
+                "customer-draft_invoice",
+                kwargs={"customer_id": setup_dict["customer"].customer_id},
+            )
+        )
         assert response.status_code == status.HTTP_200_OK
         new_invoices_len = Invoice.objects.filter(
             payment_status=Invoice.PaymentStatus.DRAFT
@@ -152,11 +156,12 @@ class TestGenerateInvoice:
         br = BillingRecord.objects.filter(recurring_charge__isnull=False).first()
         br.next_invoicing_date = br.invoicing_dates[0]
         br.save()
-        payload = {
-            "customer_id": setup_dict["customer"].customer_id,
-            "include_next_period": False,
-        }
-        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+        response = setup_dict["client"].get(
+            reverse(
+                "customer-draft_invoice",
+                kwargs={"customer_id": setup_dict["customer"].customer_id},
+            )
+        )
         assert response.status_code == status.HTTP_200_OK
         before_cost = response.data["invoices"][0]["amount"]
         pct_price_adjustment = PriceAdjustment.objects.create(
@@ -210,23 +215,40 @@ class TestGenerateInvoice:
         setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
 
         payload = {
-            "customer_id": setup_dict["customer"].customer_id,
             "include_next_period": False,
         }
-        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+        response = setup_dict["client"].get(
+            reverse(
+                "customer-draft_invoice",
+                kwargs={"customer_id": setup_dict["customer"].customer_id},
+            ),
+            payload,
+        )
         assert response.status_code == status.HTTP_200_OK
         before_cost = response.data["invoices"][0]["amount"]
 
         setup_dict["org"].tax_rate = Decimal("10")
         setup_dict["org"].save()
-        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+        response = setup_dict["client"].get(
+            reverse(
+                "customer-draft_invoice",
+                kwargs={"customer_id": setup_dict["customer"].customer_id},
+            ),
+            payload,
+        )
         assert response.status_code == status.HTTP_200_OK
         after_cost = response.data["invoices"][0]["amount"]
         assert (before_cost * Decimal("1.1") - after_cost) < Decimal("0.01")
 
         setup_dict["customer"].tax_rate = Decimal("20")
         setup_dict["customer"].save()
-        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+        response = setup_dict["client"].get(
+            reverse(
+                "customer-draft_invoice",
+                kwargs={"customer_id": setup_dict["customer"].customer_id},
+            ),
+            payload,
+        )
         assert response.status_code == status.HTTP_200_OK
         after_cost = response.data["invoices"][0]["amount"]
         assert (before_cost * Decimal("1.2") - after_cost) < Decimal("0.01")

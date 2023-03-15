@@ -13,45 +13,6 @@ from typing import Optional
 
 import posthog
 import pytz
-from dateutil import parser
-from dateutil.relativedelta import relativedelta
-from django.conf import settings
-from django.db.models import (
-    Count,
-    DecimalField,
-    F,
-    Max,
-    Min,
-    OuterRef,
-    Prefetch,
-    Q,
-    Subquery,
-    Sum,
-    Value,
-)
-from django.db.models.functions import Coalesce
-from django.db.utils import IntegrityError
-from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import (
-    OpenApiExample,
-    OpenApiParameter,
-    extend_schema,
-    inline_serializer,
-)
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import (
-    action,
-    api_view,
-    authentication_classes,
-    permission_classes,
-)
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
 from api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
     AddOnSubscriptionRecordSerializer,
@@ -91,6 +52,33 @@ from api.serializers.nonmodel_serializers import (
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
 )
+from dateutil import parser
+from dateutil.relativedelta import relativedelta
+from django.conf import settings
+from django.db.models import (
+    Count,
+    DecimalField,
+    F,
+    Max,
+    Min,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
+from django.db.utils import IntegrityError
+from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiParameter,
+    extend_schema,
+    inline_serializer,
+)
 from metering_billing.auth.auth_utils import (
     PermissionPolicyMixin,
     fast_api_key_validation_and_cache,
@@ -122,6 +110,10 @@ from metering_billing.models import (
     Tag,
 )
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
+from metering_billing.serializers.model_serializers import DraftInvoiceSerializer
+from metering_billing.serializers.request_serializers import (
+    DraftInvoiceRequestSerializer,
+)
 from metering_billing.serializers.serializer_utils import (
     AddOnUUIDField,
     AddOnVersionUUIDField,
@@ -132,14 +124,6 @@ from metering_billing.serializers.serializer_utils import (
     PlanUUIDField,
     SlugRelatedFieldWithOrganizationPK,
     SubscriptionUUIDField,
-)
-from metering_billing.serializers.model_serializers import DraftInvoiceSerializer
-from metering_billing.serializers.request_serializers import DraftInvoiceRequestSerializer
-from metering_billing.utils import (
-    calculate_end_date,
-    convert_to_datetime,
-    date_as_max_dt,
-    now_utc,
 )
 from metering_billing.utils import calculate_end_date, convert_to_datetime, now_utc
 from metering_billing.utils.enums import (
@@ -302,27 +286,26 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         parameters=[DraftInvoiceRequestSerializer],
         responses={
             200: inline_serializer(
-                name="DraftInvoiceResponse",
-                fields={"invoice": DraftInvoiceSerializer}
+                name="DraftInvoiceResponse", fields={"invoice": DraftInvoiceSerializer}
             )
         },
     )
-    @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated | HasUserAPIKey])
-    def draft_invoice(self, request):
+    @action(
+        detail=True, methods=["get"], url_path="draft_invoice", url_name="draft_invoice"
+    )
+    def draft_invoice(self, request, customer_id=None):
         organization = request.organization
         serializer = DraftInvoiceRequestSerializer(
-            data=request.query_params,
-            context={"organization": organization}
+            data=request.query_params, context={"organization": organization}
         )
         serializer.is_valid(raise_exception=True)
         customer = serializer.validated_data.get("customer")
         sub_records = SubscriptionRecord.objects.active().filter(
-            organization=organization,
-            customer=customer
+            organization=organization, customer=customer
         )
-        response = {"invoice": None}
+        response = {"invoices": None}
         if sub_records is None or len(sub_records) == 0:
-            response = {"invoice": []}
+            response = {"invoices": []}
         else:
             sub_records = sub_records.select_related("billing_plan").prefetch_related(
                 "billing_plan__plan_components",
@@ -337,7 +320,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                     "include_next_period", True
                 ),
             )
-            serializer = DraftInvoiceSerializer(invoices, many=True).data 
+            serializer = DraftInvoiceSerializer(invoices, many=True).data
             for invoice in invoices:
                 invoice.delete()
             response = {"invoices": serializer or []}
