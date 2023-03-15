@@ -52,6 +52,7 @@ jobs:
       KAFKA_URL: "localhost:9092"
       PYTHONDONTWRITEBYTECODE: 1
       SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      SELF_HOSTED: "${{ secrets.SELF_HOSTED }}"
 
     steps:
       - uses: actions/checkout@v3
