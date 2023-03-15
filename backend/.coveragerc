@@ -1,2 +1,11 @@
 [run]
-omit = */tests/*, */migrations/*, */management/*, */template_tags/*, */lotus/*, */manage.py, */model_backend.py
+omit = */migrations/*, */management/*, */template_tags/*, */manage.py, */model_backend.py, */settings.py, */urls.py, */wsgi.py, */tests/*
+include = metering_billing/*, api/*
+
+[report]
+show_missing = True
+precision = 1
+exclude_lines =
+    pragma: no cover
+    raise NotImplementedError
+    if __name__ == .__main__.:

@@ -1,4 +1,4 @@
-import { AddonSubscriptionType, AddonType } from "./addon-type";
+import { AddOnSubscriptionType, AddOnType } from "./addon-type";
 import { LightweightCustomerType } from "./customer-type";
 import { LightweightPlanVersionType } from "./plan-type";
 
@@ -10,10 +10,11 @@ export interface SubscriptionTotals {
 }
 
 export interface SubscriptionType {
+  subscription_id: string;
   start_date: string;
   end_date: string;
   auto_renew: boolean;
-  addons: AddonSubscriptionType[];
+  addons: AddOnSubscriptionType[];
   is_new: boolean;
   subscription_filters: {
     value: string;
@@ -31,10 +32,8 @@ export interface CreateSubscriptionType
 }
 
 export interface UpdateSubscriptionType {
-  replace_plan_id?: string;
   end_date?: string;
   turn_off_auto_renew?: boolean;
-  invocing_behavior?: string;
 }
 
 export interface CancelSubscriptionQueryParams {
@@ -50,6 +49,11 @@ export interface CancelSubscriptionBody {
   usage_behavior: "bill_full" | "bill_none";
   flat_fee_behavior: "refund" | "charge_prorated" | "charge_full";
   invoicing_behavior: "add_to_next_invoice" | "invoice_now";
+}
+export interface SwitchPlanSubscriptionBody {
+  new_version_id: string;
+  invoicing_behavior: string;
+  usage_behavior: string;
 }
 
 export interface ChangeSubscriptionPlanType extends UpdateSubscriptionType {
@@ -82,7 +86,7 @@ export interface CancelCreateSubscriptionAddOnBody {
 }
 export interface CreateSubscriptionAddOnType
   extends Omit<SubscriptionType, "start_date" | "end_date" | "customer"> {
-  addon: AddonType;
+  addon: AddOnType;
   fully_billed: boolean;
   parent: SubscriptionType;
 }

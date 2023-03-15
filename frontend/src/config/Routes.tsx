@@ -19,7 +19,7 @@ import NetsuiteIntegrationView from "../integrations/pages/NetsuiteIntegrationVi
 import BraintreeIntegrationView from "../integrations/pages/BraintreeIntegrationView";
 import ViewAddOns from "../pages/ViewAddOns";
 import CreateAddOns from "../pages/CreateAddOns";
-import AddonDetails from "../components/Addons/AddonsDetails/AddonDetails";
+import AddOnDetails from "../components/AddOns/AddOnsDetails/AddOnDetails";
 import CustomerDetail from "../components/Customers/CustomerDetail";
 import QuickstartPage from "../pages/Quickstart";
 
@@ -71,7 +71,7 @@ const AppRoutes: FC = () => {
             <Route path="create-plan" element={<CreatePlan />} />
             <Route path="create-addons" element={<CreateAddOns />} />
             <Route path="/add-ons" element={<ViewAddOns />} />
-            <Route path="/add-ons/:addOnId" element={<AddonDetails />} />
+            <Route path="/add-ons/:addOnId" element={<AddOnDetails />} />
             <Route
               path="create-version/:planId"
               element={<EditPlanLoader type="version" />}
@@ -79,6 +79,10 @@ const AppRoutes: FC = () => {
             <Route
               path="create-custom/:planId"
               element={<EditPlanLoader type="custom" />}
+            />{" "}
+            <Route
+              path="add-currency/:planId/:versionId"
+              element={<EditPlanLoader type="currency" />}
             />{" "}
             <Route
               path="backtest-plan/:planId"

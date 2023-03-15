@@ -13,17 +13,12 @@ from metering_billing.models import (
     Organization,
     Plan,
     PlanVersion,
+    PricingUnit,
     RecurringCharge,
 )
 from metering_billing.serializers.model_serializers import APITokenSerializer
 from metering_billing.utils import now_utc
-from metering_billing.utils.enums import (
-    EVENT_TYPE,
-    METRIC_TYPE,
-    PLAN_DURATION,
-    PLAN_STATUS,
-    PLAN_VERSION_STATUS,
-)
+from metering_billing.utils.enums import EVENT_TYPE, METRIC_TYPE, PLAN_DURATION
 
 logger = logging.getLogger("django.server")
 
@@ -117,14 +112,12 @@ class Command(BaseCommand):
             plan_name="Free Plan",
             organization=organization,
             plan_duration=PLAN_DURATION.MONTHLY,
-            status=PLAN_STATUS.ACTIVE,
         )
         free_bp = PlanVersion.objects.create(
             organization=organization,
-            description="The free tier",
-            version=1,
             plan=plan,
-            status=PLAN_VERSION_STATUS.ACTIVE,
+            version=1,
+            currency=PricingUnit.objects.get(organization=organization, code="USD"),
         )
         RecurringCharge.objects.create(
             organization=organization,
@@ -132,7 +125,7 @@ class Command(BaseCommand):
             amount=0,
             name="Flat Rate",
             charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
-            pricing_unit=free_bp.pricing_unit,
+            pricing_unit=free_bp.currency,
         )
         create_pc_and_tiers(
             organization,
@@ -150,7 +143,6 @@ class Command(BaseCommand):
         tier = pc.tiers.all().first()
         tier.range_end = None
         tier.save()
-        plan.display_version = free_bp
         plan.save()
 
         print(f"PLAN_ID=plan_{plan.plan_id.hex}")
@@ -172,6 +164,7 @@ class Command(BaseCommand):
             organization=organization,
             customer=customer,
             amount=100,
+            pricing_unit=free_bp.currency,
         )
 
         # addon
@@ -188,14 +181,12 @@ class Command(BaseCommand):
         flat_fee_addon = Plan.objects.create(
             organization=organization,
             plan_name="flat_fee_addon",
-            addon_spec=flat_fee_addon_spec,
+            is_addon=True,
         )
         flat_fee_addon_version = PlanVersion.objects.create(
             organization=organization,
-            description="flat_fee_addon",
             plan=flat_fee_addon,
-            version=1,
-            status=PLAN_VERSION_STATUS.ACTIVE,
+            addon_spec=flat_fee_addon_spec,
         )
         RecurringCharge.objects.create(
             organization=plan.organization,
@@ -203,11 +194,9 @@ class Command(BaseCommand):
             charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
             charge_behavior=RecurringCharge.ChargeBehaviorType.PRORATE,
             amount=10,
-            pricing_unit=flat_fee_addon_version.pricing_unit,
+            pricing_unit=flat_fee_addon_version.currency,
         )
         flat_fee_addon_version.features.add(premium_support_feature)
-        flat_fee_addon.display_version = flat_fee_addon_version
-        flat_fee_addon.save()
         print(f"ADDON_ID=addon_{flat_fee_addon.plan_id.hex}")
 
         # metric + feature

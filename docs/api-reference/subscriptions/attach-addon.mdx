@@ -1,0 +1,24 @@
+---
+openapi: "POST /api/subscriptions/{subscription_id}/addons/attach/"
+title: Attach an Add-On
+description: Add an addon to a customer's subscription
+---
+
+<CodeGroup>
+```py Python
+lotus.attach_addon(
+  subscription_id='sub_e953bfbf42a442ca90079c8f1656d306',
+  addon_id='addon_5af61a194ca144478fb2721dd34c9049',
+  quantity=3,
+)
+```
+
+```ts Typescript
+await lotus.attachAddon({
+  subscription_id: "sub_e953bfbf42a442ca90079c8f1656d306",
+  addon_id: "addon_5af61a194ca144478fb2721dd34c9049",
+  quantity: 3,
+});
+```
+
+</CodeGroup>

@@ -116,6 +116,7 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             Organization,
             Plan,
             PlanVersion,
+            SubscriptionRecord,
         )
 
         if self.queryset.model is CustomerBalanceAdjustment:
@@ -126,15 +127,23 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             try:
                 data = PlanUUIDField().to_internal_value(data)
             except ValidationError:
-                data = AddonUUIDField().to_internal_value(data)
+                data = AddOnUUIDField().to_internal_value(data)
         elif self.queryset.model is PlanVersion:
-            data = PlanVersionUUIDField().to_internal_value(data)
+            try:
+                data = PlanVersionUUIDField().to_internal_value(data)
+            except ValidationError:
+                data = AddOnVersionUUIDField().to_internal_value(data)
         elif self.queryset.model is Feature:
             data = FeatureUUIDField().to_internal_value(data)
         elif self.queryset.model is Organization:
             data = OrganizationUUIDField().to_internal_value(data)
         elif self.queryset.model is Invoice:
             data = InvoiceUUIDField().to_internal_value(data)
+        elif self.queryset.model is SubscriptionRecord:
+            try:
+                data = SubscriptionUUIDField().to_internal_value(data)
+            except ValidationError:
+                data = AddOnSubscriptionUUIDField().to_internal_value(data)
         return super().to_internal_value(data)
 
     def to_representation(self, obj):
@@ -146,6 +155,7 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             Organization,
             Plan,
             PlanVersion,
+            SubscriptionRecord,
         )
 
         repr = super().to_representation(obj)
@@ -156,7 +166,7 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
         elif isinstance(obj, Plan) and obj.addon_spec is None:
             return PlanUUIDField().to_representation(obj.plan_id)
         elif isinstance(obj, Plan) and obj.addon_spec is not None:
-            return AddonUUIDField().to_representation(obj.plan_id)
+            return AddOnUUIDField().to_representation(obj.plan_id)
         elif isinstance(obj, PlanVersion):
             return PlanVersionUUIDField().to_representation(obj.version_id)
         elif isinstance(obj, Feature):
@@ -165,6 +175,15 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             return OrganizationUUIDField().to_representation(obj.organization_id)
         elif isinstance(obj, Invoice):
             return InvoiceUUIDField().to_representation(obj.invoice_id)
+        elif isinstance(obj, SubscriptionRecord):
+            if obj.plan_version.addon_spec is None:
+                return SubscriptionUUIDField().to_representation(
+                    obj.susbcription_record_id
+                )
+            else:
+                return AddOnSubscriptionUUIDField().to_representation(
+                    obj.susbcription_record_id
+                )
         return repr
 
 
@@ -262,22 +281,28 @@ class PlanVersionUUIDField(UUIDPrefixField):
         super().__init__("plan_version_", *args, **kwargs)
 
 
+@extend_schema_field(serializers.RegexField(regex=r"addon_version_[0-9a-f]{32}"))
+class AddOnVersionUUIDField(UUIDPrefixField):
+    def __init__(self, *args, **kwargs):
+        super().__init__("addon_version_", *args, **kwargs)
+
+
 @extend_schema_field(serializers.RegexField(regex=r"feature_[0-9a-f]{32}"))
 class FeatureUUIDField(UUIDPrefixField):
     def __init__(self, *args, **kwargs):
         super().__init__("feature_", *args, **kwargs)
 
 
+@extend_schema_field(serializers.RegexField(regex=r"addon_sub_[0-9a-f]{32}"))
+class AddOnSubscriptionUUIDField(UUIDPrefixField):
+    def __init__(self, *args, **kwargs):
+        super().__init__("addon_sub_", *args, **kwargs)
+
+
 @extend_schema_field(serializers.RegexField(regex=r"sub_[0-9a-f]{32}"))
 class SubscriptionUUIDField(UUIDPrefixField):
     def __init__(self, *args, **kwargs):
         super().__init__("sub_", *args, **kwargs)
-
-
-@extend_schema_field(serializers.RegexField(regex=r"sr_[0-9a-f]{32}"))
-class SubscriptionRecordUUIDField(UUIDPrefixField):
-    def __init__(self, *args, **kwargs):
-        super().__init__("sr_", *args, **kwargs)
 
 
 @extend_schema_field(serializers.RegexField(regex=r"usg_alert_[0-9a-f]{32}"))
@@ -299,6 +324,6 @@ class WebhookSecretUUIDField(UUIDPrefixField):
 
 
 @extend_schema_field(serializers.RegexField(regex=r"addon_[0-9a-f]{32}"))
-class AddonUUIDField(UUIDPrefixField):
+class AddOnUUIDField(UUIDPrefixField):
     def __init__(self, *args, **kwargs):
         super().__init__("addon_", *args, **kwargs)

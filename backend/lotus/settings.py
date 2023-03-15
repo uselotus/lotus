@@ -598,9 +598,7 @@ SPECTACULAR_SETTINGS = {
             "TokenAuth": [],
         }
     ],
-    "PREPROCESSING_HOOKS": [
-        "metering_billing.openapi_hooks.remove_invalid_subscription_methods"
-    ],
+    "PREPROCESSING_HOOKS": [],
     "POSTPROCESSING_HOOKS": [
         "metering_billing.openapi_hooks.remove_required_parent_plan_and_target_customer",
         "metering_billing.openapi_hooks.remove_required_external_payment_obj_type",
