@@ -1,3 +1,5 @@
+from rest_framework import serializers
+
 from metering_billing.models import Customer, PlanVersion
 from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganization,
@@ -6,7 +8,6 @@ from metering_billing.utils.enums import (
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
 )
-from rest_framework import serializers
 
 
 class PeriodComparisonRequestSerializer(serializers.Serializer):

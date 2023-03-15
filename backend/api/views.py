@@ -294,12 +294,12 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         detail=True, methods=["get"], url_path="draft_invoice", url_name="draft_invoice"
     )
     def draft_invoice(self, request, customer_id=None):
+        customer = self.get_object()
         organization = request.organization
         serializer = DraftInvoiceRequestSerializer(
             data=request.query_params, context={"organization": organization}
         )
         serializer.is_valid(raise_exception=True)
-        customer = serializer.validated_data.get("customer")
         sub_records = SubscriptionRecord.objects.active().filter(
             organization=organization, customer=customer
         )
@@ -311,7 +311,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 "billing_plan__plan_components",
                 "billing_plan__plan_components__billable_metric",
                 "billing_plan__plan_components__tiers",
-                "billing_plan__pricing_unit",
+                "billing_plan__currency",
             )
             invoices = generate_invoice(
                 sub_records,

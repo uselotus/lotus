@@ -174,7 +174,12 @@ class TestGenerateInvoice:
         setup_dict["billing_plan"].price_adjustment = pct_price_adjustment
         setup_dict["billing_plan"].save()
 
-        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+        response = setup_dict["client"].get(
+            reverse(
+                "customer-draft_invoice",
+                kwargs={"customer_id": setup_dict["customer"].customer_id},
+            ),
+        )
         assert response.status_code == status.HTTP_200_OK
         after_cost = response.data["invoices"][0]["amount"]
         assert (before_cost * Decimal("0.99") - after_cost) < Decimal("0.01")
@@ -189,7 +194,12 @@ class TestGenerateInvoice:
         setup_dict["billing_plan"].price_adjustment = fixed_price_adjustment
         setup_dict["billing_plan"].save()
 
-        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+        response = setup_dict["client"].get(
+            reverse(
+                "customer-draft_invoice",
+                kwargs={"customer_id": setup_dict["customer"].customer_id},
+            ),
+        )
 
         assert response.status_code == status.HTTP_200_OK
         after_cost = response.data["invoices"][0]["amount"]
@@ -205,7 +215,12 @@ class TestGenerateInvoice:
         setup_dict["billing_plan"].price_adjustment = override_price_adjustment
         setup_dict["billing_plan"].save()
 
-        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+        response = setup_dict["client"].get(
+            reverse(
+                "customer-draft_invoice",
+                kwargs={"customer_id": setup_dict["customer"].customer_id},
+            ),
+        )
 
         assert response.status_code == status.HTTP_200_OK
         after_cost = response.data["invoices"][0]["amount"]
