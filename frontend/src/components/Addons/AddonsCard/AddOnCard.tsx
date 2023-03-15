@@ -8,7 +8,7 @@ import createShortenedText from "../../../helpers/createShortenedText";
 import capitalize from "../../../helpers/capitalize";
 import useMediaQuery from "../../../hooks/useWindowQuery";
 import { AddOnType } from "../../../types/addon-type";
-import { constructBillType } from "../AddOnsDetails/AddOnInfo";
+import { constructBillType } from "../AddonsDetails/AddOnInfo";
 import { components } from "../../../gen-types";
 
 interface AddOnCardProps {

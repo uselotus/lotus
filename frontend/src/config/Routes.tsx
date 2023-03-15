@@ -19,7 +19,7 @@ import NetsuiteIntegrationView from "../integrations/pages/NetsuiteIntegrationVi
 import BraintreeIntegrationView from "../integrations/pages/BraintreeIntegrationView";
 import ViewAddOns from "../pages/ViewAddOns";
 import CreateAddOns from "../pages/CreateAddOns";
-import AddOnDetails from "../components/AddOns/AddOnsDetails/AddOnDetails";
+import AddOnDetails from "../components/Addons/AddonsDetails/AddonDetails";
 import CustomerDetail from "../components/Customers/CustomerDetail";
 import QuickstartPage from "../pages/Quickstart";
 
