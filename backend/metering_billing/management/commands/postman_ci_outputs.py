@@ -2,7 +2,6 @@ import logging
 import uuid
 
 from django.core.management.base import BaseCommand
-
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.demos import create_pc_and_tiers, make_subscription_record
 from metering_billing.invoice import generate_invoice
@@ -19,12 +18,7 @@ from metering_billing.models import (
 )
 from metering_billing.serializers.model_serializers import APITokenSerializer
 from metering_billing.utils import now_utc
-from metering_billing.utils.enums import (
-    EVENT_TYPE,
-    METRIC_TYPE,
-    PLAN_DURATION,
-    PLAN_VERSION_STATUS,
-)
+from metering_billing.utils.enums import EVENT_TYPE, METRIC_TYPE, PLAN_DURATION
 
 logger = logging.getLogger("django.server")
 
@@ -187,13 +181,12 @@ class Command(BaseCommand):
         flat_fee_addon = Plan.objects.create(
             organization=organization,
             plan_name="flat_fee_addon",
-            addon_spec=flat_fee_addon_spec,
+            is_addon=True,
         )
         flat_fee_addon_version = PlanVersion.objects.create(
             organization=organization,
-            description="flat_fee_addon",
             plan=flat_fee_addon,
-            status=PLAN_VERSION_STATUS.ACTIVE,
+            addon_spec=flat_fee_addon_spec,
         )
         RecurringCharge.objects.create(
             organization=plan.organization,
