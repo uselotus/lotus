@@ -2,7 +2,6 @@ import logging
 import uuid
 
 from django.core.management.base import BaseCommand
-
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.demos import create_pc_and_tiers, make_subscription_record
 from metering_billing.invoice import generate_invoice
@@ -131,7 +130,7 @@ class Command(BaseCommand):
             amount=0,
             name="Flat Rate",
             charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
-            pricing_unit=free_bp.pricing_unit,
+            pricing_unit=free_bp.currency,
         )
         create_pc_and_tiers(
             organization,
@@ -200,7 +199,7 @@ class Command(BaseCommand):
             charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
             charge_behavior=RecurringCharge.ChargeBehaviorType.PRORATE,
             amount=10,
-            pricing_unit=flat_fee_addon_version.pricing_unit,
+            pricing_unit=flat_fee_addon_version.currency,
         )
         flat_fee_addon_version.features.add(premium_support_feature)
         print(f"ADDON_ID=addon_{flat_fee_addon.plan_id.hex}")
