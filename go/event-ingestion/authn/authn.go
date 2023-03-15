@@ -2,28 +2,34 @@ package authn
 
 import (
 	"database/sql"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/uselotus/lotus/go/event-ingestion/cache"
-	"github.com/uselotus/lotus/go/event-ingestion/types"
+	"github.com/uselotus/lotus/go/pkg/types"
 )
 
 func getAPIKeyFromHeader(h http.Header) string {
-	key := h.Get("X-API-KEY")
+	key := ""
 
-	if key == "" {
-		for k, v := range h {
-			if strings.ToLower(k) == "x-api-key" {
-				key = v[0]
-				break
-			}
-		}
-	}
+    values := h.Values("X-Api-Key")
+    if len(values) > 0 {
+        key = values[0]
+    }
 
-	return key
+    if key == "" {
+        for k, v := range h {
+            if strings.ToLower(k) == "x-api-key" {
+                key = v[0]
+                break
+            }
+        }
+    }
+
+    return key
 }
 
 func getFromDB(db *sql.DB, prefix string) (*types.APIKey, error) {
@@ -48,6 +54,9 @@ func Middleware(cacheClient cache.Cache) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			key := getAPIKeyFromHeader(c.Request().Header)
+
+			log.Printf("Request: %v", c.Request())
+			
 			if key == "" {
 				return echo.NewHTTPError(http.StatusBadRequest, "No API key found in request")
 			}

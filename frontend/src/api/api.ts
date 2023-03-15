@@ -1,5 +1,5 @@
 /* eslint-disable camelcase */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any camelcase */
 import axios, { AxiosResponse } from "axios";
 import Cookies from "universal-cookie";
 import {
@@ -8,7 +8,7 @@ import {
   CustomerCreateType,
   CustomerSummary,
 } from "../types/customer-type";
-import { AddonType, CreateAddonType } from "../types/addon-type";
+import { AddOnType, CreateAddOnFeatureBody } from "../types/addon-type";
 import {
   WebhookEndpoint,
   WebhookEndpointCreate,
@@ -21,18 +21,23 @@ import {
 } from "../types/apikey-type";
 import {
   PlanType,
-  CreatePlanType,
   UpdatePlanType,
   PlansByCustomerArray,
-  CreatePlanVersionType,
-  PlanDetailType,
-  PlanVersionType,
   ReplaceLaterType,
   ReplaceImmediatelyType,
   ArchivePlanVersionType,
   PlanVersionUpdateDescriptionType,
   CreatePlanExternalLinkType,
   InitialExternalLinks,
+  PlanVersionFeatureAddBody,
+  PlanVersionsType,
+  PlanVersionReplacementMakeBody,
+  PlanVersionReplacementSetBody,
+  PlanVersionAddTargetCustomerBody,
+  PlanFeaturesAdd,
+  CreateTagsPlanBody,
+  CreateTagsType,
+  CreatePlanRequestType,
 } from "../types/plan-type";
 import {
   PaymentProcessorConnectionResponseType,
@@ -51,7 +56,6 @@ import {
   CreateSubscriptionType,
   UpdateSubscriptionType,
   SubscriptionType,
-  CancelSubscriptionQueryParams,
   CancelSubscriptionBody,
   ChangeSubscriptionPlanType,
   TurnSubscriptionAutoRenewOffType,
@@ -59,6 +63,7 @@ import {
   CreateSubscriptionAddOnType,
   CancelCreateSubscriptionAddOnBody,
   CancelCreateSubscriptionAddOnQueryParams,
+  SwitchPlanSubscriptionBody,
 } from "../types/subscription-type";
 import {
   MetricUsage,
@@ -88,6 +93,7 @@ import {
 import { CreateCreditType, CreditType } from "../types/balance-adjustment";
 import { CurrencyType } from "../types/pricing-unit-type";
 import { AlertType, CreateAlertType } from "../types/alert-type";
+import { components, operations } from "../gen-types";
 
 const cookies = new Cookies();
 
@@ -107,6 +113,7 @@ export const instance = axios.create({
 // this allows us to pass in arrays as query params without them being encoded
 
 const responseBody = (response: AxiosResponse) => response.data;
+type GetPlansQuery = operations["app_plans_list"]["parameters"];
 
 const requests = {
   get: (url: string, params?: object) =>
@@ -163,21 +170,22 @@ export const Customer = {
   },
   createSubscription: (
     post: CreateSubscriptionType
-  ): Promise<SubscriptionType> => requests.post("app/subscriptions/add/", post),
+  ): Promise<SubscriptionType> => requests.post("app/subscriptions/", post),
   updateSubscription: (
     post: UpdateSubscriptionType,
-    params?: {
-      customer_id?: string;
-      plan_id?: string;
-      subscription_filters?: { property_name: string; value: string }[];
-    }
-  ): Promise<UpdateSubscriptionType> =>
-    requests.post(`app/subscriptions/update/`, post, params),
+    subscription_id: string
+  ): Promise<SubscriptionType> =>
+    requests.post(`app/subscriptions/${subscription_id}/update/`, post),
   cancelSubscription: (
-    params: CancelSubscriptionQueryParams,
+    subscription_id: string,
     post: CancelSubscriptionBody
   ): Promise<SubscriptionType> =>
-    requests.post(`app/subscriptions/cancel/`, post, params),
+    requests.post(`app/subscriptions/${subscription_id}/cancel/`, post),
+  switchPlanSubscription: (
+    subscription_id: string,
+    post: SwitchPlanSubscriptionBody
+  ): Promise<SubscriptionType> =>
+    requests.post(`app/subscriptions/${subscription_id}/switch_plan/`, post),
   changeSubscriptionPlan: (
     post: ChangeSubscriptionPlanType,
     params?: {
@@ -207,24 +215,47 @@ export const Customer = {
     requests.post(`app/subscriptions/addons/cancel/`, body, params),
 };
 
-export const Addon = {
-  getAddons: (): Promise<AddonType[]> => requests.get("app/addons/"),
-  getAddon: (addon_id: string): Promise<AddonType> =>
+export const AddOn = {
+  getAddOns: (): Promise<components["schemas"]["AddOnDetail"][]> =>
+    requests.get("app/addons/"),
+  getAddOn: (addon_id: string): Promise<components["schemas"]["AddOnDetail"]> =>
     requests.get(`app/addons/${addon_id}/`),
-  createAddon: (post: CreateAddonType): Promise<AddonType> =>
-    requests.post("app/addons/", post),
+  deleteAddOn: (addon_id: string): Promise<PlanVersionsType> =>
+    requests.get(`app/addons/${addon_id}/delete/`),
+  createAddOn: (
+    post: components["schemas"]["AddOnCreateRequest"]
+  ): Promise<AddOnType> => requests.post("app/addons/", post),
+  createAddOnFeatures: (
+    addon_id: string,
+    post: CreateAddOnFeatureBody
+  ): Promise<PlanVersionsType> =>
+    requests.post(`app/addons/${addon_id}/features/add/`, post),
 };
 
 export const Plan = {
   // get methods
-  getPlans: (): Promise<PlanType[]> => requests.get("app/plans/"),
-  getPlan: (plan_id: string): Promise<PlanDetailType> =>
-    requests.get(`app/plans/${plan_id}/`),
+  getPlans: (params?: {
+    duration?: "monthly" | "quarterly" | "yearly";
+    exclude_tags?: string[];
+    include_tags?: string[];
+    include_tags_all?: string[];
+    version_currency_code?: string;
+    version_custom_type?: "custom_only" | "public_only" | "all";
+    version_status?: ("active" | "ended" | "not_started")[];
+  }): Promise<PlanType[] | components["schemas"]["PlanDetail"][]> =>
+    requests.get("app/plans/", { params }),
+  getPlan: (
+    plan_id: string,
+    version_custom_type?: "all" | "custom_only" | "public_only"
+  ): Promise<components["schemas"]["PlanDetail"]> =>
+    requests.get(`app/plans/${plan_id}/`, { params: { version_custom_type } }),
   // create plan
-  createPlan: (post: CreatePlanType): Promise<PlanType> =>
+  createPlan: (post: CreatePlanRequestType): Promise<PlanType> =>
     requests.post("app/plans/", post),
   // create plan version
-  createVersion: (post: CreatePlanVersionType): Promise<PlanVersionType> =>
+  createVersion: (
+    post: components["schemas"]["InitialPlanVersionCreateRequest"]
+  ): Promise<components["schemas"]["InitialPlanVersionCreateRequest"]> =>
     requests.post("app/plan_versions/", post),
   // create plan external links
   createExternalLinks: (
@@ -242,6 +273,23 @@ export const Plan = {
     plan_id: string,
     post: UpdatePlanType
   ): Promise<UpdatePlanType> => requests.patch(`app/plans/${plan_id}/`, post),
+  deletePlan: (plan_id: string): Promise<PlanVersionsType> =>
+    requests.post(`app/plans/${plan_id}/delete/`, {}),
+  featuresAddPlan: (
+    plan_id: string,
+    post: PlanFeaturesAdd
+  ): Promise<PlanVersionsType> =>
+    requests.post(`app/plans/${plan_id}/features/add/`, post),
+  createTagsPlan: (
+    plan_id: string,
+    post: CreateTagsPlanBody
+  ): Promise<CreateTagsType> =>
+    requests.post(`app/plans/${plan_id}/tags/add/`, post),
+  removeTagsPlan: (
+    plan_id: string,
+    post: CreateTagsPlanBody
+  ): Promise<CreateTagsType> =>
+    requests.post(`app/plans/${plan_id}/tags/add/`, post),
   // update plan versions methods
   updatePlanVersionDescription: (
     version_id: string,
@@ -259,10 +307,40 @@ export const Plan = {
   ): Promise<ReplaceImmediatelyType> =>
     requests.patch(`app/plan_versions/${version_id}/`, post),
   archivePlanVersion: (
+    version_id: string
+  ): Promise<components["schemas"]["DeletePlanVersion"]> =>
+    requests.post(`app/plan_versions/${version_id}/delete/`, {}),
+  deletePlanVersion: (version_id: string): Promise<PlanVersionsType> =>
+    requests.post(`app/plan_versions/${version_id}/delete/`, {}),
+  featureAddPlanVersion: (
     version_id: string,
-    post: ArchivePlanVersionType
-  ): Promise<ArchivePlanVersionType> =>
-    requests.patch(`app/plan_versions/${version_id}/`, post),
+    post: PlanVersionFeatureAddBody
+  ): Promise<PlanVersionsType> =>
+    requests.post(`/app/plan_versions/${version_id}/features/add/`, post),
+  makePublicPlanVersion: (version_id: string): Promise<PlanVersionsType> =>
+    requests.post(`app/plan_versions/${version_id}/make_public/`, {}),
+  subscriptionsPlanVersions: (
+    version_id: string
+  ): Promise<components["schemas"]["PlanVersionHistoricalSubscription"][]> =>
+    requests.get(`app/plan_versions/${version_id}/subscriptions/`, {}),
+  makeReplacementPlanVersion: (
+    version_id: string,
+    post: PlanVersionReplacementMakeBody
+  ): Promise<PlanVersionsType> =>
+    requests.post(`app/plan_versions/${version_id}/replacement/make/`, post),
+  setReplacementPlanVersion: (
+    version_id: string,
+    post: PlanVersionReplacementSetBody
+  ): Promise<PlanVersionsType> =>
+    requests.post(`app/plan_versions/${version_id}/replacement/set/`, post),
+  addTargetCustomerPlanVersion: (
+    version_id: string,
+    post: PlanVersionAddTargetCustomerBody
+  ): Promise<PlanVersionsType> =>
+    requests.post(
+      `app/plan_versions/${version_id}/target_customers/add/`,
+      post
+    ),
   createAlert: (post: CreateAlertType): Promise<AlertType> =>
     requests.post("app/usage_alerts/", post),
   deleteAlert: (post: { usage_alert_id: string }): Promise<AlertType> =>

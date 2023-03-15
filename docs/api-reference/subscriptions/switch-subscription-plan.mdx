@@ -1,0 +1,31 @@
+---
+title: "Switch a subscription's plan"
+openapi: "POST /api/subscriptions/{subscription_id}/switch_plan/"
+description: "Upgrade or downgrade the susbcription's plan."
+---
+
+Keep in mind that Lotus internally updates the subscription ID when you upgrade or downgrade a subscription. This means that the old ID will no longer be valid.
+
+<CodeGroup>
+
+```py Python
+lotus.switch_subscription_plan(
+  subscription_id='sub_a623349004cd4947aca1851c64aa6fbd',
+  switch_plan_id='plan_b5fe8a2603a24c4fa05ffb3fb382fe6d',
+  invoicing_behavior='add_to_next_invoice',
+  usage_behavior='transfer_to_new_subscription', # or 'keep_separate'
+)
+```
+
+```ts Typescript
+await lotus.updateSubscription({
+  subscription_id: "sub_a623349004cd4947aca1851c64aa6fbd",
+  switch_plan_id: "plan_b5fe8a2603a24c4fa05ffb3fb382fe6d",
+  invoicing_behavior: "add_to_next_invoice",
+  usage_behavior: "transfer_to_new_subscription", // or 'keep_separate'
+});
+```
+
+</CodeGroup>
+
+---

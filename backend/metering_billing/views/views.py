@@ -57,15 +57,14 @@ from metering_billing.utils import (
     convert_to_decimal,
     date_as_max_dt,
     date_as_min_dt,
+    dates_bwn_two_dts,
     make_all_dates_times_strings,
     make_all_decimals_floats,
-    periods_bwn_twodates,
 )
 from metering_billing.utils.enums import (
     METRIC_STATUS,
     METRIC_TYPE,
     PAYMENT_PROCESSORS,
-    USAGE_CALC_GRANULARITY,
 )
 
 logger = logging.getLogger("django.server")
@@ -136,9 +135,7 @@ class PeriodMetricRevenueView(APIView):
                 .prefetch_related("billing_plan__plan_components__tiers")
             )
             per_day_dict = {}
-            for period in periods_bwn_twodates(
-                USAGE_CALC_GRANULARITY.DAILY, start, end
-            ):
+            for period in dates_bwn_two_dts(start, end):
                 period = convert_to_date(period)
                 per_day_dict[period] = {
                     "date": period,
@@ -236,9 +233,7 @@ class CostAnalysisView(APIView):
                 f"Customer with customer_id: {customer_id} not found"
             )
         per_day_dict = {}
-        for period in periods_bwn_twodates(
-            USAGE_CALC_GRANULARITY.DAILY, start_date, end_date
-        ):
+        for period in dates_bwn_two_dts(start_date, end_date):
             period = convert_to_date(period)
             per_day_dict[period] = {
                 "date": period,
@@ -496,6 +491,58 @@ class TimezonesView(APIView):
         Pagination-enabled endpoint for retrieving an organization's event stream.
         """
         response = {"timezones": pytz.common_timezones}
+        return Response(response, status=status.HTTP_200_OK)
+
+
+
+class DraftInvoiceView(APIView):
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
+
+    @extend_schema(
+        request=DraftInvoiceRequestSerializer,
+        parameters=[DraftInvoiceRequestSerializer],
+        responses={
+            200: inline_serializer(
+                name="DraftInvoiceResponse",
+                fields={"invoice": DraftInvoiceSerializer(required=False, many=True)},
+            )
+        },
+    )
+    def get(self, request, format=None):
+        """
+        Pagination-enabled endpoint for retrieving an organization's event stream.
+        """
+        organization = request.organization
+        serializer = DraftInvoiceRequestSerializer(
+            data=request.query_params, context={"organization": organization}
+        )
+        serializer.is_valid(raise_exception=True)
+        customer = serializer.validated_data.get("customer")
+        sub_records = SubscriptionRecord.objects.active().filter(
+            organization=organization,
+            customer=customer,
+        )
+        response = {"invoice": None}
+        if sub_records is None or len(sub_records) == 0:
+            response = {"invoices": []}
+        else:
+            sub_records = sub_records.select_related("billing_plan").prefetch_related(
+                "billing_plan__plan_components",
+                "billing_plan__plan_components__billable_metric",
+                "billing_plan__plan_components__tiers",
+                "billing_plan__currency",
+            )
+            invoices = generate_invoice(
+                sub_records,
+                draft=True,
+                charge_next_plan=serializer.validated_data.get(
+                    "include_next_period", True
+                ),
+            )
+            serializer = DraftInvoiceSerializer(invoices, many=True).data
+            for invoice in invoices:
+                invoice.delete()
+            response = {"invoices": serializer or []}
         return Response(response, status=status.HTTP_200_OK)
 
 

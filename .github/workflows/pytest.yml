@@ -51,6 +51,7 @@ jobs:
       DEBUG: False
       KAFKA_URL: "localhost:9092"
       PYTHONDONTWRITEBYTECODE: 1
+      SELF_HOSTED: "${{ secrets.SELF_HOSTED }}"
 
     steps:
       - uses: actions/checkout@v3
@@ -123,6 +124,26 @@ jobs:
           fi
         env:
           RETRY_DESCRIPTION: "Running Pytest"
+
+      - name: Test Pytest integrations
+        run: |
+          for i in 1 2 3; do
+            if pipenv run pytest -x -k "integrations"; then
+              export PYTEST_INTEGRATIONS_SUCCEEDED=true
+              break
+            else
+              export PYTEST_INTEGRATIONS_SUCCEEDED=false
+            fi
+            sleep 5s
+          done
+          if [[ "${PYTEST_INTEGRATIONS_SUCCEEDED}" == "true" ]]; then
+            echo "Pytest succeeded"
+          else
+            echo "Pytest failed"
+            exit 1
+          fi
+        env:
+          RETRY_DESCRIPTION: "Running Pytest Integrations"
 
       - name: Test Setup Tasks
         run: |

@@ -1,0 +1,26 @@
+---
+openapi: "POST /api/subscriptions/{subscription_id}/addons/{addon_id}/cancel/"
+title: Cancel an Add-On
+description: Cancel an addon in the customer's subscription
+---
+
+<CodeGroup>
+```py Python
+lotus.cancel_addon(
+  subscription_id='sub_e953bfbf42a442ca90079c8f1656d306',
+  addon_id='addon_5af61a194ca144478fb2721dd34c9049',
+  flat_fee_behavior='charge_prorated',
+  invoicing_behavior='invoice_now'
+)
+```
+
+```ts Typescript
+await lotus.cancelAddon({
+  subscription_id: "sub_e953bfbf42a442ca90079c8f1656d306",
+  addon_id: "addon_5af61a194ca144478fb2721dd34c9049",
+  flat_fee_behavior: "charge_prorated",
+  invoicing_behavior: "invoice_now",
+});
+```
+
+</CodeGroup>

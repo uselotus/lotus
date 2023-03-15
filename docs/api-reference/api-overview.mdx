@@ -5,19 +5,21 @@ openapi: GET /api/ping/
 
 ## Getting Started
 
-You can access Lotus's API directly or through the SDKs we have built. We highly recommend using the SDKs as they provide a more user-friendly interface to the API and some of the endpoints are overloaded to provide a flexible functionality.
+You can access Lotus's API directly or through one of our SDKs. We highly recommend using the SDKs as they provide a more user-friendly interface and can help you more easily interpret the return types.
 
-All api calls must be made over https to api.uselotus.io/api/
+If you're not using an SDK, all API calls must be made over https to `api.uselotus.io/api/`
 
 ### How to use your API key
 
-Your API key obtained in the Lotus Frontend Settings tab, is only visible once your create it and, therefore, must be stored securely.
+To obtain an API key, you must navigate to Settings > Developer Settings > API Keys in the Lotus frontend. You can create a new API key by clicking the Add API Key button, where you'll be prompted to give it a name and an optional expiration date.
 
-If you create a new API key, your **old API key will be revoked** and it will not authenticate endpoints.
+![API Key Creation page](/images/api-overview/api_keys.png)
+
+The full API key will only be shown once, so make sure to copy it somewhere safe. You can always delete or regenerate the API key if you need to.
 
 The API key must be passed into the _X-API-KEY_ header in your requests.
 
-To confirm that your API key is working, you can make a request to the _/api/ping_ endpoint. This will return the id of the organization the API key belongs to. 
+To confirm that your API key is working, you can make a request to the _/api/ping_ endpoint. This will return the `organization_id` the API key belongs to.
 
 <CodeGroup>
 
@@ -30,4 +32,3 @@ await lotus.ping();
 ```
 
 </CodeGroup>
-

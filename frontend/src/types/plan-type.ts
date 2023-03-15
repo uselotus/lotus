@@ -1,29 +1,36 @@
+import { components } from "../gen-types";
 import { MetricType } from "./metric-type";
 import { FeatureType } from "./feature-type";
 import { CurrencyType } from "./pricing-unit-type";
 import { LightweightCustomerType } from "./customer-type";
 import { AlertType } from "./alert-type";
 
-export interface PlanType {
-  plan_name: string;
-  plan_duration: "monthly" | "quarterly" | "yearly";
-  status: "active" | "archived" | "experimental";
-  external_links: InitialExternalLinks[];
-  plan_id: string;
-  parent_plan: {
-    plan_name: string;
-    plan_id: string;
-  } | null;
-  target_customer: LightweightCustomerType | null;
-  display_version: PlanVersionType;
-  num_versions: number;
-  active_subscriptions: number;
-  tags: { tag_color: string; tag_hex: string; tag_name: string }[];
-  taxjar_code?: string;
+export interface RecurringCharge {
+  name: string;
+  charge_timing: "in_advance" | "in_arrears";
+  charge_behavior: "prorate" | "full";
+  amount: number;
+  pricing_unit: CurrencyType;
 }
 
-export interface PlanDetailType extends PlanType {
-  versions: PlanVersionType[];
+// create enum of day week month year null
+
+export interface Tier {
+  type: "flat" | "free" | "per_unit";
+  cost_per_batch?: number;
+  metric_units_per_batch?: number;
+  batch_rounding_type?:
+    | "round_up"
+    | "round_down"
+    | "round_nearest"
+    | "no_rounding";
+  range_start: number;
+  range_end?: number;
+}
+
+export interface PriceAdjustment {
+  price_adjustment_type: "percentage" | "fixed" | "fixed_override";
+  price_adjustment_amount: number;
 }
 
 export interface CreateRecurringCharge {
@@ -33,6 +40,33 @@ export interface CreateRecurringCharge {
   amount: number;
   pricing_unit_code?: string;
 }
+
+export interface PrepaidType {
+  units: number | null;
+  charge_behavior: "prorate" | "full";
+}
+
+export interface Component {
+  billable_metric: MetricType;
+  tiers: Tier[];
+  id?: number;
+  pricing_unit: CurrencyType;
+  reset_interval_unit: "day" | "week" | "month" | "year" | null;
+  reset_interval_count: number;
+  invoicing_interval_unit: "day" | "week" | "month" | "year" | null;
+  invoicing_interval_count: number;
+  prepaid_charge?: number;
+}
+
+export type CreateComponentRequestType =
+  components["schemas"]["PlanComponentCreateRequest"];
+
+export interface CreateComponent
+  extends Omit<Component, "billable_metric" | "pricing_unit"> {
+  metric_id: string;
+}
+
+export type CreatePlanRequestType = components["schemas"]["PlanCreateRequest"];
 
 export interface CreatePlanVersionType {
   description?: string;
@@ -48,25 +82,17 @@ export interface CreatePlanVersionType {
   day_anchor?: number;
   month_anchor?: number;
   currency_code?: string;
+  version: number;
+  target_customer_ids?: string[];
 }
 
-export interface CreatePlanExternalLinkType extends InitialExternalLinks {
-  plan_id: string;
+export interface CreateInitialVersionType extends CreatePlanVersionType {
+  description?: string;
 }
-
-export interface PriceAdjustment {
-  price_adjustment_type: "percentage" | "fixed" | "fixed_override";
-  price_adjustment_amount: number;
+export interface InitialExternalLinks {
+  source: string;
+  external_plan_id: string;
 }
-
-export interface RecurringCharge {
-  name: string;
-  charge_timing: "in_advance" | "in_arrears";
-  charge_behavior: "prorate" | "full";
-  amount: number;
-  pricing_unit: CurrencyType;
-}
-
 export interface PlanVersionType
   extends Omit<
     CreatePlanVersionType,
@@ -90,6 +116,30 @@ export interface PlanVersionType
   usage_billing_frequency?: "monthly" | "quarterly" | "yearly";
   currency: CurrencyType;
   alerts: AlertType[];
+}
+export interface PlanType {
+  plan_name: string;
+  plan_duration: "monthly" | "quarterly" | "yearly";
+  status: "active" | "archived" | "experimental";
+  external_links: InitialExternalLinks[];
+  plan_id: string;
+  parent_plan: {
+    plan_name: string;
+    plan_id: string;
+  } | null;
+  target_customer: LightweightCustomerType | null;
+  display_version: PlanVersionType;
+  num_versions: number;
+  active_subscriptions: number;
+  tags: { tag_color: string; tag_hex: string; tag_name: string }[];
+}
+
+export interface PlanDetailType extends PlanType {
+  versions: PlanVersionType[];
+}
+
+export interface CreatePlanExternalLinkType extends InitialExternalLinks {
+  plan_id: string;
 }
 
 export interface LightweightPlanVersionType {
@@ -115,15 +165,6 @@ export interface CreatePlanType {
   initial_external_links?: InitialExternalLinks[];
 }
 
-export interface InitialExternalLinks {
-  source: string;
-  external_plan_id: string;
-}
-
-export interface CreateInitialVersionType extends CreatePlanVersionType {
-  description?: string;
-}
-
 export interface CreateVersionType {
   description: string;
   flat_fee_billing_type: string;
@@ -140,31 +181,6 @@ export interface CreateVersionType {
   month_anchor?: number;
 }
 
-export interface CreateComponent
-  extends Omit<Component, "billable_metric" | "pricing_unit"> {
-  metric_id: string;
-}
-
-export interface Component {
-  billable_metric: MetricType;
-  tiers: Tier[];
-  proration_granularity: string;
-  id?: number;
-  pricing_unit: CurrencyType;
-}
-
-export interface Tier {
-  type: "flat" | "free" | "per_unit";
-  cost_per_batch?: number;
-  metric_units_per_batch?: number;
-  batch_rounding_type?:
-    | "round_up"
-    | "round_down"
-    | "round_nearest"
-    | "no_rounding";
-  range_start: number;
-  range_end?: number;
-}
 export interface PlanDisplay {
   name: string;
   color: string;
@@ -176,22 +192,44 @@ export interface PlanVersionUpdateType {
   status?: "active" | "archived";
   make_active_type?:
     | "replace_immediately"
-    | "replace_on_active_version_renewal"
-    | "grandfather_active";
+    | "replace_on_renewal"
+    | "grandfather";
   replace_immediately_type?:
     | "end_current_subscription_and_bill"
     | "end_current_subscription_dont_bill"
     | "change_subscription_plan";
+  transition_to_plan_id: string;
 }
 // update description
 export interface PlanVersionUpdateDescriptionType
   extends PlanVersionUpdateType {
   description: string;
 }
-
+export interface PlanFeaturesAdd {
+  feature_id: string;
+  version_ids?: string[];
+  all_versions?: boolean;
+}
 // archive plan
 export interface ArchivePlanVersionType extends PlanVersionUpdateType {
   status: "archived";
+}
+export interface PlanVersionsType {
+  success: boolean;
+  message: string;
+}
+
+export interface PlanVersionFeatureAddBody {
+  feature_id: string;
+}
+export interface PlanVersionReplacementMakeBody {
+  version_to_replace: string[];
+}
+export interface PlanVersionReplacementSetBody {
+  replace_with: string;
+}
+export interface PlanVersionAddTargetCustomerBody {
+  customer_ids: string[] | null[];
 }
 
 // if we specify make_active_type as replace_immediately, must have a corresponding replace_immediately_type
@@ -207,14 +245,20 @@ export interface ReplaceImmediatelyType extends PlanVersionUpdateType {
 // if we have repalce on renewal or grandfather active as the make active type, then omit the replace immediately type
 export interface ReplaceLaterType extends PlanVersionUpdateType {
   status: "active";
-  make_active_type: "replace_on_active_version_renewal" | "grandfather_active";
+  make_active_type: "replace_on_renewal" | "grandfather";
 }
 
 // UPDATE PLANS
 export interface UpdatePlanType {
   plan_name?: string;
-  status?: "active" | "archived";
-  plan_duration?: "monthly" | "quarterly" | "yearly";
-  tags?: PlanType["tags"];
-  taxjar_code?: string;
+  plan_description: string | null;
+  taxjar_code: string | null;
+  active_from: string;
+  active_to: string | null;
+}
+export interface CreateTagsPlanBody {
+  tags: PlanType["tags"];
+}
+export interface CreateTagsType extends PlanVersionsType {
+  tags: PlanType["tags"];
 }

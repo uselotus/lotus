@@ -1,6 +1,9 @@
 package types
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type (
 	RawEvent struct {
@@ -60,4 +63,40 @@ func (e RawEvent) Transform(organizationID int64) VerifiedEvent {
 		Properties:     e.Properties,
 		EventName:      e.EventName,
 	}
+}
+
+func (t *VerifiedEvent) UnmarshalJSON(data []byte) error {
+	type Alias VerifiedEvent
+
+	aux := &struct {
+		TimeCreated string `json:"time_created"`
+		*Alias
+	}{
+		Alias: (*Alias)(t),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	parsedTime, err := time.Parse(time.RFC3339, aux.TimeCreated)
+
+	if err != nil {
+		parsedTime, err = time.Parse("2006-01-02 15:04:05.999999-07:00", aux.TimeCreated)
+
+		if err != nil {
+			parsedTime, err = time.Parse("2006-01-02 15:04:05.999999", aux.TimeCreated)
+
+			if err != nil {
+				return err
+			}
+
+			// Set timezone offset to UTC
+			parsedTime = parsedTime.UTC()
+		}
+	}
+
+	t.TimeCreated = parsedTime
+
+	return nil
 }

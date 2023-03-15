@@ -24,6 +24,7 @@ import api.views as api_views
 from metering_billing.views import auth_views, organization_views, webhook_views
 from metering_billing.views.model_views import (
     ActionViewSet,
+    AddOnVersionViewSet,
     AddOnViewSet,
     APITokenViewSet,
     BacktestViewSet,
@@ -39,14 +40,13 @@ from metering_billing.views.model_views import (
     PlanVersionViewSet,
     PlanViewSet,
     PricingUnitViewSet,
-    ProductViewSet,
     SubscriptionViewSet,
     UsageAlertViewSet,
     UserViewSet,
     WebhookViewSet,
 )
 from metering_billing.views.payment_processor_views import PaymentProcesorView
-from metering_billing.views.views import (  # MergeCustomersView,; ExperimentalToActiveView,
+from metering_billing.views.views import (
     ChangeUserOrganizationView,
     CostAnalysisView,
     ImportCustomersView,
@@ -75,7 +75,7 @@ router.register(r"invoices", InvoiceViewSet, basename="invoice")
 router.register(r"features", FeatureViewSet, basename="feature")
 router.register(r"webhooks", WebhookViewSet, basename="webhook")
 router.register(r"backtests", BacktestViewSet, basename="backtest")
-router.register(r"products", ProductViewSet, basename="product")
+# router.register(r"products", ProductViewSet, basename="product")
 router.register(r"plans", PlanViewSet, basename="plan")
 router.register(r"plan_versions", PlanVersionViewSet, basename="plan_version")
 router.register(r"events", EventViewSet, basename="event")
@@ -97,6 +97,7 @@ router.register(
 )
 router.register(r"api_tokens", APITokenViewSet, basename="api_token")
 router.register(r"addons", AddOnViewSet, basename="addon")
+router.register(r"addon_versions", AddOnVersionViewSet, basename="addon_version")
 router.register(r"usage_alerts", UsageAlertViewSet, basename="usage_alert")
 
 
@@ -265,5 +266,4 @@ if PROFILER_ENABLED:
     urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
 
 if DEBUG:
-    urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]
     urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]

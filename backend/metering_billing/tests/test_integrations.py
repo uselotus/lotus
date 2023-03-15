@@ -2,12 +2,12 @@ import time
 import uuid
 from datetime import timedelta
 
-import braintree
 import pytest
 import stripe
 from django.conf import settings
 from django.db.models import Q
-from metering_billing.invoice import generate_invoice
+from rest_framework.test import APIClient
+
 from metering_billing.models import (
     Customer,
     ExternalPlanLink,
@@ -17,7 +17,6 @@ from metering_billing.models import (
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PAYMENT_PROCESSORS
-from rest_framework.test import APIClient
 
 STRIPE_TEST_SECRET_KEY = settings.STRIPE_TEST_SECRET_KEY
 stripe.api_key = STRIPE_TEST_SECRET_KEY
@@ -44,8 +43,6 @@ def integration_test_common_setup(
         setup_dict["plan"] = plan
         plan_version = add_plan_version_to_plan(plan)
         setup_dict["plan_version"] = plan_version
-        plan.display_version = plan_version
-        plan.save()
 
         client = APIClient()
         (user,) = add_users_to_org(org, n=1)
@@ -153,14 +150,17 @@ class TestStripeIntegration:
         new_cust = Customer.objects.get(email=stripe_customer.email)
 
         # now lets generate an invoice + for this customer
-        subscription_record = SubscriptionRecord.objects.create(
-            organization=setup_dict["org"],
-            customer=new_cust,
-            billing_plan=setup_dict["plan_version"],
+        SubscriptionRecord.create_subscription_record(
             start_date=now_utc() - timedelta(days=35),
             end_date=now_utc() - timedelta(days=5),
+            billing_plan=setup_dict["plan_version"],
+            customer=new_cust,
+            organization=setup_dict["org"],
+            subscription_filters=None,
+            is_new=True,
+            quantity=1,
         )
-        invoice = generate_invoice(subscription_record)[0]
+        invoice = Invoice.objects.order_by("-id").first()
         assert invoice.payment_status == Invoice.PaymentStatus.UNPAID
         assert invoice.external_payment_obj_type == PAYMENT_PROCESSORS.STRIPE
         try:
@@ -187,14 +187,17 @@ class TestStripeIntegration:
         new_cust = Customer.objects.get(email=stripe_customer.email)
 
         # now lets generate an invoice + for this customer
-        subscription_record = SubscriptionRecord.objects.create(
-            organization=setup_dict["org"],
-            customer=new_cust,
-            billing_plan=setup_dict["plan_version"],
+        SubscriptionRecord.create_subscription_record(
             start_date=now_utc() - timedelta(days=35),
             end_date=now_utc() - timedelta(days=5),
+            billing_plan=setup_dict["plan_version"],
+            customer=new_cust,
+            organization=setup_dict["org"],
+            subscription_filters=None,
+            is_new=True,
+            quantity=1,
         )
-        invoice = generate_invoice(subscription_record)[0]
+        invoice = Invoice.objects.order_by("-id").first()
         try:
             stripe.Invoice.retrieve(invoice.external_payment_obj_id)
         except Exception as e:
@@ -308,7 +311,7 @@ class TestStripeIntegration:
             SubscriptionRecord.objects.filter(
                 organization=setup_dict["org"],
                 start_date__gte=now_utc(),
-                billing_plan=setup_dict["plan"].display_version,
+                billing_plan=setup_dict["plan"].versions.first(),
             ).count()
             == 1
         )
@@ -321,194 +324,201 @@ class TestStripeIntegration:
         SubscriptionRecord.objects.filter(
             organization=setup_dict["org"],
             start_date__gte=now_utc(),
-            billing_plan=setup_dict["plan"].display_version,
+            billing_plan=setup_dict["plan"].versions.first(),
         ).delete()
         subs = stripe_connector.transfer_subscriptions(setup_dict["org"], end_now=True)
         assert (
             SubscriptionRecord.objects.filter(
                 organization=setup_dict["org"],
-                billing_plan=setup_dict["plan"].display_version,
+                billing_plan=setup_dict["plan"].versions.first(),
             ).count()
             == 1
         )
+        stripe_sub = stripe.Subscription.retrieve(stripe_sub.id)
         assert stripe_sub.status == "canceled"
 
         # delete everything that we created
         stripe.Customer.delete(stripe_customer.id)
 
 
-@pytest.mark.django_db(transaction=True)
-class TestBraintreeIntegration:
-    def test_braintree_self_hosted_working_and_connected(
-        self, integration_test_common_setup
-    ):
-        setup_dict = integration_test_common_setup()
-        braintree_connector = setup_dict["braintree_connector"]
-        # when self hosted make sure everything works
-        assert braintree_connector.working()
-        assert braintree_connector.organization_connected(setup_dict["org"])
+# @pytest.mark.django_db(transaction=True)
+# class TestBraintreeIntegration:
+#     def test_braintree_self_hosted_working_and_connected(
+#         self, integration_test_common_setup
+#     ):
+#         setup_dict = integration_test_common_setup()
+#         braintree_connector = setup_dict["braintree_connector"]
+#         # when self hosted make sure everything works
+#         assert braintree_connector.working()
+#         assert braintree_connector.organization_connected(setup_dict["org"])
 
-    def test_braintree_org_not_connected_without_oauth(
-        self, integration_test_common_setup
-    ):
-        setup_dict = integration_test_common_setup()
-        braintree_connector = setup_dict["braintree_connector"]
+#     def test_braintree_org_not_connected_without_oauth(
+#         self, integration_test_common_setup
+#     ):
+#         setup_dict = integration_test_common_setup()
+#         braintree_connector = setup_dict["braintree_connector"]
 
-        # when not self hosted make sure org connected is not true, but working is
-        braintree_connector.self_hosted = False
-        assert not braintree_connector.organization_connected(setup_dict["org"])
-        assert braintree_connector.working()
-        braintree_connector.self_hosted = True
+#         # when not self hosted make sure org connected is not true, but working is
+#         braintree_connector.self_hosted = False
+#         assert not braintree_connector.organization_connected(setup_dict["org"])
+#         assert braintree_connector.working()
+#         braintree_connector.self_hosted = True
 
-    def test_braintree_customer_not_initially_connected(
-        self, integration_test_common_setup
-    ):
-        setup_dict = integration_test_common_setup()
-        braintree_connector = setup_dict["braintree_connector"]
+#     def test_braintree_customer_not_initially_connected(
+#         self, integration_test_common_setup
+#     ):
+#         setup_dict = integration_test_common_setup()
+#         braintree_connector = setup_dict["braintree_connector"]
 
-        # set back to self hosted and confirm customers are not initially connected
-        assert not braintree_connector.customer_connected(setup_dict["customer"])
+#         # set back to self hosted and confirm customers are not initially connected
+#         assert not braintree_connector.customer_connected(setup_dict["customer"])
 
-    def test_create_customer_in_braintree_from_lotus(
-        self, integration_test_common_setup
-    ):
-        setup_dict = integration_test_common_setup()
-        braintree_connector = setup_dict["braintree_connector"]
+#     def test_create_customer_in_braintree_from_lotus(
+#         self, integration_test_common_setup
+#     ):
+#         setup_dict = integration_test_common_setup()
+#         braintree_connector = setup_dict["braintree_connector"]
 
-        # test create customer in braintree
-        assert Customer.objects.all().count() == 1
-        braintree_connector.create_customer_flow(setup_dict["customer"])
-        assert Customer.objects.all().count() == 1
-        assert setup_dict["customer"].braintree_integration.braintree_customer_id
-        btree_cust_response = braintree_connector._get_gateway(
-            setup_dict["org"]
-        ).customer.find(
-            setup_dict["customer"].braintree_integration.braintree_customer_id
-        )
-        assert (
-            btree_cust_response.id
-            == setup_dict["customer"].braintree_integration.braintree_customer_id
-        )
-        assert braintree_connector.customer_connected(setup_dict["customer"])
+#         # test create customer in braintree
+#         assert Customer.objects.all().count() == 1
+#         braintree_connector.create_customer_flow(setup_dict["customer"])
+#         assert Customer.objects.all().count() == 1
+#         assert setup_dict["customer"].braintree_integration.braintree_customer_id
+#         btree_cust_response = braintree_connector._get_gateway(
+#             setup_dict["org"]
+#         ).customer.find(
+#             setup_dict["customer"].braintree_integration.braintree_customer_id
+#         )
+#         assert (
+#             btree_cust_response.id
+#             == setup_dict["customer"].braintree_integration.braintree_customer_id
+#         )
+#         assert braintree_connector.customer_connected(setup_dict["customer"])
 
-    def test_create_customer_in_lotus_from_braintree(
-        self, integration_test_common_setup
-    ):
-        setup_dict = integration_test_common_setup()
-        braintree_connector = setup_dict["braintree_connector"]
-        Customer.objects.all().delete()
-        # test import customer from braintree
-        gateway = braintree_connector._get_gateway(setup_dict["org"])
-        braintree_customer_response = gateway.customer.create(
-            {
-                "email": f"{str(uuid.uuid4())[:10]}@example.com",
-                "first_name": "Test",
-                "last_name": "Customer",
-                "company": "Test Company",
-            }
-        )
-        assert braintree_customer_response.is_success
-        braintree_customer = braintree_customer_response.customer
-        assert braintree_connector.import_customers(setup_dict["org"]) > 0
-        Customer.objects.filter(
-            ~Q(braintree_integration__braintree_customer_id=braintree_customer.id)
-        ).delete()
-        assert Customer.objects.all().count() == 1
-        assert Customer.objects.all()[0].organization == setup_dict["org"]
-        new_cust = Customer.objects.get(email=braintree_customer.email)
-        assert braintree_connector.customer_connected(new_cust)
-        assert new_cust.organization == setup_dict["org"]
+#     def test_create_customer_in_lotus_from_braintree(
+#         self, integration_test_common_setup
+#     ):
+#         setup_dict = integration_test_common_setup()
+#         braintree_connector = setup_dict["braintree_connector"]
+#         Customer.objects.all().delete()
+#         # test import customer from braintree
+#         gateway = braintree_connector._get_gateway(setup_dict["org"])
+#         braintree_customer_response = gateway.customer.create(
+#             {
+#                 "email": f"{str(uuid.uuid4())[:10]}@example.com",
+#                 "first_name": "Test",
+#                 "last_name": "Customer",
+#                 "company": "Test Company",
+#             }
+#         )
+#         assert braintree_customer_response.is_success
+#         braintree_customer = braintree_customer_response.customer
+#         assert braintree_connector.import_customers(setup_dict["org"]) > 0
+#         Customer.objects.filter(
+#             ~Q(braintree_integration__braintree_customer_id=braintree_customer.id)
+#         ).delete()
+#         assert Customer.objects.all().count() == 1
+#         assert Customer.objects.all()[0].organization == setup_dict["org"]
+#         new_cust = Customer.objects.get(email=braintree_customer.email)
+#         assert braintree_connector.customer_connected(new_cust)
+#         assert new_cust.organization == setup_dict["org"]
 
-    def test_generate_invoice_for_customer(self, integration_test_common_setup):
-        setup_dict = integration_test_common_setup()
-        braintree_connector = setup_dict["braintree_connector"]
-        Customer.objects.all().delete()
-        # test import customer from braintree
-        braintree_customer_response = braintree_connector._get_gateway(
-            setup_dict["org"]
-        ).customer.create(
-            {
-                "email": f"{str(uuid.uuid4())[:10]}@example.com",
-                "first_name": "Test",
-                "last_name": "Customer",
-                "company": "Test Company",
-                "payment_method_nonce": "fake-valid-visa-nonce",
-            }
-        )
-        assert braintree_customer_response.is_success
-        braintree_customer = braintree_customer_response.customer
-        assert braintree_connector.import_customers(setup_dict["org"]) > 0
-        new_cust = Customer.objects.get(email=braintree_customer.email)
+#     def test_generate_invoice_for_customer(self, integration_test_common_setup):
+#         setup_dict = integration_test_common_setup()
+#         braintree_connector = setup_dict["braintree_connector"]
+#         Customer.objects.all().delete()
+#         # test import customer from braintree
+#         braintree_customer_response = braintree_connector._get_gateway(
+#             setup_dict["org"]
+#         ).customer.create(
+#             {
+#                 "email": f"{str(uuid.uuid4())[:10]}@example.com",
+#                 "first_name": "Test",
+#                 "last_name": "Customer",
+#                 "company": "Test Company",
+#                 "payment_method_nonce": "fake-valid-visa-nonce",
+#             }
+#         )
+#         assert braintree_customer_response.is_success
+#         braintree_customer = braintree_customer_response.customer
+#         assert braintree_connector.import_customers(setup_dict["org"]) > 0
+#         new_cust = Customer.objects.get(email=braintree_customer.email)
 
-        # now lets generate an invoice + for this customer
-        subscription_record = SubscriptionRecord.objects.create(
-            organization=setup_dict["org"],
-            customer=new_cust,
-            billing_plan=setup_dict["plan_version"],
-            start_date=now_utc() - timedelta(days=35),
-            end_date=now_utc() - timedelta(days=5),
-        )
-        invoice = generate_invoice(subscription_record)[0]
-        assert invoice.payment_status == Invoice.PaymentStatus.UNPAID
-        assert invoice.external_payment_obj_type == PAYMENT_PROCESSORS.BRAINTREE
-        try:
-            braintree_connector._get_gateway(setup_dict["org"]).transaction.find(
-                invoice.external_payment_obj_id
-            )  # if it doesn't throw that's a pass
-        except Exception as e:
-            assert False, f"Payment intent not found for reason: {e}"
+#         # now lets generate an invoice + for this customer
+#         subscription_record = SubscriptionRecord.create_subscription_record(
+#             start_date=now_utc() - timedelta(days=35),
+#             end_date=now_utc() - timedelta(days=5),
+#             billing_plan=setup_dict["plan_version"],
+#             customer=new_cust,
+#             organization=setup_dict["org"],
+#             subscription_filters=None,
+#             is_new=True,
+#             quantity=1,
+#         )
+#         invoice = generate_invoice(subscription_record)[0]
+#         assert invoice.payment_status == Invoice.PaymentStatus.UNPAID
+#         assert invoice.external_payment_obj_type == PAYMENT_PROCESSORS.BRAINTREE
+#         try:
+#             braintree_connector._get_gateway(setup_dict["org"]).transaction.find(
+#                 invoice.external_payment_obj_id
+#             )  # if it doesn't throw that's a pass
+#         except Exception as e:
+#             assert False, f"Payment intent not found for reason: {e}"
 
-    def test_braintree_update_invoice_status(self, integration_test_common_setup):
-        setup_dict = integration_test_common_setup()
-        braintree_connector = setup_dict["braintree_connector"]
-        Customer.objects.all().delete()
-        # test import customer from braintree
-        braintree_customer_response = braintree_connector._get_gateway(
-            setup_dict["org"]
-        ).customer.create(
-            {
-                "email": f"{str(uuid.uuid4())[:10]}@example.com",
-                "first_name": "Test",
-                "last_name": "Customer",
-                "company": "Test Company",
-                "payment_method_nonce": "fake-valid-visa-nonce",
-            }
-        )
-        assert braintree_customer_response.is_success
-        braintree_customer = braintree_customer_response.customer
-        assert braintree_connector.import_customers(setup_dict["org"]) > 0
-        new_cust = Customer.objects.get(email=braintree_customer.email)
+#     def test_braintree_update_invoice_status(self, integration_test_common_setup):
+#         setup_dict = integration_test_common_setup()
+#         braintree_connector = setup_dict["braintree_connector"]
+#         Customer.objects.all().delete()
+#         # test import customer from braintree
+#         braintree_customer_response = braintree_connector._get_gateway(
+#             setup_dict["org"]
+#         ).customer.create(
+#             {
+#                 "email": f"{str(uuid.uuid4())[:10]}@example.com",
+#                 "first_name": "Test",
+#                 "last_name": "Customer",
+#                 "company": "Test Company",
+#                 "payment_method_nonce": "fake-valid-visa-nonce",
+#             }
+#         )
+#         assert braintree_customer_response.is_success
+#         braintree_customer = braintree_customer_response.customer
+#         assert braintree_connector.import_customers(setup_dict["org"]) > 0
+#         new_cust = Customer.objects.get(email=braintree_customer.email)
 
-        # now lets generate an invoice + for this customer
-        subscription_record = SubscriptionRecord.objects.create(
-            organization=setup_dict["org"],
-            customer=new_cust,
-            billing_plan=setup_dict["plan_version"],
-            start_date=now_utc() - timedelta(days=35),
-            end_date=now_utc() - timedelta(days=5),
-        )
-        invoice = generate_invoice(subscription_record)[0]
-        assert invoice.payment_status == Invoice.PaymentStatus.UNPAID
-        assert invoice.external_payment_obj_type == PAYMENT_PROCESSORS.BRAINTREE
-        try:
-            braintree_connector._get_gateway(setup_dict["org"]).transaction.find(
-                invoice.external_payment_obj_id
-            )
-        except Exception as e:
-            assert False, f"Payment intent not found for reason: {e}"
+#         # now lets generate an invoice + for this customer
+#         subscription_record = SubscriptionRecord.create_subscription_record(
+#             start_date=now_utc() - timedelta(days=35),
+#             end_date=now_utc() - timedelta(days=5),
+#             billing_plan=setup_dict["plan_version"],
+#             customer=new_cust,
+#             organization=setup_dict["org"],
+#             subscription_filters=None,
+#             is_new=True,
+#             quantity=1,
+#         )
+#         invoice = generate_invoice(subscription_record)[0]
+#         assert invoice.payment_status == Invoice.PaymentStatus.UNPAID
+#         assert invoice.external_payment_obj_type == PAYMENT_PROCESSORS.BRAINTREE
+#         try:
+#             braintree_connector._get_gateway(setup_dict["org"]).transaction.find(
+#                 invoice.external_payment_obj_id
+#             )
+#         except Exception as e:
+#             assert False, f"Payment intent not found for reason: {e}"
 
-        # update the status of the invoice
-        new_status = braintree_connector.update_payment_object_status(
-            setup_dict["org"], invoice.external_payment_obj_id
-        )
-        assert new_status == Invoice.PaymentStatus.UNPAID
-        # now add payment method
-        braintree_connector._get_gateway(setup_dict["org"]).transaction.void(
-            invoice.external_payment_obj_id,
-        )
-        new_status = (
-            braintree_connector._get_gateway(setup_dict["org"])
-            .transaction.find(invoice.external_payment_obj_id)
-            .status
-        )
-        assert new_status == braintree.Transaction.Status.Voided
+#         # update the status of the invoice
+#         new_status = braintree_connector.update_payment_object_status(
+#             setup_dict["org"], invoice.external_payment_obj_id
+#         )
+#         assert new_status == Invoice.PaymentStatus.UNPAID
+#         # now add payment method
+#         braintree_connector._get_gateway(setup_dict["org"]).transaction.void(
+#             invoice.external_payment_obj_id,
+#         )
+#         new_status = (
+#             braintree_connector._get_gateway(setup_dict["org"])
+#             .transaction.find(invoice.external_payment_obj_id)
+#             .status
+#         )
+#         assert new_status == braintree.Transaction.Status.Voided

@@ -48,8 +48,8 @@ import createShortenedText from "../../helpers/createShortenedText";
 import useMediaQuery from "../../hooks/useWindowQuery";
 import Badge from "../base/Badges/Badges";
 import DropdownComponent from "../base/Dropdown/Dropdown";
-import { Addon, Customer } from "../../api/api";
-import { AddonType } from "../../types/addon-type";
+import { AddOn, Customer } from "../../api/api";
+import { AddOnType } from "../../types/addon-type";
 
 import ChevronDown from "../base/ChevronDown";
 import CancelMenu from "./CancelMenu";
@@ -152,9 +152,9 @@ const SubscriptionView: FC<Props> = ({
     setSelectedPlan(plan_id);
   };
 
-  const { data: addOns, isLoading }: UseQueryResult<AddonType[]> = useQuery<
-    AddonType[]
-  >(["add-ons"], () => Addon.getAddons().then((res) => res), {
+  const { data: addOns, isLoading }: UseQueryResult<AddOnType[]> = useQuery<
+    AddOnType[]
+  >(["add-ons"], () => AddOn.getAddOns().then((res) => res), {
     refetchOnMount: "always",
   });
   const mutation = useMutation(
@@ -178,13 +178,8 @@ const SubscriptionView: FC<Props> = ({
     }
   );
 
-  const cancelSubscription = (plan_id, subscription_filters) => {
-    const query_params: CancelSubscriptionQueryParams = {
-      customer_id,
-      plan_id,
-      subscription_filters,
-    };
-    onCancel(cancelBody, query_params);
+  const cancelSubscription = (subscription_id: string) => {
+    onCancel(cancelBody, subscription_id);
     setShowModal(false);
   };
 
@@ -192,6 +187,7 @@ const SubscriptionView: FC<Props> = ({
     const query_params: CancelSubscriptionQueryParams = {
       customer_id,
     };
+    console.log(customer_id);
     const body: CancelSubscriptionBody = {
       usage_behavior: "bill_full",
       flat_fee_behavior: "charge_prorated",
@@ -239,12 +235,22 @@ const SubscriptionView: FC<Props> = ({
       setIDtoPlan(planMap);
       const newplanList: { label: string; value: string }[] = plans.reduce(
         (acc, plan) => {
-          if (
-            plan.target_customer === null ||
-            plan.target_customer?.customer_id === customer_id
-          ) {
-            acc.push({ label: plan.plan_name, value: plan.plan_id });
-          }
+          // for (let i = 0; i < plan.versions.length; i++) {
+          //   if (
+          //     plan.versions[i].status === "active" &&
+          //     (plan.versions[i].target_customer.length === 0 ||
+          //       plan.versions[i].target_customers.find(
+          //         (cust) => cust.customer_id == customer_id
+          //       ))
+          //   ) {
+          //     acc.push({
+          //       label: plan.versions[i].plan_name,
+          //       value: plan.plan_id,
+          //     });
+          //   }
+          // }
+
+          acc.push({ label: plan.plan_name, value: plan.plan_id });
           return acc;
         },
         [] as { label: string; value: string }[]
@@ -695,10 +701,7 @@ const SubscriptionView: FC<Props> = ({
                       type="primary"
                       className="!bg-rose-600 border !border-rose-600"
                       onClick={() => {
-                        cancelSubscription(
-                          selectedSubPlan.billing_plan.plan_id,
-                          selectedSubPlan.subscription_filters
-                        );
+                        cancelSubscription(selectedSubPlan?.subscription_id);
                       }}
                     >
                       Cancel Plan
@@ -889,7 +892,7 @@ const SubscriptionView: FC<Props> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Button
+          {/* <Button
             type="primary"
             className="hover:!bg-rose-700"
             size="large"
@@ -902,7 +905,7 @@ const SubscriptionView: FC<Props> = ({
             }}
           >
             Cancel All
-          </Button>
+          </Button> */}
           <Button
             type="primary"
             className="hover:!bg-primary-700"

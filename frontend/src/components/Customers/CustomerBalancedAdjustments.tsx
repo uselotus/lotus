@@ -35,7 +35,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
   useEffect(() => {
     let total = 0;
     transformedData.forEach((credit) => {
-      if (credit.currency.code === selectedCurrency) {
+      if (credit.currency && credit.currency.code === selectedCurrency) {
         total += credit.amount;
       }
     });
