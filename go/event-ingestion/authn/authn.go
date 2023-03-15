@@ -13,7 +13,7 @@ import (
 )
 
 func getAPIKeyFromHeader(h http.Header) string {
-	key := h.Get("X-API-KEY")
+	key := h.Get("X-Api-Key")
 
 	if key == "" {
 		for k, v := range h {
@@ -23,7 +23,6 @@ func getAPIKeyFromHeader(h http.Header) string {
 			}
 		}
 	}
-
 	return key
 }
 
