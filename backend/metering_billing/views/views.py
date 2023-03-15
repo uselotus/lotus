@@ -14,20 +14,16 @@ from rest_framework.views import APIView
 from metering_billing.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
-    NotFoundException,
 )
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
-    Customer,
     Event,
     Invoice,
     Metric,
     Organization,
     SubscriptionRecord,
 )
-from metering_billing.netsuite_csv import (
-    get_invoices_csv_presigned_url,
-)
+from metering_billing.netsuite_csv import get_invoices_csv_presigned_url
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.model_serializers import (
@@ -61,11 +57,7 @@ from metering_billing.utils import (
     make_all_dates_times_strings,
     make_all_decimals_floats,
 )
-from metering_billing.utils.enums import (
-    METRIC_STATUS,
-    METRIC_TYPE,
-    PAYMENT_PROCESSORS,
-)
+from metering_billing.utils.enums import METRIC_STATUS, METRIC_TYPE, PAYMENT_PROCESSORS
 
 logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -216,22 +208,17 @@ class CostAnalysisView(APIView):
         Returns the revenue for an organization in a given time period.
         """
         organization = request.organization
-        serializer = CostAnalysisRequestSerializer(data=request.query_params)
+        serializer = CostAnalysisRequestSerializer(
+            data=request.query_params, context={"organization": organization}
+        )
         serializer.is_valid(raise_exception=True)
-        start_date, end_date, customer_id = (
+        customer = serializer.validated_data["customer"]
+        start_date, end_date = (
             serializer.validated_data.get(key, None)
-            for key in ["start_date", "end_date", "customer_id"]
+            for key in ["start_date", "end_date"]
         )
         start_time = convert_to_datetime(start_date, date_behavior="min")
         end_time = convert_to_datetime(end_date, date_behavior="max")
-        try:
-            customer = Customer.objects.get(
-                organization=organization, customer_id=customer_id
-            )
-        except Customer.DoesNotExist:
-            raise NotFoundException(
-                f"Customer with customer_id: {customer_id} not found"
-            )
         per_day_dict = {}
         for period in dates_bwn_two_dts(start_date, end_date):
             period = convert_to_date(period)
