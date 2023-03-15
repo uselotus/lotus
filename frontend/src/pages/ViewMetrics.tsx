@@ -55,11 +55,9 @@ const ViewMetrics: FC = () => {
       },
 
       onMutate: () => {
-        console.log("mutating");
-        toast.info("Creating metric...", {
+        toast.loading("Creating metric...", {
           position: toast.POSITION.TOP_CENTER,
           autoClose: false,
-          hideProgressBar: true,
         });
       },
 
