@@ -13,17 +13,23 @@ import (
 )
 
 func getAPIKeyFromHeader(h http.Header) string {
-	key := h.Get("X-Api-Key")
+	key := ""
 
-	if key == "" {
-		for k, v := range h {
-			if strings.ToLower(k) == "x-api-key" {
-				key = v[0]
-				break
-			}
-		}
-	}
-	return key
+    values := h.Values("X-Api-Key")
+    if len(values) > 0 {
+        key = values[0]
+    }
+
+    if key == "" {
+        for k, v := range h {
+            if strings.ToLower(k) == "x-api-key" {
+                key = v[0]
+                break
+            }
+        }
+    }
+
+    return key
 }
 
 func getFromDB(db *sql.DB, prefix string) (*types.APIKey, error) {
