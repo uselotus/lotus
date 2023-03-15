@@ -1,5 +1,3 @@
-from rest_framework import serializers
-
 from api.serializers.model_serializers import (
     FeatureSerializer,
     LightweightCustomerSerializer,
@@ -20,6 +18,7 @@ from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganizationPK,
     TimezoneFieldMixin,
 )
+from rest_framework import serializers
 
 
 class GetInvoicePdfURLRequestSerializer(serializers.Serializer):
@@ -148,7 +147,7 @@ class FeatureAccessResponseSerializer(serializers.Serializer):
     access_per_subscription = FeatureAccessPerSubscriptionSerializer(many=True)
 
 
-class FeatureAccessRequestSerialzier(serializers.Serializer):
+class FeatureAccessRequestSerializer(serializers.Serializer):
     customer_id = SlugRelatedFieldWithOrganizationPK(
         slug_field="customer_id",
         queryset=Customer.objects.all(),
