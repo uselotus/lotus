@@ -6,6 +6,9 @@ from typing import Literal, Union
 from django.conf import settings
 from django.db.models import Max, Min, Sum
 from drf_spectacular.utils import extend_schema_serializer
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
 from metering_billing.invoice import generate_balance_adjustment_invoice
 from metering_billing.models import (
     AddOnSpecification,
@@ -67,8 +70,6 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -1667,7 +1668,7 @@ class SubscriptionRecordCreateSerializerOld(
             )
             if data["billing_plan"] is None:
                 raise serializers.ValidationError(
-                    "Unable to find a singular pla n version that matches the plan_id. Please specify a version_id instead."
+                    "Unable to find a singular plan version that matches the plan_id. Please specify a version_id instead."
                 )
         else:
             raise serializers.ValidationError("plan_id must be specified")
