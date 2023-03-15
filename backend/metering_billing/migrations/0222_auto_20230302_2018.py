@@ -9,7 +9,7 @@ def transfer_to_brs(apps, schema_editor):
     InvoiceLineItem = apps.get_model("metering_billing", "InvoiceLineItem")
     for sr in SubscriptionRecord.objects.all():
         bp = sr.billing_plan
-        components = bp.components.all()
+        components = bp.plan_components.all()
         recurring_charges = bp.recurring_charges.all()
         for component in components:
             br = BillingRecord.objects.create(
@@ -21,6 +21,7 @@ def transfer_to_brs(apps, schema_editor):
                 invoicing_dates=[sr.end_date],
                 next_invoicing_date=sr.end_date,
                 fully_billed=sr.fully_billed,
+                unadjusted_duration_microseconds=sr.unadjusted_duration_microseconds,
             )
             for invoice_line_items in InvoiceLineItem.objects.filter(
                 associated_subscription_record=sr, associated_plan_component=component
@@ -37,6 +38,7 @@ def transfer_to_brs(apps, schema_editor):
                 invoicing_dates=[sr.end_date],
                 next_invoicing_date=sr.end_date,
                 fully_billed=sr.fully_billed,
+                unadjusted_duration_microseconds=sr.unadjusted_duration_microseconds,
             )
             for invoice_line_items in InvoiceLineItem.objects.filter(
                 associated_subscription_record=sr, associated_recurring_charge=charge
