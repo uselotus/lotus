@@ -133,6 +133,14 @@ from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganizationPK,
     SubscriptionUUIDField,
 )
+from metering_billing.serializers.model_serializers import DraftInvoiceSerializer
+from metering_billing.serializers.request_serializers import DraftInvoiceRequestSerializer
+from metering_billing.utils import (
+    calculate_end_date,
+    convert_to_datetime,
+    date_as_max_dt,
+    now_utc,
+)
 from metering_billing.utils import calculate_end_date, convert_to_datetime, now_utc
 from metering_billing.utils.enums import (
     CATEGORICAL_FILTER_OPERATORS,
@@ -288,6 +296,52 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             version.target_customers.remove(customer)
         CustomerDeleteResponseSerializer().validate(return_data)
         return Response(return_data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        request=DraftInvoiceRequestSerializer,
+        parameters=[DraftInvoiceRequestSerializer],
+        responses={
+            200: inline_serializer(
+                name="DraftInvoiceResponse",
+                fields={"invoice": DraftInvoiceSerializer}
+            )
+        },
+    )
+    @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated | HasUserAPIKey])
+    def draft_invoice(self, request):
+        organization = request.organization
+        serializer = DraftInvoiceRequestSerializer(
+            data=request.query_params,
+            context={"organization": organization}
+        )
+        serializer.is_valid(raise_exception=True)
+        customer = serializer.validated_data.get("customer")
+        sub_records = SubscriptionRecord.objects.active().filter(
+            organization=organization,
+            customer=customer
+        )
+        response = {"invoice": None}
+        if sub_records is None or len(sub_records) == 0:
+            response = {"invoice": []}
+        else:
+            sub_records = sub_records.select_related("billing_plan").prefetch_related(
+                "billing_plan__plan_components",
+                "billing_plan__plan_components__billable_metric",
+                "billing_plan__plan_components__tiers",
+                "billing_plan__pricing_unit",
+            )
+            invoices = generate_invoice(
+                sub_records,
+                draft=True,
+                charge_next_plan=serializer.validated_data.get(
+                    "include_next_period", True
+                ),
+            )
+            serializer = DraftInvoiceSerializer(invoices, many=True).data 
+            for invoice in invoices:
+                invoice.delete()
+            response = {"invoices": serializer or []}
+        return Response(response, status=status.HTTP_200_OK)
 
     def perform_create(self, serializer):
         try:

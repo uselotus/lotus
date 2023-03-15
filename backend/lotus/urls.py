@@ -49,7 +49,6 @@ from metering_billing.views.payment_processor_views import PaymentProcesorView
 from metering_billing.views.views import (
     ChangeUserOrganizationView,
     CostAnalysisView,
-    DraftInvoiceView,
     ImportCustomersView,
     ImportPaymentObjectsView,
     NetsuiteCustomerCSVView,
@@ -187,7 +186,6 @@ urlpatterns = [
         PeriodSubscriptionsView.as_view(),
         name="period_subscriptions",
     ),
-    path("app/draft_invoice/", DraftInvoiceView.as_view(), name="draft_invoice"),
     path(
         "app/import_customers/",
         ImportCustomersView.as_view(),
