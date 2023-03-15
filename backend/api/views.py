@@ -639,11 +639,10 @@ class SubscriptionViewSet(
                 f"Subscription with subscription_id {subscription_id} not found"
             )
         if addon_uuid:
-            try:
-                addons_for_sr = obj.addon_subscription_records.filter(
-                    billing_plan__version_id=addon_uuid
-                )
-            except Exception:
+            addons_for_sr = obj.addon_subscription_records.filter(
+                billing_plan__version_id=addon_uuid
+            )
+            if not addons_for_sr.exists():
                 addons_for_sr = obj.addon_subscription_records.filter(
                     billing_plan__plan__plan_id=addon_uuid
                 )
