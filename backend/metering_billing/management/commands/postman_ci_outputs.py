@@ -2,6 +2,7 @@ import logging
 import uuid
 
 from django.core.management.base import BaseCommand
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.demos import create_pc_and_tiers, make_subscription_record
 from metering_billing.invoice import generate_invoice
@@ -13,6 +14,7 @@ from metering_billing.models import (
     Organization,
     Plan,
     PlanVersion,
+    PricingUnit,
     RecurringCharge,
 )
 from metering_billing.serializers.model_serializers import APITokenSerializer
@@ -119,9 +121,9 @@ class Command(BaseCommand):
         )
         free_bp = PlanVersion.objects.create(
             organization=organization,
-            description="The free tier",
             plan=plan,
-            status=PLAN_VERSION_STATUS.ACTIVE,
+            version=1,
+            currency=PricingUnit.objects.get(organization=organization, code="USD"),
         )
         RecurringCharge.objects.create(
             organization=organization,
