@@ -6,6 +6,10 @@ from decimal import Decimal
 import pytest
 from django.db.models import Sum
 from django.urls import reverse
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
@@ -33,9 +37,6 @@ from metering_billing.utils.enums import (
     PLAN_DURATION,
     USAGE_BEHAVIOR,
 )
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -1215,7 +1216,7 @@ class TestResetAndInvoicingIntervals:
         )  # 3 billing records for 2 plan components + 1 recurring charge, 28-31 days / 3
 
         # ok so it started 9 days ago, that means that right about now we should have passed the
-        # end date of teh 3rd reset period. Which means if we switch now and DO NOT transfer usage,
+        # end date of the 3rd reset period. Which means if we switch now and DO NOT transfer usage,
         # we'll essentially have 3 billing records, 1 for each PC / Recurring charge (the little
         # stub thats a few milliseconds long). This will happen anyway for the recurring charge.
         # if we DO transfer usage, and there's overlapping metrics, we'll have no extra billing
