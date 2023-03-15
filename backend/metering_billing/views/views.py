@@ -5,17 +5,10 @@ import pytz
 from django.conf import settings
 from django.db.models import Count, F, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
-from rest_framework import serializers, status
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
 from metering_billing.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
 )
-from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Event,
     Invoice,
@@ -26,13 +19,9 @@ from metering_billing.models import (
 from metering_billing.netsuite_csv import get_invoices_csv_presigned_url
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
-from metering_billing.serializers.model_serializers import (
-    DraftInvoiceSerializer,
-    MetricDetailSerializer,
-)
+from metering_billing.serializers.model_serializers import MetricDetailSerializer
 from metering_billing.serializers.request_serializers import (
     CostAnalysisRequestSerializer,
-    DraftInvoiceRequestSerializer,
     OptionalPeriodRequestSerializer,
     PeriodComparisonRequestSerializer,
     PeriodMetricUsageRequestSerializer,
@@ -58,6 +47,12 @@ from metering_billing.utils import (
     make_all_decimals_floats,
 )
 from metering_billing.utils.enums import METRIC_STATUS, METRIC_TYPE, PAYMENT_PROCESSORS
+from rest_framework import serializers, status
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 
 logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -478,57 +473,6 @@ class TimezonesView(APIView):
         Pagination-enabled endpoint for retrieving an organization's event stream.
         """
         response = {"timezones": pytz.common_timezones}
-        return Response(response, status=status.HTTP_200_OK)
-
-
-class DraftInvoiceView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
-
-    @extend_schema(
-        request=DraftInvoiceRequestSerializer,
-        parameters=[DraftInvoiceRequestSerializer],
-        responses={
-            200: inline_serializer(
-                name="DraftInvoiceResponse",
-                fields={"invoice": DraftInvoiceSerializer(required=False, many=True)},
-            )
-        },
-    )
-    def get(self, request, format=None):
-        """
-        Pagination-enabled endpoint for retrieving an organization's event stream.
-        """
-        organization = request.organization
-        serializer = DraftInvoiceRequestSerializer(
-            data=request.query_params, context={"organization": organization}
-        )
-        serializer.is_valid(raise_exception=True)
-        customer = serializer.validated_data.get("customer")
-        sub_records = SubscriptionRecord.objects.active().filter(
-            organization=organization,
-            customer=customer,
-        )
-        response = {"invoice": None}
-        if sub_records is None or len(sub_records) == 0:
-            response = {"invoices": []}
-        else:
-            sub_records = sub_records.select_related("billing_plan").prefetch_related(
-                "billing_plan__plan_components",
-                "billing_plan__plan_components__billable_metric",
-                "billing_plan__plan_components__tiers",
-                "billing_plan__currency",
-            )
-            invoices = generate_invoice(
-                sub_records,
-                draft=True,
-                charge_next_plan=serializer.validated_data.get(
-                    "include_next_period", True
-                ),
-            )
-            serializer = DraftInvoiceSerializer(invoices, many=True).data
-            for invoice in invoices:
-                invoice.delete()
-            response = {"invoices": serializer or []}
         return Response(response, status=status.HTTP_200_OK)
 
 
