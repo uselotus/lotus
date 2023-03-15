@@ -45,17 +45,7 @@ class PeriodMetricUsageRequestSerializer(PeriodRequestSerializer):
 
 
 class DraftInvoiceRequestSerializer(serializers.Serializer):
-    customer_id = SlugRelatedFieldWithOrganization(
-        slug_field="customer_id",
-        queryset=Customer.objects.all(),
-        required=True,
-    )
     include_next_period = serializers.BooleanField(default=True)
-
-    def validate(self, data):
-        super().validate(data)
-        data["customer"] = data.pop("customer_id")
-        return data
 
 
 class OrganizationSettingFilterSerializer(serializers.Serializer):
