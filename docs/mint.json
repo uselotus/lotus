@@ -144,6 +144,7 @@
             "api-reference/subscriptions/cancel-subscription",
             "api-reference/subscriptions/change-subscription",
             "api-reference/subscriptions/switch-subscription-plan",
+            "api-reference/subscriptions/change-prepaid-units",
             "api-reference/subscriptions/attach-addon",
             "api-reference/subscriptions/cancel-addon",
             "api-reference/subscriptions/list-subscriptions",
