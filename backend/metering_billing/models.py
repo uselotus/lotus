@@ -3093,7 +3093,7 @@ class SubscriptionRecord(models.Model):
         for billing_record in self.billing_records.all():
             billing_record.cancel_billing_record(now)
         addon_srs = []
-        for addon_sr in self.addon_subscription_records.all():
+        for addon_sr in self.addon_subscription_records.filter(end_date__gt=now):
             addon_sr.cancel_subscription(
                 bill_usage=bill_usage,
                 flat_fee_behavior=flat_fee_behavior,
@@ -3172,10 +3172,11 @@ class SubscriptionRecord(models.Model):
             organization=self.organization,
             customer=self.customer,
             billing_plan=new_version,
-            start_date=now,
+            start_date=now + relativedelta(microseconds=1),
             end_date=self.end_date,
             auto_renew=self.auto_renew,
         )
+        print("JUST CREATED NEW SUBSCRIPTION RECORD", sr.__dict__)
         # current recurring_charge billing records must be canceled + billed
         for billing_record in self.billing_records.filter(
             recurring_charge__isnull=False, fully_billed=False
@@ -3273,6 +3274,7 @@ class SubscriptionRecord(models.Model):
         self.auto_renew = False
         self.save()
         generate_invoice([self, sr])
+        print("FINISHED CREATING NEW SUBSCRIPTION RECORD", sr.__dict__)
         return sr
 
     def calculate_earned_revenue_per_day(self):
