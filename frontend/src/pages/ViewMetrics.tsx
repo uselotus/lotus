@@ -54,6 +54,19 @@ const ViewMetrics: FC = () => {
         });
       },
 
+      onMutate: () => {
+        console.log("mutating");
+        toast.info("Creating metric...", {
+          position: toast.POSITION.TOP_CENTER,
+          autoClose: false,
+          hideProgressBar: true,
+        });
+      },
+
+      onSettled: () => {
+        toast.dismiss();
+      },
+
       onError: (error: any) => {
         toast.error(`Error creating metric: ${error.response.data.detail}`, {
           position: toast.POSITION.TOP_CENTER,
@@ -81,7 +94,7 @@ const ViewMetrics: FC = () => {
         <Button
           type="primary"
           size="large"
-          id='create-metric-button'
+          id="create-metric-button"
           key={"create-plan"}
           onClick={createMetricButton}
         >
