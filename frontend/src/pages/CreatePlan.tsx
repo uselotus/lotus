@@ -285,7 +285,7 @@ function CreatePlan() {
           features: featureIdList,
           usage_billing_frequency: values.usage_billing_frequency,
           currency_code: selectedCurrency!.code,
-          plan_name: values.plan_name,
+          plan_name: values.name,
         };
 
         if (
@@ -320,8 +320,8 @@ function CreatePlan() {
         }
 
         const plan: CreatePlanRequestType = {
-          plan_name: values.plane_name,
-          plan_duration: values.plan_duration,
+          plan_name: values.name,
+          plan_duration: values.duration,
           initial_version: initialPlanVersion,
         };
 
