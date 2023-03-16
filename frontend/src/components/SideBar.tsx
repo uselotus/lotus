@@ -211,7 +211,7 @@ const SideBar: FC = () => {
           <LotusHeader />
         </div>
 
-        <div>
+        <div className="mb-20">
           <Menu
             mode="inline"
             selectedKeys={[location.pathname]}
