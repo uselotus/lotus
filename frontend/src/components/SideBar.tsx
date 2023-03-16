@@ -207,11 +207,11 @@ const SideBar: FC = () => {
       }}
     >
       <div>
-        <div className="mt-[40px] ml-2 pl-10">
+        <div className="mt-[42px] ml-2 pl-10">
           <LotusHeader />
         </div>
 
-        <div className="mb-20">
+        <div className="mt-24">
           <Menu
             mode="inline"
             selectedKeys={[location.pathname]}
