@@ -325,7 +325,6 @@ function CreatePlan() {
           plan_duration: values.plan_duration,
           initial_version: initialPlanVersion,
         };
-        console.log(values, "sdasdf");
 
         const links = values.initial_external_links;
 
@@ -381,7 +380,6 @@ function CreatePlan() {
           }}
           onChange={async () => {
             const isValid = await step.validate(form);
-            console.log(form.getFieldsValue(true));
             setIsCurrentStepValid(isValid);
           }}
           onFinish={submitPricingPlan}

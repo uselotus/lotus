@@ -231,9 +231,25 @@ function EditPlan({ type, plan, versionIndex }: Props) {
 
   const handleComponentAdd = (newData: any) => {
     const old = componentsData;
+
+    /// check if the metricId on newdata is already in a component in componentsData
+    // if it is then raise an alert with toast
+    // if not then add the new data to the componentsData
+
+    const metricComponentExists = componentsData.some(
+      (item) => item.metric_id === newData.metric_id
+    );
+
+    if (metricComponentExists && !editComponentItem) {
+      toast.error("Metric already exists in another component", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+      return;
+    }
+
     if (editComponentItem) {
       const index = componentsData.findIndex(
-        (item) => item.id === editComponentItem.id
+        (item) => item.metric_id === editComponentItem.metric_id
       );
       old[index] = newData;
       setComponentsData(old);
@@ -247,17 +263,16 @@ function EditPlan({ type, plan, versionIndex }: Props) {
       ];
       setComponentsData(newComponentsData);
     }
+
     setEditComponentsItem(undefined);
     setcomponentVisible(false);
   };
 
   const handleComponentEdit = (name: string) => {
     const currentComponent = componentsData.filter(
-      (item) => item.id === name
+      (item) => item.metric_id === name
     )[0];
 
-    console.log(name);
-    console.log(componentsData);
     setEditComponentsItem(currentComponent);
     setcomponentVisible(true);
   };
@@ -320,7 +335,6 @@ function EditPlan({ type, plan, versionIndex }: Props) {
 
         if (components) {
           for (let i = 0; i < components.length; i++) {
-            console.log(components);
             const usagecomponent: CreateComponent = {
               metric_id: components[i].metric_id,
               tiers: components[i].tiers,
