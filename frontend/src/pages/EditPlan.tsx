@@ -91,13 +91,20 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     components["schemas"]["PlanDetail"]["versions"][0]["recurring_charges"]
   >([]);
 
-
-
   const queryClient = useQueryClient();
 
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>(
     plan.versions[versionIndex].features
   );
+  const [nextVersion, setNextVersion] = useState<number>();
+
+  useEffect(() => {
+    async function getNextVersion() {
+      const response = await Plan.nextVersion(plan.plan_id);
+      setNextVersion(response.version);
+    }
+    getNextVersion();
+  }, []);
 
   useEffect(() => {
     if (!allPlans?.length) {
@@ -117,10 +124,10 @@ function EditPlan({ type, plan, versionIndex }: Props) {
         invoicing_interval_count: component.invoicing_interval_count,
         invoicing_interval_unit: component.invoicing_interval_unit,
         reset_interval_count: component.reset_interval_count,
-        reset_interval_unit: component.reset_interval_unit
+        reset_interval_unit: component.reset_interval_unit,
       })
     );
-    setRecurringCharges(plan.versions[versionIndex].recurring_charges)
+    setRecurringCharges(plan.versions[versionIndex].recurring_charges);
     setComponentsData(initialComponents);
   }, [plan.versions, versionIndex]);
 
@@ -249,6 +256,8 @@ function EditPlan({ type, plan, versionIndex }: Props) {
       (item) => item.id === name
     )[0];
 
+    console.log(name);
+    console.log(componentsData);
     setEditComponentsItem(currentComponent);
     setcomponentVisible(true);
   };
@@ -311,6 +320,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
 
         if (components) {
           for (let i = 0; i < components.length; i++) {
+            console.log(components)
             const usagecomponent: CreateComponent = {
               metric_id: components[i].metric_id,
               tiers: components[i].tiers,
@@ -318,7 +328,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
               invoicing_interval_unit: components[i].invoicing_interval_unit,
               reset_interval_count: components[i].reset_interval_count,
               reset_interval_unit: components[i].reset_interval_unit,
-              prepaid_charge: components[i].prepaid_charge
+              prepaid_charge: components[i].prepaid_charge,
             };
             usagecomponentslist.push(usagecomponent);
           }
@@ -408,7 +418,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           if (type === "currency") {
             newVersion.version = plan.versions[versionIndex].version;
           } else if (type === "version") {
-            newVersion.version = latestVersion.version + 1;
+            newVersion.version = nextVersion;
           } else {
             newVersion.version = plan.versions[versionIndex].version;
             newVersion.target_customer_ids = compact([targetCustomerId]);

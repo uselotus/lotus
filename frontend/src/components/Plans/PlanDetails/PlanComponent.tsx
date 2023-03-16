@@ -626,35 +626,32 @@ const PlanComponents: FC<PlanComponentsProps> = ({
     }
   );
 
-  const returnInvoicingIntervalText = (unit: number | null, interval: string | null) => {
-
+  const returnInvoicingIntervalText = (
+    unit: number | null,
+    interval: string | null
+  ) => {
     if (interval === null) {
-      return capitalize(plan.plan_duration)
-    }
-
-    else if (interval === "month") {
+      return capitalize(plan.plan_duration);
+    } else if (interval === "month") {
       if (unit === 1 || null) {
-        return "Monthly"
+        return "Monthly";
       } else {
-        return ("Every " + unit + " Months")
+        return "Every " + unit + " Months";
       }
-    }
-    else if (interval === "day") {
+    } else if (interval === "day") {
       if (unit === 1 || null) {
-        return "Daily"
+        return "Daily";
       } else {
-        return ("Every " + unit + " Days")
+        return "Every " + unit + " Days";
       }
     } else if (interval === "week") {
       if (unit === 1 || null) {
-        return "Weekly"
+        return "Weekly";
       } else {
-        return ("Every " + unit + " Weeks")
+        return "Every " + unit + " Weeks";
       }
     }
-
-
-  }
+  };
 
   const deleteAlertMutation = useMutation(
     (post: { usage_alert_id: string }) => Plan.deleteAlert(post),
@@ -667,7 +664,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
       },
     }
   );
-  useEffect(() => { }, [plan]);
+  useEffect(() => {}, [plan]);
   const deleteAlert = (usage_alert_id: string) => {
     deleteAlertMutation.mutate({
       usage_alert_id,
@@ -728,10 +725,14 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                 key={index}
               >
                 <div className="flex items-center justify-between">
-                  <div className="text-base text-card-text align-middle">
+                  <div className=" text-base text-card-text align-middle">
                     <div> {component.billable_metric.metric_name}</div>
                   </div>
-                  <div>{returnInvoicingIntervalText(component.invoicing_interval_count, component.invoicing_interval_unit)}
+                  <div>
+                    {returnInvoicingIntervalText(
+                      component.invoicing_interval_count,
+                      component.invoicing_interval_unit
+                    )}
                   </div>
                 </div>
                 <div>
@@ -750,7 +751,8 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                         key: "range_start",
                         align: "left",
                         width: "50%",
-                        className: "bg-primary-50 pointer-events-none",
+                        className:
+                          "bg-primary-50 pointer-events-none !text-card-black",
                         render: (value, record) => (
                           <span>
                             From {value} to{" "}
@@ -907,40 +909,40 @@ const PlanComponents: FC<PlanComponentsProps> = ({
               footer={
                 isCreateAlert
                   ? [
-                    <Button
-                      key="back"
-                      onClick={() => setIsModalVisible(false)}
-                    >
-                      Cancel
-                    </Button>,
-                    <Button
-                      key="submit"
-                      type="primary"
-                      disabled={isInvalid}
-                      onClick={() => submitAlertModal(currentComponent)}
-                    >
-                      Create
-                    </Button>,
-                  ]
+                      <Button
+                        key="back"
+                        onClick={() => setIsModalVisible(false)}
+                      >
+                        Cancel
+                      </Button>,
+                      <Button
+                        key="submit"
+                        type="primary"
+                        disabled={isInvalid}
+                        onClick={() => submitAlertModal(currentComponent)}
+                      >
+                        Create
+                      </Button>,
+                    ]
                   : [
-                    <Button
-                      key="delete"
-                      className=" bg-red-600"
-                      onClick={() => deleteAlert(currentAlertId)}
-                    >
-                      Delete
-                    </Button>,
-                    <Button
-                      key="submit"
-                      type="primary"
-                      disabled={isInvalid}
-                      onClick={() =>
-                        submitAlertModal(currentComponent, currentAlertId)
-                      }
-                    >
-                      Update
-                    </Button>,
-                  ]
+                      <Button
+                        key="delete"
+                        className=" bg-red-600"
+                        onClick={() => deleteAlert(currentAlertId)}
+                      >
+                        Delete
+                      </Button>,
+                      <Button
+                        key="submit"
+                        type="primary"
+                        disabled={isInvalid}
+                        onClick={() =>
+                          submitAlertModal(currentComponent, currentAlertId)
+                        }
+                      >
+                        Update
+                      </Button>,
+                    ]
               }
             >
               <div className="flex flex-col justify-center items-center gap-4">

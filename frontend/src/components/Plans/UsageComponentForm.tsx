@@ -220,12 +220,12 @@ const EditableCell: React.FC<EditableCellProps> = ({
         style={{ margin: 0 }}
         className="w-full"
         name={dataIndex}
-        // rules={[
-        //   {
-        //     required: {record.range_end ? true : false},
-        //     message: `${title} is required.`,
-        //   },
-        // ]}
+      // rules={[
+      //   {
+      //     required: {record.range_end ? true : false},
+      //     message: `${title} is required.`,
+      //   },
+      // ]}
       >
         {(() => {
           switch (title) {
@@ -272,7 +272,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
       <div
         className="editable-cell-value-wrap"
         style={{ paddingRight: 24 }}
-        onClick={validateEditable(dataIndex, record) ? toggleEdit : () => {}}
+        onClick={validateEditable(dataIndex, record) ? toggleEdit : () => { }}
       >
         {children}
       </div>
@@ -323,11 +323,12 @@ function UsageComponentForm({
     units: editComponentItem?.prepaid_charge?.units ?? null,
   };
 
-  const initalData = Object.assign(
+  const initialData = Object.assign(
     {},
     backupDefaultFormValues,
     editComponentItem
   );
+  console.log(editComponentItem);
   const [errorMessage, setErrorMessage] = useState("");
   const buttonRef = useRef<HTMLButtonElement | undefined>(undefined!);
   const initialTier: Tier[] = [
@@ -341,7 +342,7 @@ function UsageComponentForm({
   );
   const [rangeEnd, setRangeEnd] = useState<number | undefined>(
     editComponentItem?.tiers[editComponentItem?.tiers.length - 1]?.range_end ??
-      undefined
+    undefined
   );
 
   useEffect(() => {
@@ -457,88 +458,88 @@ function UsageComponentForm({
     editable?: boolean;
     dataIndex: string;
   })[] = [
-    {
-      title: "First Unit",
-      dataIndex: "range_start",
-      width: "17%",
-      align: "center",
-      editable: true,
-    },
-    {
-      title: "Last Unit",
-      dataIndex: "range_end",
-      width: "17%",
-      align: "center",
+      {
+        title: "First Unit",
+        dataIndex: "range_start",
+        width: "17%",
+        align: "center",
+        editable: true,
+      },
+      {
+        title: "Last Unit",
+        dataIndex: "range_end",
+        width: "17%",
+        align: "center",
 
-      editable: true,
-      render: (text: any, record: Tier) => {
-        if (record.range_end === undefined || record.range_end === null) {
-          return "∞";
-        }
-        return record.range_end;
+        editable: true,
+        render: (text: any, record: Tier) => {
+          if (record.range_end === undefined || record.range_end === null) {
+            return "∞";
+          }
+          return record.range_end;
+        },
       },
-    },
-    {
-      title: "Charge Type",
-      dataIndex: "type",
-      editable: true,
-      width: "17%",
-      align: "center",
-    },
-    {
-      title: `Amount (${currency?.symbol})`,
-      dataIndex: "cost_per_batch",
-      editable: true,
-      align: "center",
-      width: "13%",
-    },
-    {
-      title: "Units",
-      dataIndex: "metric_units_per_batch",
-      width: "13%",
-      align: "center",
-      editable: true,
-      render: (text: any, record: Tier) => {
-        if (record.type === "flat" || record.type === "free") {
-          return "-";
-        }
-        return record.metric_units_per_batch;
+      {
+        title: "Charge Type",
+        dataIndex: "type",
+        editable: true,
+        width: "17%",
+        align: "center",
       },
-    },
-    {
-      title: "Rounding Type",
-      dataIndex: "batch_rounding_type",
-      width: "23%",
-      align: "center",
-      editable: true,
-      render: (text: any, record: Tier) => {
-        if (record.type === "flat" || record.type === "free") {
-          return "-";
-        }
-        return <div>{record.batch_rounding_type}</div>;
+      {
+        title: `Amount (${currency?.symbol})`,
+        dataIndex: "cost_per_batch",
+        editable: true,
+        align: "center",
+        width: "13%",
       },
-    },
+      {
+        title: "Units",
+        dataIndex: "metric_units_per_batch",
+        width: "13%",
+        align: "center",
+        editable: true,
+        render: (text: any, record: Tier) => {
+          if (record.type === "flat" || record.type === "free") {
+            return "-";
+          }
+          return record.metric_units_per_batch;
+        },
+      },
+      {
+        title: "Rounding Type",
+        dataIndex: "batch_rounding_type",
+        width: "23%",
+        align: "center",
+        editable: true,
+        render: (text: any, record: Tier) => {
+          if (record.type === "flat" || record.type === "free") {
+            return "-";
+          }
+          return <div>{record.batch_rounding_type}</div>;
+        },
+      },
 
-    {
-      title: "Delete",
-      dataIndex: "delete",
-      width: "8%",
-      align: "center",
-      render: (_, record) =>
-        currentTiers.length > 1 &&
-        record.range_start != 0 && (
-          <Button
-            size="small"
-            type="text"
-            icon={<DeleteOutlined />}
-            danger
-            onClick={() => {
-              handleDelete(record.range_start);
-            }}
-          />
-        ),
-    },
-  ];
+      {
+        title: "Delete",
+        dataIndex: "delete",
+        width: "8%",
+        align: "center",
+        render: (_, record) =>
+          currentTiers.length > 1 &&
+          record.range_start != 0 && (
+            <Button
+              size="small"
+              type="text"
+              icon={<DeleteOutlined />}
+              danger
+              onClick={() => {
+                handleDelete(record.range_start);
+              }}
+            />
+          ),
+      },
+    ];
 
   const columns = defaultColumns.map((col) => {
     if (!col.editable) {
@@ -604,30 +605,31 @@ function UsageComponentForm({
                 reset_interval_unit: values.reset_interval_unit,
                 invoicing_interval_count: values.invoicing_interval_count,
                 invoicing_interval_unit: values.invoicing_interval_unit,
-                id: initalData?.id,
+                id: initialData?.id,
                 prepaid_charge:
                   prepaidType !== null
                     ? {
-                        units: values.units,
-                        charge_type: prepaidType,
-                        charge_behavior: values.charge_behavior,
-                      }
+                      units: values.units,
+                      charge_type: prepaidType,
+                      charge_behavior: values.charge_behavior,
+                    }
                     : null,
               });
+              console.log(prepaidType);
 
               form.submit();
               form.resetFields();
               setErrorMessage("");
             }
           })
-          .catch((info) => {});
+          .catch((info) => { });
       }}
     >
       <Form
         form={form}
         layout="horizontal"
         name="component_form"
-        initialValues={initalData}
+        initialValues={initialData}
       >
         <div className="grid grid-cols-12 space-x-4 mt-4 mb-8">
           <Form.Item
@@ -686,7 +688,7 @@ function UsageComponentForm({
         <div className="mt-8 mb-12 space-y-6">
           <Collapse
             className="col-span-full bg-white py-8 rounded"
-            defaultActiveKey={initalData?.prepaid_charge ? [1] : []}
+            defaultActiveKey={initialData?.prepaid_charge ? [1] : []}
           >
             <Panel header="Pre-Paid Usage" key="1">
               <div className="grid grid-cols-2 gap-8">
@@ -711,6 +713,7 @@ function UsageComponentForm({
                     checked={prepaidType === "dynamic"}
                     onChange={(e) => {
                       setPrepaidType(e.target.checked ? "dynamic" : null);
+                      console.log(prepaidType);
                     }}
                   >
                     Dynamic. New units will be automatically charged as they get
@@ -802,7 +805,7 @@ function UsageComponentForm({
           </Collapse>
           <Collapse
             className="col-span-full bg-white py-8 rounded"
-            defaultActiveKey={initalData ? [1] : []}
+            defaultActiveKey={initialData ? [1] : []}
           >
             <Panel header="Component Settings" key="1">
               <div className="mb-8">

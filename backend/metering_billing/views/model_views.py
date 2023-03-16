@@ -1687,7 +1687,8 @@ class PlanViewSet(api_views.PlanViewSet):
         url_path="versions/next",
         url_name="plan_versions-next",
     )
-    def get_next_plan_version_number(self, plan):
+    def get_next_plan_version_number(self, request, *args, **kwargs):
+        plan = self.get_object()
         maxver_deleted = (
             PlanVersion.deleted_objects.filter(
                 plan=plan, version__isnull=False
@@ -1700,7 +1701,13 @@ class PlanViewSet(api_views.PlanViewSet):
             )["maxver"]
             or 0
         )
-        return max(maxver_deleted, maxver) + 1
+        res = max(maxver_deleted, maxver) + 1
+        return Response(
+            {
+                "version": res,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class SubscriptionViewSet(api_views.SubscriptionViewSet):

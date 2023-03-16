@@ -106,6 +106,12 @@ function CustomerDetail() {
       onError: (error: QueryErrors) => {
         toast.error(error.response.data.title);
       },
+      onMutate() {
+        toast.loading("Creating subscription...");
+      },
+      onSettled() {
+        toast.dismiss();
+      },
     }
   );
 
