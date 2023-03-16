@@ -354,6 +354,7 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
       onSuccess: () => {
         queryClient.invalidateQueries("plan_list");
         queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
+        toast.success("Plan archived successfully");
       },
     }
   );
@@ -390,7 +391,7 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
             activeVersion={version.version}
             tabs={["Active", "Grandfathered", "Retiring", "Inactive"]}
           />
-          {capitalize(version.status) !== "Inactive" ? (
+          {capitalize(version.status) === "Inactive" ? (
             <span
               aria-hidden
               className="ml-auto"
@@ -953,7 +954,12 @@ const PlanComponents: FC<PlanComponentsProps> = ({
         </div>
       ) : (
         <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card">
-          <Typography.Title level={2}>Added Components</Typography.Title>
+          <Typography.Title
+            level={2}
+            className="pt-4 whitespace-pre-wrap !text-[18px]"
+          >
+            Added Components
+          </Typography.Title>
           <div className="w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
           <div className="text-card-grey text-base">No components added</div>
         </div>
