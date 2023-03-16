@@ -92,7 +92,7 @@ func main() {
 	e.Use(database.Middleware(db))
 	e.Use(authn.Middleware(cacheClient))
 
-	e.POST("/api/track/", func(c echo.Context) error {
+	e.POST("/", func(c echo.Context) error {
 		now := time.Now()
 
 		events := RawEventBatch{}
