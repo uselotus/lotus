@@ -14,7 +14,7 @@ import {
 import { StepProps } from "./types";
 import clsx from "clsx";
 
-const fields = ["align_plan", "localized_name", "plan_currency"];
+const fields = ["align_plan", "plan_currency"];
 
 export const validate = async (form: FormInstance<any>) => {
   try {
@@ -102,8 +102,16 @@ const VersionInformation = ({ form, ...props }: StepProps) => {
 
                   <Col span="12">
                     <Form.Item
-                      label={props.type === "custom" ? "Overridden Name" : "Localized Name"}
-                      help={props.type === "custom" ? "Use a name override for this plan to uniquely identify it" : undefined}
+                      label={
+                        props.type === "custom"
+                          ? "Overridden Name"
+                          : "Localized Name"
+                      }
+                      help={
+                        props.type === "custom"
+                          ? "Use a name override for this plan to uniquely identify it"
+                          : undefined
+                      }
                       name="localized_name"
                     >
                       <Input

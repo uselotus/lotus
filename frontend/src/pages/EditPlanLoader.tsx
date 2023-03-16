@@ -34,7 +34,6 @@ function EditPlanLoader({ type }: EditPlanLoaderProps) {
     }
 
     const res = Plan.getPlan(planId);
-
     return res;
   });
 

@@ -234,6 +234,8 @@ export const AddOn = {
 
 export const Plan = {
   // get methods
+  nextVersion: (plan_id: string): Promise<number> =>
+    requests.get(`app/plans/${plan_id}/versions/next/`),
   getPlans: (params?: {
     duration?: "monthly" | "quarterly" | "yearly";
     exclude_tags?: string[];

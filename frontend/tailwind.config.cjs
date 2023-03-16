@@ -11,6 +11,17 @@ module.exports = {
     "./index.html",
   ],
   theme: {
+    fontWeight: {
+      normal: 400,
+      medium: 500,
+      semiBold: 600,
+      bold: 700,
+      extrBbold: 800,
+      black: 900,
+    },
+
+    
+
     extend: {
       colors: {
         // custom color palette

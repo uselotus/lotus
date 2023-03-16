@@ -96,6 +96,15 @@ function EditPlan({ type, plan, versionIndex }: Props) {
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>(
     plan.versions[versionIndex].features
   );
+  const [nextVersion, setNextVersion] = useState<number>();
+
+  useEffect(() => {
+    async function getNextVersion() {
+      const response = await Plan.nextVersion(plan.plan_id);
+      setNextVersion(response.version);
+    }
+    getNextVersion();
+  }, []);
 
   useEffect(() => {
     if (!allPlans?.length) {
@@ -111,8 +120,14 @@ function EditPlan({ type, plan, versionIndex }: Props) {
         id: component.billable_metric.metric_id,
         metric_id: component.billable_metric.metric_id,
         pricing_unit: component.pricing_unit,
+        prepaid_charge: component.prepaid_charge,
+        invoicing_interval_count: component.invoicing_interval_count,
+        invoicing_interval_unit: component.invoicing_interval_unit,
+        reset_interval_count: component.reset_interval_count,
+        reset_interval_unit: component.reset_interval_unit,
       })
     );
+    setRecurringCharges(plan.versions[versionIndex].recurring_charges);
     setComponentsData(initialComponents);
   }, [plan.versions, versionIndex]);
 
@@ -216,9 +231,25 @@ function EditPlan({ type, plan, versionIndex }: Props) {
 
   const handleComponentAdd = (newData: any) => {
     const old = componentsData;
+
+    /// check if the metricId on newdata is already in a component in componentsData
+    // if it is then raise an alert with toast
+    // if not then add the new data to the componentsData
+
+    const metricComponentExists = componentsData.some(
+      (item) => item.metric_id === newData.metric_id
+    );
+
+    if (metricComponentExists && !editComponentItem) {
+      toast.error("Metric already exists in another component", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+      return;
+    }
+
     if (editComponentItem) {
       const index = componentsData.findIndex(
-        (item) => item.id === editComponentItem.id
+        (item) => item.metric_id === editComponentItem.metric_id
       );
       old[index] = newData;
       setComponentsData(old);
@@ -232,13 +263,14 @@ function EditPlan({ type, plan, versionIndex }: Props) {
       ];
       setComponentsData(newComponentsData);
     }
+
     setEditComponentsItem(undefined);
     setcomponentVisible(false);
   };
 
   const handleComponentEdit = (name: string) => {
     const currentComponent = componentsData.filter(
-      (item) => item.id === name
+      (item) => item.metric_id === name
     )[0];
 
     setEditComponentsItem(currentComponent);
@@ -306,7 +338,11 @@ function EditPlan({ type, plan, versionIndex }: Props) {
             const usagecomponent: CreateComponent = {
               metric_id: components[i].metric_id,
               tiers: components[i].tiers,
-              proration_granularity: components[i].proration_granularity,
+              invoicing_interval_count: components[i].invoicing_interval_count,
+              invoicing_interval_unit: components[i].invoicing_interval_unit,
+              reset_interval_count: components[i].reset_interval_count,
+              reset_interval_unit: components[i].reset_interval_unit,
+              prepaid_charge: components[i].prepaid_charge,
             };
             usagecomponentslist.push(usagecomponent);
           }
@@ -396,7 +432,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           if (type === "currency") {
             newVersion.version = plan.versions[versionIndex].version;
           } else if (type === "version") {
-            newVersion.version = latestVersion.version + 1;
+            newVersion.version = nextVersion;
           } else {
             newVersion.version = plan.versions[versionIndex].version;
             newVersion.target_customer_ids = compact([targetCustomerId]);

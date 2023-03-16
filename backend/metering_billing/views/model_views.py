@@ -24,6 +24,7 @@ from api.serializers.webhook_serializers import (
 from django.conf import settings
 from django.core.cache import cache
 from django.core.validators import MinValueValidator
+from django.db.models import Max
 from django.db.utils import IntegrityError
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
@@ -1666,6 +1667,44 @@ class PlanViewSet(api_views.PlanViewSet):
             {
                 "success": True,
                 "message": f"Added transition to plan {transition_to_plan.plan_name} for {len(current_plan_versions)} instances of version {version_number} of plan {plan.plan_name}",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        parameters=None,
+        request=None,
+        responses=inline_serializer(
+            "NextPlanVersionNumberResponse",
+            fields={
+                "version": serializers.IntegerField(),
+            },
+        ),
+    )
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="versions/next",
+        url_name="plan_versions-next",
+    )
+    def get_next_plan_version_number(self, request, *args, **kwargs):
+        plan = self.get_object()
+        maxver_deleted = (
+            PlanVersion.deleted_objects.filter(
+                plan=plan, version__isnull=False
+            ).aggregate(maxver=Max("version"))["maxver"]
+            or 0
+        )
+        maxver = (
+            plan.versions.filter(version__isnull=False).aggregate(
+                maxver=Max("version")
+            )["maxver"]
+            or 0
+        )
+        res = max(maxver_deleted, maxver) + 1
+        return Response(
+            {
+                "version": res,
             },
             status=status.HTTP_200_OK,
         )
