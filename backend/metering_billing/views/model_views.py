@@ -24,6 +24,7 @@ from api.serializers.webhook_serializers import (
 from django.conf import settings
 from django.core.cache import cache
 from django.core.validators import MinValueValidator
+from django.db.models import Max
 from django.db.utils import IntegrityError
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
@@ -1669,6 +1670,37 @@ class PlanViewSet(api_views.PlanViewSet):
             },
             status=status.HTTP_200_OK,
         )
+
+    @extend_schema(
+        parameters=None,
+        request=None,
+        responses=inline_serializer(
+            "NextPlanVersionNumberResponse",
+            fields={
+                "version": serializers.IntegerField(),
+            },
+        ),
+    )
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="versions/next",
+        url_name="plan_versions-next",
+    )
+    def get_next_plan_version_number(self, plan):
+        maxver_deleted = (
+            PlanVersion.deleted_objects.filter(
+                plan=plan, version__isnull=False
+            ).aggregate(maxver=Max("version"))["maxver"]
+            or 0
+        )
+        maxver = (
+            plan.versions.filter(version__isnull=False).aggregate(
+                maxver=Max("version")
+            )["maxver"]
+            or 0
+        )
+        return max(maxver_deleted, maxver) + 1
 
 
 class SubscriptionViewSet(api_views.SubscriptionViewSet):
