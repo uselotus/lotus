@@ -150,7 +150,6 @@ const ViewPlans: FC = () => {
       {
         onSuccess: (data) => {
           setPlans(data as PlanType[]);
-          console.log(data);
         },
         refetchOnMount: "always",
       }

@@ -73,7 +73,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
   ]);
   const [priceAdjustmentType, setPriceAdjustmentType] = useState<string>(
     plan.versions[versionIndex].price_adjustment?.price_adjustment_type ??
-    "none"
+      "none"
   );
 
   const latestVersion = sortBy(
@@ -215,7 +215,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     );
   };
 
-  const onFinishFailed = (errorInfo: any) => { };
+  const onFinishFailed = (errorInfo: any) => {};
 
   const hideComponentModal = () => {
     setcomponentVisible(false);
@@ -320,7 +320,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
 
         if (components) {
           for (let i = 0; i < components.length; i++) {
-            console.log(components)
+            console.log(components);
             const usagecomponent: CreateComponent = {
               metric_id: components[i].metric_id,
               tiers: components[i].tiers,
@@ -504,11 +504,11 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     ["version", "custom"].includes(type)
       ? undefined
       : {
-        title: "Plan Information",
-        slug: "plan-information",
-        Component: PlanInformation,
-        validate: validatePlanInformation,
-      },
+          title: "Plan Information",
+          slug: "plan-information",
+          Component: PlanInformation,
+          validate: validatePlanInformation,
+        },
     {
       title: "Version Information",
       slug: "version-information",
