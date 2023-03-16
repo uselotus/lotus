@@ -5,7 +5,7 @@ import {
   useQuery,
   UseQueryResult,
   useQueryClient,
-} from "react-query";
+} from '@tanstack/react-query';
 import { useNavigate } from "react-router-dom";
 import {
   Divider,

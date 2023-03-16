@@ -1,7 +1,9 @@
-import React, { FC, useState } from "react";
-import { useQuery } from "react-query";
+/* eslint-disable no-shadow */
+/* eslint-disable camelcase */
+import React, { FC } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Divider, Typography, Row, Col, Modal, Input } from "antd";
+import { Divider, Typography, Row, Col } from "antd";
 import Nango from "@nangohq/frontend";
 import { toast } from "react-toastify";
 import {
@@ -12,7 +14,6 @@ import {
 import {
   PaymentProcessorStatusType,
   integrationsMap,
-  PaymentProcessorType,
   PaymentProcessorConnectionRequestType,
   BraintreeConnectionRequestType,
   PaymentProcessorConnectionResponseType,
@@ -29,8 +30,8 @@ import { useVesselLink } from "@vesselapi/react-vessel-link";
 
 const IntegrationsTab: FC = () => {
   const navigate = useNavigate();
-  const [connectedStatus, setConnectedStatus] = useState<boolean>(false);
-  const { data, isLoading, refetch } = useQuery<PaymentProcessorStatusType[]>(
+
+  const { data, refetch } = useQuery<PaymentProcessorStatusType[]>(
     ["PaymentProcessorIntegration"],
     () =>
       PaymentProcessorIntegration.getPaymentProcessorConnectionStatus().then(
@@ -57,7 +58,9 @@ const IntegrationsTab: FC = () => {
   );
 
   const org = useGlobalStore((state) => state.org);
-  var nango = new Nango({
+
+  const nango = new Nango({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     publicKey: (import.meta as any).env.VITE_NANGO_PK,
     debug: true,
   }); // Nango Cloud
@@ -91,13 +94,12 @@ const IntegrationsTab: FC = () => {
       const this_org = org.linked_organizations?.filter(
         (org) => org.current
       )[0];
-      var unique_config_key = "";
+      let unique_config_key = "";
       if (this_org?.organization_type.toLowerCase() === "production") {
         toast.error("Braintree is not supported in production environment.");
         return;
-      } else {
-        unique_config_key = "braintree-sandbox";
       }
+      unique_config_key = "braintree-sandbox";
       nango
         .auth(unique_config_key, item.connection_id)
         .then((result) => {
@@ -134,7 +136,7 @@ const IntegrationsTab: FC = () => {
               toast.success(data.details);
               refetch();
             })
-            .catch((inner_error) => {
+            .catch(() => {
               toast.error(
                 `There was an error in the OAuth flow for integration: ${error.message}`
               );
@@ -149,8 +151,8 @@ const IntegrationsTab: FC = () => {
       <Row gutter={[24, 24]} className="flex items-stretch">
         {data &&
           data !== undefined &&
-          data.map((item, index) => (
-            <Col span={6} key={index}>
+          data.map((item) => (
+            <Col span={6} key={item.payment_provider_name}>
               <AppCard
                 connected={item.connected}
                 title={
@@ -249,13 +251,15 @@ const IntegrationsTab: FC = () => {
         </Col>
         <Col span={6} className="h-full">
           <AppCard
-            connected={true}
+            connected
             title="Netsuite"
             idValue="not_necessary"
             description="Sync your invoices + products to Netsuite"
             icon={integrationsMap.netsuite.icon}
-            working={true}
-            handleClickConnect={() => {}}
+            working
+            handleClickConnect={() => {
+              //
+            }}
             hasAccess={true}
           />
         </Col>

@@ -1,7 +1,7 @@
 import { Select } from "antd";
 
 import React from "react";
-import { UseQueryResult, useQuery } from "react-query";
+import { UseQueryResult, useQuery } from '@tanstack/react-query';
 import { PricingUnits } from "../api/api";
 import { CurrencyType } from "../types/pricing-unit-type";
 

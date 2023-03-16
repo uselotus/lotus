@@ -1,15 +1,15 @@
-// @ts-ignore
+/* eslint-disable no-shadow */
+
 import React, { FC, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "antd";
-import { useMutation, useQuery } from "react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { PageLayout } from "../../components/base/PageLayout";
 import { PaymentProcessor } from "../../api/api";
 import {
   PaymentProcessorSetting,
   Source,
-  TransferSub,
   PaymentProcessorImportCustomerResponse,
   UpdatePaymentProcessorSettingParams,
 } from "../../types/payment-processor-type";
@@ -18,8 +18,6 @@ const TOAST_POSITION = toast.POSITION.TOP_CENTER;
 
 // create FC component called BraintreeIntegration
 const BraintreeIntegrationView: FC = () => {
-  // create variable called {id} and set it to type string
-  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isSettingValue, setIsSettingValue] = useState(false);
   const [currentBraintreeSetting, setCurrentBraintreeSetting] =
@@ -61,40 +59,40 @@ const BraintreeIntegrationView: FC = () => {
     }
   );
 
-  const importPaymentsMutation = useMutation(
-    (post: Source) => PaymentProcessor.importPayments(post),
-    {
-      onSuccess: (data: PaymentProcessorImportCustomerResponse) => {
-        toast.success(data.detail, {
-          position: TOAST_POSITION,
-        });
-      },
+  // const importPaymentsMutation = useMutation(
+  //   (post: Source) => PaymentProcessor.importPayments(post),
+  //   {
+  //     onSuccess: (data: PaymentProcessorImportCustomerResponse) => {
+  //       toast.success(data.detail, {
+  //         position: TOAST_POSITION,
+  //       });
+  //     },
 
-      onError: () => {
-        toast.error("Failed to Import Payments", {
-          position: TOAST_POSITION,
-        });
-      },
-    }
-  );
+  //     onError: () => {
+  //       toast.error("Failed to Import Payments", {
+  //         position: TOAST_POSITION,
+  //       });
+  //     },
+  //   }
+  // );
 
-  const resolveAfter3Sec = new Promise((resolve) => setTimeout(resolve, 3000));
+  // const resolveAfter3Sec = new Promise((resolve) => setTimeout(resolve, 3000));
 
-  const transferSubscriptionsMutation = useMutation(
-    (post: TransferSub) => PaymentProcessor.transferSubscriptions(post),
-    {
-      onSuccess: (data: PaymentProcessorImportCustomerResponse) => {
-        toast.success(data.detail, {
-          position: TOAST_POSITION,
-        });
-      },
-      onError: () => {
-        toast.error("Failed to transfer subscriptions", {
-          position: TOAST_POSITION,
-        });
-      },
-    }
-  );
+  // const transferSubscriptionsMutation = useMutation(
+  //   (post: TransferSub) => PaymentProcessor.transferSubscriptions(post),
+  //   {
+  //     onSuccess: (data: PaymentProcessorImportCustomerResponse) => {
+  //       toast.success(data.detail, {
+  //         position: TOAST_POSITION,
+  //       });
+  //     },
+  //     onError: () => {
+  //       toast.error("Failed to transfer subscriptions", {
+  //         position: TOAST_POSITION,
+  //       });
+  //     },
+  //   }
+  // );
 
   const updateBraintreeSettings = useMutation(
     (post: UpdatePaymentProcessorSettingParams) =>
@@ -192,11 +190,13 @@ const BraintreeIntegrationView: FC = () => {
               disabled={isSettingValue || !currentBraintreeSetting}
               checked={currentBraintreeSetting?.setting_values.value === true}
               onChange={(value) => {
-                currentBraintreeSetting &&
+                if (currentBraintreeSetting) {
                   updateBraintreeSettings.mutate({
                     setting_values: value.target.checked,
                     setting_id: currentBraintreeSetting.setting_id,
                   });
+                }
+
                 setIsSettingValue(true);
               }}
               className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"

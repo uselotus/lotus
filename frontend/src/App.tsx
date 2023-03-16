@@ -1,4 +1,4 @@
-import { useQuery } from "react-query";
+import { useQuery } from '@tanstack/react-query';
 import { ToastContainer } from "react-toastify";
 import { useNavigate, useLocation } from "react-router-dom";
 import posthog from "posthog-js";

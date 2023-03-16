@@ -1,5 +1,5 @@
 import React from "react";
-import { useQuery } from "react-query";
+import { useQuery } from '@tanstack/react-query';
 import { GetSubscriptions } from "../../api/api";
 import { SubscriptionTotals } from "../../types/subscription-type";
 import { Paper } from "../base/Paper";

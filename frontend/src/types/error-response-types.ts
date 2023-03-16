@@ -18,7 +18,7 @@ interface Resp extends Response {
     [key: string]: string;
   };
 }
-interface response extends Response {
+export interface response extends Response {
   data: ErrorResponse;
 }
 export interface ErrorResponseMessage extends Response {

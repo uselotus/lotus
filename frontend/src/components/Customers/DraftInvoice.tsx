@@ -5,7 +5,7 @@
 /* eslint-disable react/no-unstable-nested-components */
 /* eslint-disable camelcase */
 import React, { FC } from "react";
-import { useQuery } from "react-query";
+import { useQuery } from '@tanstack/react-query';
 import { Table } from "antd";
 import dayjs from "dayjs";
 import type { TableColumnsType } from "antd";

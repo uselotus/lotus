@@ -4,7 +4,7 @@ import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import dayjsGenerateConfig from "rc-picker/lib/generate/dayjs";
 import generatePicker from "antd/es/date-picker/generatePicker";
-import { useQuery, UseQueryResult } from "react-query";
+import { useQuery, UseQueryResult } from "@tanstack/react-query";
 import advancedFormat from "dayjs/plugin/advancedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import localeData from "dayjs/plugin/localeData";
@@ -62,17 +62,15 @@ const Dashboard: FC = () => {
       ).then((res) => res)
     );
 
-  const { data: eventData, isLoading: eventLoading } = useQuery(
-    ["event_count", dateRange],
-    () =>
-      Events.getEventCount(
-        dateRange[0].format("YYYY-MM-DD"),
-        dateRange[1].format("YYYY-MM-DD"),
-        dateRange[0]
-          .subtract(dayjs.duration(dateRange[1].diff(dateRange[0])))
-          .format("YYYY-MM-DD"),
-        dateRange[1].subtract(1, "month").format("YYYY-MM-DD")
-      ).then((res) => res)
+  const { data: eventData } = useQuery(["event_count", dateRange], () =>
+    Events.getEventCount(
+      dateRange[0].format("YYYY-MM-DD"),
+      dateRange[1].format("YYYY-MM-DD"),
+      dateRange[0]
+        .subtract(dayjs.duration(dateRange[1].diff(dateRange[0])))
+        .format("YYYY-MM-DD"),
+      dateRange[1].subtract(1, "month").format("YYYY-MM-DD")
+    ).then((res) => res)
   );
 
   return (

@@ -1,7 +1,8 @@
+/* eslint-disable camelcase */
 import { Button, Steps } from "antd";
 import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import CreateOrganization, {
   Organizaton,
@@ -42,10 +43,6 @@ const Register: React.FC = () => {
     setCurrent(current + 1);
   };
 
-  const prev = () => {
-    setCurrent(current - 1);
-  };
-
   const handleCreateOrganization = (org: Organizaton) => {
     setOrganization(org);
     next();
@@ -55,7 +52,7 @@ const Register: React.FC = () => {
     (register: CreateOrgAccountType) => Authentication.registerCreate(register),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries("session");
+        queryClient.invalidateQueries(["session"]);
         navigate("/login");
       },
       onError: (error: QueryErrors) => {

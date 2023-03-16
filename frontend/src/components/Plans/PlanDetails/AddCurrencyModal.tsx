@@ -2,7 +2,7 @@
 /* eslint-disable camelcase */
 import React, { useState } from "react";
 import { Button, Modal } from "antd";
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plan } from "../../../api/api";
 import { components } from "../../../gen-types";
 import PricingUnitDropDown from "../../PricingUnitDropDown";
@@ -29,7 +29,7 @@ const AddCurrencyModal = ({
   const [currency, setCurrency] = useState("");
   const mutation = useMutation((body: BodyType) => Plan.createVersion(body), {
     onSuccess: () => {
-      queryClient.invalidateQueries("plan_list");
+      queryClient.invalidateQueries(["plan_list"]);
       queryClient.invalidateQueries(["plan_detail", plan_id]);
       queryClient.invalidateQueries(["plan_subscriptions_get", version_id]);
     },

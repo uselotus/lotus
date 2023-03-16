@@ -1,29 +1,24 @@
+/* eslint-disable no-shadow */
 import React, { FC, useState } from "react";
-import { useQuery, useMutation } from "react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Table, Typography, Input, Button, Form, Tag, Modal } from "antd";
 import { toast } from "react-toastify";
 import { Organization } from "../../../../api/api";
 import LoadingSpinner from "../../../LoadingSpinner";
-
-interface InviteWithEmailForm extends HTMLFormControlsCollection {
-  email: string;
-}
-
-interface FormElements extends HTMLFormElement {
-  readonly elements: InviteWithEmailForm;
-}
+import {
+  ErrorResponseMessage,
+  QueryErrors,
+  response,
+} from "../../../../types/error-response-types";
 
 const TeamTab: FC = () => {
-  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [action, setAction] = useState<string | null>(null);
   const [visibleInviteLink, setVisibleInviteLink] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const {
     data: organization, // organization is the data returned from the query
-    isLoading,
-    isError,
     refetch,
   } = useQuery(["organization"], () =>
     Organization.get().then((res) => res[0])
@@ -38,39 +33,36 @@ const TeamTab: FC = () => {
     setInviteLink(null);
   };
 
-  const inviteMutation = useMutation(
-    (data: { email: string }) => Organization.invite(email),
-    {
-      onSuccess: (response) => {
-        toast.success("Invite sent");
-        refetch();
-      },
-      onError: (error: any) => {
-        if (error.response.data) {
-          toast.error(
-            Array.isArray(error.response.data.email)
-              ? error.response.data.email[0]
-              : error.response.data.email
-          );
-        } else {
-          toast.error("Cannot send an invite now, try again later.");
-        }
-      },
-    }
-  );
+  const inviteMutation = useMutation(() => Organization.invite(email), {
+    onSuccess: () => {
+      toast.success("Invite sent");
+      refetch();
+    },
+    onError: (error: QueryErrors) => {
+      if (error.response.data) {
+        toast.error(
+          Array.isArray(error.response.data.email)
+            ? error.response.data.email[0]
+            : error.response.data.email
+        );
+      } else {
+        toast.error("Cannot send an invite now, try again later.");
+      }
+    },
+  });
 
   const inviteLinkMutation = useMutation(
     (data: { email: string }) => Organization.invite_link(email),
     {
-      onSuccess: (response: any) => {
-        const link = response.link;
+      onSuccess: (response: { link: string }) => {
+        const { link } = response;
         setInviteLink(link);
         if (link) {
           setVisibleInviteLink(true);
         }
         refetch();
       },
-      onError: (error: any) => {
+      onError: (error: ErrorResponseMessage) => {
         if (error.response.data.detail) {
           toast.error(error.response.data.detail);
         } else {
@@ -82,7 +74,7 @@ const TeamTab: FC = () => {
 
   const handleInvite = () => {
     if (action === "sendInvite") {
-      inviteMutation.mutate({ email });
+      inviteMutation.mutate();
     } else if (action === "generateInviteLink") {
       inviteLinkMutation.mutate({ email });
     }
@@ -127,22 +119,6 @@ const TeamTab: FC = () => {
                             <Tag color={color} key={status}>
                               {status.toUpperCase()}
                             </Tag>
-                          );
-                        },
-                      },
-                      {
-                        render(text, record) {
-                          return (
-                            <div className="flex flex-row space-x-2">
-                              {/* <Button
-                                type="primary"
-                                onClick={() => {
-                                  console.log(record);
-                                }}
-                              >
-                                Edit
-                              </Button> */}
-                            </div>
                           );
                         },
                       },

@@ -1,3 +1,4 @@
+/* eslint-disable camelcase */
 // @ts-ignore
 import React, { FC, useRef } from "react";
 import { Menu, Dropdown, Button, Typography, Tag } from "antd";
@@ -8,7 +9,7 @@ import {
 } from "@ant-design/icons";
 import { PlanType, UpdatePlanType } from "../../../types/plan-type";
 import "./PlanCard.css";
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Plan } from "../../../api/api";
@@ -42,7 +43,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
   const inputRef = useRef<HTMLInputElement | null>(null!);
   const mutation = useMutation((plan_id: string) => Plan.deletePlan(plan_id), {
     onSuccess: () => {
-      queryClient.invalidateQueries("plan_list");
+      queryClient.invalidateQueries(["plan_list"]);
 
       toast.success("Plan archived");
     },

@@ -13,7 +13,7 @@ import {
   UseQueryResult,
   useMutation,
   useQueryClient,
-} from "react-query";
+} from "@tanstack/react-query";
 import { PlanType } from "../types/plan-type";
 import { Plan } from "../api/api";
 import { PageLayout } from "../components/base/PageLayout";
@@ -182,7 +182,7 @@ const ViewPlans: FC = () => {
         }
 
         queryClient.invalidateQueries(["plan_detail", plan_id]);
-        queryClient.invalidateQueries("organization");
+        queryClient.invalidateQueries(["organization"]);
       },
     }
   );

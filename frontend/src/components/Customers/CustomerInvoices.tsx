@@ -1,7 +1,7 @@
 import { Button, Dropdown, Menu, Table, Tag, Tooltip } from "antd";
 import React, { FC, useEffect } from "react";
 import dayjs from "dayjs";
-import { useMutation, useQuery } from "react-query";
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import { MoreOutlined } from "@ant-design/icons";
 import axios from "axios";

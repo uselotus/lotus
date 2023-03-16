@@ -1,3 +1,4 @@
+/* eslint-disable camelcase */
 import { Table, Button, Select, Dropdown, Menu, Tag } from "antd";
 import React, { FC, useState, useEffect } from "react";
 import dayjs from "dayjs";
@@ -7,13 +8,13 @@ import {
   useQuery,
   useQueryClient,
   UseQueryResult,
-} from "react-query";
+} from "@tanstack/react-query";
 import { MoreOutlined } from "@ant-design/icons";
 import { toast } from "react-toastify";
 import { ColumnsType } from "antd/es/table";
 import { Credits } from "../../api/api";
 import PricingUnitDropDown from "../PricingUnitDropDown";
-import { CreditType, DrawdownType } from "../../types/balance-adjustment";
+import { CreditType } from "../../types/balance-adjustment";
 import CreateCredit from "../../pages/CreateBalanceAdjustment";
 
 interface Props {
@@ -108,7 +109,6 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
       ),
     },
   ];
-  const navigate = useNavigate();
 
   // if (isLoading) {
   //   return (
@@ -232,7 +232,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
           }}
           onSubmit={() => {
             setShowCreateCredit(false);
-            queryClient.invalidateQueries("credits");
+            queryClient.invalidateQueries(["credits"]);
           }}
           visible={showCreateCredit}
         />

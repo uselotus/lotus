@@ -1,13 +1,11 @@
-import React, { FC, useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { FC, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button, DatePicker } from "antd";
 import moment from "moment";
-import { useMutation, useQuery } from "react-query";
 import { toast } from "react-toastify";
 import { PageLayout } from "../../components/base/PageLayout";
 import { Netsuite } from "../../api/api";
 
-const TOAST_POSITION = toast.POSITION.TOP_CENTER;
 const downloadFile = async (s3link: URL) => {
   if (!s3link) {
     toast.error("No file to download");
@@ -17,7 +15,6 @@ const downloadFile = async (s3link: URL) => {
 };
 
 const NetsuiteIntegrationView: FC = () => {
-  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   const [startDate, setStartDate] = useState<moment.Moment | null>(null);
@@ -36,18 +33,18 @@ const NetsuiteIntegrationView: FC = () => {
     }
   };
 
-  const getCustomersCSV = async () => {
-    try {
-      const response = await Netsuite.customers(
-        startDate?.toDate(),
-        endDate?.toDate()
-      );
-      const csvUrl = response.url;
-      downloadFile(csvUrl);
-    } catch (err) {
-      toast.error("Error downloading file");
-    }
-  };
+  // const getCustomersCSV = async () => {
+  //   try {
+  //     const response = await Netsuite.customers(
+  //       startDate?.toDate(),
+  //       endDate?.toDate()
+  //     );
+  //     const csvUrl = response.url;
+  //     downloadFile(csvUrl);
+  //   } catch (err) {
+  //     toast.error("Error downloading file");
+  //   }
+  // };
 
   const returnToDashboard = () => {
     navigate(-1);

@@ -6,7 +6,7 @@ import {
   useQueryClient,
   useQuery,
   UseQueryResult,
-} from "react-query";
+} from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
 import { useNavigate, useParams } from "react-router-dom";

@@ -2,7 +2,7 @@ import React, { FC, Fragment, useState } from "react";
 
 import { Button, Typography } from "antd";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQuery, useQueryClient } from "react-query";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageLayout } from "../../base/PageLayout";
 import { AddOn } from "../../../api/api";
 import LoadingSpinner from "../../LoadingSpinner";

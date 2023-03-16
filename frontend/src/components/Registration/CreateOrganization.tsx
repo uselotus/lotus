@@ -1,20 +1,10 @@
+/* eslint-disable jsx-a11y/label-has-associated-control */
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Card, Input, Button, Form, Select } from "antd";
-import { useQueryClient } from "react-query";
-
-interface LoginForm extends HTMLFormControlsCollection {
-  username: string;
-  password: string;
-}
 
 export interface Organizaton {
   organization_name: string;
   industry: string;
-}
-
-interface FormElements extends HTMLFormElement {
-  readonly elements: LoginForm;
 }
 
 const industries = [
@@ -29,13 +19,13 @@ const industries = [
   { label: "Other", value: "other" },
 ];
 
-function CreateOrganization(props: { onSave: (org: Organizaton) => void }) {
+function CreateOrganization({
+  onSave,
+}: {
+  onSave: (org: Organizaton) => void;
+}) {
   const [companyName, setCompanyName] = useState("");
   const [industry, setIndustry] = useState("");
-  const [error, setError] = useState("");
-  const queryClient = useQueryClient();
-
-  const navigate = useNavigate();
 
   const handleIndustrySelect = (value: string) => {
     setIndustry(value);
@@ -45,8 +35,8 @@ function CreateOrganization(props: { onSave: (org: Organizaton) => void }) {
     setCompanyName(event.target.value);
   };
 
-  const handleOrganizationSubmit = (event: React.FormEvent<FormElements>) => {
-    props.onSave({ organization_name: companyName, industry });
+  const handleOrganizationSubmit = () => {
+    onSave({ organization_name: companyName, industry });
   };
 
   return (
