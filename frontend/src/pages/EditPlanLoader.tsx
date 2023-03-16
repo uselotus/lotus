@@ -34,7 +34,6 @@ function EditPlanLoader({ type }: EditPlanLoaderProps) {
     }
 
     const res = Plan.getPlan(planId);
-
     return res;
   });
 
@@ -54,6 +53,7 @@ function EditPlanLoader({ type }: EditPlanLoaderProps) {
         setVersionIndex(plan.versions.findIndex((x) => x.status === "active"));
       }
     }
+    console.log(plan)
   }, [plan, replacementPlanVersion?.version_id, type]);
 
   return (

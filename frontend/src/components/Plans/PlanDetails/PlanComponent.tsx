@@ -626,6 +626,36 @@ const PlanComponents: FC<PlanComponentsProps> = ({
     }
   );
 
+  const returnInvoicingIntervalText = (unit: number | null, interval: string | null) => {
+
+    if (interval === null) {
+      return capitalize(plan.plan_duration)
+    }
+
+    else if (interval === "month") {
+      if (unit === 1 || null) {
+        return "Monthly"
+      } else {
+        return ("Every " + unit + " Months")
+      }
+    }
+    else if (interval === "day") {
+      if (unit === 1 || null) {
+        return "Daily"
+      } else {
+        return ("Every " + unit + " Days")
+      }
+    } else if (interval === "week") {
+      if (unit === 1 || null) {
+        return "Weekly"
+      } else {
+        return ("Every " + unit + " Weeks")
+      }
+    }
+
+
+  }
+
   const deleteAlertMutation = useMutation(
     (post: { usage_alert_id: string }) => Plan.deleteAlert(post),
     {
@@ -637,7 +667,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
       },
     }
   );
-  useEffect(() => {}, [plan]);
+  useEffect(() => { }, [plan]);
   const deleteAlert = (usage_alert_id: string) => {
     deleteAlertMutation.mutate({
       usage_alert_id,
@@ -697,8 +727,12 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                 className="pt-2 pb-4 bg-primary-50 mt-2 relative  mb-2 p-4 min-h-[152px] min-w-[270px]"
                 key={index}
               >
-                <div className="text-base text-card-text align-middle">
-                  <div> {component.billable_metric.metric_name}</div>
+                <div className="flex items-center justify-between">
+                  <div className="text-base text-card-text align-middle">
+                    <div> {component.billable_metric.metric_name}</div>
+                  </div>
+                  <div>{returnInvoicingIntervalText(component.invoicing_interval_count, component.invoicing_interval_unit)}
+                  </div>
                 </div>
                 <div>
                   <div className=" w-full h-[1.5px] mt-4 bg-card-divider mb-4" />
@@ -739,7 +773,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                       },
                     ]}
                   />
-                  {component.invoicing_interval_count && (
+                  {/* {component.invoicing_interval_count && (
                     <Table
                       dataSource={[
                         { count: component.invoicing_interval_count },
@@ -751,7 +785,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                       size="middle"
                       columns={[
                         {
-                          title: "Charge Interval",
+                          title: "Reset Interval",
                           dataIndex: "charge_interval",
                           key: "charge_interval",
                           align: "left",
@@ -774,7 +808,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                         },
                       ]}
                     />
-                  )}
+                  )} */}
                   {component.prepaid_charge && (
                     <Table
                       dataSource={[component.prepaid_charge]}
@@ -873,40 +907,40 @@ const PlanComponents: FC<PlanComponentsProps> = ({
               footer={
                 isCreateAlert
                   ? [
-                      <Button
-                        key="back"
-                        onClick={() => setIsModalVisible(false)}
-                      >
-                        Cancel
-                      </Button>,
-                      <Button
-                        key="submit"
-                        type="primary"
-                        disabled={isInvalid}
-                        onClick={() => submitAlertModal(currentComponent)}
-                      >
-                        Create
-                      </Button>,
-                    ]
+                    <Button
+                      key="back"
+                      onClick={() => setIsModalVisible(false)}
+                    >
+                      Cancel
+                    </Button>,
+                    <Button
+                      key="submit"
+                      type="primary"
+                      disabled={isInvalid}
+                      onClick={() => submitAlertModal(currentComponent)}
+                    >
+                      Create
+                    </Button>,
+                  ]
                   : [
-                      <Button
-                        key="delete"
-                        className=" bg-red-600"
-                        onClick={() => deleteAlert(currentAlertId)}
-                      >
-                        Delete
-                      </Button>,
-                      <Button
-                        key="submit"
-                        type="primary"
-                        disabled={isInvalid}
-                        onClick={() =>
-                          submitAlertModal(currentComponent, currentAlertId)
-                        }
-                      >
-                        Update
-                      </Button>,
-                    ]
+                    <Button
+                      key="delete"
+                      className=" bg-red-600"
+                      onClick={() => deleteAlert(currentAlertId)}
+                    >
+                      Delete
+                    </Button>,
+                    <Button
+                      key="submit"
+                      type="primary"
+                      disabled={isInvalid}
+                      onClick={() =>
+                        submitAlertModal(currentComponent, currentAlertId)
+                      }
+                    >
+                      Update
+                    </Button>,
+                  ]
               }
             >
               <div className="flex flex-col justify-center items-center gap-4">

@@ -73,7 +73,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
   ]);
   const [priceAdjustmentType, setPriceAdjustmentType] = useState<string>(
     plan.versions[versionIndex].price_adjustment?.price_adjustment_type ??
-      "none"
+    "none"
   );
 
   const latestVersion = sortBy(
@@ -90,6 +90,8 @@ function EditPlan({ type, plan, versionIndex }: Props) {
   const [recurringCharges, setRecurringCharges] = useState<
     components["schemas"]["PlanDetail"]["versions"][0]["recurring_charges"]
   >([]);
+
+
 
   const queryClient = useQueryClient();
 
@@ -111,8 +113,14 @@ function EditPlan({ type, plan, versionIndex }: Props) {
         id: component.billable_metric.metric_id,
         metric_id: component.billable_metric.metric_id,
         pricing_unit: component.pricing_unit,
+        prepaid_charge: component.prepaid_charge,
+        invoicing_interval_count: component.invoicing_interval_count,
+        invoicing_interval_unit: component.invoicing_interval_unit,
+        reset_interval_count: component.reset_interval_count,
+        reset_interval_unit: component.reset_interval_unit
       })
     );
+    setRecurringCharges(plan.versions[versionIndex].recurring_charges)
     setComponentsData(initialComponents);
   }, [plan.versions, versionIndex]);
 
@@ -200,7 +208,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     );
   };
 
-  const onFinishFailed = (errorInfo: any) => {};
+  const onFinishFailed = (errorInfo: any) => { };
 
   const hideComponentModal = () => {
     setcomponentVisible(false);
@@ -306,7 +314,11 @@ function EditPlan({ type, plan, versionIndex }: Props) {
             const usagecomponent: CreateComponent = {
               metric_id: components[i].metric_id,
               tiers: components[i].tiers,
-              proration_granularity: components[i].proration_granularity,
+              invoicing_interval_count: components[i].invoicing_interval_count,
+              invoicing_interval_unit: components[i].invoicing_interval_unit,
+              reset_interval_count: components[i].reset_interval_count,
+              reset_interval_unit: components[i].reset_interval_unit,
+              prepaid_charge: components[i].prepaid_charge
             };
             usagecomponentslist.push(usagecomponent);
           }
@@ -482,11 +494,11 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     ["version", "custom"].includes(type)
       ? undefined
       : {
-          title: "Plan Information",
-          slug: "plan-information",
-          Component: PlanInformation,
-          validate: validatePlanInformation,
-        },
+        title: "Plan Information",
+        slug: "plan-information",
+        Component: PlanInformation,
+        validate: validatePlanInformation,
+      },
     {
       title: "Version Information",
       slug: "version-information",
