@@ -17,6 +17,8 @@ import {
   BraintreeConnectionRequestType,
   PaymentProcessorConnectionResponseType,
 } from "../../../../types/payment-processor-type";
+import { CRMConnectionStatus } from "../../../../types/crm-types";
+
 import { AppCard } from "../components/AppCard";
 import useGlobalStore from "../../../../stores/useGlobalstore";
 import { useVesselLink } from "@vesselapi/react-vessel-link";
@@ -24,7 +26,6 @@ import { useVesselLink } from "@vesselapi/react-vessel-link";
 const IntegrationsTab: FC = () => {
   const navigate = useNavigate();
   const [connectedStatus, setConnectedStatus] = useState<boolean>(false);
-  const [linkToken, setLinkToken] = useState<string | null>(null);
   const { data, isLoading, refetch } = useQuery<PaymentProcessorStatusType[]>(
     ["PaymentProcessorIntegration"],
     () =>
@@ -33,13 +34,22 @@ const IntegrationsTab: FC = () => {
       )
   );
   const {
-    data: linkTokenData,
+    data: crmData,
+    isLoading: crmLoading,
+    refetch: refetchCrm,
+  } = useQuery<CRMConnectionStatus[]>(["CRMIntegration"], () =>
+    CRM.getCRMConnectionStatus().then((res) => res)
+  );
+  console.log("crmData", crmData);
+
+  const {
+    data: linkToken,
     isLoading: linkTokenLoading,
     refetch: refetchLinkToken,
-  } = useQuery<string | null>(["CRMProviderLinkToken"], () =>
+  } = useQuery<string | undefined>(["CRMProviderLinkToken"], () =>
     CRM.getLinkToken()
       .then((res) => res.link_token)
-      .catch((err) => null)
+      .catch((err) => undefined)
   );
 
   const org = useGlobalStore((state) => state.org);
@@ -64,16 +74,6 @@ const IntegrationsTab: FC = () => {
     onClose: () => console.log("closed"),
     onLoad: () => console.log("loaded"),
   });
-
-  const handleConnectWithSalesforceClick = () => {
-    CRM.getLinkToken()
-      .then((response) => {
-        console.log(response);
-      })
-      .catch((error) => {
-        toast.error("Failed to connect to Salesforce");
-      });
-  };
 
   const handleConnectWithPaymentProcessorClick = (
     item: PaymentProcessorStatusType
@@ -169,6 +169,48 @@ const IntegrationsTab: FC = () => {
               />
             </Col>
           ))}
+        {crmData &&
+          crmData !== undefined &&
+          crmData.map((crmItem, index) => (
+            <Col span={6} key={index}>
+              <AppCard
+                connected={crmItem.connected}
+                title={
+                  integrationsMap[crmItem.crm_provider_name.toLowerCase()].name
+                }
+                description={
+                  integrationsMap[crmItem.crm_provider_name.toLowerCase()]
+                    .description
+                }
+                selfHosted={crmItem.self_hosted}
+                idName={
+                  integrationsMap[crmItem.crm_provider_name.toLowerCase()]
+                    .account_id_name
+                }
+                idValue={crmItem.account_id}
+                icon={
+                  integrationsMap[crmItem.crm_provider_name.toLowerCase()].icon
+                }
+                handleClickConnect={() => {
+                  if (linkToken) {
+                    open({
+                      integrationId: crmItem.crm_provider_name.toLowerCase(),
+                      linkToken: linkToken,
+                    });
+                  } else {
+                    toast.error(
+                      `Failed to connect to ${
+                        integrationsMap[crmItem.crm_provider_name.toLowerCase()]
+                          .name
+                      }!`
+                    );
+                  }
+                }}
+                hasAccess={org?.crm_integration_allowed || false}
+                working={crmItem.working}
+              />
+            </Col>
+          ))}
         <Col span={6} className="h-full">
           <AppCard
             connected={false}
@@ -188,10 +230,10 @@ const IntegrationsTab: FC = () => {
             description="Sync your customers, subscriptions, and invoices to Salesforce"
             icon={integrationsMap.salesforce.icon}
             handleClickConnect={() => {
-              if (linkTokenData) {
+              if (linkToken) {
                 open({
                   integrationId: "salesforce",
-                  linkToken: linkTokenData,
+                  linkToken: linkToken,
                 });
               } else {
                 toast.error("Failed to connect to Salesforce");

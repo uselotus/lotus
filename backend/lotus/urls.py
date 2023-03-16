@@ -266,6 +266,11 @@ urlpatterns = [
         CRMUnifiedAPIView.as_view({"post": "store_token"}),
         name="store_token",
     ),
+    path(
+        "app/crm/",
+        CRMUnifiedAPIView.as_view({"get": "get_crms"}),
+        name="get_crms",
+    ),
 ]
 
 if PROFILER_ENABLED:

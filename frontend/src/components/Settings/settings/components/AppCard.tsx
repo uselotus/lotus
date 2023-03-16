@@ -83,7 +83,7 @@ export function AppCard({
           <div className="flex justify-end pt-4">
             <Tag style={{ cursor: "pointer" }}>
               <b>{idName}:</b> {idValue || "-"}
-              </Tag>
+            </Tag>
           </div>
         ) : null}
         {connected ? (

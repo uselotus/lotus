@@ -84,7 +84,9 @@ export const integrationsMap = {
   salesforce: {
     name: "Salesforce",
     icon: "https://cdn-icons-png.flaticon.com/512/5968/5968914.png",
-    description: "Sync data to your Salesforce account",
+    description:
+      "Sync customers, invoices, and subscriptions to your Salesforce account",
+    account_id_name: "Organization ID",
   },
   netsuite: {
     name: "NetSuite",

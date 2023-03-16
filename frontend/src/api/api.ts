@@ -50,6 +50,7 @@ import {
   TransferSub,
   UpdatePaymentProcessorSettingParams,
 } from "../types/payment-processor-type";
+import { CRMConnectionStatus } from "../types/crm-types";
 import { CustomerCostType, RevenueType } from "../types/revenue-type";
 import {
   SubscriptionTotals,
@@ -678,6 +679,8 @@ export const Netsuite = {
 };
 
 export const CRM = {
+  getCRMConnectionStatus: (): Promise<CRMConnectionStatus[]> =>
+    requests.get("app/crm/"),
   getLinkToken: (): Promise<{ link_token: string }> =>
     requests.post("app/crm/link_token/", {}),
   storePublicToken: (public_token: string): Promise<{ success: boolean }> =>

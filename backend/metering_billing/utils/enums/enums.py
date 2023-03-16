@@ -280,5 +280,5 @@ class TAX_PROVIDER(models.IntegerChoices):
     NETSUITE = (3, _("netsuite"))
 
 
-class CRM_PROVIDER(models.IntegerChoices):
+class CRM_PROVIDERS(models.IntegerChoices):
     SALESFORCE = (1, _("salesforce"))
