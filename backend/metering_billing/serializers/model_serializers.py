@@ -1607,6 +1607,7 @@ class PlanCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
             initial_version_data["plan"] = plan
             initial_version_data["organization"] = validated_data["organization"]
             initial_version_data["created_by"] = validated_data["created_by"]
+            initial_version_data["make_active"] = True
             PlanVersionCreateSerializer(context=self.context).create(
                 initial_version_data
             )

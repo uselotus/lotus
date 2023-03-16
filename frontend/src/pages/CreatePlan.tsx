@@ -232,7 +232,8 @@ function CreatePlan() {
   const submitPricingPlan = () => {
     form
       .validateFields()
-      .then((values) => {
+      .then(() => {
+        const values = form.getFieldsValue(true);
         const usagecomponentslist: CreateComponentRequestType[] = [];
         const components: any = Object.values(componentsData);
 
@@ -321,9 +322,10 @@ function CreatePlan() {
 
         const plan: CreatePlanRequestType = {
           plan_name: values.name,
-          plan_duration: values.duration,
+          plan_duration: values.plan_duration,
           initial_version: initialPlanVersion,
         };
+        console.log(values, "sdasdf");
 
         const links = values.initial_external_links;
 
@@ -379,7 +381,7 @@ function CreatePlan() {
           }}
           onChange={async () => {
             const isValid = await step.validate(form);
-
+            console.log(form.getFieldsValue(true));
             setIsCurrentStepValid(isValid);
           }}
           onFinish={submitPricingPlan}

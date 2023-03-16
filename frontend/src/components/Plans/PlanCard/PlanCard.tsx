@@ -154,7 +154,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
           </div>
           <div className="text-card-grey font-main">
             {" "}
-            {capitalize(plan.plan_duration)}
+            {plan.plan_duration && capitalize(plan.plan_duration)}
           </div>
         </div>
         <div className="flex mt-2">
