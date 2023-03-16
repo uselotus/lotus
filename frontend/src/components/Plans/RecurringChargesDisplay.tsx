@@ -24,7 +24,7 @@ const RecurringChargesDisplay = ({ recurringCharges }: Props) => (
 
         <div>
           <div className="w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
-          <div className="flex items-center text-card-grey justify-between gap-2 mb-1">
+          <div className="flex items-center text-card-text justify-between gap-2 mb-1">
             <div className=" font-normal whitespace-nowrap leading-4">Cost</div>{" "}
             <div className="!text-card-text">
               {recurringCharge.pricing_unit.symbol}
@@ -32,16 +32,16 @@ const RecurringChargesDisplay = ({ recurringCharges }: Props) => (
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-card-grey gap-2 mb-1">
+          <div className="flex items-center justify-between text-card-text gap-2 mb-1">
             <div className="font-normal whitespace-nowrap leading-4">
               Charge Timing
             </div>
-            <div className="!text-card-text">
+            <div className="!text-card-grey ">
               {capitalize(removeUnderscore(recurringCharge.charge_timing))}
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-card-grey gap-2 mb-1">
+          <div className="flex items-center justify-between text-card-textgap-2 mb-1">
             <div className="font-normal whitespace-nowrap leading-4">
               Charge Behavior
             </div>

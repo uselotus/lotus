@@ -354,6 +354,7 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
       onSuccess: () => {
         queryClient.invalidateQueries("plan_list");
         queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
+        toast.success("Plan archived successfully");
       },
     }
   );
@@ -390,7 +391,7 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
             activeVersion={version.version}
             tabs={["Active", "Grandfathered", "Retiring", "Inactive"]}
           />
-          {capitalize(version.status) !== "Inactive" ? (
+          {capitalize(version.status) === "Inactive" ? (
             <span
               aria-hidden
               className="ml-auto"
@@ -625,6 +626,33 @@ const PlanComponents: FC<PlanComponentsProps> = ({
     }
   );
 
+  const returnInvoicingIntervalText = (
+    unit: number | null,
+    interval: string | null
+  ) => {
+    if (interval === null) {
+      return capitalize(plan.plan_duration);
+    } else if (interval === "month") {
+      if (unit === 1 || null) {
+        return "Monthly";
+      } else {
+        return "Every " + unit + " Months";
+      }
+    } else if (interval === "day") {
+      if (unit === 1 || null) {
+        return "Daily";
+      } else {
+        return "Every " + unit + " Days";
+      }
+    } else if (interval === "week") {
+      if (unit === 1 || null) {
+        return "Weekly";
+      } else {
+        return "Every " + unit + " Weeks";
+      }
+    }
+  };
+
   const deleteAlertMutation = useMutation(
     (post: { usage_alert_id: string }) => Plan.deleteAlert(post),
     {
@@ -696,8 +724,16 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                 className="pt-2 pb-4 bg-primary-50 mt-2 relative  mb-2 p-4 min-h-[152px] min-w-[270px]"
                 key={index}
               >
-                <div className="text-base text-card-text align-middle">
-                  <div> {component.billable_metric.metric_name}</div>
+                <div className="flex items-center justify-between">
+                  <div className=" text-base text-card-text align-middle">
+                    <div> {component.billable_metric.metric_name}</div>
+                  </div>
+                  <div>
+                    {returnInvoicingIntervalText(
+                      component.invoicing_interval_count,
+                      component.invoicing_interval_unit
+                    )}
+                  </div>
                 </div>
                 <div>
                   <div className=" w-full h-[1.5px] mt-4 bg-card-divider mb-4" />
@@ -715,7 +751,8 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                         key: "range_start",
                         align: "left",
                         width: "50%",
-                        className: "bg-primary-50 pointer-events-none",
+                        className:
+                          "bg-primary-50 pointer-events-none !text-card-black",
                         render: (value, record) => (
                           <span>
                             From {value} to{" "}
@@ -738,7 +775,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                       },
                     ]}
                   />
-                  {component.invoicing_interval_count && (
+                  {/* {component.invoicing_interval_count && (
                     <Table
                       dataSource={[
                         { count: component.invoicing_interval_count },
@@ -750,7 +787,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                       size="middle"
                       columns={[
                         {
-                          title: "Charge Interval",
+                          title: "Reset Interval",
                           dataIndex: "charge_interval",
                           key: "charge_interval",
                           align: "left",
@@ -773,7 +810,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                         },
                       ]}
                     />
-                  )}
+                  )} */}
                   {component.prepaid_charge && (
                     <Table
                       dataSource={[component.prepaid_charge]}
@@ -953,7 +990,12 @@ const PlanComponents: FC<PlanComponentsProps> = ({
         </div>
       ) : (
         <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card">
-          <Typography.Title level={2}>Added Components</Typography.Title>
+          <Typography.Title
+            level={2}
+            className="pt-4 whitespace-pre-wrap !text-[18px]"
+          >
+            Added Components
+          </Typography.Title>
           <div className="w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
           <div className="text-card-grey text-base">No components added</div>
         </div>
