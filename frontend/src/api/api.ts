@@ -99,7 +99,7 @@ const cookies = new Cookies();
 
 axios.defaults.headers.common.Authorization = `Token ${cookies.get("Token")}`;
 
-const API_HOST = import.meta.env.VITE_API_URL;
+const API_HOST = (import.meta as any).env.VITE_API_URL;
 
 axios.defaults.baseURL = API_HOST;
 // axios.defaults.xsrfCookieName = "csrftoken";
@@ -675,4 +675,11 @@ export const Netsuite = {
         end_date: endDate?.toISOString().split("T")[0] ?? undefined,
       },
     }),
+};
+
+export const CRM = {
+  getLinkToken: (): Promise<{ link_token: string }> =>
+    requests.post("app/crm/link_token/", {}),
+  storePublicToken: (public_token: string): Promise<{ success: boolean }> =>
+    requests.post("app/crm/store_token/", { public_token }),
 };

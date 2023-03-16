@@ -4,7 +4,11 @@ import { useNavigate } from "react-router-dom";
 import { Divider, Typography, Row, Col, Modal, Input } from "antd";
 import Nango from "@nangohq/frontend";
 import { toast } from "react-toastify";
-import { PaymentProcessorIntegration, Organization } from "../../../../api/api";
+import {
+  PaymentProcessorIntegration,
+  Organization,
+  CRM,
+} from "../../../../api/api";
 import {
   PaymentProcessorStatusType,
   integrationsMap,
@@ -15,10 +19,12 @@ import {
 } from "../../../../types/payment-processor-type";
 import { AppCard } from "../components/AppCard";
 import useGlobalStore from "../../../../stores/useGlobalstore";
+import { useVesselLink } from "@vesselapi/react-vessel-link";
 
 const IntegrationsTab: FC = () => {
   const navigate = useNavigate();
   const [connectedStatus, setConnectedStatus] = useState<boolean>(false);
+  const [linkToken, setLinkToken] = useState<string | null>(null);
   const { data, isLoading, refetch } = useQuery<PaymentProcessorStatusType[]>(
     ["PaymentProcessorIntegration"],
     () =>
@@ -26,12 +32,48 @@ const IntegrationsTab: FC = () => {
         (res) => res
       )
   );
-  const org = useGlobalStore((state) => state.org);
+  const {
+    data: linkTokenData,
+    isLoading: linkTokenLoading,
+    refetch: refetchLinkToken,
+  } = useQuery<string | null>(["CRMProviderLinkToken"], () =>
+    CRM.getLinkToken()
+      .then((res) => res.link_token)
+      .catch((err) => null)
+  );
 
+  const org = useGlobalStore((state) => state.org);
   var nango = new Nango({
     publicKey: (import.meta as any).env.VITE_NANGO_PK,
     debug: true,
   }); // Nango Cloud
+
+  const { open } = useVesselLink({
+    onSuccess: (publicToken) =>
+      CRM.storePublicToken(publicToken)
+        .then((response) => {
+          if (response?.success) {
+            toast.success("Successfully connected to Salesforce");
+          } else {
+            toast.error("Failed to connect to Salesforce");
+          }
+        })
+        .catch((error) => {
+          toast.error("Failed to connect to Salesforce");
+        }),
+    onClose: () => console.log("closed"),
+    onLoad: () => console.log("loaded"),
+  });
+
+  const handleConnectWithSalesforceClick = () => {
+    CRM.getLinkToken()
+      .then((response) => {
+        console.log(response);
+      })
+      .catch((error) => {
+        toast.error("Failed to connect to Salesforce");
+      });
+  };
 
   const handleConnectWithPaymentProcessorClick = (
     item: PaymentProcessorStatusType
@@ -123,6 +165,7 @@ const IntegrationsTab: FC = () => {
                 }
                 idValue={item.account_id}
                 working={item.working}
+                hasAccess={true}
               />
             </Col>
           ))}
@@ -135,6 +178,7 @@ const IntegrationsTab: FC = () => {
             handleClickConnect={() =>
               navigate("/settings/integrations/snowflake")
             }
+            hasAccess={false}
           />
         </Col>
         <Col span={6} className="h-full">
@@ -143,9 +187,17 @@ const IntegrationsTab: FC = () => {
             title="Salesforce"
             description="Sync your customers, subscriptions, and invoices to Salesforce"
             icon={integrationsMap.salesforce.icon}
-            handleClickConnect={() =>
-              navigate("/settings/integrations/snowflake")
-            }
+            handleClickConnect={() => {
+              if (linkTokenData) {
+                open({
+                  integrationId: "salesforce",
+                  linkToken: linkTokenData,
+                });
+              } else {
+                toast.error("Failed to connect to Salesforce");
+              }
+            }}
+            hasAccess={org?.crm_integration_allowed || false}
           />
         </Col>
         <Col span={6} className="h-full">
@@ -157,6 +209,7 @@ const IntegrationsTab: FC = () => {
             icon={integrationsMap.netsuite.icon}
             working={true}
             handleClickConnect={() => {}}
+            hasAccess={true}
           />
         </Col>
         <Col span={6} className="h-full">
@@ -168,6 +221,7 @@ const IntegrationsTab: FC = () => {
             handleClickConnect={() =>
               navigate("/settings/integrations/snowflake")
             }
+            hasAccess={false}
           />
         </Col>
       </Row>

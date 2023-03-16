@@ -221,11 +221,6 @@ urlpatterns = [
         PaymentProcesorView.as_view(),
         name="payment_providers",
     ),
-    # path(
-    #     "app/experimental_to_active/",
-    #     ExperimentalToActiveView.as_view(),
-    #     name="expertimental-to-active",
-    # ),
     path("app/login/", auth_views.LoginView.as_view(), name="api-login"),
     path("app/demo_login/", auth_views.DemoLoginView.as_view(), name="api-demo-login"),
     path("app/logout/", auth_views.LogoutView.as_view(), name="api-logout"),
@@ -262,12 +257,12 @@ urlpatterns = [
     ),
     # crm
     path(
-        "crm/link_token/",
+        "app/crm/link_token/",
         CRMUnifiedAPIView.as_view({"post": "link_token"}),
         name="link_token",
     ),
     path(
-        "crm/store_token/",
+        "app/crm/store_token/",
         CRMUnifiedAPIView.as_view({"post": "store_token"}),
         name="store_token",
     ),

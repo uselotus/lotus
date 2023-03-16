@@ -14,6 +14,7 @@ type Props = {
   idName?: string;
   idValue?: string;
   working?: boolean;
+  hasAccess?: boolean;
 };
 
 export function AppCard({
@@ -27,6 +28,7 @@ export function AppCard({
   idName,
   idValue,
   working,
+  hasAccess = true,
 }: Props) {
   const link = title.toLowerCase().includes("stripe")
     ? "stripe"
@@ -51,7 +53,7 @@ export function AppCard({
               <Tag
                 color="default"
                 onClick={
-                  title.includes("Stripe") || title.includes("Braintree")
+                  hasAccess
                     ? handleClickConnect
                     : () => {
                         toast.error(
@@ -81,7 +83,7 @@ export function AppCard({
           <div className="flex justify-end pt-4">
             <Tag style={{ cursor: "pointer" }}>
               <b>{idName}:</b> {idValue || "-"}
-            </Tag>
+              </Tag>
           </div>
         ) : null}
         {connected ? (

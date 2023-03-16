@@ -74,7 +74,6 @@ const quickStartCheck = async ({
   // Check if user has created a metric
   try {
     const metrics = await Metrics.getMetrics();
-    console.log("metrics", metrics);
 
     if (metrics && metrics.length > 0) {
       quickStartCheckResult = {

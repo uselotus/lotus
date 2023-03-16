@@ -187,7 +187,6 @@ const SubscriptionView: FC<Props> = ({
     const query_params: CancelSubscriptionQueryParams = {
       customer_id,
     };
-    console.log(customer_id);
     const body: CancelSubscriptionBody = {
       usage_behavior: "bill_full",
       flat_fee_behavior: "charge_prorated",
