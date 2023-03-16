@@ -72,6 +72,7 @@ func Middleware(cacheClient cache.Cache) echo.MiddlewareFunc {
 			} else if err != nil {
 				panic(err)
 			}
+			log.Printf("1")
 			db := c.Get("db").(*sql.DB)
 
 			prefix, _, _ := strings.Cut(key, ".")
@@ -81,14 +82,17 @@ func Middleware(cacheClient cache.Cache) echo.MiddlewareFunc {
 			if err == sql.ErrNoRows {
 				return echo.NewHTTPError(http.StatusBadRequest, "Invalid API key")
 			}
+			log.Printf("2")
 
 			if err != nil {
 				return echo.NewHTTPError(http.StatusInternalServerError, err)
 			}
-
+			log.Printf("3")
 			if err := apiKey.Validate(); err != nil {
 				return echo.NewHTTPError(http.StatusBadRequest, err)
 			}
+
+			log.Printf("4")
 
 			organizationID := apiKey.OrganizationID
 			cacheClient.Set(key, strconv.FormatInt(organizationID, 10))
