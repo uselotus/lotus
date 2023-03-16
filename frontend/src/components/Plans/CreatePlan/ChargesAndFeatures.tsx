@@ -22,7 +22,7 @@ import CopyText from "../../base/CopytoClipboard";
 import useMediaQuery from "../../../hooks/useWindowQuery";
 import RecurringChargesDisplay from "../RecurringChargesDisplay";
 
-export const validate = async (form: FormInstance<any>) => true;
+export const validate = async (form: FormInstance<any>, type?: string) => true;
 
 const ChargesAndFeatures = ({ form, ...props }: StepProps) => {
   const windowWidth = useMediaQuery();

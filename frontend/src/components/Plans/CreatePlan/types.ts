@@ -62,5 +62,11 @@ export interface StepProps {
 
   highlightedFields?: string[];
 
+  customers?: any[]
+  targetCustomerId?: string;
+  setTargetCustomerId?: React.Dispatch<
+    React.SetStateAction<string | undefined>
+  >;
+
   type?: string;
 }

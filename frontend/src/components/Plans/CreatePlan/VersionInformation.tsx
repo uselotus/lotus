@@ -12,13 +12,15 @@ import {
   FormInstance,
 } from "antd";
 import { StepProps } from "./types";
-import clsx from "clsx";
 
 const fields = ["align_plan", "plan_currency"];
 
-export const validate = async (form: FormInstance<any>) => {
+export const validate = async (form: FormInstance<any>, type?: string) => {
+  const formFields =
+    type === "custom" ? [...fields, "target_customer"] : fields;
+
   try {
-    await form.validateFields(fields);
+    await form.validateFields(formFields);
   } catch (err) {
     return false;
   }
@@ -30,7 +32,10 @@ const VersionInformation = ({ form, ...props }: StepProps) => {
   const months = moment.months();
 
   React.useEffect(() => {
-    const isValid = fields.every((field) => form.getFieldValue(field));
+    const formFields =
+    props.type === "custom" ? [...fields, "target_customer"] : fields;
+
+    const isValid = formFields.every((field) => form.getFieldValue(field));
 
     props.setIsCurrentStepValid(isValid);
   }, [form, props]);
@@ -75,7 +80,7 @@ const VersionInformation = ({ form, ...props }: StepProps) => {
                                 <select
                                   className="border border-black rounded-sm outline-none"
                                   onChange={(e) =>
-                                    setMonth(Number(e.target.value))
+                                    props.setMonth(Number(e.target.value))
                                   }
                                   name="month_of_year"
                                   id="month_of_year"
@@ -181,6 +186,37 @@ const VersionInformation = ({ form, ...props }: StepProps) => {
                       </Select>
                     </Form.Item>
                   </Col>
+
+                  {props.type === "custom" ? (
+                    <Col span="12">
+                      <Form.Item
+                        name="target_customer"
+                        label="Customer"
+                        rules={[
+                          {
+                            required: props.type === "custom",
+                            message: "This field is required",
+                          },
+                        ]}
+                      >
+                        <Select
+                          placeholder="Choose Customer"
+                          showSearch
+                          onChange={(value) => {
+                            props.setTargetCustomerId?.(value);
+                          }} // id of the target customer)}
+                        >
+                          {React.Children.toArray(
+                            props.customers?.map((customer) => (
+                              <Select.Option value={customer.customer_id}>
+                                {customer.customer_name}
+                              </Select.Option>
+                            ))
+                          )}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                  ) : null}
                 </Row>
               </Input.Group>
             </Card>

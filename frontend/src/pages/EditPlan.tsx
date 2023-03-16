@@ -1,9 +1,13 @@
 import { Button, Form, Row, Col } from "antd";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient } from "react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  UseQueryResult,
+} from "react-query";
 import { toast } from "react-toastify";
-import { ArrowLeftOutlined } from "@ant-design/icons";
 import { compact, noop, sortBy } from "lodash";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
 
@@ -15,7 +19,7 @@ import {
   CreateInitialVersionType,
   CreatePlanVersionType,
 } from "../types/plan-type";
-import { Organization, Plan } from "../api/api";
+import { Customer, Organization, Plan } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
 import { usePlanUpdater } from "../context/PlanContext";
@@ -80,6 +84,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     plan.versions.filter((v) => typeof v.version === "number"),
     "version"
   ).reverse()[0];
+
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>(
     plan.versions[versionIndex].currency ?? {
       symbol: "",
@@ -87,15 +92,22 @@ function EditPlan({ type, plan, versionIndex }: Props) {
       name: "",
     }
   );
+
   const [recurringCharges, setRecurringCharges] = useState<
     components["schemas"]["PlanDetail"]["versions"][0]["recurring_charges"]
   >([]);
+
+  const { data: customers }: UseQueryResult<any[]> = useQuery<any[]>(
+    ["customer_list"],
+    () => Customer.getCustomers().then((res) => res)
+  );
 
   const queryClient = useQueryClient();
 
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>(
     plan.versions[versionIndex].features
   );
+
   const [nextVersion, setNextVersion] = useState<number>();
 
   useEffect(() => {
@@ -225,10 +237,6 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     setcomponentVisible(true);
   };
 
-  const hideTargetCustomerForm = () => {
-    setTargetCustomerFormVisible(false);
-  };
-
   const handleComponentAdd = (newData: any) => {
     const old = componentsData;
 
@@ -296,9 +304,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     form
       .validateFields()
       .then(() => {
-        if (type === "custom") {
-          setTargetCustomerFormVisible(true);
-        } else if (type === "version") {
+        if (type === "version") {
           setVersionActiveFormVisible(true);
         } else {
           form.submit();
@@ -576,7 +582,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
             plan_currency: selectedCurrency,
           }}
           onChange={async () => {
-            const isValid = await step.validate(form);
+            const isValid = await step.validate(form, type);
 
             setIsCurrentStepValid(isValid);
           }}
@@ -596,7 +602,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
                   activeItem={currentStep}
                   onItemClick={async (idx) => {
                     if (idx > currentStep) {
-                      const isValid = await step.validate(form);
+                      const isValid = await step.validate(form, type);
                       if (!isValid) {
                         return;
                       }
@@ -675,6 +681,9 @@ function EditPlan({ type, plan, versionIndex }: Props) {
             setRecurringCharges={setRecurringCharges}
             disabledFields={getDisabledFields(type)}
             highlightedFields={type === "currency" ? ["plan_currency"] : []}
+            customers={customers}
+            targetCustomerId={targetCustomerId}
+            setTargetCustomerId={setTargetCustomerId}
           />
         </Form>
 
@@ -711,17 +720,6 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           />
         ) : null}
       </Form.Provider>
-
-      {targetCustomerFormVisible ? (
-        <TargetCustomerForm
-          visible={targetCustomerFormVisible}
-          onCancel={hideTargetCustomerForm}
-          onAddTargetCustomer={(customerId) => {
-            completeCustomPlan(customerId);
-            hideTargetCustomerForm();
-          }}
-        />
-      ) : null}
 
       {versionActiveFormVisible ? (
         <VersionActiveForm
