@@ -704,7 +704,7 @@ function UsageComponentForm({
                       }
                     }}
                   >
-                    Charge usage in advance instead of in arrears.
+                    Charge a fixed number of units in advance.
                   </Checkbox>
                 </Form.Item>
               </div>
@@ -725,8 +725,8 @@ function UsageComponentForm({
               {prepaid && (
                 <div>
                   <div className="mb-8">
-                    How should pre-paid usage be charged in the middle of a
-                    billing cycle?
+                    How should changes to the number of pre-paid units be
+                    charged?
                   </div>
                   <Form.Item name="charge_behavior">
                     <Select>
