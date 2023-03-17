@@ -19,8 +19,8 @@ function getEmail(length) {
 const Login = () => {
   cy.visit("http://localhost:3000/login");
   cy.contains("Username or Email");
-  cy.get("[name='username']").type("demo4");
-  cy.get("[name='password']").type("demo4");
+  cy.get("[name='username']").type("change_me");
+  cy.get("[name='password']").type("change_me");
   cy.get("form").contains("Login").click();
   cy.wait(5000);
   cy.on("uncaught:exception", (err) => {
