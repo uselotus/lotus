@@ -40,20 +40,16 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
   const navigate = useNavigate();
   const windowWidth = useMediaQuery();
   const inputRef = useRef<HTMLInputElement | null>(null!);
-  const mutation = useMutation(
-    (plan_id: string) =>
-      Plan.updatePlan(plan_id, {
-        plan_name: plan.plan_name,
-        status: "archived",
-      }),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries("plan_list");
+  const mutation = useMutation((plan_id: string) => Plan.deletePlan(plan_id), {
+    onSuccess: () => {
+      queryClient.invalidateQueries("plan_list");
 
-        toast.success("Plan archived");
-      },
-    }
-  );
+      toast.success("Plan archived");
+    },
+    onError: () => {
+      toast.error("Cannot archive plan");
+    },
+  });
 
   const planMenu = (
     <Menu>
@@ -93,7 +89,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
         if ((e.target as HTMLInputElement).nodeName === "DIV") gotoPlanDetail();
       }}
     >
-      <Typography.Title className="pt-4 flex font-alliance" level={2}>
+      <div className="pt-4 flex font-alliance text-2xl">
         <span>{plan.plan_name}</span>
         <span className="ml-auto" onClick={(e) => e.stopPropagation()}>
           <Dropdown overlay={planMenu} trigger={["click"]}>
@@ -106,9 +102,9 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
             </Button>
           </Dropdown>
         </span>
-      </Typography.Title>
+      </div>
 
-      <div>
+      <div className="text-sm">
         <div>
           <div className="mb-2">
             <div className="pr-1 font-normal font-alliance not-italic whitespace-nowrap  text-darkgold">
@@ -154,7 +150,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
           </div>
           <div className="text-card-grey font-main">
             {" "}
-            {capitalize(plan.plan_duration)}
+            {plan.plan_duration && capitalize(plan.plan_duration)}
           </div>
         </div>
         <div className="flex mt-2">

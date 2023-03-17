@@ -76,6 +76,11 @@ function CreatePlan() {
   const [month, setMonth] = useState(1);
   const [editComponentItem, setEditComponentsItem] =
     useState<CreateComponent>();
+  const [editRecurringChargeItem, setEditRecurringChargeItem] =
+    useState<CreateRecurringCharge | null>(null);
+  const [editRecurringChargeItemIdx, setEditRecurringChargeItemIdx] = useState<
+    number | null
+  >(null);
   const [availableBillingTypes, setAvailableBillingTypes] = useState<
     { name: string; label: string }[]
   >([{ label: "Monthly", name: "monthly" }]);
@@ -207,6 +212,24 @@ function CreatePlan() {
     setcomponentVisible(true);
   };
 
+  const handleRecurringChargeEdit = (idx: number) => {
+    const currentRecurringCharge = recurringCharges[idx];
+
+    setEditRecurringChargeItem(currentRecurringCharge);
+    setEditRecurringChargeItemIdx(idx);
+    setShowRecurringChargeModal(true);
+  };
+
+  const handleDeleteRecurringCharge = (idx: number) => {
+    setRecurringCharges((p) => {
+      const newRecurringCharges = [...p];
+
+      newRecurringCharges.splice(idx, 1);
+
+      return newRecurringCharges;
+    });
+  };
+
   const deleteComponent = (metric_id: string) => {
     setComponentsData(
       componentsData.filter((item) => item.metric_id !== metric_id)
@@ -232,7 +255,8 @@ function CreatePlan() {
   const submitPricingPlan = () => {
     form
       .validateFields()
-      .then((values) => {
+      .then(() => {
+        const values = form.getFieldsValue(true);
         const usagecomponentslist: CreateComponentRequestType[] = [];
         const components: any = Object.values(componentsData);
 
@@ -285,7 +309,7 @@ function CreatePlan() {
           features: featureIdList,
           usage_billing_frequency: values.usage_billing_frequency,
           currency_code: selectedCurrency!.code,
-          plan_name: values.plan_name,
+          plan_name: values.name,
         };
 
         if (
@@ -320,7 +344,7 @@ function CreatePlan() {
         }
 
         const plan: CreatePlanRequestType = {
-          plan_name: values.plane_name,
+          plan_name: values.name,
           plan_duration: values.plan_duration,
           initial_version: initialPlanVersion,
         };
@@ -379,7 +403,6 @@ function CreatePlan() {
           }}
           onChange={async () => {
             const isValid = await step.validate(form);
-
             setIsCurrentStepValid(isValid);
           }}
           onFinish={submitPricingPlan}
@@ -462,6 +485,8 @@ function CreatePlan() {
             setShowRecurringChargeModal={setShowRecurringChargeModal}
             recurringCharges={recurringCharges}
             setRecurringCharges={setRecurringCharges}
+            handleEditRecurringCharge={handleRecurringChargeEdit}
+            handleDeleteRecurringCharge={handleDeleteRecurringCharge}
           />
         </Form>
 
@@ -489,10 +514,29 @@ function CreatePlan() {
           <RecurringChargeForm
             visible={showRecurringChargeModal}
             selectedCurrency={selectedCurrency}
-            onCancel={() => setShowRecurringChargeModal(false)}
-            onAddRecurringCharges={(newRecurringCharge) => {
-              setRecurringCharges((prev) => [...prev, newRecurringCharge]);
+            initialValues={editRecurringChargeItem}
+            onCancel={() => {
               setShowRecurringChargeModal(false);
+              setEditRecurringChargeItem(null);
+              setEditRecurringChargeItemIdx(null);
+            }}
+            onAddRecurringCharges={(newRecurringCharge) => {
+              if (
+                editRecurringChargeItem &&
+                typeof editRecurringChargeItemIdx === "number"
+              ) {
+                setRecurringCharges((prev) => [
+                  ...prev.slice(0, editRecurringChargeItemIdx),
+                  newRecurringCharge,
+                  ...prev.slice(editRecurringChargeItemIdx + 1),
+                ]);
+              } else {
+                setRecurringCharges((prev) => [...prev, newRecurringCharge]);
+              }
+
+              setShowRecurringChargeModal(false);
+              setEditRecurringChargeItem(null);
+              setEditRecurringChargeItemIdx(null);
             }}
           />
         ) : null}

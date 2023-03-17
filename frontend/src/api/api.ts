@@ -183,8 +183,8 @@ export const Customer = {
   ): Promise<SubscriptionType> =>
     requests.post(`app/subscriptions/${subscription_id}/cancel/`, post),
   switchPlanSubscription: (
-    subscription_id: string,
-    post: SwitchPlanSubscriptionBody
+    post: components["schemas"]["SubscriptionRecordSwitchPlanRequest"],
+    subscription_id: string
   ): Promise<SubscriptionType> =>
     requests.post(`app/subscriptions/${subscription_id}/switch_plan/`, post),
   changeSubscriptionPlan: (
@@ -197,23 +197,23 @@ export const Customer = {
   ): Promise<SubscriptionType> =>
     requests.post(`app/subscriptions/update/`, post, params),
   turnSubscriptionAutoRenewOff: (
-    post: TurnSubscriptionAutoRenewOffType,
-    params?: {
-      customer_id?: string;
-      plan_id?: string;
-      subscription_filters?: { property_name: string; value: string }[];
-    }
+    post: components["schemas"]["SubscriptionRecordUpdateRequest"],
+    subscription_id: string
   ): Promise<SubscriptionType> =>
-    requests.post(`app/subscriptions/update/`, post, params),
+    requests.post(`app/subscriptions/${subscription_id}/update/`, post),
   createSubscriptionAddOns: (
-    body: CreateSubscriptionAddOnBody
+    body: components["schemas"]["AddOnSubscriptionRecordCreateRequest"],
+    subscription_id: string
   ): Promise<CreateSubscriptionAddOnType> =>
-    requests.post(`app/subscriptions/addons/add/`, body),
+    requests.post(`app/subscriptions/${subscription_id}/addons/attach/`, body),
   cancelCreateSubscriptionAddOns: (
     body: CancelCreateSubscriptionAddOnBody,
-    params: CancelCreateSubscriptionAddOnQueryParams
+    path_params: { subscription_id: string; addon_id: string }
   ): Promise<CreateSubscriptionAddOnType[]> =>
-    requests.post(`app/subscriptions/addons/cancel/`, body, params),
+    requests.post(
+      `app/subscriptions/${path_params.subscription_id}/addons/${path_params.addon_id}/cancel/`,
+      body
+    ),
 };
 
 export const AddOn = {
@@ -235,6 +235,8 @@ export const AddOn = {
 
 export const Plan = {
   // get methods
+  nextVersion: (plan_id: string): Promise<number> =>
+    requests.get(`app/plans/${plan_id}/versions/next/`),
   getPlans: (params?: {
     duration?: "monthly" | "quarterly" | "yearly";
     exclude_tags?: string[];
@@ -268,14 +270,15 @@ export const Plan = {
     requests.delete(
       `app/external_plan_links/${post.external_plan_id}/?source=${post.source}`
     ),
+  deletePlan: (plan_id: string): Promise<components["schemas"]["DeletePlan"]> =>
+    requests.post(`app/plans/${plan_id}/delete/`, {}),
 
   // update plans methods
   updatePlan: (
     plan_id: string,
     post: UpdatePlanType
   ): Promise<UpdatePlanType> => requests.patch(`app/plans/${plan_id}/`, post),
-  deletePlan: (plan_id: string): Promise<PlanVersionsType> =>
-    requests.post(`app/plans/${plan_id}/delete/`, {}),
+
   featuresAddPlan: (
     plan_id: string,
     post: PlanFeaturesAdd

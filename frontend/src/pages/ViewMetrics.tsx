@@ -20,6 +20,7 @@ import CreateMetricForm from "../components/Metrics/CreateMetricForm";
 import EventPreview from "../components/EventPreview";
 import "./ViewMetrics.css";
 import { PageLayout } from "../components/base/PageLayout";
+import { PlusOutlined } from "@ant-design/icons";
 
 const defaultMetricState: CreateMetricType = {
   event_name: "",
@@ -55,22 +56,19 @@ const ViewMetrics: FC = () => {
       },
 
       onMutate: () => {
-        console.log("mutating");
-        toast.info("Creating metric...", {
+        toast.loading("Creating metric...", {
           position: toast.POSITION.TOP_CENTER,
           autoClose: false,
-          hideProgressBar: true,
         });
-      },
-
-      onSettled: () => {
-        toast.dismiss();
       },
 
       onError: (error: any) => {
         toast.error(`Error creating metric: ${error.response.data.detail}`, {
           position: toast.POSITION.TOP_CENTER,
         });
+      },
+      onSettled: () => {
+        toast.dismiss();
       },
     }
   );
@@ -97,8 +95,15 @@ const ViewMetrics: FC = () => {
           id="create-metric-button"
           key={"create-plan"}
           onClick={createMetricButton}
+          className="hover:!bg-primary-700"
+          style={{ background: "#C3986B", borderColor: "#C3986B" }}
         >
-          Create Metric
+          <div className="flex items-center  justify-between text-white">
+            <div>
+              <PlusOutlined className="!text-white w-12 h-12 cursor-pointer" />
+              Create Metric
+            </div>
+          </div>
         </Button>,
       ]}
     >

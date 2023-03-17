@@ -75,6 +75,18 @@ export interface paths {
   "/app/credits/{creditId}/void/": {
     post: operations["appCreditsVoidCreate"];
   };
+  "/app/crm/": {
+    get: operations["appCrmList"];
+  };
+  "/app/crm/linkToken/": {
+    post: operations["appCrmLinkTokenCreate"];
+  };
+  "/app/crm/setCustomerSource/": {
+    post: operations["appCrmSetCustomerSourceCreate"];
+  };
+  "/app/crm/storeToken/": {
+    post: operations["appCrmStoreTokenCreate"];
+  };
   "/app/customers/": {
     get: operations["appCustomersList"];
     post: operations["appCustomersCreate"];
@@ -85,6 +97,9 @@ export interface paths {
   };
   "/app/customers/{customerId}/delete/": {
     post: operations["appCustomersDeleteCreate"];
+  };
+  "/app/customers/{customerId}/draftInvoice/": {
+    get: operations["appCustomersDraftInvoiceRetrieve"];
   };
   "/app/customers/summary/": {
     /** @description Get the current settings for the organization. */
@@ -99,10 +114,6 @@ export interface paths {
   };
   "/app/demoRegister/": {
     post: operations["appDemoRegisterCreate"];
-  };
-  "/app/draftInvoice/": {
-    /** @description Pagination-enabled endpoint for retrieving an organization's event stream. */
-    get: operations["appDraftInvoiceRetrieve"];
   };
   "/app/events/": {
     /** @description API endpoint that allows events to be viewed. */
@@ -152,6 +163,9 @@ export interface paths {
     get: operations["appMetricsRetrieve"];
     patch: operations["appMetricsPartialUpdate"];
   };
+  "/app/netsuiteCustomers/": {
+    get: operations["appNetsuiteCustomersRetrieve"];
+  };
   "/app/netsuiteInvoices/": {
     get: operations["appNetsuiteInvoicesRetrieve"];
   };
@@ -174,6 +188,9 @@ export interface paths {
   };
   "/app/organizations/{organizationId}/": {
     patch: operations["appOrganizationsPartialUpdate"];
+  };
+  "/app/organizations/{organizationId}/syncCrm/": {
+    post: operations["appOrganizationsSyncCrmCreate"];
   };
   "/app/paymentProviders/": {
     get: operations["appPaymentProvidersList"];
@@ -274,6 +291,10 @@ export interface paths {
     /** @description ViewSet for viewing and editing Plans. */
     post: operations["appPlansVersionsTransitionSetCreate"];
   };
+  "/app/plans/{planId}/versions/next/": {
+    /** @description ViewSet for viewing and editing Plans. */
+    get: operations["appPlansVersionsNextRetrieve"];
+  };
   "/app/plansByCustomer/": {
     get: operations["appPlansByCustomerRetrieve"];
   };
@@ -301,7 +322,7 @@ export interface paths {
     post: operations["appSubscriptionsAddonsAttachCreate"];
   };
   "/app/subscriptions/{subscriptionId}/cancel/": {
-    post: operations["appSubscriptionsCancelCreate"];
+    post: operations["appSubscriptionsCancelCreate2"];
   };
   "/app/subscriptions/{subscriptionId}/components/{metricId}/changePrepaidUnits/": {
     post: operations["appSubscriptionsComponentsChangePrepaidUnitsCreate"];
@@ -310,6 +331,17 @@ export interface paths {
     post: operations["appSubscriptionsSwitchPlanCreate"];
   };
   "/app/subscriptions/{subscriptionId}/update/": {
+    post: operations["appSubscriptionsUpdateCreate2"];
+  };
+  "/app/subscriptions/add/": {
+    /** @deprecated */
+    post: operations["appSubscriptionsAddCreate"];
+  };
+  "/app/subscriptions/cancel/": {
+    /** @deprecated */
+    post: operations["appSubscriptionsCancelCreate"];
+  };
+  "/app/subscriptions/update/": {
     post: operations["appSubscriptionsUpdateCreate"];
   };
   "/app/switchOrganization/": {
@@ -477,12 +509,12 @@ export interface components {
       initialVersion: components["schemas"]["InitialAddOnVersionCreateRequest"];
     };
     AddOnDetail: {
-      /** @description This addon's versions. */
-      versions: (components["schemas"]["AddOnVersion"])[];
       /** @description The ID of the add-on plan. */
       addonId: string;
       /** @description The description of the add-on plan. */
       addonDescription: string;
+      /** @description This addon's versions. */
+      versions: (components["schemas"]["AddOnVersion"])[];
       /** @description The name of the add-on plan. */
       addonName: string;
     };
@@ -504,6 +536,9 @@ export interface components {
       fullyBilled: boolean;
       /** @description Whether the subscription automatically renews. Defaults to true. */
       autoRenew: boolean;
+      metadata: {
+        [key: string]: Record<string, never> | undefined;
+      };
     };
     AddOnSubscriptionRecordCreateRequest: {
       /**
@@ -516,6 +551,10 @@ export interface components {
        * @default 1
        */
       quantity?: number;
+      /** @description A JSON object containing additional information about the add-on subscription. This will be returned in the response when you retrieve the add-on subscription. */
+      metadata?: {
+        [key: string]: Record<string, never> | undefined;
+      };
     };
     AddOnUpdate: {
       addonName?: string;
@@ -650,21 +689,21 @@ export interface components {
       backtestName: string;
     };
     BacktestDetail: {
-      backtestId: string;
-      backtestName: string;
-      backtestSubstitutions: (components["schemas"]["BacktestSubstitution"])[];
-      /** Format: date-time */
-      timeCreated?: string;
       /** Format: date */
       startDate: string;
+      backtestSubstitutions: (components["schemas"]["BacktestSubstitution"])[];
+      /** Format: date */
+      endDate: string;
+      backtestResults: components["schemas"]["AllSubstitutionResults"];
+      /** Format: date-time */
+      timeCreated?: string;
+      backtestId: string;
       kpis?: {
         [key: string]: Record<string, never> | undefined;
       };
-      backtestResults: components["schemas"]["AllSubstitutionResults"];
+      backtestName: string;
       /** @enum {string} */
       status?: "running" | "completed" | "failed";
-      /** Format: date */
-      endDate: string;
     };
     BacktestSubstitution: {
       newPlan: components["schemas"]["PlanVersionDetail"];
@@ -697,6 +736,9 @@ export interface components {
     };
     BatchEventRequest: {
       batch: (components["schemas"]["EventRequest"])[];
+    };
+    CRMSyncRequestRequest: {
+      crmProviderNames?: ("salesforce")[];
     };
     CategoricalFilter: {
       propertyName: string;
@@ -872,7 +914,8 @@ export interface components {
       taxRate: number;
       /** @enum {string} */
       timezone: "Africa/Abidjan" | "Africa/Accra" | "Africa/Addis_Ababa" | "Africa/Algiers" | "Africa/Asmara" | "Africa/Bamako" | "Africa/Bangui" | "Africa/Banjul" | "Africa/Bissau" | "Africa/Blantyre" | "Africa/Brazzaville" | "Africa/Bujumbura" | "Africa/Cairo" | "Africa/Casablanca" | "Africa/Ceuta" | "Africa/Conakry" | "Africa/Dakar" | "Africa/DarEs_Salaam" | "Africa/Djibouti" | "Africa/Douala" | "Africa/El_Aaiun" | "Africa/Freetown" | "Africa/Gaborone" | "Africa/Harare" | "Africa/Johannesburg" | "Africa/Juba" | "Africa/Kampala" | "Africa/Khartoum" | "Africa/Kigali" | "Africa/Kinshasa" | "Africa/Lagos" | "Africa/Libreville" | "Africa/Lome" | "Africa/Luanda" | "Africa/Lubumbashi" | "Africa/Lusaka" | "Africa/Malabo" | "Africa/Maputo" | "Africa/Maseru" | "Africa/Mbabane" | "Africa/Mogadishu" | "Africa/Monrovia" | "Africa/Nairobi" | "Africa/Ndjamena" | "Africa/Niamey" | "Africa/Nouakchott" | "Africa/Ouagadougou" | "Africa/Porto-Novo" | "Africa/Sao_Tome" | "Africa/Tripoli" | "Africa/Tunis" | "Africa/Windhoek" | "America/Adak" | "America/Anchorage" | "America/Anguilla" | "America/Antigua" | "America/Araguaina" | "America/Argentina/Buenos_Aires" | "America/Argentina/Catamarca" | "America/Argentina/Cordoba" | "America/Argentina/Jujuy" | "America/Argentina/La_Rioja" | "America/Argentina/Mendoza" | "America/Argentina/Rio_Gallegos" | "America/Argentina/Salta" | "America/Argentina/San_Juan" | "America/Argentina/San_Luis" | "America/Argentina/Tucuman" | "America/Argentina/Ushuaia" | "America/Aruba" | "America/Asuncion" | "America/Atikokan" | "America/Bahia" | "America/Bahia_Banderas" | "America/Barbados" | "America/Belem" | "America/Belize" | "America/Blanc-Sablon" | "America/Boa_Vista" | "America/Bogota" | "America/Boise" | "America/Cambridge_Bay" | "America/Campo_Grande" | "America/Cancun" | "America/Caracas" | "America/Cayenne" | "America/Cayman" | "America/Chicago" | "America/Chihuahua" | "America/Ciudad_Juarez" | "America/Costa_Rica" | "America/Creston" | "America/Cuiaba" | "America/Curacao" | "America/Danmarkshavn" | "America/Dawson" | "America/Dawson_Creek" | "America/Denver" | "America/Detroit" | "America/Dominica" | "America/Edmonton" | "America/Eirunepe" | "America/El_Salvador" | "America/Fort_Nelson" | "America/Fortaleza" | "America/Glace_Bay" | "America/Goose_Bay" | "America/Grand_Turk" | "America/Grenada" | "America/Guadeloupe" | "America/Guatemala" | "America/Guayaquil" | "America/Guyana" | "America/Halifax" | "America/Havana" | "America/Hermosillo" | "America/Indiana/Indianapolis" | "America/Indiana/Knox" | "America/Indiana/Marengo" | "America/Indiana/Petersburg" | "America/Indiana/Tell_City" | "America/Indiana/Vevay" | "America/Indiana/Vincennes" | "America/Indiana/Winamac" | "America/Inuvik" | "America/Iqaluit" | "America/Jamaica" | "America/Juneau" | "America/Kentucky/Louisville" | "America/Kentucky/Monticello" | "America/Kralendijk" | "America/La_Paz" | "America/Lima" | "America/Los_Angeles" | "America/Lower_Princes" | "America/Maceio" | "America/Managua" | "America/Manaus" | "America/Marigot" | "America/Martinique" | "America/Matamoros" | "America/Mazatlan" | "America/Menominee" | "America/Merida" | "America/Metlakatla" | "America/Mexico_City" | "America/Miquelon" | "America/Moncton" | "America/Monterrey" | "America/Montevideo" | "America/Montserrat" | "America/Nassau" | "America/New_York" | "America/Nome" | "America/Noronha" | "America/North_Dakota/Beulah" | "America/North_Dakota/Center" | "America/North_Dakota/New_Salem" | "America/Nuuk" | "America/Ojinaga" | "America/Panama" | "America/Paramaribo" | "America/Phoenix" | "America/Port-au-Prince" | "America/PortOf_Spain" | "America/Porto_Velho" | "America/Puerto_Rico" | "America/Punta_Arenas" | "America/Rankin_Inlet" | "America/Recife" | "America/Regina" | "America/Resolute" | "America/Rio_Branco" | "America/Santarem" | "America/Santiago" | "America/Santo_Domingo" | "America/Sao_Paulo" | "America/Scoresbysund" | "America/Sitka" | "America/St_Barthelemy" | "America/St_Johns" | "America/St_Kitts" | "America/St_Lucia" | "America/St_Thomas" | "America/St_Vincent" | "America/Swift_Current" | "America/Tegucigalpa" | "America/Thule" | "America/Tijuana" | "America/Toronto" | "America/Tortola" | "America/Vancouver" | "America/Whitehorse" | "America/Winnipeg" | "America/Yakutat" | "America/Yellowknife" | "Antarctica/Casey" | "Antarctica/Davis" | "Antarctica/DumontDUrville" | "Antarctica/Macquarie" | "Antarctica/Mawson" | "Antarctica/McMurdo" | "Antarctica/Palmer" | "Antarctica/Rothera" | "Antarctica/Syowa" | "Antarctica/Troll" | "Antarctica/Vostok" | "Arctic/Longyearbyen" | "Asia/Aden" | "Asia/Almaty" | "Asia/Amman" | "Asia/Anadyr" | "Asia/Aqtau" | "Asia/Aqtobe" | "Asia/Ashgabat" | "Asia/Atyrau" | "Asia/Baghdad" | "Asia/Bahrain" | "Asia/Baku" | "Asia/Bangkok" | "Asia/Barnaul" | "Asia/Beirut" | "Asia/Bishkek" | "Asia/Brunei" | "Asia/Chita" | "Asia/Choibalsan" | "Asia/Colombo" | "Asia/Damascus" | "Asia/Dhaka" | "Asia/Dili" | "Asia/Dubai" | "Asia/Dushanbe" | "Asia/Famagusta" | "Asia/Gaza" | "Asia/Hebron" | "Asia/Ho_Chi_Minh" | "Asia/Hong_Kong" | "Asia/Hovd" | "Asia/Irkutsk" | "Asia/Jakarta" | "Asia/Jayapura" | "Asia/Jerusalem" | "Asia/Kabul" | "Asia/Kamchatka" | "Asia/Karachi" | "Asia/Kathmandu" | "Asia/Khandyga" | "Asia/Kolkata" | "Asia/Krasnoyarsk" | "Asia/Kuala_Lumpur" | "Asia/Kuching" | "Asia/Kuwait" | "Asia/Macau" | "Asia/Magadan" | "Asia/Makassar" | "Asia/Manila" | "Asia/Muscat" | "Asia/Nicosia" | "Asia/Novokuznetsk" | "Asia/Novosibirsk" | "Asia/Omsk" | "Asia/Oral" | "Asia/Phnom_Penh" | "Asia/Pontianak" | "Asia/Pyongyang" | "Asia/Qatar" | "Asia/Qostanay" | "Asia/Qyzylorda" | "Asia/Riyadh" | "Asia/Sakhalin" | "Asia/Samarkand" | "Asia/Seoul" | "Asia/Shanghai" | "Asia/Singapore" | "Asia/Srednekolymsk" | "Asia/Taipei" | "Asia/Tashkent" | "Asia/Tbilisi" | "Asia/Tehran" | "Asia/Thimphu" | "Asia/Tokyo" | "Asia/Tomsk" | "Asia/Ulaanbaatar" | "Asia/Urumqi" | "Asia/Ust-Nera" | "Asia/Vientiane" | "Asia/Vladivostok" | "Asia/Yakutsk" | "Asia/Yangon" | "Asia/Yekaterinburg" | "Asia/Yerevan" | "Atlantic/Azores" | "Atlantic/Bermuda" | "Atlantic/Canary" | "Atlantic/Cape_Verde" | "Atlantic/Faroe" | "Atlantic/Madeira" | "Atlantic/Reykjavik" | "Atlantic/South_Georgia" | "Atlantic/St_Helena" | "Atlantic/Stanley" | "Australia/Adelaide" | "Australia/Brisbane" | "Australia/Broken_Hill" | "Australia/Darwin" | "Australia/Eucla" | "Australia/Hobart" | "Australia/Lindeman" | "Australia/Lord_Howe" | "Australia/Melbourne" | "Australia/Perth" | "Australia/Sydney" | "Canada/Atlantic" | "Canada/Central" | "Canada/Eastern" | "Canada/Mountain" | "Canada/Newfoundland" | "Canada/Pacific" | "Europe/Amsterdam" | "Europe/Andorra" | "Europe/Astrakhan" | "Europe/Athens" | "Europe/Belgrade" | "Europe/Berlin" | "Europe/Bratislava" | "Europe/Brussels" | "Europe/Bucharest" | "Europe/Budapest" | "Europe/Busingen" | "Europe/Chisinau" | "Europe/Copenhagen" | "Europe/Dublin" | "Europe/Gibraltar" | "Europe/Guernsey" | "Europe/Helsinki" | "Europe/IsleOf_Man" | "Europe/Istanbul" | "Europe/Jersey" | "Europe/Kaliningrad" | "Europe/Kirov" | "Europe/Kyiv" | "Europe/Lisbon" | "Europe/Ljubljana" | "Europe/London" | "Europe/Luxembourg" | "Europe/Madrid" | "Europe/Malta" | "Europe/Mariehamn" | "Europe/Minsk" | "Europe/Monaco" | "Europe/Moscow" | "Europe/Oslo" | "Europe/Paris" | "Europe/Podgorica" | "Europe/Prague" | "Europe/Riga" | "Europe/Rome" | "Europe/Samara" | "Europe/San_Marino" | "Europe/Sarajevo" | "Europe/Saratov" | "Europe/Simferopol" | "Europe/Skopje" | "Europe/Sofia" | "Europe/Stockholm" | "Europe/Tallinn" | "Europe/Tirane" | "Europe/Ulyanovsk" | "Europe/Vaduz" | "Europe/Vatican" | "Europe/Vienna" | "Europe/Vilnius" | "Europe/Volgograd" | "Europe/Warsaw" | "Europe/Zagreb" | "Europe/Zurich" | "GMT" | "Indian/Antananarivo" | "Indian/Chagos" | "Indian/Christmas" | "Indian/Cocos" | "Indian/Comoro" | "Indian/Kerguelen" | "Indian/Mahe" | "Indian/Maldives" | "Indian/Mauritius" | "Indian/Mayotte" | "Indian/Reunion" | "Pacific/Apia" | "Pacific/Auckland" | "Pacific/Bougainville" | "Pacific/Chatham" | "Pacific/Chuuk" | "Pacific/Easter" | "Pacific/Efate" | "Pacific/Fakaofo" | "Pacific/Fiji" | "Pacific/Funafuti" | "Pacific/Galapagos" | "Pacific/Gambier" | "Pacific/Guadalcanal" | "Pacific/Guam" | "Pacific/Honolulu" | "Pacific/Kanton" | "Pacific/Kiritimati" | "Pacific/Kosrae" | "Pacific/Kwajalein" | "Pacific/Majuro" | "Pacific/Marquesas" | "Pacific/Midway" | "Pacific/Nauru" | "Pacific/Niue" | "Pacific/Norfolk" | "Pacific/Noumea" | "Pacific/Pago_Pago" | "Pacific/Palau" | "Pacific/Pitcairn" | "Pacific/Pohnpei" | "Pacific/Port_Moresby" | "Pacific/Rarotonga" | "Pacific/Saipan" | "Pacific/Tahiti" | "Pacific/Tarawa" | "Pacific/Tongatapu" | "Pacific/Wake" | "Pacific/Wallis" | "US/Alaska" | "US/Arizona" | "US/Central" | "US/Eastern" | "US/Hawaii" | "US/Mountain" | "US/Pacific" | "UTC";
-      taxProviders: readonly ("taxjar" | "lotus")[];
+      /** @description A list of tax providers that are enabled for this customer. The list is ordered, meaning we will succesively try to calculate taxes using each provider until we find one that works. */
+      taxProviders: readonly ("taxjar" | "lotus" | "netsuite")[];
     };
     CustomerBalanceAdjustment: {
       creditId: string;
@@ -1058,24 +1101,6 @@ export interface components {
       token: string;
       user: components["schemas"]["User"];
     };
-    DraftInvoice: {
-      invoiceId: string;
-      lineItems: readonly (components["schemas"]["GroupedLineItem"])[];
-      /** Format: date-time */
-      dueDate: string;
-      /** Format: double */
-      costDue: number;
-      /** Format: date */
-      startDate: string;
-      /** Format: date-time */
-      issueDate: string;
-      currency: components["schemas"]["PricingUnit"];
-      /** Format: date */
-      endDate: string;
-    };
-    DraftInvoiceResponse: {
-      invoice?: (components["schemas"]["DraftInvoice"])[];
-    };
     EmailRequest: {
       /** Format: email */
       email: string;
@@ -1169,17 +1194,6 @@ export interface components {
       /** @description Whether or not the plan has access to this feature. If your customer can have multiple plans or subscriptions, then you must check the 'access' across all returned plans to determine if the customer can access this feature. */
       access: boolean;
     };
-    GroupedLineItem: {
-      planName: string;
-      subscriptionFilters: (components["schemas"]["SubscriptionCategoricalFilterDetail"])[];
-      /** Format: double */
-      subtotal: number;
-      /** Format: date-time */
-      startDate: string;
-      /** Format: date-time */
-      endDate: string;
-      subItems: (components["schemas"]["LightweightInvoiceLineItem"])[];
-    };
     ImportCustomerFailure: {
       /** @enum {string} */
       status: "error";
@@ -1212,14 +1226,14 @@ export interface components {
       email: string;
     };
     InitialAddOnVersionCreateRequest: {
+      features?: (string)[];
+      components?: (components["schemas"]["PlanComponentCreateRequest"])[];
+      recurringCharges?: (components["schemas"]["RecurringChargeCreateRequest"])[];
       /** @enum {unknown} */
       billingFrequency: "oneTime" | "recurring";
       currencyCode: string;
-      features?: (string)[];
       /** @enum {unknown} */
       invoiceWhen: "invoiceOnAttach" | "invoiceOnSubscriptionEnd";
-      recurringCharges?: (components["schemas"]["RecurringChargeCreateRequest"])[];
-      components?: (components["schemas"]["PlanComponentCreateRequest"])[];
     };
     InitialExternalPlanLink: {
       /** @enum {string} */
@@ -1232,15 +1246,22 @@ export interface components {
       externalPlanId: string;
     };
     InitialPlanVersionCreateRequest: {
+      dayAnchor?: number;
+      features?: (string)[];
+      components?: (components["schemas"]["PlanComponentCreateRequest"])[];
       localizedName?: string;
+      recurringCharges?: (components["schemas"]["RecurringChargeCreateRequest"])[];
       version: number;
       targetCustomerIds?: (string)[];
-      currencyCode: string;
-      features?: (string)[];
-      recurringCharges?: (components["schemas"]["RecurringChargeCreateRequest"])[];
-      dayAnchor?: number;
+      /** @default false */
+      makeActive?: boolean;
       monthAnchor?: number;
-      components?: (components["schemas"]["PlanComponentCreateRequest"])[];
+      currencyCode: string;
+      /**
+       * @default replaceOnRenewal 
+       * @enum {string}
+       */
+      makeActiveType?: "replaceOnRenewal" | "grandfather";
       priceAdjustment?: components["schemas"]["PriceAdjustmentRequest"];
     };
     InviteLinkResponse: {
@@ -1260,8 +1281,13 @@ export interface components {
     Invoice: {
       invoiceId: string;
       invoiceNumber: string;
-      /** Format: double */
+      /**
+       * Format: double 
+       * @deprecated
+       */
       costDue: number;
+      /** Format: double */
+      amount: number;
       currency: components["schemas"]["PricingUnit"];
       /** Format: date-time */
       issueDate: string;
@@ -1288,8 +1314,13 @@ export interface components {
     InvoiceDetail: {
       invoiceId: string;
       invoiceNumber: string;
-      /** Format: double */
+      /**
+       * Format: double 
+       * @deprecated
+       */
       costDue: number;
+      /** Format: double */
+      amount: number;
       currency: components["schemas"]["PricingUnit"];
       /** Format: date-time */
       issueDate: string;
@@ -1318,8 +1349,6 @@ export interface components {
       endDate: string;
       /** Format: double */
       quantity: number;
-      /** Format: double */
-      subtotal: number;
       /** @enum {string|null} */
       billingType: "inArrears" | "intermediate" | "inAdvance" | "oneTime" | "" | null;
       metadata: ({
@@ -1327,6 +1356,29 @@ export interface components {
       }) | null;
       plan: components["schemas"]["LightweightPlanVersion"] | null;
       subscriptionFilters: readonly (components["schemas"]["SubscriptionCategoricalFilter"])[];
+      /**
+       * Format: double 
+       * @description Base price of the line item. This is the price before any adjustments are applied.
+       */
+      base: number;
+      adjustments: readonly (components["schemas"]["InvoiceLineItemAdjustment"])[];
+      /**
+       * Format: double 
+       * @description Amount of the line item. This is the price after any adjustments are applied.
+       */
+      amount: number;
+      /**
+       * Format: double 
+       * @deprecated
+       */
+      subtotal: number;
+    };
+    InvoiceLineItemAdjustment: {
+      /** Format: decimal */
+      amount: string;
+      account: string;
+      /** @enum {unknown} */
+      adjustmentType: "salesTax" | "planAdjustment";
     };
     InvoiceLineItemRequest: {
       name: string;
@@ -1336,13 +1388,26 @@ export interface components {
       endDate: string;
       /** Format: double */
       quantity: number;
-      /** Format: double */
-      subtotal: number;
       /** @enum {string|null} */
       billingType: "inArrears" | "intermediate" | "inAdvance" | "oneTime" | "" | null;
       metadata: ({
         [key: string]: Record<string, never> | undefined;
       }) | null;
+      /**
+       * Format: double 
+       * @description Base price of the line item. This is the price before any adjustments are applied.
+       */
+      base: number;
+      /**
+       * Format: double 
+       * @description Amount of the line item. This is the price after any adjustments are applied.
+       */
+      amount: number;
+      /**
+       * Format: double 
+       * @deprecated
+       */
+      subtotal: number;
     };
     InvoicePaidRequest: {
       payload: components["schemas"]["InvoiceRequest"];
@@ -1352,6 +1417,11 @@ export interface components {
     };
     InvoiceRequest: {
       invoiceId: string;
+      /**
+       * Format: double 
+       * @deprecated
+       */
+      costDue: number;
       currency: components["schemas"]["PricingUnitRequest"];
       /** @enum {string|null} */
       externalPaymentObjType: "stripe" | "braintree" | "" | null;
@@ -1421,42 +1491,32 @@ export interface components {
       address?: components["schemas"]["Address"] | null;
     };
     LightweightInvoice: {
-      invoiceId: string;
-      /** @enum {string|null} */
-      externalPaymentObjType: "stripe" | "braintree" | "" | null;
-      /** Format: uri */
-      invoicePdf: string;
-      /** Format: double */
+      /**
+       * Format: double 
+       * @deprecated
+       */
       costDue: number;
       /** Format: date-time */
       dueDate: string;
       /** Format: date */
-      startDate: string;
+      endDate: string;
+      invoiceId: string;
       seller: components["schemas"]["Seller"];
+      /** @enum {string|null} */
+      externalPaymentObjType: "stripe" | "braintree" | "" | null;
+      invoiceNumber: string;
+      /** Format: uri */
+      invoicePdf: string;
+      /** Format: date */
+      startDate: string;
+      /** Format: double */
+      amount: number;
       /** @enum {unknown} */
       paymentStatus: "draft" | "voided" | "paid" | "unpaid";
+      externalPaymentObjId: string;
       /** Format: date-time */
       issueDate: string;
       currency: components["schemas"]["PricingUnit"];
-      externalPaymentObjId: string;
-      invoiceNumber: string;
-      /** Format: date */
-      endDate: string;
-    };
-    LightweightInvoiceLineItem: {
-      /** Format: double */
-      quantity: number;
-      subscriptionFilters: readonly (components["schemas"]["SubscriptionCategoricalFilter"])[];
-      /** Format: date-time */
-      startDate: string;
-      plan: components["schemas"]["LightweightPlanVersion"] | null;
-      name: string;
-      /** Format: double */
-      subtotal: number;
-      /** @enum {string|null} */
-      billingType: "inArrears" | "intermediate" | "inAdvance" | "oneTime" | "" | null;
-      /** Format: date-time */
-      endDate: string;
     };
     LightweightMetric: {
       metricId: string;
@@ -1486,52 +1546,62 @@ export interface components {
       planId: string;
     };
     LightweightSubscriptionRecord: {
-      planDetail: components["schemas"]["LightweightPlanVersion"];
-      /** @description Whether the subscription automatically renews. Defaults to true. */
-      autoRenew: boolean;
-      subscriptionFilters: readonly (components["schemas"]["SubscriptionCategoricalFilter"])[];
-      subscriptionId: string;
-      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
-      isNew: boolean;
+      fullyBilled: boolean;
+      customer: components["schemas"]["LightweightCustomer"];
       /**
        * Format: date-time 
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
       startDate: string;
       billingPlan: components["schemas"]["LightweightPlanVersion"];
-      fullyBilled: boolean;
-      addons: (components["schemas"]["LightweightAddOnSubscriptionRecord"])[];
-      customer: components["schemas"]["LightweightCustomer"];
+      metadata: {
+        [key: string]: Record<string, never> | undefined;
+      };
       /**
        * Format: date-time 
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
       endDate: string;
-    };
-    LightweightSubscriptionRecordRequest: {
       /** @description Whether the subscription automatically renews. Defaults to true. */
       autoRenew: boolean;
-      subscriptionId: string;
+      subscriptionFilters: readonly (components["schemas"]["SubscriptionCategoricalFilter"])[];
+      addons: (components["schemas"]["LightweightAddOnSubscriptionRecord"])[];
+      planDetail: components["schemas"]["LightweightPlanVersion"];
       /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
       isNew: boolean;
+      subscriptionId: string;
+    };
+    LightweightSubscriptionRecordRequest: {
       /**
        * Format: date-time 
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
       startDate: string;
       billingPlan: components["schemas"]["LightweightPlanVersionRequest"];
-      addons: (components["schemas"]["LightweightAddOnSubscriptionRecordRequest"])[];
+      metadata: {
+        [key: string]: Record<string, never> | undefined;
+      };
       /**
        * Format: date-time 
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
       endDate: string;
+      /** @description Whether the subscription automatically renews. Defaults to true. */
+      autoRenew: boolean;
+      addons: (components["schemas"]["LightweightAddOnSubscriptionRecordRequest"])[];
+      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
+      isNew: boolean;
+      subscriptionId: string;
     };
     LightweightUser: {
       /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
       username: string;
       /** Format: email */
       email: string;
+    };
+    LinkTokenResponse: {
+      /** @description The token used to link Vessel and the CRM */
+      linkToken: string;
     };
     LoginFailure: {
       detail: string;
@@ -1673,31 +1743,16 @@ export interface components {
       numericFilters?: (components["schemas"]["NumericFilterDetailRequest"])[];
     };
     MetricDetail: {
-      /** @description A custom SQL query that can be used to define the metric. Please refer to our documentation for more information. */
-      customSql: string;
-      /** @description The name of the property of the event that should be used for this metric. Doesn't apply if the metric is of type 'counter' with an aggregation of count. */
-      propertyName: string;
-      numericFilters: (components["schemas"]["NumericFilter"])[];
-      /** @description Name of the event that this metric is tracking. */
-      eventName: string;
-      categoricalFilters: (components["schemas"]["CategoricalFilter"])[];
-      metricName: string;
-      /**
-       * @description The granularity of the metric. Only applies to metrics of type 'gauge' or 'rate'. 
-       * @enum {string|null}
-       */
-      granularity: "seconds" | "minutes" | "hours" | "days" | "months" | "quarters" | "years" | "total" | "" | null;
-      metricId: string;
       /**
        * @description Used only for metrics of type 'gauge'. Please refer to our documentation for an explanation of the different types. 
        * @enum {string|null}
        */
       eventType: "delta" | "total" | "" | null;
-      /**
-       * @description The type of metric that this is. Please refer to our documentation for an explanation of the different types. 
-       * @enum {string}
-       */
-      metricType: "counter" | "rate" | "custom" | "gauge";
+      numericFilters: (components["schemas"]["NumericFilter"])[];
+      metricName: string;
+      categoricalFilters: (components["schemas"]["CategoricalFilter"])[];
+      /** @description A custom SQL query that can be used to define the metric. Please refer to our documentation for more information. */
+      customSql: string;
       /**
        * @description The proration of the metric. Only applies to metrics of type 'gauge'. 
        * @enum {string|null}
@@ -1705,6 +1760,21 @@ export interface components {
       proration: "seconds" | "minutes" | "hours" | "days" | "months" | "quarters" | "years" | "total" | "" | null;
       /** @description Whether or not this metric is a cost metric (used to track costs to your business). */
       isCostMetric: boolean;
+      /** @description Name of the event that this metric is tracking. */
+      eventName: string;
+      /**
+       * @description The type of metric that this is. Please refer to our documentation for an explanation of the different types. 
+       * @enum {string}
+       */
+      metricType: "counter" | "rate" | "custom" | "gauge";
+      /**
+       * @description The granularity of the metric. Only applies to metrics of type 'gauge' or 'rate'. 
+       * @enum {string|null}
+       */
+      granularity: "seconds" | "minutes" | "hours" | "days" | "months" | "quarters" | "years" | "total" | "" | null;
+      metricId: string;
+      /** @description The name of the property of the event that should be used for this metric. Doesn't apply if the metric is of type 'counter' with an aggregation of count. */
+      propertyName: string;
       /**
        * @description The type of aggregation that should be used for this metric. Please refer to our documentation for an explanation of the different types. 
        * @enum {string}
@@ -1732,9 +1802,8 @@ export interface components {
       /** @enum {string} */
       status?: "active" | "archived";
     };
-    NetsuiteInvoiceCSVView: {
-      /** Format: uri */
-      url: string;
+    NextPlanVersionNumberResponse: {
+      version: number;
     };
     NumericFilter: {
       propertyName: string;
@@ -1779,7 +1848,8 @@ export interface components {
       timezone: "Africa/Abidjan" | "Africa/Accra" | "Africa/Addis_Ababa" | "Africa/Algiers" | "Africa/Asmara" | "Africa/Bamako" | "Africa/Bangui" | "Africa/Banjul" | "Africa/Bissau" | "Africa/Blantyre" | "Africa/Brazzaville" | "Africa/Bujumbura" | "Africa/Cairo" | "Africa/Casablanca" | "Africa/Ceuta" | "Africa/Conakry" | "Africa/Dakar" | "Africa/DarEs_Salaam" | "Africa/Djibouti" | "Africa/Douala" | "Africa/El_Aaiun" | "Africa/Freetown" | "Africa/Gaborone" | "Africa/Harare" | "Africa/Johannesburg" | "Africa/Juba" | "Africa/Kampala" | "Africa/Khartoum" | "Africa/Kigali" | "Africa/Kinshasa" | "Africa/Lagos" | "Africa/Libreville" | "Africa/Lome" | "Africa/Luanda" | "Africa/Lubumbashi" | "Africa/Lusaka" | "Africa/Malabo" | "Africa/Maputo" | "Africa/Maseru" | "Africa/Mbabane" | "Africa/Mogadishu" | "Africa/Monrovia" | "Africa/Nairobi" | "Africa/Ndjamena" | "Africa/Niamey" | "Africa/Nouakchott" | "Africa/Ouagadougou" | "Africa/Porto-Novo" | "Africa/Sao_Tome" | "Africa/Tripoli" | "Africa/Tunis" | "Africa/Windhoek" | "America/Adak" | "America/Anchorage" | "America/Anguilla" | "America/Antigua" | "America/Araguaina" | "America/Argentina/Buenos_Aires" | "America/Argentina/Catamarca" | "America/Argentina/Cordoba" | "America/Argentina/Jujuy" | "America/Argentina/La_Rioja" | "America/Argentina/Mendoza" | "America/Argentina/Rio_Gallegos" | "America/Argentina/Salta" | "America/Argentina/San_Juan" | "America/Argentina/San_Luis" | "America/Argentina/Tucuman" | "America/Argentina/Ushuaia" | "America/Aruba" | "America/Asuncion" | "America/Atikokan" | "America/Bahia" | "America/Bahia_Banderas" | "America/Barbados" | "America/Belem" | "America/Belize" | "America/Blanc-Sablon" | "America/Boa_Vista" | "America/Bogota" | "America/Boise" | "America/Cambridge_Bay" | "America/Campo_Grande" | "America/Cancun" | "America/Caracas" | "America/Cayenne" | "America/Cayman" | "America/Chicago" | "America/Chihuahua" | "America/Ciudad_Juarez" | "America/Costa_Rica" | "America/Creston" | "America/Cuiaba" | "America/Curacao" | "America/Danmarkshavn" | "America/Dawson" | "America/Dawson_Creek" | "America/Denver" | "America/Detroit" | "America/Dominica" | "America/Edmonton" | "America/Eirunepe" | "America/El_Salvador" | "America/Fort_Nelson" | "America/Fortaleza" | "America/Glace_Bay" | "America/Goose_Bay" | "America/Grand_Turk" | "America/Grenada" | "America/Guadeloupe" | "America/Guatemala" | "America/Guayaquil" | "America/Guyana" | "America/Halifax" | "America/Havana" | "America/Hermosillo" | "America/Indiana/Indianapolis" | "America/Indiana/Knox" | "America/Indiana/Marengo" | "America/Indiana/Petersburg" | "America/Indiana/Tell_City" | "America/Indiana/Vevay" | "America/Indiana/Vincennes" | "America/Indiana/Winamac" | "America/Inuvik" | "America/Iqaluit" | "America/Jamaica" | "America/Juneau" | "America/Kentucky/Louisville" | "America/Kentucky/Monticello" | "America/Kralendijk" | "America/La_Paz" | "America/Lima" | "America/Los_Angeles" | "America/Lower_Princes" | "America/Maceio" | "America/Managua" | "America/Manaus" | "America/Marigot" | "America/Martinique" | "America/Matamoros" | "America/Mazatlan" | "America/Menominee" | "America/Merida" | "America/Metlakatla" | "America/Mexico_City" | "America/Miquelon" | "America/Moncton" | "America/Monterrey" | "America/Montevideo" | "America/Montserrat" | "America/Nassau" | "America/New_York" | "America/Nome" | "America/Noronha" | "America/North_Dakota/Beulah" | "America/North_Dakota/Center" | "America/North_Dakota/New_Salem" | "America/Nuuk" | "America/Ojinaga" | "America/Panama" | "America/Paramaribo" | "America/Phoenix" | "America/Port-au-Prince" | "America/PortOf_Spain" | "America/Porto_Velho" | "America/Puerto_Rico" | "America/Punta_Arenas" | "America/Rankin_Inlet" | "America/Recife" | "America/Regina" | "America/Resolute" | "America/Rio_Branco" | "America/Santarem" | "America/Santiago" | "America/Santo_Domingo" | "America/Sao_Paulo" | "America/Scoresbysund" | "America/Sitka" | "America/St_Barthelemy" | "America/St_Johns" | "America/St_Kitts" | "America/St_Lucia" | "America/St_Thomas" | "America/St_Vincent" | "America/Swift_Current" | "America/Tegucigalpa" | "America/Thule" | "America/Tijuana" | "America/Toronto" | "America/Tortola" | "America/Vancouver" | "America/Whitehorse" | "America/Winnipeg" | "America/Yakutat" | "America/Yellowknife" | "Antarctica/Casey" | "Antarctica/Davis" | "Antarctica/DumontDUrville" | "Antarctica/Macquarie" | "Antarctica/Mawson" | "Antarctica/McMurdo" | "Antarctica/Palmer" | "Antarctica/Rothera" | "Antarctica/Syowa" | "Antarctica/Troll" | "Antarctica/Vostok" | "Arctic/Longyearbyen" | "Asia/Aden" | "Asia/Almaty" | "Asia/Amman" | "Asia/Anadyr" | "Asia/Aqtau" | "Asia/Aqtobe" | "Asia/Ashgabat" | "Asia/Atyrau" | "Asia/Baghdad" | "Asia/Bahrain" | "Asia/Baku" | "Asia/Bangkok" | "Asia/Barnaul" | "Asia/Beirut" | "Asia/Bishkek" | "Asia/Brunei" | "Asia/Chita" | "Asia/Choibalsan" | "Asia/Colombo" | "Asia/Damascus" | "Asia/Dhaka" | "Asia/Dili" | "Asia/Dubai" | "Asia/Dushanbe" | "Asia/Famagusta" | "Asia/Gaza" | "Asia/Hebron" | "Asia/Ho_Chi_Minh" | "Asia/Hong_Kong" | "Asia/Hovd" | "Asia/Irkutsk" | "Asia/Jakarta" | "Asia/Jayapura" | "Asia/Jerusalem" | "Asia/Kabul" | "Asia/Kamchatka" | "Asia/Karachi" | "Asia/Kathmandu" | "Asia/Khandyga" | "Asia/Kolkata" | "Asia/Krasnoyarsk" | "Asia/Kuala_Lumpur" | "Asia/Kuching" | "Asia/Kuwait" | "Asia/Macau" | "Asia/Magadan" | "Asia/Makassar" | "Asia/Manila" | "Asia/Muscat" | "Asia/Nicosia" | "Asia/Novokuznetsk" | "Asia/Novosibirsk" | "Asia/Omsk" | "Asia/Oral" | "Asia/Phnom_Penh" | "Asia/Pontianak" | "Asia/Pyongyang" | "Asia/Qatar" | "Asia/Qostanay" | "Asia/Qyzylorda" | "Asia/Riyadh" | "Asia/Sakhalin" | "Asia/Samarkand" | "Asia/Seoul" | "Asia/Shanghai" | "Asia/Singapore" | "Asia/Srednekolymsk" | "Asia/Taipei" | "Asia/Tashkent" | "Asia/Tbilisi" | "Asia/Tehran" | "Asia/Thimphu" | "Asia/Tokyo" | "Asia/Tomsk" | "Asia/Ulaanbaatar" | "Asia/Urumqi" | "Asia/Ust-Nera" | "Asia/Vientiane" | "Asia/Vladivostok" | "Asia/Yakutsk" | "Asia/Yangon" | "Asia/Yekaterinburg" | "Asia/Yerevan" | "Atlantic/Azores" | "Atlantic/Bermuda" | "Atlantic/Canary" | "Atlantic/Cape_Verde" | "Atlantic/Faroe" | "Atlantic/Madeira" | "Atlantic/Reykjavik" | "Atlantic/South_Georgia" | "Atlantic/St_Helena" | "Atlantic/Stanley" | "Australia/Adelaide" | "Australia/Brisbane" | "Australia/Broken_Hill" | "Australia/Darwin" | "Australia/Eucla" | "Australia/Hobart" | "Australia/Lindeman" | "Australia/Lord_Howe" | "Australia/Melbourne" | "Australia/Perth" | "Australia/Sydney" | "Canada/Atlantic" | "Canada/Central" | "Canada/Eastern" | "Canada/Mountain" | "Canada/Newfoundland" | "Canada/Pacific" | "Europe/Amsterdam" | "Europe/Andorra" | "Europe/Astrakhan" | "Europe/Athens" | "Europe/Belgrade" | "Europe/Berlin" | "Europe/Bratislava" | "Europe/Brussels" | "Europe/Bucharest" | "Europe/Budapest" | "Europe/Busingen" | "Europe/Chisinau" | "Europe/Copenhagen" | "Europe/Dublin" | "Europe/Gibraltar" | "Europe/Guernsey" | "Europe/Helsinki" | "Europe/IsleOf_Man" | "Europe/Istanbul" | "Europe/Jersey" | "Europe/Kaliningrad" | "Europe/Kirov" | "Europe/Kyiv" | "Europe/Lisbon" | "Europe/Ljubljana" | "Europe/London" | "Europe/Luxembourg" | "Europe/Madrid" | "Europe/Malta" | "Europe/Mariehamn" | "Europe/Minsk" | "Europe/Monaco" | "Europe/Moscow" | "Europe/Oslo" | "Europe/Paris" | "Europe/Podgorica" | "Europe/Prague" | "Europe/Riga" | "Europe/Rome" | "Europe/Samara" | "Europe/San_Marino" | "Europe/Sarajevo" | "Europe/Saratov" | "Europe/Simferopol" | "Europe/Skopje" | "Europe/Sofia" | "Europe/Stockholm" | "Europe/Tallinn" | "Europe/Tirane" | "Europe/Ulyanovsk" | "Europe/Vaduz" | "Europe/Vatican" | "Europe/Vienna" | "Europe/Vilnius" | "Europe/Volgograd" | "Europe/Warsaw" | "Europe/Zagreb" | "Europe/Zurich" | "GMT" | "Indian/Antananarivo" | "Indian/Chagos" | "Indian/Christmas" | "Indian/Cocos" | "Indian/Comoro" | "Indian/Kerguelen" | "Indian/Mahe" | "Indian/Maldives" | "Indian/Mauritius" | "Indian/Mayotte" | "Indian/Reunion" | "Pacific/Apia" | "Pacific/Auckland" | "Pacific/Bougainville" | "Pacific/Chatham" | "Pacific/Chuuk" | "Pacific/Easter" | "Pacific/Efate" | "Pacific/Fakaofo" | "Pacific/Fiji" | "Pacific/Funafuti" | "Pacific/Galapagos" | "Pacific/Gambier" | "Pacific/Guadalcanal" | "Pacific/Guam" | "Pacific/Honolulu" | "Pacific/Kanton" | "Pacific/Kiritimati" | "Pacific/Kosrae" | "Pacific/Kwajalein" | "Pacific/Majuro" | "Pacific/Marquesas" | "Pacific/Midway" | "Pacific/Nauru" | "Pacific/Niue" | "Pacific/Norfolk" | "Pacific/Noumea" | "Pacific/Pago_Pago" | "Pacific/Palau" | "Pacific/Pitcairn" | "Pacific/Pohnpei" | "Pacific/Port_Moresby" | "Pacific/Rarotonga" | "Pacific/Saipan" | "Pacific/Tahiti" | "Pacific/Tarawa" | "Pacific/Tongatapu" | "Pacific/Wake" | "Pacific/Wallis" | "US/Alaska" | "US/Arizona" | "US/Central" | "US/Eastern" | "US/Hawaii" | "US/Mountain" | "US/Pacific" | "UTC";
       stripeAccountId: string;
       braintreeMerchantId: string;
-      taxProviders: readonly ("taxjar" | "lotus")[];
+      taxProviders: readonly ("taxjar" | "lotus" | "netsuite")[];
+      crmIntegrationAllowed: boolean;
     };
     OrganizationCreateRequest: {
       organizationName: string;
@@ -1793,12 +1863,12 @@ export interface components {
     OrganizationSetting: {
       settingId: string;
       /** @enum {string} */
-      settingName: "generateCustomerAfterCreatingInLotus" | "genCustInBraintreeAfterLotus" | "subscriptionFilterKeys" | "paymentGracePeriod";
+      settingName: "generateCustomerAfterCreatingInLotus" | "genCustInBraintreeAfterLotus" | "subscriptionFilterKeys" | "paymentGracePeriod" | "crmCustomerSource";
       settingValues: {
         [key: string]: Record<string, never> | undefined;
       };
       /** @enum {string} */
-      settingGroup?: "stripe" | "braintree" | "billing";
+      settingGroup?: "stripe" | "braintree" | "billing" | "crm";
     };
     OrganizationSettingUpdate: {
       settingValues?: {
@@ -1888,7 +1958,7 @@ export interface components {
       paymentProvider?: "stripe" | "braintree";
       paymentProviderId?: string;
       nangoConnected?: boolean;
-      taxProviders?: ("taxjar" | "lotus")[];
+      taxProviders?: ("taxjar" | "lotus" | "netsuite")[];
     };
     PatchedPlanUpdateRequest: {
       /** @description Name of the plan */
@@ -1963,6 +2033,8 @@ export interface components {
       externalLinks: (components["schemas"]["InitialExternalPlanLink"])[];
       /** @description The number of versions that this plan has. */
       numVersions: number;
+      /** @description This plan's currently active version. */
+      activeVersion: number;
       /** @description The number of active subscriptions that this plan has across all versions. */
       activeSubscriptions: number;
       /** @description The tags that this plan has. */
@@ -2023,32 +2095,34 @@ export interface components {
        * @description Duration of the plan 
        * @enum {string|null}
        */
-      planDuration?: "monthly" | "quarterly" | "yearly" | "" | null;
+      planDuration: "monthly" | "quarterly" | "yearly" | "" | null;
       initialExternalLinks?: (components["schemas"]["InitialExternalPlanLinkRequest"])[];
       initialVersion: components["schemas"]["InitialPlanVersionCreateRequest"];
       tags?: (components["schemas"]["TagRequest"])[];
     };
     PlanDetail: {
+      /** @description Description of the plan */
+      planDescription: string;
+      /** @description The tags that this plan has. */
+      tags: readonly (components["schemas"]["Tag"])[];
       /** @description Name of the plan */
       planName: string;
-      versions: readonly (components["schemas"]["PlanVersionDetail"])[];
+      /** @description The number of versions that this plan has. */
+      numVersions: number;
       /**
        * @description Duration of the plan 
        * @enum {string|null}
        */
       planDuration: "monthly" | "quarterly" | "yearly" | "" | null;
-      /** @description The tags that this plan has. */
-      tags: readonly (components["schemas"]["Tag"])[];
-      /** @description Description of the plan */
-      planDescription: string;
-      taxjarCode?: string;
-      /** @description The number of versions that this plan has. */
-      numVersions: number;
       /** @description The number of active subscriptions that this plan has across all versions. */
       activeSubscriptions: number;
-      planId: string;
+      taxjarCode?: string;
+      /** @description This plan's currently active version. */
+      activeVersion: number;
       /** @description The external links that this plan has. */
       externalLinks: (components["schemas"]["InitialExternalPlanLink"])[];
+      planId: string;
+      versions: readonly (components["schemas"]["PlanVersionDetail"])[];
     };
     PlanNameAndID: {
       /** @description Name of the plan */
@@ -2087,6 +2161,9 @@ export interface components {
       /** Format: date-time */
       activeTo: string;
       localizedName: string;
+      targetCustomers: (components["schemas"]["LightweightCustomer"])[];
+      /** Format: date-time */
+      createdOn: string;
       /** @deprecated */
       usageBillingFrequency: string;
       /**
@@ -2115,27 +2192,37 @@ export interface components {
       version: number;
       targetCustomerIds?: (string)[];
       localizedName?: string;
+      /** @default false */
+      makeActive?: boolean;
+      /**
+       * @default replaceOnRenewal 
+       * @enum {string}
+       */
+      makeActiveType?: "replaceOnRenewal" | "grandfather";
     };
     PlanVersionDetail: {
-      replaceWith: components["schemas"]["LightweightPlanVersion"];
-      planName: string;
-      /** Format: date-time */
-      activeFrom: string;
-      recurringCharges: readonly (components["schemas"]["RecurringCharge"])[];
-      localizedName: string;
+      features: (components["schemas"]["Feature"])[];
+      components: (components["schemas"]["PlanComponent"])[];
+      planId: string;
       /** Format: date-time */
       activeTo: string;
-      features: (components["schemas"]["Feature"])[];
-      planId: string;
-      versionId: string;
-      currency: components["schemas"]["PricingUnit"];
-      components: (components["schemas"]["PlanComponent"])[];
-      version: number | "customVersion";
-      alerts: readonly (components["schemas"]["UsageAlert"])[];
-      activeSubscriptions: number;
+      localizedName: string;
+      recurringCharges: readonly (components["schemas"]["RecurringCharge"])[];
       transitionTo: components["schemas"]["LightweightPlan"];
+      replaceWith: components["schemas"]["LightweightPlanVersion"];
+      alerts: readonly (components["schemas"]["UsageAlert"])[];
+      /** Format: date-time */
+      createdOn: string;
+      planName: string;
+      versionId: string;
       /** @enum {string} */
       status: "active" | "retiring" | "grandfathered" | "deleted" | "inactive" | "notStarted";
+      version: number | "customVersion";
+      activeSubscriptions: number;
+      targetCustomers: (components["schemas"]["LightweightCustomer"])[];
+      /** Format: date-time */
+      activeFrom: string;
+      currency: components["schemas"]["PricingUnit"];
       priceAdjustment: components["schemas"]["PriceAdjustment"] | null;
     };
     PlanVersionHistoricalSubscription: {
@@ -2367,6 +2454,17 @@ export interface components {
       success: boolean;
       message: string;
     };
+    SingleCRMProvider: {
+      /** @enum {string} */
+      crmProviderName: "salesforce";
+      connected: boolean;
+      selfHosted: boolean;
+      working: boolean;
+      connectionId: string;
+      accountId: string;
+      /** Format: uri */
+      nativeOrgUrl: string;
+    };
     SingleCustomerValue: {
       customerId: string;
       customerName: string;
@@ -2414,12 +2512,18 @@ export interface components {
       revenueByMetric: (components["schemas"]["MetricRevenue"])[];
       topCustomers: components["schemas"]["TopCustomers"];
     };
-    SubscriptionCategoricalFilter: {
-      value: string;
-      /** @description The string name of the property to filter on. Example: 'productId' */
-      propertyName: string;
+    StoreTokenRequestRequest: {
+      /** @description The public token obtained from the Vessel API */
+      publicToken: string;
     };
-    SubscriptionCategoricalFilterDetail: {
+    StoreTokenResponse: {
+      /** @description Whether the token was successfully stored */
+      success: boolean;
+    };
+    SubscriptionCancelledRequest: {
+      payload: components["schemas"]["SubscriptionRecordRequest"];
+    };
+    SubscriptionCategoricalFilter: {
       value: string;
       /** @description The string name of the property to filter on. Example: 'productId' */
       propertyName: string;
@@ -2429,8 +2533,12 @@ export interface components {
       /** @description The string name of the property to filter on. Example: 'productId' */
       propertyName: string;
     };
+    SubscriptionCreatedRequest: {
+      payload: components["schemas"]["SubscriptionRecordRequest"];
+    };
     SubscriptionCustomerSummary: {
       billingPlanName: string;
+      planVersion: number;
       /**
        * Format: date-time 
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
@@ -2460,6 +2568,9 @@ export interface components {
       billingPlan: components["schemas"]["LightweightPlanVersion"];
       fullyBilled: boolean;
       addons: (components["schemas"]["LightweightAddOnSubscriptionRecord"])[];
+      metadata: {
+        [key: string]: Record<string, never> | undefined;
+      };
     };
     SubscriptionRecordCancelRequest: {
       /**
@@ -2505,6 +2616,10 @@ export interface components {
       planId?: string;
       /** @description The initial units for the plan components' prepaid fixed charges. This is only required if the plan has plan components where you did not specify the initial units. */
       componentFixedChargesInitialUnits?: (components["schemas"]["ComponentsFixedChargeInitialValueRequest"])[];
+      /** @description A JSON object containing additional information about the subscription. */
+      metadata?: {
+        [key: string]: Record<string, never> | undefined;
+      };
     };
     SubscriptionRecordCreateSerializerOldRequest: {
       /**
@@ -2529,6 +2644,29 @@ export interface components {
        * @description The Lotus planId, found in the billing plan object. This field has been deprecated in favor of versionId for the sake of being explicit. If used, a best effort will be made to find the correct plan version (matching preferred currencies, prioritizing custom plans), but if more than one plan versions matches this criteria this will return an error.
        */
       planId?: string;
+    };
+    SubscriptionRecordRequest: {
+      subscriptionId: string;
+      /**
+       * Format: date-time 
+       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
+       */
+      startDate: string;
+      /**
+       * Format: date-time 
+       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
+       */
+      endDate: string;
+      /** @description Whether the subscription automatically renews. Defaults to true. */
+      autoRenew: boolean;
+      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
+      isNew: boolean;
+      subscriptionFilters: (components["schemas"]["SubscriptionCategoricalFilterRequest"])[];
+      billingPlan: components["schemas"]["LightweightPlanVersionRequest"];
+      addons: (components["schemas"]["LightweightAddOnSubscriptionRecordRequest"])[];
+      metadata: {
+        [key: string]: Record<string, never> | undefined;
+      };
     };
     SubscriptionRecordSwitchPlanRequest: {
       /**
@@ -2559,6 +2697,10 @@ export interface components {
        * @description Change the end date for the subscription.
        */
       endDate?: string;
+      /** @description Update the metadata for the subscription. */
+      metadata?: {
+        [key: string]: Record<string, never> | undefined;
+      };
     };
     SubscriptionRecordUpdateSerializerOldRequest: {
       /**
@@ -2585,6 +2727,12 @@ export interface components {
        * @description Change the end date for the subscription.
        */
       endDate?: string;
+    };
+    SubscriptionRenewedRequest: {
+      payload: components["schemas"]["SubscriptionRecordRequest"];
+    };
+    SuccessResponse: {
+      success: boolean;
     };
     Tag: {
       tagName: string;
@@ -2636,6 +2784,16 @@ export interface components {
       /** @enum {string} */
       status: "success";
       detail: string;
+    };
+    URLResponse: {
+      /** Format: uri */
+      url: string;
+      exists: boolean;
+    };
+    UpdateCRMSourceOfTruthRequest: {
+      /** @enum {string} */
+      crmProviderName: "salesforce";
+      lotusIsSource: boolean;
     };
     UsageAlert: {
       usageAlertId: string;
@@ -2703,15 +2861,15 @@ export interface components {
     WebhookEndpointRequest: {
       name?: string;
       webhookUrl: string;
-      triggersIn: ("invoice.created" | "invoice.paid" | "invoice.pastDue" | "usageAlert.triggered" | "customer.created")[];
+      triggersIn: ("customer.created" | "invoice.created" | "invoice.paid" | "invoice.pastDue" | "subscription.created" | "usageAlert.triggered" | "subscription.cancelled" | "subscription.renewed")[];
     };
     WebhookTrigger: {
       /** @enum {string} */
-      triggerName: "invoice.created" | "invoice.paid" | "invoice.pastDue" | "usageAlert.triggered" | "customer.created";
+      triggerName: "customer.created" | "invoice.created" | "invoice.paid" | "invoice.pastDue" | "subscription.created" | "usageAlert.triggered" | "subscription.cancelled" | "subscription.renewed";
     };
     WebhookTriggerRequest: {
       /** @enum {string} */
-      triggerName: "invoice.created" | "invoice.paid" | "invoice.pastDue" | "usageAlert.triggered" | "customer.created";
+      triggerName: "customer.created" | "invoice.created" | "invoice.paid" | "invoice.pastDue" | "subscription.created" | "usageAlert.triggered" | "subscription.cancelled" | "subscription.renewed";
     };
   };
   responses: never;
@@ -2985,6 +3143,7 @@ export interface operations {
   appCostAnalysisRetrieve: {
     /** @description Returns the revenue for an organization in a given time period. */
     parameters: {
+        /** @description The id provided when creating the customer, we suggest matching with your internal customer id in your backend */
       query: {
         customerId: string;
         endDate: string;
@@ -3098,6 +3257,56 @@ export interface operations {
       };
     };
   };
+  appCrmList: {
+    responses: {
+      200: {
+        content: {
+          "application/json": (components["schemas"]["SingleCRMProvider"])[];
+        };
+      };
+    };
+  };
+  appCrmLinkTokenCreate: {
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["LinkTokenResponse"];
+        };
+      };
+    };
+  };
+  appCrmSetCustomerSourceCreate: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateCRMSourceOfTruthRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["UpdateCRMSourceOfTruthRequest"];
+        "multipart/form-data": components["schemas"]["UpdateCRMSourceOfTruthRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["SuccessResponse"];
+        };
+      };
+    };
+  };
+  appCrmStoreTokenCreate: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["StoreTokenRequestRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["StoreTokenRequestRequest"];
+        "multipart/form-data": components["schemas"]["StoreTokenRequestRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["StoreTokenResponse"];
+        };
+      };
+    };
+  };
   appCustomersList: {
     responses: {
       200: {
@@ -3172,6 +3381,20 @@ export interface operations {
       };
     };
   };
+  appCustomersDraftInvoiceRetrieve: {
+    parameters: {
+      query?: {
+        includeNextPeriod?: boolean;
+      };
+      path: {
+        customerId: string;
+      };
+    };
+    responses: {
+      /** @description No response body */
+      200: never;
+    };
+  };
   appCustomersSummaryRetrieve: {
     /** @description Get the current settings for the organization. */
     responses: {
@@ -3230,23 +3453,6 @@ export interface operations {
       400: {
         content: {
           "application/json": components["schemas"]["DemoRegistrationFailure"];
-        };
-      };
-    };
-  };
-  appDraftInvoiceRetrieve: {
-    /** @description Pagination-enabled endpoint for retrieving an organization's event stream. */
-    parameters: {
-        /** @description The id provided when creating the customer, we suggest matching with your internal customer id in your backend */
-      query: {
-        customerId: string;
-        includeNextPeriod?: boolean;
-      };
-    };
-    responses: {
-      200: {
-        content: {
-          "application/json": components["schemas"]["DraftInvoiceResponse"];
         };
       };
     };
@@ -3558,11 +3764,20 @@ export interface operations {
       };
     };
   };
+  appNetsuiteCustomersRetrieve: {
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["URLResponse"];
+        };
+      };
+    };
+  };
   appNetsuiteInvoicesRetrieve: {
     responses: {
       200: {
         content: {
-          "application/json": components["schemas"]["NetsuiteInvoiceCSVView"];
+          "application/json": components["schemas"]["URLResponse"];
         };
       };
     };
@@ -3604,8 +3819,8 @@ export interface operations {
         /** @description Filters organizationSettings to a single settingGroup. Defaults to returning all settings. */
         /** @description Filters organizationSettings by settingName. Defaults to returning all settings. */
       query?: {
-        settingGroup?: "stripe" | "braintree" | "billing";
-        settingName?: ("generateCustomerAfterCreatingInLotus" | "genCustInBraintreeAfterLotus" | "subscriptionFilterKeys" | "paymentGracePeriod")[];
+        settingGroup?: "stripe" | "braintree" | "billing" | "crm";
+        settingName?: ("generateCustomerAfterCreatingInLotus" | "genCustInBraintreeAfterLotus" | "subscriptionFilterKeys" | "paymentGracePeriod" | "crmCustomerSource")[];
       };
     };
     responses: {
@@ -3693,6 +3908,27 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["Organization"];
+        };
+      };
+    };
+  };
+  appOrganizationsSyncCrmCreate: {
+    parameters: {
+      path: {
+        organizationId: string;
+      };
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["CRMSyncRequestRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["CRMSyncRequestRequest"];
+        "multipart/form-data": components["schemas"]["CRMSyncRequestRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["DeleteAddOn"];
         };
       };
     };
@@ -4295,6 +4531,21 @@ export interface operations {
       };
     };
   };
+  appPlansVersionsNextRetrieve: {
+    /** @description ViewSet for viewing and editing Plans. */
+    parameters: {
+      path: {
+        planId: string;
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["NextPlanVersionNumberResponse"];
+        };
+      };
+    };
+  };
   appPlansByCustomerRetrieve: {
     responses: {
       200: {
@@ -4460,7 +4711,7 @@ export interface operations {
       };
     };
   };
-  appSubscriptionsCancelCreate: {
+  appSubscriptionsCancelCreate2: {
     parameters: {
         /** @description The ID of the subscription to cancel. */
       path: {
@@ -4528,7 +4779,7 @@ export interface operations {
       };
     };
   };
-  appSubscriptionsUpdateCreate: {
+  appSubscriptionsUpdateCreate2: {
     parameters: {
         /** @description The ID of the subscription to update. */
       path: {
@@ -4546,6 +4797,76 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["SubscriptionRecord"];
+        };
+      };
+    };
+  };
+  appSubscriptionsAddCreate: {
+    /** @deprecated */
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SubscriptionRecordCreateSerializerOldRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["SubscriptionRecordCreateSerializerOldRequest"];
+        "multipart/form-data": components["schemas"]["SubscriptionRecordCreateSerializerOldRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["SubscriptionRecord"];
+        };
+      };
+    };
+  };
+  appSubscriptionsCancelCreate: {
+    /** @deprecated */
+    parameters: {
+        /** @description Filter to a specific customer. */
+        /** @description Filter to a specific plan. If not specified, all plans will be included in the cancellation request. */
+        /** @description Filter to a specific set of subscription filters. If your billing model only allows for one subscription per customer, you very likely do not need this field. Must be formatted as a JSON-encoded + stringified list of dictionaries, where each dictionary has a key of 'propertyName' and a key of 'value'. */
+      query: {
+        customerId: string;
+        planId?: string;
+        subscriptionFilters?: (components["schemas"]["SubscriptionCategoricalFilterRequest"])[];
+      };
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["SubscriptionRecordCancelRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["SubscriptionRecordCancelRequest"];
+        "multipart/form-data": components["schemas"]["SubscriptionRecordCancelRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": (components["schemas"]["SubscriptionRecord"])[];
+        };
+      };
+    };
+  };
+  appSubscriptionsUpdateCreate: {
+    parameters: {
+        /** @description Filter to a specific customer. */
+        /** @description Filter to a specific plan. */
+        /** @description Filter to a specific set of subscription filters. If your billing model only allows for one subscription per customer, you very likely do not need this field. Must be formatted as a JSON-encoded + stringified list of dictionaries, where each dictionary has a key of 'propertyName' and a key of 'value'. */
+      query: {
+        customerId: string;
+        planId: string;
+        subscriptionFilters?: (components["schemas"]["SubscriptionCategoricalFilterRequest"])[];
+      };
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["SubscriptionRecordUpdateSerializerOldRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["SubscriptionRecordUpdateSerializerOldRequest"];
+        "multipart/form-data": components["schemas"]["SubscriptionRecordUpdateSerializerOldRequest"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": (components["schemas"]["SubscriptionRecord"])[];
         };
       };
     };

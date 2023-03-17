@@ -2,9 +2,11 @@ import React from "react";
 import { Modal, Select, Input, Form, InputNumber } from "antd";
 import { CurrencyType } from "../../types/pricing-unit-type";
 import { components } from "../../gen-types";
+import { CreateRecurringCharge } from "../../types/plan-type";
 
 interface Props {
   visible: boolean;
+  initialValues: CreateRecurringCharge | null;
   onCancel: () => void;
   onAddRecurringCharges: (
     recurringCharge: components["schemas"]["PlanDetail"]["versions"][0]["recurring_charges"][number]
@@ -17,14 +19,21 @@ export default function RecurringChargeForm({
   onCancel,
   onAddRecurringCharges,
   selectedCurrency,
+  initialValues,
 }: Props) {
   const [form] = Form.useForm();
+
+  const title = initialValues
+    ? "Edit Recurring Charge"
+    : "Add Recurring Charge";
+
+  const okText = initialValues ? "Save" : "Add";
 
   return (
     <Modal
       visible={visible}
-      title="Add Recurring Charge"
-      okText="Add"
+      title={title}
+      okText={okText}
       okType="default"
       cancelText="Cancel"
       okButtonProps={{
@@ -53,6 +62,7 @@ export default function RecurringChargeForm({
           invoicing_interval_count: undefined,
           reset_interval_unit: null,
           reset_interval_count: undefined,
+          ...initialValues,
         }}
         name="recurring-charge-form"
         onFinish={(values) => {

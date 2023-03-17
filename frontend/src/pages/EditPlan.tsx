@@ -1,9 +1,13 @@
 import { Button, Form, Row, Col } from "antd";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient } from "react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  UseQueryResult,
+} from "react-query";
 import { toast } from "react-toastify";
-import { ArrowLeftOutlined } from "@ant-design/icons";
 import { compact, noop, sortBy } from "lodash";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
 
@@ -14,8 +18,9 @@ import {
   PlanDetailType,
   CreateInitialVersionType,
   CreatePlanVersionType,
+  CreateRecurringCharge,
 } from "../types/plan-type";
-import { Organization, Plan } from "../api/api";
+import { Customer, Organization, Plan } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
 import { usePlanUpdater } from "../context/PlanContext";
@@ -75,11 +80,17 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     plan.versions[versionIndex].price_adjustment?.price_adjustment_type ??
       "none"
   );
+  const [editRecurringChargeItemIdx, setEditRecurringChargeItemIdx] = useState<
+    number | null
+  >(null);
+  const [editRecurringChargeItem, setEditRecurringChargeItem] =
+    useState<CreateRecurringCharge | null>(null);
 
   const latestVersion = sortBy(
     plan.versions.filter((v) => typeof v.version === "number"),
     "version"
   ).reverse()[0];
+
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>(
     plan.versions[versionIndex].currency ?? {
       symbol: "",
@@ -87,15 +98,31 @@ function EditPlan({ type, plan, versionIndex }: Props) {
       name: "",
     }
   );
+
   const [recurringCharges, setRecurringCharges] = useState<
     components["schemas"]["PlanDetail"]["versions"][0]["recurring_charges"]
   >([]);
+
+  const { data: customers }: UseQueryResult<any[]> = useQuery<any[]>(
+    ["customer_list"],
+    () => Customer.getCustomers().then((res) => res)
+  );
 
   const queryClient = useQueryClient();
 
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>(
     plan.versions[versionIndex].features
   );
+
+  const [nextVersion, setNextVersion] = useState<number>();
+
+  useEffect(() => {
+    async function getNextVersion() {
+      const response = await Plan.nextVersion(plan.plan_id);
+      setNextVersion(response.version);
+    }
+    getNextVersion();
+  }, []);
 
   useEffect(() => {
     if (!allPlans?.length) {
@@ -111,8 +138,14 @@ function EditPlan({ type, plan, versionIndex }: Props) {
         id: component.billable_metric.metric_id,
         metric_id: component.billable_metric.metric_id,
         pricing_unit: component.pricing_unit,
+        prepaid_charge: component.prepaid_charge,
+        invoicing_interval_count: component.invoicing_interval_count,
+        invoicing_interval_unit: component.invoicing_interval_unit,
+        reset_interval_count: component.reset_interval_count,
+        reset_interval_unit: component.reset_interval_unit,
       })
     );
+    setRecurringCharges(plan.versions[versionIndex].recurring_charges);
     setComponentsData(initialComponents);
   }, [plan.versions, versionIndex]);
 
@@ -210,15 +243,27 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     setcomponentVisible(true);
   };
 
-  const hideTargetCustomerForm = () => {
-    setTargetCustomerFormVisible(false);
-  };
-
   const handleComponentAdd = (newData: any) => {
     const old = componentsData;
+
+    /// check if the metricId on newdata is already in a component in componentsData
+    // if it is then raise an alert with toast
+    // if not then add the new data to the componentsData
+
+    const metricComponentExists = componentsData.some(
+      (item) => item.metric_id === newData.metric_id
+    );
+
+    if (metricComponentExists && !editComponentItem) {
+      toast.error("Metric already exists in another component", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+      return;
+    }
+
     if (editComponentItem) {
       const index = componentsData.findIndex(
-        (item) => item.id === editComponentItem.id
+        (item) => item.metric_id === editComponentItem.metric_id
       );
       old[index] = newData;
       setComponentsData(old);
@@ -232,13 +277,14 @@ function EditPlan({ type, plan, versionIndex }: Props) {
       ];
       setComponentsData(newComponentsData);
     }
+
     setEditComponentsItem(undefined);
     setcomponentVisible(false);
   };
 
   const handleComponentEdit = (name: string) => {
     const currentComponent = componentsData.filter(
-      (item) => item.id === name
+      (item) => item.metric_id === name
     )[0];
 
     setEditComponentsItem(currentComponent);
@@ -248,6 +294,25 @@ function EditPlan({ type, plan, versionIndex }: Props) {
   const deleteComponent = (id: string) => {
     setComponentsData(componentsData.filter((item) => item.id !== id));
   };
+
+  const handleRecurringChargeEdit = (idx: number) => {
+    const currentRecurringCharge = recurringCharges[idx];
+
+    setEditRecurringChargeItem(currentRecurringCharge);
+    setEditRecurringChargeItemIdx(idx);
+    setShowRecurringChargeModal(true);
+  };
+
+  const handleDeleteRecurringCharge = (idx: number) => {
+    setRecurringCharges((p) => {
+      const newRecurringCharges = [...p];
+
+      newRecurringCharges.splice(idx, 1);
+
+      return newRecurringCharges;
+    });
+  };
+
   const hideFeatureModal = () => {
     setFeatureVisible(false);
   };
@@ -264,9 +329,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     form
       .validateFields()
       .then(() => {
-        if (type === "custom") {
-          setTargetCustomerFormVisible(true);
-        } else if (type === "version") {
+        if (type === "version") {
           setVersionActiveFormVisible(true);
         } else {
           form.submit();
@@ -306,7 +369,11 @@ function EditPlan({ type, plan, versionIndex }: Props) {
             const usagecomponent: CreateComponent = {
               metric_id: components[i].metric_id,
               tiers: components[i].tiers,
-              proration_granularity: components[i].proration_granularity,
+              invoicing_interval_count: components[i].invoicing_interval_count,
+              invoicing_interval_unit: components[i].invoicing_interval_unit,
+              reset_interval_count: components[i].reset_interval_count,
+              reset_interval_unit: components[i].reset_interval_unit,
+              prepaid_charge: components[i].prepaid_charge,
             };
             usagecomponentslist.push(usagecomponent);
           }
@@ -396,7 +463,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           if (type === "currency") {
             newVersion.version = plan.versions[versionIndex].version;
           } else if (type === "version") {
-            newVersion.version = latestVersion.version + 1;
+            newVersion.version = nextVersion;
           } else {
             newVersion.version = plan.versions[versionIndex].version;
             newVersion.target_customer_ids = compact([targetCustomerId]);
@@ -427,7 +494,6 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           }
 
           mutation.mutate(newVersion);
-          return;
         }
       })
       .catch((err) => {
@@ -540,7 +606,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
             plan_currency: selectedCurrency,
           }}
           onChange={async () => {
-            const isValid = await step.validate(form);
+            const isValid = await step.validate(form, type);
 
             setIsCurrentStepValid(isValid);
           }}
@@ -560,7 +626,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
                   activeItem={currentStep}
                   onItemClick={async (idx) => {
                     if (idx > currentStep) {
-                      const isValid = await step.validate(form);
+                      const isValid = await step.validate(form, type);
                       if (!isValid) {
                         return;
                       }
@@ -639,6 +705,11 @@ function EditPlan({ type, plan, versionIndex }: Props) {
             setRecurringCharges={setRecurringCharges}
             disabledFields={getDisabledFields(type)}
             highlightedFields={type === "currency" ? ["plan_currency"] : []}
+            customers={customers}
+            targetCustomerId={targetCustomerId}
+            setTargetCustomerId={setTargetCustomerId}
+            handleEditRecurringCharge={handleRecurringChargeEdit}
+            handleDeleteRecurringCharge={handleDeleteRecurringCharge}
           />
         </Form>
 
@@ -666,26 +737,34 @@ function EditPlan({ type, plan, versionIndex }: Props) {
         {showRecurringChargeModal ? (
           <RecurringChargeForm
             visible={showRecurringChargeModal}
+            initialValues={editRecurringChargeItem}
             selectedCurrency={selectedCurrency}
-            onCancel={() => setShowRecurringChargeModal(false)}
-            onAddRecurringCharges={(newRecurringCharge) => {
-              setRecurringCharges((prev) => [...prev, newRecurringCharge]);
+            onCancel={() => {
               setShowRecurringChargeModal(false);
+              setEditRecurringChargeItem(null);
+              setEditRecurringChargeItemIdx(null);
+            }}
+            onAddRecurringCharges={(newRecurringCharge) => {
+              if (
+                editRecurringChargeItem &&
+                typeof editRecurringChargeItemIdx === "number"
+              ) {
+                setRecurringCharges((prev) => [
+                  ...prev.slice(0, editRecurringChargeItemIdx),
+                  newRecurringCharge,
+                  ...prev.slice(editRecurringChargeItemIdx + 1),
+                ]);
+              } else {
+                setRecurringCharges((prev) => [...prev, newRecurringCharge]);
+              }
+
+              setShowRecurringChargeModal(false);
+              setEditRecurringChargeItem(null);
+              setEditRecurringChargeItemIdx(null);
             }}
           />
         ) : null}
       </Form.Provider>
-
-      {targetCustomerFormVisible ? (
-        <TargetCustomerForm
-          visible={targetCustomerFormVisible}
-          onCancel={hideTargetCustomerForm}
-          onAddTargetCustomer={(customerId) => {
-            completeCustomPlan(customerId);
-            hideTargetCustomerForm();
-          }}
-        />
-      ) : null}
 
       {versionActiveFormVisible ? (
         <VersionActiveForm

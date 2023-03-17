@@ -1,5 +1,4 @@
 @import url("https://fonts.googleapis.com/css2?family=Arimo:wght@400;500;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Alliance+No+2&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 @tailwind base;
 @tailwind components;
@@ -13,7 +12,7 @@
 }
 @font-face {
   font-family: "Alliance No.2";
-  src: local url("../fonts/Alliance-No.2-Regular.woff") format("woff");
+  src: local url("../fonts/Alliance-No.2-Regular.otf") format("woff");
 }
 .Inter {
   font-family: "Inter", sans-serif;

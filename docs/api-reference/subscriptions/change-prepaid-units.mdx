@@ -1,8 +1,30 @@
 ---
-title: "Update a subscription"
+title: "Change Prepaid Units"
 openapi: "POST /api/subscriptions/{subscription_id}/components/{metric_id}/change_prepaid_units/"
 description: "Change the number of prepaid usage units in a subscription."
 ---
+
+<CodeGroup>
+
+```py Python
+lotus.change_prepaid_units(
+    subscription_id='sub_a623349004cd4947aca1851c64aa6fbd',
+    metric_id='metric_a47ac0bf',
+    units=32,
+    invoice_now=true
+)
+```
+
+```ts Typescript
+await lotus.changePrepaidUnits({
+  subscription_id = "sub_a623349004cd4947aca1851c64aa6fbd",
+  metric_id = "metric_a47ac0bf",
+  units = 32,
+  invoice_now = true,
+});
+```
+
+</CodeGroup>
 
 In Lotus, you can define a certain number of units to be "prepaid" for a subscription. For example, if your business uses seats as a metric, you could define that your plan has 5 seats "prepaid" for each subscription. This means that the subscription will have 5 seats available for use, and you can add more seats as needed.
 

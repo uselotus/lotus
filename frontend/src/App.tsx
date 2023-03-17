@@ -87,7 +87,7 @@ function App() {
     }
   }, [isAuthenticated]);
 
-  if (isLoading) {
+  if (isLoading && sessionData === undefined) {
     return (
       <div className="flex h-screen">
         <div className="m-auto">
@@ -97,17 +97,15 @@ function App() {
     );
   }
 
-  if (isAuthenticated) {
+  if (!isAuthenticated) {
     return (
       <div>
         <ToastContainer
           autoClose={3000}
+          toastClassName="rounded-md bg-background font-main"
           bodyClassName=" text-gold font-main"
-          position="top-center"
         />
-        <PlanProvider>
-          <AppRoutes />
-        </PlanProvider>
+        <ExternalRoutes />
       </div>
     );
   }
@@ -115,10 +113,12 @@ function App() {
     <div>
       <ToastContainer
         autoClose={3000}
-        toastClassName="rounded-md bg-background font-main"
         bodyClassName=" text-gold font-main"
+        position="top-center"
       />
-      <ExternalRoutes />
+      <PlanProvider>
+        <AppRoutes />
+      </PlanProvider>
     </div>
   );
 }

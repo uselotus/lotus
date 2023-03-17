@@ -400,7 +400,6 @@ const ViewPlans: FC = () => {
               <PlusOutlined className="!text-white w-12 h-12 cursor-pointer" />
               Create Plan
             </div>
-            <ArrowRightOutlined className="pl-2" />
           </div>
         </Button>,
       ]}

@@ -352,6 +352,7 @@ function CreateMetricForm(props: {
         <div className="flex justify-center items-center mt-8 mb-8">
           <Button
             type="default"
+            id="define-new-metric"
             onClick={() => {
               setExpandForm(true);
             }}
@@ -390,7 +391,7 @@ function CreateMetricForm(props: {
                     },
                   ]}
                 >
-                  <Input />
+                  <Input id="metric-name-input" />
                 </Form.Item>
               </Tooltip>
               {eventType !== "custom" && (
@@ -409,7 +410,7 @@ function CreateMetricForm(props: {
                       },
                     ]}
                   >
-                    <Input />
+                    <Input id="event-name-input" />
                   </Form.Item>
                 </Tooltip>
               )}

@@ -32,6 +32,7 @@ import { CurrencyType } from "../../types/pricing-unit-type";
 import { PageLayout } from "../base/PageLayout";
 import { QueryErrors } from "../../types/error-response-types";
 import { DeleteOutlined } from "@ant-design/icons";
+import { components } from "../../gen-types";
 
 type CustomerDetailsParams = {
   customerId: string;
@@ -106,6 +107,12 @@ function CustomerDetail() {
       onError: (error: QueryErrors) => {
         toast.error(error.response.data.title);
       },
+      onMutate() {
+        toast.loading("Creating subscription...");
+      },
+      onSettled() {
+        toast.dismiss();
+      },
     }
   );
 
@@ -128,8 +135,10 @@ function CustomerDetail() {
   );
 
   const changeSubscriptionPlanMutation = useMutation(
-    (obj: { params: object; post: ChangeSubscriptionPlanType }) =>
-      Customer.changeSubscriptionPlan(obj.post, obj.params),
+    (obj: {
+      post: components["schemas"]["SubscriptionRecordSwitchPlanRequest"];
+      subscription_id: string;
+    }) => Customer.switchPlanSubscription(obj.post, obj.subscription_id),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
@@ -146,8 +155,10 @@ function CustomerDetail() {
   );
 
   const turnSubscriptionAutoRenewOffMutation = useMutation(
-    (obj: { params: object; post: TurnSubscriptionAutoRenewOffType }) =>
-      Customer.turnSubscriptionAutoRenewOff(obj.post, obj.params),
+    (obj: {
+      subscription_id: string;
+      post: components["schemas"]["SubscriptionRecordUpdateRequest"];
+    }) => Customer.turnSubscriptionAutoRenewOff(obj.post, obj.subscription_id),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
@@ -170,22 +181,19 @@ function CustomerDetail() {
     });
   };
 
-  const changeSubscriptionPlan = (
-    params: object,
-    props: ChangeSubscriptionPlanType
-  ) => {
+  const changeSubscriptionPlan = (params: object, subscription_id) => {
     changeSubscriptionPlanMutation.mutate({
-      params,
-      post: props,
+      post: params,
+      subscription_id
     });
   };
 
   const turnSubscriptionAutoRenewOff = (
-    params: object,
-    props: TurnSubscriptionAutoRenewOffType
+    subscription_id: string,
+    props: components["schemas"]["SubscriptionRecordUpdateRequest"]
   ) => {
     turnSubscriptionAutoRenewOffMutation.mutate({
-      params,
+      subscription_id,
       post: props,
     });
   };

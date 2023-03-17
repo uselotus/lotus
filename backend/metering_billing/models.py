@@ -915,7 +915,7 @@ class CustomerBalanceAdjustment(models.Model):
                 raise NotEditable(
                     "Cannot update any fields in a balance adjustment other than status and description"
                 )
-            if now_utc() > self.expires_at:
+            if self.expires_at is not None and now_utc() > self.expires_at:
                 raise NotEditable("Cannot change the expiry date to the past")
         if self.amount < 0:
             assert (
