@@ -49,6 +49,9 @@ jobs:
       KAFKA_URL: "localhost:9092"
       PYTHONDONTWRITEBYTECODE: 1
       VITE_API_URL: "http://localhost:8000/"
+      ADMIN_EMAIL: "change_me@change_me.com"
+      ADMIN_PASSWORD: "change_me"
+      ADMIN_USERNAME: "change_me"
 
     steps:
       - uses: actions/checkout@v3
@@ -85,6 +88,10 @@ jobs:
       - name: Demo up
         run: |
           cd ./backend && pipenv run python manage.py demo_up
+
+      - name: Init Admin
+        run: |
+          cd ./backend && pipenv run python manage.py init_admin
 
       - name: Run Django server
         run: |
