@@ -87,7 +87,7 @@ class CRMUnifiedAPIView(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
             crm_provider_name,
         ) in UnifiedCRMOrganizationIntegration.CRMProvider.choices:
             integration = UnifiedCRMOrganizationIntegration.objects.filter(
-                organization=organization, crm_type=crm_value
+                organization=organization, crm_provider=crm_value
             ).first()
             data_dict = {
                 "crm_provider_name": crm_provider_name,
@@ -137,6 +137,7 @@ class CRMUnifiedAPIView(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
             headers={"vessel-api-token": VESSEL_API_KEY},
         )
         body = response.json()
+        print(body)
         return Response({"link_token": body["linkToken"]}, status=status.HTTP_200_OK)
 
     @extend_schema(
@@ -177,14 +178,16 @@ class CRMUnifiedAPIView(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         native_org_url = response["nativeOrgURL"]
         native_org_id = response["nativeOrgId"]
         integration_id = response["integrationId"]
-        crm_type_value = UnifiedCRMOrganizationIntegration.get_crm_provider_from_label(
-            integration_id
+        crm_provider_value = (
+            UnifiedCRMOrganizationIntegration.get_crm_provider_from_label(
+                integration_id
+            )
         )
-        if crm_type_value is None:
+        if crm_provider_value is None:
             raise CRMNotSupported(f"CRM type {integration_id} is not supported")
         conn, _ = UnifiedCRMOrganizationIntegration.objects.update_or_create(
             organization=request.organization,
-            crm_type=crm_type_value,
+            crm_provider=crm_provider_value,
             defaults={
                 "access_token": access_token,
                 "native_org_url": native_org_url,
@@ -204,7 +207,7 @@ def sync_customers_with_salesforce(organization):
     setting_values = org_setting.setting_values
     lotus_is_source = setting_values["salesforce"]
     connection = organization.unified_crm_organization_links.get(
-        crm_type=UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE
+        crm_provider=UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE
     )
     access_token = connection.access_token
 
@@ -258,7 +261,7 @@ def sync_customers_with_salesforce(organization):
                 # they exist, but we haven't created the integration
                 integration, _ = UnifiedCRMCustomerIntegration.objects.update_or_create(
                     customer=customer,
-                    crm_type=UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE,
+                    crm_provider=UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE,
                     unified_account_id=account["id"],
                     defaults={
                         "native_customer_id": account["nativeId"],
@@ -276,7 +279,7 @@ def sync_customers_with_salesforce(organization):
                 unified_id = response.json()["id"]
                 integration = UnifiedCRMCustomerIntegration.objects.create(
                     customer=customer,
-                    crm_type=UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE,
+                    crm_provider=UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE,
                     unified_account_id=unified_id,
                 )
     else:
@@ -349,7 +352,7 @@ def sync_customers_with_salesforce(organization):
             if not customer_integration:
                 customer_integration = UnifiedCRMCustomerIntegration.objects.create(
                     organization=organization,
-                    crm_type=UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE,
+                    crm_provider=UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE,
                     native_customer_id=native_id,
                     unified_account_id=unified_id,
                 )

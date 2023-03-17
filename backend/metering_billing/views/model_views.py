@@ -2089,9 +2089,7 @@ class OrganizationViewSet(
             crm_provider_names = UnifiedCRMOrganizationIntegration.CRMProvider.labels
         else:
             crm_provider_values = [
-                UnifiedCRMOrganizationIntegration.CRMProvider.get_crm_provider_from_label(
-                    name
-                )
+                UnifiedCRMOrganizationIntegration.get_crm_provider_from_label(name)
                 for name in crm_provider_names
             ]
         sync_single_organization_integrations.delay(

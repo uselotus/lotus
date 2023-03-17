@@ -4008,7 +4008,7 @@ class UnifiedCRMOrganizationIntegration(models.Model):
         on_delete=models.CASCADE,
         related_name="unified_crm_organization_links",
     )
-    crm_type = models.IntegerField(choices=CRMProvider.choices)
+    crm_provider = models.IntegerField(choices=CRMProvider.choices)
     access_token = models.TextField()
     native_org_url = models.TextField()
     native_org_id = models.TextField()
@@ -4020,9 +4020,9 @@ class UnifiedCRMOrganizationIntegration(models.Model):
             UniqueConstraint(
                 fields=[
                     "organization",
-                    "crm_type",
+                    "crm_provider",
                 ],
-                name="unique_crm_type",
+                name="unique_crm_provider",
             ),
         ]
 
@@ -4034,7 +4034,10 @@ class UnifiedCRMOrganizationIntegration(models.Model):
         return mapping.get(label, label)
 
     def perform_sync(self):
-        if self.crm_type == UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE:
+        if (
+            self.crm_provider
+            == UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE
+        ):
             self.perform_salesforce_sync()
         else:
             raise NotImplementedError("CRM type not supported")
@@ -4051,7 +4054,7 @@ class UnifiedCRMCustomerIntegration(models.Model):
         on_delete=models.CASCADE,
         related_name="unified_crm_customer_links",
     )
-    crm_type = models.IntegerField(
+    crm_provider = models.IntegerField(
         choices=UnifiedCRMOrganizationIntegration.CRMProvider.choices
     )
     native_customer_id = models.TextField(null=True)
@@ -4061,7 +4064,7 @@ class UnifiedCRMCustomerIntegration(models.Model):
         constraints = [
             UniqueConstraint(
                 condition=Q(native_customer_id__isnull=False),
-                fields=["organization", "crm_type", "native_customer_id"],
+                fields=["organization", "crm_provider", "native_customer_id"],
                 name="unique_crm_customer_id_per_type",
             ),
         ]
