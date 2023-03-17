@@ -91,7 +91,7 @@ jobs:
 
       - name: Init Admin
         run: |
-          cd ./backend && pipenv run python manage.py init_admin
+          cd ./backend && pipenv run python manage.py initadmin
 
       - name: Run Django server
         run: |
