@@ -40,20 +40,16 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
   const navigate = useNavigate();
   const windowWidth = useMediaQuery();
   const inputRef = useRef<HTMLInputElement | null>(null!);
-  const mutation = useMutation(
-    (plan_id: string) =>
-      Plan.updatePlan(plan_id, {
-        plan_name: plan.plan_name,
-        status: "archived",
-      }),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries("plan_list");
+  const mutation = useMutation((plan_id: string) => Plan.deletePlan(plan_id), {
+    onSuccess: () => {
+      queryClient.invalidateQueries("plan_list");
 
-        toast.success("Plan archived");
-      },
-    }
-  );
+      toast.success("Plan archived");
+    },
+    onError: () => {
+      toast.error("Cannot archive plan");
+    },
+  });
 
   const planMenu = (
     <Menu>

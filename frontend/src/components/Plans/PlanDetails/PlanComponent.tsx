@@ -354,7 +354,7 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
       onSuccess: () => {
         queryClient.invalidateQueries("plan_list");
         queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
-        toast.success("Plan archived successfully");
+        toast.success("Plan version archived successfully");
       },
     }
   );
