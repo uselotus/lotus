@@ -461,20 +461,20 @@ const SubscriptionView: FC<Props> = ({
               <CustomerCard.Block>
                 <CustomerCard.Item>
                   <div className="font-normal text-card-text font-alliance whitespace-nowrap leading-4">
-                    Plan ID
+                    Subscription ID
                   </div>
                   <div className="flex gap-1 !text-card-grey font-menlo">
                     {" "}
                     <div>
                       {createShortenedText(
-                        subPlan.billing_plan.plan_id as string,
+                        subPlan.subscription_id as string,
                         windowWidth >= 2500
                       )}
                     </div>
                     <CopyText
                       showIcon
                       onlyIcon
-                      textToCopy={subPlan.billing_plan.plan_id as string}
+                      textToCopy={subPlan.subscription_id as string}
                     />
                   </div>
                 </CustomerCard.Item>
@@ -647,7 +647,9 @@ const SubscriptionView: FC<Props> = ({
                         borderColor: "#C3986B",
                       }}
                       disabled={addOnId.length < 1}
-                      onClick={() => submitAddOns(subPlan.subscription_id)}
+                      onClick={() => {
+                        submitAddOns(selectedSubPlan.subscription_id);
+                      }}
                     >
                       Add
                     </Button>,
