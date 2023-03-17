@@ -44,10 +44,12 @@ describe("Testing Successful Plan Creation", () => {
     Login();
     cy.visit("http://localhost:3000/create-plan");
     cy.wait(10000);
-    cy.contains("Create Plan");
+    cy.contains("Create a plan");
     cy.get("#planNameInput").type("Random Plan");
     cy.get("#planDescInput").type("Random Plan Description");
     cy.get("[type=radio]").check("monthly");
+
+    //TODO : Add more tests for plan creation, creating recurring charges, creating components etc. and then double checking these on the plan details page
     cy.get("form").submit();
     cy.url().should("include", "/plans");
   });
@@ -60,8 +62,9 @@ describe("Testing Successful Metric Creation", () => {
     cy.wait(10000);
     cy.get("#create-metric-button").click();
     cy.contains("Create Metric");
-    cy.get("#Metric-Name-input").type("New Metric");
-    cy.get("#event-name-input").type("New event");
+    cy.get("#define-new-metric").click();
+    cy.get("#metric-name-input").type("New Metric");
+    cy.get("#event-name-input").type("New event", { force: true });
     cy.get("#Create-metric-button").click();
   });
 });
@@ -162,11 +165,15 @@ describe("Testing Event Tracking Details On Metrics Page", () => {
     cy.visit("http://localhost:3000/metrics");
     cy.contains("Create Metric");
     cy.get(".ant-collapse-header").first().click();
+    cy.wait(10000);
     // cy.contains("event_name").siblings().should("include.text", eventName);
     // cy.contains("customer_id").siblings().should("include.text", customerId);
     // cy.contains("ID").siblings().should("include.text", idempotencyId);
     // const dateString = date.toLocaleString("en-ZA").replace(",", "");
     // cy.contains("time_created").siblings().should("include.text", dateString);
-    // cy.get(".travelcompany-input .input-label").should("include.text", "region : US");
+    // cy.get(".travelcompany-input .input-label").should(
+    //   "include.text",
+    //   "region : US"
+    // );
   });
 });

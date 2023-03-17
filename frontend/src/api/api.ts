@@ -269,14 +269,15 @@ export const Plan = {
     requests.delete(
       `app/external_plan_links/${post.external_plan_id}/?source=${post.source}`
     ),
+  deletePlan: (plan_id: string): Promise<components["schemas"]["DeletePlan"]> =>
+    requests.post(`app/plans/${plan_id}/delete/`, {}),
 
   // update plans methods
   updatePlan: (
     plan_id: string,
     post: UpdatePlanType
   ): Promise<UpdatePlanType> => requests.patch(`app/plans/${plan_id}/`, post),
-  deletePlan: (plan_id: string): Promise<PlanVersionsType> =>
-    requests.post(`app/plans/${plan_id}/delete/`, {}),
+
   featuresAddPlan: (
     plan_id: string,
     post: PlanFeaturesAdd
