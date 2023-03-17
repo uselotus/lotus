@@ -52,6 +52,7 @@ from metering_billing.models import (
     PricingUnit,
     Product,
     SubscriptionRecord,
+    UnifiedCRMOrganizationIntegration,
     UsageAlert,
     User,
     WebhookEndpoint,
@@ -106,6 +107,7 @@ from metering_billing.serializers.model_serializers import (
     WebhookEndpointSerializer,
 )
 from metering_billing.serializers.request_serializers import (
+    CRMSyncRequestSerializer,
     MakeReplaceWithSerializer,
     OrganizationSettingFilterSerializer,
     PlansSetReplaceWithForVersionNumberSerializer,
@@ -2063,6 +2065,47 @@ class OrganizationViewSet(
     def partial_update(self, request, *args, **kwargs):
         return self.update(request, *args, **kwargs)
 
+    @extend_schema(
+        parameters=None,
+        request=CRMSyncRequestSerializer,
+        responses=inline_serializer(
+            "DeleteAddOnSerializer",
+            fields={
+                "success": serializers.BooleanField(),
+                "message": serializers.CharField(),
+            },
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="sync_crm", url_name="sync_crm")
+    def sync_crm(self, request, *args, **kwargs):
+        from metering_billing.tasks import sync_single_organization_integrations
+
+        organization = self.request.organization
+        serializer = CRMSyncRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        crm_provider_names = serializer.validated_data["crm_provider_names"]
+        if len(crm_provider_names) == 0:
+            crm_provider_values = UnifiedCRMOrganizationIntegration.CRMProvider.values
+            crm_provider_names = UnifiedCRMOrganizationIntegration.CRMProvider.labels
+        else:
+            crm_provider_values = [
+                UnifiedCRMOrganizationIntegration.CRMProvider.get_crm_provider_from_label(
+                    name
+                )
+                for name in crm_provider_names
+            ]
+        sync_single_organization_integrations.delay(
+            organization.id, crm_provider_values
+        )
+        names = ", ".join(crm_provider_names)
+        return Response(
+            {
+                "success": True,
+                "message": f"Beginning sync with {names}",
+            },
+            status=status.HTTP_200_OK,
+        )
+
 
 class CustomerBalanceAdjustmentViewSet(api_views.CustomerBalanceAdjustmentViewSet):
     pass
@@ -2379,5 +2422,7 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
         return context
         context = super().get_serializer_context()
         organization = self.request.organization
+        context.update({"organization": organization})
+        return context
         context.update({"organization": organization})
         return context

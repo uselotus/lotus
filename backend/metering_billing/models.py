@@ -91,10 +91,27 @@ CUSTOMER_ID_NAMESPACE = settings.CUSTOMER_ID_NAMESPACE
 class Team(models.Model):
     name = models.CharField(max_length=100, blank=False, null=False)
     team_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    crm_integration_allowed = models.BooleanField(default=False)
+    crm_integration_allowed = models.BooleanField(default=True)
+    # accounting_integration_allowed = models.BooleanField(default=False)
+    __original_crm_integration_allowed = None
+
+    def __init__(self, *args, **kwargs):
+        super(Team, self).__init__(*args, **kwargs)
+        self.__original_crm_integration_allowed = self.crm_integration_allowed
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        new = self._state.adding is True
+        # self._state.adding represents whether creating new instance or updating
+        if self.crm_integration_allowed is True and (
+            self.__original_crm_integration_allowed is False or new
+        ):
+            for org in self.organizations.all():
+                org.provision_crm_settings()
+        super(Team, self).save(*args, **kwargs)
+        self.__original_crm_integration_allowed = self.crm_integration_allowed
 
 
 class Address(models.Model):
@@ -199,7 +216,6 @@ class Organization(models.Model):
     organization_type = models.PositiveSmallIntegerField(
         choices=OrganizationType.choices, default=OrganizationType.DEVELOPMENT
     )
-    subscription_filters_setting_provisioned = models.BooleanField(default=False)
     properties = models.JSONField(default=dict, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
@@ -237,7 +253,6 @@ class Organization(models.Model):
         null=True,
         blank=True,
     )
-    currencies_provisioned = models.IntegerField(default=0)
 
     # TAX RELATED FIELDS
     tax_rate = models.DecimalField(
@@ -256,8 +271,11 @@ class Organization(models.Model):
     timezone = TimeZoneField(default="UTC", use_pytz=True)
     __original_timezone = None
 
-    # SVIX RELATED FIELDS
+    # PROVISIONING FIELDS
     webhooks_provisioned = models.BooleanField(default=False)
+    currencies_provisioned = models.IntegerField(default=0)
+    crm_settings_provisioned = models.BooleanField(default=False)
+    subscription_filters_setting_provisioned = models.BooleanField(default=False)
 
     # HISTORY RELATED FIELDS
     history = HistoricalRecords()
@@ -327,12 +345,22 @@ class Organization(models.Model):
 
     def provision_subscription_filter_settings(self):
         if not self.subscription_filters_setting_provisioned:
-            OrganizationSetting.objects.create(
+            OrganizationSetting.objects.get_or_create(
                 organization=self,
                 setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS,
-                setting_values=[],
+                defaults={"setting_values": []},
             )
             self.subscription_filters_setting_provisioned = True
+            self.save()
+
+    def provision_crm_settings(self):
+        if not self.crm_settings_provisioned:
+            OrganizationSetting.objects.get_or_create(
+                organization=self,
+                setting_name=ORGANIZATION_SETTING_NAMES.CRM_CUSTOMER_SOURCE,
+                defaults={"setting_values": {}},
+            )
+            self.crm_settings_provisioned = True
             self.save()
 
     def update_subscription_filter_settings(self, filter_keys):
@@ -674,6 +702,13 @@ class Customer(models.Model):
     )
     braintree_integration = models.ForeignKey(
         "BraintreeCustomerIntegration",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="customers",
+    )
+    salesforce_integration = models.OneToOneField(
+        "UnifiedCRMCustomerIntegration",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -3997,3 +4032,36 @@ class UnifiedCRMOrganizationIntegration(models.Model):
             UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE.label: UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE.value,
         }
         return mapping.get(label, label)
+
+    def perform_sync(self):
+        if self.crm_type == UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE:
+            self.perform_salesforce_sync()
+        else:
+            raise NotImplementedError("CRM type not supported")
+
+    def perform_salesforce_sync(self):
+        from metering_billing.views.crm_views import sync_customers_with_salesforce
+
+        sync_customers_with_salesforce(self.organization)
+
+
+class UnifiedCRMCustomerIntegration(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="unified_crm_customer_links",
+    )
+    crm_type = models.IntegerField(
+        choices=UnifiedCRMOrganizationIntegration.CRMProvider.choices
+    )
+    native_customer_id = models.TextField(null=True)
+    unified_account_id = models.TextField()
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                condition=Q(native_customer_id__isnull=False),
+                fields=["organization", "crm_type", "native_customer_id"],
+                name="unique_crm_customer_id_per_type",
+            ),
+        ]

@@ -271,6 +271,11 @@ urlpatterns = [
         CRMUnifiedAPIView.as_view({"get": "get_crms"}),
         name="get_crms",
     ),
+    path(
+        "app/crm/set_customer_source/",
+        CRMUnifiedAPIView.as_view({"post": "update_crm_customer_source_of_truth"}),
+        name="set_customer_source",
+    ),
 ]
 
 if PROFILER_ENABLED:

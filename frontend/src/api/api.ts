@@ -50,7 +50,7 @@ import {
   TransferSub,
   UpdatePaymentProcessorSettingParams,
 } from "../types/payment-processor-type";
-import { CRMConnectionStatus } from "../types/crm-types";
+import { CRMConnectionStatus, CRMProviderType } from "../types/crm-types";
 import { CustomerCostType, RevenueType } from "../types/revenue-type";
 import {
   SubscriptionTotals,
@@ -685,4 +685,19 @@ export const CRM = {
     requests.post("app/crm/link_token/", {}),
   storePublicToken: (public_token: string): Promise<{ success: boolean }> =>
     requests.post("app/crm/store_token/", { public_token }),
+  setCustomerSourceOfTruth: (
+    crm_provider_name: string,
+    lotus_is_source: boolean
+  ): Promise<{ success: boolean }> =>
+    requests.post("app/crm/set_customer_source/", {
+      crm_provider_name,
+      lotus_is_source,
+    }),
+  syncCRM: (
+    organization_id: string,
+    crm_provider_names?: CRMProviderType[]
+  ): Promise<{ success: boolean; message: string }> =>
+    requests.post(`app/organizations/${organization_id}/sync_crm/`, {
+      crm_provider_names,
+    }),
 };

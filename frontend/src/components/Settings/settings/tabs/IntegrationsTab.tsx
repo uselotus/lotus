@@ -63,6 +63,7 @@ const IntegrationsTab: FC = () => {
       CRM.storePublicToken(publicToken)
         .then((response) => {
           if (response?.success) {
+            refetchCrm();
             toast.success("Successfully connected to Salesforce");
           } else {
             toast.error("Failed to connect to Salesforce");
