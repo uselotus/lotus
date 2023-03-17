@@ -10,6 +10,7 @@ import {
   CreateRecurringCharge,
   PlanType,
 } from "../types/plan-type";
+import { PlusOutlined } from "@ant-design/icons";
 import { Plan, Organization, AddOn } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
@@ -20,6 +21,8 @@ import { CurrencyType } from "../types/pricing-unit-type";
 import { AddOnTypeOption, CreateAddOnType } from "../types/addon-type";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
 import { components } from "../gen-types";
+import RecurringChargesDisplay from "../components/Plans/RecurringChargesDisplay";
+import RecurringChargeForm from "../components/Plans/RecurringChargeForm";
 
 interface ComponentDisplay {
   metric: string;
@@ -39,6 +42,10 @@ const durationConversion = {
 function CreateAddOns() {
   const [componentVisible, setcomponentVisible] = useState<boolean>();
   const [allPlans, setAllPlans] = useState<PlanType[]>([]);
+  const [showRecurringCharges, setShowRecurringCharges] = useState(false);
+  const [recurringCharges, setRecurringCharges] = useState<
+    components["schemas"]["PlanDetail"]["versions"][0]["recurring_charges"]
+  >([]);
   const [allCurrencies, setAllCurrencies] = useState<CurrencyType[]>([]);
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>({
     symbol: "",
@@ -241,6 +248,7 @@ function CreateAddOns() {
           : [],
         features: featureIdList.length ? featureIdList : [],
         currency_code: selectedCurrency.code,
+        recurring_charges,
       },
     };
     mutation.mutate(addons);
@@ -469,7 +477,50 @@ function CreateAddOns() {
 
             <div className="col-span-2">
               {card}
+              {/* {billing_frequency === "recurring" && (
+                <Card
+                  title="Recurring Charges"
+                  className="w-full h-full"
+                  style={{
+                    borderRadius: "0.5rem",
+                    borderWidth: "2px",
+                    borderColor: "#EAEAEB",
+                    borderStyle: "solid",
+                  }}
+                >
+                  <Form.Item
+                    wrapperCol={{ span: 24 }}
+                    shouldUpdate={(prevValues, curValues) =>
+                      prevValues.components !== curValues.components
+                    }
+                  >
+                    <div>
+                      <RecurringChargesDisplay
+                        recurringCharges={recurringCharges}
+                      />
+                    </div>
 
+                    <Button
+                      key="add-recurring-charge"
+                      htmlType="button"
+                      type="primary"
+                      className="hover:!bg-primary-700 mt-4"
+                      style={{
+                        background: "#C3986B",
+                        borderColor: "#C3986B",
+                      }}
+                      onClick={() => setShowRecurringCharges(true)}
+                    >
+                      <div className="flex items-center  justify-between text-white">
+                        <div>
+                          <PlusOutlined className="!text-white w-12 h-12 cursor-pointer" />
+                          Add Recurring Charges
+                        </div>
+                      </div>
+                    </Button>
+                  </Form.Item>
+                </Card>
+              )} */}
               <Card
                 className="w-full"
                 title="Added Features"
@@ -505,7 +556,17 @@ function CreateAddOns() {
             </div>
           </div>
         </Form>
-
+        {/* {showRecurringCharges && (
+          <RecurringChargeForm
+            visible={showRecurringCharges}
+            selectedCurrency={selectedCurrency}
+            onCancel={() => setShowRecurringCharges(false)}
+            onAddRecurringCharges={(newRecurringCharge) => {
+              setRecurringCharges((prev) => [...prev, newRecurringCharge]);
+              setShowRecurringCharges(false);
+            }}
+          />
+        )} */}
         {componentVisible && (
           <UsageComponentForm
             visible={componentVisible}
