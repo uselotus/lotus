@@ -66,11 +66,13 @@ const StateTabs: FC<StateTabsProps> = ({
     } else {
       switch (tab) {
         case "Inactive":
-          return "Inactive";
+          return "This version is not active and has no subscriptions on it.";
         case "Active":
           return "If you make this version active, your other active version will become inactive.";
         case "Grandfathered":
-          return "Grandfathered";
+          return "This version is no longer active, but customers on this version will be renewed to this version.";
+        case "Retiring":
+          return "This version is no longer active, and customers on this version will be renewed to the active version.";
       }
     }
   };
