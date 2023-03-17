@@ -277,8 +277,7 @@ export const Plan = {
     plan_id: string,
     post: UpdatePlanType
   ): Promise<UpdatePlanType> => requests.patch(`app/plans/${plan_id}/`, post),
-  deletePlan: (plan_id: string): Promise<PlanVersionsType> =>
-    requests.post(`app/plans/${plan_id}/delete/`, {}),
+
   featuresAddPlan: (
     plan_id: string,
     post: PlanFeaturesAdd
