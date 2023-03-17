@@ -148,3 +148,6 @@ jobs:
       - name: Test Setup Tasks
         run: |
           pipenv run python manage.py setup_tasks
+
+      - name: Run tests with coverage
+        run: pytest --cov=. --cov-report term-missing --cov-fail-under=57
