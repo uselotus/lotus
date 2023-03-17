@@ -3,7 +3,6 @@ import { QueryClient, useMutation } from "react-query";
 import { toast } from "react-toastify";
 import { Table, Typography, Modal, Button, InputNumber } from "antd";
 import { Plan } from "../../../api/api";
-import { AddOnType } from "../../../types/addon-type";
 import { AlertType, CreateAlertType } from "../../../types/alert-type";
 import { Component, Tier } from "../../../types/plan-type";
 import Select from "../../base/Select/Select";

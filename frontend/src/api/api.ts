@@ -182,8 +182,8 @@ export const Customer = {
   ): Promise<SubscriptionType> =>
     requests.post(`app/subscriptions/${subscription_id}/cancel/`, post),
   switchPlanSubscription: (
-    subscription_id: string,
-    post: SwitchPlanSubscriptionBody
+    post: components["schemas"]["SubscriptionRecordSwitchPlanRequest"],
+    subscription_id: string
   ): Promise<SubscriptionType> =>
     requests.post(`app/subscriptions/${subscription_id}/switch_plan/`, post),
   changeSubscriptionPlan: (
@@ -196,23 +196,23 @@ export const Customer = {
   ): Promise<SubscriptionType> =>
     requests.post(`app/subscriptions/update/`, post, params),
   turnSubscriptionAutoRenewOff: (
-    post: TurnSubscriptionAutoRenewOffType,
-    params?: {
-      customer_id?: string;
-      plan_id?: string;
-      subscription_filters?: { property_name: string; value: string }[];
-    }
+    post: components["schemas"]["SubscriptionRecordUpdateRequest"],
+    subscription_id: string
   ): Promise<SubscriptionType> =>
-    requests.post(`app/subscriptions/update/`, post, params),
+    requests.post(`app/subscriptions/${subscription_id}/update/`, post),
   createSubscriptionAddOns: (
-    body: CreateSubscriptionAddOnBody
+    body: components["schemas"]["AddOnSubscriptionRecordCreateRequest"],
+    subscription_id: string
   ): Promise<CreateSubscriptionAddOnType> =>
-    requests.post(`app/subscriptions/addons/add/`, body),
+    requests.post(`app/subscriptions/${subscription_id}/addons/attach/`, body),
   cancelCreateSubscriptionAddOns: (
     body: CancelCreateSubscriptionAddOnBody,
-    params: CancelCreateSubscriptionAddOnQueryParams
+    path_params: { subscription_id: string; addon_id: string }
   ): Promise<CreateSubscriptionAddOnType[]> =>
-    requests.post(`app/subscriptions/addons/cancel/`, body, params),
+    requests.post(
+      `app/subscriptions/${path_params.subscription_id}/addons/${path_params.addon_id}/cancel/`,
+      body
+    ),
 };
 
 export const AddOn = {
