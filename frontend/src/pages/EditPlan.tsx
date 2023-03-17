@@ -18,6 +18,7 @@ import {
   PlanDetailType,
   CreateInitialVersionType,
   CreatePlanVersionType,
+  CreateRecurringCharge,
 } from "../types/plan-type";
 import { Customer, Organization, Plan } from "../api/api";
 import { FeatureType } from "../types/feature-type";
@@ -79,6 +80,11 @@ function EditPlan({ type, plan, versionIndex }: Props) {
     plan.versions[versionIndex].price_adjustment?.price_adjustment_type ??
       "none"
   );
+  const [editRecurringChargeItemIdx, setEditRecurringChargeItemIdx] = useState<
+    number | null
+  >(null);
+  const [editRecurringChargeItem, setEditRecurringChargeItem] =
+    useState<CreateRecurringCharge | null>(null);
 
   const latestVersion = sortBy(
     plan.versions.filter((v) => typeof v.version === "number"),
@@ -288,6 +294,25 @@ function EditPlan({ type, plan, versionIndex }: Props) {
   const deleteComponent = (id: string) => {
     setComponentsData(componentsData.filter((item) => item.id !== id));
   };
+
+  const handleRecurringChargeEdit = (idx: number) => {
+    const currentRecurringCharge = recurringCharges[idx];
+
+    setEditRecurringChargeItem(currentRecurringCharge);
+    setEditRecurringChargeItemIdx(idx);
+    setShowRecurringChargeModal(true);
+  };
+
+  const handleDeleteRecurringCharge = (idx: number) => {
+    setRecurringCharges((p) => {
+      const newRecurringCharges = [...p];
+
+      newRecurringCharges.splice(idx, 1);
+
+      return newRecurringCharges;
+    });
+  };
+
   const hideFeatureModal = () => {
     setFeatureVisible(false);
   };
@@ -469,7 +494,6 @@ function EditPlan({ type, plan, versionIndex }: Props) {
           }
 
           mutation.mutate(newVersion);
-          return;
         }
       })
       .catch((err) => {
@@ -684,6 +708,8 @@ function EditPlan({ type, plan, versionIndex }: Props) {
             customers={customers}
             targetCustomerId={targetCustomerId}
             setTargetCustomerId={setTargetCustomerId}
+            handleEditRecurringCharge={handleRecurringChargeEdit}
+            handleDeleteRecurringCharge={handleDeleteRecurringCharge}
           />
         </Form>
 
@@ -711,11 +737,30 @@ function EditPlan({ type, plan, versionIndex }: Props) {
         {showRecurringChargeModal ? (
           <RecurringChargeForm
             visible={showRecurringChargeModal}
+            initialValues={editRecurringChargeItem}
             selectedCurrency={selectedCurrency}
-            onCancel={() => setShowRecurringChargeModal(false)}
-            onAddRecurringCharges={(newRecurringCharge) => {
-              setRecurringCharges((prev) => [...prev, newRecurringCharge]);
+            onCancel={() => {
               setShowRecurringChargeModal(false);
+              setEditRecurringChargeItem(null);
+              setEditRecurringChargeItemIdx(null);
+            }}
+            onAddRecurringCharges={(newRecurringCharge) => {
+              if (
+                editRecurringChargeItem &&
+                typeof editRecurringChargeItemIdx === "number"
+              ) {
+                setRecurringCharges((prev) => [
+                  ...prev.slice(0, editRecurringChargeItemIdx),
+                  newRecurringCharge,
+                  ...prev.slice(editRecurringChargeItemIdx + 1),
+                ]);
+              } else {
+                setRecurringCharges((prev) => [...prev, newRecurringCharge]);
+              }
+
+              setShowRecurringChargeModal(false);
+              setEditRecurringChargeItem(null);
+              setEditRecurringChargeItemIdx(null);
             }}
           />
         ) : null}
