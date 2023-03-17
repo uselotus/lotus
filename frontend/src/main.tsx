@@ -1,14 +1,13 @@
-// @ts-ignore
 import React from "react";
 import * as ReactDOM from "react-dom/client";
-import App from "./App";
 import { BrowserRouter } from "react-router-dom";
 import "vite/modulepreload-polyfill";
 import "./index.css";
 import "./custom.less";
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConfigProvider } from "antd";
 import enUS from "antd/lib/locale/en_US";
+import App from "./App";
 
 const queryClient = new QueryClient({
   defaultOptions: {
