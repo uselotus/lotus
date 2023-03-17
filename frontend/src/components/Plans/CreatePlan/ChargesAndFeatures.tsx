@@ -14,11 +14,6 @@ import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { StepProps } from "./types";
 import FeatureDisplay from "../FeatureDisplay";
 import ComponentDisplay from "../ComponentDisplay";
-import PlanRecurringCharges from "../PlanDetails/PlanRecurringCharges";
-import capitalize from "../../../helpers/capitalize";
-import removeUnderscore from "../../../helpers/removeUnderscore";
-import createShortenedText from "../../../helpers/createShortenedText";
-import CopyText from "../../base/CopytoClipboard";
 import useMediaQuery from "../../../hooks/useWindowQuery";
 import RecurringChargesDisplay from "../RecurringChargesDisplay";
 
@@ -56,6 +51,8 @@ const ChargesAndFeatures = ({ form, ...props }: StepProps) => {
                 <div>
                   <RecurringChargesDisplay
                     recurringCharges={props.recurringCharges}
+                    handleEdit={props.handleEditRecurringCharge}
+                    handleDelete={props.handleDeleteRecurringCharge}
                   />
                 </div>
 

@@ -76,6 +76,11 @@ function CreatePlan() {
   const [month, setMonth] = useState(1);
   const [editComponentItem, setEditComponentsItem] =
     useState<CreateComponent>();
+  const [editRecurringChargeItem, setEditRecurringChargeItem] =
+    useState<CreateRecurringCharge | null>(null);
+  const [editRecurringChargeItemIdx, setEditRecurringChargeItemIdx] = useState<
+    number | null
+  >(null);
   const [availableBillingTypes, setAvailableBillingTypes] = useState<
     { name: string; label: string }[]
   >([{ label: "Monthly", name: "monthly" }]);
@@ -205,6 +210,24 @@ function CreatePlan() {
 
     setEditComponentsItem(currentComponent);
     setcomponentVisible(true);
+  };
+
+  const handleRecurringChargeEdit = (idx: number) => {
+    const currentRecurringCharge = recurringCharges[idx];
+
+    setEditRecurringChargeItem(currentRecurringCharge);
+    setEditRecurringChargeItemIdx(idx);
+    setShowRecurringChargeModal(true);
+  };
+
+  const handleDeleteRecurringCharge = (idx: number) => {
+    setRecurringCharges((p) => {
+      const newRecurringCharges = [...p];
+
+      newRecurringCharges.splice(idx, 1);
+
+      return newRecurringCharges;
+    });
   };
 
   const deleteComponent = (metric_id: string) => {
@@ -462,6 +485,8 @@ function CreatePlan() {
             setShowRecurringChargeModal={setShowRecurringChargeModal}
             recurringCharges={recurringCharges}
             setRecurringCharges={setRecurringCharges}
+            handleEditRecurringCharge={handleRecurringChargeEdit}
+            handleDeleteRecurringCharge={handleDeleteRecurringCharge}
           />
         </Form>
 
@@ -489,10 +514,29 @@ function CreatePlan() {
           <RecurringChargeForm
             visible={showRecurringChargeModal}
             selectedCurrency={selectedCurrency}
-            onCancel={() => setShowRecurringChargeModal(false)}
-            onAddRecurringCharges={(newRecurringCharge) => {
-              setRecurringCharges((prev) => [...prev, newRecurringCharge]);
+            initialValues={editRecurringChargeItem}
+            onCancel={() => {
               setShowRecurringChargeModal(false);
+              setEditRecurringChargeItem(null);
+              setEditRecurringChargeItemIdx(null);
+            }}
+            onAddRecurringCharges={(newRecurringCharge) => {
+              if (
+                editRecurringChargeItem &&
+                typeof editRecurringChargeItemIdx === "number"
+              ) {
+                setRecurringCharges((prev) => [
+                  ...prev.slice(0, editRecurringChargeItemIdx),
+                  newRecurringCharge,
+                  ...prev.slice(editRecurringChargeItemIdx + 1),
+                ]);
+              } else {
+                setRecurringCharges((prev) => [...prev, newRecurringCharge]);
+              }
+
+              setShowRecurringChargeModal(false);
+              setEditRecurringChargeItem(null);
+              setEditRecurringChargeItemIdx(null);
             }}
           />
         ) : null}

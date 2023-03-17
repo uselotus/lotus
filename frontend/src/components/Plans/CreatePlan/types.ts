@@ -52,6 +52,9 @@ export interface StepProps {
   handleComponentEdit: (component_id: string) => void;
   deleteComponent: (component_id: string) => void;
 
+  handleEditRecurringCharge: (idx: number) => void;
+  handleDeleteRecurringCharge: (idx: number) => void;
+
   showComponentModal: () => void;
 
   setExternalLinks: (links: string[]) => void;
