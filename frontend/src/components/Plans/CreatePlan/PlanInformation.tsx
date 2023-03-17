@@ -16,7 +16,7 @@ import LinkExternalIds from "../LinkExternalIds";
 
 const fields = ["name", "plan_duration"];
 
-export const validate = async (form: FormInstance<any>): Promise<boolean> => {
+export const validate = async (form: FormInstance<any>, type?: string): Promise<boolean> => {
   try {
     await form.validateFields(fields);
     return true;
