@@ -454,14 +454,14 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                       {" "}
                       <div>
                         {createShortenedText(
-                          data.email as string,
+                          data?.email || ("" as string),
                           windowWidth >= 2500
                         )}
                       </div>
                       <CopyText
                         showIcon
                         onlyIcon
-                        textToCopy={data.email as string}
+                        textToCopy={data?.email || ("" as string)}
                       />
                     </div>
                   </div>
@@ -543,6 +543,46 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                               src={integrationsMap.braintree.icon}
                               alt="braintree logo"
                             />
+                          ) : (
+                            "N/A"
+                          )}
+                        </div>
+                      </div>
+                    </Tooltip>
+                  ) : (
+                    <div className="flex gap-1">
+                      <div className="Inter">N/A</div>
+                    </div>
+                  )}
+                </CustomerCard.Item>
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    CRM Connected
+                  </div>
+                  {data.crm_provider ? (
+                    <Tooltip title={data.crm_provider_id}>
+                      <div className="flex gap-1">
+                        <div className="Inter">
+                          {data.crm_provider === "salesforce" ? (
+                            data.crm_provider_url ? (
+                              <a
+                                href={data.crm_provider_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <img
+                                  width={25}
+                                  src={integrationsMap.salesforce.icon}
+                                  alt="salesforce logo"
+                                />
+                              </a>
+                            ) : (
+                              <img
+                                width={25}
+                                src={integrationsMap.salesforce.icon}
+                                alt="salesforce logo"
+                              />
+                            )
                           ) : (
                             "N/A"
                           )}

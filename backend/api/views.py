@@ -232,11 +232,14 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         )
         return qs
 
-    def get_serializer_class(self):
+    def get_serializer_class(self, default=None):
         if self.action == "create":
             return CustomerCreateSerializer
         elif self.action == "archive":
             return EmptySerializer
+
+        if default:
+            return default
         return CustomerSerializer
 
     @extend_schema(responses=CustomerSerializer)
@@ -244,7 +247,10 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = self.perform_create(serializer)
-        customer_data = CustomerSerializer(instance).data
+
+        # return serializer
+        self.action = "retrieve"
+        customer_data = self.get_serializer(instance).data
         customer_created_webhook(instance, customer_data=customer_data)
         return Response(customer_data, status=status.HTTP_201_CREATED)
 
@@ -1424,9 +1430,11 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
         return Invoice.objects.filter(*args)
 
-    def get_serializer_class(self):
+    def get_serializer_class(self, default=None):
         if self.action == "partial_update":
             return InvoiceUpdateSerializer
+        if default:
+            return default
         return InvoiceSerializer
 
     @extend_schema(responses=InvoiceSerializer)

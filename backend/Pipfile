@@ -58,6 +58,7 @@ django-timezone-field = "*"
 braintree = "*"
 pycountry = "*"
 taxjar = "*"
+usaddress-scourgify = "*"
 
 [dev-packages]
 platformdirs = "*"

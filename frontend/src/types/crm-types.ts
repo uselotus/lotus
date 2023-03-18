@@ -11,3 +11,15 @@ export interface CRMConnectionStatus {
   account_id: string | undefined;
   native_org_url: string | undefined;
 }
+
+export interface CRMSettingsParams {
+  setting_group: "crm";
+  setting_name?: string;
+}
+
+export interface CRMSetting {
+  setting_group: "crm";
+  setting_id: string;
+  setting_name: string;
+  setting_values: any;
+}

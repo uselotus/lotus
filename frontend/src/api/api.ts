@@ -50,7 +50,12 @@ import {
   TransferSub,
   UpdatePaymentProcessorSettingParams,
 } from "../types/payment-processor-type";
-import { CRMConnectionStatus, CRMProviderType } from "../types/crm-types";
+import {
+  CRMConnectionStatus,
+  CRMProviderType,
+  CRMSetting,
+  CRMSettingsParams,
+} from "../types/crm-types";
 import { CustomerCostType, RevenueType } from "../types/revenue-type";
 import {
   SubscriptionTotals,
@@ -137,7 +142,7 @@ export const Customer = {
   getCustomerTotals: (): Promise<CustomerTotal[]> =>
     requests.get("app/customers/totals/"),
   deleteCustomer: (customer_id: string): Promise<CustomerType> =>
-    requests.post(`app/customers/${customer_id}/delete/`, {}),
+    requests.post(`app/ /${customer_id}/delete/`, {}),
   updateCustomer: (
     customer_id: string,
     default_currency_code: string,
@@ -703,4 +708,7 @@ export const CRM = {
     requests.post(`app/organizations/${organization_id}/sync_crm/`, {
       crm_provider_names,
     }),
+
+  getCRMSettings: (data: CRMSettingsParams): Promise<CRMSetting[]> =>
+    requests.get("app/organization_settings/", { params: data }),
 };

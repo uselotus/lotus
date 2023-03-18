@@ -6,9 +6,6 @@ from typing import Literal, Union
 from django.conf import settings
 from django.db.models import Max, Min, Sum
 from drf_spectacular.utils import extend_schema_serializer
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-
 from metering_billing.invoice import generate_balance_adjustment_invoice
 from metering_billing.models import (
     AddOnSpecification,
@@ -70,6 +67,8 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -642,7 +641,12 @@ class CustomerSerializer(
             "subscriptions": {"required": True, "read_only": True},
             "integrations": {"required": True, "read_only": True},
             "default_currency": {"required": True, "read_only": True},
-            "payment_provider": {"required": True, "read_only": True},
+            "payment_provider": {
+                "required": True,
+                "read_only": True,
+                "allow_null": True,
+                "allow_blank": False,
+            },
             "payment_provider_id": {
                 "required": True,
                 "read_only": True,
@@ -656,7 +660,7 @@ class CustomerSerializer(
         }
 
     customer_id = serializers.CharField()
-    email = serializers.EmailField()
+    email = serializers.EmailField(allow_null=True)
     subscriptions = serializers.SerializerMethodField()
     invoices = serializers.SerializerMethodField()
     total_amount_due = serializers.SerializerMethodField()
@@ -2805,4 +2809,5 @@ class AddOnSubscriptionRecordCreateSerializer(
         )
         sr.metadata = validated_data.get("metadata", {})
         sr.save()
+        return sr
         return sr

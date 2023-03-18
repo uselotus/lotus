@@ -17,7 +17,11 @@ import {
   BraintreeConnectionRequestType,
   PaymentProcessorConnectionResponseType,
 } from "../../../../types/payment-processor-type";
-import { CRMConnectionStatus } from "../../../../types/crm-types";
+import {
+  CRMConnectionStatus,
+  CRMProviderType,
+  CRMSetting,
+} from "../../../../types/crm-types";
 
 import { AppCard } from "../components/AppCard";
 import useGlobalStore from "../../../../stores/useGlobalstore";
@@ -33,6 +37,7 @@ const IntegrationsTab: FC = () => {
         (res) => res
       )
   );
+
   const {
     data: crmData,
     isLoading: crmLoading,
@@ -40,7 +45,6 @@ const IntegrationsTab: FC = () => {
   } = useQuery<CRMConnectionStatus[]>(["CRMIntegration"], () =>
     CRM.getCRMConnectionStatus().then((res) => res)
   );
-  console.log("crmData", crmData);
 
   const {
     data: linkToken,

@@ -357,6 +357,7 @@ class Organization(models.Model):
         if not self.crm_settings_provisioned:
             OrganizationSetting.objects.get_or_create(
                 organization=self,
+                setting_group=ORGANIZATION_SETTING_GROUPS.CRM,
                 setting_name=ORGANIZATION_SETTING_NAMES.CRM_CUSTOMER_SOURCE,
                 defaults={"setting_values": {}},
             )
@@ -1850,10 +1851,6 @@ class Invoice(models.Model):
     due_date = models.DateTimeField(max_length=100, null=True, blank=True)
     invoice_number = models.CharField(max_length=13)
     invoice_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    external_payment_obj_id = models.CharField(max_length=100, blank=True, null=True)
-    external_payment_obj_type = models.CharField(
-        choices=PAYMENT_PROCESSORS.choices, max_length=40, blank=True, null=True
-    )
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="invoices", null=True
     )
@@ -1866,6 +1863,15 @@ class Invoice(models.Model):
     invoice_past_due_webhook_sent = models.BooleanField(default=False)
     history = HistoricalRecords()
     __original_payment_status = None
+
+    # EXTERNAL CONNECTIONS
+    external_payment_obj_id = models.CharField(max_length=100, blank=True, null=True)
+    external_payment_obj_type = models.CharField(
+        choices=PAYMENT_PROCESSORS.choices, max_length=40, blank=True, null=True
+    )
+    salesforce_integration = models.OneToOneField(
+        "UnifiedCRMInvoiceIntegration", on_delete=models.SET_NULL, null=True, blank=True
+    )
 
     def __init__(self, *args, **kwargs):
         super(Invoice, self).__init__(*args, **kwargs)
@@ -3212,7 +3218,6 @@ class SubscriptionRecord(models.Model):
             end_date=self.end_date,
             auto_renew=self.auto_renew,
         )
-        print("JUST CREATED NEW SUBSCRIPTION RECORD", sr.__dict__)
         # current recurring_charge billing records must be canceled + billed
         for billing_record in self.billing_records.filter(
             recurring_charge__isnull=False, fully_billed=False
@@ -3310,7 +3315,6 @@ class SubscriptionRecord(models.Model):
         self.auto_renew = False
         self.save()
         generate_invoice([self, sr])
-        print("FINISHED CREATING NEW SUBSCRIPTION RECORD", sr.__dict__)
         return sr
 
     def calculate_earned_revenue_per_day(self):
@@ -4043,9 +4047,13 @@ class UnifiedCRMOrganizationIntegration(models.Model):
             raise NotImplementedError("CRM type not supported")
 
     def perform_salesforce_sync(self):
-        from metering_billing.views.crm_views import sync_customers_with_salesforce
+        from metering_billing.views.crm_views import (
+            sync_customers_with_salesforce,
+            sync_invoices_with_salesforce,
+        )
 
         sync_customers_with_salesforce(self.organization)
+        sync_invoices_with_salesforce(self.organization)
 
 
 class UnifiedCRMCustomerIntegration(models.Model):
@@ -4068,3 +4076,44 @@ class UnifiedCRMCustomerIntegration(models.Model):
                 name="unique_crm_customer_id_per_type",
             ),
         ]
+
+    def get_crm_url(self):
+        if (
+            self.crm_provider
+            == UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE
+        ):
+            objectType = "Account"
+            objectId = self.native_customer_id
+            nativeOrgURL = self.organization.unified_crm_organization_links.get(
+                crm_provider=self.crm_provider
+            ).native_org_url
+            return f"{nativeOrgURL}/lightning/r/{objectType}/{objectId}/view"
+        else:
+            raise NotImplementedError("CRM type not supported")
+
+
+class UnifiedCRMInvoiceIntegration(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="unified_crm_invoice_links",
+    )
+    crm_provider = models.IntegerField(
+        choices=UnifiedCRMOrganizationIntegration.CRMProvider.choices
+    )
+    native_invoice_id = models.TextField(null=True)
+    unified_note_id = models.TextField()
+
+    def get_crm_url(self):
+        if (
+            self.crm_provider
+            == UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE
+        ):
+            objectType = "Note"
+            objectId = self.native_invoice_id
+            nativeOrgURL = self.organization.unified_crm_organization_links.get(
+                crm_provider=self.crm_provider
+            ).native_org_url
+            return f"{nativeOrgURL}/lightning/r/{objectType}/{objectId}/view"
+        else:
+            raise NotImplementedError("CRM type not supported")

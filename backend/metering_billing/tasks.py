@@ -48,13 +48,9 @@ def sync_single_organization_integrations(
 
     if crm_provider_values is None:
         crm_provider_values = UnifiedCRMOrganizationIntegration.CRMProvider.values
-    print(
-        UnifiedCRMOrganizationIntegration.objects.filter(
-            pk=organization_integration_pk, crm_provider__in=crm_provider_values
-        )
-    )
     for integration in UnifiedCRMOrganizationIntegration.objects.filter(
-        pk=organization_integration_pk, crm_provider__in=crm_provider_values
+        organization_id=organization_integration_pk,
+        crm_provider__in=crm_provider_values,
     ):
         integration.perform_sync()
 

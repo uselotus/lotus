@@ -509,14 +509,14 @@ export interface components {
       initial_version: components["schemas"]["InitialAddOnVersionCreateRequest"];
     };
     AddOnDetail: {
-      /** @description The ID of the add-on plan. */
-      addon_id: string;
       /** @description The description of the add-on plan. */
       addon_description: string;
-      /** @description This addon's versions. */
-      versions: (components["schemas"]["AddOnVersion"])[];
       /** @description The name of the add-on plan. */
       addon_name: string;
+      /** @description This addon's versions. */
+      versions: (components["schemas"]["AddOnVersion"])[];
+      /** @description The ID of the add-on plan. */
+      addon_id: string;
     };
     AddOnSubscriptionRecord: {
       addon_subscription_id: string;
@@ -567,15 +567,31 @@ export interface components {
       recurring_charges: (components["schemas"]["RecurringCharge"])[];
       components: (components["schemas"]["PlanComponent"])[];
       features: (components["schemas"]["Feature"])[];
-      /** @enum {string} */
+      /**
+       * @description * `active` - Active
+       * * `retiring` - Retiring
+       * * `grandfathered` - Grandfathered
+       * * `deleted` - Deleted
+       * * `inactive` - Inactive
+       * * `not_started` - Not Started 
+       * @enum {string}
+       */
       status: "active" | "retiring" | "grandfathered" | "deleted" | "inactive" | "not_started";
       /** @description Currency of the plan. Can only be null if the flat fee is 0 and all components are of type free. */
       currency: components["schemas"]["PricingUnit"];
       /** @description The number of active instances of this version of the add-on plan. */
       active_instances: number;
-      /** @enum {unknown} */
+      /**
+       * @description * `invoice_on_attach` - invoice_on_attach
+       * * `invoice_on_subscription_end` - invoice_on_subscription_end 
+       * @enum {unknown}
+       */
       invoice_when: "invoice_on_attach" | "invoice_on_subscription_end";
-      /** @enum {unknown} */
+      /**
+       * @description * `one_time` - one_time
+       * * `recurring` - recurring 
+       * @enum {unknown}
+       */
       billing_frequency: "one_time" | "recurring";
       /** @enum {string} */
       addon_type: "usage_based" | "flat";
@@ -587,24 +603,48 @@ export interface components {
       components?: (components["schemas"]["PlanComponentCreateRequest"])[];
       features?: (string)[];
       currency_code: string;
-      /** @enum {unknown} */
+      /**
+       * @description * `invoice_on_attach` - invoice_on_attach
+       * * `invoice_on_subscription_end` - invoice_on_subscription_end 
+       * @enum {unknown}
+       */
       invoice_when: "invoice_on_attach" | "invoice_on_subscription_end";
-      /** @enum {unknown} */
+      /**
+       * @description * `one_time` - one_time
+       * * `recurring` - recurring 
+       * @enum {unknown}
+       */
       billing_frequency: "one_time" | "recurring";
     };
     AddOnVersionDetail: {
       recurring_charges: (components["schemas"]["RecurringCharge"])[];
       components: (components["schemas"]["PlanComponent"])[];
       features: (components["schemas"]["Feature"])[];
-      /** @enum {string} */
+      /**
+       * @description * `active` - Active
+       * * `retiring` - Retiring
+       * * `grandfathered` - Grandfathered
+       * * `deleted` - Deleted
+       * * `inactive` - Inactive
+       * * `not_started` - Not Started 
+       * @enum {string}
+       */
       status: "active" | "retiring" | "grandfathered" | "deleted" | "inactive" | "not_started";
       /** @description Currency of the plan. Can only be null if the flat fee is 0 and all components are of type free. */
       currency: components["schemas"]["PricingUnit"];
       /** @description The number of active instances of this version of the add-on plan. */
       active_instances: number;
-      /** @enum {unknown} */
+      /**
+       * @description * `invoice_on_attach` - invoice_on_attach
+       * * `invoice_on_subscription_end` - invoice_on_subscription_end 
+       * @enum {unknown}
+       */
       invoice_when: "invoice_on_attach" | "invoice_on_subscription_end";
-      /** @enum {unknown} */
+      /**
+       * @description * `one_time` - one_time
+       * * `recurring` - recurring 
+       * @enum {unknown}
+       */
       billing_frequency: "one_time" | "recurring";
       /** @enum {string} */
       addon_type: "usage_based" | "flat";
@@ -632,7 +672,257 @@ export interface components {
       /** @description City, district, suburb, town, or village */
       city: string;
       /**
-       * @description Two-letter country code (ISO 3166-1 alpha-2) 
+       * @description Two-letter country code (ISO 3166-1 alpha-2)
+       * 
+       * * `AW` - Aruba
+       * * `AF` - Afghanistan
+       * * `AO` - Angola
+       * * `AI` - Anguilla
+       * * `AX` - Åland Islands
+       * * `AL` - Albania
+       * * `AD` - Andorra
+       * * `AE` - United Arab Emirates
+       * * `AR` - Argentina
+       * * `AM` - Armenia
+       * * `AS` - American Samoa
+       * * `AQ` - Antarctica
+       * * `TF` - French Southern Territories
+       * * `AG` - Antigua and Barbuda
+       * * `AU` - Australia
+       * * `AT` - Austria
+       * * `AZ` - Azerbaijan
+       * * `BI` - Burundi
+       * * `BE` - Belgium
+       * * `BJ` - Benin
+       * * `BQ` - Bonaire, Sint Eustatius and Saba
+       * * `BF` - Burkina Faso
+       * * `BD` - Bangladesh
+       * * `BG` - Bulgaria
+       * * `BH` - Bahrain
+       * * `BS` - Bahamas
+       * * `BA` - Bosnia and Herzegovina
+       * * `BL` - Saint Barthélemy
+       * * `BY` - Belarus
+       * * `BZ` - Belize
+       * * `BM` - Bermuda
+       * * `BO` - Bolivia, Plurinational State of
+       * * `BR` - Brazil
+       * * `BB` - Barbados
+       * * `BN` - Brunei Darussalam
+       * * `BT` - Bhutan
+       * * `BV` - Bouvet Island
+       * * `BW` - Botswana
+       * * `CF` - Central African Republic
+       * * `CA` - Canada
+       * * `CC` - Cocos (Keeling) Islands
+       * * `CH` - Switzerland
+       * * `CL` - Chile
+       * * `CN` - China
+       * * `CI` - Côte d'Ivoire
+       * * `CM` - Cameroon
+       * * `CD` - Congo, The Democratic Republic of the
+       * * `CG` - Congo
+       * * `CK` - Cook Islands
+       * * `CO` - Colombia
+       * * `KM` - Comoros
+       * * `CV` - Cabo Verde
+       * * `CR` - Costa Rica
+       * * `CU` - Cuba
+       * * `CW` - Curaçao
+       * * `CX` - Christmas Island
+       * * `KY` - Cayman Islands
+       * * `CY` - Cyprus
+       * * `CZ` - Czechia
+       * * `DE` - Germany
+       * * `DJ` - Djibouti
+       * * `DM` - Dominica
+       * * `DK` - Denmark
+       * * `DO` - Dominican Republic
+       * * `DZ` - Algeria
+       * * `EC` - Ecuador
+       * * `EG` - Egypt
+       * * `ER` - Eritrea
+       * * `EH` - Western Sahara
+       * * `ES` - Spain
+       * * `EE` - Estonia
+       * * `ET` - Ethiopia
+       * * `FI` - Finland
+       * * `FJ` - Fiji
+       * * `FK` - Falkland Islands (Malvinas)
+       * * `FR` - France
+       * * `FO` - Faroe Islands
+       * * `FM` - Micronesia, Federated States of
+       * * `GA` - Gabon
+       * * `GB` - United Kingdom
+       * * `GE` - Georgia
+       * * `GG` - Guernsey
+       * * `GH` - Ghana
+       * * `GI` - Gibraltar
+       * * `GN` - Guinea
+       * * `GP` - Guadeloupe
+       * * `GM` - Gambia
+       * * `GW` - Guinea-Bissau
+       * * `GQ` - Equatorial Guinea
+       * * `GR` - Greece
+       * * `GD` - Grenada
+       * * `GL` - Greenland
+       * * `GT` - Guatemala
+       * * `GF` - French Guiana
+       * * `GU` - Guam
+       * * `GY` - Guyana
+       * * `HK` - Hong Kong
+       * * `HM` - Heard Island and McDonald Islands
+       * * `HN` - Honduras
+       * * `HR` - Croatia
+       * * `HT` - Haiti
+       * * `HU` - Hungary
+       * * `ID` - Indonesia
+       * * `IM` - Isle of Man
+       * * `IN` - India
+       * * `IO` - British Indian Ocean Territory
+       * * `IE` - Ireland
+       * * `IR` - Iran, Islamic Republic of
+       * * `IQ` - Iraq
+       * * `IS` - Iceland
+       * * `IL` - Israel
+       * * `IT` - Italy
+       * * `JM` - Jamaica
+       * * `JE` - Jersey
+       * * `JO` - Jordan
+       * * `JP` - Japan
+       * * `KZ` - Kazakhstan
+       * * `KE` - Kenya
+       * * `KG` - Kyrgyzstan
+       * * `KH` - Cambodia
+       * * `KI` - Kiribati
+       * * `KN` - Saint Kitts and Nevis
+       * * `KR` - Korea, Republic of
+       * * `KW` - Kuwait
+       * * `LA` - Lao People's Democratic Republic
+       * * `LB` - Lebanon
+       * * `LR` - Liberia
+       * * `LY` - Libya
+       * * `LC` - Saint Lucia
+       * * `LI` - Liechtenstein
+       * * `LK` - Sri Lanka
+       * * `LS` - Lesotho
+       * * `LT` - Lithuania
+       * * `LU` - Luxembourg
+       * * `LV` - Latvia
+       * * `MO` - Macao
+       * * `MF` - Saint Martin (French part)
+       * * `MA` - Morocco
+       * * `MC` - Monaco
+       * * `MD` - Moldova, Republic of
+       * * `MG` - Madagascar
+       * * `MV` - Maldives
+       * * `MX` - Mexico
+       * * `MH` - Marshall Islands
+       * * `MK` - North Macedonia
+       * * `ML` - Mali
+       * * `MT` - Malta
+       * * `MM` - Myanmar
+       * * `ME` - Montenegro
+       * * `MN` - Mongolia
+       * * `MP` - Northern Mariana Islands
+       * * `MZ` - Mozambique
+       * * `MR` - Mauritania
+       * * `MS` - Montserrat
+       * * `MQ` - Martinique
+       * * `MU` - Mauritius
+       * * `MW` - Malawi
+       * * `MY` - Malaysia
+       * * `YT` - Mayotte
+       * * `NA` - Namibia
+       * * `NC` - New Caledonia
+       * * `NE` - Niger
+       * * `NF` - Norfolk Island
+       * * `NG` - Nigeria
+       * * `NI` - Nicaragua
+       * * `NU` - Niue
+       * * `NL` - Netherlands
+       * * `NO` - Norway
+       * * `NP` - Nepal
+       * * `NR` - Nauru
+       * * `NZ` - New Zealand
+       * * `OM` - Oman
+       * * `PK` - Pakistan
+       * * `PA` - Panama
+       * * `PN` - Pitcairn
+       * * `PE` - Peru
+       * * `PH` - Philippines
+       * * `PW` - Palau
+       * * `PG` - Papua New Guinea
+       * * `PL` - Poland
+       * * `PR` - Puerto Rico
+       * * `KP` - Korea, Democratic People's Republic of
+       * * `PT` - Portugal
+       * * `PY` - Paraguay
+       * * `PS` - Palestine, State of
+       * * `PF` - French Polynesia
+       * * `QA` - Qatar
+       * * `RE` - Réunion
+       * * `RO` - Romania
+       * * `RU` - Russian Federation
+       * * `RW` - Rwanda
+       * * `SA` - Saudi Arabia
+       * * `SD` - Sudan
+       * * `SN` - Senegal
+       * * `SG` - Singapore
+       * * `GS` - South Georgia and the South Sandwich Islands
+       * * `SH` - Saint Helena, Ascension and Tristan da Cunha
+       * * `SJ` - Svalbard and Jan Mayen
+       * * `SB` - Solomon Islands
+       * * `SL` - Sierra Leone
+       * * `SV` - El Salvador
+       * * `SM` - San Marino
+       * * `SO` - Somalia
+       * * `PM` - Saint Pierre and Miquelon
+       * * `RS` - Serbia
+       * * `SS` - South Sudan
+       * * `ST` - Sao Tome and Principe
+       * * `SR` - Suriname
+       * * `SK` - Slovakia
+       * * `SI` - Slovenia
+       * * `SE` - Sweden
+       * * `SZ` - Eswatini
+       * * `SX` - Sint Maarten (Dutch part)
+       * * `SC` - Seychelles
+       * * `SY` - Syrian Arab Republic
+       * * `TC` - Turks and Caicos Islands
+       * * `TD` - Chad
+       * * `TG` - Togo
+       * * `TH` - Thailand
+       * * `TJ` - Tajikistan
+       * * `TK` - Tokelau
+       * * `TM` - Turkmenistan
+       * * `TL` - Timor-Leste
+       * * `TO` - Tonga
+       * * `TT` - Trinidad and Tobago
+       * * `TN` - Tunisia
+       * * `TR` - Turkey
+       * * `TV` - Tuvalu
+       * * `TW` - Taiwan, Province of China
+       * * `TZ` - Tanzania, United Republic of
+       * * `UG` - Uganda
+       * * `UA` - Ukraine
+       * * `UM` - United States Minor Outlying Islands
+       * * `UY` - Uruguay
+       * * `US` - United States
+       * * `UZ` - Uzbekistan
+       * * `VA` - Holy See (Vatican City State)
+       * * `VC` - Saint Vincent and the Grenadines
+       * * `VE` - Venezuela, Bolivarian Republic of
+       * * `VG` - Virgin Islands, British
+       * * `VI` - Virgin Islands, U.S.
+       * * `VN` - Viet Nam
+       * * `VU` - Vanuatu
+       * * `WF` - Wallis and Futuna
+       * * `WS` - Samoa
+       * * `YE` - Yemen
+       * * `ZA` - South Africa
+       * * `ZM` - Zambia
+       * * `ZW` - Zimbabwe 
        * @enum {string}
        */
       country: "AW" | "AF" | "AO" | "AI" | "AX" | "AL" | "AD" | "AE" | "AR" | "AM" | "AS" | "AQ" | "TF" | "AG" | "AU" | "AT" | "AZ" | "BI" | "BE" | "BJ" | "BQ" | "BF" | "BD" | "BG" | "BH" | "BS" | "BA" | "BL" | "BY" | "BZ" | "BM" | "BO" | "BR" | "BB" | "BN" | "BT" | "BV" | "BW" | "CF" | "CA" | "CC" | "CH" | "CL" | "CN" | "CI" | "CM" | "CD" | "CG" | "CK" | "CO" | "KM" | "CV" | "CR" | "CU" | "CW" | "CX" | "KY" | "CY" | "CZ" | "DE" | "DJ" | "DM" | "DK" | "DO" | "DZ" | "EC" | "EG" | "ER" | "EH" | "ES" | "EE" | "ET" | "FI" | "FJ" | "FK" | "FR" | "FO" | "FM" | "GA" | "GB" | "GE" | "GG" | "GH" | "GI" | "GN" | "GP" | "GM" | "GW" | "GQ" | "GR" | "GD" | "GL" | "GT" | "GF" | "GU" | "GY" | "HK" | "HM" | "HN" | "HR" | "HT" | "HU" | "ID" | "IM" | "IN" | "IO" | "IE" | "IR" | "IQ" | "IS" | "IL" | "IT" | "JM" | "JE" | "JO" | "JP" | "KZ" | "KE" | "KG" | "KH" | "KI" | "KN" | "KR" | "KW" | "LA" | "LB" | "LR" | "LY" | "LC" | "LI" | "LK" | "LS" | "LT" | "LU" | "LV" | "MO" | "MF" | "MA" | "MC" | "MD" | "MG" | "MV" | "MX" | "MH" | "MK" | "ML" | "MT" | "MM" | "ME" | "MN" | "MP" | "MZ" | "MR" | "MS" | "MQ" | "MU" | "MW" | "MY" | "YT" | "NA" | "NC" | "NE" | "NF" | "NG" | "NI" | "NU" | "NL" | "NO" | "NP" | "NR" | "NZ" | "OM" | "PK" | "PA" | "PN" | "PE" | "PH" | "PW" | "PG" | "PL" | "PR" | "KP" | "PT" | "PY" | "PS" | "PF" | "QA" | "RE" | "RO" | "RU" | "RW" | "SA" | "SD" | "SN" | "SG" | "GS" | "SH" | "SJ" | "SB" | "SL" | "SV" | "SM" | "SO" | "PM" | "RS" | "SS" | "ST" | "SR" | "SK" | "SI" | "SE" | "SZ" | "SX" | "SC" | "SY" | "TC" | "TD" | "TG" | "TH" | "TJ" | "TK" | "TM" | "TL" | "TO" | "TT" | "TN" | "TR" | "TV" | "TW" | "TZ" | "UG" | "UA" | "UM" | "UY" | "US" | "UZ" | "VA" | "VC" | "VE" | "VG" | "VI" | "VN" | "VU" | "WF" | "WS" | "YE" | "ZA" | "ZM" | "ZW";
@@ -649,7 +939,257 @@ export interface components {
       /** @description City, district, suburb, town, or village */
       city: string;
       /**
-       * @description Two-letter country code (ISO 3166-1 alpha-2) 
+       * @description Two-letter country code (ISO 3166-1 alpha-2)
+       * 
+       * * `AW` - Aruba
+       * * `AF` - Afghanistan
+       * * `AO` - Angola
+       * * `AI` - Anguilla
+       * * `AX` - Åland Islands
+       * * `AL` - Albania
+       * * `AD` - Andorra
+       * * `AE` - United Arab Emirates
+       * * `AR` - Argentina
+       * * `AM` - Armenia
+       * * `AS` - American Samoa
+       * * `AQ` - Antarctica
+       * * `TF` - French Southern Territories
+       * * `AG` - Antigua and Barbuda
+       * * `AU` - Australia
+       * * `AT` - Austria
+       * * `AZ` - Azerbaijan
+       * * `BI` - Burundi
+       * * `BE` - Belgium
+       * * `BJ` - Benin
+       * * `BQ` - Bonaire, Sint Eustatius and Saba
+       * * `BF` - Burkina Faso
+       * * `BD` - Bangladesh
+       * * `BG` - Bulgaria
+       * * `BH` - Bahrain
+       * * `BS` - Bahamas
+       * * `BA` - Bosnia and Herzegovina
+       * * `BL` - Saint Barthélemy
+       * * `BY` - Belarus
+       * * `BZ` - Belize
+       * * `BM` - Bermuda
+       * * `BO` - Bolivia, Plurinational State of
+       * * `BR` - Brazil
+       * * `BB` - Barbados
+       * * `BN` - Brunei Darussalam
+       * * `BT` - Bhutan
+       * * `BV` - Bouvet Island
+       * * `BW` - Botswana
+       * * `CF` - Central African Republic
+       * * `CA` - Canada
+       * * `CC` - Cocos (Keeling) Islands
+       * * `CH` - Switzerland
+       * * `CL` - Chile
+       * * `CN` - China
+       * * `CI` - Côte d'Ivoire
+       * * `CM` - Cameroon
+       * * `CD` - Congo, The Democratic Republic of the
+       * * `CG` - Congo
+       * * `CK` - Cook Islands
+       * * `CO` - Colombia
+       * * `KM` - Comoros
+       * * `CV` - Cabo Verde
+       * * `CR` - Costa Rica
+       * * `CU` - Cuba
+       * * `CW` - Curaçao
+       * * `CX` - Christmas Island
+       * * `KY` - Cayman Islands
+       * * `CY` - Cyprus
+       * * `CZ` - Czechia
+       * * `DE` - Germany
+       * * `DJ` - Djibouti
+       * * `DM` - Dominica
+       * * `DK` - Denmark
+       * * `DO` - Dominican Republic
+       * * `DZ` - Algeria
+       * * `EC` - Ecuador
+       * * `EG` - Egypt
+       * * `ER` - Eritrea
+       * * `EH` - Western Sahara
+       * * `ES` - Spain
+       * * `EE` - Estonia
+       * * `ET` - Ethiopia
+       * * `FI` - Finland
+       * * `FJ` - Fiji
+       * * `FK` - Falkland Islands (Malvinas)
+       * * `FR` - France
+       * * `FO` - Faroe Islands
+       * * `FM` - Micronesia, Federated States of
+       * * `GA` - Gabon
+       * * `GB` - United Kingdom
+       * * `GE` - Georgia
+       * * `GG` - Guernsey
+       * * `GH` - Ghana
+       * * `GI` - Gibraltar
+       * * `GN` - Guinea
+       * * `GP` - Guadeloupe
+       * * `GM` - Gambia
+       * * `GW` - Guinea-Bissau
+       * * `GQ` - Equatorial Guinea
+       * * `GR` - Greece
+       * * `GD` - Grenada
+       * * `GL` - Greenland
+       * * `GT` - Guatemala
+       * * `GF` - French Guiana
+       * * `GU` - Guam
+       * * `GY` - Guyana
+       * * `HK` - Hong Kong
+       * * `HM` - Heard Island and McDonald Islands
+       * * `HN` - Honduras
+       * * `HR` - Croatia
+       * * `HT` - Haiti
+       * * `HU` - Hungary
+       * * `ID` - Indonesia
+       * * `IM` - Isle of Man
+       * * `IN` - India
+       * * `IO` - British Indian Ocean Territory
+       * * `IE` - Ireland
+       * * `IR` - Iran, Islamic Republic of
+       * * `IQ` - Iraq
+       * * `IS` - Iceland
+       * * `IL` - Israel
+       * * `IT` - Italy
+       * * `JM` - Jamaica
+       * * `JE` - Jersey
+       * * `JO` - Jordan
+       * * `JP` - Japan
+       * * `KZ` - Kazakhstan
+       * * `KE` - Kenya
+       * * `KG` - Kyrgyzstan
+       * * `KH` - Cambodia
+       * * `KI` - Kiribati
+       * * `KN` - Saint Kitts and Nevis
+       * * `KR` - Korea, Republic of
+       * * `KW` - Kuwait
+       * * `LA` - Lao People's Democratic Republic
+       * * `LB` - Lebanon
+       * * `LR` - Liberia
+       * * `LY` - Libya
+       * * `LC` - Saint Lucia
+       * * `LI` - Liechtenstein
+       * * `LK` - Sri Lanka
+       * * `LS` - Lesotho
+       * * `LT` - Lithuania
+       * * `LU` - Luxembourg
+       * * `LV` - Latvia
+       * * `MO` - Macao
+       * * `MF` - Saint Martin (French part)
+       * * `MA` - Morocco
+       * * `MC` - Monaco
+       * * `MD` - Moldova, Republic of
+       * * `MG` - Madagascar
+       * * `MV` - Maldives
+       * * `MX` - Mexico
+       * * `MH` - Marshall Islands
+       * * `MK` - North Macedonia
+       * * `ML` - Mali
+       * * `MT` - Malta
+       * * `MM` - Myanmar
+       * * `ME` - Montenegro
+       * * `MN` - Mongolia
+       * * `MP` - Northern Mariana Islands
+       * * `MZ` - Mozambique
+       * * `MR` - Mauritania
+       * * `MS` - Montserrat
+       * * `MQ` - Martinique
+       * * `MU` - Mauritius
+       * * `MW` - Malawi
+       * * `MY` - Malaysia
+       * * `YT` - Mayotte
+       * * `NA` - Namibia
+       * * `NC` - New Caledonia
+       * * `NE` - Niger
+       * * `NF` - Norfolk Island
+       * * `NG` - Nigeria
+       * * `NI` - Nicaragua
+       * * `NU` - Niue
+       * * `NL` - Netherlands
+       * * `NO` - Norway
+       * * `NP` - Nepal
+       * * `NR` - Nauru
+       * * `NZ` - New Zealand
+       * * `OM` - Oman
+       * * `PK` - Pakistan
+       * * `PA` - Panama
+       * * `PN` - Pitcairn
+       * * `PE` - Peru
+       * * `PH` - Philippines
+       * * `PW` - Palau
+       * * `PG` - Papua New Guinea
+       * * `PL` - Poland
+       * * `PR` - Puerto Rico
+       * * `KP` - Korea, Democratic People's Republic of
+       * * `PT` - Portugal
+       * * `PY` - Paraguay
+       * * `PS` - Palestine, State of
+       * * `PF` - French Polynesia
+       * * `QA` - Qatar
+       * * `RE` - Réunion
+       * * `RO` - Romania
+       * * `RU` - Russian Federation
+       * * `RW` - Rwanda
+       * * `SA` - Saudi Arabia
+       * * `SD` - Sudan
+       * * `SN` - Senegal
+       * * `SG` - Singapore
+       * * `GS` - South Georgia and the South Sandwich Islands
+       * * `SH` - Saint Helena, Ascension and Tristan da Cunha
+       * * `SJ` - Svalbard and Jan Mayen
+       * * `SB` - Solomon Islands
+       * * `SL` - Sierra Leone
+       * * `SV` - El Salvador
+       * * `SM` - San Marino
+       * * `SO` - Somalia
+       * * `PM` - Saint Pierre and Miquelon
+       * * `RS` - Serbia
+       * * `SS` - South Sudan
+       * * `ST` - Sao Tome and Principe
+       * * `SR` - Suriname
+       * * `SK` - Slovakia
+       * * `SI` - Slovenia
+       * * `SE` - Sweden
+       * * `SZ` - Eswatini
+       * * `SX` - Sint Maarten (Dutch part)
+       * * `SC` - Seychelles
+       * * `SY` - Syrian Arab Republic
+       * * `TC` - Turks and Caicos Islands
+       * * `TD` - Chad
+       * * `TG` - Togo
+       * * `TH` - Thailand
+       * * `TJ` - Tajikistan
+       * * `TK` - Tokelau
+       * * `TM` - Turkmenistan
+       * * `TL` - Timor-Leste
+       * * `TO` - Tonga
+       * * `TT` - Trinidad and Tobago
+       * * `TN` - Tunisia
+       * * `TR` - Turkey
+       * * `TV` - Tuvalu
+       * * `TW` - Taiwan, Province of China
+       * * `TZ` - Tanzania, United Republic of
+       * * `UG` - Uganda
+       * * `UA` - Ukraine
+       * * `UM` - United States Minor Outlying Islands
+       * * `UY` - Uruguay
+       * * `US` - United States
+       * * `UZ` - Uzbekistan
+       * * `VA` - Holy See (Vatican City State)
+       * * `VC` - Saint Vincent and the Grenadines
+       * * `VE` - Venezuela, Bolivarian Republic of
+       * * `VG` - Virgin Islands, British
+       * * `VI` - Virgin Islands, U.S.
+       * * `VN` - Viet Nam
+       * * `VU` - Vanuatu
+       * * `WF` - Wallis and Futuna
+       * * `WS` - Samoa
+       * * `YE` - Yemen
+       * * `ZA` - South Africa
+       * * `ZM` - Zambia
+       * * `ZW` - Zimbabwe 
        * @enum {string}
        */
       country: "AW" | "AF" | "AO" | "AI" | "AX" | "AL" | "AD" | "AE" | "AR" | "AM" | "AS" | "AQ" | "TF" | "AG" | "AU" | "AT" | "AZ" | "BI" | "BE" | "BJ" | "BQ" | "BF" | "BD" | "BG" | "BH" | "BS" | "BA" | "BL" | "BY" | "BZ" | "BM" | "BO" | "BR" | "BB" | "BN" | "BT" | "BV" | "BW" | "CF" | "CA" | "CC" | "CH" | "CL" | "CN" | "CI" | "CM" | "CD" | "CG" | "CK" | "CO" | "KM" | "CV" | "CR" | "CU" | "CW" | "CX" | "KY" | "CY" | "CZ" | "DE" | "DJ" | "DM" | "DK" | "DO" | "DZ" | "EC" | "EG" | "ER" | "EH" | "ES" | "EE" | "ET" | "FI" | "FJ" | "FK" | "FR" | "FO" | "FM" | "GA" | "GB" | "GE" | "GG" | "GH" | "GI" | "GN" | "GP" | "GM" | "GW" | "GQ" | "GR" | "GD" | "GL" | "GT" | "GF" | "GU" | "GY" | "HK" | "HM" | "HN" | "HR" | "HT" | "HU" | "ID" | "IM" | "IN" | "IO" | "IE" | "IR" | "IQ" | "IS" | "IL" | "IT" | "JM" | "JE" | "JO" | "JP" | "KZ" | "KE" | "KG" | "KH" | "KI" | "KN" | "KR" | "KW" | "LA" | "LB" | "LR" | "LY" | "LC" | "LI" | "LK" | "LS" | "LT" | "LU" | "LV" | "MO" | "MF" | "MA" | "MC" | "MD" | "MG" | "MV" | "MX" | "MH" | "MK" | "ML" | "MT" | "MM" | "ME" | "MN" | "MP" | "MZ" | "MR" | "MS" | "MQ" | "MU" | "MW" | "MY" | "YT" | "NA" | "NC" | "NE" | "NF" | "NG" | "NI" | "NU" | "NL" | "NO" | "NP" | "NR" | "NZ" | "OM" | "PK" | "PA" | "PN" | "PE" | "PH" | "PW" | "PG" | "PL" | "PR" | "KP" | "PT" | "PY" | "PS" | "PF" | "QA" | "RE" | "RO" | "RU" | "RW" | "SA" | "SD" | "SN" | "SG" | "GS" | "SH" | "SJ" | "SB" | "SL" | "SV" | "SM" | "SO" | "PM" | "RS" | "SS" | "ST" | "SR" | "SK" | "SI" | "SE" | "SZ" | "SX" | "SC" | "SY" | "TC" | "TD" | "TG" | "TH" | "TJ" | "TK" | "TM" | "TL" | "TO" | "TT" | "TN" | "TR" | "TV" | "TW" | "TZ" | "UG" | "UA" | "UM" | "UY" | "US" | "UZ" | "VA" | "VC" | "VE" | "VG" | "VI" | "VN" | "VU" | "WF" | "WS" | "YE" | "ZA" | "ZM" | "ZW";
@@ -689,21 +1229,26 @@ export interface components {
       backtest_name: string;
     };
     BacktestDetail: {
-      /** Format: date */
-      start_date: string;
-      backtest_substitutions: (components["schemas"]["BacktestSubstitution"])[];
-      /** Format: date */
-      end_date: string;
       backtest_results: components["schemas"]["AllSubstitutionResults"];
+      backtest_name: string;
+      backtest_id: string;
+      /**
+       * @description * `running` - Running
+       * * `completed` - Completed
+       * * `failed` - Failed 
+       * @enum {string}
+       */
+      status?: "running" | "completed" | "failed";
       /** Format: date-time */
       time_created?: string;
-      backtest_id: string;
       kpis?: {
         [key: string]: Record<string, never> | undefined;
       };
-      backtest_name: string;
-      /** @enum {string} */
-      status?: "running" | "completed" | "failed";
+      backtest_substitutions: (components["schemas"]["BacktestSubstitution"])[];
+      /** Format: date */
+      end_date: string;
+      /** Format: date */
+      start_date: string;
     };
     BacktestSubstitution: {
       new_plan: components["schemas"]["PlanVersionDetail"];
@@ -730,7 +1275,12 @@ export interface components {
       kpis?: {
         [key: string]: Record<string, never> | undefined;
       };
-      /** @enum {string} */
+      /**
+       * @description * `running` - Running
+       * * `completed` - Completed
+       * * `failed` - Failed 
+       * @enum {string}
+       */
       status?: "running" | "completed" | "failed";
       backtest_id: string;
     };
@@ -742,19 +1292,31 @@ export interface components {
     };
     CategoricalFilter: {
       property_name: string;
-      /** @enum {string} */
+      /**
+       * @description * `isin` - Is in
+       * * `isnotin` - Is not in 
+       * @enum {string}
+       */
       operator: "isin" | "isnotin";
       comparison_value: (string)[];
     };
     CategoricalFilterDetailRequest: {
       property_name: string;
-      /** @enum {string} */
+      /**
+       * @description * `isin` - Is in
+       * * `isnotin` - Is not in 
+       * @enum {string}
+       */
       operator: "isin" | "isnotin";
       comparison_value: (string)[];
     };
     CategoricalFilterRequest: {
       property_name: string;
-      /** @enum {string} */
+      /**
+       * @description * `isin` - Is in
+       * * `isnotin` - Is not in 
+       * @enum {string}
+       */
       operator: "isin" | "isnotin";
       comparison_value: (string)[];
     };
@@ -803,7 +1365,11 @@ export interface components {
        * @description The number of units to charge for. If left null, then it will be required at subscription create time.
        */
       units: number;
-      /** @enum {unknown} */
+      /**
+       * @description * `prorate` - prorate
+       * * `full` - full 
+       * @enum {unknown}
+       */
       charge_behavior: "prorate" | "full";
     };
     ComponentChargeCreateRequest: {
@@ -812,7 +1378,11 @@ export interface components {
        * @description The number of units to charge for. If left null, then it will be required at subscription create time.
        */
       units: number;
-      /** @enum {unknown} */
+      /**
+       * @description * `prorate` - prorate
+       * * `full` - full 
+       * @enum {unknown}
+       */
       charge_behavior: "prorate" | "full";
     };
     ComponentUsage: {
@@ -854,12 +1424,18 @@ export interface components {
       organization_id: string;
     };
     ConfirmIdemsReceived: {
-      /** @enum {string} */
+      /**
+       * @description * `success` - success 
+       * @enum {string}
+       */
       status: "success";
       ids_not_found: (string)[];
     };
     ConfirmIdemsReceivedFailure: {
-      /** @enum {string} */
+      /**
+       * @description * `failure` - failure 
+       * @enum {string}
+       */
       status: "failure";
       error: string;
     };
@@ -899,7 +1475,11 @@ export interface components {
       /** @description A dictionary containing the customer's integrations. Keys are the integration type, and the value is a dictionary containing the integration's properties, which can vary by integration. */
       integrations: components["schemas"]["CustomerIntegrations"];
       default_currency: components["schemas"]["PricingUnit"];
-      /** @enum {string|null} */
+      /**
+       * @description * `stripe` - Stripe
+       * * `braintree` - Braintree 
+       * @enum {string|null}
+       */
       payment_provider: "stripe" | "braintree" | "" | null;
       payment_provider_id: string;
       has_payment_method: boolean;
@@ -912,7 +1492,443 @@ export interface components {
        * @description Tax rate as percentage. For example, 10.5 for 10.5%
        */
       tax_rate: number;
-      /** @enum {string} */
+      /**
+       * @description * `Africa/Abidjan` - Africa/Abidjan
+       * * `Africa/Accra` - Africa/Accra
+       * * `Africa/Addis_Ababa` - Africa/Addis_Ababa
+       * * `Africa/Algiers` - Africa/Algiers
+       * * `Africa/Asmara` - Africa/Asmara
+       * * `Africa/Bamako` - Africa/Bamako
+       * * `Africa/Bangui` - Africa/Bangui
+       * * `Africa/Banjul` - Africa/Banjul
+       * * `Africa/Bissau` - Africa/Bissau
+       * * `Africa/Blantyre` - Africa/Blantyre
+       * * `Africa/Brazzaville` - Africa/Brazzaville
+       * * `Africa/Bujumbura` - Africa/Bujumbura
+       * * `Africa/Cairo` - Africa/Cairo
+       * * `Africa/Casablanca` - Africa/Casablanca
+       * * `Africa/Ceuta` - Africa/Ceuta
+       * * `Africa/Conakry` - Africa/Conakry
+       * * `Africa/Dakar` - Africa/Dakar
+       * * `Africa/Dar_es_Salaam` - Africa/Dar_es_Salaam
+       * * `Africa/Djibouti` - Africa/Djibouti
+       * * `Africa/Douala` - Africa/Douala
+       * * `Africa/El_Aaiun` - Africa/El_Aaiun
+       * * `Africa/Freetown` - Africa/Freetown
+       * * `Africa/Gaborone` - Africa/Gaborone
+       * * `Africa/Harare` - Africa/Harare
+       * * `Africa/Johannesburg` - Africa/Johannesburg
+       * * `Africa/Juba` - Africa/Juba
+       * * `Africa/Kampala` - Africa/Kampala
+       * * `Africa/Khartoum` - Africa/Khartoum
+       * * `Africa/Kigali` - Africa/Kigali
+       * * `Africa/Kinshasa` - Africa/Kinshasa
+       * * `Africa/Lagos` - Africa/Lagos
+       * * `Africa/Libreville` - Africa/Libreville
+       * * `Africa/Lome` - Africa/Lome
+       * * `Africa/Luanda` - Africa/Luanda
+       * * `Africa/Lubumbashi` - Africa/Lubumbashi
+       * * `Africa/Lusaka` - Africa/Lusaka
+       * * `Africa/Malabo` - Africa/Malabo
+       * * `Africa/Maputo` - Africa/Maputo
+       * * `Africa/Maseru` - Africa/Maseru
+       * * `Africa/Mbabane` - Africa/Mbabane
+       * * `Africa/Mogadishu` - Africa/Mogadishu
+       * * `Africa/Monrovia` - Africa/Monrovia
+       * * `Africa/Nairobi` - Africa/Nairobi
+       * * `Africa/Ndjamena` - Africa/Ndjamena
+       * * `Africa/Niamey` - Africa/Niamey
+       * * `Africa/Nouakchott` - Africa/Nouakchott
+       * * `Africa/Ouagadougou` - Africa/Ouagadougou
+       * * `Africa/Porto-Novo` - Africa/Porto-Novo
+       * * `Africa/Sao_Tome` - Africa/Sao_Tome
+       * * `Africa/Tripoli` - Africa/Tripoli
+       * * `Africa/Tunis` - Africa/Tunis
+       * * `Africa/Windhoek` - Africa/Windhoek
+       * * `America/Adak` - America/Adak
+       * * `America/Anchorage` - America/Anchorage
+       * * `America/Anguilla` - America/Anguilla
+       * * `America/Antigua` - America/Antigua
+       * * `America/Araguaina` - America/Araguaina
+       * * `America/Argentina/Buenos_Aires` - America/Argentina/Buenos_Aires
+       * * `America/Argentina/Catamarca` - America/Argentina/Catamarca
+       * * `America/Argentina/Cordoba` - America/Argentina/Cordoba
+       * * `America/Argentina/Jujuy` - America/Argentina/Jujuy
+       * * `America/Argentina/La_Rioja` - America/Argentina/La_Rioja
+       * * `America/Argentina/Mendoza` - America/Argentina/Mendoza
+       * * `America/Argentina/Rio_Gallegos` - America/Argentina/Rio_Gallegos
+       * * `America/Argentina/Salta` - America/Argentina/Salta
+       * * `America/Argentina/San_Juan` - America/Argentina/San_Juan
+       * * `America/Argentina/San_Luis` - America/Argentina/San_Luis
+       * * `America/Argentina/Tucuman` - America/Argentina/Tucuman
+       * * `America/Argentina/Ushuaia` - America/Argentina/Ushuaia
+       * * `America/Aruba` - America/Aruba
+       * * `America/Asuncion` - America/Asuncion
+       * * `America/Atikokan` - America/Atikokan
+       * * `America/Bahia` - America/Bahia
+       * * `America/Bahia_Banderas` - America/Bahia_Banderas
+       * * `America/Barbados` - America/Barbados
+       * * `America/Belem` - America/Belem
+       * * `America/Belize` - America/Belize
+       * * `America/Blanc-Sablon` - America/Blanc-Sablon
+       * * `America/Boa_Vista` - America/Boa_Vista
+       * * `America/Bogota` - America/Bogota
+       * * `America/Boise` - America/Boise
+       * * `America/Cambridge_Bay` - America/Cambridge_Bay
+       * * `America/Campo_Grande` - America/Campo_Grande
+       * * `America/Cancun` - America/Cancun
+       * * `America/Caracas` - America/Caracas
+       * * `America/Cayenne` - America/Cayenne
+       * * `America/Cayman` - America/Cayman
+       * * `America/Chicago` - America/Chicago
+       * * `America/Chihuahua` - America/Chihuahua
+       * * `America/Ciudad_Juarez` - America/Ciudad_Juarez
+       * * `America/Costa_Rica` - America/Costa_Rica
+       * * `America/Creston` - America/Creston
+       * * `America/Cuiaba` - America/Cuiaba
+       * * `America/Curacao` - America/Curacao
+       * * `America/Danmarkshavn` - America/Danmarkshavn
+       * * `America/Dawson` - America/Dawson
+       * * `America/Dawson_Creek` - America/Dawson_Creek
+       * * `America/Denver` - America/Denver
+       * * `America/Detroit` - America/Detroit
+       * * `America/Dominica` - America/Dominica
+       * * `America/Edmonton` - America/Edmonton
+       * * `America/Eirunepe` - America/Eirunepe
+       * * `America/El_Salvador` - America/El_Salvador
+       * * `America/Fort_Nelson` - America/Fort_Nelson
+       * * `America/Fortaleza` - America/Fortaleza
+       * * `America/Glace_Bay` - America/Glace_Bay
+       * * `America/Goose_Bay` - America/Goose_Bay
+       * * `America/Grand_Turk` - America/Grand_Turk
+       * * `America/Grenada` - America/Grenada
+       * * `America/Guadeloupe` - America/Guadeloupe
+       * * `America/Guatemala` - America/Guatemala
+       * * `America/Guayaquil` - America/Guayaquil
+       * * `America/Guyana` - America/Guyana
+       * * `America/Halifax` - America/Halifax
+       * * `America/Havana` - America/Havana
+       * * `America/Hermosillo` - America/Hermosillo
+       * * `America/Indiana/Indianapolis` - America/Indiana/Indianapolis
+       * * `America/Indiana/Knox` - America/Indiana/Knox
+       * * `America/Indiana/Marengo` - America/Indiana/Marengo
+       * * `America/Indiana/Petersburg` - America/Indiana/Petersburg
+       * * `America/Indiana/Tell_City` - America/Indiana/Tell_City
+       * * `America/Indiana/Vevay` - America/Indiana/Vevay
+       * * `America/Indiana/Vincennes` - America/Indiana/Vincennes
+       * * `America/Indiana/Winamac` - America/Indiana/Winamac
+       * * `America/Inuvik` - America/Inuvik
+       * * `America/Iqaluit` - America/Iqaluit
+       * * `America/Jamaica` - America/Jamaica
+       * * `America/Juneau` - America/Juneau
+       * * `America/Kentucky/Louisville` - America/Kentucky/Louisville
+       * * `America/Kentucky/Monticello` - America/Kentucky/Monticello
+       * * `America/Kralendijk` - America/Kralendijk
+       * * `America/La_Paz` - America/La_Paz
+       * * `America/Lima` - America/Lima
+       * * `America/Los_Angeles` - America/Los_Angeles
+       * * `America/Lower_Princes` - America/Lower_Princes
+       * * `America/Maceio` - America/Maceio
+       * * `America/Managua` - America/Managua
+       * * `America/Manaus` - America/Manaus
+       * * `America/Marigot` - America/Marigot
+       * * `America/Martinique` - America/Martinique
+       * * `America/Matamoros` - America/Matamoros
+       * * `America/Mazatlan` - America/Mazatlan
+       * * `America/Menominee` - America/Menominee
+       * * `America/Merida` - America/Merida
+       * * `America/Metlakatla` - America/Metlakatla
+       * * `America/Mexico_City` - America/Mexico_City
+       * * `America/Miquelon` - America/Miquelon
+       * * `America/Moncton` - America/Moncton
+       * * `America/Monterrey` - America/Monterrey
+       * * `America/Montevideo` - America/Montevideo
+       * * `America/Montserrat` - America/Montserrat
+       * * `America/Nassau` - America/Nassau
+       * * `America/New_York` - America/New_York
+       * * `America/Nome` - America/Nome
+       * * `America/Noronha` - America/Noronha
+       * * `America/North_Dakota/Beulah` - America/North_Dakota/Beulah
+       * * `America/North_Dakota/Center` - America/North_Dakota/Center
+       * * `America/North_Dakota/New_Salem` - America/North_Dakota/New_Salem
+       * * `America/Nuuk` - America/Nuuk
+       * * `America/Ojinaga` - America/Ojinaga
+       * * `America/Panama` - America/Panama
+       * * `America/Paramaribo` - America/Paramaribo
+       * * `America/Phoenix` - America/Phoenix
+       * * `America/Port-au-Prince` - America/Port-au-Prince
+       * * `America/Port_of_Spain` - America/Port_of_Spain
+       * * `America/Porto_Velho` - America/Porto_Velho
+       * * `America/Puerto_Rico` - America/Puerto_Rico
+       * * `America/Punta_Arenas` - America/Punta_Arenas
+       * * `America/Rankin_Inlet` - America/Rankin_Inlet
+       * * `America/Recife` - America/Recife
+       * * `America/Regina` - America/Regina
+       * * `America/Resolute` - America/Resolute
+       * * `America/Rio_Branco` - America/Rio_Branco
+       * * `America/Santarem` - America/Santarem
+       * * `America/Santiago` - America/Santiago
+       * * `America/Santo_Domingo` - America/Santo_Domingo
+       * * `America/Sao_Paulo` - America/Sao_Paulo
+       * * `America/Scoresbysund` - America/Scoresbysund
+       * * `America/Sitka` - America/Sitka
+       * * `America/St_Barthelemy` - America/St_Barthelemy
+       * * `America/St_Johns` - America/St_Johns
+       * * `America/St_Kitts` - America/St_Kitts
+       * * `America/St_Lucia` - America/St_Lucia
+       * * `America/St_Thomas` - America/St_Thomas
+       * * `America/St_Vincent` - America/St_Vincent
+       * * `America/Swift_Current` - America/Swift_Current
+       * * `America/Tegucigalpa` - America/Tegucigalpa
+       * * `America/Thule` - America/Thule
+       * * `America/Tijuana` - America/Tijuana
+       * * `America/Toronto` - America/Toronto
+       * * `America/Tortola` - America/Tortola
+       * * `America/Vancouver` - America/Vancouver
+       * * `America/Whitehorse` - America/Whitehorse
+       * * `America/Winnipeg` - America/Winnipeg
+       * * `America/Yakutat` - America/Yakutat
+       * * `America/Yellowknife` - America/Yellowknife
+       * * `Antarctica/Casey` - Antarctica/Casey
+       * * `Antarctica/Davis` - Antarctica/Davis
+       * * `Antarctica/DumontDUrville` - Antarctica/DumontDUrville
+       * * `Antarctica/Macquarie` - Antarctica/Macquarie
+       * * `Antarctica/Mawson` - Antarctica/Mawson
+       * * `Antarctica/McMurdo` - Antarctica/McMurdo
+       * * `Antarctica/Palmer` - Antarctica/Palmer
+       * * `Antarctica/Rothera` - Antarctica/Rothera
+       * * `Antarctica/Syowa` - Antarctica/Syowa
+       * * `Antarctica/Troll` - Antarctica/Troll
+       * * `Antarctica/Vostok` - Antarctica/Vostok
+       * * `Arctic/Longyearbyen` - Arctic/Longyearbyen
+       * * `Asia/Aden` - Asia/Aden
+       * * `Asia/Almaty` - Asia/Almaty
+       * * `Asia/Amman` - Asia/Amman
+       * * `Asia/Anadyr` - Asia/Anadyr
+       * * `Asia/Aqtau` - Asia/Aqtau
+       * * `Asia/Aqtobe` - Asia/Aqtobe
+       * * `Asia/Ashgabat` - Asia/Ashgabat
+       * * `Asia/Atyrau` - Asia/Atyrau
+       * * `Asia/Baghdad` - Asia/Baghdad
+       * * `Asia/Bahrain` - Asia/Bahrain
+       * * `Asia/Baku` - Asia/Baku
+       * * `Asia/Bangkok` - Asia/Bangkok
+       * * `Asia/Barnaul` - Asia/Barnaul
+       * * `Asia/Beirut` - Asia/Beirut
+       * * `Asia/Bishkek` - Asia/Bishkek
+       * * `Asia/Brunei` - Asia/Brunei
+       * * `Asia/Chita` - Asia/Chita
+       * * `Asia/Choibalsan` - Asia/Choibalsan
+       * * `Asia/Colombo` - Asia/Colombo
+       * * `Asia/Damascus` - Asia/Damascus
+       * * `Asia/Dhaka` - Asia/Dhaka
+       * * `Asia/Dili` - Asia/Dili
+       * * `Asia/Dubai` - Asia/Dubai
+       * * `Asia/Dushanbe` - Asia/Dushanbe
+       * * `Asia/Famagusta` - Asia/Famagusta
+       * * `Asia/Gaza` - Asia/Gaza
+       * * `Asia/Hebron` - Asia/Hebron
+       * * `Asia/Ho_Chi_Minh` - Asia/Ho_Chi_Minh
+       * * `Asia/Hong_Kong` - Asia/Hong_Kong
+       * * `Asia/Hovd` - Asia/Hovd
+       * * `Asia/Irkutsk` - Asia/Irkutsk
+       * * `Asia/Jakarta` - Asia/Jakarta
+       * * `Asia/Jayapura` - Asia/Jayapura
+       * * `Asia/Jerusalem` - Asia/Jerusalem
+       * * `Asia/Kabul` - Asia/Kabul
+       * * `Asia/Kamchatka` - Asia/Kamchatka
+       * * `Asia/Karachi` - Asia/Karachi
+       * * `Asia/Kathmandu` - Asia/Kathmandu
+       * * `Asia/Khandyga` - Asia/Khandyga
+       * * `Asia/Kolkata` - Asia/Kolkata
+       * * `Asia/Krasnoyarsk` - Asia/Krasnoyarsk
+       * * `Asia/Kuala_Lumpur` - Asia/Kuala_Lumpur
+       * * `Asia/Kuching` - Asia/Kuching
+       * * `Asia/Kuwait` - Asia/Kuwait
+       * * `Asia/Macau` - Asia/Macau
+       * * `Asia/Magadan` - Asia/Magadan
+       * * `Asia/Makassar` - Asia/Makassar
+       * * `Asia/Manila` - Asia/Manila
+       * * `Asia/Muscat` - Asia/Muscat
+       * * `Asia/Nicosia` - Asia/Nicosia
+       * * `Asia/Novokuznetsk` - Asia/Novokuznetsk
+       * * `Asia/Novosibirsk` - Asia/Novosibirsk
+       * * `Asia/Omsk` - Asia/Omsk
+       * * `Asia/Oral` - Asia/Oral
+       * * `Asia/Phnom_Penh` - Asia/Phnom_Penh
+       * * `Asia/Pontianak` - Asia/Pontianak
+       * * `Asia/Pyongyang` - Asia/Pyongyang
+       * * `Asia/Qatar` - Asia/Qatar
+       * * `Asia/Qostanay` - Asia/Qostanay
+       * * `Asia/Qyzylorda` - Asia/Qyzylorda
+       * * `Asia/Riyadh` - Asia/Riyadh
+       * * `Asia/Sakhalin` - Asia/Sakhalin
+       * * `Asia/Samarkand` - Asia/Samarkand
+       * * `Asia/Seoul` - Asia/Seoul
+       * * `Asia/Shanghai` - Asia/Shanghai
+       * * `Asia/Singapore` - Asia/Singapore
+       * * `Asia/Srednekolymsk` - Asia/Srednekolymsk
+       * * `Asia/Taipei` - Asia/Taipei
+       * * `Asia/Tashkent` - Asia/Tashkent
+       * * `Asia/Tbilisi` - Asia/Tbilisi
+       * * `Asia/Tehran` - Asia/Tehran
+       * * `Asia/Thimphu` - Asia/Thimphu
+       * * `Asia/Tokyo` - Asia/Tokyo
+       * * `Asia/Tomsk` - Asia/Tomsk
+       * * `Asia/Ulaanbaatar` - Asia/Ulaanbaatar
+       * * `Asia/Urumqi` - Asia/Urumqi
+       * * `Asia/Ust-Nera` - Asia/Ust-Nera
+       * * `Asia/Vientiane` - Asia/Vientiane
+       * * `Asia/Vladivostok` - Asia/Vladivostok
+       * * `Asia/Yakutsk` - Asia/Yakutsk
+       * * `Asia/Yangon` - Asia/Yangon
+       * * `Asia/Yekaterinburg` - Asia/Yekaterinburg
+       * * `Asia/Yerevan` - Asia/Yerevan
+       * * `Atlantic/Azores` - Atlantic/Azores
+       * * `Atlantic/Bermuda` - Atlantic/Bermuda
+       * * `Atlantic/Canary` - Atlantic/Canary
+       * * `Atlantic/Cape_Verde` - Atlantic/Cape_Verde
+       * * `Atlantic/Faroe` - Atlantic/Faroe
+       * * `Atlantic/Madeira` - Atlantic/Madeira
+       * * `Atlantic/Reykjavik` - Atlantic/Reykjavik
+       * * `Atlantic/South_Georgia` - Atlantic/South_Georgia
+       * * `Atlantic/St_Helena` - Atlantic/St_Helena
+       * * `Atlantic/Stanley` - Atlantic/Stanley
+       * * `Australia/Adelaide` - Australia/Adelaide
+       * * `Australia/Brisbane` - Australia/Brisbane
+       * * `Australia/Broken_Hill` - Australia/Broken_Hill
+       * * `Australia/Darwin` - Australia/Darwin
+       * * `Australia/Eucla` - Australia/Eucla
+       * * `Australia/Hobart` - Australia/Hobart
+       * * `Australia/Lindeman` - Australia/Lindeman
+       * * `Australia/Lord_Howe` - Australia/Lord_Howe
+       * * `Australia/Melbourne` - Australia/Melbourne
+       * * `Australia/Perth` - Australia/Perth
+       * * `Australia/Sydney` - Australia/Sydney
+       * * `Canada/Atlantic` - Canada/Atlantic
+       * * `Canada/Central` - Canada/Central
+       * * `Canada/Eastern` - Canada/Eastern
+       * * `Canada/Mountain` - Canada/Mountain
+       * * `Canada/Newfoundland` - Canada/Newfoundland
+       * * `Canada/Pacific` - Canada/Pacific
+       * * `Europe/Amsterdam` - Europe/Amsterdam
+       * * `Europe/Andorra` - Europe/Andorra
+       * * `Europe/Astrakhan` - Europe/Astrakhan
+       * * `Europe/Athens` - Europe/Athens
+       * * `Europe/Belgrade` - Europe/Belgrade
+       * * `Europe/Berlin` - Europe/Berlin
+       * * `Europe/Bratislava` - Europe/Bratislava
+       * * `Europe/Brussels` - Europe/Brussels
+       * * `Europe/Bucharest` - Europe/Bucharest
+       * * `Europe/Budapest` - Europe/Budapest
+       * * `Europe/Busingen` - Europe/Busingen
+       * * `Europe/Chisinau` - Europe/Chisinau
+       * * `Europe/Copenhagen` - Europe/Copenhagen
+       * * `Europe/Dublin` - Europe/Dublin
+       * * `Europe/Gibraltar` - Europe/Gibraltar
+       * * `Europe/Guernsey` - Europe/Guernsey
+       * * `Europe/Helsinki` - Europe/Helsinki
+       * * `Europe/Isle_of_Man` - Europe/Isle_of_Man
+       * * `Europe/Istanbul` - Europe/Istanbul
+       * * `Europe/Jersey` - Europe/Jersey
+       * * `Europe/Kaliningrad` - Europe/Kaliningrad
+       * * `Europe/Kirov` - Europe/Kirov
+       * * `Europe/Kyiv` - Europe/Kyiv
+       * * `Europe/Lisbon` - Europe/Lisbon
+       * * `Europe/Ljubljana` - Europe/Ljubljana
+       * * `Europe/London` - Europe/London
+       * * `Europe/Luxembourg` - Europe/Luxembourg
+       * * `Europe/Madrid` - Europe/Madrid
+       * * `Europe/Malta` - Europe/Malta
+       * * `Europe/Mariehamn` - Europe/Mariehamn
+       * * `Europe/Minsk` - Europe/Minsk
+       * * `Europe/Monaco` - Europe/Monaco
+       * * `Europe/Moscow` - Europe/Moscow
+       * * `Europe/Oslo` - Europe/Oslo
+       * * `Europe/Paris` - Europe/Paris
+       * * `Europe/Podgorica` - Europe/Podgorica
+       * * `Europe/Prague` - Europe/Prague
+       * * `Europe/Riga` - Europe/Riga
+       * * `Europe/Rome` - Europe/Rome
+       * * `Europe/Samara` - Europe/Samara
+       * * `Europe/San_Marino` - Europe/San_Marino
+       * * `Europe/Sarajevo` - Europe/Sarajevo
+       * * `Europe/Saratov` - Europe/Saratov
+       * * `Europe/Simferopol` - Europe/Simferopol
+       * * `Europe/Skopje` - Europe/Skopje
+       * * `Europe/Sofia` - Europe/Sofia
+       * * `Europe/Stockholm` - Europe/Stockholm
+       * * `Europe/Tallinn` - Europe/Tallinn
+       * * `Europe/Tirane` - Europe/Tirane
+       * * `Europe/Ulyanovsk` - Europe/Ulyanovsk
+       * * `Europe/Vaduz` - Europe/Vaduz
+       * * `Europe/Vatican` - Europe/Vatican
+       * * `Europe/Vienna` - Europe/Vienna
+       * * `Europe/Vilnius` - Europe/Vilnius
+       * * `Europe/Volgograd` - Europe/Volgograd
+       * * `Europe/Warsaw` - Europe/Warsaw
+       * * `Europe/Zagreb` - Europe/Zagreb
+       * * `Europe/Zurich` - Europe/Zurich
+       * * `GMT` - GMT
+       * * `Indian/Antananarivo` - Indian/Antananarivo
+       * * `Indian/Chagos` - Indian/Chagos
+       * * `Indian/Christmas` - Indian/Christmas
+       * * `Indian/Cocos` - Indian/Cocos
+       * * `Indian/Comoro` - Indian/Comoro
+       * * `Indian/Kerguelen` - Indian/Kerguelen
+       * * `Indian/Mahe` - Indian/Mahe
+       * * `Indian/Maldives` - Indian/Maldives
+       * * `Indian/Mauritius` - Indian/Mauritius
+       * * `Indian/Mayotte` - Indian/Mayotte
+       * * `Indian/Reunion` - Indian/Reunion
+       * * `Pacific/Apia` - Pacific/Apia
+       * * `Pacific/Auckland` - Pacific/Auckland
+       * * `Pacific/Bougainville` - Pacific/Bougainville
+       * * `Pacific/Chatham` - Pacific/Chatham
+       * * `Pacific/Chuuk` - Pacific/Chuuk
+       * * `Pacific/Easter` - Pacific/Easter
+       * * `Pacific/Efate` - Pacific/Efate
+       * * `Pacific/Fakaofo` - Pacific/Fakaofo
+       * * `Pacific/Fiji` - Pacific/Fiji
+       * * `Pacific/Funafuti` - Pacific/Funafuti
+       * * `Pacific/Galapagos` - Pacific/Galapagos
+       * * `Pacific/Gambier` - Pacific/Gambier
+       * * `Pacific/Guadalcanal` - Pacific/Guadalcanal
+       * * `Pacific/Guam` - Pacific/Guam
+       * * `Pacific/Honolulu` - Pacific/Honolulu
+       * * `Pacific/Kanton` - Pacific/Kanton
+       * * `Pacific/Kiritimati` - Pacific/Kiritimati
+       * * `Pacific/Kosrae` - Pacific/Kosrae
+       * * `Pacific/Kwajalein` - Pacific/Kwajalein
+       * * `Pacific/Majuro` - Pacific/Majuro
+       * * `Pacific/Marquesas` - Pacific/Marquesas
+       * * `Pacific/Midway` - Pacific/Midway
+       * * `Pacific/Nauru` - Pacific/Nauru
+       * * `Pacific/Niue` - Pacific/Niue
+       * * `Pacific/Norfolk` - Pacific/Norfolk
+       * * `Pacific/Noumea` - Pacific/Noumea
+       * * `Pacific/Pago_Pago` - Pacific/Pago_Pago
+       * * `Pacific/Palau` - Pacific/Palau
+       * * `Pacific/Pitcairn` - Pacific/Pitcairn
+       * * `Pacific/Pohnpei` - Pacific/Pohnpei
+       * * `Pacific/Port_Moresby` - Pacific/Port_Moresby
+       * * `Pacific/Rarotonga` - Pacific/Rarotonga
+       * * `Pacific/Saipan` - Pacific/Saipan
+       * * `Pacific/Tahiti` - Pacific/Tahiti
+       * * `Pacific/Tarawa` - Pacific/Tarawa
+       * * `Pacific/Tongatapu` - Pacific/Tongatapu
+       * * `Pacific/Wake` - Pacific/Wake
+       * * `Pacific/Wallis` - Pacific/Wallis
+       * * `US/Alaska` - US/Alaska
+       * * `US/Arizona` - US/Arizona
+       * * `US/Central` - US/Central
+       * * `US/Eastern` - US/Eastern
+       * * `US/Hawaii` - US/Hawaii
+       * * `US/Mountain` - US/Mountain
+       * * `US/Pacific` - US/Pacific
+       * * `UTC` - UTC 
+       * @enum {string}
+       */
       timezone: "Africa/Abidjan" | "Africa/Accra" | "Africa/Addis_Ababa" | "Africa/Algiers" | "Africa/Asmara" | "Africa/Bamako" | "Africa/Bangui" | "Africa/Banjul" | "Africa/Bissau" | "Africa/Blantyre" | "Africa/Brazzaville" | "Africa/Bujumbura" | "Africa/Cairo" | "Africa/Casablanca" | "Africa/Ceuta" | "Africa/Conakry" | "Africa/Dakar" | "Africa/Dar_es_Salaam" | "Africa/Djibouti" | "Africa/Douala" | "Africa/El_Aaiun" | "Africa/Freetown" | "Africa/Gaborone" | "Africa/Harare" | "Africa/Johannesburg" | "Africa/Juba" | "Africa/Kampala" | "Africa/Khartoum" | "Africa/Kigali" | "Africa/Kinshasa" | "Africa/Lagos" | "Africa/Libreville" | "Africa/Lome" | "Africa/Luanda" | "Africa/Lubumbashi" | "Africa/Lusaka" | "Africa/Malabo" | "Africa/Maputo" | "Africa/Maseru" | "Africa/Mbabane" | "Africa/Mogadishu" | "Africa/Monrovia" | "Africa/Nairobi" | "Africa/Ndjamena" | "Africa/Niamey" | "Africa/Nouakchott" | "Africa/Ouagadougou" | "Africa/Porto-Novo" | "Africa/Sao_Tome" | "Africa/Tripoli" | "Africa/Tunis" | "Africa/Windhoek" | "America/Adak" | "America/Anchorage" | "America/Anguilla" | "America/Antigua" | "America/Araguaina" | "America/Argentina/Buenos_Aires" | "America/Argentina/Catamarca" | "America/Argentina/Cordoba" | "America/Argentina/Jujuy" | "America/Argentina/La_Rioja" | "America/Argentina/Mendoza" | "America/Argentina/Rio_Gallegos" | "America/Argentina/Salta" | "America/Argentina/San_Juan" | "America/Argentina/San_Luis" | "America/Argentina/Tucuman" | "America/Argentina/Ushuaia" | "America/Aruba" | "America/Asuncion" | "America/Atikokan" | "America/Bahia" | "America/Bahia_Banderas" | "America/Barbados" | "America/Belem" | "America/Belize" | "America/Blanc-Sablon" | "America/Boa_Vista" | "America/Bogota" | "America/Boise" | "America/Cambridge_Bay" | "America/Campo_Grande" | "America/Cancun" | "America/Caracas" | "America/Cayenne" | "America/Cayman" | "America/Chicago" | "America/Chihuahua" | "America/Ciudad_Juarez" | "America/Costa_Rica" | "America/Creston" | "America/Cuiaba" | "America/Curacao" | "America/Danmarkshavn" | "America/Dawson" | "America/Dawson_Creek" | "America/Denver" | "America/Detroit" | "America/Dominica" | "America/Edmonton" | "America/Eirunepe" | "America/El_Salvador" | "America/Fort_Nelson" | "America/Fortaleza" | "America/Glace_Bay" | "America/Goose_Bay" | "America/Grand_Turk" | "America/Grenada" | "America/Guadeloupe" | "America/Guatemala" | "America/Guayaquil" | "America/Guyana" | "America/Halifax" | "America/Havana" | "America/Hermosillo" | "America/Indiana/Indianapolis" | "America/Indiana/Knox" | "America/Indiana/Marengo" | "America/Indiana/Petersburg" | "America/Indiana/Tell_City" | "America/Indiana/Vevay" | "America/Indiana/Vincennes" | "America/Indiana/Winamac" | "America/Inuvik" | "America/Iqaluit" | "America/Jamaica" | "America/Juneau" | "America/Kentucky/Louisville" | "America/Kentucky/Monticello" | "America/Kralendijk" | "America/La_Paz" | "America/Lima" | "America/Los_Angeles" | "America/Lower_Princes" | "America/Maceio" | "America/Managua" | "America/Manaus" | "America/Marigot" | "America/Martinique" | "America/Matamoros" | "America/Mazatlan" | "America/Menominee" | "America/Merida" | "America/Metlakatla" | "America/Mexico_City" | "America/Miquelon" | "America/Moncton" | "America/Monterrey" | "America/Montevideo" | "America/Montserrat" | "America/Nassau" | "America/New_York" | "America/Nome" | "America/Noronha" | "America/North_Dakota/Beulah" | "America/North_Dakota/Center" | "America/North_Dakota/New_Salem" | "America/Nuuk" | "America/Ojinaga" | "America/Panama" | "America/Paramaribo" | "America/Phoenix" | "America/Port-au-Prince" | "America/Port_of_Spain" | "America/Porto_Velho" | "America/Puerto_Rico" | "America/Punta_Arenas" | "America/Rankin_Inlet" | "America/Recife" | "America/Regina" | "America/Resolute" | "America/Rio_Branco" | "America/Santarem" | "America/Santiago" | "America/Santo_Domingo" | "America/Sao_Paulo" | "America/Scoresbysund" | "America/Sitka" | "America/St_Barthelemy" | "America/St_Johns" | "America/St_Kitts" | "America/St_Lucia" | "America/St_Thomas" | "America/St_Vincent" | "America/Swift_Current" | "America/Tegucigalpa" | "America/Thule" | "America/Tijuana" | "America/Toronto" | "America/Tortola" | "America/Vancouver" | "America/Whitehorse" | "America/Winnipeg" | "America/Yakutat" | "America/Yellowknife" | "Antarctica/Casey" | "Antarctica/Davis" | "Antarctica/DumontDUrville" | "Antarctica/Macquarie" | "Antarctica/Mawson" | "Antarctica/McMurdo" | "Antarctica/Palmer" | "Antarctica/Rothera" | "Antarctica/Syowa" | "Antarctica/Troll" | "Antarctica/Vostok" | "Arctic/Longyearbyen" | "Asia/Aden" | "Asia/Almaty" | "Asia/Amman" | "Asia/Anadyr" | "Asia/Aqtau" | "Asia/Aqtobe" | "Asia/Ashgabat" | "Asia/Atyrau" | "Asia/Baghdad" | "Asia/Bahrain" | "Asia/Baku" | "Asia/Bangkok" | "Asia/Barnaul" | "Asia/Beirut" | "Asia/Bishkek" | "Asia/Brunei" | "Asia/Chita" | "Asia/Choibalsan" | "Asia/Colombo" | "Asia/Damascus" | "Asia/Dhaka" | "Asia/Dili" | "Asia/Dubai" | "Asia/Dushanbe" | "Asia/Famagusta" | "Asia/Gaza" | "Asia/Hebron" | "Asia/Ho_Chi_Minh" | "Asia/Hong_Kong" | "Asia/Hovd" | "Asia/Irkutsk" | "Asia/Jakarta" | "Asia/Jayapura" | "Asia/Jerusalem" | "Asia/Kabul" | "Asia/Kamchatka" | "Asia/Karachi" | "Asia/Kathmandu" | "Asia/Khandyga" | "Asia/Kolkata" | "Asia/Krasnoyarsk" | "Asia/Kuala_Lumpur" | "Asia/Kuching" | "Asia/Kuwait" | "Asia/Macau" | "Asia/Magadan" | "Asia/Makassar" | "Asia/Manila" | "Asia/Muscat" | "Asia/Nicosia" | "Asia/Novokuznetsk" | "Asia/Novosibirsk" | "Asia/Omsk" | "Asia/Oral" | "Asia/Phnom_Penh" | "Asia/Pontianak" | "Asia/Pyongyang" | "Asia/Qatar" | "Asia/Qostanay" | "Asia/Qyzylorda" | "Asia/Riyadh" | "Asia/Sakhalin" | "Asia/Samarkand" | "Asia/Seoul" | "Asia/Shanghai" | "Asia/Singapore" | "Asia/Srednekolymsk" | "Asia/Taipei" | "Asia/Tashkent" | "Asia/Tbilisi" | "Asia/Tehran" | "Asia/Thimphu" | "Asia/Tokyo" | "Asia/Tomsk" | "Asia/Ulaanbaatar" | "Asia/Urumqi" | "Asia/Ust-Nera" | "Asia/Vientiane" | "Asia/Vladivostok" | "Asia/Yakutsk" | "Asia/Yangon" | "Asia/Yekaterinburg" | "Asia/Yerevan" | "Atlantic/Azores" | "Atlantic/Bermuda" | "Atlantic/Canary" | "Atlantic/Cape_Verde" | "Atlantic/Faroe" | "Atlantic/Madeira" | "Atlantic/Reykjavik" | "Atlantic/South_Georgia" | "Atlantic/St_Helena" | "Atlantic/Stanley" | "Australia/Adelaide" | "Australia/Brisbane" | "Australia/Broken_Hill" | "Australia/Darwin" | "Australia/Eucla" | "Australia/Hobart" | "Australia/Lindeman" | "Australia/Lord_Howe" | "Australia/Melbourne" | "Australia/Perth" | "Australia/Sydney" | "Canada/Atlantic" | "Canada/Central" | "Canada/Eastern" | "Canada/Mountain" | "Canada/Newfoundland" | "Canada/Pacific" | "Europe/Amsterdam" | "Europe/Andorra" | "Europe/Astrakhan" | "Europe/Athens" | "Europe/Belgrade" | "Europe/Berlin" | "Europe/Bratislava" | "Europe/Brussels" | "Europe/Bucharest" | "Europe/Budapest" | "Europe/Busingen" | "Europe/Chisinau" | "Europe/Copenhagen" | "Europe/Dublin" | "Europe/Gibraltar" | "Europe/Guernsey" | "Europe/Helsinki" | "Europe/Isle_of_Man" | "Europe/Istanbul" | "Europe/Jersey" | "Europe/Kaliningrad" | "Europe/Kirov" | "Europe/Kyiv" | "Europe/Lisbon" | "Europe/Ljubljana" | "Europe/London" | "Europe/Luxembourg" | "Europe/Madrid" | "Europe/Malta" | "Europe/Mariehamn" | "Europe/Minsk" | "Europe/Monaco" | "Europe/Moscow" | "Europe/Oslo" | "Europe/Paris" | "Europe/Podgorica" | "Europe/Prague" | "Europe/Riga" | "Europe/Rome" | "Europe/Samara" | "Europe/San_Marino" | "Europe/Sarajevo" | "Europe/Saratov" | "Europe/Simferopol" | "Europe/Skopje" | "Europe/Sofia" | "Europe/Stockholm" | "Europe/Tallinn" | "Europe/Tirane" | "Europe/Ulyanovsk" | "Europe/Vaduz" | "Europe/Vatican" | "Europe/Vienna" | "Europe/Vilnius" | "Europe/Volgograd" | "Europe/Warsaw" | "Europe/Zagreb" | "Europe/Zurich" | "GMT" | "Indian/Antananarivo" | "Indian/Chagos" | "Indian/Christmas" | "Indian/Cocos" | "Indian/Comoro" | "Indian/Kerguelen" | "Indian/Mahe" | "Indian/Maldives" | "Indian/Mauritius" | "Indian/Mayotte" | "Indian/Reunion" | "Pacific/Apia" | "Pacific/Auckland" | "Pacific/Bougainville" | "Pacific/Chatham" | "Pacific/Chuuk" | "Pacific/Easter" | "Pacific/Efate" | "Pacific/Fakaofo" | "Pacific/Fiji" | "Pacific/Funafuti" | "Pacific/Galapagos" | "Pacific/Gambier" | "Pacific/Guadalcanal" | "Pacific/Guam" | "Pacific/Honolulu" | "Pacific/Kanton" | "Pacific/Kiritimati" | "Pacific/Kosrae" | "Pacific/Kwajalein" | "Pacific/Majuro" | "Pacific/Marquesas" | "Pacific/Midway" | "Pacific/Nauru" | "Pacific/Niue" | "Pacific/Norfolk" | "Pacific/Noumea" | "Pacific/Pago_Pago" | "Pacific/Palau" | "Pacific/Pitcairn" | "Pacific/Pohnpei" | "Pacific/Port_Moresby" | "Pacific/Rarotonga" | "Pacific/Saipan" | "Pacific/Tahiti" | "Pacific/Tarawa" | "Pacific/Tongatapu" | "Pacific/Wake" | "Pacific/Wallis" | "US/Alaska" | "US/Arizona" | "US/Central" | "US/Eastern" | "US/Hawaii" | "US/Mountain" | "US/Pacific" | "UTC";
       /** @description A list of tax providers that are enabled for this customer. The list is ordered, meaning we will succesively try to calculate taxes using each provider until we find one that works. */
       tax_providers: readonly ("taxjar" | "lotus" | "netsuite")[];
@@ -930,7 +1946,11 @@ export interface components {
       effective_at: string;
       /** Format: date-time */
       expires_at: string;
-      /** @enum {string} */
+      /**
+       * @description * `active` - Active
+       * * `inactive` - Inactive 
+       * @enum {string}
+       */
       status: "active" | "inactive";
       /** Format: double */
       amount_paid: number;
@@ -972,7 +1992,10 @@ export interface components {
        */
       email: string;
       /**
-       * @description The payment provider this customer is associated with. Currently, only Stripe is supported. 
+       * @description The payment provider this customer is associated with. Currently, only Stripe is supported.
+       * 
+       * * `stripe` - Stripe
+       * * `braintree` - Braintree 
        * @enum {string}
        */
       payment_provider?: "stripe" | "braintree";
@@ -1006,6 +2029,485 @@ export interface components {
       num_subscriptions_deleted: number;
       num_addons_deleted: number;
     };
+    CustomerDetail: {
+      has_payment_method: boolean;
+      /** @deprecated */
+      address: components["schemas"]["Address"] | null;
+      default_currency: components["schemas"]["PricingUnit"];
+      /** Format: double */
+      total_amount_due: number;
+      subscriptions: readonly (components["schemas"]["SubscriptionRecord"])[];
+      billing_address: components["schemas"]["Address"] | null;
+      /** @description The display name of the customer */
+      customer_name: string;
+      /** @description A list of tax providers that are enabled for this customer. The list is ordered, meaning we will succesively try to calculate taxes using each provider until we find one that works. */
+      tax_providers: readonly ("taxjar" | "lotus" | "netsuite")[];
+      customer_id: string;
+      invoices: readonly (components["schemas"]["LightweightInvoice"])[];
+      shipping_address: components["schemas"]["Address"] | null;
+      payment_provider_id: string;
+      crm_provider_id: string;
+      /**
+       * @description * `salesforce` - salesforce 
+       * @enum {string}
+       */
+      crm_provider: "salesforce";
+      /**
+       * @description * `stripe` - Stripe
+       * * `braintree` - Braintree 
+       * @enum {string|null}
+       */
+      payment_provider: "stripe" | "braintree" | "" | null;
+      /** Format: email */
+      email: string;
+      /** Format: uri */
+      crm_provider_url: string;
+      /**
+       * @description * `Africa/Abidjan` - Africa/Abidjan
+       * * `Africa/Accra` - Africa/Accra
+       * * `Africa/Addis_Ababa` - Africa/Addis_Ababa
+       * * `Africa/Algiers` - Africa/Algiers
+       * * `Africa/Asmara` - Africa/Asmara
+       * * `Africa/Bamako` - Africa/Bamako
+       * * `Africa/Bangui` - Africa/Bangui
+       * * `Africa/Banjul` - Africa/Banjul
+       * * `Africa/Bissau` - Africa/Bissau
+       * * `Africa/Blantyre` - Africa/Blantyre
+       * * `Africa/Brazzaville` - Africa/Brazzaville
+       * * `Africa/Bujumbura` - Africa/Bujumbura
+       * * `Africa/Cairo` - Africa/Cairo
+       * * `Africa/Casablanca` - Africa/Casablanca
+       * * `Africa/Ceuta` - Africa/Ceuta
+       * * `Africa/Conakry` - Africa/Conakry
+       * * `Africa/Dakar` - Africa/Dakar
+       * * `Africa/Dar_es_Salaam` - Africa/Dar_es_Salaam
+       * * `Africa/Djibouti` - Africa/Djibouti
+       * * `Africa/Douala` - Africa/Douala
+       * * `Africa/El_Aaiun` - Africa/El_Aaiun
+       * * `Africa/Freetown` - Africa/Freetown
+       * * `Africa/Gaborone` - Africa/Gaborone
+       * * `Africa/Harare` - Africa/Harare
+       * * `Africa/Johannesburg` - Africa/Johannesburg
+       * * `Africa/Juba` - Africa/Juba
+       * * `Africa/Kampala` - Africa/Kampala
+       * * `Africa/Khartoum` - Africa/Khartoum
+       * * `Africa/Kigali` - Africa/Kigali
+       * * `Africa/Kinshasa` - Africa/Kinshasa
+       * * `Africa/Lagos` - Africa/Lagos
+       * * `Africa/Libreville` - Africa/Libreville
+       * * `Africa/Lome` - Africa/Lome
+       * * `Africa/Luanda` - Africa/Luanda
+       * * `Africa/Lubumbashi` - Africa/Lubumbashi
+       * * `Africa/Lusaka` - Africa/Lusaka
+       * * `Africa/Malabo` - Africa/Malabo
+       * * `Africa/Maputo` - Africa/Maputo
+       * * `Africa/Maseru` - Africa/Maseru
+       * * `Africa/Mbabane` - Africa/Mbabane
+       * * `Africa/Mogadishu` - Africa/Mogadishu
+       * * `Africa/Monrovia` - Africa/Monrovia
+       * * `Africa/Nairobi` - Africa/Nairobi
+       * * `Africa/Ndjamena` - Africa/Ndjamena
+       * * `Africa/Niamey` - Africa/Niamey
+       * * `Africa/Nouakchott` - Africa/Nouakchott
+       * * `Africa/Ouagadougou` - Africa/Ouagadougou
+       * * `Africa/Porto-Novo` - Africa/Porto-Novo
+       * * `Africa/Sao_Tome` - Africa/Sao_Tome
+       * * `Africa/Tripoli` - Africa/Tripoli
+       * * `Africa/Tunis` - Africa/Tunis
+       * * `Africa/Windhoek` - Africa/Windhoek
+       * * `America/Adak` - America/Adak
+       * * `America/Anchorage` - America/Anchorage
+       * * `America/Anguilla` - America/Anguilla
+       * * `America/Antigua` - America/Antigua
+       * * `America/Araguaina` - America/Araguaina
+       * * `America/Argentina/Buenos_Aires` - America/Argentina/Buenos_Aires
+       * * `America/Argentina/Catamarca` - America/Argentina/Catamarca
+       * * `America/Argentina/Cordoba` - America/Argentina/Cordoba
+       * * `America/Argentina/Jujuy` - America/Argentina/Jujuy
+       * * `America/Argentina/La_Rioja` - America/Argentina/La_Rioja
+       * * `America/Argentina/Mendoza` - America/Argentina/Mendoza
+       * * `America/Argentina/Rio_Gallegos` - America/Argentina/Rio_Gallegos
+       * * `America/Argentina/Salta` - America/Argentina/Salta
+       * * `America/Argentina/San_Juan` - America/Argentina/San_Juan
+       * * `America/Argentina/San_Luis` - America/Argentina/San_Luis
+       * * `America/Argentina/Tucuman` - America/Argentina/Tucuman
+       * * `America/Argentina/Ushuaia` - America/Argentina/Ushuaia
+       * * `America/Aruba` - America/Aruba
+       * * `America/Asuncion` - America/Asuncion
+       * * `America/Atikokan` - America/Atikokan
+       * * `America/Bahia` - America/Bahia
+       * * `America/Bahia_Banderas` - America/Bahia_Banderas
+       * * `America/Barbados` - America/Barbados
+       * * `America/Belem` - America/Belem
+       * * `America/Belize` - America/Belize
+       * * `America/Blanc-Sablon` - America/Blanc-Sablon
+       * * `America/Boa_Vista` - America/Boa_Vista
+       * * `America/Bogota` - America/Bogota
+       * * `America/Boise` - America/Boise
+       * * `America/Cambridge_Bay` - America/Cambridge_Bay
+       * * `America/Campo_Grande` - America/Campo_Grande
+       * * `America/Cancun` - America/Cancun
+       * * `America/Caracas` - America/Caracas
+       * * `America/Cayenne` - America/Cayenne
+       * * `America/Cayman` - America/Cayman
+       * * `America/Chicago` - America/Chicago
+       * * `America/Chihuahua` - America/Chihuahua
+       * * `America/Ciudad_Juarez` - America/Ciudad_Juarez
+       * * `America/Costa_Rica` - America/Costa_Rica
+       * * `America/Creston` - America/Creston
+       * * `America/Cuiaba` - America/Cuiaba
+       * * `America/Curacao` - America/Curacao
+       * * `America/Danmarkshavn` - America/Danmarkshavn
+       * * `America/Dawson` - America/Dawson
+       * * `America/Dawson_Creek` - America/Dawson_Creek
+       * * `America/Denver` - America/Denver
+       * * `America/Detroit` - America/Detroit
+       * * `America/Dominica` - America/Dominica
+       * * `America/Edmonton` - America/Edmonton
+       * * `America/Eirunepe` - America/Eirunepe
+       * * `America/El_Salvador` - America/El_Salvador
+       * * `America/Fort_Nelson` - America/Fort_Nelson
+       * * `America/Fortaleza` - America/Fortaleza
+       * * `America/Glace_Bay` - America/Glace_Bay
+       * * `America/Goose_Bay` - America/Goose_Bay
+       * * `America/Grand_Turk` - America/Grand_Turk
+       * * `America/Grenada` - America/Grenada
+       * * `America/Guadeloupe` - America/Guadeloupe
+       * * `America/Guatemala` - America/Guatemala
+       * * `America/Guayaquil` - America/Guayaquil
+       * * `America/Guyana` - America/Guyana
+       * * `America/Halifax` - America/Halifax
+       * * `America/Havana` - America/Havana
+       * * `America/Hermosillo` - America/Hermosillo
+       * * `America/Indiana/Indianapolis` - America/Indiana/Indianapolis
+       * * `America/Indiana/Knox` - America/Indiana/Knox
+       * * `America/Indiana/Marengo` - America/Indiana/Marengo
+       * * `America/Indiana/Petersburg` - America/Indiana/Petersburg
+       * * `America/Indiana/Tell_City` - America/Indiana/Tell_City
+       * * `America/Indiana/Vevay` - America/Indiana/Vevay
+       * * `America/Indiana/Vincennes` - America/Indiana/Vincennes
+       * * `America/Indiana/Winamac` - America/Indiana/Winamac
+       * * `America/Inuvik` - America/Inuvik
+       * * `America/Iqaluit` - America/Iqaluit
+       * * `America/Jamaica` - America/Jamaica
+       * * `America/Juneau` - America/Juneau
+       * * `America/Kentucky/Louisville` - America/Kentucky/Louisville
+       * * `America/Kentucky/Monticello` - America/Kentucky/Monticello
+       * * `America/Kralendijk` - America/Kralendijk
+       * * `America/La_Paz` - America/La_Paz
+       * * `America/Lima` - America/Lima
+       * * `America/Los_Angeles` - America/Los_Angeles
+       * * `America/Lower_Princes` - America/Lower_Princes
+       * * `America/Maceio` - America/Maceio
+       * * `America/Managua` - America/Managua
+       * * `America/Manaus` - America/Manaus
+       * * `America/Marigot` - America/Marigot
+       * * `America/Martinique` - America/Martinique
+       * * `America/Matamoros` - America/Matamoros
+       * * `America/Mazatlan` - America/Mazatlan
+       * * `America/Menominee` - America/Menominee
+       * * `America/Merida` - America/Merida
+       * * `America/Metlakatla` - America/Metlakatla
+       * * `America/Mexico_City` - America/Mexico_City
+       * * `America/Miquelon` - America/Miquelon
+       * * `America/Moncton` - America/Moncton
+       * * `America/Monterrey` - America/Monterrey
+       * * `America/Montevideo` - America/Montevideo
+       * * `America/Montserrat` - America/Montserrat
+       * * `America/Nassau` - America/Nassau
+       * * `America/New_York` - America/New_York
+       * * `America/Nome` - America/Nome
+       * * `America/Noronha` - America/Noronha
+       * * `America/North_Dakota/Beulah` - America/North_Dakota/Beulah
+       * * `America/North_Dakota/Center` - America/North_Dakota/Center
+       * * `America/North_Dakota/New_Salem` - America/North_Dakota/New_Salem
+       * * `America/Nuuk` - America/Nuuk
+       * * `America/Ojinaga` - America/Ojinaga
+       * * `America/Panama` - America/Panama
+       * * `America/Paramaribo` - America/Paramaribo
+       * * `America/Phoenix` - America/Phoenix
+       * * `America/Port-au-Prince` - America/Port-au-Prince
+       * * `America/Port_of_Spain` - America/Port_of_Spain
+       * * `America/Porto_Velho` - America/Porto_Velho
+       * * `America/Puerto_Rico` - America/Puerto_Rico
+       * * `America/Punta_Arenas` - America/Punta_Arenas
+       * * `America/Rankin_Inlet` - America/Rankin_Inlet
+       * * `America/Recife` - America/Recife
+       * * `America/Regina` - America/Regina
+       * * `America/Resolute` - America/Resolute
+       * * `America/Rio_Branco` - America/Rio_Branco
+       * * `America/Santarem` - America/Santarem
+       * * `America/Santiago` - America/Santiago
+       * * `America/Santo_Domingo` - America/Santo_Domingo
+       * * `America/Sao_Paulo` - America/Sao_Paulo
+       * * `America/Scoresbysund` - America/Scoresbysund
+       * * `America/Sitka` - America/Sitka
+       * * `America/St_Barthelemy` - America/St_Barthelemy
+       * * `America/St_Johns` - America/St_Johns
+       * * `America/St_Kitts` - America/St_Kitts
+       * * `America/St_Lucia` - America/St_Lucia
+       * * `America/St_Thomas` - America/St_Thomas
+       * * `America/St_Vincent` - America/St_Vincent
+       * * `America/Swift_Current` - America/Swift_Current
+       * * `America/Tegucigalpa` - America/Tegucigalpa
+       * * `America/Thule` - America/Thule
+       * * `America/Tijuana` - America/Tijuana
+       * * `America/Toronto` - America/Toronto
+       * * `America/Tortola` - America/Tortola
+       * * `America/Vancouver` - America/Vancouver
+       * * `America/Whitehorse` - America/Whitehorse
+       * * `America/Winnipeg` - America/Winnipeg
+       * * `America/Yakutat` - America/Yakutat
+       * * `America/Yellowknife` - America/Yellowknife
+       * * `Antarctica/Casey` - Antarctica/Casey
+       * * `Antarctica/Davis` - Antarctica/Davis
+       * * `Antarctica/DumontDUrville` - Antarctica/DumontDUrville
+       * * `Antarctica/Macquarie` - Antarctica/Macquarie
+       * * `Antarctica/Mawson` - Antarctica/Mawson
+       * * `Antarctica/McMurdo` - Antarctica/McMurdo
+       * * `Antarctica/Palmer` - Antarctica/Palmer
+       * * `Antarctica/Rothera` - Antarctica/Rothera
+       * * `Antarctica/Syowa` - Antarctica/Syowa
+       * * `Antarctica/Troll` - Antarctica/Troll
+       * * `Antarctica/Vostok` - Antarctica/Vostok
+       * * `Arctic/Longyearbyen` - Arctic/Longyearbyen
+       * * `Asia/Aden` - Asia/Aden
+       * * `Asia/Almaty` - Asia/Almaty
+       * * `Asia/Amman` - Asia/Amman
+       * * `Asia/Anadyr` - Asia/Anadyr
+       * * `Asia/Aqtau` - Asia/Aqtau
+       * * `Asia/Aqtobe` - Asia/Aqtobe
+       * * `Asia/Ashgabat` - Asia/Ashgabat
+       * * `Asia/Atyrau` - Asia/Atyrau
+       * * `Asia/Baghdad` - Asia/Baghdad
+       * * `Asia/Bahrain` - Asia/Bahrain
+       * * `Asia/Baku` - Asia/Baku
+       * * `Asia/Bangkok` - Asia/Bangkok
+       * * `Asia/Barnaul` - Asia/Barnaul
+       * * `Asia/Beirut` - Asia/Beirut
+       * * `Asia/Bishkek` - Asia/Bishkek
+       * * `Asia/Brunei` - Asia/Brunei
+       * * `Asia/Chita` - Asia/Chita
+       * * `Asia/Choibalsan` - Asia/Choibalsan
+       * * `Asia/Colombo` - Asia/Colombo
+       * * `Asia/Damascus` - Asia/Damascus
+       * * `Asia/Dhaka` - Asia/Dhaka
+       * * `Asia/Dili` - Asia/Dili
+       * * `Asia/Dubai` - Asia/Dubai
+       * * `Asia/Dushanbe` - Asia/Dushanbe
+       * * `Asia/Famagusta` - Asia/Famagusta
+       * * `Asia/Gaza` - Asia/Gaza
+       * * `Asia/Hebron` - Asia/Hebron
+       * * `Asia/Ho_Chi_Minh` - Asia/Ho_Chi_Minh
+       * * `Asia/Hong_Kong` - Asia/Hong_Kong
+       * * `Asia/Hovd` - Asia/Hovd
+       * * `Asia/Irkutsk` - Asia/Irkutsk
+       * * `Asia/Jakarta` - Asia/Jakarta
+       * * `Asia/Jayapura` - Asia/Jayapura
+       * * `Asia/Jerusalem` - Asia/Jerusalem
+       * * `Asia/Kabul` - Asia/Kabul
+       * * `Asia/Kamchatka` - Asia/Kamchatka
+       * * `Asia/Karachi` - Asia/Karachi
+       * * `Asia/Kathmandu` - Asia/Kathmandu
+       * * `Asia/Khandyga` - Asia/Khandyga
+       * * `Asia/Kolkata` - Asia/Kolkata
+       * * `Asia/Krasnoyarsk` - Asia/Krasnoyarsk
+       * * `Asia/Kuala_Lumpur` - Asia/Kuala_Lumpur
+       * * `Asia/Kuching` - Asia/Kuching
+       * * `Asia/Kuwait` - Asia/Kuwait
+       * * `Asia/Macau` - Asia/Macau
+       * * `Asia/Magadan` - Asia/Magadan
+       * * `Asia/Makassar` - Asia/Makassar
+       * * `Asia/Manila` - Asia/Manila
+       * * `Asia/Muscat` - Asia/Muscat
+       * * `Asia/Nicosia` - Asia/Nicosia
+       * * `Asia/Novokuznetsk` - Asia/Novokuznetsk
+       * * `Asia/Novosibirsk` - Asia/Novosibirsk
+       * * `Asia/Omsk` - Asia/Omsk
+       * * `Asia/Oral` - Asia/Oral
+       * * `Asia/Phnom_Penh` - Asia/Phnom_Penh
+       * * `Asia/Pontianak` - Asia/Pontianak
+       * * `Asia/Pyongyang` - Asia/Pyongyang
+       * * `Asia/Qatar` - Asia/Qatar
+       * * `Asia/Qostanay` - Asia/Qostanay
+       * * `Asia/Qyzylorda` - Asia/Qyzylorda
+       * * `Asia/Riyadh` - Asia/Riyadh
+       * * `Asia/Sakhalin` - Asia/Sakhalin
+       * * `Asia/Samarkand` - Asia/Samarkand
+       * * `Asia/Seoul` - Asia/Seoul
+       * * `Asia/Shanghai` - Asia/Shanghai
+       * * `Asia/Singapore` - Asia/Singapore
+       * * `Asia/Srednekolymsk` - Asia/Srednekolymsk
+       * * `Asia/Taipei` - Asia/Taipei
+       * * `Asia/Tashkent` - Asia/Tashkent
+       * * `Asia/Tbilisi` - Asia/Tbilisi
+       * * `Asia/Tehran` - Asia/Tehran
+       * * `Asia/Thimphu` - Asia/Thimphu
+       * * `Asia/Tokyo` - Asia/Tokyo
+       * * `Asia/Tomsk` - Asia/Tomsk
+       * * `Asia/Ulaanbaatar` - Asia/Ulaanbaatar
+       * * `Asia/Urumqi` - Asia/Urumqi
+       * * `Asia/Ust-Nera` - Asia/Ust-Nera
+       * * `Asia/Vientiane` - Asia/Vientiane
+       * * `Asia/Vladivostok` - Asia/Vladivostok
+       * * `Asia/Yakutsk` - Asia/Yakutsk
+       * * `Asia/Yangon` - Asia/Yangon
+       * * `Asia/Yekaterinburg` - Asia/Yekaterinburg
+       * * `Asia/Yerevan` - Asia/Yerevan
+       * * `Atlantic/Azores` - Atlantic/Azores
+       * * `Atlantic/Bermuda` - Atlantic/Bermuda
+       * * `Atlantic/Canary` - Atlantic/Canary
+       * * `Atlantic/Cape_Verde` - Atlantic/Cape_Verde
+       * * `Atlantic/Faroe` - Atlantic/Faroe
+       * * `Atlantic/Madeira` - Atlantic/Madeira
+       * * `Atlantic/Reykjavik` - Atlantic/Reykjavik
+       * * `Atlantic/South_Georgia` - Atlantic/South_Georgia
+       * * `Atlantic/St_Helena` - Atlantic/St_Helena
+       * * `Atlantic/Stanley` - Atlantic/Stanley
+       * * `Australia/Adelaide` - Australia/Adelaide
+       * * `Australia/Brisbane` - Australia/Brisbane
+       * * `Australia/Broken_Hill` - Australia/Broken_Hill
+       * * `Australia/Darwin` - Australia/Darwin
+       * * `Australia/Eucla` - Australia/Eucla
+       * * `Australia/Hobart` - Australia/Hobart
+       * * `Australia/Lindeman` - Australia/Lindeman
+       * * `Australia/Lord_Howe` - Australia/Lord_Howe
+       * * `Australia/Melbourne` - Australia/Melbourne
+       * * `Australia/Perth` - Australia/Perth
+       * * `Australia/Sydney` - Australia/Sydney
+       * * `Canada/Atlantic` - Canada/Atlantic
+       * * `Canada/Central` - Canada/Central
+       * * `Canada/Eastern` - Canada/Eastern
+       * * `Canada/Mountain` - Canada/Mountain
+       * * `Canada/Newfoundland` - Canada/Newfoundland
+       * * `Canada/Pacific` - Canada/Pacific
+       * * `Europe/Amsterdam` - Europe/Amsterdam
+       * * `Europe/Andorra` - Europe/Andorra
+       * * `Europe/Astrakhan` - Europe/Astrakhan
+       * * `Europe/Athens` - Europe/Athens
+       * * `Europe/Belgrade` - Europe/Belgrade
+       * * `Europe/Berlin` - Europe/Berlin
+       * * `Europe/Bratislava` - Europe/Bratislava
+       * * `Europe/Brussels` - Europe/Brussels
+       * * `Europe/Bucharest` - Europe/Bucharest
+       * * `Europe/Budapest` - Europe/Budapest
+       * * `Europe/Busingen` - Europe/Busingen
+       * * `Europe/Chisinau` - Europe/Chisinau
+       * * `Europe/Copenhagen` - Europe/Copenhagen
+       * * `Europe/Dublin` - Europe/Dublin
+       * * `Europe/Gibraltar` - Europe/Gibraltar
+       * * `Europe/Guernsey` - Europe/Guernsey
+       * * `Europe/Helsinki` - Europe/Helsinki
+       * * `Europe/Isle_of_Man` - Europe/Isle_of_Man
+       * * `Europe/Istanbul` - Europe/Istanbul
+       * * `Europe/Jersey` - Europe/Jersey
+       * * `Europe/Kaliningrad` - Europe/Kaliningrad
+       * * `Europe/Kirov` - Europe/Kirov
+       * * `Europe/Kyiv` - Europe/Kyiv
+       * * `Europe/Lisbon` - Europe/Lisbon
+       * * `Europe/Ljubljana` - Europe/Ljubljana
+       * * `Europe/London` - Europe/London
+       * * `Europe/Luxembourg` - Europe/Luxembourg
+       * * `Europe/Madrid` - Europe/Madrid
+       * * `Europe/Malta` - Europe/Malta
+       * * `Europe/Mariehamn` - Europe/Mariehamn
+       * * `Europe/Minsk` - Europe/Minsk
+       * * `Europe/Monaco` - Europe/Monaco
+       * * `Europe/Moscow` - Europe/Moscow
+       * * `Europe/Oslo` - Europe/Oslo
+       * * `Europe/Paris` - Europe/Paris
+       * * `Europe/Podgorica` - Europe/Podgorica
+       * * `Europe/Prague` - Europe/Prague
+       * * `Europe/Riga` - Europe/Riga
+       * * `Europe/Rome` - Europe/Rome
+       * * `Europe/Samara` - Europe/Samara
+       * * `Europe/San_Marino` - Europe/San_Marino
+       * * `Europe/Sarajevo` - Europe/Sarajevo
+       * * `Europe/Saratov` - Europe/Saratov
+       * * `Europe/Simferopol` - Europe/Simferopol
+       * * `Europe/Skopje` - Europe/Skopje
+       * * `Europe/Sofia` - Europe/Sofia
+       * * `Europe/Stockholm` - Europe/Stockholm
+       * * `Europe/Tallinn` - Europe/Tallinn
+       * * `Europe/Tirane` - Europe/Tirane
+       * * `Europe/Ulyanovsk` - Europe/Ulyanovsk
+       * * `Europe/Vaduz` - Europe/Vaduz
+       * * `Europe/Vatican` - Europe/Vatican
+       * * `Europe/Vienna` - Europe/Vienna
+       * * `Europe/Vilnius` - Europe/Vilnius
+       * * `Europe/Volgograd` - Europe/Volgograd
+       * * `Europe/Warsaw` - Europe/Warsaw
+       * * `Europe/Zagreb` - Europe/Zagreb
+       * * `Europe/Zurich` - Europe/Zurich
+       * * `GMT` - GMT
+       * * `Indian/Antananarivo` - Indian/Antananarivo
+       * * `Indian/Chagos` - Indian/Chagos
+       * * `Indian/Christmas` - Indian/Christmas
+       * * `Indian/Cocos` - Indian/Cocos
+       * * `Indian/Comoro` - Indian/Comoro
+       * * `Indian/Kerguelen` - Indian/Kerguelen
+       * * `Indian/Mahe` - Indian/Mahe
+       * * `Indian/Maldives` - Indian/Maldives
+       * * `Indian/Mauritius` - Indian/Mauritius
+       * * `Indian/Mayotte` - Indian/Mayotte
+       * * `Indian/Reunion` - Indian/Reunion
+       * * `Pacific/Apia` - Pacific/Apia
+       * * `Pacific/Auckland` - Pacific/Auckland
+       * * `Pacific/Bougainville` - Pacific/Bougainville
+       * * `Pacific/Chatham` - Pacific/Chatham
+       * * `Pacific/Chuuk` - Pacific/Chuuk
+       * * `Pacific/Easter` - Pacific/Easter
+       * * `Pacific/Efate` - Pacific/Efate
+       * * `Pacific/Fakaofo` - Pacific/Fakaofo
+       * * `Pacific/Fiji` - Pacific/Fiji
+       * * `Pacific/Funafuti` - Pacific/Funafuti
+       * * `Pacific/Galapagos` - Pacific/Galapagos
+       * * `Pacific/Gambier` - Pacific/Gambier
+       * * `Pacific/Guadalcanal` - Pacific/Guadalcanal
+       * * `Pacific/Guam` - Pacific/Guam
+       * * `Pacific/Honolulu` - Pacific/Honolulu
+       * * `Pacific/Kanton` - Pacific/Kanton
+       * * `Pacific/Kiritimati` - Pacific/Kiritimati
+       * * `Pacific/Kosrae` - Pacific/Kosrae
+       * * `Pacific/Kwajalein` - Pacific/Kwajalein
+       * * `Pacific/Majuro` - Pacific/Majuro
+       * * `Pacific/Marquesas` - Pacific/Marquesas
+       * * `Pacific/Midway` - Pacific/Midway
+       * * `Pacific/Nauru` - Pacific/Nauru
+       * * `Pacific/Niue` - Pacific/Niue
+       * * `Pacific/Norfolk` - Pacific/Norfolk
+       * * `Pacific/Noumea` - Pacific/Noumea
+       * * `Pacific/Pago_Pago` - Pacific/Pago_Pago
+       * * `Pacific/Palau` - Pacific/Palau
+       * * `Pacific/Pitcairn` - Pacific/Pitcairn
+       * * `Pacific/Pohnpei` - Pacific/Pohnpei
+       * * `Pacific/Port_Moresby` - Pacific/Port_Moresby
+       * * `Pacific/Rarotonga` - Pacific/Rarotonga
+       * * `Pacific/Saipan` - Pacific/Saipan
+       * * `Pacific/Tahiti` - Pacific/Tahiti
+       * * `Pacific/Tarawa` - Pacific/Tarawa
+       * * `Pacific/Tongatapu` - Pacific/Tongatapu
+       * * `Pacific/Wake` - Pacific/Wake
+       * * `Pacific/Wallis` - Pacific/Wallis
+       * * `US/Alaska` - US/Alaska
+       * * `US/Arizona` - US/Arizona
+       * * `US/Central` - US/Central
+       * * `US/Eastern` - US/Eastern
+       * * `US/Hawaii` - US/Hawaii
+       * * `US/Mountain` - US/Mountain
+       * * `US/Pacific` - US/Pacific
+       * * `UTC` - UTC 
+       * @enum {string}
+       */
+      timezone: "Africa/Abidjan" | "Africa/Accra" | "Africa/Addis_Ababa" | "Africa/Algiers" | "Africa/Asmara" | "Africa/Bamako" | "Africa/Bangui" | "Africa/Banjul" | "Africa/Bissau" | "Africa/Blantyre" | "Africa/Brazzaville" | "Africa/Bujumbura" | "Africa/Cairo" | "Africa/Casablanca" | "Africa/Ceuta" | "Africa/Conakry" | "Africa/Dakar" | "Africa/Dar_es_Salaam" | "Africa/Djibouti" | "Africa/Douala" | "Africa/El_Aaiun" | "Africa/Freetown" | "Africa/Gaborone" | "Africa/Harare" | "Africa/Johannesburg" | "Africa/Juba" | "Africa/Kampala" | "Africa/Khartoum" | "Africa/Kigali" | "Africa/Kinshasa" | "Africa/Lagos" | "Africa/Libreville" | "Africa/Lome" | "Africa/Luanda" | "Africa/Lubumbashi" | "Africa/Lusaka" | "Africa/Malabo" | "Africa/Maputo" | "Africa/Maseru" | "Africa/Mbabane" | "Africa/Mogadishu" | "Africa/Monrovia" | "Africa/Nairobi" | "Africa/Ndjamena" | "Africa/Niamey" | "Africa/Nouakchott" | "Africa/Ouagadougou" | "Africa/Porto-Novo" | "Africa/Sao_Tome" | "Africa/Tripoli" | "Africa/Tunis" | "Africa/Windhoek" | "America/Adak" | "America/Anchorage" | "America/Anguilla" | "America/Antigua" | "America/Araguaina" | "America/Argentina/Buenos_Aires" | "America/Argentina/Catamarca" | "America/Argentina/Cordoba" | "America/Argentina/Jujuy" | "America/Argentina/La_Rioja" | "America/Argentina/Mendoza" | "America/Argentina/Rio_Gallegos" | "America/Argentina/Salta" | "America/Argentina/San_Juan" | "America/Argentina/San_Luis" | "America/Argentina/Tucuman" | "America/Argentina/Ushuaia" | "America/Aruba" | "America/Asuncion" | "America/Atikokan" | "America/Bahia" | "America/Bahia_Banderas" | "America/Barbados" | "America/Belem" | "America/Belize" | "America/Blanc-Sablon" | "America/Boa_Vista" | "America/Bogota" | "America/Boise" | "America/Cambridge_Bay" | "America/Campo_Grande" | "America/Cancun" | "America/Caracas" | "America/Cayenne" | "America/Cayman" | "America/Chicago" | "America/Chihuahua" | "America/Ciudad_Juarez" | "America/Costa_Rica" | "America/Creston" | "America/Cuiaba" | "America/Curacao" | "America/Danmarkshavn" | "America/Dawson" | "America/Dawson_Creek" | "America/Denver" | "America/Detroit" | "America/Dominica" | "America/Edmonton" | "America/Eirunepe" | "America/El_Salvador" | "America/Fort_Nelson" | "America/Fortaleza" | "America/Glace_Bay" | "America/Goose_Bay" | "America/Grand_Turk" | "America/Grenada" | "America/Guadeloupe" | "America/Guatemala" | "America/Guayaquil" | "America/Guyana" | "America/Halifax" | "America/Havana" | "America/Hermosillo" | "America/Indiana/Indianapolis" | "America/Indiana/Knox" | "America/Indiana/Marengo" | "America/Indiana/Petersburg" | "America/Indiana/Tell_City" | "America/Indiana/Vevay" | "America/Indiana/Vincennes" | "America/Indiana/Winamac" | "America/Inuvik" | "America/Iqaluit" | "America/Jamaica" | "America/Juneau" | "America/Kentucky/Louisville" | "America/Kentucky/Monticello" | "America/Kralendijk" | "America/La_Paz" | "America/Lima" | "America/Los_Angeles" | "America/Lower_Princes" | "America/Maceio" | "America/Managua" | "America/Manaus" | "America/Marigot" | "America/Martinique" | "America/Matamoros" | "America/Mazatlan" | "America/Menominee" | "America/Merida" | "America/Metlakatla" | "America/Mexico_City" | "America/Miquelon" | "America/Moncton" | "America/Monterrey" | "America/Montevideo" | "America/Montserrat" | "America/Nassau" | "America/New_York" | "America/Nome" | "America/Noronha" | "America/North_Dakota/Beulah" | "America/North_Dakota/Center" | "America/North_Dakota/New_Salem" | "America/Nuuk" | "America/Ojinaga" | "America/Panama" | "America/Paramaribo" | "America/Phoenix" | "America/Port-au-Prince" | "America/Port_of_Spain" | "America/Porto_Velho" | "America/Puerto_Rico" | "America/Punta_Arenas" | "America/Rankin_Inlet" | "America/Recife" | "America/Regina" | "America/Resolute" | "America/Rio_Branco" | "America/Santarem" | "America/Santiago" | "America/Santo_Domingo" | "America/Sao_Paulo" | "America/Scoresbysund" | "America/Sitka" | "America/St_Barthelemy" | "America/St_Johns" | "America/St_Kitts" | "America/St_Lucia" | "America/St_Thomas" | "America/St_Vincent" | "America/Swift_Current" | "America/Tegucigalpa" | "America/Thule" | "America/Tijuana" | "America/Toronto" | "America/Tortola" | "America/Vancouver" | "America/Whitehorse" | "America/Winnipeg" | "America/Yakutat" | "America/Yellowknife" | "Antarctica/Casey" | "Antarctica/Davis" | "Antarctica/DumontDUrville" | "Antarctica/Macquarie" | "Antarctica/Mawson" | "Antarctica/McMurdo" | "Antarctica/Palmer" | "Antarctica/Rothera" | "Antarctica/Syowa" | "Antarctica/Troll" | "Antarctica/Vostok" | "Arctic/Longyearbyen" | "Asia/Aden" | "Asia/Almaty" | "Asia/Amman" | "Asia/Anadyr" | "Asia/Aqtau" | "Asia/Aqtobe" | "Asia/Ashgabat" | "Asia/Atyrau" | "Asia/Baghdad" | "Asia/Bahrain" | "Asia/Baku" | "Asia/Bangkok" | "Asia/Barnaul" | "Asia/Beirut" | "Asia/Bishkek" | "Asia/Brunei" | "Asia/Chita" | "Asia/Choibalsan" | "Asia/Colombo" | "Asia/Damascus" | "Asia/Dhaka" | "Asia/Dili" | "Asia/Dubai" | "Asia/Dushanbe" | "Asia/Famagusta" | "Asia/Gaza" | "Asia/Hebron" | "Asia/Ho_Chi_Minh" | "Asia/Hong_Kong" | "Asia/Hovd" | "Asia/Irkutsk" | "Asia/Jakarta" | "Asia/Jayapura" | "Asia/Jerusalem" | "Asia/Kabul" | "Asia/Kamchatka" | "Asia/Karachi" | "Asia/Kathmandu" | "Asia/Khandyga" | "Asia/Kolkata" | "Asia/Krasnoyarsk" | "Asia/Kuala_Lumpur" | "Asia/Kuching" | "Asia/Kuwait" | "Asia/Macau" | "Asia/Magadan" | "Asia/Makassar" | "Asia/Manila" | "Asia/Muscat" | "Asia/Nicosia" | "Asia/Novokuznetsk" | "Asia/Novosibirsk" | "Asia/Omsk" | "Asia/Oral" | "Asia/Phnom_Penh" | "Asia/Pontianak" | "Asia/Pyongyang" | "Asia/Qatar" | "Asia/Qostanay" | "Asia/Qyzylorda" | "Asia/Riyadh" | "Asia/Sakhalin" | "Asia/Samarkand" | "Asia/Seoul" | "Asia/Shanghai" | "Asia/Singapore" | "Asia/Srednekolymsk" | "Asia/Taipei" | "Asia/Tashkent" | "Asia/Tbilisi" | "Asia/Tehran" | "Asia/Thimphu" | "Asia/Tokyo" | "Asia/Tomsk" | "Asia/Ulaanbaatar" | "Asia/Urumqi" | "Asia/Ust-Nera" | "Asia/Vientiane" | "Asia/Vladivostok" | "Asia/Yakutsk" | "Asia/Yangon" | "Asia/Yekaterinburg" | "Asia/Yerevan" | "Atlantic/Azores" | "Atlantic/Bermuda" | "Atlantic/Canary" | "Atlantic/Cape_Verde" | "Atlantic/Faroe" | "Atlantic/Madeira" | "Atlantic/Reykjavik" | "Atlantic/South_Georgia" | "Atlantic/St_Helena" | "Atlantic/Stanley" | "Australia/Adelaide" | "Australia/Brisbane" | "Australia/Broken_Hill" | "Australia/Darwin" | "Australia/Eucla" | "Australia/Hobart" | "Australia/Lindeman" | "Australia/Lord_Howe" | "Australia/Melbourne" | "Australia/Perth" | "Australia/Sydney" | "Canada/Atlantic" | "Canada/Central" | "Canada/Eastern" | "Canada/Mountain" | "Canada/Newfoundland" | "Canada/Pacific" | "Europe/Amsterdam" | "Europe/Andorra" | "Europe/Astrakhan" | "Europe/Athens" | "Europe/Belgrade" | "Europe/Berlin" | "Europe/Bratislava" | "Europe/Brussels" | "Europe/Bucharest" | "Europe/Budapest" | "Europe/Busingen" | "Europe/Chisinau" | "Europe/Copenhagen" | "Europe/Dublin" | "Europe/Gibraltar" | "Europe/Guernsey" | "Europe/Helsinki" | "Europe/Isle_of_Man" | "Europe/Istanbul" | "Europe/Jersey" | "Europe/Kaliningrad" | "Europe/Kirov" | "Europe/Kyiv" | "Europe/Lisbon" | "Europe/Ljubljana" | "Europe/London" | "Europe/Luxembourg" | "Europe/Madrid" | "Europe/Malta" | "Europe/Mariehamn" | "Europe/Minsk" | "Europe/Monaco" | "Europe/Moscow" | "Europe/Oslo" | "Europe/Paris" | "Europe/Podgorica" | "Europe/Prague" | "Europe/Riga" | "Europe/Rome" | "Europe/Samara" | "Europe/San_Marino" | "Europe/Sarajevo" | "Europe/Saratov" | "Europe/Simferopol" | "Europe/Skopje" | "Europe/Sofia" | "Europe/Stockholm" | "Europe/Tallinn" | "Europe/Tirane" | "Europe/Ulyanovsk" | "Europe/Vaduz" | "Europe/Vatican" | "Europe/Vienna" | "Europe/Vilnius" | "Europe/Volgograd" | "Europe/Warsaw" | "Europe/Zagreb" | "Europe/Zurich" | "GMT" | "Indian/Antananarivo" | "Indian/Chagos" | "Indian/Christmas" | "Indian/Cocos" | "Indian/Comoro" | "Indian/Kerguelen" | "Indian/Mahe" | "Indian/Maldives" | "Indian/Mauritius" | "Indian/Mayotte" | "Indian/Reunion" | "Pacific/Apia" | "Pacific/Auckland" | "Pacific/Bougainville" | "Pacific/Chatham" | "Pacific/Chuuk" | "Pacific/Easter" | "Pacific/Efate" | "Pacific/Fakaofo" | "Pacific/Fiji" | "Pacific/Funafuti" | "Pacific/Galapagos" | "Pacific/Gambier" | "Pacific/Guadalcanal" | "Pacific/Guam" | "Pacific/Honolulu" | "Pacific/Kanton" | "Pacific/Kiritimati" | "Pacific/Kosrae" | "Pacific/Kwajalein" | "Pacific/Majuro" | "Pacific/Marquesas" | "Pacific/Midway" | "Pacific/Nauru" | "Pacific/Niue" | "Pacific/Norfolk" | "Pacific/Noumea" | "Pacific/Pago_Pago" | "Pacific/Palau" | "Pacific/Pitcairn" | "Pacific/Pohnpei" | "Pacific/Port_Moresby" | "Pacific/Rarotonga" | "Pacific/Saipan" | "Pacific/Tahiti" | "Pacific/Tarawa" | "Pacific/Tongatapu" | "Pacific/Wake" | "Pacific/Wallis" | "US/Alaska" | "US/Arizona" | "US/Central" | "US/Eastern" | "US/Hawaii" | "US/Mountain" | "US/Pacific" | "UTC";
+      /**
+       * Format: double 
+       * @description Tax rate as percentage. For example, 10.5 for 10.5%
+       */
+      tax_rate: number;
+      /** @description A dictionary containing the customer's integrations. Keys are the integration type, and the value is a dictionary containing the integration's properties, which can vary by integration. */
+      integrations: components["schemas"]["CustomerIntegrations"];
+    };
     CustomerIntegrations: {
       stripe?: components["schemas"]["CustomerStripeIntegration"] | null;
       braintree?: components["schemas"]["CustomerBraintreeIntegration"] | null;
@@ -1015,9 +2517,449 @@ export interface components {
       /** Format: email */
       email: string;
       default_currency: components["schemas"]["PricingUnitRequest"];
-      /** @enum {string|null} */
+      /**
+       * @description * `stripe` - Stripe
+       * * `braintree` - Braintree 
+       * @enum {string|null}
+       */
       payment_provider: "stripe" | "braintree" | "" | null;
-      /** @enum {string} */
+      /**
+       * @description * `Africa/Abidjan` - Africa/Abidjan
+       * * `Africa/Accra` - Africa/Accra
+       * * `Africa/Addis_Ababa` - Africa/Addis_Ababa
+       * * `Africa/Algiers` - Africa/Algiers
+       * * `Africa/Asmara` - Africa/Asmara
+       * * `Africa/Bamako` - Africa/Bamako
+       * * `Africa/Bangui` - Africa/Bangui
+       * * `Africa/Banjul` - Africa/Banjul
+       * * `Africa/Bissau` - Africa/Bissau
+       * * `Africa/Blantyre` - Africa/Blantyre
+       * * `Africa/Brazzaville` - Africa/Brazzaville
+       * * `Africa/Bujumbura` - Africa/Bujumbura
+       * * `Africa/Cairo` - Africa/Cairo
+       * * `Africa/Casablanca` - Africa/Casablanca
+       * * `Africa/Ceuta` - Africa/Ceuta
+       * * `Africa/Conakry` - Africa/Conakry
+       * * `Africa/Dakar` - Africa/Dakar
+       * * `Africa/Dar_es_Salaam` - Africa/Dar_es_Salaam
+       * * `Africa/Djibouti` - Africa/Djibouti
+       * * `Africa/Douala` - Africa/Douala
+       * * `Africa/El_Aaiun` - Africa/El_Aaiun
+       * * `Africa/Freetown` - Africa/Freetown
+       * * `Africa/Gaborone` - Africa/Gaborone
+       * * `Africa/Harare` - Africa/Harare
+       * * `Africa/Johannesburg` - Africa/Johannesburg
+       * * `Africa/Juba` - Africa/Juba
+       * * `Africa/Kampala` - Africa/Kampala
+       * * `Africa/Khartoum` - Africa/Khartoum
+       * * `Africa/Kigali` - Africa/Kigali
+       * * `Africa/Kinshasa` - Africa/Kinshasa
+       * * `Africa/Lagos` - Africa/Lagos
+       * * `Africa/Libreville` - Africa/Libreville
+       * * `Africa/Lome` - Africa/Lome
+       * * `Africa/Luanda` - Africa/Luanda
+       * * `Africa/Lubumbashi` - Africa/Lubumbashi
+       * * `Africa/Lusaka` - Africa/Lusaka
+       * * `Africa/Malabo` - Africa/Malabo
+       * * `Africa/Maputo` - Africa/Maputo
+       * * `Africa/Maseru` - Africa/Maseru
+       * * `Africa/Mbabane` - Africa/Mbabane
+       * * `Africa/Mogadishu` - Africa/Mogadishu
+       * * `Africa/Monrovia` - Africa/Monrovia
+       * * `Africa/Nairobi` - Africa/Nairobi
+       * * `Africa/Ndjamena` - Africa/Ndjamena
+       * * `Africa/Niamey` - Africa/Niamey
+       * * `Africa/Nouakchott` - Africa/Nouakchott
+       * * `Africa/Ouagadougou` - Africa/Ouagadougou
+       * * `Africa/Porto-Novo` - Africa/Porto-Novo
+       * * `Africa/Sao_Tome` - Africa/Sao_Tome
+       * * `Africa/Tripoli` - Africa/Tripoli
+       * * `Africa/Tunis` - Africa/Tunis
+       * * `Africa/Windhoek` - Africa/Windhoek
+       * * `America/Adak` - America/Adak
+       * * `America/Anchorage` - America/Anchorage
+       * * `America/Anguilla` - America/Anguilla
+       * * `America/Antigua` - America/Antigua
+       * * `America/Araguaina` - America/Araguaina
+       * * `America/Argentina/Buenos_Aires` - America/Argentina/Buenos_Aires
+       * * `America/Argentina/Catamarca` - America/Argentina/Catamarca
+       * * `America/Argentina/Cordoba` - America/Argentina/Cordoba
+       * * `America/Argentina/Jujuy` - America/Argentina/Jujuy
+       * * `America/Argentina/La_Rioja` - America/Argentina/La_Rioja
+       * * `America/Argentina/Mendoza` - America/Argentina/Mendoza
+       * * `America/Argentina/Rio_Gallegos` - America/Argentina/Rio_Gallegos
+       * * `America/Argentina/Salta` - America/Argentina/Salta
+       * * `America/Argentina/San_Juan` - America/Argentina/San_Juan
+       * * `America/Argentina/San_Luis` - America/Argentina/San_Luis
+       * * `America/Argentina/Tucuman` - America/Argentina/Tucuman
+       * * `America/Argentina/Ushuaia` - America/Argentina/Ushuaia
+       * * `America/Aruba` - America/Aruba
+       * * `America/Asuncion` - America/Asuncion
+       * * `America/Atikokan` - America/Atikokan
+       * * `America/Bahia` - America/Bahia
+       * * `America/Bahia_Banderas` - America/Bahia_Banderas
+       * * `America/Barbados` - America/Barbados
+       * * `America/Belem` - America/Belem
+       * * `America/Belize` - America/Belize
+       * * `America/Blanc-Sablon` - America/Blanc-Sablon
+       * * `America/Boa_Vista` - America/Boa_Vista
+       * * `America/Bogota` - America/Bogota
+       * * `America/Boise` - America/Boise
+       * * `America/Cambridge_Bay` - America/Cambridge_Bay
+       * * `America/Campo_Grande` - America/Campo_Grande
+       * * `America/Cancun` - America/Cancun
+       * * `America/Caracas` - America/Caracas
+       * * `America/Cayenne` - America/Cayenne
+       * * `America/Cayman` - America/Cayman
+       * * `America/Chicago` - America/Chicago
+       * * `America/Chihuahua` - America/Chihuahua
+       * * `America/Ciudad_Juarez` - America/Ciudad_Juarez
+       * * `America/Costa_Rica` - America/Costa_Rica
+       * * `America/Creston` - America/Creston
+       * * `America/Cuiaba` - America/Cuiaba
+       * * `America/Curacao` - America/Curacao
+       * * `America/Danmarkshavn` - America/Danmarkshavn
+       * * `America/Dawson` - America/Dawson
+       * * `America/Dawson_Creek` - America/Dawson_Creek
+       * * `America/Denver` - America/Denver
+       * * `America/Detroit` - America/Detroit
+       * * `America/Dominica` - America/Dominica
+       * * `America/Edmonton` - America/Edmonton
+       * * `America/Eirunepe` - America/Eirunepe
+       * * `America/El_Salvador` - America/El_Salvador
+       * * `America/Fort_Nelson` - America/Fort_Nelson
+       * * `America/Fortaleza` - America/Fortaleza
+       * * `America/Glace_Bay` - America/Glace_Bay
+       * * `America/Goose_Bay` - America/Goose_Bay
+       * * `America/Grand_Turk` - America/Grand_Turk
+       * * `America/Grenada` - America/Grenada
+       * * `America/Guadeloupe` - America/Guadeloupe
+       * * `America/Guatemala` - America/Guatemala
+       * * `America/Guayaquil` - America/Guayaquil
+       * * `America/Guyana` - America/Guyana
+       * * `America/Halifax` - America/Halifax
+       * * `America/Havana` - America/Havana
+       * * `America/Hermosillo` - America/Hermosillo
+       * * `America/Indiana/Indianapolis` - America/Indiana/Indianapolis
+       * * `America/Indiana/Knox` - America/Indiana/Knox
+       * * `America/Indiana/Marengo` - America/Indiana/Marengo
+       * * `America/Indiana/Petersburg` - America/Indiana/Petersburg
+       * * `America/Indiana/Tell_City` - America/Indiana/Tell_City
+       * * `America/Indiana/Vevay` - America/Indiana/Vevay
+       * * `America/Indiana/Vincennes` - America/Indiana/Vincennes
+       * * `America/Indiana/Winamac` - America/Indiana/Winamac
+       * * `America/Inuvik` - America/Inuvik
+       * * `America/Iqaluit` - America/Iqaluit
+       * * `America/Jamaica` - America/Jamaica
+       * * `America/Juneau` - America/Juneau
+       * * `America/Kentucky/Louisville` - America/Kentucky/Louisville
+       * * `America/Kentucky/Monticello` - America/Kentucky/Monticello
+       * * `America/Kralendijk` - America/Kralendijk
+       * * `America/La_Paz` - America/La_Paz
+       * * `America/Lima` - America/Lima
+       * * `America/Los_Angeles` - America/Los_Angeles
+       * * `America/Lower_Princes` - America/Lower_Princes
+       * * `America/Maceio` - America/Maceio
+       * * `America/Managua` - America/Managua
+       * * `America/Manaus` - America/Manaus
+       * * `America/Marigot` - America/Marigot
+       * * `America/Martinique` - America/Martinique
+       * * `America/Matamoros` - America/Matamoros
+       * * `America/Mazatlan` - America/Mazatlan
+       * * `America/Menominee` - America/Menominee
+       * * `America/Merida` - America/Merida
+       * * `America/Metlakatla` - America/Metlakatla
+       * * `America/Mexico_City` - America/Mexico_City
+       * * `America/Miquelon` - America/Miquelon
+       * * `America/Moncton` - America/Moncton
+       * * `America/Monterrey` - America/Monterrey
+       * * `America/Montevideo` - America/Montevideo
+       * * `America/Montserrat` - America/Montserrat
+       * * `America/Nassau` - America/Nassau
+       * * `America/New_York` - America/New_York
+       * * `America/Nome` - America/Nome
+       * * `America/Noronha` - America/Noronha
+       * * `America/North_Dakota/Beulah` - America/North_Dakota/Beulah
+       * * `America/North_Dakota/Center` - America/North_Dakota/Center
+       * * `America/North_Dakota/New_Salem` - America/North_Dakota/New_Salem
+       * * `America/Nuuk` - America/Nuuk
+       * * `America/Ojinaga` - America/Ojinaga
+       * * `America/Panama` - America/Panama
+       * * `America/Paramaribo` - America/Paramaribo
+       * * `America/Phoenix` - America/Phoenix
+       * * `America/Port-au-Prince` - America/Port-au-Prince
+       * * `America/Port_of_Spain` - America/Port_of_Spain
+       * * `America/Porto_Velho` - America/Porto_Velho
+       * * `America/Puerto_Rico` - America/Puerto_Rico
+       * * `America/Punta_Arenas` - America/Punta_Arenas
+       * * `America/Rankin_Inlet` - America/Rankin_Inlet
+       * * `America/Recife` - America/Recife
+       * * `America/Regina` - America/Regina
+       * * `America/Resolute` - America/Resolute
+       * * `America/Rio_Branco` - America/Rio_Branco
+       * * `America/Santarem` - America/Santarem
+       * * `America/Santiago` - America/Santiago
+       * * `America/Santo_Domingo` - America/Santo_Domingo
+       * * `America/Sao_Paulo` - America/Sao_Paulo
+       * * `America/Scoresbysund` - America/Scoresbysund
+       * * `America/Sitka` - America/Sitka
+       * * `America/St_Barthelemy` - America/St_Barthelemy
+       * * `America/St_Johns` - America/St_Johns
+       * * `America/St_Kitts` - America/St_Kitts
+       * * `America/St_Lucia` - America/St_Lucia
+       * * `America/St_Thomas` - America/St_Thomas
+       * * `America/St_Vincent` - America/St_Vincent
+       * * `America/Swift_Current` - America/Swift_Current
+       * * `America/Tegucigalpa` - America/Tegucigalpa
+       * * `America/Thule` - America/Thule
+       * * `America/Tijuana` - America/Tijuana
+       * * `America/Toronto` - America/Toronto
+       * * `America/Tortola` - America/Tortola
+       * * `America/Vancouver` - America/Vancouver
+       * * `America/Whitehorse` - America/Whitehorse
+       * * `America/Winnipeg` - America/Winnipeg
+       * * `America/Yakutat` - America/Yakutat
+       * * `America/Yellowknife` - America/Yellowknife
+       * * `Antarctica/Casey` - Antarctica/Casey
+       * * `Antarctica/Davis` - Antarctica/Davis
+       * * `Antarctica/DumontDUrville` - Antarctica/DumontDUrville
+       * * `Antarctica/Macquarie` - Antarctica/Macquarie
+       * * `Antarctica/Mawson` - Antarctica/Mawson
+       * * `Antarctica/McMurdo` - Antarctica/McMurdo
+       * * `Antarctica/Palmer` - Antarctica/Palmer
+       * * `Antarctica/Rothera` - Antarctica/Rothera
+       * * `Antarctica/Syowa` - Antarctica/Syowa
+       * * `Antarctica/Troll` - Antarctica/Troll
+       * * `Antarctica/Vostok` - Antarctica/Vostok
+       * * `Arctic/Longyearbyen` - Arctic/Longyearbyen
+       * * `Asia/Aden` - Asia/Aden
+       * * `Asia/Almaty` - Asia/Almaty
+       * * `Asia/Amman` - Asia/Amman
+       * * `Asia/Anadyr` - Asia/Anadyr
+       * * `Asia/Aqtau` - Asia/Aqtau
+       * * `Asia/Aqtobe` - Asia/Aqtobe
+       * * `Asia/Ashgabat` - Asia/Ashgabat
+       * * `Asia/Atyrau` - Asia/Atyrau
+       * * `Asia/Baghdad` - Asia/Baghdad
+       * * `Asia/Bahrain` - Asia/Bahrain
+       * * `Asia/Baku` - Asia/Baku
+       * * `Asia/Bangkok` - Asia/Bangkok
+       * * `Asia/Barnaul` - Asia/Barnaul
+       * * `Asia/Beirut` - Asia/Beirut
+       * * `Asia/Bishkek` - Asia/Bishkek
+       * * `Asia/Brunei` - Asia/Brunei
+       * * `Asia/Chita` - Asia/Chita
+       * * `Asia/Choibalsan` - Asia/Choibalsan
+       * * `Asia/Colombo` - Asia/Colombo
+       * * `Asia/Damascus` - Asia/Damascus
+       * * `Asia/Dhaka` - Asia/Dhaka
+       * * `Asia/Dili` - Asia/Dili
+       * * `Asia/Dubai` - Asia/Dubai
+       * * `Asia/Dushanbe` - Asia/Dushanbe
+       * * `Asia/Famagusta` - Asia/Famagusta
+       * * `Asia/Gaza` - Asia/Gaza
+       * * `Asia/Hebron` - Asia/Hebron
+       * * `Asia/Ho_Chi_Minh` - Asia/Ho_Chi_Minh
+       * * `Asia/Hong_Kong` - Asia/Hong_Kong
+       * * `Asia/Hovd` - Asia/Hovd
+       * * `Asia/Irkutsk` - Asia/Irkutsk
+       * * `Asia/Jakarta` - Asia/Jakarta
+       * * `Asia/Jayapura` - Asia/Jayapura
+       * * `Asia/Jerusalem` - Asia/Jerusalem
+       * * `Asia/Kabul` - Asia/Kabul
+       * * `Asia/Kamchatka` - Asia/Kamchatka
+       * * `Asia/Karachi` - Asia/Karachi
+       * * `Asia/Kathmandu` - Asia/Kathmandu
+       * * `Asia/Khandyga` - Asia/Khandyga
+       * * `Asia/Kolkata` - Asia/Kolkata
+       * * `Asia/Krasnoyarsk` - Asia/Krasnoyarsk
+       * * `Asia/Kuala_Lumpur` - Asia/Kuala_Lumpur
+       * * `Asia/Kuching` - Asia/Kuching
+       * * `Asia/Kuwait` - Asia/Kuwait
+       * * `Asia/Macau` - Asia/Macau
+       * * `Asia/Magadan` - Asia/Magadan
+       * * `Asia/Makassar` - Asia/Makassar
+       * * `Asia/Manila` - Asia/Manila
+       * * `Asia/Muscat` - Asia/Muscat
+       * * `Asia/Nicosia` - Asia/Nicosia
+       * * `Asia/Novokuznetsk` - Asia/Novokuznetsk
+       * * `Asia/Novosibirsk` - Asia/Novosibirsk
+       * * `Asia/Omsk` - Asia/Omsk
+       * * `Asia/Oral` - Asia/Oral
+       * * `Asia/Phnom_Penh` - Asia/Phnom_Penh
+       * * `Asia/Pontianak` - Asia/Pontianak
+       * * `Asia/Pyongyang` - Asia/Pyongyang
+       * * `Asia/Qatar` - Asia/Qatar
+       * * `Asia/Qostanay` - Asia/Qostanay
+       * * `Asia/Qyzylorda` - Asia/Qyzylorda
+       * * `Asia/Riyadh` - Asia/Riyadh
+       * * `Asia/Sakhalin` - Asia/Sakhalin
+       * * `Asia/Samarkand` - Asia/Samarkand
+       * * `Asia/Seoul` - Asia/Seoul
+       * * `Asia/Shanghai` - Asia/Shanghai
+       * * `Asia/Singapore` - Asia/Singapore
+       * * `Asia/Srednekolymsk` - Asia/Srednekolymsk
+       * * `Asia/Taipei` - Asia/Taipei
+       * * `Asia/Tashkent` - Asia/Tashkent
+       * * `Asia/Tbilisi` - Asia/Tbilisi
+       * * `Asia/Tehran` - Asia/Tehran
+       * * `Asia/Thimphu` - Asia/Thimphu
+       * * `Asia/Tokyo` - Asia/Tokyo
+       * * `Asia/Tomsk` - Asia/Tomsk
+       * * `Asia/Ulaanbaatar` - Asia/Ulaanbaatar
+       * * `Asia/Urumqi` - Asia/Urumqi
+       * * `Asia/Ust-Nera` - Asia/Ust-Nera
+       * * `Asia/Vientiane` - Asia/Vientiane
+       * * `Asia/Vladivostok` - Asia/Vladivostok
+       * * `Asia/Yakutsk` - Asia/Yakutsk
+       * * `Asia/Yangon` - Asia/Yangon
+       * * `Asia/Yekaterinburg` - Asia/Yekaterinburg
+       * * `Asia/Yerevan` - Asia/Yerevan
+       * * `Atlantic/Azores` - Atlantic/Azores
+       * * `Atlantic/Bermuda` - Atlantic/Bermuda
+       * * `Atlantic/Canary` - Atlantic/Canary
+       * * `Atlantic/Cape_Verde` - Atlantic/Cape_Verde
+       * * `Atlantic/Faroe` - Atlantic/Faroe
+       * * `Atlantic/Madeira` - Atlantic/Madeira
+       * * `Atlantic/Reykjavik` - Atlantic/Reykjavik
+       * * `Atlantic/South_Georgia` - Atlantic/South_Georgia
+       * * `Atlantic/St_Helena` - Atlantic/St_Helena
+       * * `Atlantic/Stanley` - Atlantic/Stanley
+       * * `Australia/Adelaide` - Australia/Adelaide
+       * * `Australia/Brisbane` - Australia/Brisbane
+       * * `Australia/Broken_Hill` - Australia/Broken_Hill
+       * * `Australia/Darwin` - Australia/Darwin
+       * * `Australia/Eucla` - Australia/Eucla
+       * * `Australia/Hobart` - Australia/Hobart
+       * * `Australia/Lindeman` - Australia/Lindeman
+       * * `Australia/Lord_Howe` - Australia/Lord_Howe
+       * * `Australia/Melbourne` - Australia/Melbourne
+       * * `Australia/Perth` - Australia/Perth
+       * * `Australia/Sydney` - Australia/Sydney
+       * * `Canada/Atlantic` - Canada/Atlantic
+       * * `Canada/Central` - Canada/Central
+       * * `Canada/Eastern` - Canada/Eastern
+       * * `Canada/Mountain` - Canada/Mountain
+       * * `Canada/Newfoundland` - Canada/Newfoundland
+       * * `Canada/Pacific` - Canada/Pacific
+       * * `Europe/Amsterdam` - Europe/Amsterdam
+       * * `Europe/Andorra` - Europe/Andorra
+       * * `Europe/Astrakhan` - Europe/Astrakhan
+       * * `Europe/Athens` - Europe/Athens
+       * * `Europe/Belgrade` - Europe/Belgrade
+       * * `Europe/Berlin` - Europe/Berlin
+       * * `Europe/Bratislava` - Europe/Bratislava
+       * * `Europe/Brussels` - Europe/Brussels
+       * * `Europe/Bucharest` - Europe/Bucharest
+       * * `Europe/Budapest` - Europe/Budapest
+       * * `Europe/Busingen` - Europe/Busingen
+       * * `Europe/Chisinau` - Europe/Chisinau
+       * * `Europe/Copenhagen` - Europe/Copenhagen
+       * * `Europe/Dublin` - Europe/Dublin
+       * * `Europe/Gibraltar` - Europe/Gibraltar
+       * * `Europe/Guernsey` - Europe/Guernsey
+       * * `Europe/Helsinki` - Europe/Helsinki
+       * * `Europe/Isle_of_Man` - Europe/Isle_of_Man
+       * * `Europe/Istanbul` - Europe/Istanbul
+       * * `Europe/Jersey` - Europe/Jersey
+       * * `Europe/Kaliningrad` - Europe/Kaliningrad
+       * * `Europe/Kirov` - Europe/Kirov
+       * * `Europe/Kyiv` - Europe/Kyiv
+       * * `Europe/Lisbon` - Europe/Lisbon
+       * * `Europe/Ljubljana` - Europe/Ljubljana
+       * * `Europe/London` - Europe/London
+       * * `Europe/Luxembourg` - Europe/Luxembourg
+       * * `Europe/Madrid` - Europe/Madrid
+       * * `Europe/Malta` - Europe/Malta
+       * * `Europe/Mariehamn` - Europe/Mariehamn
+       * * `Europe/Minsk` - Europe/Minsk
+       * * `Europe/Monaco` - Europe/Monaco
+       * * `Europe/Moscow` - Europe/Moscow
+       * * `Europe/Oslo` - Europe/Oslo
+       * * `Europe/Paris` - Europe/Paris
+       * * `Europe/Podgorica` - Europe/Podgorica
+       * * `Europe/Prague` - Europe/Prague
+       * * `Europe/Riga` - Europe/Riga
+       * * `Europe/Rome` - Europe/Rome
+       * * `Europe/Samara` - Europe/Samara
+       * * `Europe/San_Marino` - Europe/San_Marino
+       * * `Europe/Sarajevo` - Europe/Sarajevo
+       * * `Europe/Saratov` - Europe/Saratov
+       * * `Europe/Simferopol` - Europe/Simferopol
+       * * `Europe/Skopje` - Europe/Skopje
+       * * `Europe/Sofia` - Europe/Sofia
+       * * `Europe/Stockholm` - Europe/Stockholm
+       * * `Europe/Tallinn` - Europe/Tallinn
+       * * `Europe/Tirane` - Europe/Tirane
+       * * `Europe/Ulyanovsk` - Europe/Ulyanovsk
+       * * `Europe/Vaduz` - Europe/Vaduz
+       * * `Europe/Vatican` - Europe/Vatican
+       * * `Europe/Vienna` - Europe/Vienna
+       * * `Europe/Vilnius` - Europe/Vilnius
+       * * `Europe/Volgograd` - Europe/Volgograd
+       * * `Europe/Warsaw` - Europe/Warsaw
+       * * `Europe/Zagreb` - Europe/Zagreb
+       * * `Europe/Zurich` - Europe/Zurich
+       * * `GMT` - GMT
+       * * `Indian/Antananarivo` - Indian/Antananarivo
+       * * `Indian/Chagos` - Indian/Chagos
+       * * `Indian/Christmas` - Indian/Christmas
+       * * `Indian/Cocos` - Indian/Cocos
+       * * `Indian/Comoro` - Indian/Comoro
+       * * `Indian/Kerguelen` - Indian/Kerguelen
+       * * `Indian/Mahe` - Indian/Mahe
+       * * `Indian/Maldives` - Indian/Maldives
+       * * `Indian/Mauritius` - Indian/Mauritius
+       * * `Indian/Mayotte` - Indian/Mayotte
+       * * `Indian/Reunion` - Indian/Reunion
+       * * `Pacific/Apia` - Pacific/Apia
+       * * `Pacific/Auckland` - Pacific/Auckland
+       * * `Pacific/Bougainville` - Pacific/Bougainville
+       * * `Pacific/Chatham` - Pacific/Chatham
+       * * `Pacific/Chuuk` - Pacific/Chuuk
+       * * `Pacific/Easter` - Pacific/Easter
+       * * `Pacific/Efate` - Pacific/Efate
+       * * `Pacific/Fakaofo` - Pacific/Fakaofo
+       * * `Pacific/Fiji` - Pacific/Fiji
+       * * `Pacific/Funafuti` - Pacific/Funafuti
+       * * `Pacific/Galapagos` - Pacific/Galapagos
+       * * `Pacific/Gambier` - Pacific/Gambier
+       * * `Pacific/Guadalcanal` - Pacific/Guadalcanal
+       * * `Pacific/Guam` - Pacific/Guam
+       * * `Pacific/Honolulu` - Pacific/Honolulu
+       * * `Pacific/Kanton` - Pacific/Kanton
+       * * `Pacific/Kiritimati` - Pacific/Kiritimati
+       * * `Pacific/Kosrae` - Pacific/Kosrae
+       * * `Pacific/Kwajalein` - Pacific/Kwajalein
+       * * `Pacific/Majuro` - Pacific/Majuro
+       * * `Pacific/Marquesas` - Pacific/Marquesas
+       * * `Pacific/Midway` - Pacific/Midway
+       * * `Pacific/Nauru` - Pacific/Nauru
+       * * `Pacific/Niue` - Pacific/Niue
+       * * `Pacific/Norfolk` - Pacific/Norfolk
+       * * `Pacific/Noumea` - Pacific/Noumea
+       * * `Pacific/Pago_Pago` - Pacific/Pago_Pago
+       * * `Pacific/Palau` - Pacific/Palau
+       * * `Pacific/Pitcairn` - Pacific/Pitcairn
+       * * `Pacific/Pohnpei` - Pacific/Pohnpei
+       * * `Pacific/Port_Moresby` - Pacific/Port_Moresby
+       * * `Pacific/Rarotonga` - Pacific/Rarotonga
+       * * `Pacific/Saipan` - Pacific/Saipan
+       * * `Pacific/Tahiti` - Pacific/Tahiti
+       * * `Pacific/Tarawa` - Pacific/Tarawa
+       * * `Pacific/Tongatapu` - Pacific/Tongatapu
+       * * `Pacific/Wake` - Pacific/Wake
+       * * `Pacific/Wallis` - Pacific/Wallis
+       * * `US/Alaska` - US/Alaska
+       * * `US/Arizona` - US/Arizona
+       * * `US/Central` - US/Central
+       * * `US/Eastern` - US/Eastern
+       * * `US/Hawaii` - US/Hawaii
+       * * `US/Mountain` - US/Mountain
+       * * `US/Pacific` - US/Pacific
+       * * `UTC` - UTC 
+       * @enum {string}
+       */
       timezone: "Africa/Abidjan" | "Africa/Accra" | "Africa/Addis_Ababa" | "Africa/Algiers" | "Africa/Asmara" | "Africa/Bamako" | "Africa/Bangui" | "Africa/Banjul" | "Africa/Bissau" | "Africa/Blantyre" | "Africa/Brazzaville" | "Africa/Bujumbura" | "Africa/Cairo" | "Africa/Casablanca" | "Africa/Ceuta" | "Africa/Conakry" | "Africa/Dakar" | "Africa/Dar_es_Salaam" | "Africa/Djibouti" | "Africa/Douala" | "Africa/El_Aaiun" | "Africa/Freetown" | "Africa/Gaborone" | "Africa/Harare" | "Africa/Johannesburg" | "Africa/Juba" | "Africa/Kampala" | "Africa/Khartoum" | "Africa/Kigali" | "Africa/Kinshasa" | "Africa/Lagos" | "Africa/Libreville" | "Africa/Lome" | "Africa/Luanda" | "Africa/Lubumbashi" | "Africa/Lusaka" | "Africa/Malabo" | "Africa/Maputo" | "Africa/Maseru" | "Africa/Mbabane" | "Africa/Mogadishu" | "Africa/Monrovia" | "Africa/Nairobi" | "Africa/Ndjamena" | "Africa/Niamey" | "Africa/Nouakchott" | "Africa/Ouagadougou" | "Africa/Porto-Novo" | "Africa/Sao_Tome" | "Africa/Tripoli" | "Africa/Tunis" | "Africa/Windhoek" | "America/Adak" | "America/Anchorage" | "America/Anguilla" | "America/Antigua" | "America/Araguaina" | "America/Argentina/Buenos_Aires" | "America/Argentina/Catamarca" | "America/Argentina/Cordoba" | "America/Argentina/Jujuy" | "America/Argentina/La_Rioja" | "America/Argentina/Mendoza" | "America/Argentina/Rio_Gallegos" | "America/Argentina/Salta" | "America/Argentina/San_Juan" | "America/Argentina/San_Luis" | "America/Argentina/Tucuman" | "America/Argentina/Ushuaia" | "America/Aruba" | "America/Asuncion" | "America/Atikokan" | "America/Bahia" | "America/Bahia_Banderas" | "America/Barbados" | "America/Belem" | "America/Belize" | "America/Blanc-Sablon" | "America/Boa_Vista" | "America/Bogota" | "America/Boise" | "America/Cambridge_Bay" | "America/Campo_Grande" | "America/Cancun" | "America/Caracas" | "America/Cayenne" | "America/Cayman" | "America/Chicago" | "America/Chihuahua" | "America/Ciudad_Juarez" | "America/Costa_Rica" | "America/Creston" | "America/Cuiaba" | "America/Curacao" | "America/Danmarkshavn" | "America/Dawson" | "America/Dawson_Creek" | "America/Denver" | "America/Detroit" | "America/Dominica" | "America/Edmonton" | "America/Eirunepe" | "America/El_Salvador" | "America/Fort_Nelson" | "America/Fortaleza" | "America/Glace_Bay" | "America/Goose_Bay" | "America/Grand_Turk" | "America/Grenada" | "America/Guadeloupe" | "America/Guatemala" | "America/Guayaquil" | "America/Guyana" | "America/Halifax" | "America/Havana" | "America/Hermosillo" | "America/Indiana/Indianapolis" | "America/Indiana/Knox" | "America/Indiana/Marengo" | "America/Indiana/Petersburg" | "America/Indiana/Tell_City" | "America/Indiana/Vevay" | "America/Indiana/Vincennes" | "America/Indiana/Winamac" | "America/Inuvik" | "America/Iqaluit" | "America/Jamaica" | "America/Juneau" | "America/Kentucky/Louisville" | "America/Kentucky/Monticello" | "America/Kralendijk" | "America/La_Paz" | "America/Lima" | "America/Los_Angeles" | "America/Lower_Princes" | "America/Maceio" | "America/Managua" | "America/Manaus" | "America/Marigot" | "America/Martinique" | "America/Matamoros" | "America/Mazatlan" | "America/Menominee" | "America/Merida" | "America/Metlakatla" | "America/Mexico_City" | "America/Miquelon" | "America/Moncton" | "America/Monterrey" | "America/Montevideo" | "America/Montserrat" | "America/Nassau" | "America/New_York" | "America/Nome" | "America/Noronha" | "America/North_Dakota/Beulah" | "America/North_Dakota/Center" | "America/North_Dakota/New_Salem" | "America/Nuuk" | "America/Ojinaga" | "America/Panama" | "America/Paramaribo" | "America/Phoenix" | "America/Port-au-Prince" | "America/Port_of_Spain" | "America/Porto_Velho" | "America/Puerto_Rico" | "America/Punta_Arenas" | "America/Rankin_Inlet" | "America/Recife" | "America/Regina" | "America/Resolute" | "America/Rio_Branco" | "America/Santarem" | "America/Santiago" | "America/Santo_Domingo" | "America/Sao_Paulo" | "America/Scoresbysund" | "America/Sitka" | "America/St_Barthelemy" | "America/St_Johns" | "America/St_Kitts" | "America/St_Lucia" | "America/St_Thomas" | "America/St_Vincent" | "America/Swift_Current" | "America/Tegucigalpa" | "America/Thule" | "America/Tijuana" | "America/Toronto" | "America/Tortola" | "America/Vancouver" | "America/Whitehorse" | "America/Winnipeg" | "America/Yakutat" | "America/Yellowknife" | "Antarctica/Casey" | "Antarctica/Davis" | "Antarctica/DumontDUrville" | "Antarctica/Macquarie" | "Antarctica/Mawson" | "Antarctica/McMurdo" | "Antarctica/Palmer" | "Antarctica/Rothera" | "Antarctica/Syowa" | "Antarctica/Troll" | "Antarctica/Vostok" | "Arctic/Longyearbyen" | "Asia/Aden" | "Asia/Almaty" | "Asia/Amman" | "Asia/Anadyr" | "Asia/Aqtau" | "Asia/Aqtobe" | "Asia/Ashgabat" | "Asia/Atyrau" | "Asia/Baghdad" | "Asia/Bahrain" | "Asia/Baku" | "Asia/Bangkok" | "Asia/Barnaul" | "Asia/Beirut" | "Asia/Bishkek" | "Asia/Brunei" | "Asia/Chita" | "Asia/Choibalsan" | "Asia/Colombo" | "Asia/Damascus" | "Asia/Dhaka" | "Asia/Dili" | "Asia/Dubai" | "Asia/Dushanbe" | "Asia/Famagusta" | "Asia/Gaza" | "Asia/Hebron" | "Asia/Ho_Chi_Minh" | "Asia/Hong_Kong" | "Asia/Hovd" | "Asia/Irkutsk" | "Asia/Jakarta" | "Asia/Jayapura" | "Asia/Jerusalem" | "Asia/Kabul" | "Asia/Kamchatka" | "Asia/Karachi" | "Asia/Kathmandu" | "Asia/Khandyga" | "Asia/Kolkata" | "Asia/Krasnoyarsk" | "Asia/Kuala_Lumpur" | "Asia/Kuching" | "Asia/Kuwait" | "Asia/Macau" | "Asia/Magadan" | "Asia/Makassar" | "Asia/Manila" | "Asia/Muscat" | "Asia/Nicosia" | "Asia/Novokuznetsk" | "Asia/Novosibirsk" | "Asia/Omsk" | "Asia/Oral" | "Asia/Phnom_Penh" | "Asia/Pontianak" | "Asia/Pyongyang" | "Asia/Qatar" | "Asia/Qostanay" | "Asia/Qyzylorda" | "Asia/Riyadh" | "Asia/Sakhalin" | "Asia/Samarkand" | "Asia/Seoul" | "Asia/Shanghai" | "Asia/Singapore" | "Asia/Srednekolymsk" | "Asia/Taipei" | "Asia/Tashkent" | "Asia/Tbilisi" | "Asia/Tehran" | "Asia/Thimphu" | "Asia/Tokyo" | "Asia/Tomsk" | "Asia/Ulaanbaatar" | "Asia/Urumqi" | "Asia/Ust-Nera" | "Asia/Vientiane" | "Asia/Vladivostok" | "Asia/Yakutsk" | "Asia/Yangon" | "Asia/Yekaterinburg" | "Asia/Yerevan" | "Atlantic/Azores" | "Atlantic/Bermuda" | "Atlantic/Canary" | "Atlantic/Cape_Verde" | "Atlantic/Faroe" | "Atlantic/Madeira" | "Atlantic/Reykjavik" | "Atlantic/South_Georgia" | "Atlantic/St_Helena" | "Atlantic/Stanley" | "Australia/Adelaide" | "Australia/Brisbane" | "Australia/Broken_Hill" | "Australia/Darwin" | "Australia/Eucla" | "Australia/Hobart" | "Australia/Lindeman" | "Australia/Lord_Howe" | "Australia/Melbourne" | "Australia/Perth" | "Australia/Sydney" | "Canada/Atlantic" | "Canada/Central" | "Canada/Eastern" | "Canada/Mountain" | "Canada/Newfoundland" | "Canada/Pacific" | "Europe/Amsterdam" | "Europe/Andorra" | "Europe/Astrakhan" | "Europe/Athens" | "Europe/Belgrade" | "Europe/Berlin" | "Europe/Bratislava" | "Europe/Brussels" | "Europe/Bucharest" | "Europe/Budapest" | "Europe/Busingen" | "Europe/Chisinau" | "Europe/Copenhagen" | "Europe/Dublin" | "Europe/Gibraltar" | "Europe/Guernsey" | "Europe/Helsinki" | "Europe/Isle_of_Man" | "Europe/Istanbul" | "Europe/Jersey" | "Europe/Kaliningrad" | "Europe/Kirov" | "Europe/Kyiv" | "Europe/Lisbon" | "Europe/Ljubljana" | "Europe/London" | "Europe/Luxembourg" | "Europe/Madrid" | "Europe/Malta" | "Europe/Mariehamn" | "Europe/Minsk" | "Europe/Monaco" | "Europe/Moscow" | "Europe/Oslo" | "Europe/Paris" | "Europe/Podgorica" | "Europe/Prague" | "Europe/Riga" | "Europe/Rome" | "Europe/Samara" | "Europe/San_Marino" | "Europe/Sarajevo" | "Europe/Saratov" | "Europe/Simferopol" | "Europe/Skopje" | "Europe/Sofia" | "Europe/Stockholm" | "Europe/Tallinn" | "Europe/Tirane" | "Europe/Ulyanovsk" | "Europe/Vaduz" | "Europe/Vatican" | "Europe/Vienna" | "Europe/Vilnius" | "Europe/Volgograd" | "Europe/Warsaw" | "Europe/Zagreb" | "Europe/Zurich" | "GMT" | "Indian/Antananarivo" | "Indian/Chagos" | "Indian/Christmas" | "Indian/Cocos" | "Indian/Comoro" | "Indian/Kerguelen" | "Indian/Mahe" | "Indian/Maldives" | "Indian/Mauritius" | "Indian/Mayotte" | "Indian/Reunion" | "Pacific/Apia" | "Pacific/Auckland" | "Pacific/Bougainville" | "Pacific/Chatham" | "Pacific/Chuuk" | "Pacific/Easter" | "Pacific/Efate" | "Pacific/Fakaofo" | "Pacific/Fiji" | "Pacific/Funafuti" | "Pacific/Galapagos" | "Pacific/Gambier" | "Pacific/Guadalcanal" | "Pacific/Guam" | "Pacific/Honolulu" | "Pacific/Kanton" | "Pacific/Kiritimati" | "Pacific/Kosrae" | "Pacific/Kwajalein" | "Pacific/Majuro" | "Pacific/Marquesas" | "Pacific/Midway" | "Pacific/Nauru" | "Pacific/Niue" | "Pacific/Norfolk" | "Pacific/Noumea" | "Pacific/Pago_Pago" | "Pacific/Palau" | "Pacific/Pitcairn" | "Pacific/Pohnpei" | "Pacific/Port_Moresby" | "Pacific/Rarotonga" | "Pacific/Saipan" | "Pacific/Tahiti" | "Pacific/Tarawa" | "Pacific/Tongatapu" | "Pacific/Wake" | "Pacific/Wallis" | "US/Alaska" | "US/Arizona" | "US/Central" | "US/Eastern" | "US/Hawaii" | "US/Mountain" | "US/Pacific" | "UTC";
     };
     CustomerStripeIntegration: {
@@ -1040,7 +2982,443 @@ export interface components {
        * @description Tax rate as percentage. For example, 10.5 for 10.5%
        */
       tax_rate?: number;
-      /** @enum {string} */
+      /**
+       * @description * `Africa/Abidjan` - Africa/Abidjan
+       * * `Africa/Accra` - Africa/Accra
+       * * `Africa/Addis_Ababa` - Africa/Addis_Ababa
+       * * `Africa/Algiers` - Africa/Algiers
+       * * `Africa/Asmara` - Africa/Asmara
+       * * `Africa/Bamako` - Africa/Bamako
+       * * `Africa/Bangui` - Africa/Bangui
+       * * `Africa/Banjul` - Africa/Banjul
+       * * `Africa/Bissau` - Africa/Bissau
+       * * `Africa/Blantyre` - Africa/Blantyre
+       * * `Africa/Brazzaville` - Africa/Brazzaville
+       * * `Africa/Bujumbura` - Africa/Bujumbura
+       * * `Africa/Cairo` - Africa/Cairo
+       * * `Africa/Casablanca` - Africa/Casablanca
+       * * `Africa/Ceuta` - Africa/Ceuta
+       * * `Africa/Conakry` - Africa/Conakry
+       * * `Africa/Dakar` - Africa/Dakar
+       * * `Africa/Dar_es_Salaam` - Africa/Dar_es_Salaam
+       * * `Africa/Djibouti` - Africa/Djibouti
+       * * `Africa/Douala` - Africa/Douala
+       * * `Africa/El_Aaiun` - Africa/El_Aaiun
+       * * `Africa/Freetown` - Africa/Freetown
+       * * `Africa/Gaborone` - Africa/Gaborone
+       * * `Africa/Harare` - Africa/Harare
+       * * `Africa/Johannesburg` - Africa/Johannesburg
+       * * `Africa/Juba` - Africa/Juba
+       * * `Africa/Kampala` - Africa/Kampala
+       * * `Africa/Khartoum` - Africa/Khartoum
+       * * `Africa/Kigali` - Africa/Kigali
+       * * `Africa/Kinshasa` - Africa/Kinshasa
+       * * `Africa/Lagos` - Africa/Lagos
+       * * `Africa/Libreville` - Africa/Libreville
+       * * `Africa/Lome` - Africa/Lome
+       * * `Africa/Luanda` - Africa/Luanda
+       * * `Africa/Lubumbashi` - Africa/Lubumbashi
+       * * `Africa/Lusaka` - Africa/Lusaka
+       * * `Africa/Malabo` - Africa/Malabo
+       * * `Africa/Maputo` - Africa/Maputo
+       * * `Africa/Maseru` - Africa/Maseru
+       * * `Africa/Mbabane` - Africa/Mbabane
+       * * `Africa/Mogadishu` - Africa/Mogadishu
+       * * `Africa/Monrovia` - Africa/Monrovia
+       * * `Africa/Nairobi` - Africa/Nairobi
+       * * `Africa/Ndjamena` - Africa/Ndjamena
+       * * `Africa/Niamey` - Africa/Niamey
+       * * `Africa/Nouakchott` - Africa/Nouakchott
+       * * `Africa/Ouagadougou` - Africa/Ouagadougou
+       * * `Africa/Porto-Novo` - Africa/Porto-Novo
+       * * `Africa/Sao_Tome` - Africa/Sao_Tome
+       * * `Africa/Tripoli` - Africa/Tripoli
+       * * `Africa/Tunis` - Africa/Tunis
+       * * `Africa/Windhoek` - Africa/Windhoek
+       * * `America/Adak` - America/Adak
+       * * `America/Anchorage` - America/Anchorage
+       * * `America/Anguilla` - America/Anguilla
+       * * `America/Antigua` - America/Antigua
+       * * `America/Araguaina` - America/Araguaina
+       * * `America/Argentina/Buenos_Aires` - America/Argentina/Buenos_Aires
+       * * `America/Argentina/Catamarca` - America/Argentina/Catamarca
+       * * `America/Argentina/Cordoba` - America/Argentina/Cordoba
+       * * `America/Argentina/Jujuy` - America/Argentina/Jujuy
+       * * `America/Argentina/La_Rioja` - America/Argentina/La_Rioja
+       * * `America/Argentina/Mendoza` - America/Argentina/Mendoza
+       * * `America/Argentina/Rio_Gallegos` - America/Argentina/Rio_Gallegos
+       * * `America/Argentina/Salta` - America/Argentina/Salta
+       * * `America/Argentina/San_Juan` - America/Argentina/San_Juan
+       * * `America/Argentina/San_Luis` - America/Argentina/San_Luis
+       * * `America/Argentina/Tucuman` - America/Argentina/Tucuman
+       * * `America/Argentina/Ushuaia` - America/Argentina/Ushuaia
+       * * `America/Aruba` - America/Aruba
+       * * `America/Asuncion` - America/Asuncion
+       * * `America/Atikokan` - America/Atikokan
+       * * `America/Bahia` - America/Bahia
+       * * `America/Bahia_Banderas` - America/Bahia_Banderas
+       * * `America/Barbados` - America/Barbados
+       * * `America/Belem` - America/Belem
+       * * `America/Belize` - America/Belize
+       * * `America/Blanc-Sablon` - America/Blanc-Sablon
+       * * `America/Boa_Vista` - America/Boa_Vista
+       * * `America/Bogota` - America/Bogota
+       * * `America/Boise` - America/Boise
+       * * `America/Cambridge_Bay` - America/Cambridge_Bay
+       * * `America/Campo_Grande` - America/Campo_Grande
+       * * `America/Cancun` - America/Cancun
+       * * `America/Caracas` - America/Caracas
+       * * `America/Cayenne` - America/Cayenne
+       * * `America/Cayman` - America/Cayman
+       * * `America/Chicago` - America/Chicago
+       * * `America/Chihuahua` - America/Chihuahua
+       * * `America/Ciudad_Juarez` - America/Ciudad_Juarez
+       * * `America/Costa_Rica` - America/Costa_Rica
+       * * `America/Creston` - America/Creston
+       * * `America/Cuiaba` - America/Cuiaba
+       * * `America/Curacao` - America/Curacao
+       * * `America/Danmarkshavn` - America/Danmarkshavn
+       * * `America/Dawson` - America/Dawson
+       * * `America/Dawson_Creek` - America/Dawson_Creek
+       * * `America/Denver` - America/Denver
+       * * `America/Detroit` - America/Detroit
+       * * `America/Dominica` - America/Dominica
+       * * `America/Edmonton` - America/Edmonton
+       * * `America/Eirunepe` - America/Eirunepe
+       * * `America/El_Salvador` - America/El_Salvador
+       * * `America/Fort_Nelson` - America/Fort_Nelson
+       * * `America/Fortaleza` - America/Fortaleza
+       * * `America/Glace_Bay` - America/Glace_Bay
+       * * `America/Goose_Bay` - America/Goose_Bay
+       * * `America/Grand_Turk` - America/Grand_Turk
+       * * `America/Grenada` - America/Grenada
+       * * `America/Guadeloupe` - America/Guadeloupe
+       * * `America/Guatemala` - America/Guatemala
+       * * `America/Guayaquil` - America/Guayaquil
+       * * `America/Guyana` - America/Guyana
+       * * `America/Halifax` - America/Halifax
+       * * `America/Havana` - America/Havana
+       * * `America/Hermosillo` - America/Hermosillo
+       * * `America/Indiana/Indianapolis` - America/Indiana/Indianapolis
+       * * `America/Indiana/Knox` - America/Indiana/Knox
+       * * `America/Indiana/Marengo` - America/Indiana/Marengo
+       * * `America/Indiana/Petersburg` - America/Indiana/Petersburg
+       * * `America/Indiana/Tell_City` - America/Indiana/Tell_City
+       * * `America/Indiana/Vevay` - America/Indiana/Vevay
+       * * `America/Indiana/Vincennes` - America/Indiana/Vincennes
+       * * `America/Indiana/Winamac` - America/Indiana/Winamac
+       * * `America/Inuvik` - America/Inuvik
+       * * `America/Iqaluit` - America/Iqaluit
+       * * `America/Jamaica` - America/Jamaica
+       * * `America/Juneau` - America/Juneau
+       * * `America/Kentucky/Louisville` - America/Kentucky/Louisville
+       * * `America/Kentucky/Monticello` - America/Kentucky/Monticello
+       * * `America/Kralendijk` - America/Kralendijk
+       * * `America/La_Paz` - America/La_Paz
+       * * `America/Lima` - America/Lima
+       * * `America/Los_Angeles` - America/Los_Angeles
+       * * `America/Lower_Princes` - America/Lower_Princes
+       * * `America/Maceio` - America/Maceio
+       * * `America/Managua` - America/Managua
+       * * `America/Manaus` - America/Manaus
+       * * `America/Marigot` - America/Marigot
+       * * `America/Martinique` - America/Martinique
+       * * `America/Matamoros` - America/Matamoros
+       * * `America/Mazatlan` - America/Mazatlan
+       * * `America/Menominee` - America/Menominee
+       * * `America/Merida` - America/Merida
+       * * `America/Metlakatla` - America/Metlakatla
+       * * `America/Mexico_City` - America/Mexico_City
+       * * `America/Miquelon` - America/Miquelon
+       * * `America/Moncton` - America/Moncton
+       * * `America/Monterrey` - America/Monterrey
+       * * `America/Montevideo` - America/Montevideo
+       * * `America/Montserrat` - America/Montserrat
+       * * `America/Nassau` - America/Nassau
+       * * `America/New_York` - America/New_York
+       * * `America/Nome` - America/Nome
+       * * `America/Noronha` - America/Noronha
+       * * `America/North_Dakota/Beulah` - America/North_Dakota/Beulah
+       * * `America/North_Dakota/Center` - America/North_Dakota/Center
+       * * `America/North_Dakota/New_Salem` - America/North_Dakota/New_Salem
+       * * `America/Nuuk` - America/Nuuk
+       * * `America/Ojinaga` - America/Ojinaga
+       * * `America/Panama` - America/Panama
+       * * `America/Paramaribo` - America/Paramaribo
+       * * `America/Phoenix` - America/Phoenix
+       * * `America/Port-au-Prince` - America/Port-au-Prince
+       * * `America/Port_of_Spain` - America/Port_of_Spain
+       * * `America/Porto_Velho` - America/Porto_Velho
+       * * `America/Puerto_Rico` - America/Puerto_Rico
+       * * `America/Punta_Arenas` - America/Punta_Arenas
+       * * `America/Rankin_Inlet` - America/Rankin_Inlet
+       * * `America/Recife` - America/Recife
+       * * `America/Regina` - America/Regina
+       * * `America/Resolute` - America/Resolute
+       * * `America/Rio_Branco` - America/Rio_Branco
+       * * `America/Santarem` - America/Santarem
+       * * `America/Santiago` - America/Santiago
+       * * `America/Santo_Domingo` - America/Santo_Domingo
+       * * `America/Sao_Paulo` - America/Sao_Paulo
+       * * `America/Scoresbysund` - America/Scoresbysund
+       * * `America/Sitka` - America/Sitka
+       * * `America/St_Barthelemy` - America/St_Barthelemy
+       * * `America/St_Johns` - America/St_Johns
+       * * `America/St_Kitts` - America/St_Kitts
+       * * `America/St_Lucia` - America/St_Lucia
+       * * `America/St_Thomas` - America/St_Thomas
+       * * `America/St_Vincent` - America/St_Vincent
+       * * `America/Swift_Current` - America/Swift_Current
+       * * `America/Tegucigalpa` - America/Tegucigalpa
+       * * `America/Thule` - America/Thule
+       * * `America/Tijuana` - America/Tijuana
+       * * `America/Toronto` - America/Toronto
+       * * `America/Tortola` - America/Tortola
+       * * `America/Vancouver` - America/Vancouver
+       * * `America/Whitehorse` - America/Whitehorse
+       * * `America/Winnipeg` - America/Winnipeg
+       * * `America/Yakutat` - America/Yakutat
+       * * `America/Yellowknife` - America/Yellowknife
+       * * `Antarctica/Casey` - Antarctica/Casey
+       * * `Antarctica/Davis` - Antarctica/Davis
+       * * `Antarctica/DumontDUrville` - Antarctica/DumontDUrville
+       * * `Antarctica/Macquarie` - Antarctica/Macquarie
+       * * `Antarctica/Mawson` - Antarctica/Mawson
+       * * `Antarctica/McMurdo` - Antarctica/McMurdo
+       * * `Antarctica/Palmer` - Antarctica/Palmer
+       * * `Antarctica/Rothera` - Antarctica/Rothera
+       * * `Antarctica/Syowa` - Antarctica/Syowa
+       * * `Antarctica/Troll` - Antarctica/Troll
+       * * `Antarctica/Vostok` - Antarctica/Vostok
+       * * `Arctic/Longyearbyen` - Arctic/Longyearbyen
+       * * `Asia/Aden` - Asia/Aden
+       * * `Asia/Almaty` - Asia/Almaty
+       * * `Asia/Amman` - Asia/Amman
+       * * `Asia/Anadyr` - Asia/Anadyr
+       * * `Asia/Aqtau` - Asia/Aqtau
+       * * `Asia/Aqtobe` - Asia/Aqtobe
+       * * `Asia/Ashgabat` - Asia/Ashgabat
+       * * `Asia/Atyrau` - Asia/Atyrau
+       * * `Asia/Baghdad` - Asia/Baghdad
+       * * `Asia/Bahrain` - Asia/Bahrain
+       * * `Asia/Baku` - Asia/Baku
+       * * `Asia/Bangkok` - Asia/Bangkok
+       * * `Asia/Barnaul` - Asia/Barnaul
+       * * `Asia/Beirut` - Asia/Beirut
+       * * `Asia/Bishkek` - Asia/Bishkek
+       * * `Asia/Brunei` - Asia/Brunei
+       * * `Asia/Chita` - Asia/Chita
+       * * `Asia/Choibalsan` - Asia/Choibalsan
+       * * `Asia/Colombo` - Asia/Colombo
+       * * `Asia/Damascus` - Asia/Damascus
+       * * `Asia/Dhaka` - Asia/Dhaka
+       * * `Asia/Dili` - Asia/Dili
+       * * `Asia/Dubai` - Asia/Dubai
+       * * `Asia/Dushanbe` - Asia/Dushanbe
+       * * `Asia/Famagusta` - Asia/Famagusta
+       * * `Asia/Gaza` - Asia/Gaza
+       * * `Asia/Hebron` - Asia/Hebron
+       * * `Asia/Ho_Chi_Minh` - Asia/Ho_Chi_Minh
+       * * `Asia/Hong_Kong` - Asia/Hong_Kong
+       * * `Asia/Hovd` - Asia/Hovd
+       * * `Asia/Irkutsk` - Asia/Irkutsk
+       * * `Asia/Jakarta` - Asia/Jakarta
+       * * `Asia/Jayapura` - Asia/Jayapura
+       * * `Asia/Jerusalem` - Asia/Jerusalem
+       * * `Asia/Kabul` - Asia/Kabul
+       * * `Asia/Kamchatka` - Asia/Kamchatka
+       * * `Asia/Karachi` - Asia/Karachi
+       * * `Asia/Kathmandu` - Asia/Kathmandu
+       * * `Asia/Khandyga` - Asia/Khandyga
+       * * `Asia/Kolkata` - Asia/Kolkata
+       * * `Asia/Krasnoyarsk` - Asia/Krasnoyarsk
+       * * `Asia/Kuala_Lumpur` - Asia/Kuala_Lumpur
+       * * `Asia/Kuching` - Asia/Kuching
+       * * `Asia/Kuwait` - Asia/Kuwait
+       * * `Asia/Macau` - Asia/Macau
+       * * `Asia/Magadan` - Asia/Magadan
+       * * `Asia/Makassar` - Asia/Makassar
+       * * `Asia/Manila` - Asia/Manila
+       * * `Asia/Muscat` - Asia/Muscat
+       * * `Asia/Nicosia` - Asia/Nicosia
+       * * `Asia/Novokuznetsk` - Asia/Novokuznetsk
+       * * `Asia/Novosibirsk` - Asia/Novosibirsk
+       * * `Asia/Omsk` - Asia/Omsk
+       * * `Asia/Oral` - Asia/Oral
+       * * `Asia/Phnom_Penh` - Asia/Phnom_Penh
+       * * `Asia/Pontianak` - Asia/Pontianak
+       * * `Asia/Pyongyang` - Asia/Pyongyang
+       * * `Asia/Qatar` - Asia/Qatar
+       * * `Asia/Qostanay` - Asia/Qostanay
+       * * `Asia/Qyzylorda` - Asia/Qyzylorda
+       * * `Asia/Riyadh` - Asia/Riyadh
+       * * `Asia/Sakhalin` - Asia/Sakhalin
+       * * `Asia/Samarkand` - Asia/Samarkand
+       * * `Asia/Seoul` - Asia/Seoul
+       * * `Asia/Shanghai` - Asia/Shanghai
+       * * `Asia/Singapore` - Asia/Singapore
+       * * `Asia/Srednekolymsk` - Asia/Srednekolymsk
+       * * `Asia/Taipei` - Asia/Taipei
+       * * `Asia/Tashkent` - Asia/Tashkent
+       * * `Asia/Tbilisi` - Asia/Tbilisi
+       * * `Asia/Tehran` - Asia/Tehran
+       * * `Asia/Thimphu` - Asia/Thimphu
+       * * `Asia/Tokyo` - Asia/Tokyo
+       * * `Asia/Tomsk` - Asia/Tomsk
+       * * `Asia/Ulaanbaatar` - Asia/Ulaanbaatar
+       * * `Asia/Urumqi` - Asia/Urumqi
+       * * `Asia/Ust-Nera` - Asia/Ust-Nera
+       * * `Asia/Vientiane` - Asia/Vientiane
+       * * `Asia/Vladivostok` - Asia/Vladivostok
+       * * `Asia/Yakutsk` - Asia/Yakutsk
+       * * `Asia/Yangon` - Asia/Yangon
+       * * `Asia/Yekaterinburg` - Asia/Yekaterinburg
+       * * `Asia/Yerevan` - Asia/Yerevan
+       * * `Atlantic/Azores` - Atlantic/Azores
+       * * `Atlantic/Bermuda` - Atlantic/Bermuda
+       * * `Atlantic/Canary` - Atlantic/Canary
+       * * `Atlantic/Cape_Verde` - Atlantic/Cape_Verde
+       * * `Atlantic/Faroe` - Atlantic/Faroe
+       * * `Atlantic/Madeira` - Atlantic/Madeira
+       * * `Atlantic/Reykjavik` - Atlantic/Reykjavik
+       * * `Atlantic/South_Georgia` - Atlantic/South_Georgia
+       * * `Atlantic/St_Helena` - Atlantic/St_Helena
+       * * `Atlantic/Stanley` - Atlantic/Stanley
+       * * `Australia/Adelaide` - Australia/Adelaide
+       * * `Australia/Brisbane` - Australia/Brisbane
+       * * `Australia/Broken_Hill` - Australia/Broken_Hill
+       * * `Australia/Darwin` - Australia/Darwin
+       * * `Australia/Eucla` - Australia/Eucla
+       * * `Australia/Hobart` - Australia/Hobart
+       * * `Australia/Lindeman` - Australia/Lindeman
+       * * `Australia/Lord_Howe` - Australia/Lord_Howe
+       * * `Australia/Melbourne` - Australia/Melbourne
+       * * `Australia/Perth` - Australia/Perth
+       * * `Australia/Sydney` - Australia/Sydney
+       * * `Canada/Atlantic` - Canada/Atlantic
+       * * `Canada/Central` - Canada/Central
+       * * `Canada/Eastern` - Canada/Eastern
+       * * `Canada/Mountain` - Canada/Mountain
+       * * `Canada/Newfoundland` - Canada/Newfoundland
+       * * `Canada/Pacific` - Canada/Pacific
+       * * `Europe/Amsterdam` - Europe/Amsterdam
+       * * `Europe/Andorra` - Europe/Andorra
+       * * `Europe/Astrakhan` - Europe/Astrakhan
+       * * `Europe/Athens` - Europe/Athens
+       * * `Europe/Belgrade` - Europe/Belgrade
+       * * `Europe/Berlin` - Europe/Berlin
+       * * `Europe/Bratislava` - Europe/Bratislava
+       * * `Europe/Brussels` - Europe/Brussels
+       * * `Europe/Bucharest` - Europe/Bucharest
+       * * `Europe/Budapest` - Europe/Budapest
+       * * `Europe/Busingen` - Europe/Busingen
+       * * `Europe/Chisinau` - Europe/Chisinau
+       * * `Europe/Copenhagen` - Europe/Copenhagen
+       * * `Europe/Dublin` - Europe/Dublin
+       * * `Europe/Gibraltar` - Europe/Gibraltar
+       * * `Europe/Guernsey` - Europe/Guernsey
+       * * `Europe/Helsinki` - Europe/Helsinki
+       * * `Europe/Isle_of_Man` - Europe/Isle_of_Man
+       * * `Europe/Istanbul` - Europe/Istanbul
+       * * `Europe/Jersey` - Europe/Jersey
+       * * `Europe/Kaliningrad` - Europe/Kaliningrad
+       * * `Europe/Kirov` - Europe/Kirov
+       * * `Europe/Kyiv` - Europe/Kyiv
+       * * `Europe/Lisbon` - Europe/Lisbon
+       * * `Europe/Ljubljana` - Europe/Ljubljana
+       * * `Europe/London` - Europe/London
+       * * `Europe/Luxembourg` - Europe/Luxembourg
+       * * `Europe/Madrid` - Europe/Madrid
+       * * `Europe/Malta` - Europe/Malta
+       * * `Europe/Mariehamn` - Europe/Mariehamn
+       * * `Europe/Minsk` - Europe/Minsk
+       * * `Europe/Monaco` - Europe/Monaco
+       * * `Europe/Moscow` - Europe/Moscow
+       * * `Europe/Oslo` - Europe/Oslo
+       * * `Europe/Paris` - Europe/Paris
+       * * `Europe/Podgorica` - Europe/Podgorica
+       * * `Europe/Prague` - Europe/Prague
+       * * `Europe/Riga` - Europe/Riga
+       * * `Europe/Rome` - Europe/Rome
+       * * `Europe/Samara` - Europe/Samara
+       * * `Europe/San_Marino` - Europe/San_Marino
+       * * `Europe/Sarajevo` - Europe/Sarajevo
+       * * `Europe/Saratov` - Europe/Saratov
+       * * `Europe/Simferopol` - Europe/Simferopol
+       * * `Europe/Skopje` - Europe/Skopje
+       * * `Europe/Sofia` - Europe/Sofia
+       * * `Europe/Stockholm` - Europe/Stockholm
+       * * `Europe/Tallinn` - Europe/Tallinn
+       * * `Europe/Tirane` - Europe/Tirane
+       * * `Europe/Ulyanovsk` - Europe/Ulyanovsk
+       * * `Europe/Vaduz` - Europe/Vaduz
+       * * `Europe/Vatican` - Europe/Vatican
+       * * `Europe/Vienna` - Europe/Vienna
+       * * `Europe/Vilnius` - Europe/Vilnius
+       * * `Europe/Volgograd` - Europe/Volgograd
+       * * `Europe/Warsaw` - Europe/Warsaw
+       * * `Europe/Zagreb` - Europe/Zagreb
+       * * `Europe/Zurich` - Europe/Zurich
+       * * `GMT` - GMT
+       * * `Indian/Antananarivo` - Indian/Antananarivo
+       * * `Indian/Chagos` - Indian/Chagos
+       * * `Indian/Christmas` - Indian/Christmas
+       * * `Indian/Cocos` - Indian/Cocos
+       * * `Indian/Comoro` - Indian/Comoro
+       * * `Indian/Kerguelen` - Indian/Kerguelen
+       * * `Indian/Mahe` - Indian/Mahe
+       * * `Indian/Maldives` - Indian/Maldives
+       * * `Indian/Mauritius` - Indian/Mauritius
+       * * `Indian/Mayotte` - Indian/Mayotte
+       * * `Indian/Reunion` - Indian/Reunion
+       * * `Pacific/Apia` - Pacific/Apia
+       * * `Pacific/Auckland` - Pacific/Auckland
+       * * `Pacific/Bougainville` - Pacific/Bougainville
+       * * `Pacific/Chatham` - Pacific/Chatham
+       * * `Pacific/Chuuk` - Pacific/Chuuk
+       * * `Pacific/Easter` - Pacific/Easter
+       * * `Pacific/Efate` - Pacific/Efate
+       * * `Pacific/Fakaofo` - Pacific/Fakaofo
+       * * `Pacific/Fiji` - Pacific/Fiji
+       * * `Pacific/Funafuti` - Pacific/Funafuti
+       * * `Pacific/Galapagos` - Pacific/Galapagos
+       * * `Pacific/Gambier` - Pacific/Gambier
+       * * `Pacific/Guadalcanal` - Pacific/Guadalcanal
+       * * `Pacific/Guam` - Pacific/Guam
+       * * `Pacific/Honolulu` - Pacific/Honolulu
+       * * `Pacific/Kanton` - Pacific/Kanton
+       * * `Pacific/Kiritimati` - Pacific/Kiritimati
+       * * `Pacific/Kosrae` - Pacific/Kosrae
+       * * `Pacific/Kwajalein` - Pacific/Kwajalein
+       * * `Pacific/Majuro` - Pacific/Majuro
+       * * `Pacific/Marquesas` - Pacific/Marquesas
+       * * `Pacific/Midway` - Pacific/Midway
+       * * `Pacific/Nauru` - Pacific/Nauru
+       * * `Pacific/Niue` - Pacific/Niue
+       * * `Pacific/Norfolk` - Pacific/Norfolk
+       * * `Pacific/Noumea` - Pacific/Noumea
+       * * `Pacific/Pago_Pago` - Pacific/Pago_Pago
+       * * `Pacific/Palau` - Pacific/Palau
+       * * `Pacific/Pitcairn` - Pacific/Pitcairn
+       * * `Pacific/Pohnpei` - Pacific/Pohnpei
+       * * `Pacific/Port_Moresby` - Pacific/Port_Moresby
+       * * `Pacific/Rarotonga` - Pacific/Rarotonga
+       * * `Pacific/Saipan` - Pacific/Saipan
+       * * `Pacific/Tahiti` - Pacific/Tahiti
+       * * `Pacific/Tarawa` - Pacific/Tarawa
+       * * `Pacific/Tongatapu` - Pacific/Tongatapu
+       * * `Pacific/Wake` - Pacific/Wake
+       * * `Pacific/Wallis` - Pacific/Wallis
+       * * `US/Alaska` - US/Alaska
+       * * `US/Arizona` - US/Arizona
+       * * `US/Central` - US/Central
+       * * `US/Eastern` - US/Eastern
+       * * `US/Hawaii` - US/Hawaii
+       * * `US/Mountain` - US/Mountain
+       * * `US/Pacific` - US/Pacific
+       * * `UTC` - UTC 
+       * @enum {string}
+       */
       timezone: "Africa/Abidjan" | "Africa/Accra" | "Africa/Addis_Ababa" | "Africa/Algiers" | "Africa/Asmara" | "Africa/Bamako" | "Africa/Bangui" | "Africa/Banjul" | "Africa/Bissau" | "Africa/Blantyre" | "Africa/Brazzaville" | "Africa/Bujumbura" | "Africa/Cairo" | "Africa/Casablanca" | "Africa/Ceuta" | "Africa/Conakry" | "Africa/Dakar" | "Africa/Dar_es_Salaam" | "Africa/Djibouti" | "Africa/Douala" | "Africa/El_Aaiun" | "Africa/Freetown" | "Africa/Gaborone" | "Africa/Harare" | "Africa/Johannesburg" | "Africa/Juba" | "Africa/Kampala" | "Africa/Khartoum" | "Africa/Kigali" | "Africa/Kinshasa" | "Africa/Lagos" | "Africa/Libreville" | "Africa/Lome" | "Africa/Luanda" | "Africa/Lubumbashi" | "Africa/Lusaka" | "Africa/Malabo" | "Africa/Maputo" | "Africa/Maseru" | "Africa/Mbabane" | "Africa/Mogadishu" | "Africa/Monrovia" | "Africa/Nairobi" | "Africa/Ndjamena" | "Africa/Niamey" | "Africa/Nouakchott" | "Africa/Ouagadougou" | "Africa/Porto-Novo" | "Africa/Sao_Tome" | "Africa/Tripoli" | "Africa/Tunis" | "Africa/Windhoek" | "America/Adak" | "America/Anchorage" | "America/Anguilla" | "America/Antigua" | "America/Araguaina" | "America/Argentina/Buenos_Aires" | "America/Argentina/Catamarca" | "America/Argentina/Cordoba" | "America/Argentina/Jujuy" | "America/Argentina/La_Rioja" | "America/Argentina/Mendoza" | "America/Argentina/Rio_Gallegos" | "America/Argentina/Salta" | "America/Argentina/San_Juan" | "America/Argentina/San_Luis" | "America/Argentina/Tucuman" | "America/Argentina/Ushuaia" | "America/Aruba" | "America/Asuncion" | "America/Atikokan" | "America/Bahia" | "America/Bahia_Banderas" | "America/Barbados" | "America/Belem" | "America/Belize" | "America/Blanc-Sablon" | "America/Boa_Vista" | "America/Bogota" | "America/Boise" | "America/Cambridge_Bay" | "America/Campo_Grande" | "America/Cancun" | "America/Caracas" | "America/Cayenne" | "America/Cayman" | "America/Chicago" | "America/Chihuahua" | "America/Ciudad_Juarez" | "America/Costa_Rica" | "America/Creston" | "America/Cuiaba" | "America/Curacao" | "America/Danmarkshavn" | "America/Dawson" | "America/Dawson_Creek" | "America/Denver" | "America/Detroit" | "America/Dominica" | "America/Edmonton" | "America/Eirunepe" | "America/El_Salvador" | "America/Fort_Nelson" | "America/Fortaleza" | "America/Glace_Bay" | "America/Goose_Bay" | "America/Grand_Turk" | "America/Grenada" | "America/Guadeloupe" | "America/Guatemala" | "America/Guayaquil" | "America/Guyana" | "America/Halifax" | "America/Havana" | "America/Hermosillo" | "America/Indiana/Indianapolis" | "America/Indiana/Knox" | "America/Indiana/Marengo" | "America/Indiana/Petersburg" | "America/Indiana/Tell_City" | "America/Indiana/Vevay" | "America/Indiana/Vincennes" | "America/Indiana/Winamac" | "America/Inuvik" | "America/Iqaluit" | "America/Jamaica" | "America/Juneau" | "America/Kentucky/Louisville" | "America/Kentucky/Monticello" | "America/Kralendijk" | "America/La_Paz" | "America/Lima" | "America/Los_Angeles" | "America/Lower_Princes" | "America/Maceio" | "America/Managua" | "America/Manaus" | "America/Marigot" | "America/Martinique" | "America/Matamoros" | "America/Mazatlan" | "America/Menominee" | "America/Merida" | "America/Metlakatla" | "America/Mexico_City" | "America/Miquelon" | "America/Moncton" | "America/Monterrey" | "America/Montevideo" | "America/Montserrat" | "America/Nassau" | "America/New_York" | "America/Nome" | "America/Noronha" | "America/North_Dakota/Beulah" | "America/North_Dakota/Center" | "America/North_Dakota/New_Salem" | "America/Nuuk" | "America/Ojinaga" | "America/Panama" | "America/Paramaribo" | "America/Phoenix" | "America/Port-au-Prince" | "America/Port_of_Spain" | "America/Porto_Velho" | "America/Puerto_Rico" | "America/Punta_Arenas" | "America/Rankin_Inlet" | "America/Recife" | "America/Regina" | "America/Resolute" | "America/Rio_Branco" | "America/Santarem" | "America/Santiago" | "America/Santo_Domingo" | "America/Sao_Paulo" | "America/Scoresbysund" | "America/Sitka" | "America/St_Barthelemy" | "America/St_Johns" | "America/St_Kitts" | "America/St_Lucia" | "America/St_Thomas" | "America/St_Vincent" | "America/Swift_Current" | "America/Tegucigalpa" | "America/Thule" | "America/Tijuana" | "America/Toronto" | "America/Tortola" | "America/Vancouver" | "America/Whitehorse" | "America/Winnipeg" | "America/Yakutat" | "America/Yellowknife" | "Antarctica/Casey" | "Antarctica/Davis" | "Antarctica/DumontDUrville" | "Antarctica/Macquarie" | "Antarctica/Mawson" | "Antarctica/McMurdo" | "Antarctica/Palmer" | "Antarctica/Rothera" | "Antarctica/Syowa" | "Antarctica/Troll" | "Antarctica/Vostok" | "Arctic/Longyearbyen" | "Asia/Aden" | "Asia/Almaty" | "Asia/Amman" | "Asia/Anadyr" | "Asia/Aqtau" | "Asia/Aqtobe" | "Asia/Ashgabat" | "Asia/Atyrau" | "Asia/Baghdad" | "Asia/Bahrain" | "Asia/Baku" | "Asia/Bangkok" | "Asia/Barnaul" | "Asia/Beirut" | "Asia/Bishkek" | "Asia/Brunei" | "Asia/Chita" | "Asia/Choibalsan" | "Asia/Colombo" | "Asia/Damascus" | "Asia/Dhaka" | "Asia/Dili" | "Asia/Dubai" | "Asia/Dushanbe" | "Asia/Famagusta" | "Asia/Gaza" | "Asia/Hebron" | "Asia/Ho_Chi_Minh" | "Asia/Hong_Kong" | "Asia/Hovd" | "Asia/Irkutsk" | "Asia/Jakarta" | "Asia/Jayapura" | "Asia/Jerusalem" | "Asia/Kabul" | "Asia/Kamchatka" | "Asia/Karachi" | "Asia/Kathmandu" | "Asia/Khandyga" | "Asia/Kolkata" | "Asia/Krasnoyarsk" | "Asia/Kuala_Lumpur" | "Asia/Kuching" | "Asia/Kuwait" | "Asia/Macau" | "Asia/Magadan" | "Asia/Makassar" | "Asia/Manila" | "Asia/Muscat" | "Asia/Nicosia" | "Asia/Novokuznetsk" | "Asia/Novosibirsk" | "Asia/Omsk" | "Asia/Oral" | "Asia/Phnom_Penh" | "Asia/Pontianak" | "Asia/Pyongyang" | "Asia/Qatar" | "Asia/Qostanay" | "Asia/Qyzylorda" | "Asia/Riyadh" | "Asia/Sakhalin" | "Asia/Samarkand" | "Asia/Seoul" | "Asia/Shanghai" | "Asia/Singapore" | "Asia/Srednekolymsk" | "Asia/Taipei" | "Asia/Tashkent" | "Asia/Tbilisi" | "Asia/Tehran" | "Asia/Thimphu" | "Asia/Tokyo" | "Asia/Tomsk" | "Asia/Ulaanbaatar" | "Asia/Urumqi" | "Asia/Ust-Nera" | "Asia/Vientiane" | "Asia/Vladivostok" | "Asia/Yakutsk" | "Asia/Yangon" | "Asia/Yekaterinburg" | "Asia/Yerevan" | "Atlantic/Azores" | "Atlantic/Bermuda" | "Atlantic/Canary" | "Atlantic/Cape_Verde" | "Atlantic/Faroe" | "Atlantic/Madeira" | "Atlantic/Reykjavik" | "Atlantic/South_Georgia" | "Atlantic/St_Helena" | "Atlantic/Stanley" | "Australia/Adelaide" | "Australia/Brisbane" | "Australia/Broken_Hill" | "Australia/Darwin" | "Australia/Eucla" | "Australia/Hobart" | "Australia/Lindeman" | "Australia/Lord_Howe" | "Australia/Melbourne" | "Australia/Perth" | "Australia/Sydney" | "Canada/Atlantic" | "Canada/Central" | "Canada/Eastern" | "Canada/Mountain" | "Canada/Newfoundland" | "Canada/Pacific" | "Europe/Amsterdam" | "Europe/Andorra" | "Europe/Astrakhan" | "Europe/Athens" | "Europe/Belgrade" | "Europe/Berlin" | "Europe/Bratislava" | "Europe/Brussels" | "Europe/Bucharest" | "Europe/Budapest" | "Europe/Busingen" | "Europe/Chisinau" | "Europe/Copenhagen" | "Europe/Dublin" | "Europe/Gibraltar" | "Europe/Guernsey" | "Europe/Helsinki" | "Europe/Isle_of_Man" | "Europe/Istanbul" | "Europe/Jersey" | "Europe/Kaliningrad" | "Europe/Kirov" | "Europe/Kyiv" | "Europe/Lisbon" | "Europe/Ljubljana" | "Europe/London" | "Europe/Luxembourg" | "Europe/Madrid" | "Europe/Malta" | "Europe/Mariehamn" | "Europe/Minsk" | "Europe/Monaco" | "Europe/Moscow" | "Europe/Oslo" | "Europe/Paris" | "Europe/Podgorica" | "Europe/Prague" | "Europe/Riga" | "Europe/Rome" | "Europe/Samara" | "Europe/San_Marino" | "Europe/Sarajevo" | "Europe/Saratov" | "Europe/Simferopol" | "Europe/Skopje" | "Europe/Sofia" | "Europe/Stockholm" | "Europe/Tallinn" | "Europe/Tirane" | "Europe/Ulyanovsk" | "Europe/Vaduz" | "Europe/Vatican" | "Europe/Vienna" | "Europe/Vilnius" | "Europe/Volgograd" | "Europe/Warsaw" | "Europe/Zagreb" | "Europe/Zurich" | "GMT" | "Indian/Antananarivo" | "Indian/Chagos" | "Indian/Christmas" | "Indian/Cocos" | "Indian/Comoro" | "Indian/Kerguelen" | "Indian/Mahe" | "Indian/Maldives" | "Indian/Mauritius" | "Indian/Mayotte" | "Indian/Reunion" | "Pacific/Apia" | "Pacific/Auckland" | "Pacific/Bougainville" | "Pacific/Chatham" | "Pacific/Chuuk" | "Pacific/Easter" | "Pacific/Efate" | "Pacific/Fakaofo" | "Pacific/Fiji" | "Pacific/Funafuti" | "Pacific/Galapagos" | "Pacific/Gambier" | "Pacific/Guadalcanal" | "Pacific/Guam" | "Pacific/Honolulu" | "Pacific/Kanton" | "Pacific/Kiritimati" | "Pacific/Kosrae" | "Pacific/Kwajalein" | "Pacific/Majuro" | "Pacific/Marquesas" | "Pacific/Midway" | "Pacific/Nauru" | "Pacific/Niue" | "Pacific/Norfolk" | "Pacific/Noumea" | "Pacific/Pago_Pago" | "Pacific/Palau" | "Pacific/Pitcairn" | "Pacific/Pohnpei" | "Pacific/Port_Moresby" | "Pacific/Rarotonga" | "Pacific/Saipan" | "Pacific/Tahiti" | "Pacific/Tarawa" | "Pacific/Tongatapu" | "Pacific/Wake" | "Pacific/Wallis" | "US/Alaska" | "US/Arizona" | "US/Central" | "US/Eastern" | "US/Hawaii" | "US/Mountain" | "US/Pacific" | "UTC";
       customer_name?: string;
     };
@@ -1140,14 +3518,22 @@ export interface components {
       customer_id: string;
     };
     ExternalPlanLink: {
-      /** @enum {string} */
+      /**
+       * @description * `stripe` - Stripe
+       * * `braintree` - Braintree 
+       * @enum {string}
+       */
       source: "stripe" | "braintree";
       external_plan_id: string;
     };
     ExternalPlanLinkRequest: {
       /** Format: uuid */
       plan_id: string;
-      /** @enum {string} */
+      /**
+       * @description * `stripe` - Stripe
+       * * `braintree` - Braintree 
+       * @enum {string}
+       */
       source: "stripe" | "braintree";
       external_plan_id: string;
     };
@@ -1195,74 +3581,112 @@ export interface components {
       access: boolean;
     };
     ImportCustomerFailure: {
-      /** @enum {string} */
+      /**
+       * @description * `error` - error 
+       * @enum {string}
+       */
       status: "error";
       detail: string;
     };
     ImportCustomerSuccess: {
-      /** @enum {string} */
+      /**
+       * @description * `success` - success 
+       * @enum {string}
+       */
       status: "success";
       detail: string;
     };
     ImportCustomersRequestRequest: {
-      /** @enum {string} */
+      /**
+       * @description * `stripe` - Stripe
+       * * `braintree` - Braintree 
+       * @enum {string}
+       */
       source: "stripe" | "braintree";
     };
     ImportPaymentObjectFailure: {
-      /** @enum {string} */
+      /**
+       * @description * `error` - error 
+       * @enum {string}
+       */
       status: "error";
       detail: string;
     };
     ImportPaymentObjectSuccess: {
-      /** @enum {string} */
+      /**
+       * @description * `success` - success 
+       * @enum {string}
+       */
       status: "success";
       detail: string;
     };
     ImportPaymentObjectsRequestRequest: {
-      /** @enum {string} */
+      /**
+       * @description * `stripe` - Stripe
+       * * `braintree` - Braintree 
+       * @enum {string}
+       */
       source: "stripe" | "braintree";
     };
     InitResetPasswordSuccess: {
       email: string;
     };
     InitialAddOnVersionCreateRequest: {
-      features?: (string)[];
       components?: (components["schemas"]["PlanComponentCreateRequest"])[];
-      recurring_charges?: (components["schemas"]["RecurringChargeCreateRequest"])[];
-      /** @enum {unknown} */
-      billing_frequency: "one_time" | "recurring";
-      currency_code: string;
-      /** @enum {unknown} */
+      /**
+       * @description * `invoice_on_attach` - invoice_on_attach
+       * * `invoice_on_subscription_end` - invoice_on_subscription_end 
+       * @enum {unknown}
+       */
       invoice_when: "invoice_on_attach" | "invoice_on_subscription_end";
+      /**
+       * @description * `one_time` - one_time
+       * * `recurring` - recurring 
+       * @enum {unknown}
+       */
+      billing_frequency: "one_time" | "recurring";
+      recurring_charges?: (components["schemas"]["RecurringChargeCreateRequest"])[];
+      currency_code: string;
+      features?: (string)[];
     };
     InitialExternalPlanLink: {
-      /** @enum {string} */
+      /**
+       * @description * `stripe` - Stripe
+       * * `braintree` - Braintree 
+       * @enum {string}
+       */
       source: "stripe" | "braintree";
       external_plan_id: string;
     };
     InitialExternalPlanLinkRequest: {
-      /** @enum {string} */
+      /**
+       * @description * `stripe` - Stripe
+       * * `braintree` - Braintree 
+       * @enum {string}
+       */
       source: "stripe" | "braintree";
       external_plan_id: string;
     };
     InitialPlanVersionCreateRequest: {
-      day_anchor?: number;
-      features?: (string)[];
+      price_adjustment?: components["schemas"]["PriceAdjustmentRequest"];
       components?: (components["schemas"]["PlanComponentCreateRequest"])[];
-      localized_name?: string;
-      recurring_charges?: (components["schemas"]["RecurringChargeCreateRequest"])[];
-      version: number;
       target_customer_ids?: (string)[];
       /** @default false */
       make_active?: boolean;
-      month_anchor?: number;
+      version: number;
+      localized_name?: string;
+      recurring_charges?: (components["schemas"]["RecurringChargeCreateRequest"])[];
       currency_code: string;
       /**
+       * @description * `replace_on_renewal` - Replace on Renewal
+       * * `grandfather` - Grandfather 
        * @default replace_on_renewal 
        * @enum {string}
        */
       make_active_type?: "replace_on_renewal" | "grandfather";
-      price_adjustment?: components["schemas"]["PriceAdjustmentRequest"];
+      month_anchor?: number;
+      day_anchor?: number;
+      features?: (string)[];
     };
     InviteLinkResponse: {
       /** Format: email */
@@ -1291,10 +3715,20 @@ export interface components {
       currency: components["schemas"]["PricingUnit"];
       /** Format: date-time */
       issue_date: string;
-      /** @enum {unknown} */
+      /**
+       * @description * `draft` - draft
+       * * `voided` - voided
+       * * `paid` - paid
+       * * `unpaid` - unpaid 
+       * @enum {unknown}
+       */
       payment_status: "draft" | "voided" | "paid" | "unpaid";
       external_payment_obj_id: string;
-      /** @enum {string|null} */
+      /**
+       * @description * `stripe` - Stripe
+       * * `braintree` - Braintree 
+       * @enum {string|null}
+       */
       external_payment_obj_type: "stripe" | "braintree" | "" | null;
       line_items: (components["schemas"]["InvoiceLineItem"])[];
       customer: components["schemas"]["LightweightCustomerSerializerForInvoice"];
@@ -1312,34 +3746,69 @@ export interface components {
       payload: components["schemas"]["InvoiceRequest"];
     };
     InvoiceDetail: {
-      invoice_id: string;
       invoice_number: string;
+      /**
+       * @description * `draft` - draft
+       * * `voided` - voided
+       * * `paid` - paid
+       * * `unpaid` - unpaid 
+       * @enum {unknown}
+       */
+      payment_status: "draft" | "voided" | "paid" | "unpaid";
       /**
        * Format: double 
        * @deprecated
        */
       cost_due: number;
-      /** Format: double */
-      amount: number;
       currency: components["schemas"]["PricingUnit"];
-      /** Format: date-time */
-      issue_date: string;
-      /** @enum {unknown} */
-      payment_status: "draft" | "voided" | "paid" | "unpaid";
-      external_payment_obj_id: string;
-      /** @enum {string|null} */
-      external_payment_obj_type: "stripe" | "braintree" | "" | null;
-      line_items: (components["schemas"]["InvoiceLineItem"])[];
-      customer: components["schemas"]["LightweightCustomerSerializerForInvoice"];
-      /** Format: date-time */
-      due_date: string;
-      /** Format: date */
-      start_date: string;
       /** Format: date */
       end_date: string;
       seller: components["schemas"]["Seller"];
+      /** Format: double */
+      amount: number;
+      /**
+       * @description * `stripe` - Stripe
+       * * `braintree` - Braintree 
+       * @enum {string|null}
+       */
+      external_payment_obj_type: "stripe" | "braintree" | "" | null;
+      crm_provider_id: string;
+      line_items: (components["schemas"]["InvoiceLineItem"])[];
+      /**
+       * @description * `salesforce` - salesforce 
+       * @enum {string}
+       */
+      crm_provider: "salesforce";
+      customer: components["schemas"]["LightweightCustomerSerializerForInvoice"];
       /** Format: uri */
       invoice_pdf: string;
+      /** Format: date-time */
+      due_date: string;
+      /** Format: uri */
+      crm_provider_url: string;
+      invoice_id: string;
+      external_payment_obj_id: string;
+      /** Format: date-time */
+      issue_date: string;
+      /** Format: date */
+      start_date: string;
+    };
+    InvoiceDetailRequest: {
+      /**
+       * Format: double 
+       * @deprecated
+       */
+      cost_due: number;
+      currency: components["schemas"]["PricingUnitRequest"];
+      seller: components["schemas"]["SellerRequest"];
+      /**
+       * @description * `stripe` - Stripe
+       * * `braintree` - Braintree 
+       * @enum {string|null}
+       */
+      external_payment_obj_type: "stripe" | "braintree" | "" | null;
+      line_items: (components["schemas"]["InvoiceLineItemRequest"])[];
+      invoice_id: string;
     };
     InvoiceLineItem: {
       name: string;
@@ -1349,7 +3818,13 @@ export interface components {
       end_date: string;
       /** Format: double */
       quantity: number;
-      /** @enum {string|null} */
+      /**
+       * @description * `in_arrears` - In Arrears
+       * * `intermediate` - Intermediate
+       * * `in_advance` - In Advance
+       * * `one_time` - One Time 
+       * @enum {string|null}
+       */
       billing_type: "in_arrears" | "intermediate" | "in_advance" | "one_time" | "" | null;
       metadata: ({
         [key: string]: Record<string, never> | undefined;
@@ -1377,7 +3852,11 @@ export interface components {
       /** Format: decimal */
       amount: string;
       account: string;
-      /** @enum {unknown} */
+      /**
+       * @description * `sales_tax` - sales_tax
+       * * `plan_adjustment` - plan_adjustment 
+       * @enum {unknown}
+       */
       adjustment_type: "sales_tax" | "plan_adjustment";
     };
     InvoiceLineItemRequest: {
@@ -1388,7 +3867,13 @@ export interface components {
       end_date: string;
       /** Format: double */
       quantity: number;
-      /** @enum {string|null} */
+      /**
+       * @description * `in_arrears` - In Arrears
+       * * `intermediate` - Intermediate
+       * * `in_advance` - In Advance
+       * * `one_time` - One Time 
+       * @enum {string|null}
+       */
       billing_type: "in_arrears" | "intermediate" | "in_advance" | "one_time" | "" | null;
       metadata: ({
         [key: string]: Record<string, never> | undefined;
@@ -1423,13 +3908,21 @@ export interface components {
        */
       cost_due: number;
       currency: components["schemas"]["PricingUnitRequest"];
-      /** @enum {string|null} */
+      /**
+       * @description * `stripe` - Stripe
+       * * `braintree` - Braintree 
+       * @enum {string|null}
+       */
       external_payment_obj_type: "stripe" | "braintree" | "" | null;
       line_items: (components["schemas"]["InvoiceLineItemRequest"])[];
       seller: components["schemas"]["SellerRequest"];
     };
     InvoiceUpdate: {
-      /** @enum {string} */
+      /**
+       * @description * `paid` - paid
+       * * `unpaid` - unpaid 
+       * @enum {string}
+       */
       payment_status: "paid" | "unpaid";
     };
     LightweightAddOn: {
@@ -1439,7 +3932,11 @@ export interface components {
       addon_id: string;
       /** @enum {string} */
       addon_type: "flat" | "usage_based";
-      /** @enum {unknown} */
+      /**
+       * @description * `one_time` - one_time
+       * * `recurring` - recurring 
+       * @enum {unknown}
+       */
       billing_frequency: "one_time" | "recurring";
     };
     LightweightAddOnRequest: {
@@ -1491,32 +3988,42 @@ export interface components {
       address?: components["schemas"]["Address"] | null;
     };
     LightweightInvoice: {
+      invoice_number: string;
+      /**
+       * @description * `draft` - draft
+       * * `voided` - voided
+       * * `paid` - paid
+       * * `unpaid` - unpaid 
+       * @enum {unknown}
+       */
+      payment_status: "draft" | "voided" | "paid" | "unpaid";
       /**
        * Format: double 
        * @deprecated
        */
       cost_due: number;
-      /** Format: date-time */
-      due_date: string;
+      currency: components["schemas"]["PricingUnit"];
       /** Format: date */
       end_date: string;
-      invoice_id: string;
       seller: components["schemas"]["Seller"];
-      /** @enum {string|null} */
-      external_payment_obj_type: "stripe" | "braintree" | "" | null;
-      invoice_number: string;
-      /** Format: uri */
-      invoice_pdf: string;
-      /** Format: date */
-      start_date: string;
       /** Format: double */
       amount: number;
-      /** @enum {unknown} */
-      payment_status: "draft" | "voided" | "paid" | "unpaid";
+      /**
+       * @description * `stripe` - Stripe
+       * * `braintree` - Braintree 
+       * @enum {string|null}
+       */
+      external_payment_obj_type: "stripe" | "braintree" | "" | null;
+      /** Format: uri */
+      invoice_pdf: string;
+      /** Format: date-time */
+      due_date: string;
+      invoice_id: string;
       external_payment_obj_id: string;
       /** Format: date-time */
       issue_date: string;
-      currency: components["schemas"]["PricingUnit"];
+      /** Format: date */
+      start_date: string;
     };
     LightweightMetric: {
       metric_id: string;
@@ -1527,7 +4034,13 @@ export interface components {
     LightweightOrganization: {
       organization_id: string;
       organization_name: string;
-      /** @enum {string} */
+      /**
+       * @description * `Production` - Production
+       * * `Development` - Development
+       * * `Demo` - Demo
+       * * `Internal Demo` - Internal Demo 
+       * @enum {string}
+       */
       organization_type: "Production" | "Development" | "Demo" | "Internal Demo";
       current: boolean;
     };
@@ -1546,52 +4059,52 @@ export interface components {
       plan_id: string;
     };
     LightweightSubscriptionRecord: {
-      fully_billed: boolean;
-      customer: components["schemas"]["LightweightCustomer"];
-      /**
-       * Format: date-time 
-       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
-       */
-      start_date: string;
       billing_plan: components["schemas"]["LightweightPlanVersion"];
+      /** @description Whether the subscription automatically renews. Defaults to true. */
+      auto_renew: boolean;
+      customer: components["schemas"]["LightweightCustomer"];
       metadata: {
         [key: string]: Record<string, never> | undefined;
       };
-      /**
-       * Format: date-time 
-       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
-       */
-      end_date: string;
-      /** @description Whether the subscription automatically renews. Defaults to true. */
-      auto_renew: boolean;
+      fully_billed: boolean;
+      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
+      is_new: boolean;
       subscription_filters: readonly (components["schemas"]["SubscriptionCategoricalFilter"])[];
       addons: (components["schemas"]["LightweightAddOnSubscriptionRecord"])[];
-      plan_detail: components["schemas"]["LightweightPlanVersion"];
-      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
-      is_new: boolean;
       subscription_id: string;
-    };
-    LightweightSubscriptionRecordRequest: {
-      /**
-       * Format: date-time 
-       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
-       */
-      start_date: string;
-      billing_plan: components["schemas"]["LightweightPlanVersionRequest"];
-      metadata: {
-        [key: string]: Record<string, never> | undefined;
-      };
       /**
        * Format: date-time 
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
       end_date: string;
+      /**
+       * Format: date-time 
+       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
+       */
+      start_date: string;
+      plan_detail: components["schemas"]["LightweightPlanVersion"];
+    };
+    LightweightSubscriptionRecordRequest: {
+      billing_plan: components["schemas"]["LightweightPlanVersionRequest"];
       /** @description Whether the subscription automatically renews. Defaults to true. */
       auto_renew: boolean;
-      addons: (components["schemas"]["LightweightAddOnSubscriptionRecordRequest"])[];
+      metadata: {
+        [key: string]: Record<string, never> | undefined;
+      };
       /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
       is_new: boolean;
+      addons: (components["schemas"]["LightweightAddOnSubscriptionRecordRequest"])[];
       subscription_id: string;
+      /**
+       * Format: date-time 
+       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
+       */
+      end_date: string;
+      /**
+       * Format: date-time 
+       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
+       */
+      start_date: string;
     };
     LightweightUser: {
       /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
@@ -1644,17 +4157,34 @@ export interface components {
       property_name: string;
       aggregation_type: string;
       /**
-       * @description The granularity of the metric. Only applies to metrics of type 'gauge' or 'rate'. 
+       * @description The granularity of the metric. Only applies to metrics of type 'gauge' or 'rate'.
+       * 
+       * * `seconds` - Second
+       * * `minutes` - Minute
+       * * `hours` - Hour
+       * * `days` - Day
+       * * `months` - Month
+       * * `quarters` - Quarter
+       * * `years` - Year
+       * * `total` - Total 
        * @enum {string|null}
        */
       granularity: "seconds" | "minutes" | "hours" | "days" | "months" | "quarters" | "years" | "total" | "" | null;
       /**
-       * @description Used only for metrics of type 'gauge'. Please refer to our documentation for an explanation of the different types. 
+       * @description Used only for metrics of type 'gauge'. Please refer to our documentation for an explanation of the different types.
+       * 
+       * * `delta` - Delta
+       * * `total` - Total 
        * @enum {string|null}
        */
       event_type: "delta" | "total" | "" | null;
       /**
-       * @description The type of metric that this is. Please refer to our documentation for an explanation of the different types. 
+       * @description The type of metric that this is. Please refer to our documentation for an explanation of the different types.
+       * 
+       * * `counter` - Counter
+       * * `rate` - Rate
+       * * `custom` - Custom
+       * * `gauge` - Gauge 
        * @enum {string}
        */
       metric_type: "counter" | "rate" | "custom" | "gauge";
@@ -1666,7 +4196,16 @@ export interface components {
       /** @description A custom SQL query that can be used to define the metric. Please refer to our documentation for more information. */
       custom_sql: string;
       /**
-       * @description The proration of the metric. Only applies to metrics of type 'gauge'. 
+       * @description The proration of the metric. Only applies to metrics of type 'gauge'.
+       * 
+       * * `seconds` - Second
+       * * `minutes` - Minute
+       * * `hours` - Hour
+       * * `days` - Day
+       * * `months` - Month
+       * * `quarters` - Quarter
+       * * `years` - Year
+       * * `total` - Total 
        * @enum {string|null}
        */
       proration: "seconds" | "minutes" | "hours" | "days" | "months" | "quarters" | "years" | "total" | "" | null;
@@ -1702,30 +4241,71 @@ export interface components {
       /** @description The name of the property of the event that should be used for this metric. Doesn't apply if the metric is of type 'counter' with an aggregation of count. */
       property_name?: string;
       /**
-       * @description The type of aggregation that should be used for this metric. Please refer to our documentation for an explanation of the different types. 
+       * @description The type of aggregation that should be used for this metric. Please refer to our documentation for an explanation of the different types.
+       * 
+       * * `count` - Count
+       * * `sum` - Sum
+       * * `max` - Max
+       * * `unique` - Unique
+       * * `latest` - Latest
+       * * `average` - Average 
        * @enum {string|null}
        */
       usage_aggregation_type?: "count" | "sum" | "max" | "unique" | "latest" | "average" | "" | null;
-      /** @enum {string|null} */
+      /**
+       * @description * `count` - Count
+       * * `sum` - Sum
+       * * `max` - Max
+       * * `unique` - Unique
+       * * `latest` - Latest
+       * * `average` - Average 
+       * @enum {string|null}
+       */
       billable_aggregation_type?: "count" | "sum" | "max" | "unique" | "latest" | "average" | "" | null;
       /**
-       * @description The granularity of the metric. Only applies to metrics of type 'gauge' or 'rate'. 
+       * @description The granularity of the metric. Only applies to metrics of type 'gauge' or 'rate'.
+       * 
+       * * `seconds` - Second
+       * * `minutes` - Minute
+       * * `hours` - Hour
+       * * `days` - Day
+       * * `months` - Month
+       * * `quarters` - Quarter
+       * * `years` - Year
+       * * `total` - Total 
        * @enum {string|null}
        */
       granularity?: "seconds" | "minutes" | "hours" | "days" | "months" | "quarters" | "years" | "total" | "" | null;
       /**
-       * @description Used only for metrics of type 'gauge'. Please refer to our documentation for an explanation of the different types. 
+       * @description Used only for metrics of type 'gauge'. Please refer to our documentation for an explanation of the different types.
+       * 
+       * * `delta` - Delta
+       * * `total` - Total 
        * @enum {string|null}
        */
       event_type?: "delta" | "total" | "" | null;
       /**
-       * @description The type of metric that this is. Please refer to our documentation for an explanation of the different types. 
+       * @description The type of metric that this is. Please refer to our documentation for an explanation of the different types.
+       * 
+       * * `counter` - Counter
+       * * `rate` - Rate
+       * * `custom` - Custom
+       * * `gauge` - Gauge 
        * @enum {string}
        */
       metric_type: "counter" | "rate" | "custom" | "gauge";
       metric_name: string;
       /**
-       * @description The proration of the metric. Only applies to metrics of type 'gauge'. 
+       * @description The proration of the metric. Only applies to metrics of type 'gauge'.
+       * 
+       * * `seconds` - Second
+       * * `minutes` - Minute
+       * * `hours` - Hour
+       * * `days` - Day
+       * * `months` - Month
+       * * `quarters` - Quarter
+       * * `years` - Year
+       * * `total` - Total 
        * @enum {string|null}
        */
       proration?: "seconds" | "minutes" | "hours" | "days" | "months" | "quarters" | "years" | "total" | "" | null;
@@ -1744,43 +4324,84 @@ export interface components {
     };
     MetricDetail: {
       /**
-       * @description Used only for metrics of type 'gauge'. Please refer to our documentation for an explanation of the different types. 
-       * @enum {string|null}
-       */
-      event_type: "delta" | "total" | "" | null;
-      numeric_filters: (components["schemas"]["NumericFilter"])[];
-      metric_name: string;
-      categorical_filters: (components["schemas"]["CategoricalFilter"])[];
-      /** @description A custom SQL query that can be used to define the metric. Please refer to our documentation for more information. */
-      custom_sql: string;
-      /**
-       * @description The proration of the metric. Only applies to metrics of type 'gauge'. 
-       * @enum {string|null}
-       */
-      proration: "seconds" | "minutes" | "hours" | "days" | "months" | "quarters" | "years" | "total" | "" | null;
-      /** @description Whether or not this metric is a cost metric (used to track costs to your business). */
-      is_cost_metric: boolean;
-      /** @description Name of the event that this metric is tracking. */
-      event_name: string;
-      /**
-       * @description The type of metric that this is. Please refer to our documentation for an explanation of the different types. 
-       * @enum {string}
-       */
-      metric_type: "counter" | "rate" | "custom" | "gauge";
-      /**
-       * @description The granularity of the metric. Only applies to metrics of type 'gauge' or 'rate'. 
+       * @description The granularity of the metric. Only applies to metrics of type 'gauge' or 'rate'.
+       * 
+       * * `seconds` - Second
+       * * `minutes` - Minute
+       * * `hours` - Hour
+       * * `days` - Day
+       * * `months` - Month
+       * * `quarters` - Quarter
+       * * `years` - Year
+       * * `total` - Total 
        * @enum {string|null}
        */
       granularity: "seconds" | "minutes" | "hours" | "days" | "months" | "quarters" | "years" | "total" | "" | null;
+      categorical_filters: (components["schemas"]["CategoricalFilter"])[];
+      /** @description Name of the event that this metric is tracking. */
+      event_name: string;
+      metric_name: string;
+      /** @description Whether or not this metric is a cost metric (used to track costs to your business). */
+      is_cost_metric: boolean;
+      /**
+       * @description The proration of the metric. Only applies to metrics of type 'gauge'.
+       * 
+       * * `seconds` - Second
+       * * `minutes` - Minute
+       * * `hours` - Hour
+       * * `days` - Day
+       * * `months` - Month
+       * * `quarters` - Quarter
+       * * `years` - Year
+       * * `total` - Total 
+       * @enum {string|null}
+       */
+      proration: "seconds" | "minutes" | "hours" | "days" | "months" | "quarters" | "years" | "total" | "" | null;
+      numeric_filters: (components["schemas"]["NumericFilter"])[];
       metric_id: string;
+      /**
+       * @description The type of metric that this is. Please refer to our documentation for an explanation of the different types.
+       * 
+       * * `counter` - Counter
+       * * `rate` - Rate
+       * * `custom` - Custom
+       * * `gauge` - Gauge 
+       * @enum {string}
+       */
+      metric_type: "counter" | "rate" | "custom" | "gauge";
       /** @description The name of the property of the event that should be used for this metric. Doesn't apply if the metric is of type 'counter' with an aggregation of count. */
       property_name: string;
+      /** @description A custom SQL query that can be used to define the metric. Please refer to our documentation for more information. */
+      custom_sql: string;
       /**
-       * @description The type of aggregation that should be used for this metric. Please refer to our documentation for an explanation of the different types. 
+       * @description Used only for metrics of type 'gauge'. Please refer to our documentation for an explanation of the different types.
+       * 
+       * * `delta` - Delta
+       * * `total` - Total 
+       * @enum {string|null}
+       */
+      event_type: "delta" | "total" | "" | null;
+      /**
+       * @description The type of aggregation that should be used for this metric. Please refer to our documentation for an explanation of the different types.
+       * 
+       * * `count` - Count
+       * * `sum` - Sum
+       * * `max` - Max
+       * * `unique` - Unique
+       * * `latest` - Latest
+       * * `average` - Average 
        * @enum {string}
        */
       usage_aggregation_type?: "count" | "sum" | "max" | "unique" | "latest" | "average";
-      /** @enum {string|null} */
+      /**
+       * @description * `count` - Count
+       * * `sum` - Sum
+       * * `max` - Max
+       * * `unique` - Unique
+       * * `latest` - Latest
+       * * `average` - Average 
+       * @enum {string|null}
+       */
       billable_aggregation_type?: "count" | "sum" | "max" | "unique" | "latest" | "average" | "" | "" | null;
     };
     MetricRequest: {
@@ -1799,7 +4420,11 @@ export interface components {
     };
     MetricUpdate: {
       billable_metric_name?: string;
-      /** @enum {string} */
+      /**
+       * @description * `active` - Active
+       * * `archived` - Archived 
+       * @enum {string}
+       */
       status?: "active" | "archived";
     };
     NextPlanVersionNumberResponse: {
@@ -1807,21 +4432,42 @@ export interface components {
     };
     NumericFilter: {
       property_name: string;
-      /** @enum {string} */
+      /**
+       * @description * `gte` - Greater than or equal to
+       * * `gt` - Greater than
+       * * `eq` - Equal to
+       * * `lt` - Less than
+       * * `lte` - Less than or equal to 
+       * @enum {string}
+       */
       operator: "gte" | "gt" | "eq" | "lt" | "lte";
       /** Format: double */
       comparison_value: number;
     };
     NumericFilterDetailRequest: {
       property_name: string;
-      /** @enum {string} */
+      /**
+       * @description * `gte` - Greater than or equal to
+       * * `gt` - Greater than
+       * * `eq` - Equal to
+       * * `lt` - Less than
+       * * `lte` - Less than or equal to 
+       * @enum {string}
+       */
       operator: "gte" | "gt" | "eq" | "lt" | "lte";
       /** Format: double */
       comparison_value: number;
     };
     NumericFilterRequest: {
       property_name: string;
-      /** @enum {string} */
+      /**
+       * @description * `gte` - Greater than or equal to
+       * * `gt` - Greater than
+       * * `eq` - Equal to
+       * * `lt` - Less than
+       * * `lte` - Less than or equal to 
+       * @enum {string}
+       */
       operator: "gte" | "gt" | "eq" | "lt" | "lte";
       /** Format: double */
       comparison_value: number;
@@ -1844,7 +4490,443 @@ export interface components {
       address: components["schemas"]["Address"] | null;
       team_name: string;
       subscription_filter_keys: readonly (string)[];
-      /** @enum {string} */
+      /**
+       * @description * `Africa/Abidjan` - Africa/Abidjan
+       * * `Africa/Accra` - Africa/Accra
+       * * `Africa/Addis_Ababa` - Africa/Addis_Ababa
+       * * `Africa/Algiers` - Africa/Algiers
+       * * `Africa/Asmara` - Africa/Asmara
+       * * `Africa/Bamako` - Africa/Bamako
+       * * `Africa/Bangui` - Africa/Bangui
+       * * `Africa/Banjul` - Africa/Banjul
+       * * `Africa/Bissau` - Africa/Bissau
+       * * `Africa/Blantyre` - Africa/Blantyre
+       * * `Africa/Brazzaville` - Africa/Brazzaville
+       * * `Africa/Bujumbura` - Africa/Bujumbura
+       * * `Africa/Cairo` - Africa/Cairo
+       * * `Africa/Casablanca` - Africa/Casablanca
+       * * `Africa/Ceuta` - Africa/Ceuta
+       * * `Africa/Conakry` - Africa/Conakry
+       * * `Africa/Dakar` - Africa/Dakar
+       * * `Africa/Dar_es_Salaam` - Africa/Dar_es_Salaam
+       * * `Africa/Djibouti` - Africa/Djibouti
+       * * `Africa/Douala` - Africa/Douala
+       * * `Africa/El_Aaiun` - Africa/El_Aaiun
+       * * `Africa/Freetown` - Africa/Freetown
+       * * `Africa/Gaborone` - Africa/Gaborone
+       * * `Africa/Harare` - Africa/Harare
+       * * `Africa/Johannesburg` - Africa/Johannesburg
+       * * `Africa/Juba` - Africa/Juba
+       * * `Africa/Kampala` - Africa/Kampala
+       * * `Africa/Khartoum` - Africa/Khartoum
+       * * `Africa/Kigali` - Africa/Kigali
+       * * `Africa/Kinshasa` - Africa/Kinshasa
+       * * `Africa/Lagos` - Africa/Lagos
+       * * `Africa/Libreville` - Africa/Libreville
+       * * `Africa/Lome` - Africa/Lome
+       * * `Africa/Luanda` - Africa/Luanda
+       * * `Africa/Lubumbashi` - Africa/Lubumbashi
+       * * `Africa/Lusaka` - Africa/Lusaka
+       * * `Africa/Malabo` - Africa/Malabo
+       * * `Africa/Maputo` - Africa/Maputo
+       * * `Africa/Maseru` - Africa/Maseru
+       * * `Africa/Mbabane` - Africa/Mbabane
+       * * `Africa/Mogadishu` - Africa/Mogadishu
+       * * `Africa/Monrovia` - Africa/Monrovia
+       * * `Africa/Nairobi` - Africa/Nairobi
+       * * `Africa/Ndjamena` - Africa/Ndjamena
+       * * `Africa/Niamey` - Africa/Niamey
+       * * `Africa/Nouakchott` - Africa/Nouakchott
+       * * `Africa/Ouagadougou` - Africa/Ouagadougou
+       * * `Africa/Porto-Novo` - Africa/Porto-Novo
+       * * `Africa/Sao_Tome` - Africa/Sao_Tome
+       * * `Africa/Tripoli` - Africa/Tripoli
+       * * `Africa/Tunis` - Africa/Tunis
+       * * `Africa/Windhoek` - Africa/Windhoek
+       * * `America/Adak` - America/Adak
+       * * `America/Anchorage` - America/Anchorage
+       * * `America/Anguilla` - America/Anguilla
+       * * `America/Antigua` - America/Antigua
+       * * `America/Araguaina` - America/Araguaina
+       * * `America/Argentina/Buenos_Aires` - America/Argentina/Buenos_Aires
+       * * `America/Argentina/Catamarca` - America/Argentina/Catamarca
+       * * `America/Argentina/Cordoba` - America/Argentina/Cordoba
+       * * `America/Argentina/Jujuy` - America/Argentina/Jujuy
+       * * `America/Argentina/La_Rioja` - America/Argentina/La_Rioja
+       * * `America/Argentina/Mendoza` - America/Argentina/Mendoza
+       * * `America/Argentina/Rio_Gallegos` - America/Argentina/Rio_Gallegos
+       * * `America/Argentina/Salta` - America/Argentina/Salta
+       * * `America/Argentina/San_Juan` - America/Argentina/San_Juan
+       * * `America/Argentina/San_Luis` - America/Argentina/San_Luis
+       * * `America/Argentina/Tucuman` - America/Argentina/Tucuman
+       * * `America/Argentina/Ushuaia` - America/Argentina/Ushuaia
+       * * `America/Aruba` - America/Aruba
+       * * `America/Asuncion` - America/Asuncion
+       * * `America/Atikokan` - America/Atikokan
+       * * `America/Bahia` - America/Bahia
+       * * `America/Bahia_Banderas` - America/Bahia_Banderas
+       * * `America/Barbados` - America/Barbados
+       * * `America/Belem` - America/Belem
+       * * `America/Belize` - America/Belize
+       * * `America/Blanc-Sablon` - America/Blanc-Sablon
+       * * `America/Boa_Vista` - America/Boa_Vista
+       * * `America/Bogota` - America/Bogota
+       * * `America/Boise` - America/Boise
+       * * `America/Cambridge_Bay` - America/Cambridge_Bay
+       * * `America/Campo_Grande` - America/Campo_Grande
+       * * `America/Cancun` - America/Cancun
+       * * `America/Caracas` - America/Caracas
+       * * `America/Cayenne` - America/Cayenne
+       * * `America/Cayman` - America/Cayman
+       * * `America/Chicago` - America/Chicago
+       * * `America/Chihuahua` - America/Chihuahua
+       * * `America/Ciudad_Juarez` - America/Ciudad_Juarez
+       * * `America/Costa_Rica` - America/Costa_Rica
+       * * `America/Creston` - America/Creston
+       * * `America/Cuiaba` - America/Cuiaba
+       * * `America/Curacao` - America/Curacao
+       * * `America/Danmarkshavn` - America/Danmarkshavn
+       * * `America/Dawson` - America/Dawson
+       * * `America/Dawson_Creek` - America/Dawson_Creek
+       * * `America/Denver` - America/Denver
+       * * `America/Detroit` - America/Detroit
+       * * `America/Dominica` - America/Dominica
+       * * `America/Edmonton` - America/Edmonton
+       * * `America/Eirunepe` - America/Eirunepe
+       * * `America/El_Salvador` - America/El_Salvador
+       * * `America/Fort_Nelson` - America/Fort_Nelson
+       * * `America/Fortaleza` - America/Fortaleza
+       * * `America/Glace_Bay` - America/Glace_Bay
+       * * `America/Goose_Bay` - America/Goose_Bay
+       * * `America/Grand_Turk` - America/Grand_Turk
+       * * `America/Grenada` - America/Grenada
+       * * `America/Guadeloupe` - America/Guadeloupe
+       * * `America/Guatemala` - America/Guatemala
+       * * `America/Guayaquil` - America/Guayaquil
+       * * `America/Guyana` - America/Guyana
+       * * `America/Halifax` - America/Halifax
+       * * `America/Havana` - America/Havana
+       * * `America/Hermosillo` - America/Hermosillo
+       * * `America/Indiana/Indianapolis` - America/Indiana/Indianapolis
+       * * `America/Indiana/Knox` - America/Indiana/Knox
+       * * `America/Indiana/Marengo` - America/Indiana/Marengo
+       * * `America/Indiana/Petersburg` - America/Indiana/Petersburg
+       * * `America/Indiana/Tell_City` - America/Indiana/Tell_City
+       * * `America/Indiana/Vevay` - America/Indiana/Vevay
+       * * `America/Indiana/Vincennes` - America/Indiana/Vincennes
+       * * `America/Indiana/Winamac` - America/Indiana/Winamac
+       * * `America/Inuvik` - America/Inuvik
+       * * `America/Iqaluit` - America/Iqaluit
+       * * `America/Jamaica` - America/Jamaica
+       * * `America/Juneau` - America/Juneau
+       * * `America/Kentucky/Louisville` - America/Kentucky/Louisville
+       * * `America/Kentucky/Monticello` - America/Kentucky/Monticello
+       * * `America/Kralendijk` - America/Kralendijk
+       * * `America/La_Paz` - America/La_Paz
+       * * `America/Lima` - America/Lima
+       * * `America/Los_Angeles` - America/Los_Angeles
+       * * `America/Lower_Princes` - America/Lower_Princes
+       * * `America/Maceio` - America/Maceio
+       * * `America/Managua` - America/Managua
+       * * `America/Manaus` - America/Manaus
+       * * `America/Marigot` - America/Marigot
+       * * `America/Martinique` - America/Martinique
+       * * `America/Matamoros` - America/Matamoros
+       * * `America/Mazatlan` - America/Mazatlan
+       * * `America/Menominee` - America/Menominee
+       * * `America/Merida` - America/Merida
+       * * `America/Metlakatla` - America/Metlakatla
+       * * `America/Mexico_City` - America/Mexico_City
+       * * `America/Miquelon` - America/Miquelon
+       * * `America/Moncton` - America/Moncton
+       * * `America/Monterrey` - America/Monterrey
+       * * `America/Montevideo` - America/Montevideo
+       * * `America/Montserrat` - America/Montserrat
+       * * `America/Nassau` - America/Nassau
+       * * `America/New_York` - America/New_York
+       * * `America/Nome` - America/Nome
+       * * `America/Noronha` - America/Noronha
+       * * `America/North_Dakota/Beulah` - America/North_Dakota/Beulah
+       * * `America/North_Dakota/Center` - America/North_Dakota/Center
+       * * `America/North_Dakota/New_Salem` - America/North_Dakota/New_Salem
+       * * `America/Nuuk` - America/Nuuk
+       * * `America/Ojinaga` - America/Ojinaga
+       * * `America/Panama` - America/Panama
+       * * `America/Paramaribo` - America/Paramaribo
+       * * `America/Phoenix` - America/Phoenix
+       * * `America/Port-au-Prince` - America/Port-au-Prince
+       * * `America/Port_of_Spain` - America/Port_of_Spain
+       * * `America/Porto_Velho` - America/Porto_Velho
+       * * `America/Puerto_Rico` - America/Puerto_Rico
+       * * `America/Punta_Arenas` - America/Punta_Arenas
+       * * `America/Rankin_Inlet` - America/Rankin_Inlet
+       * * `America/Recife` - America/Recife
+       * * `America/Regina` - America/Regina
+       * * `America/Resolute` - America/Resolute
+       * * `America/Rio_Branco` - America/Rio_Branco
+       * * `America/Santarem` - America/Santarem
+       * * `America/Santiago` - America/Santiago
+       * * `America/Santo_Domingo` - America/Santo_Domingo
+       * * `America/Sao_Paulo` - America/Sao_Paulo
+       * * `America/Scoresbysund` - America/Scoresbysund
+       * * `America/Sitka` - America/Sitka
+       * * `America/St_Barthelemy` - America/St_Barthelemy
+       * * `America/St_Johns` - America/St_Johns
+       * * `America/St_Kitts` - America/St_Kitts
+       * * `America/St_Lucia` - America/St_Lucia
+       * * `America/St_Thomas` - America/St_Thomas
+       * * `America/St_Vincent` - America/St_Vincent
+       * * `America/Swift_Current` - America/Swift_Current
+       * * `America/Tegucigalpa` - America/Tegucigalpa
+       * * `America/Thule` - America/Thule
+       * * `America/Tijuana` - America/Tijuana
+       * * `America/Toronto` - America/Toronto
+       * * `America/Tortola` - America/Tortola
+       * * `America/Vancouver` - America/Vancouver
+       * * `America/Whitehorse` - America/Whitehorse
+       * * `America/Winnipeg` - America/Winnipeg
+       * * `America/Yakutat` - America/Yakutat
+       * * `America/Yellowknife` - America/Yellowknife
+       * * `Antarctica/Casey` - Antarctica/Casey
+       * * `Antarctica/Davis` - Antarctica/Davis
+       * * `Antarctica/DumontDUrville` - Antarctica/DumontDUrville
+       * * `Antarctica/Macquarie` - Antarctica/Macquarie
+       * * `Antarctica/Mawson` - Antarctica/Mawson
+       * * `Antarctica/McMurdo` - Antarctica/McMurdo
+       * * `Antarctica/Palmer` - Antarctica/Palmer
+       * * `Antarctica/Rothera` - Antarctica/Rothera
+       * * `Antarctica/Syowa` - Antarctica/Syowa
+       * * `Antarctica/Troll` - Antarctica/Troll
+       * * `Antarctica/Vostok` - Antarctica/Vostok
+       * * `Arctic/Longyearbyen` - Arctic/Longyearbyen
+       * * `Asia/Aden` - Asia/Aden
+       * * `Asia/Almaty` - Asia/Almaty
+       * * `Asia/Amman` - Asia/Amman
+       * * `Asia/Anadyr` - Asia/Anadyr
+       * * `Asia/Aqtau` - Asia/Aqtau
+       * * `Asia/Aqtobe` - Asia/Aqtobe
+       * * `Asia/Ashgabat` - Asia/Ashgabat
+       * * `Asia/Atyrau` - Asia/Atyrau
+       * * `Asia/Baghdad` - Asia/Baghdad
+       * * `Asia/Bahrain` - Asia/Bahrain
+       * * `Asia/Baku` - Asia/Baku
+       * * `Asia/Bangkok` - Asia/Bangkok
+       * * `Asia/Barnaul` - Asia/Barnaul
+       * * `Asia/Beirut` - Asia/Beirut
+       * * `Asia/Bishkek` - Asia/Bishkek
+       * * `Asia/Brunei` - Asia/Brunei
+       * * `Asia/Chita` - Asia/Chita
+       * * `Asia/Choibalsan` - Asia/Choibalsan
+       * * `Asia/Colombo` - Asia/Colombo
+       * * `Asia/Damascus` - Asia/Damascus
+       * * `Asia/Dhaka` - Asia/Dhaka
+       * * `Asia/Dili` - Asia/Dili
+       * * `Asia/Dubai` - Asia/Dubai
+       * * `Asia/Dushanbe` - Asia/Dushanbe
+       * * `Asia/Famagusta` - Asia/Famagusta
+       * * `Asia/Gaza` - Asia/Gaza
+       * * `Asia/Hebron` - Asia/Hebron
+       * * `Asia/Ho_Chi_Minh` - Asia/Ho_Chi_Minh
+       * * `Asia/Hong_Kong` - Asia/Hong_Kong
+       * * `Asia/Hovd` - Asia/Hovd
+       * * `Asia/Irkutsk` - Asia/Irkutsk
+       * * `Asia/Jakarta` - Asia/Jakarta
+       * * `Asia/Jayapura` - Asia/Jayapura
+       * * `Asia/Jerusalem` - Asia/Jerusalem
+       * * `Asia/Kabul` - Asia/Kabul
+       * * `Asia/Kamchatka` - Asia/Kamchatka
+       * * `Asia/Karachi` - Asia/Karachi
+       * * `Asia/Kathmandu` - Asia/Kathmandu
+       * * `Asia/Khandyga` - Asia/Khandyga
+       * * `Asia/Kolkata` - Asia/Kolkata
+       * * `Asia/Krasnoyarsk` - Asia/Krasnoyarsk
+       * * `Asia/Kuala_Lumpur` - Asia/Kuala_Lumpur
+       * * `Asia/Kuching` - Asia/Kuching
+       * * `Asia/Kuwait` - Asia/Kuwait
+       * * `Asia/Macau` - Asia/Macau
+       * * `Asia/Magadan` - Asia/Magadan
+       * * `Asia/Makassar` - Asia/Makassar
+       * * `Asia/Manila` - Asia/Manila
+       * * `Asia/Muscat` - Asia/Muscat
+       * * `Asia/Nicosia` - Asia/Nicosia
+       * * `Asia/Novokuznetsk` - Asia/Novokuznetsk
+       * * `Asia/Novosibirsk` - Asia/Novosibirsk
+       * * `Asia/Omsk` - Asia/Omsk
+       * * `Asia/Oral` - Asia/Oral
+       * * `Asia/Phnom_Penh` - Asia/Phnom_Penh
+       * * `Asia/Pontianak` - Asia/Pontianak
+       * * `Asia/Pyongyang` - Asia/Pyongyang
+       * * `Asia/Qatar` - Asia/Qatar
+       * * `Asia/Qostanay` - Asia/Qostanay
+       * * `Asia/Qyzylorda` - Asia/Qyzylorda
+       * * `Asia/Riyadh` - Asia/Riyadh
+       * * `Asia/Sakhalin` - Asia/Sakhalin
+       * * `Asia/Samarkand` - Asia/Samarkand
+       * * `Asia/Seoul` - Asia/Seoul
+       * * `Asia/Shanghai` - Asia/Shanghai
+       * * `Asia/Singapore` - Asia/Singapore
+       * * `Asia/Srednekolymsk` - Asia/Srednekolymsk
+       * * `Asia/Taipei` - Asia/Taipei
+       * * `Asia/Tashkent` - Asia/Tashkent
+       * * `Asia/Tbilisi` - Asia/Tbilisi
+       * * `Asia/Tehran` - Asia/Tehran
+       * * `Asia/Thimphu` - Asia/Thimphu
+       * * `Asia/Tokyo` - Asia/Tokyo
+       * * `Asia/Tomsk` - Asia/Tomsk
+       * * `Asia/Ulaanbaatar` - Asia/Ulaanbaatar
+       * * `Asia/Urumqi` - Asia/Urumqi
+       * * `Asia/Ust-Nera` - Asia/Ust-Nera
+       * * `Asia/Vientiane` - Asia/Vientiane
+       * * `Asia/Vladivostok` - Asia/Vladivostok
+       * * `Asia/Yakutsk` - Asia/Yakutsk
+       * * `Asia/Yangon` - Asia/Yangon
+       * * `Asia/Yekaterinburg` - Asia/Yekaterinburg
+       * * `Asia/Yerevan` - Asia/Yerevan
+       * * `Atlantic/Azores` - Atlantic/Azores
+       * * `Atlantic/Bermuda` - Atlantic/Bermuda
+       * * `Atlantic/Canary` - Atlantic/Canary
+       * * `Atlantic/Cape_Verde` - Atlantic/Cape_Verde
+       * * `Atlantic/Faroe` - Atlantic/Faroe
+       * * `Atlantic/Madeira` - Atlantic/Madeira
+       * * `Atlantic/Reykjavik` - Atlantic/Reykjavik
+       * * `Atlantic/South_Georgia` - Atlantic/South_Georgia
+       * * `Atlantic/St_Helena` - Atlantic/St_Helena
+       * * `Atlantic/Stanley` - Atlantic/Stanley
+       * * `Australia/Adelaide` - Australia/Adelaide
+       * * `Australia/Brisbane` - Australia/Brisbane
+       * * `Australia/Broken_Hill` - Australia/Broken_Hill
+       * * `Australia/Darwin` - Australia/Darwin
+       * * `Australia/Eucla` - Australia/Eucla
+       * * `Australia/Hobart` - Australia/Hobart
+       * * `Australia/Lindeman` - Australia/Lindeman
+       * * `Australia/Lord_Howe` - Australia/Lord_Howe
+       * * `Australia/Melbourne` - Australia/Melbourne
+       * * `Australia/Perth` - Australia/Perth
+       * * `Australia/Sydney` - Australia/Sydney
+       * * `Canada/Atlantic` - Canada/Atlantic
+       * * `Canada/Central` - Canada/Central
+       * * `Canada/Eastern` - Canada/Eastern
+       * * `Canada/Mountain` - Canada/Mountain
+       * * `Canada/Newfoundland` - Canada/Newfoundland
+       * * `Canada/Pacific` - Canada/Pacific
+       * * `Europe/Amsterdam` - Europe/Amsterdam
+       * * `Europe/Andorra` - Europe/Andorra
+       * * `Europe/Astrakhan` - Europe/Astrakhan
+       * * `Europe/Athens` - Europe/Athens
+       * * `Europe/Belgrade` - Europe/Belgrade
+       * * `Europe/Berlin` - Europe/Berlin
+       * * `Europe/Bratislava` - Europe/Bratislava
+       * * `Europe/Brussels` - Europe/Brussels
+       * * `Europe/Bucharest` - Europe/Bucharest
+       * * `Europe/Budapest` - Europe/Budapest
+       * * `Europe/Busingen` - Europe/Busingen
+       * * `Europe/Chisinau` - Europe/Chisinau
+       * * `Europe/Copenhagen` - Europe/Copenhagen
+       * * `Europe/Dublin` - Europe/Dublin
+       * * `Europe/Gibraltar` - Europe/Gibraltar
+       * * `Europe/Guernsey` - Europe/Guernsey
+       * * `Europe/Helsinki` - Europe/Helsinki
+       * * `Europe/Isle_of_Man` - Europe/Isle_of_Man
+       * * `Europe/Istanbul` - Europe/Istanbul
+       * * `Europe/Jersey` - Europe/Jersey
+       * * `Europe/Kaliningrad` - Europe/Kaliningrad
+       * * `Europe/Kirov` - Europe/Kirov
+       * * `Europe/Kyiv` - Europe/Kyiv
+       * * `Europe/Lisbon` - Europe/Lisbon
+       * * `Europe/Ljubljana` - Europe/Ljubljana
+       * * `Europe/London` - Europe/London
+       * * `Europe/Luxembourg` - Europe/Luxembourg
+       * * `Europe/Madrid` - Europe/Madrid
+       * * `Europe/Malta` - Europe/Malta
+       * * `Europe/Mariehamn` - Europe/Mariehamn
+       * * `Europe/Minsk` - Europe/Minsk
+       * * `Europe/Monaco` - Europe/Monaco
+       * * `Europe/Moscow` - Europe/Moscow
+       * * `Europe/Oslo` - Europe/Oslo
+       * * `Europe/Paris` - Europe/Paris
+       * * `Europe/Podgorica` - Europe/Podgorica
+       * * `Europe/Prague` - Europe/Prague
+       * * `Europe/Riga` - Europe/Riga
+       * * `Europe/Rome` - Europe/Rome
+       * * `Europe/Samara` - Europe/Samara
+       * * `Europe/San_Marino` - Europe/San_Marino
+       * * `Europe/Sarajevo` - Europe/Sarajevo
+       * * `Europe/Saratov` - Europe/Saratov
+       * * `Europe/Simferopol` - Europe/Simferopol
+       * * `Europe/Skopje` - Europe/Skopje
+       * * `Europe/Sofia` - Europe/Sofia
+       * * `Europe/Stockholm` - Europe/Stockholm
+       * * `Europe/Tallinn` - Europe/Tallinn
+       * * `Europe/Tirane` - Europe/Tirane
+       * * `Europe/Ulyanovsk` - Europe/Ulyanovsk
+       * * `Europe/Vaduz` - Europe/Vaduz
+       * * `Europe/Vatican` - Europe/Vatican
+       * * `Europe/Vienna` - Europe/Vienna
+       * * `Europe/Vilnius` - Europe/Vilnius
+       * * `Europe/Volgograd` - Europe/Volgograd
+       * * `Europe/Warsaw` - Europe/Warsaw
+       * * `Europe/Zagreb` - Europe/Zagreb
+       * * `Europe/Zurich` - Europe/Zurich
+       * * `GMT` - GMT
+       * * `Indian/Antananarivo` - Indian/Antananarivo
+       * * `Indian/Chagos` - Indian/Chagos
+       * * `Indian/Christmas` - Indian/Christmas
+       * * `Indian/Cocos` - Indian/Cocos
+       * * `Indian/Comoro` - Indian/Comoro
+       * * `Indian/Kerguelen` - Indian/Kerguelen
+       * * `Indian/Mahe` - Indian/Mahe
+       * * `Indian/Maldives` - Indian/Maldives
+       * * `Indian/Mauritius` - Indian/Mauritius
+       * * `Indian/Mayotte` - Indian/Mayotte
+       * * `Indian/Reunion` - Indian/Reunion
+       * * `Pacific/Apia` - Pacific/Apia
+       * * `Pacific/Auckland` - Pacific/Auckland
+       * * `Pacific/Bougainville` - Pacific/Bougainville
+       * * `Pacific/Chatham` - Pacific/Chatham
+       * * `Pacific/Chuuk` - Pacific/Chuuk
+       * * `Pacific/Easter` - Pacific/Easter
+       * * `Pacific/Efate` - Pacific/Efate
+       * * `Pacific/Fakaofo` - Pacific/Fakaofo
+       * * `Pacific/Fiji` - Pacific/Fiji
+       * * `Pacific/Funafuti` - Pacific/Funafuti
+       * * `Pacific/Galapagos` - Pacific/Galapagos
+       * * `Pacific/Gambier` - Pacific/Gambier
+       * * `Pacific/Guadalcanal` - Pacific/Guadalcanal
+       * * `Pacific/Guam` - Pacific/Guam
+       * * `Pacific/Honolulu` - Pacific/Honolulu
+       * * `Pacific/Kanton` - Pacific/Kanton
+       * * `Pacific/Kiritimati` - Pacific/Kiritimati
+       * * `Pacific/Kosrae` - Pacific/Kosrae
+       * * `Pacific/Kwajalein` - Pacific/Kwajalein
+       * * `Pacific/Majuro` - Pacific/Majuro
+       * * `Pacific/Marquesas` - Pacific/Marquesas
+       * * `Pacific/Midway` - Pacific/Midway
+       * * `Pacific/Nauru` - Pacific/Nauru
+       * * `Pacific/Niue` - Pacific/Niue
+       * * `Pacific/Norfolk` - Pacific/Norfolk
+       * * `Pacific/Noumea` - Pacific/Noumea
+       * * `Pacific/Pago_Pago` - Pacific/Pago_Pago
+       * * `Pacific/Palau` - Pacific/Palau
+       * * `Pacific/Pitcairn` - Pacific/Pitcairn
+       * * `Pacific/Pohnpei` - Pacific/Pohnpei
+       * * `Pacific/Port_Moresby` - Pacific/Port_Moresby
+       * * `Pacific/Rarotonga` - Pacific/Rarotonga
+       * * `Pacific/Saipan` - Pacific/Saipan
+       * * `Pacific/Tahiti` - Pacific/Tahiti
+       * * `Pacific/Tarawa` - Pacific/Tarawa
+       * * `Pacific/Tongatapu` - Pacific/Tongatapu
+       * * `Pacific/Wake` - Pacific/Wake
+       * * `Pacific/Wallis` - Pacific/Wallis
+       * * `US/Alaska` - US/Alaska
+       * * `US/Arizona` - US/Arizona
+       * * `US/Central` - US/Central
+       * * `US/Eastern` - US/Eastern
+       * * `US/Hawaii` - US/Hawaii
+       * * `US/Mountain` - US/Mountain
+       * * `US/Pacific` - US/Pacific
+       * * `UTC` - UTC 
+       * @enum {string}
+       */
       timezone: "Africa/Abidjan" | "Africa/Accra" | "Africa/Addis_Ababa" | "Africa/Algiers" | "Africa/Asmara" | "Africa/Bamako" | "Africa/Bangui" | "Africa/Banjul" | "Africa/Bissau" | "Africa/Blantyre" | "Africa/Brazzaville" | "Africa/Bujumbura" | "Africa/Cairo" | "Africa/Casablanca" | "Africa/Ceuta" | "Africa/Conakry" | "Africa/Dakar" | "Africa/Dar_es_Salaam" | "Africa/Djibouti" | "Africa/Douala" | "Africa/El_Aaiun" | "Africa/Freetown" | "Africa/Gaborone" | "Africa/Harare" | "Africa/Johannesburg" | "Africa/Juba" | "Africa/Kampala" | "Africa/Khartoum" | "Africa/Kigali" | "Africa/Kinshasa" | "Africa/Lagos" | "Africa/Libreville" | "Africa/Lome" | "Africa/Luanda" | "Africa/Lubumbashi" | "Africa/Lusaka" | "Africa/Malabo" | "Africa/Maputo" | "Africa/Maseru" | "Africa/Mbabane" | "Africa/Mogadishu" | "Africa/Monrovia" | "Africa/Nairobi" | "Africa/Ndjamena" | "Africa/Niamey" | "Africa/Nouakchott" | "Africa/Ouagadougou" | "Africa/Porto-Novo" | "Africa/Sao_Tome" | "Africa/Tripoli" | "Africa/Tunis" | "Africa/Windhoek" | "America/Adak" | "America/Anchorage" | "America/Anguilla" | "America/Antigua" | "America/Araguaina" | "America/Argentina/Buenos_Aires" | "America/Argentina/Catamarca" | "America/Argentina/Cordoba" | "America/Argentina/Jujuy" | "America/Argentina/La_Rioja" | "America/Argentina/Mendoza" | "America/Argentina/Rio_Gallegos" | "America/Argentina/Salta" | "America/Argentina/San_Juan" | "America/Argentina/San_Luis" | "America/Argentina/Tucuman" | "America/Argentina/Ushuaia" | "America/Aruba" | "America/Asuncion" | "America/Atikokan" | "America/Bahia" | "America/Bahia_Banderas" | "America/Barbados" | "America/Belem" | "America/Belize" | "America/Blanc-Sablon" | "America/Boa_Vista" | "America/Bogota" | "America/Boise" | "America/Cambridge_Bay" | "America/Campo_Grande" | "America/Cancun" | "America/Caracas" | "America/Cayenne" | "America/Cayman" | "America/Chicago" | "America/Chihuahua" | "America/Ciudad_Juarez" | "America/Costa_Rica" | "America/Creston" | "America/Cuiaba" | "America/Curacao" | "America/Danmarkshavn" | "America/Dawson" | "America/Dawson_Creek" | "America/Denver" | "America/Detroit" | "America/Dominica" | "America/Edmonton" | "America/Eirunepe" | "America/El_Salvador" | "America/Fort_Nelson" | "America/Fortaleza" | "America/Glace_Bay" | "America/Goose_Bay" | "America/Grand_Turk" | "America/Grenada" | "America/Guadeloupe" | "America/Guatemala" | "America/Guayaquil" | "America/Guyana" | "America/Halifax" | "America/Havana" | "America/Hermosillo" | "America/Indiana/Indianapolis" | "America/Indiana/Knox" | "America/Indiana/Marengo" | "America/Indiana/Petersburg" | "America/Indiana/Tell_City" | "America/Indiana/Vevay" | "America/Indiana/Vincennes" | "America/Indiana/Winamac" | "America/Inuvik" | "America/Iqaluit" | "America/Jamaica" | "America/Juneau" | "America/Kentucky/Louisville" | "America/Kentucky/Monticello" | "America/Kralendijk" | "America/La_Paz" | "America/Lima" | "America/Los_Angeles" | "America/Lower_Princes" | "America/Maceio" | "America/Managua" | "America/Manaus" | "America/Marigot" | "America/Martinique" | "America/Matamoros" | "America/Mazatlan" | "America/Menominee" | "America/Merida" | "America/Metlakatla" | "America/Mexico_City" | "America/Miquelon" | "America/Moncton" | "America/Monterrey" | "America/Montevideo" | "America/Montserrat" | "America/Nassau" | "America/New_York" | "America/Nome" | "America/Noronha" | "America/North_Dakota/Beulah" | "America/North_Dakota/Center" | "America/North_Dakota/New_Salem" | "America/Nuuk" | "America/Ojinaga" | "America/Panama" | "America/Paramaribo" | "America/Phoenix" | "America/Port-au-Prince" | "America/Port_of_Spain" | "America/Porto_Velho" | "America/Puerto_Rico" | "America/Punta_Arenas" | "America/Rankin_Inlet" | "America/Recife" | "America/Regina" | "America/Resolute" | "America/Rio_Branco" | "America/Santarem" | "America/Santiago" | "America/Santo_Domingo" | "America/Sao_Paulo" | "America/Scoresbysund" | "America/Sitka" | "America/St_Barthelemy" | "America/St_Johns" | "America/St_Kitts" | "America/St_Lucia" | "America/St_Thomas" | "America/St_Vincent" | "America/Swift_Current" | "America/Tegucigalpa" | "America/Thule" | "America/Tijuana" | "America/Toronto" | "America/Tortola" | "America/Vancouver" | "America/Whitehorse" | "America/Winnipeg" | "America/Yakutat" | "America/Yellowknife" | "Antarctica/Casey" | "Antarctica/Davis" | "Antarctica/DumontDUrville" | "Antarctica/Macquarie" | "Antarctica/Mawson" | "Antarctica/McMurdo" | "Antarctica/Palmer" | "Antarctica/Rothera" | "Antarctica/Syowa" | "Antarctica/Troll" | "Antarctica/Vostok" | "Arctic/Longyearbyen" | "Asia/Aden" | "Asia/Almaty" | "Asia/Amman" | "Asia/Anadyr" | "Asia/Aqtau" | "Asia/Aqtobe" | "Asia/Ashgabat" | "Asia/Atyrau" | "Asia/Baghdad" | "Asia/Bahrain" | "Asia/Baku" | "Asia/Bangkok" | "Asia/Barnaul" | "Asia/Beirut" | "Asia/Bishkek" | "Asia/Brunei" | "Asia/Chita" | "Asia/Choibalsan" | "Asia/Colombo" | "Asia/Damascus" | "Asia/Dhaka" | "Asia/Dili" | "Asia/Dubai" | "Asia/Dushanbe" | "Asia/Famagusta" | "Asia/Gaza" | "Asia/Hebron" | "Asia/Ho_Chi_Minh" | "Asia/Hong_Kong" | "Asia/Hovd" | "Asia/Irkutsk" | "Asia/Jakarta" | "Asia/Jayapura" | "Asia/Jerusalem" | "Asia/Kabul" | "Asia/Kamchatka" | "Asia/Karachi" | "Asia/Kathmandu" | "Asia/Khandyga" | "Asia/Kolkata" | "Asia/Krasnoyarsk" | "Asia/Kuala_Lumpur" | "Asia/Kuching" | "Asia/Kuwait" | "Asia/Macau" | "Asia/Magadan" | "Asia/Makassar" | "Asia/Manila" | "Asia/Muscat" | "Asia/Nicosia" | "Asia/Novokuznetsk" | "Asia/Novosibirsk" | "Asia/Omsk" | "Asia/Oral" | "Asia/Phnom_Penh" | "Asia/Pontianak" | "Asia/Pyongyang" | "Asia/Qatar" | "Asia/Qostanay" | "Asia/Qyzylorda" | "Asia/Riyadh" | "Asia/Sakhalin" | "Asia/Samarkand" | "Asia/Seoul" | "Asia/Shanghai" | "Asia/Singapore" | "Asia/Srednekolymsk" | "Asia/Taipei" | "Asia/Tashkent" | "Asia/Tbilisi" | "Asia/Tehran" | "Asia/Thimphu" | "Asia/Tokyo" | "Asia/Tomsk" | "Asia/Ulaanbaatar" | "Asia/Urumqi" | "Asia/Ust-Nera" | "Asia/Vientiane" | "Asia/Vladivostok" | "Asia/Yakutsk" | "Asia/Yangon" | "Asia/Yekaterinburg" | "Asia/Yerevan" | "Atlantic/Azores" | "Atlantic/Bermuda" | "Atlantic/Canary" | "Atlantic/Cape_Verde" | "Atlantic/Faroe" | "Atlantic/Madeira" | "Atlantic/Reykjavik" | "Atlantic/South_Georgia" | "Atlantic/St_Helena" | "Atlantic/Stanley" | "Australia/Adelaide" | "Australia/Brisbane" | "Australia/Broken_Hill" | "Australia/Darwin" | "Australia/Eucla" | "Australia/Hobart" | "Australia/Lindeman" | "Australia/Lord_Howe" | "Australia/Melbourne" | "Australia/Perth" | "Australia/Sydney" | "Canada/Atlantic" | "Canada/Central" | "Canada/Eastern" | "Canada/Mountain" | "Canada/Newfoundland" | "Canada/Pacific" | "Europe/Amsterdam" | "Europe/Andorra" | "Europe/Astrakhan" | "Europe/Athens" | "Europe/Belgrade" | "Europe/Berlin" | "Europe/Bratislava" | "Europe/Brussels" | "Europe/Bucharest" | "Europe/Budapest" | "Europe/Busingen" | "Europe/Chisinau" | "Europe/Copenhagen" | "Europe/Dublin" | "Europe/Gibraltar" | "Europe/Guernsey" | "Europe/Helsinki" | "Europe/Isle_of_Man" | "Europe/Istanbul" | "Europe/Jersey" | "Europe/Kaliningrad" | "Europe/Kirov" | "Europe/Kyiv" | "Europe/Lisbon" | "Europe/Ljubljana" | "Europe/London" | "Europe/Luxembourg" | "Europe/Madrid" | "Europe/Malta" | "Europe/Mariehamn" | "Europe/Minsk" | "Europe/Monaco" | "Europe/Moscow" | "Europe/Oslo" | "Europe/Paris" | "Europe/Podgorica" | "Europe/Prague" | "Europe/Riga" | "Europe/Rome" | "Europe/Samara" | "Europe/San_Marino" | "Europe/Sarajevo" | "Europe/Saratov" | "Europe/Simferopol" | "Europe/Skopje" | "Europe/Sofia" | "Europe/Stockholm" | "Europe/Tallinn" | "Europe/Tirane" | "Europe/Ulyanovsk" | "Europe/Vaduz" | "Europe/Vatican" | "Europe/Vienna" | "Europe/Vilnius" | "Europe/Volgograd" | "Europe/Warsaw" | "Europe/Zagreb" | "Europe/Zurich" | "GMT" | "Indian/Antananarivo" | "Indian/Chagos" | "Indian/Christmas" | "Indian/Cocos" | "Indian/Comoro" | "Indian/Kerguelen" | "Indian/Mahe" | "Indian/Maldives" | "Indian/Mauritius" | "Indian/Mayotte" | "Indian/Reunion" | "Pacific/Apia" | "Pacific/Auckland" | "Pacific/Bougainville" | "Pacific/Chatham" | "Pacific/Chuuk" | "Pacific/Easter" | "Pacific/Efate" | "Pacific/Fakaofo" | "Pacific/Fiji" | "Pacific/Funafuti" | "Pacific/Galapagos" | "Pacific/Gambier" | "Pacific/Guadalcanal" | "Pacific/Guam" | "Pacific/Honolulu" | "Pacific/Kanton" | "Pacific/Kiritimati" | "Pacific/Kosrae" | "Pacific/Kwajalein" | "Pacific/Majuro" | "Pacific/Marquesas" | "Pacific/Midway" | "Pacific/Nauru" | "Pacific/Niue" | "Pacific/Norfolk" | "Pacific/Noumea" | "Pacific/Pago_Pago" | "Pacific/Palau" | "Pacific/Pitcairn" | "Pacific/Pohnpei" | "Pacific/Port_Moresby" | "Pacific/Rarotonga" | "Pacific/Saipan" | "Pacific/Tahiti" | "Pacific/Tarawa" | "Pacific/Tongatapu" | "Pacific/Wake" | "Pacific/Wallis" | "US/Alaska" | "US/Arizona" | "US/Central" | "US/Eastern" | "US/Hawaii" | "US/Mountain" | "US/Pacific" | "UTC";
       stripe_account_id: string;
       braintree_merchant_id: string;
@@ -1855,6 +4937,8 @@ export interface components {
       organization_name: string;
       default_currency_code?: string;
       /**
+       * @description * `development` - development
+       * * `production` - production 
        * @default development 
        * @enum {string}
        */
@@ -1862,12 +4946,25 @@ export interface components {
     };
     OrganizationSetting: {
       setting_id: string;
-      /** @enum {string} */
+      /**
+       * @description * `generate_customer_after_creating_in_lotus` - Generate in Stripe after Lotus
+       * * `gen_cust_in_braintree_after_lotus` - Generate in Braintree after Lotus
+       * * `subscription_filter_keys` - Subscription Filter Keys
+       * * `payment_grace_period` - Payment Grace Period
+       * * `crm_customer_source` - CRM Customer Source 
+       * @enum {string}
+       */
       setting_name: "generate_customer_after_creating_in_lotus" | "gen_cust_in_braintree_after_lotus" | "subscription_filter_keys" | "payment_grace_period" | "crm_customer_source";
       setting_values: {
         [key: string]: Record<string, never> | undefined;
       };
-      /** @enum {string} */
+      /**
+       * @description * `stripe` - Stripe
+       * * `braintree` - Braintree
+       * * `billing` - Billing
+       * * `crm` - CRM 
+       * @enum {string}
+       */
       setting_group?: "stripe" | "braintree" | "billing" | "crm";
     };
     OrganizationSettingUpdate: {
@@ -1882,6 +4979,8 @@ export interface components {
       email: string;
       role: string;
       /**
+       * @description * `Active` - Active
+       * * `Invited` - Invited 
        * @default Active 
        * @enum {string}
        */
@@ -1920,17 +5019,461 @@ export interface components {
        * @description Tax rate as percentage. For example, 10.5 for 10.5%
        */
       tax_rate?: number;
-      /** @enum {string} */
+      /**
+       * @description * `Africa/Abidjan` - Africa/Abidjan
+       * * `Africa/Accra` - Africa/Accra
+       * * `Africa/Addis_Ababa` - Africa/Addis_Ababa
+       * * `Africa/Algiers` - Africa/Algiers
+       * * `Africa/Asmara` - Africa/Asmara
+       * * `Africa/Bamako` - Africa/Bamako
+       * * `Africa/Bangui` - Africa/Bangui
+       * * `Africa/Banjul` - Africa/Banjul
+       * * `Africa/Bissau` - Africa/Bissau
+       * * `Africa/Blantyre` - Africa/Blantyre
+       * * `Africa/Brazzaville` - Africa/Brazzaville
+       * * `Africa/Bujumbura` - Africa/Bujumbura
+       * * `Africa/Cairo` - Africa/Cairo
+       * * `Africa/Casablanca` - Africa/Casablanca
+       * * `Africa/Ceuta` - Africa/Ceuta
+       * * `Africa/Conakry` - Africa/Conakry
+       * * `Africa/Dakar` - Africa/Dakar
+       * * `Africa/Dar_es_Salaam` - Africa/Dar_es_Salaam
+       * * `Africa/Djibouti` - Africa/Djibouti
+       * * `Africa/Douala` - Africa/Douala
+       * * `Africa/El_Aaiun` - Africa/El_Aaiun
+       * * `Africa/Freetown` - Africa/Freetown
+       * * `Africa/Gaborone` - Africa/Gaborone
+       * * `Africa/Harare` - Africa/Harare
+       * * `Africa/Johannesburg` - Africa/Johannesburg
+       * * `Africa/Juba` - Africa/Juba
+       * * `Africa/Kampala` - Africa/Kampala
+       * * `Africa/Khartoum` - Africa/Khartoum
+       * * `Africa/Kigali` - Africa/Kigali
+       * * `Africa/Kinshasa` - Africa/Kinshasa
+       * * `Africa/Lagos` - Africa/Lagos
+       * * `Africa/Libreville` - Africa/Libreville
+       * * `Africa/Lome` - Africa/Lome
+       * * `Africa/Luanda` - Africa/Luanda
+       * * `Africa/Lubumbashi` - Africa/Lubumbashi
+       * * `Africa/Lusaka` - Africa/Lusaka
+       * * `Africa/Malabo` - Africa/Malabo
+       * * `Africa/Maputo` - Africa/Maputo
+       * * `Africa/Maseru` - Africa/Maseru
+       * * `Africa/Mbabane` - Africa/Mbabane
+       * * `Africa/Mogadishu` - Africa/Mogadishu
+       * * `Africa/Monrovia` - Africa/Monrovia
+       * * `Africa/Nairobi` - Africa/Nairobi
+       * * `Africa/Ndjamena` - Africa/Ndjamena
+       * * `Africa/Niamey` - Africa/Niamey
+       * * `Africa/Nouakchott` - Africa/Nouakchott
+       * * `Africa/Ouagadougou` - Africa/Ouagadougou
+       * * `Africa/Porto-Novo` - Africa/Porto-Novo
+       * * `Africa/Sao_Tome` - Africa/Sao_Tome
+       * * `Africa/Tripoli` - Africa/Tripoli
+       * * `Africa/Tunis` - Africa/Tunis
+       * * `Africa/Windhoek` - Africa/Windhoek
+       * * `America/Adak` - America/Adak
+       * * `America/Anchorage` - America/Anchorage
+       * * `America/Anguilla` - America/Anguilla
+       * * `America/Antigua` - America/Antigua
+       * * `America/Araguaina` - America/Araguaina
+       * * `America/Argentina/Buenos_Aires` - America/Argentina/Buenos_Aires
+       * * `America/Argentina/Catamarca` - America/Argentina/Catamarca
+       * * `America/Argentina/Cordoba` - America/Argentina/Cordoba
+       * * `America/Argentina/Jujuy` - America/Argentina/Jujuy
+       * * `America/Argentina/La_Rioja` - America/Argentina/La_Rioja
+       * * `America/Argentina/Mendoza` - America/Argentina/Mendoza
+       * * `America/Argentina/Rio_Gallegos` - America/Argentina/Rio_Gallegos
+       * * `America/Argentina/Salta` - America/Argentina/Salta
+       * * `America/Argentina/San_Juan` - America/Argentina/San_Juan
+       * * `America/Argentina/San_Luis` - America/Argentina/San_Luis
+       * * `America/Argentina/Tucuman` - America/Argentina/Tucuman
+       * * `America/Argentina/Ushuaia` - America/Argentina/Ushuaia
+       * * `America/Aruba` - America/Aruba
+       * * `America/Asuncion` - America/Asuncion
+       * * `America/Atikokan` - America/Atikokan
+       * * `America/Bahia` - America/Bahia
+       * * `America/Bahia_Banderas` - America/Bahia_Banderas
+       * * `America/Barbados` - America/Barbados
+       * * `America/Belem` - America/Belem
+       * * `America/Belize` - America/Belize
+       * * `America/Blanc-Sablon` - America/Blanc-Sablon
+       * * `America/Boa_Vista` - America/Boa_Vista
+       * * `America/Bogota` - America/Bogota
+       * * `America/Boise` - America/Boise
+       * * `America/Cambridge_Bay` - America/Cambridge_Bay
+       * * `America/Campo_Grande` - America/Campo_Grande
+       * * `America/Cancun` - America/Cancun
+       * * `America/Caracas` - America/Caracas
+       * * `America/Cayenne` - America/Cayenne
+       * * `America/Cayman` - America/Cayman
+       * * `America/Chicago` - America/Chicago
+       * * `America/Chihuahua` - America/Chihuahua
+       * * `America/Ciudad_Juarez` - America/Ciudad_Juarez
+       * * `America/Costa_Rica` - America/Costa_Rica
+       * * `America/Creston` - America/Creston
+       * * `America/Cuiaba` - America/Cuiaba
+       * * `America/Curacao` - America/Curacao
+       * * `America/Danmarkshavn` - America/Danmarkshavn
+       * * `America/Dawson` - America/Dawson
+       * * `America/Dawson_Creek` - America/Dawson_Creek
+       * * `America/Denver` - America/Denver
+       * * `America/Detroit` - America/Detroit
+       * * `America/Dominica` - America/Dominica
+       * * `America/Edmonton` - America/Edmonton
+       * * `America/Eirunepe` - America/Eirunepe
+       * * `America/El_Salvador` - America/El_Salvador
+       * * `America/Fort_Nelson` - America/Fort_Nelson
+       * * `America/Fortaleza` - America/Fortaleza
+       * * `America/Glace_Bay` - America/Glace_Bay
+       * * `America/Goose_Bay` - America/Goose_Bay
+       * * `America/Grand_Turk` - America/Grand_Turk
+       * * `America/Grenada` - America/Grenada
+       * * `America/Guadeloupe` - America/Guadeloupe
+       * * `America/Guatemala` - America/Guatemala
+       * * `America/Guayaquil` - America/Guayaquil
+       * * `America/Guyana` - America/Guyana
+       * * `America/Halifax` - America/Halifax
+       * * `America/Havana` - America/Havana
+       * * `America/Hermosillo` - America/Hermosillo
+       * * `America/Indiana/Indianapolis` - America/Indiana/Indianapolis
+       * * `America/Indiana/Knox` - America/Indiana/Knox
+       * * `America/Indiana/Marengo` - America/Indiana/Marengo
+       * * `America/Indiana/Petersburg` - America/Indiana/Petersburg
+       * * `America/Indiana/Tell_City` - America/Indiana/Tell_City
+       * * `America/Indiana/Vevay` - America/Indiana/Vevay
+       * * `America/Indiana/Vincennes` - America/Indiana/Vincennes
+       * * `America/Indiana/Winamac` - America/Indiana/Winamac
+       * * `America/Inuvik` - America/Inuvik
+       * * `America/Iqaluit` - America/Iqaluit
+       * * `America/Jamaica` - America/Jamaica
+       * * `America/Juneau` - America/Juneau
+       * * `America/Kentucky/Louisville` - America/Kentucky/Louisville
+       * * `America/Kentucky/Monticello` - America/Kentucky/Monticello
+       * * `America/Kralendijk` - America/Kralendijk
+       * * `America/La_Paz` - America/La_Paz
+       * * `America/Lima` - America/Lima
+       * * `America/Los_Angeles` - America/Los_Angeles
+       * * `America/Lower_Princes` - America/Lower_Princes
+       * * `America/Maceio` - America/Maceio
+       * * `America/Managua` - America/Managua
+       * * `America/Manaus` - America/Manaus
+       * * `America/Marigot` - America/Marigot
+       * * `America/Martinique` - America/Martinique
+       * * `America/Matamoros` - America/Matamoros
+       * * `America/Mazatlan` - America/Mazatlan
+       * * `America/Menominee` - America/Menominee
+       * * `America/Merida` - America/Merida
+       * * `America/Metlakatla` - America/Metlakatla
+       * * `America/Mexico_City` - America/Mexico_City
+       * * `America/Miquelon` - America/Miquelon
+       * * `America/Moncton` - America/Moncton
+       * * `America/Monterrey` - America/Monterrey
+       * * `America/Montevideo` - America/Montevideo
+       * * `America/Montserrat` - America/Montserrat
+       * * `America/Nassau` - America/Nassau
+       * * `America/New_York` - America/New_York
+       * * `America/Nome` - America/Nome
+       * * `America/Noronha` - America/Noronha
+       * * `America/North_Dakota/Beulah` - America/North_Dakota/Beulah
+       * * `America/North_Dakota/Center` - America/North_Dakota/Center
+       * * `America/North_Dakota/New_Salem` - America/North_Dakota/New_Salem
+       * * `America/Nuuk` - America/Nuuk
+       * * `America/Ojinaga` - America/Ojinaga
+       * * `America/Panama` - America/Panama
+       * * `America/Paramaribo` - America/Paramaribo
+       * * `America/Phoenix` - America/Phoenix
+       * * `America/Port-au-Prince` - America/Port-au-Prince
+       * * `America/Port_of_Spain` - America/Port_of_Spain
+       * * `America/Porto_Velho` - America/Porto_Velho
+       * * `America/Puerto_Rico` - America/Puerto_Rico
+       * * `America/Punta_Arenas` - America/Punta_Arenas
+       * * `America/Rankin_Inlet` - America/Rankin_Inlet
+       * * `America/Recife` - America/Recife
+       * * `America/Regina` - America/Regina
+       * * `America/Resolute` - America/Resolute
+       * * `America/Rio_Branco` - America/Rio_Branco
+       * * `America/Santarem` - America/Santarem
+       * * `America/Santiago` - America/Santiago
+       * * `America/Santo_Domingo` - America/Santo_Domingo
+       * * `America/Sao_Paulo` - America/Sao_Paulo
+       * * `America/Scoresbysund` - America/Scoresbysund
+       * * `America/Sitka` - America/Sitka
+       * * `America/St_Barthelemy` - America/St_Barthelemy
+       * * `America/St_Johns` - America/St_Johns
+       * * `America/St_Kitts` - America/St_Kitts
+       * * `America/St_Lucia` - America/St_Lucia
+       * * `America/St_Thomas` - America/St_Thomas
+       * * `America/St_Vincent` - America/St_Vincent
+       * * `America/Swift_Current` - America/Swift_Current
+       * * `America/Tegucigalpa` - America/Tegucigalpa
+       * * `America/Thule` - America/Thule
+       * * `America/Tijuana` - America/Tijuana
+       * * `America/Toronto` - America/Toronto
+       * * `America/Tortola` - America/Tortola
+       * * `America/Vancouver` - America/Vancouver
+       * * `America/Whitehorse` - America/Whitehorse
+       * * `America/Winnipeg` - America/Winnipeg
+       * * `America/Yakutat` - America/Yakutat
+       * * `America/Yellowknife` - America/Yellowknife
+       * * `Antarctica/Casey` - Antarctica/Casey
+       * * `Antarctica/Davis` - Antarctica/Davis
+       * * `Antarctica/DumontDUrville` - Antarctica/DumontDUrville
+       * * `Antarctica/Macquarie` - Antarctica/Macquarie
+       * * `Antarctica/Mawson` - Antarctica/Mawson
+       * * `Antarctica/McMurdo` - Antarctica/McMurdo
+       * * `Antarctica/Palmer` - Antarctica/Palmer
+       * * `Antarctica/Rothera` - Antarctica/Rothera
+       * * `Antarctica/Syowa` - Antarctica/Syowa
+       * * `Antarctica/Troll` - Antarctica/Troll
+       * * `Antarctica/Vostok` - Antarctica/Vostok
+       * * `Arctic/Longyearbyen` - Arctic/Longyearbyen
+       * * `Asia/Aden` - Asia/Aden
+       * * `Asia/Almaty` - Asia/Almaty
+       * * `Asia/Amman` - Asia/Amman
+       * * `Asia/Anadyr` - Asia/Anadyr
+       * * `Asia/Aqtau` - Asia/Aqtau
+       * * `Asia/Aqtobe` - Asia/Aqtobe
+       * * `Asia/Ashgabat` - Asia/Ashgabat
+       * * `Asia/Atyrau` - Asia/Atyrau
+       * * `Asia/Baghdad` - Asia/Baghdad
+       * * `Asia/Bahrain` - Asia/Bahrain
+       * * `Asia/Baku` - Asia/Baku
+       * * `Asia/Bangkok` - Asia/Bangkok
+       * * `Asia/Barnaul` - Asia/Barnaul
+       * * `Asia/Beirut` - Asia/Beirut
+       * * `Asia/Bishkek` - Asia/Bishkek
+       * * `Asia/Brunei` - Asia/Brunei
+       * * `Asia/Chita` - Asia/Chita
+       * * `Asia/Choibalsan` - Asia/Choibalsan
+       * * `Asia/Colombo` - Asia/Colombo
+       * * `Asia/Damascus` - Asia/Damascus
+       * * `Asia/Dhaka` - Asia/Dhaka
+       * * `Asia/Dili` - Asia/Dili
+       * * `Asia/Dubai` - Asia/Dubai
+       * * `Asia/Dushanbe` - Asia/Dushanbe
+       * * `Asia/Famagusta` - Asia/Famagusta
+       * * `Asia/Gaza` - Asia/Gaza
+       * * `Asia/Hebron` - Asia/Hebron
+       * * `Asia/Ho_Chi_Minh` - Asia/Ho_Chi_Minh
+       * * `Asia/Hong_Kong` - Asia/Hong_Kong
+       * * `Asia/Hovd` - Asia/Hovd
+       * * `Asia/Irkutsk` - Asia/Irkutsk
+       * * `Asia/Jakarta` - Asia/Jakarta
+       * * `Asia/Jayapura` - Asia/Jayapura
+       * * `Asia/Jerusalem` - Asia/Jerusalem
+       * * `Asia/Kabul` - Asia/Kabul
+       * * `Asia/Kamchatka` - Asia/Kamchatka
+       * * `Asia/Karachi` - Asia/Karachi
+       * * `Asia/Kathmandu` - Asia/Kathmandu
+       * * `Asia/Khandyga` - Asia/Khandyga
+       * * `Asia/Kolkata` - Asia/Kolkata
+       * * `Asia/Krasnoyarsk` - Asia/Krasnoyarsk
+       * * `Asia/Kuala_Lumpur` - Asia/Kuala_Lumpur
+       * * `Asia/Kuching` - Asia/Kuching
+       * * `Asia/Kuwait` - Asia/Kuwait
+       * * `Asia/Macau` - Asia/Macau
+       * * `Asia/Magadan` - Asia/Magadan
+       * * `Asia/Makassar` - Asia/Makassar
+       * * `Asia/Manila` - Asia/Manila
+       * * `Asia/Muscat` - Asia/Muscat
+       * * `Asia/Nicosia` - Asia/Nicosia
+       * * `Asia/Novokuznetsk` - Asia/Novokuznetsk
+       * * `Asia/Novosibirsk` - Asia/Novosibirsk
+       * * `Asia/Omsk` - Asia/Omsk
+       * * `Asia/Oral` - Asia/Oral
+       * * `Asia/Phnom_Penh` - Asia/Phnom_Penh
+       * * `Asia/Pontianak` - Asia/Pontianak
+       * * `Asia/Pyongyang` - Asia/Pyongyang
+       * * `Asia/Qatar` - Asia/Qatar
+       * * `Asia/Qostanay` - Asia/Qostanay
+       * * `Asia/Qyzylorda` - Asia/Qyzylorda
+       * * `Asia/Riyadh` - Asia/Riyadh
+       * * `Asia/Sakhalin` - Asia/Sakhalin
+       * * `Asia/Samarkand` - Asia/Samarkand
+       * * `Asia/Seoul` - Asia/Seoul
+       * * `Asia/Shanghai` - Asia/Shanghai
+       * * `Asia/Singapore` - Asia/Singapore
+       * * `Asia/Srednekolymsk` - Asia/Srednekolymsk
+       * * `Asia/Taipei` - Asia/Taipei
+       * * `Asia/Tashkent` - Asia/Tashkent
+       * * `Asia/Tbilisi` - Asia/Tbilisi
+       * * `Asia/Tehran` - Asia/Tehran
+       * * `Asia/Thimphu` - Asia/Thimphu
+       * * `Asia/Tokyo` - Asia/Tokyo
+       * * `Asia/Tomsk` - Asia/Tomsk
+       * * `Asia/Ulaanbaatar` - Asia/Ulaanbaatar
+       * * `Asia/Urumqi` - Asia/Urumqi
+       * * `Asia/Ust-Nera` - Asia/Ust-Nera
+       * * `Asia/Vientiane` - Asia/Vientiane
+       * * `Asia/Vladivostok` - Asia/Vladivostok
+       * * `Asia/Yakutsk` - Asia/Yakutsk
+       * * `Asia/Yangon` - Asia/Yangon
+       * * `Asia/Yekaterinburg` - Asia/Yekaterinburg
+       * * `Asia/Yerevan` - Asia/Yerevan
+       * * `Atlantic/Azores` - Atlantic/Azores
+       * * `Atlantic/Bermuda` - Atlantic/Bermuda
+       * * `Atlantic/Canary` - Atlantic/Canary
+       * * `Atlantic/Cape_Verde` - Atlantic/Cape_Verde
+       * * `Atlantic/Faroe` - Atlantic/Faroe
+       * * `Atlantic/Madeira` - Atlantic/Madeira
+       * * `Atlantic/Reykjavik` - Atlantic/Reykjavik
+       * * `Atlantic/South_Georgia` - Atlantic/South_Georgia
+       * * `Atlantic/St_Helena` - Atlantic/St_Helena
+       * * `Atlantic/Stanley` - Atlantic/Stanley
+       * * `Australia/Adelaide` - Australia/Adelaide
+       * * `Australia/Brisbane` - Australia/Brisbane
+       * * `Australia/Broken_Hill` - Australia/Broken_Hill
+       * * `Australia/Darwin` - Australia/Darwin
+       * * `Australia/Eucla` - Australia/Eucla
+       * * `Australia/Hobart` - Australia/Hobart
+       * * `Australia/Lindeman` - Australia/Lindeman
+       * * `Australia/Lord_Howe` - Australia/Lord_Howe
+       * * `Australia/Melbourne` - Australia/Melbourne
+       * * `Australia/Perth` - Australia/Perth
+       * * `Australia/Sydney` - Australia/Sydney
+       * * `Canada/Atlantic` - Canada/Atlantic
+       * * `Canada/Central` - Canada/Central
+       * * `Canada/Eastern` - Canada/Eastern
+       * * `Canada/Mountain` - Canada/Mountain
+       * * `Canada/Newfoundland` - Canada/Newfoundland
+       * * `Canada/Pacific` - Canada/Pacific
+       * * `Europe/Amsterdam` - Europe/Amsterdam
+       * * `Europe/Andorra` - Europe/Andorra
+       * * `Europe/Astrakhan` - Europe/Astrakhan
+       * * `Europe/Athens` - Europe/Athens
+       * * `Europe/Belgrade` - Europe/Belgrade
+       * * `Europe/Berlin` - Europe/Berlin
+       * * `Europe/Bratislava` - Europe/Bratislava
+       * * `Europe/Brussels` - Europe/Brussels
+       * * `Europe/Bucharest` - Europe/Bucharest
+       * * `Europe/Budapest` - Europe/Budapest
+       * * `Europe/Busingen` - Europe/Busingen
+       * * `Europe/Chisinau` - Europe/Chisinau
+       * * `Europe/Copenhagen` - Europe/Copenhagen
+       * * `Europe/Dublin` - Europe/Dublin
+       * * `Europe/Gibraltar` - Europe/Gibraltar
+       * * `Europe/Guernsey` - Europe/Guernsey
+       * * `Europe/Helsinki` - Europe/Helsinki
+       * * `Europe/Isle_of_Man` - Europe/Isle_of_Man
+       * * `Europe/Istanbul` - Europe/Istanbul
+       * * `Europe/Jersey` - Europe/Jersey
+       * * `Europe/Kaliningrad` - Europe/Kaliningrad
+       * * `Europe/Kirov` - Europe/Kirov
+       * * `Europe/Kyiv` - Europe/Kyiv
+       * * `Europe/Lisbon` - Europe/Lisbon
+       * * `Europe/Ljubljana` - Europe/Ljubljana
+       * * `Europe/London` - Europe/London
+       * * `Europe/Luxembourg` - Europe/Luxembourg
+       * * `Europe/Madrid` - Europe/Madrid
+       * * `Europe/Malta` - Europe/Malta
+       * * `Europe/Mariehamn` - Europe/Mariehamn
+       * * `Europe/Minsk` - Europe/Minsk
+       * * `Europe/Monaco` - Europe/Monaco
+       * * `Europe/Moscow` - Europe/Moscow
+       * * `Europe/Oslo` - Europe/Oslo
+       * * `Europe/Paris` - Europe/Paris
+       * * `Europe/Podgorica` - Europe/Podgorica
+       * * `Europe/Prague` - Europe/Prague
+       * * `Europe/Riga` - Europe/Riga
+       * * `Europe/Rome` - Europe/Rome
+       * * `Europe/Samara` - Europe/Samara
+       * * `Europe/San_Marino` - Europe/San_Marino
+       * * `Europe/Sarajevo` - Europe/Sarajevo
+       * * `Europe/Saratov` - Europe/Saratov
+       * * `Europe/Simferopol` - Europe/Simferopol
+       * * `Europe/Skopje` - Europe/Skopje
+       * * `Europe/Sofia` - Europe/Sofia
+       * * `Europe/Stockholm` - Europe/Stockholm
+       * * `Europe/Tallinn` - Europe/Tallinn
+       * * `Europe/Tirane` - Europe/Tirane
+       * * `Europe/Ulyanovsk` - Europe/Ulyanovsk
+       * * `Europe/Vaduz` - Europe/Vaduz
+       * * `Europe/Vatican` - Europe/Vatican
+       * * `Europe/Vienna` - Europe/Vienna
+       * * `Europe/Vilnius` - Europe/Vilnius
+       * * `Europe/Volgograd` - Europe/Volgograd
+       * * `Europe/Warsaw` - Europe/Warsaw
+       * * `Europe/Zagreb` - Europe/Zagreb
+       * * `Europe/Zurich` - Europe/Zurich
+       * * `GMT` - GMT
+       * * `Indian/Antananarivo` - Indian/Antananarivo
+       * * `Indian/Chagos` - Indian/Chagos
+       * * `Indian/Christmas` - Indian/Christmas
+       * * `Indian/Cocos` - Indian/Cocos
+       * * `Indian/Comoro` - Indian/Comoro
+       * * `Indian/Kerguelen` - Indian/Kerguelen
+       * * `Indian/Mahe` - Indian/Mahe
+       * * `Indian/Maldives` - Indian/Maldives
+       * * `Indian/Mauritius` - Indian/Mauritius
+       * * `Indian/Mayotte` - Indian/Mayotte
+       * * `Indian/Reunion` - Indian/Reunion
+       * * `Pacific/Apia` - Pacific/Apia
+       * * `Pacific/Auckland` - Pacific/Auckland
+       * * `Pacific/Bougainville` - Pacific/Bougainville
+       * * `Pacific/Chatham` - Pacific/Chatham
+       * * `Pacific/Chuuk` - Pacific/Chuuk
+       * * `Pacific/Easter` - Pacific/Easter
+       * * `Pacific/Efate` - Pacific/Efate
+       * * `Pacific/Fakaofo` - Pacific/Fakaofo
+       * * `Pacific/Fiji` - Pacific/Fiji
+       * * `Pacific/Funafuti` - Pacific/Funafuti
+       * * `Pacific/Galapagos` - Pacific/Galapagos
+       * * `Pacific/Gambier` - Pacific/Gambier
+       * * `Pacific/Guadalcanal` - Pacific/Guadalcanal
+       * * `Pacific/Guam` - Pacific/Guam
+       * * `Pacific/Honolulu` - Pacific/Honolulu
+       * * `Pacific/Kanton` - Pacific/Kanton
+       * * `Pacific/Kiritimati` - Pacific/Kiritimati
+       * * `Pacific/Kosrae` - Pacific/Kosrae
+       * * `Pacific/Kwajalein` - Pacific/Kwajalein
+       * * `Pacific/Majuro` - Pacific/Majuro
+       * * `Pacific/Marquesas` - Pacific/Marquesas
+       * * `Pacific/Midway` - Pacific/Midway
+       * * `Pacific/Nauru` - Pacific/Nauru
+       * * `Pacific/Niue` - Pacific/Niue
+       * * `Pacific/Norfolk` - Pacific/Norfolk
+       * * `Pacific/Noumea` - Pacific/Noumea
+       * * `Pacific/Pago_Pago` - Pacific/Pago_Pago
+       * * `Pacific/Palau` - Pacific/Palau
+       * * `Pacific/Pitcairn` - Pacific/Pitcairn
+       * * `Pacific/Pohnpei` - Pacific/Pohnpei
+       * * `Pacific/Port_Moresby` - Pacific/Port_Moresby
+       * * `Pacific/Rarotonga` - Pacific/Rarotonga
+       * * `Pacific/Saipan` - Pacific/Saipan
+       * * `Pacific/Tahiti` - Pacific/Tahiti
+       * * `Pacific/Tarawa` - Pacific/Tarawa
+       * * `Pacific/Tongatapu` - Pacific/Tongatapu
+       * * `Pacific/Wake` - Pacific/Wake
+       * * `Pacific/Wallis` - Pacific/Wallis
+       * * `US/Alaska` - US/Alaska
+       * * `US/Arizona` - US/Arizona
+       * * `US/Central` - US/Central
+       * * `US/Eastern` - US/Eastern
+       * * `US/Hawaii` - US/Hawaii
+       * * `US/Mountain` - US/Mountain
+       * * `US/Pacific` - US/Pacific
+       * * `UTC` - UTC 
+       * @enum {string}
+       */
       timezone?: "Africa/Abidjan" | "Africa/Accra" | "Africa/Addis_Ababa" | "Africa/Algiers" | "Africa/Asmara" | "Africa/Bamako" | "Africa/Bangui" | "Africa/Banjul" | "Africa/Bissau" | "Africa/Blantyre" | "Africa/Brazzaville" | "Africa/Bujumbura" | "Africa/Cairo" | "Africa/Casablanca" | "Africa/Ceuta" | "Africa/Conakry" | "Africa/Dakar" | "Africa/Dar_es_Salaam" | "Africa/Djibouti" | "Africa/Douala" | "Africa/El_Aaiun" | "Africa/Freetown" | "Africa/Gaborone" | "Africa/Harare" | "Africa/Johannesburg" | "Africa/Juba" | "Africa/Kampala" | "Africa/Khartoum" | "Africa/Kigali" | "Africa/Kinshasa" | "Africa/Lagos" | "Africa/Libreville" | "Africa/Lome" | "Africa/Luanda" | "Africa/Lubumbashi" | "Africa/Lusaka" | "Africa/Malabo" | "Africa/Maputo" | "Africa/Maseru" | "Africa/Mbabane" | "Africa/Mogadishu" | "Africa/Monrovia" | "Africa/Nairobi" | "Africa/Ndjamena" | "Africa/Niamey" | "Africa/Nouakchott" | "Africa/Ouagadougou" | "Africa/Porto-Novo" | "Africa/Sao_Tome" | "Africa/Tripoli" | "Africa/Tunis" | "Africa/Windhoek" | "America/Adak" | "America/Anchorage" | "America/Anguilla" | "America/Antigua" | "America/Araguaina" | "America/Argentina/Buenos_Aires" | "America/Argentina/Catamarca" | "America/Argentina/Cordoba" | "America/Argentina/Jujuy" | "America/Argentina/La_Rioja" | "America/Argentina/Mendoza" | "America/Argentina/Rio_Gallegos" | "America/Argentina/Salta" | "America/Argentina/San_Juan" | "America/Argentina/San_Luis" | "America/Argentina/Tucuman" | "America/Argentina/Ushuaia" | "America/Aruba" | "America/Asuncion" | "America/Atikokan" | "America/Bahia" | "America/Bahia_Banderas" | "America/Barbados" | "America/Belem" | "America/Belize" | "America/Blanc-Sablon" | "America/Boa_Vista" | "America/Bogota" | "America/Boise" | "America/Cambridge_Bay" | "America/Campo_Grande" | "America/Cancun" | "America/Caracas" | "America/Cayenne" | "America/Cayman" | "America/Chicago" | "America/Chihuahua" | "America/Ciudad_Juarez" | "America/Costa_Rica" | "America/Creston" | "America/Cuiaba" | "America/Curacao" | "America/Danmarkshavn" | "America/Dawson" | "America/Dawson_Creek" | "America/Denver" | "America/Detroit" | "America/Dominica" | "America/Edmonton" | "America/Eirunepe" | "America/El_Salvador" | "America/Fort_Nelson" | "America/Fortaleza" | "America/Glace_Bay" | "America/Goose_Bay" | "America/Grand_Turk" | "America/Grenada" | "America/Guadeloupe" | "America/Guatemala" | "America/Guayaquil" | "America/Guyana" | "America/Halifax" | "America/Havana" | "America/Hermosillo" | "America/Indiana/Indianapolis" | "America/Indiana/Knox" | "America/Indiana/Marengo" | "America/Indiana/Petersburg" | "America/Indiana/Tell_City" | "America/Indiana/Vevay" | "America/Indiana/Vincennes" | "America/Indiana/Winamac" | "America/Inuvik" | "America/Iqaluit" | "America/Jamaica" | "America/Juneau" | "America/Kentucky/Louisville" | "America/Kentucky/Monticello" | "America/Kralendijk" | "America/La_Paz" | "America/Lima" | "America/Los_Angeles" | "America/Lower_Princes" | "America/Maceio" | "America/Managua" | "America/Manaus" | "America/Marigot" | "America/Martinique" | "America/Matamoros" | "America/Mazatlan" | "America/Menominee" | "America/Merida" | "America/Metlakatla" | "America/Mexico_City" | "America/Miquelon" | "America/Moncton" | "America/Monterrey" | "America/Montevideo" | "America/Montserrat" | "America/Nassau" | "America/New_York" | "America/Nome" | "America/Noronha" | "America/North_Dakota/Beulah" | "America/North_Dakota/Center" | "America/North_Dakota/New_Salem" | "America/Nuuk" | "America/Ojinaga" | "America/Panama" | "America/Paramaribo" | "America/Phoenix" | "America/Port-au-Prince" | "America/Port_of_Spain" | "America/Porto_Velho" | "America/Puerto_Rico" | "America/Punta_Arenas" | "America/Rankin_Inlet" | "America/Recife" | "America/Regina" | "America/Resolute" | "America/Rio_Branco" | "America/Santarem" | "America/Santiago" | "America/Santo_Domingo" | "America/Sao_Paulo" | "America/Scoresbysund" | "America/Sitka" | "America/St_Barthelemy" | "America/St_Johns" | "America/St_Kitts" | "America/St_Lucia" | "America/St_Thomas" | "America/St_Vincent" | "America/Swift_Current" | "America/Tegucigalpa" | "America/Thule" | "America/Tijuana" | "America/Toronto" | "America/Tortola" | "America/Vancouver" | "America/Whitehorse" | "America/Winnipeg" | "America/Yakutat" | "America/Yellowknife" | "Antarctica/Casey" | "Antarctica/Davis" | "Antarctica/DumontDUrville" | "Antarctica/Macquarie" | "Antarctica/Mawson" | "Antarctica/McMurdo" | "Antarctica/Palmer" | "Antarctica/Rothera" | "Antarctica/Syowa" | "Antarctica/Troll" | "Antarctica/Vostok" | "Arctic/Longyearbyen" | "Asia/Aden" | "Asia/Almaty" | "Asia/Amman" | "Asia/Anadyr" | "Asia/Aqtau" | "Asia/Aqtobe" | "Asia/Ashgabat" | "Asia/Atyrau" | "Asia/Baghdad" | "Asia/Bahrain" | "Asia/Baku" | "Asia/Bangkok" | "Asia/Barnaul" | "Asia/Beirut" | "Asia/Bishkek" | "Asia/Brunei" | "Asia/Chita" | "Asia/Choibalsan" | "Asia/Colombo" | "Asia/Damascus" | "Asia/Dhaka" | "Asia/Dili" | "Asia/Dubai" | "Asia/Dushanbe" | "Asia/Famagusta" | "Asia/Gaza" | "Asia/Hebron" | "Asia/Ho_Chi_Minh" | "Asia/Hong_Kong" | "Asia/Hovd" | "Asia/Irkutsk" | "Asia/Jakarta" | "Asia/Jayapura" | "Asia/Jerusalem" | "Asia/Kabul" | "Asia/Kamchatka" | "Asia/Karachi" | "Asia/Kathmandu" | "Asia/Khandyga" | "Asia/Kolkata" | "Asia/Krasnoyarsk" | "Asia/Kuala_Lumpur" | "Asia/Kuching" | "Asia/Kuwait" | "Asia/Macau" | "Asia/Magadan" | "Asia/Makassar" | "Asia/Manila" | "Asia/Muscat" | "Asia/Nicosia" | "Asia/Novokuznetsk" | "Asia/Novosibirsk" | "Asia/Omsk" | "Asia/Oral" | "Asia/Phnom_Penh" | "Asia/Pontianak" | "Asia/Pyongyang" | "Asia/Qatar" | "Asia/Qostanay" | "Asia/Qyzylorda" | "Asia/Riyadh" | "Asia/Sakhalin" | "Asia/Samarkand" | "Asia/Seoul" | "Asia/Shanghai" | "Asia/Singapore" | "Asia/Srednekolymsk" | "Asia/Taipei" | "Asia/Tashkent" | "Asia/Tbilisi" | "Asia/Tehran" | "Asia/Thimphu" | "Asia/Tokyo" | "Asia/Tomsk" | "Asia/Ulaanbaatar" | "Asia/Urumqi" | "Asia/Ust-Nera" | "Asia/Vientiane" | "Asia/Vladivostok" | "Asia/Yakutsk" | "Asia/Yangon" | "Asia/Yekaterinburg" | "Asia/Yerevan" | "Atlantic/Azores" | "Atlantic/Bermuda" | "Atlantic/Canary" | "Atlantic/Cape_Verde" | "Atlantic/Faroe" | "Atlantic/Madeira" | "Atlantic/Reykjavik" | "Atlantic/South_Georgia" | "Atlantic/St_Helena" | "Atlantic/Stanley" | "Australia/Adelaide" | "Australia/Brisbane" | "Australia/Broken_Hill" | "Australia/Darwin" | "Australia/Eucla" | "Australia/Hobart" | "Australia/Lindeman" | "Australia/Lord_Howe" | "Australia/Melbourne" | "Australia/Perth" | "Australia/Sydney" | "Canada/Atlantic" | "Canada/Central" | "Canada/Eastern" | "Canada/Mountain" | "Canada/Newfoundland" | "Canada/Pacific" | "Europe/Amsterdam" | "Europe/Andorra" | "Europe/Astrakhan" | "Europe/Athens" | "Europe/Belgrade" | "Europe/Berlin" | "Europe/Bratislava" | "Europe/Brussels" | "Europe/Bucharest" | "Europe/Budapest" | "Europe/Busingen" | "Europe/Chisinau" | "Europe/Copenhagen" | "Europe/Dublin" | "Europe/Gibraltar" | "Europe/Guernsey" | "Europe/Helsinki" | "Europe/Isle_of_Man" | "Europe/Istanbul" | "Europe/Jersey" | "Europe/Kaliningrad" | "Europe/Kirov" | "Europe/Kyiv" | "Europe/Lisbon" | "Europe/Ljubljana" | "Europe/London" | "Europe/Luxembourg" | "Europe/Madrid" | "Europe/Malta" | "Europe/Mariehamn" | "Europe/Minsk" | "Europe/Monaco" | "Europe/Moscow" | "Europe/Oslo" | "Europe/Paris" | "Europe/Podgorica" | "Europe/Prague" | "Europe/Riga" | "Europe/Rome" | "Europe/Samara" | "Europe/San_Marino" | "Europe/Sarajevo" | "Europe/Saratov" | "Europe/Simferopol" | "Europe/Skopje" | "Europe/Sofia" | "Europe/Stockholm" | "Europe/Tallinn" | "Europe/Tirane" | "Europe/Ulyanovsk" | "Europe/Vaduz" | "Europe/Vatican" | "Europe/Vienna" | "Europe/Vilnius" | "Europe/Volgograd" | "Europe/Warsaw" | "Europe/Zagreb" | "Europe/Zurich" | "GMT" | "Indian/Antananarivo" | "Indian/Chagos" | "Indian/Christmas" | "Indian/Cocos" | "Indian/Comoro" | "Indian/Kerguelen" | "Indian/Mahe" | "Indian/Maldives" | "Indian/Mauritius" | "Indian/Mayotte" | "Indian/Reunion" | "Pacific/Apia" | "Pacific/Auckland" | "Pacific/Bougainville" | "Pacific/Chatham" | "Pacific/Chuuk" | "Pacific/Easter" | "Pacific/Efate" | "Pacific/Fakaofo" | "Pacific/Fiji" | "Pacific/Funafuti" | "Pacific/Galapagos" | "Pacific/Gambier" | "Pacific/Guadalcanal" | "Pacific/Guam" | "Pacific/Honolulu" | "Pacific/Kanton" | "Pacific/Kiritimati" | "Pacific/Kosrae" | "Pacific/Kwajalein" | "Pacific/Majuro" | "Pacific/Marquesas" | "Pacific/Midway" | "Pacific/Nauru" | "Pacific/Niue" | "Pacific/Norfolk" | "Pacific/Noumea" | "Pacific/Pago_Pago" | "Pacific/Palau" | "Pacific/Pitcairn" | "Pacific/Pohnpei" | "Pacific/Port_Moresby" | "Pacific/Rarotonga" | "Pacific/Saipan" | "Pacific/Tahiti" | "Pacific/Tarawa" | "Pacific/Tongatapu" | "Pacific/Wake" | "Pacific/Wallis" | "US/Alaska" | "US/Arizona" | "US/Central" | "US/Eastern" | "US/Hawaii" | "US/Mountain" | "US/Pacific" | "UTC";
       customer_name?: string;
     };
     PatchedInvoiceUpdateRequest: {
-      /** @enum {string} */
+      /**
+       * @description * `paid` - paid
+       * * `unpaid` - unpaid 
+       * @enum {string}
+       */
       payment_status?: "paid" | "unpaid";
     };
     PatchedMetricUpdateRequest: {
       billable_metric_name?: string;
-      /** @enum {string} */
+      /**
+       * @description * `active` - Active
+       * * `archived` - Archived 
+       * @enum {string}
+       */
       status?: "active" | "archived";
     };
     PatchedOrganizationSettingUpdateRequest: {
@@ -1949,10 +5492,449 @@ export interface components {
       payment_grace_period?: number;
       plan_tags?: (components["schemas"]["TagRequest"])[];
       subscription_filter_keys?: (string)[];
-      /** @enum {string} */
+      /**
+       * @description * `Africa/Abidjan` - Africa/Abidjan
+       * * `Africa/Accra` - Africa/Accra
+       * * `Africa/Addis_Ababa` - Africa/Addis_Ababa
+       * * `Africa/Algiers` - Africa/Algiers
+       * * `Africa/Asmara` - Africa/Asmara
+       * * `Africa/Bamako` - Africa/Bamako
+       * * `Africa/Bangui` - Africa/Bangui
+       * * `Africa/Banjul` - Africa/Banjul
+       * * `Africa/Bissau` - Africa/Bissau
+       * * `Africa/Blantyre` - Africa/Blantyre
+       * * `Africa/Brazzaville` - Africa/Brazzaville
+       * * `Africa/Bujumbura` - Africa/Bujumbura
+       * * `Africa/Cairo` - Africa/Cairo
+       * * `Africa/Casablanca` - Africa/Casablanca
+       * * `Africa/Ceuta` - Africa/Ceuta
+       * * `Africa/Conakry` - Africa/Conakry
+       * * `Africa/Dakar` - Africa/Dakar
+       * * `Africa/Dar_es_Salaam` - Africa/Dar_es_Salaam
+       * * `Africa/Djibouti` - Africa/Djibouti
+       * * `Africa/Douala` - Africa/Douala
+       * * `Africa/El_Aaiun` - Africa/El_Aaiun
+       * * `Africa/Freetown` - Africa/Freetown
+       * * `Africa/Gaborone` - Africa/Gaborone
+       * * `Africa/Harare` - Africa/Harare
+       * * `Africa/Johannesburg` - Africa/Johannesburg
+       * * `Africa/Juba` - Africa/Juba
+       * * `Africa/Kampala` - Africa/Kampala
+       * * `Africa/Khartoum` - Africa/Khartoum
+       * * `Africa/Kigali` - Africa/Kigali
+       * * `Africa/Kinshasa` - Africa/Kinshasa
+       * * `Africa/Lagos` - Africa/Lagos
+       * * `Africa/Libreville` - Africa/Libreville
+       * * `Africa/Lome` - Africa/Lome
+       * * `Africa/Luanda` - Africa/Luanda
+       * * `Africa/Lubumbashi` - Africa/Lubumbashi
+       * * `Africa/Lusaka` - Africa/Lusaka
+       * * `Africa/Malabo` - Africa/Malabo
+       * * `Africa/Maputo` - Africa/Maputo
+       * * `Africa/Maseru` - Africa/Maseru
+       * * `Africa/Mbabane` - Africa/Mbabane
+       * * `Africa/Mogadishu` - Africa/Mogadishu
+       * * `Africa/Monrovia` - Africa/Monrovia
+       * * `Africa/Nairobi` - Africa/Nairobi
+       * * `Africa/Ndjamena` - Africa/Ndjamena
+       * * `Africa/Niamey` - Africa/Niamey
+       * * `Africa/Nouakchott` - Africa/Nouakchott
+       * * `Africa/Ouagadougou` - Africa/Ouagadougou
+       * * `Africa/Porto-Novo` - Africa/Porto-Novo
+       * * `Africa/Sao_Tome` - Africa/Sao_Tome
+       * * `Africa/Tripoli` - Africa/Tripoli
+       * * `Africa/Tunis` - Africa/Tunis
+       * * `Africa/Windhoek` - Africa/Windhoek
+       * * `America/Adak` - America/Adak
+       * * `America/Anchorage` - America/Anchorage
+       * * `America/Anguilla` - America/Anguilla
+       * * `America/Antigua` - America/Antigua
+       * * `America/Araguaina` - America/Araguaina
+       * * `America/Argentina/Buenos_Aires` - America/Argentina/Buenos_Aires
+       * * `America/Argentina/Catamarca` - America/Argentina/Catamarca
+       * * `America/Argentina/Cordoba` - America/Argentina/Cordoba
+       * * `America/Argentina/Jujuy` - America/Argentina/Jujuy
+       * * `America/Argentina/La_Rioja` - America/Argentina/La_Rioja
+       * * `America/Argentina/Mendoza` - America/Argentina/Mendoza
+       * * `America/Argentina/Rio_Gallegos` - America/Argentina/Rio_Gallegos
+       * * `America/Argentina/Salta` - America/Argentina/Salta
+       * * `America/Argentina/San_Juan` - America/Argentina/San_Juan
+       * * `America/Argentina/San_Luis` - America/Argentina/San_Luis
+       * * `America/Argentina/Tucuman` - America/Argentina/Tucuman
+       * * `America/Argentina/Ushuaia` - America/Argentina/Ushuaia
+       * * `America/Aruba` - America/Aruba
+       * * `America/Asuncion` - America/Asuncion
+       * * `America/Atikokan` - America/Atikokan
+       * * `America/Bahia` - America/Bahia
+       * * `America/Bahia_Banderas` - America/Bahia_Banderas
+       * * `America/Barbados` - America/Barbados
+       * * `America/Belem` - America/Belem
+       * * `America/Belize` - America/Belize
+       * * `America/Blanc-Sablon` - America/Blanc-Sablon
+       * * `America/Boa_Vista` - America/Boa_Vista
+       * * `America/Bogota` - America/Bogota
+       * * `America/Boise` - America/Boise
+       * * `America/Cambridge_Bay` - America/Cambridge_Bay
+       * * `America/Campo_Grande` - America/Campo_Grande
+       * * `America/Cancun` - America/Cancun
+       * * `America/Caracas` - America/Caracas
+       * * `America/Cayenne` - America/Cayenne
+       * * `America/Cayman` - America/Cayman
+       * * `America/Chicago` - America/Chicago
+       * * `America/Chihuahua` - America/Chihuahua
+       * * `America/Ciudad_Juarez` - America/Ciudad_Juarez
+       * * `America/Costa_Rica` - America/Costa_Rica
+       * * `America/Creston` - America/Creston
+       * * `America/Cuiaba` - America/Cuiaba
+       * * `America/Curacao` - America/Curacao
+       * * `America/Danmarkshavn` - America/Danmarkshavn
+       * * `America/Dawson` - America/Dawson
+       * * `America/Dawson_Creek` - America/Dawson_Creek
+       * * `America/Denver` - America/Denver
+       * * `America/Detroit` - America/Detroit
+       * * `America/Dominica` - America/Dominica
+       * * `America/Edmonton` - America/Edmonton
+       * * `America/Eirunepe` - America/Eirunepe
+       * * `America/El_Salvador` - America/El_Salvador
+       * * `America/Fort_Nelson` - America/Fort_Nelson
+       * * `America/Fortaleza` - America/Fortaleza
+       * * `America/Glace_Bay` - America/Glace_Bay
+       * * `America/Goose_Bay` - America/Goose_Bay
+       * * `America/Grand_Turk` - America/Grand_Turk
+       * * `America/Grenada` - America/Grenada
+       * * `America/Guadeloupe` - America/Guadeloupe
+       * * `America/Guatemala` - America/Guatemala
+       * * `America/Guayaquil` - America/Guayaquil
+       * * `America/Guyana` - America/Guyana
+       * * `America/Halifax` - America/Halifax
+       * * `America/Havana` - America/Havana
+       * * `America/Hermosillo` - America/Hermosillo
+       * * `America/Indiana/Indianapolis` - America/Indiana/Indianapolis
+       * * `America/Indiana/Knox` - America/Indiana/Knox
+       * * `America/Indiana/Marengo` - America/Indiana/Marengo
+       * * `America/Indiana/Petersburg` - America/Indiana/Petersburg
+       * * `America/Indiana/Tell_City` - America/Indiana/Tell_City
+       * * `America/Indiana/Vevay` - America/Indiana/Vevay
+       * * `America/Indiana/Vincennes` - America/Indiana/Vincennes
+       * * `America/Indiana/Winamac` - America/Indiana/Winamac
+       * * `America/Inuvik` - America/Inuvik
+       * * `America/Iqaluit` - America/Iqaluit
+       * * `America/Jamaica` - America/Jamaica
+       * * `America/Juneau` - America/Juneau
+       * * `America/Kentucky/Louisville` - America/Kentucky/Louisville
+       * * `America/Kentucky/Monticello` - America/Kentucky/Monticello
+       * * `America/Kralendijk` - America/Kralendijk
+       * * `America/La_Paz` - America/La_Paz
+       * * `America/Lima` - America/Lima
+       * * `America/Los_Angeles` - America/Los_Angeles
+       * * `America/Lower_Princes` - America/Lower_Princes
+       * * `America/Maceio` - America/Maceio
+       * * `America/Managua` - America/Managua
+       * * `America/Manaus` - America/Manaus
+       * * `America/Marigot` - America/Marigot
+       * * `America/Martinique` - America/Martinique
+       * * `America/Matamoros` - America/Matamoros
+       * * `America/Mazatlan` - America/Mazatlan
+       * * `America/Menominee` - America/Menominee
+       * * `America/Merida` - America/Merida
+       * * `America/Metlakatla` - America/Metlakatla
+       * * `America/Mexico_City` - America/Mexico_City
+       * * `America/Miquelon` - America/Miquelon
+       * * `America/Moncton` - America/Moncton
+       * * `America/Monterrey` - America/Monterrey
+       * * `America/Montevideo` - America/Montevideo
+       * * `America/Montserrat` - America/Montserrat
+       * * `America/Nassau` - America/Nassau
+       * * `America/New_York` - America/New_York
+       * * `America/Nome` - America/Nome
+       * * `America/Noronha` - America/Noronha
+       * * `America/North_Dakota/Beulah` - America/North_Dakota/Beulah
+       * * `America/North_Dakota/Center` - America/North_Dakota/Center
+       * * `America/North_Dakota/New_Salem` - America/North_Dakota/New_Salem
+       * * `America/Nuuk` - America/Nuuk
+       * * `America/Ojinaga` - America/Ojinaga
+       * * `America/Panama` - America/Panama
+       * * `America/Paramaribo` - America/Paramaribo
+       * * `America/Phoenix` - America/Phoenix
+       * * `America/Port-au-Prince` - America/Port-au-Prince
+       * * `America/Port_of_Spain` - America/Port_of_Spain
+       * * `America/Porto_Velho` - America/Porto_Velho
+       * * `America/Puerto_Rico` - America/Puerto_Rico
+       * * `America/Punta_Arenas` - America/Punta_Arenas
+       * * `America/Rankin_Inlet` - America/Rankin_Inlet
+       * * `America/Recife` - America/Recife
+       * * `America/Regina` - America/Regina
+       * * `America/Resolute` - America/Resolute
+       * * `America/Rio_Branco` - America/Rio_Branco
+       * * `America/Santarem` - America/Santarem
+       * * `America/Santiago` - America/Santiago
+       * * `America/Santo_Domingo` - America/Santo_Domingo
+       * * `America/Sao_Paulo` - America/Sao_Paulo
+       * * `America/Scoresbysund` - America/Scoresbysund
+       * * `America/Sitka` - America/Sitka
+       * * `America/St_Barthelemy` - America/St_Barthelemy
+       * * `America/St_Johns` - America/St_Johns
+       * * `America/St_Kitts` - America/St_Kitts
+       * * `America/St_Lucia` - America/St_Lucia
+       * * `America/St_Thomas` - America/St_Thomas
+       * * `America/St_Vincent` - America/St_Vincent
+       * * `America/Swift_Current` - America/Swift_Current
+       * * `America/Tegucigalpa` - America/Tegucigalpa
+       * * `America/Thule` - America/Thule
+       * * `America/Tijuana` - America/Tijuana
+       * * `America/Toronto` - America/Toronto
+       * * `America/Tortola` - America/Tortola
+       * * `America/Vancouver` - America/Vancouver
+       * * `America/Whitehorse` - America/Whitehorse
+       * * `America/Winnipeg` - America/Winnipeg
+       * * `America/Yakutat` - America/Yakutat
+       * * `America/Yellowknife` - America/Yellowknife
+       * * `Antarctica/Casey` - Antarctica/Casey
+       * * `Antarctica/Davis` - Antarctica/Davis
+       * * `Antarctica/DumontDUrville` - Antarctica/DumontDUrville
+       * * `Antarctica/Macquarie` - Antarctica/Macquarie
+       * * `Antarctica/Mawson` - Antarctica/Mawson
+       * * `Antarctica/McMurdo` - Antarctica/McMurdo
+       * * `Antarctica/Palmer` - Antarctica/Palmer
+       * * `Antarctica/Rothera` - Antarctica/Rothera
+       * * `Antarctica/Syowa` - Antarctica/Syowa
+       * * `Antarctica/Troll` - Antarctica/Troll
+       * * `Antarctica/Vostok` - Antarctica/Vostok
+       * * `Arctic/Longyearbyen` - Arctic/Longyearbyen
+       * * `Asia/Aden` - Asia/Aden
+       * * `Asia/Almaty` - Asia/Almaty
+       * * `Asia/Amman` - Asia/Amman
+       * * `Asia/Anadyr` - Asia/Anadyr
+       * * `Asia/Aqtau` - Asia/Aqtau
+       * * `Asia/Aqtobe` - Asia/Aqtobe
+       * * `Asia/Ashgabat` - Asia/Ashgabat
+       * * `Asia/Atyrau` - Asia/Atyrau
+       * * `Asia/Baghdad` - Asia/Baghdad
+       * * `Asia/Bahrain` - Asia/Bahrain
+       * * `Asia/Baku` - Asia/Baku
+       * * `Asia/Bangkok` - Asia/Bangkok
+       * * `Asia/Barnaul` - Asia/Barnaul
+       * * `Asia/Beirut` - Asia/Beirut
+       * * `Asia/Bishkek` - Asia/Bishkek
+       * * `Asia/Brunei` - Asia/Brunei
+       * * `Asia/Chita` - Asia/Chita
+       * * `Asia/Choibalsan` - Asia/Choibalsan
+       * * `Asia/Colombo` - Asia/Colombo
+       * * `Asia/Damascus` - Asia/Damascus
+       * * `Asia/Dhaka` - Asia/Dhaka
+       * * `Asia/Dili` - Asia/Dili
+       * * `Asia/Dubai` - Asia/Dubai
+       * * `Asia/Dushanbe` - Asia/Dushanbe
+       * * `Asia/Famagusta` - Asia/Famagusta
+       * * `Asia/Gaza` - Asia/Gaza
+       * * `Asia/Hebron` - Asia/Hebron
+       * * `Asia/Ho_Chi_Minh` - Asia/Ho_Chi_Minh
+       * * `Asia/Hong_Kong` - Asia/Hong_Kong
+       * * `Asia/Hovd` - Asia/Hovd
+       * * `Asia/Irkutsk` - Asia/Irkutsk
+       * * `Asia/Jakarta` - Asia/Jakarta
+       * * `Asia/Jayapura` - Asia/Jayapura
+       * * `Asia/Jerusalem` - Asia/Jerusalem
+       * * `Asia/Kabul` - Asia/Kabul
+       * * `Asia/Kamchatka` - Asia/Kamchatka
+       * * `Asia/Karachi` - Asia/Karachi
+       * * `Asia/Kathmandu` - Asia/Kathmandu
+       * * `Asia/Khandyga` - Asia/Khandyga
+       * * `Asia/Kolkata` - Asia/Kolkata
+       * * `Asia/Krasnoyarsk` - Asia/Krasnoyarsk
+       * * `Asia/Kuala_Lumpur` - Asia/Kuala_Lumpur
+       * * `Asia/Kuching` - Asia/Kuching
+       * * `Asia/Kuwait` - Asia/Kuwait
+       * * `Asia/Macau` - Asia/Macau
+       * * `Asia/Magadan` - Asia/Magadan
+       * * `Asia/Makassar` - Asia/Makassar
+       * * `Asia/Manila` - Asia/Manila
+       * * `Asia/Muscat` - Asia/Muscat
+       * * `Asia/Nicosia` - Asia/Nicosia
+       * * `Asia/Novokuznetsk` - Asia/Novokuznetsk
+       * * `Asia/Novosibirsk` - Asia/Novosibirsk
+       * * `Asia/Omsk` - Asia/Omsk
+       * * `Asia/Oral` - Asia/Oral
+       * * `Asia/Phnom_Penh` - Asia/Phnom_Penh
+       * * `Asia/Pontianak` - Asia/Pontianak
+       * * `Asia/Pyongyang` - Asia/Pyongyang
+       * * `Asia/Qatar` - Asia/Qatar
+       * * `Asia/Qostanay` - Asia/Qostanay
+       * * `Asia/Qyzylorda` - Asia/Qyzylorda
+       * * `Asia/Riyadh` - Asia/Riyadh
+       * * `Asia/Sakhalin` - Asia/Sakhalin
+       * * `Asia/Samarkand` - Asia/Samarkand
+       * * `Asia/Seoul` - Asia/Seoul
+       * * `Asia/Shanghai` - Asia/Shanghai
+       * * `Asia/Singapore` - Asia/Singapore
+       * * `Asia/Srednekolymsk` - Asia/Srednekolymsk
+       * * `Asia/Taipei` - Asia/Taipei
+       * * `Asia/Tashkent` - Asia/Tashkent
+       * * `Asia/Tbilisi` - Asia/Tbilisi
+       * * `Asia/Tehran` - Asia/Tehran
+       * * `Asia/Thimphu` - Asia/Thimphu
+       * * `Asia/Tokyo` - Asia/Tokyo
+       * * `Asia/Tomsk` - Asia/Tomsk
+       * * `Asia/Ulaanbaatar` - Asia/Ulaanbaatar
+       * * `Asia/Urumqi` - Asia/Urumqi
+       * * `Asia/Ust-Nera` - Asia/Ust-Nera
+       * * `Asia/Vientiane` - Asia/Vientiane
+       * * `Asia/Vladivostok` - Asia/Vladivostok
+       * * `Asia/Yakutsk` - Asia/Yakutsk
+       * * `Asia/Yangon` - Asia/Yangon
+       * * `Asia/Yekaterinburg` - Asia/Yekaterinburg
+       * * `Asia/Yerevan` - Asia/Yerevan
+       * * `Atlantic/Azores` - Atlantic/Azores
+       * * `Atlantic/Bermuda` - Atlantic/Bermuda
+       * * `Atlantic/Canary` - Atlantic/Canary
+       * * `Atlantic/Cape_Verde` - Atlantic/Cape_Verde
+       * * `Atlantic/Faroe` - Atlantic/Faroe
+       * * `Atlantic/Madeira` - Atlantic/Madeira
+       * * `Atlantic/Reykjavik` - Atlantic/Reykjavik
+       * * `Atlantic/South_Georgia` - Atlantic/South_Georgia
+       * * `Atlantic/St_Helena` - Atlantic/St_Helena
+       * * `Atlantic/Stanley` - Atlantic/Stanley
+       * * `Australia/Adelaide` - Australia/Adelaide
+       * * `Australia/Brisbane` - Australia/Brisbane
+       * * `Australia/Broken_Hill` - Australia/Broken_Hill
+       * * `Australia/Darwin` - Australia/Darwin
+       * * `Australia/Eucla` - Australia/Eucla
+       * * `Australia/Hobart` - Australia/Hobart
+       * * `Australia/Lindeman` - Australia/Lindeman
+       * * `Australia/Lord_Howe` - Australia/Lord_Howe
+       * * `Australia/Melbourne` - Australia/Melbourne
+       * * `Australia/Perth` - Australia/Perth
+       * * `Australia/Sydney` - Australia/Sydney
+       * * `Canada/Atlantic` - Canada/Atlantic
+       * * `Canada/Central` - Canada/Central
+       * * `Canada/Eastern` - Canada/Eastern
+       * * `Canada/Mountain` - Canada/Mountain
+       * * `Canada/Newfoundland` - Canada/Newfoundland
+       * * `Canada/Pacific` - Canada/Pacific
+       * * `Europe/Amsterdam` - Europe/Amsterdam
+       * * `Europe/Andorra` - Europe/Andorra
+       * * `Europe/Astrakhan` - Europe/Astrakhan
+       * * `Europe/Athens` - Europe/Athens
+       * * `Europe/Belgrade` - Europe/Belgrade
+       * * `Europe/Berlin` - Europe/Berlin
+       * * `Europe/Bratislava` - Europe/Bratislava
+       * * `Europe/Brussels` - Europe/Brussels
+       * * `Europe/Bucharest` - Europe/Bucharest
+       * * `Europe/Budapest` - Europe/Budapest
+       * * `Europe/Busingen` - Europe/Busingen
+       * * `Europe/Chisinau` - Europe/Chisinau
+       * * `Europe/Copenhagen` - Europe/Copenhagen
+       * * `Europe/Dublin` - Europe/Dublin
+       * * `Europe/Gibraltar` - Europe/Gibraltar
+       * * `Europe/Guernsey` - Europe/Guernsey
+       * * `Europe/Helsinki` - Europe/Helsinki
+       * * `Europe/Isle_of_Man` - Europe/Isle_of_Man
+       * * `Europe/Istanbul` - Europe/Istanbul
+       * * `Europe/Jersey` - Europe/Jersey
+       * * `Europe/Kaliningrad` - Europe/Kaliningrad
+       * * `Europe/Kirov` - Europe/Kirov
+       * * `Europe/Kyiv` - Europe/Kyiv
+       * * `Europe/Lisbon` - Europe/Lisbon
+       * * `Europe/Ljubljana` - Europe/Ljubljana
+       * * `Europe/London` - Europe/London
+       * * `Europe/Luxembourg` - Europe/Luxembourg
+       * * `Europe/Madrid` - Europe/Madrid
+       * * `Europe/Malta` - Europe/Malta
+       * * `Europe/Mariehamn` - Europe/Mariehamn
+       * * `Europe/Minsk` - Europe/Minsk
+       * * `Europe/Monaco` - Europe/Monaco
+       * * `Europe/Moscow` - Europe/Moscow
+       * * `Europe/Oslo` - Europe/Oslo
+       * * `Europe/Paris` - Europe/Paris
+       * * `Europe/Podgorica` - Europe/Podgorica
+       * * `Europe/Prague` - Europe/Prague
+       * * `Europe/Riga` - Europe/Riga
+       * * `Europe/Rome` - Europe/Rome
+       * * `Europe/Samara` - Europe/Samara
+       * * `Europe/San_Marino` - Europe/San_Marino
+       * * `Europe/Sarajevo` - Europe/Sarajevo
+       * * `Europe/Saratov` - Europe/Saratov
+       * * `Europe/Simferopol` - Europe/Simferopol
+       * * `Europe/Skopje` - Europe/Skopje
+       * * `Europe/Sofia` - Europe/Sofia
+       * * `Europe/Stockholm` - Europe/Stockholm
+       * * `Europe/Tallinn` - Europe/Tallinn
+       * * `Europe/Tirane` - Europe/Tirane
+       * * `Europe/Ulyanovsk` - Europe/Ulyanovsk
+       * * `Europe/Vaduz` - Europe/Vaduz
+       * * `Europe/Vatican` - Europe/Vatican
+       * * `Europe/Vienna` - Europe/Vienna
+       * * `Europe/Vilnius` - Europe/Vilnius
+       * * `Europe/Volgograd` - Europe/Volgograd
+       * * `Europe/Warsaw` - Europe/Warsaw
+       * * `Europe/Zagreb` - Europe/Zagreb
+       * * `Europe/Zurich` - Europe/Zurich
+       * * `GMT` - GMT
+       * * `Indian/Antananarivo` - Indian/Antananarivo
+       * * `Indian/Chagos` - Indian/Chagos
+       * * `Indian/Christmas` - Indian/Christmas
+       * * `Indian/Cocos` - Indian/Cocos
+       * * `Indian/Comoro` - Indian/Comoro
+       * * `Indian/Kerguelen` - Indian/Kerguelen
+       * * `Indian/Mahe` - Indian/Mahe
+       * * `Indian/Maldives` - Indian/Maldives
+       * * `Indian/Mauritius` - Indian/Mauritius
+       * * `Indian/Mayotte` - Indian/Mayotte
+       * * `Indian/Reunion` - Indian/Reunion
+       * * `Pacific/Apia` - Pacific/Apia
+       * * `Pacific/Auckland` - Pacific/Auckland
+       * * `Pacific/Bougainville` - Pacific/Bougainville
+       * * `Pacific/Chatham` - Pacific/Chatham
+       * * `Pacific/Chuuk` - Pacific/Chuuk
+       * * `Pacific/Easter` - Pacific/Easter
+       * * `Pacific/Efate` - Pacific/Efate
+       * * `Pacific/Fakaofo` - Pacific/Fakaofo
+       * * `Pacific/Fiji` - Pacific/Fiji
+       * * `Pacific/Funafuti` - Pacific/Funafuti
+       * * `Pacific/Galapagos` - Pacific/Galapagos
+       * * `Pacific/Gambier` - Pacific/Gambier
+       * * `Pacific/Guadalcanal` - Pacific/Guadalcanal
+       * * `Pacific/Guam` - Pacific/Guam
+       * * `Pacific/Honolulu` - Pacific/Honolulu
+       * * `Pacific/Kanton` - Pacific/Kanton
+       * * `Pacific/Kiritimati` - Pacific/Kiritimati
+       * * `Pacific/Kosrae` - Pacific/Kosrae
+       * * `Pacific/Kwajalein` - Pacific/Kwajalein
+       * * `Pacific/Majuro` - Pacific/Majuro
+       * * `Pacific/Marquesas` - Pacific/Marquesas
+       * * `Pacific/Midway` - Pacific/Midway
+       * * `Pacific/Nauru` - Pacific/Nauru
+       * * `Pacific/Niue` - Pacific/Niue
+       * * `Pacific/Norfolk` - Pacific/Norfolk
+       * * `Pacific/Noumea` - Pacific/Noumea
+       * * `Pacific/Pago_Pago` - Pacific/Pago_Pago
+       * * `Pacific/Palau` - Pacific/Palau
+       * * `Pacific/Pitcairn` - Pacific/Pitcairn
+       * * `Pacific/Pohnpei` - Pacific/Pohnpei
+       * * `Pacific/Port_Moresby` - Pacific/Port_Moresby
+       * * `Pacific/Rarotonga` - Pacific/Rarotonga
+       * * `Pacific/Saipan` - Pacific/Saipan
+       * * `Pacific/Tahiti` - Pacific/Tahiti
+       * * `Pacific/Tarawa` - Pacific/Tarawa
+       * * `Pacific/Tongatapu` - Pacific/Tongatapu
+       * * `Pacific/Wake` - Pacific/Wake
+       * * `Pacific/Wallis` - Pacific/Wallis
+       * * `US/Alaska` - US/Alaska
+       * * `US/Arizona` - US/Arizona
+       * * `US/Central` - US/Central
+       * * `US/Eastern` - US/Eastern
+       * * `US/Hawaii` - US/Hawaii
+       * * `US/Mountain` - US/Mountain
+       * * `US/Pacific` - US/Pacific
+       * * `UTC` - UTC 
+       * @enum {string}
+       */
       timezone?: "Africa/Abidjan" | "Africa/Accra" | "Africa/Addis_Ababa" | "Africa/Algiers" | "Africa/Asmara" | "Africa/Bamako" | "Africa/Bangui" | "Africa/Banjul" | "Africa/Bissau" | "Africa/Blantyre" | "Africa/Brazzaville" | "Africa/Bujumbura" | "Africa/Cairo" | "Africa/Casablanca" | "Africa/Ceuta" | "Africa/Conakry" | "Africa/Dakar" | "Africa/Dar_es_Salaam" | "Africa/Djibouti" | "Africa/Douala" | "Africa/El_Aaiun" | "Africa/Freetown" | "Africa/Gaborone" | "Africa/Harare" | "Africa/Johannesburg" | "Africa/Juba" | "Africa/Kampala" | "Africa/Khartoum" | "Africa/Kigali" | "Africa/Kinshasa" | "Africa/Lagos" | "Africa/Libreville" | "Africa/Lome" | "Africa/Luanda" | "Africa/Lubumbashi" | "Africa/Lusaka" | "Africa/Malabo" | "Africa/Maputo" | "Africa/Maseru" | "Africa/Mbabane" | "Africa/Mogadishu" | "Africa/Monrovia" | "Africa/Nairobi" | "Africa/Ndjamena" | "Africa/Niamey" | "Africa/Nouakchott" | "Africa/Ouagadougou" | "Africa/Porto-Novo" | "Africa/Sao_Tome" | "Africa/Tripoli" | "Africa/Tunis" | "Africa/Windhoek" | "America/Adak" | "America/Anchorage" | "America/Anguilla" | "America/Antigua" | "America/Araguaina" | "America/Argentina/Buenos_Aires" | "America/Argentina/Catamarca" | "America/Argentina/Cordoba" | "America/Argentina/Jujuy" | "America/Argentina/La_Rioja" | "America/Argentina/Mendoza" | "America/Argentina/Rio_Gallegos" | "America/Argentina/Salta" | "America/Argentina/San_Juan" | "America/Argentina/San_Luis" | "America/Argentina/Tucuman" | "America/Argentina/Ushuaia" | "America/Aruba" | "America/Asuncion" | "America/Atikokan" | "America/Bahia" | "America/Bahia_Banderas" | "America/Barbados" | "America/Belem" | "America/Belize" | "America/Blanc-Sablon" | "America/Boa_Vista" | "America/Bogota" | "America/Boise" | "America/Cambridge_Bay" | "America/Campo_Grande" | "America/Cancun" | "America/Caracas" | "America/Cayenne" | "America/Cayman" | "America/Chicago" | "America/Chihuahua" | "America/Ciudad_Juarez" | "America/Costa_Rica" | "America/Creston" | "America/Cuiaba" | "America/Curacao" | "America/Danmarkshavn" | "America/Dawson" | "America/Dawson_Creek" | "America/Denver" | "America/Detroit" | "America/Dominica" | "America/Edmonton" | "America/Eirunepe" | "America/El_Salvador" | "America/Fort_Nelson" | "America/Fortaleza" | "America/Glace_Bay" | "America/Goose_Bay" | "America/Grand_Turk" | "America/Grenada" | "America/Guadeloupe" | "America/Guatemala" | "America/Guayaquil" | "America/Guyana" | "America/Halifax" | "America/Havana" | "America/Hermosillo" | "America/Indiana/Indianapolis" | "America/Indiana/Knox" | "America/Indiana/Marengo" | "America/Indiana/Petersburg" | "America/Indiana/Tell_City" | "America/Indiana/Vevay" | "America/Indiana/Vincennes" | "America/Indiana/Winamac" | "America/Inuvik" | "America/Iqaluit" | "America/Jamaica" | "America/Juneau" | "America/Kentucky/Louisville" | "America/Kentucky/Monticello" | "America/Kralendijk" | "America/La_Paz" | "America/Lima" | "America/Los_Angeles" | "America/Lower_Princes" | "America/Maceio" | "America/Managua" | "America/Manaus" | "America/Marigot" | "America/Martinique" | "America/Matamoros" | "America/Mazatlan" | "America/Menominee" | "America/Merida" | "America/Metlakatla" | "America/Mexico_City" | "America/Miquelon" | "America/Moncton" | "America/Monterrey" | "America/Montevideo" | "America/Montserrat" | "America/Nassau" | "America/New_York" | "America/Nome" | "America/Noronha" | "America/North_Dakota/Beulah" | "America/North_Dakota/Center" | "America/North_Dakota/New_Salem" | "America/Nuuk" | "America/Ojinaga" | "America/Panama" | "America/Paramaribo" | "America/Phoenix" | "America/Port-au-Prince" | "America/Port_of_Spain" | "America/Porto_Velho" | "America/Puerto_Rico" | "America/Punta_Arenas" | "America/Rankin_Inlet" | "America/Recife" | "America/Regina" | "America/Resolute" | "America/Rio_Branco" | "America/Santarem" | "America/Santiago" | "America/Santo_Domingo" | "America/Sao_Paulo" | "America/Scoresbysund" | "America/Sitka" | "America/St_Barthelemy" | "America/St_Johns" | "America/St_Kitts" | "America/St_Lucia" | "America/St_Thomas" | "America/St_Vincent" | "America/Swift_Current" | "America/Tegucigalpa" | "America/Thule" | "America/Tijuana" | "America/Toronto" | "America/Tortola" | "America/Vancouver" | "America/Whitehorse" | "America/Winnipeg" | "America/Yakutat" | "America/Yellowknife" | "Antarctica/Casey" | "Antarctica/Davis" | "Antarctica/DumontDUrville" | "Antarctica/Macquarie" | "Antarctica/Mawson" | "Antarctica/McMurdo" | "Antarctica/Palmer" | "Antarctica/Rothera" | "Antarctica/Syowa" | "Antarctica/Troll" | "Antarctica/Vostok" | "Arctic/Longyearbyen" | "Asia/Aden" | "Asia/Almaty" | "Asia/Amman" | "Asia/Anadyr" | "Asia/Aqtau" | "Asia/Aqtobe" | "Asia/Ashgabat" | "Asia/Atyrau" | "Asia/Baghdad" | "Asia/Bahrain" | "Asia/Baku" | "Asia/Bangkok" | "Asia/Barnaul" | "Asia/Beirut" | "Asia/Bishkek" | "Asia/Brunei" | "Asia/Chita" | "Asia/Choibalsan" | "Asia/Colombo" | "Asia/Damascus" | "Asia/Dhaka" | "Asia/Dili" | "Asia/Dubai" | "Asia/Dushanbe" | "Asia/Famagusta" | "Asia/Gaza" | "Asia/Hebron" | "Asia/Ho_Chi_Minh" | "Asia/Hong_Kong" | "Asia/Hovd" | "Asia/Irkutsk" | "Asia/Jakarta" | "Asia/Jayapura" | "Asia/Jerusalem" | "Asia/Kabul" | "Asia/Kamchatka" | "Asia/Karachi" | "Asia/Kathmandu" | "Asia/Khandyga" | "Asia/Kolkata" | "Asia/Krasnoyarsk" | "Asia/Kuala_Lumpur" | "Asia/Kuching" | "Asia/Kuwait" | "Asia/Macau" | "Asia/Magadan" | "Asia/Makassar" | "Asia/Manila" | "Asia/Muscat" | "Asia/Nicosia" | "Asia/Novokuznetsk" | "Asia/Novosibirsk" | "Asia/Omsk" | "Asia/Oral" | "Asia/Phnom_Penh" | "Asia/Pontianak" | "Asia/Pyongyang" | "Asia/Qatar" | "Asia/Qostanay" | "Asia/Qyzylorda" | "Asia/Riyadh" | "Asia/Sakhalin" | "Asia/Samarkand" | "Asia/Seoul" | "Asia/Shanghai" | "Asia/Singapore" | "Asia/Srednekolymsk" | "Asia/Taipei" | "Asia/Tashkent" | "Asia/Tbilisi" | "Asia/Tehran" | "Asia/Thimphu" | "Asia/Tokyo" | "Asia/Tomsk" | "Asia/Ulaanbaatar" | "Asia/Urumqi" | "Asia/Ust-Nera" | "Asia/Vientiane" | "Asia/Vladivostok" | "Asia/Yakutsk" | "Asia/Yangon" | "Asia/Yekaterinburg" | "Asia/Yerevan" | "Atlantic/Azores" | "Atlantic/Bermuda" | "Atlantic/Canary" | "Atlantic/Cape_Verde" | "Atlantic/Faroe" | "Atlantic/Madeira" | "Atlantic/Reykjavik" | "Atlantic/South_Georgia" | "Atlantic/St_Helena" | "Atlantic/Stanley" | "Australia/Adelaide" | "Australia/Brisbane" | "Australia/Broken_Hill" | "Australia/Darwin" | "Australia/Eucla" | "Australia/Hobart" | "Australia/Lindeman" | "Australia/Lord_Howe" | "Australia/Melbourne" | "Australia/Perth" | "Australia/Sydney" | "Canada/Atlantic" | "Canada/Central" | "Canada/Eastern" | "Canada/Mountain" | "Canada/Newfoundland" | "Canada/Pacific" | "Europe/Amsterdam" | "Europe/Andorra" | "Europe/Astrakhan" | "Europe/Athens" | "Europe/Belgrade" | "Europe/Berlin" | "Europe/Bratislava" | "Europe/Brussels" | "Europe/Bucharest" | "Europe/Budapest" | "Europe/Busingen" | "Europe/Chisinau" | "Europe/Copenhagen" | "Europe/Dublin" | "Europe/Gibraltar" | "Europe/Guernsey" | "Europe/Helsinki" | "Europe/Isle_of_Man" | "Europe/Istanbul" | "Europe/Jersey" | "Europe/Kaliningrad" | "Europe/Kirov" | "Europe/Kyiv" | "Europe/Lisbon" | "Europe/Ljubljana" | "Europe/London" | "Europe/Luxembourg" | "Europe/Madrid" | "Europe/Malta" | "Europe/Mariehamn" | "Europe/Minsk" | "Europe/Monaco" | "Europe/Moscow" | "Europe/Oslo" | "Europe/Paris" | "Europe/Podgorica" | "Europe/Prague" | "Europe/Riga" | "Europe/Rome" | "Europe/Samara" | "Europe/San_Marino" | "Europe/Sarajevo" | "Europe/Saratov" | "Europe/Simferopol" | "Europe/Skopje" | "Europe/Sofia" | "Europe/Stockholm" | "Europe/Tallinn" | "Europe/Tirane" | "Europe/Ulyanovsk" | "Europe/Vaduz" | "Europe/Vatican" | "Europe/Vienna" | "Europe/Vilnius" | "Europe/Volgograd" | "Europe/Warsaw" | "Europe/Zagreb" | "Europe/Zurich" | "GMT" | "Indian/Antananarivo" | "Indian/Chagos" | "Indian/Christmas" | "Indian/Cocos" | "Indian/Comoro" | "Indian/Kerguelen" | "Indian/Mahe" | "Indian/Maldives" | "Indian/Mauritius" | "Indian/Mayotte" | "Indian/Reunion" | "Pacific/Apia" | "Pacific/Auckland" | "Pacific/Bougainville" | "Pacific/Chatham" | "Pacific/Chuuk" | "Pacific/Easter" | "Pacific/Efate" | "Pacific/Fakaofo" | "Pacific/Fiji" | "Pacific/Funafuti" | "Pacific/Galapagos" | "Pacific/Gambier" | "Pacific/Guadalcanal" | "Pacific/Guam" | "Pacific/Honolulu" | "Pacific/Kanton" | "Pacific/Kiritimati" | "Pacific/Kosrae" | "Pacific/Kwajalein" | "Pacific/Majuro" | "Pacific/Marquesas" | "Pacific/Midway" | "Pacific/Nauru" | "Pacific/Niue" | "Pacific/Norfolk" | "Pacific/Noumea" | "Pacific/Pago_Pago" | "Pacific/Palau" | "Pacific/Pitcairn" | "Pacific/Pohnpei" | "Pacific/Port_Moresby" | "Pacific/Rarotonga" | "Pacific/Saipan" | "Pacific/Tahiti" | "Pacific/Tarawa" | "Pacific/Tongatapu" | "Pacific/Wake" | "Pacific/Wallis" | "US/Alaska" | "US/Arizona" | "US/Central" | "US/Eastern" | "US/Hawaii" | "US/Mountain" | "US/Pacific" | "UTC";
       /**
-       * @description To udpate a payment provider's ID, specify the payment provider you want to update in this field, and the payment_provider_id in the corresponding field. 
+       * @description To udpate a payment provider's ID, specify the payment provider you want to update in this field, and the payment_provider_id in the corresponding field.
+       * 
+       * * `stripe` - Stripe
+       * * `braintree` - Braintree 
        * @enum {string}
        */
       payment_provider?: "stripe" | "braintree";
@@ -1979,7 +5961,11 @@ export interface components {
       active_to?: string;
     };
     PaymentProcesorPostDataRequest: {
-      /** @enum {string} */
+      /**
+       * @description * `stripe` - Stripe
+       * * `braintree` - Braintree 
+       * @enum {string}
+       */
       payment_processor: "stripe" | "braintree";
       data: {
         [key: string]: Record<string, never> | undefined;
@@ -1989,7 +5975,11 @@ export interface components {
       pp_info: components["schemas"]["PaymentProcesorPostDataRequest"];
     };
     PaymentProcesorPostResponse: {
-      /** @enum {string} */
+      /**
+       * @description * `stripe` - Stripe
+       * * `braintree` - Braintree 
+       * @enum {string}
+       */
       payment_processor: "stripe" | "braintree";
       success: boolean;
       details: string;
@@ -2023,7 +6013,11 @@ export interface components {
       /** @description Name of the plan */
       plan_name: string;
       /**
-       * @description Duration of the plan 
+       * @description Duration of the plan
+       * 
+       * * `monthly` - Monthly
+       * * `quarterly` - Quarterly
+       * * `yearly` - Yearly 
        * @enum {string|null}
        */
       plan_duration: "monthly" | "quarterly" | "yearly" | "" | null;
@@ -2066,10 +6060,22 @@ export interface components {
       billable_metric: components["schemas"]["Metric"];
       tiers: (components["schemas"]["PriceTier"])[];
       pricing_unit: components["schemas"]["PricingUnit"];
-      /** @enum {string|null} */
+      /**
+       * @description * `day` - day
+       * * `week` - week
+       * * `month` - month
+       * * `year` - year 
+       * @enum {string|null}
+       */
       invoicing_interval_unit: "day" | "week" | "month" | "year" | "" | null;
       invoicing_interval_count: number;
-      /** @enum {string|null} */
+      /**
+       * @description * `day` - day
+       * * `week` - week
+       * * `month` - month
+       * * `year` - year 
+       * @enum {string|null}
+       */
       reset_interval_unit: "day" | "week" | "month" | "year" | "" | null;
       reset_interval_count: number;
       prepaid_charge: components["schemas"]["ComponentCharge"] | null;
@@ -2078,10 +6084,22 @@ export interface components {
       /** Format: uuid */
       metric_id: string;
       tiers?: (components["schemas"]["PriceTierCreateRequest"])[];
-      /** @enum {string|null} */
+      /**
+       * @description * `day` - day
+       * * `week` - week
+       * * `month` - month
+       * * `year` - year 
+       * @enum {string|null}
+       */
       invoicing_interval_unit?: "day" | "week" | "month" | "year" | "" | null;
       invoicing_interval_count?: number;
-      /** @enum {string|null} */
+      /**
+       * @description * `day` - day
+       * * `week` - week
+       * * `month` - month
+       * * `year` - year 
+       * @enum {string|null}
+       */
       reset_interval_unit?: "day" | "week" | "month" | "year" | "" | null;
       reset_interval_count?: number;
       prepaid_charge?: components["schemas"]["ComponentChargeCreateRequest"] | null;
@@ -2092,37 +6110,45 @@ export interface components {
       /** @description Description of the plan */
       plan_description?: string;
       /**
-       * @description Duration of the plan 
+       * @description Duration of the plan
+       * 
+       * * `monthly` - Monthly
+       * * `quarterly` - Quarterly
+       * * `yearly` - Yearly 
        * @enum {string|null}
        */
-      plan_duration: "monthly" | "quarterly" | "yearly" | "" | null;
+      plan_duration?: "monthly" | "quarterly" | "yearly" | "" | null;
       initial_external_links?: (components["schemas"]["InitialExternalPlanLinkRequest"])[];
       initial_version: components["schemas"]["InitialPlanVersionCreateRequest"];
       tags?: (components["schemas"]["TagRequest"])[];
     };
     PlanDetail: {
-      /** @description Description of the plan */
-      plan_description: string;
-      /** @description The tags that this plan has. */
-      tags: readonly (components["schemas"]["Tag"])[];
-      /** @description Name of the plan */
-      plan_name: string;
-      /** @description The number of versions that this plan has. */
-      num_versions: number;
+      /** @description The external links that this plan has. */
+      external_links: (components["schemas"]["InitialExternalPlanLink"])[];
       /**
-       * @description Duration of the plan 
+       * @description Duration of the plan
+       * 
+       * * `monthly` - Monthly
+       * * `quarterly` - Quarterly
+       * * `yearly` - Yearly 
        * @enum {string|null}
        */
       plan_duration: "monthly" | "quarterly" | "yearly" | "" | null;
       /** @description The number of active subscriptions that this plan has across all versions. */
       active_subscriptions: number;
-      taxjar_code?: string;
+      versions: readonly (components["schemas"]["PlanVersionDetail"])[];
       /** @description This plan's currently active version. */
       active_version: number;
-      /** @description The external links that this plan has. */
-      external_links: (components["schemas"]["InitialExternalPlanLink"])[];
+      /** @description Description of the plan */
+      plan_description: string;
+      /** @description Name of the plan */
+      plan_name: string;
+      taxjar_code?: string;
+      /** @description The number of versions that this plan has. */
+      num_versions: number;
       plan_id: string;
-      versions: readonly (components["schemas"]["PlanVersionDetail"])[];
+      /** @description The tags that this plan has. */
+      tags: readonly (components["schemas"]["Tag"])[];
     };
     PlanNameAndID: {
       /** @description Name of the plan */
@@ -2152,7 +6178,15 @@ export interface components {
       features: (components["schemas"]["Feature"])[];
       price_adjustment: components["schemas"]["PriceAdjustment"] | null;
       version: number | "custom_version";
-      /** @enum {string} */
+      /**
+       * @description * `active` - Active
+       * * `retiring` - Retiring
+       * * `grandfathered` - Grandfathered
+       * * `deleted` - Deleted
+       * * `inactive` - Inactive
+       * * `not_started` - Not Started 
+       * @enum {string}
+       */
       status: "active" | "retiring" | "grandfathered" | "deleted" | "inactive" | "not_started";
       plan_name: string;
       currency: components["schemas"]["PricingUnit"];
@@ -2168,6 +6202,8 @@ export interface components {
       usage_billing_frequency: string;
       /**
        * @deprecated 
+       * @description * `in_advance` - in_advance
+       * * `in_arrears` - in_arrears 
        * @enum {string}
        */
       flat_fee_billing_type: "in_advance" | "in_arrears";
@@ -2195,35 +6231,45 @@ export interface components {
       /** @default false */
       make_active?: boolean;
       /**
+       * @description * `replace_on_renewal` - Replace on Renewal
+       * * `grandfather` - Grandfather 
        * @default replace_on_renewal 
        * @enum {string}
        */
       make_active_type?: "replace_on_renewal" | "grandfather";
     };
     PlanVersionDetail: {
-      features: (components["schemas"]["Feature"])[];
+      price_adjustment: components["schemas"]["PriceAdjustment"] | null;
       components: (components["schemas"]["PlanComponent"])[];
-      plan_id: string;
+      /**
+       * @description * `active` - Active
+       * * `retiring` - Retiring
+       * * `grandfathered` - Grandfathered
+       * * `deleted` - Deleted
+       * * `inactive` - Inactive
+       * * `not_started` - Not Started 
+       * @enum {string}
+       */
+      status: "active" | "retiring" | "grandfathered" | "deleted" | "inactive" | "not_started";
+      plan_name: string;
+      version: number | "custom_version";
+      currency: components["schemas"]["PricingUnit"];
+      localized_name: string;
+      version_id: string;
+      transition_to: components["schemas"]["LightweightPlan"];
+      target_customers: (components["schemas"]["LightweightCustomer"])[];
+      replace_with: components["schemas"]["LightweightPlanVersion"];
+      active_subscriptions: number;
+      /** Format: date-time */
+      active_from: string;
       /** Format: date-time */
       active_to: string;
-      localized_name: string;
-      recurring_charges: readonly (components["schemas"]["RecurringCharge"])[];
-      transition_to: components["schemas"]["LightweightPlan"];
-      replace_with: components["schemas"]["LightweightPlanVersion"];
       alerts: readonly (components["schemas"]["UsageAlert"])[];
       /** Format: date-time */
       created_on: string;
-      plan_name: string;
-      version_id: string;
-      /** @enum {string} */
-      status: "active" | "retiring" | "grandfathered" | "deleted" | "inactive" | "not_started";
-      version: number | "custom_version";
-      active_subscriptions: number;
-      target_customers: (components["schemas"]["LightweightCustomer"])[];
-      /** Format: date-time */
-      active_from: string;
-      currency: components["schemas"]["PricingUnit"];
-      price_adjustment: components["schemas"]["PriceAdjustment"] | null;
+      recurring_charges: readonly (components["schemas"]["RecurringCharge"])[];
+      plan_id: string;
+      features: (components["schemas"]["Feature"])[];
     };
     PlanVersionHistoricalSubscription: {
       customer_id: string;
@@ -2258,7 +6304,10 @@ export interface components {
     };
     PlansByNumCustomers: {
       results: (components["schemas"]["SinglePlanNumCustomers"])[];
-      /** @enum {string} */
+      /**
+       * @description * `success` - success 
+       * @enum {string}
+       */
       status: "success";
     };
     PlansSetReplaceWithForVersionNumberRequest: {
@@ -2272,7 +6321,12 @@ export interface components {
     PriceAdjustment: {
       price_adjustment_name: string;
       price_adjustment_description: string;
-      /** @enum {string} */
+      /**
+       * @description * `percentage` - Percentage
+       * * `fixed` - Fixed
+       * * `price_override` - Price Override 
+       * @enum {string}
+       */
       price_adjustment_type: "percentage" | "fixed" | "price_override";
       /** Format: double */
       price_adjustment_amount: number;
@@ -2281,13 +6335,23 @@ export interface components {
       /** @default */
       price_adjustment_name?: string;
       price_adjustment_description?: string;
-      /** @enum {string} */
+      /**
+       * @description * `percentage` - Percentage
+       * * `fixed` - Fixed
+       * * `price_override` - Price Override 
+       * @enum {string}
+       */
       price_adjustment_type: "percentage" | "fixed" | "price_override";
       /** Format: double */
       price_adjustment_amount: number;
     };
     PriceTier: {
-      /** @enum {unknown} */
+      /**
+       * @description * `flat` - flat
+       * * `per_unit` - per_unit
+       * * `free` - free 
+       * @enum {unknown}
+       */
       type: "flat" | "per_unit" | "free";
       /** Format: double */
       range_start: number;
@@ -2297,11 +6361,22 @@ export interface components {
       cost_per_batch: number;
       /** Format: double */
       metric_units_per_batch: number;
-      /** @enum {unknown|null} */
+      /**
+       * @description * `round_up` - round_up
+       * * `round_down` - round_down
+       * * `round_nearest` - round_nearest
+       * * `no_rounding` - no_rounding 
+       * @enum {unknown|null}
+       */
       batch_rounding_type: "round_up" | "round_down" | "round_nearest" | "no_rounding" | "" | null;
     };
     PriceTierCreateRequest: {
-      /** @enum {string} */
+      /**
+       * @description * `flat` - Flat
+       * * `per_unit` - Per Unit
+       * * `free` - Free 
+       * @enum {string}
+       */
       type: "flat" | "per_unit" | "free";
       /** Format: double */
       range_start: number;
@@ -2312,6 +6387,10 @@ export interface components {
       /** Format: double */
       metric_units_per_batch?: number;
       /**
+       * @description * `round_up` - Round Up
+       * * `round_down` - Round Down
+       * * `round_nearest` - Round Nearest
+       * * `no_rounding` - No Rounding 
        * @default no_rounding 
        * @enum {string|null}
        */
@@ -2339,25 +6418,51 @@ export interface components {
     };
     RecurringCharge: {
       name: string;
-      /** @enum {string} */
+      /**
+       * @description * `in_advance` - in_advance
+       * * `in_arrears` - in_arrears 
+       * @enum {string}
+       */
       charge_timing: "in_advance" | "in_arrears";
-      /** @enum {string} */
+      /**
+       * @description * `prorate` - prorate
+       * * `full` - full 
+       * @enum {string}
+       */
       charge_behavior: "prorate" | "full";
       /** Format: double */
       amount: number;
       pricing_unit: components["schemas"]["PricingUnit"];
-      /** @enum {string|null} */
+      /**
+       * @description * `day` - day
+       * * `week` - week
+       * * `month` - month
+       * * `year` - year 
+       * @enum {string|null}
+       */
       invoicing_interval_unit: "day" | "week" | "month" | "year" | "" | null;
       invoicing_interval_count: number;
-      /** @enum {string|null} */
+      /**
+       * @description * `day` - day
+       * * `week` - week
+       * * `month` - month
+       * * `year` - year 
+       * @enum {string|null}
+       */
       reset_interval_unit: "day" | "week" | "month" | "year" | "" | null;
       reset_interval_count: number;
     };
     RecurringChargeCreateRequest: {
       name: string;
-      /** @enum {string} */
+      /**
+       * @description * `in_advance` - in_advance
+       * * `in_arrears` - in_arrears 
+       * @enum {string}
+       */
       charge_timing: "in_advance" | "in_arrears";
       /**
+       * @description * `prorate` - prorate
+       * * `full` - full 
        * @default prorate 
        * @enum {string}
        */
@@ -2365,10 +6470,22 @@ export interface components {
       /** Format: double */
       amount: number;
       pricing_unit_code?: string;
-      /** @enum {string|null} */
+      /**
+       * @description * `day` - day
+       * * `week` - week
+       * * `month` - month
+       * * `year` - year 
+       * @enum {string|null}
+       */
       invoicing_interval_unit?: "day" | "week" | "month" | "year" | "" | null;
       invoicing_interval_count?: number;
-      /** @enum {string|null} */
+      /**
+       * @description * `day` - day
+       * * `week` - week
+       * * `month` - month
+       * * `year` - year 
+       * @enum {string|null}
+       */
       reset_interval_unit?: "day" | "week" | "month" | "year" | "" | null;
       reset_interval_count?: number;
     };
@@ -2455,7 +6572,10 @@ export interface components {
       message: string;
     };
     SingleCRMProvider: {
-      /** @enum {string} */
+      /**
+       * @description * `salesforce` - salesforce 
+       * @enum {string}
+       */
       crm_provider_name: "salesforce";
       connected: boolean;
       self_hosted: boolean;
@@ -2574,18 +6694,28 @@ export interface components {
     };
     SubscriptionRecordCancelRequest: {
       /**
-       * @description When canceling a subscription, the behavior used to calculate the flat fee. If null or not provided, the charge's default behavior will be used according to the subscription's start and end dates. If charge_full, the full flat fee will be charged, regardless of the duration of the subscription. If refund, the flat fee will not be charged. If charge_prorated, the prorated flat fee will be charged. 
+       * @description When canceling a subscription, the behavior used to calculate the flat fee. If null or not provided, the charge's default behavior will be used according to the subscription's start and end dates. If charge_full, the full flat fee will be charged, regardless of the duration of the subscription. If refund, the flat fee will not be charged. If charge_prorated, the prorated flat fee will be charged.
+       * 
+       * * `refund` - Refund
+       * * `charge_prorated` - Prorate
+       * * `charge_full` - Charge Full 
        * @enum {string|null}
        */
       flat_fee_behavior?: "refund" | "charge_prorated" | "charge_full" | "" | null;
       /**
-       * @description If bill_full, current usage will be billed on the invoice. If bill_none, current unbilled usage will be dropped from the invoice. Defaults to bill_full. 
+       * @description If bill_full, current usage will be billed on the invoice. If bill_none, current unbilled usage will be dropped from the invoice. Defaults to bill_full.
+       * 
+       * * `bill_full` - Bill Full
+       * * `bill_none` - Bill None 
        * @default bill_full 
        * @enum {string}
        */
       usage_behavior?: "bill_full" | "bill_none";
       /**
-       * @description Whether to invoice now or invoice at the end of the billing period. Defaults to invoice now. 
+       * @description Whether to invoice now or invoice at the end of the billing period. Defaults to invoice now.
+       * 
+       * * `add_to_next_invoice` - Add to Next Invoice
+       * * `invoice_now` - Invoice Now 
        * @default invoice_now 
        * @enum {string}
        */
@@ -2675,13 +6805,19 @@ export interface components {
        */
       switch_plan_id?: string;
       /**
-       * @description The invoicing behavior to use when replacing the plan. Invoice now will invoice the customer for the prorated difference of the old plan and the new plan, whereas add_to_next_invoice will wait until the end of the subscription to do the calculation. 
+       * @description The invoicing behavior to use when replacing the plan. Invoice now will invoice the customer for the prorated difference of the old plan and the new plan, whereas add_to_next_invoice will wait until the end of the subscription to do the calculation.
+       * 
+       * * `add_to_next_invoice` - Add to Next Invoice
+       * * `invoice_now` - Invoice Now 
        * @default invoice_now 
        * @enum {string}
        */
       invoicing_behavior?: "add_to_next_invoice" | "invoice_now";
       /**
-       * @description The usage behavior to use when replacing the plan. Transfer to new subscription will transfer the usage from the old subscription to the new subscription, whereas keep_separate will reset the usage to 0 for the new subscription, while keeping the old usage on the old subscription and charging for that appropriately at the end of the month. 
+       * @description The usage behavior to use when replacing the plan. Transfer to new subscription will transfer the usage from the old subscription to the new subscription, whereas keep_separate will reset the usage to 0 for the new subscription, while keeping the old usage on the old subscription and charging for that appropriately at the end of the month.
+       * 
+       * * `transfer_to_new_subscription` - Transfer to New Subscription
+       * * `keep_separate` - Keep Separate 
        * @default transfer_to_new_subscription 
        * @enum {string}
        */
@@ -2709,13 +6845,19 @@ export interface components {
        */
       replace_plan_id?: string;
       /**
-       * @description The invoicing behavior to use when replacing the plan. Invoice now will invoice the customer for the prorated difference of the old plan and the new plan, whereas add_to_next_invoice will wait until the end of the subscription to do the calculation. 
+       * @description The invoicing behavior to use when replacing the plan. Invoice now will invoice the customer for the prorated difference of the old plan and the new plan, whereas add_to_next_invoice will wait until the end of the subscription to do the calculation.
+       * 
+       * * `add_to_next_invoice` - Add to Next Invoice
+       * * `invoice_now` - Invoice Now 
        * @default invoice_now 
        * @enum {string}
        */
       invoicing_behavior?: "add_to_next_invoice" | "invoice_now";
       /**
-       * @description The usage behavior to use when replacing the plan. Transfer to new subscription will transfer the usage from the old subscription to the new subscription, whereas keep_separate will reset the usage to 0 for the new subscription, while keeping the old usage on the old subscription and charging for that appropriately at the end of the month. 
+       * @description The usage behavior to use when replacing the plan. Transfer to new subscription will transfer the usage from the old subscription to the new subscription, whereas keep_separate will reset the usage to 0 for the new subscription, while keeping the old usage on the old subscription and charging for that appropriately at the end of the month.
+       * 
+       * * `transfer_to_new_subscription` - Transfer to New Subscription
+       * * `keep_separate` - Keep Separate 
        * @default transfer_to_new_subscription 
        * @enum {string}
        */
@@ -2757,31 +6899,48 @@ export interface components {
       biggest_pct_decrease: (components["schemas"]["SingleCustomerValue"])[];
     };
     TrackEventFailure: {
-      /** @enum {string} */
+      /**
+       * @description * `none` - none 
+       * @enum {string}
+       */
       success: "none";
       failed_events: {
         [key: string]: Record<string, never> | undefined;
       };
     };
     TrackEventSuccess: {
-      /** @enum {string} */
+      /**
+       * @description * `all` - all
+       * * `some` - some 
+       * @enum {string}
+       */
       success: "all" | "some";
       failed_events: {
         [key: string]: Record<string, never> | undefined;
       };
     };
     TransferSubscriptionsFailure: {
-      /** @enum {string} */
+      /**
+       * @description * `error` - error 
+       * @enum {string}
+       */
       status: "error";
       detail: string;
     };
     TransferSubscriptionsRequestRequest: {
-      /** @enum {string} */
+      /**
+       * @description * `stripe` - Stripe
+       * * `braintree` - Braintree 
+       * @enum {string}
+       */
       source: "stripe" | "braintree";
       end_now: boolean;
     };
     TransferSubscriptionsSuccess: {
-      /** @enum {string} */
+      /**
+       * @description * `success` - success 
+       * @enum {string}
+       */
       status: "success";
       detail: string;
     };
@@ -2791,7 +6950,10 @@ export interface components {
       exists: boolean;
     };
     UpdateCRMSourceOfTruthRequest: {
-      /** @enum {string} */
+      /**
+       * @description * `salesforce` - salesforce 
+       * @enum {string}
+       */
       crm_provider_name: "salesforce";
       lotus_is_source: boolean;
     };
@@ -2864,11 +7026,31 @@ export interface components {
       triggers_in: ("customer.created" | "invoice.created" | "invoice.paid" | "invoice.past_due" | "subscription.created" | "usage_alert.triggered" | "subscription.cancelled" | "subscription.renewed")[];
     };
     WebhookTrigger: {
-      /** @enum {string} */
+      /**
+       * @description * `customer.created` - customer.created
+       * * `invoice.created` - invoice.created
+       * * `invoice.paid` - invoice.paid
+       * * `invoice.past_due` - invoice.past_due
+       * * `subscription.created` - subscription.created
+       * * `usage_alert.triggered` - usage_alert.triggered
+       * * `subscription.cancelled` - subscription.cancelled
+       * * `subscription.renewed` - subscription.renewed 
+       * @enum {string}
+       */
       trigger_name: "customer.created" | "invoice.created" | "invoice.paid" | "invoice.past_due" | "subscription.created" | "usage_alert.triggered" | "subscription.cancelled" | "subscription.renewed";
     };
     WebhookTriggerRequest: {
-      /** @enum {string} */
+      /**
+       * @description * `customer.created` - customer.created
+       * * `invoice.created` - invoice.created
+       * * `invoice.paid` - invoice.paid
+       * * `invoice.past_due` - invoice.past_due
+       * * `subscription.created` - subscription.created
+       * * `usage_alert.triggered` - usage_alert.triggered
+       * * `subscription.cancelled` - subscription.cancelled
+       * * `subscription.renewed` - subscription.renewed 
+       * @enum {string}
+       */
       trigger_name: "customer.created" | "invoice.created" | "invoice.paid" | "invoice.past_due" | "subscription.created" | "usage_alert.triggered" | "subscription.cancelled" | "subscription.renewed";
     };
   };
@@ -3311,7 +7493,7 @@ export interface operations {
     responses: {
       200: {
         content: {
-          "application/json": (components["schemas"]["Customer"])[];
+          "application/json": (components["schemas"]["CustomerDetail"])[];
         };
       };
     };
@@ -3341,7 +7523,7 @@ export interface operations {
     responses: {
       200: {
         content: {
-          "application/json": components["schemas"]["Customer"];
+          "application/json": components["schemas"]["CustomerDetail"];
         };
       };
     };
@@ -3493,6 +7675,10 @@ export interface operations {
   };
   app_external_plan_links_destroy: {
     parameters: {
+        /**
+         * @description * `stripe` - Stripe
+         * * `braintree` - Braintree
+         */
       query: {
         source: "stripe" | "braintree";
       };
@@ -3584,7 +7770,7 @@ export interface operations {
     responses: {
       200: {
         content: {
-          "application/json": (components["schemas"]["Invoice"])[];
+          "application/json": (components["schemas"]["InvoiceDetail"])[];
         };
       };
     };
@@ -3592,15 +7778,15 @@ export interface operations {
   app_invoices_create: {
     requestBody: {
       content: {
-        "application/json": components["schemas"]["InvoiceRequest"];
-        "application/x-www-form-urlencoded": components["schemas"]["InvoiceRequest"];
-        "multipart/form-data": components["schemas"]["InvoiceRequest"];
+        "application/json": components["schemas"]["InvoiceDetailRequest"];
+        "application/x-www-form-urlencoded": components["schemas"]["InvoiceDetailRequest"];
+        "multipart/form-data": components["schemas"]["InvoiceDetailRequest"];
       };
     };
     responses: {
       201: {
         content: {
-          "application/json": components["schemas"]["Invoice"];
+          "application/json": components["schemas"]["InvoiceDetail"];
         };
       };
     };
@@ -3614,7 +7800,7 @@ export interface operations {
     responses: {
       200: {
         content: {
-          "application/json": components["schemas"]["Invoice"];
+          "application/json": components["schemas"]["InvoiceDetail"];
         };
       };
     };
@@ -3650,7 +7836,7 @@ export interface operations {
     responses: {
       200: {
         content: {
-          "application/json": components["schemas"]["Invoice"];
+          "application/json": components["schemas"]["InvoiceDetail"];
         };
       };
     };
@@ -3816,7 +8002,14 @@ export interface operations {
   };
   app_organization_settings_list: {
     parameters?: {
-        /** @description Filters organization_settings to a single setting_group. Defaults to returning all settings. */
+        /**
+         * @description Filters organization_settings to a single setting_group. Defaults to returning all settings.
+         * 
+         * * `stripe` - Stripe
+         * * `braintree` - Braintree
+         * * `billing` - Billing
+         * * `crm` - CRM
+         */
         /** @description Filters organization_settings by setting_name. Defaults to returning all settings. */
       query?: {
         setting_group?: "stripe" | "braintree" | "billing" | "crm";
@@ -4245,12 +8438,24 @@ export interface operations {
   app_plans_list: {
     /** @description ViewSet for viewing and editing Plans. */
     parameters?: {
-        /** @description Filter to plans that have this duration. */
+        /**
+         * @description Filter to plans that have this duration.
+         * 
+         * * `monthly` - Monthly
+         * * `quarterly` - Quarterly
+         * * `yearly` - Yearly
+         */
         /** @description Filter to plans that do not have any of the tags in this list. */
         /** @description Filter to plans that have any of the tags in this list. */
         /** @description Filter to plans that have all of the tags in this list. */
         /** @description Filter to versions that have the currency specified by this currency code. */
-        /** @description Filter to versions that have this custom type. If you choose custom_only, you will only see versions that have target customers. If you choose public_only, you will only see versions that do not have target customers. */
+        /**
+         * @description Filter to versions that have this custom type. If you choose custom_only, you will only see versions that have target customers. If you choose public_only, you will only see versions that do not have target customers.
+         * 
+         * * `custom_only` - Custom Only
+         * * `public_only` - Public Only
+         * * `all` - All
+         */
         /** @description Filter to versions that have this status. Ended means it has an active_to date in the past. Not started means it has an active_from date in the future or null. */
       query?: {
         duration?: "monthly" | "quarterly" | "yearly";
@@ -4291,7 +8496,13 @@ export interface operations {
     /** @description ViewSet for viewing and editing Plans. */
     parameters: {
         /** @description Filter to versions that have the currency specified by this currency code. */
-        /** @description Filter to versions that have this custom type. If you choose custom_only, you will only see versions that have target customers. If you choose public_only, you will only see versions that do not have target customers. */
+        /**
+         * @description Filter to versions that have this custom type. If you choose custom_only, you will only see versions that have target customers. If you choose public_only, you will only see versions that do not have target customers.
+         * 
+         * * `custom_only` - Custom Only
+         * * `public_only` - Public Only
+         * * `all` - All
+         */
         /** @description Filter to versions that have this status. Ended means it has an active_to date in the past. Not started means it has an active_from date in the future or null. */
       query?: {
         version_currency_code?: string;

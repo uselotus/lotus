@@ -34,6 +34,7 @@ from metering_billing.models import (
     SubscriptionRecord,
     Tag,
     TeamInviteToken,
+    UnifiedCRMOrganizationIntegration,
     UsageAlert,
     User,
     WebhookEndpoint,
@@ -739,6 +740,61 @@ class CustomerWithRevenueSerializer(TimezoneFieldMixin, serializers.ModelSeriali
 
 
 class CustomerDetailSerializer(api_serializers.CustomerSerializer):
+    class Meta(api_serializers.CustomerSerializer.Meta):
+        fields = tuple(
+            set(api_serializers.CustomerSerializer.Meta.fields).union(
+                {
+                    "crm_provider",
+                    "crm_provider_id",
+                    "crm_provider_url",
+                }
+            )
+        )
+        extra_kwargs = {
+            **api_serializers.CustomerSerializer.Meta.extra_kwargs,
+            **{
+                "crm_provider": {"required": True, "read_only": True},
+                "crm_provider_id": {
+                    "required": True,
+                    "read_only": True,
+                    "allow_null": True,
+                    "allow_blank": False,
+                },
+                "crm_provider_url": {
+                    "required": True,
+                    "read_only": True,
+                    "allow_null": True,
+                },
+            },
+        }
+
+    crm_provider = serializers.SerializerMethodField()
+    crm_provider_id = serializers.SerializerMethodField()
+    crm_provider_url = serializers.SerializerMethodField()
+
+    def get_crm_provider_url(
+        self, obj
+    ) -> serializers.URLField(allow_null=True, required=True):
+        if obj.salesforce_integration:
+            return obj.salesforce_integration.get_crm_url()
+        return None
+
+    def get_crm_provider(
+        self, obj
+    ) -> serializers.ChoiceField(
+        choices=UnifiedCRMOrganizationIntegration.CRMProvider.labels, required=True
+    ):
+        if obj.salesforce_integration:
+            return UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE.label
+        return None
+
+    def get_crm_provider_id(
+        self, obj
+    ) -> serializers.CharField(allow_null=True, required=True):
+        if obj.salesforce_integration:
+            return obj.salesforce_integration.native_customer_id
+        return None
+
     def update(self, instance, validated_data, behavior="merge"):
         instance.customer_id = validated_data.get(
             "customer_id", instance.customer_id if behavior == "merge" else None
@@ -1104,11 +1160,7 @@ class PlanComponentCreateSerializer(TimezoneFieldMixin, serializers.ModelSeriali
                 "organization": self.context["organization"],
                 "component": pc,
             }
-            cc = ComponentChargeCreateSerializer(context=self.context).create(
-                prepaid_charge
-            )
-            pc.fixed_charge = cc
-            pc.save()
+            ComponentChargeCreateSerializer(context=self.context).create(prepaid_charge)
         return pc
 
 
@@ -1576,14 +1628,14 @@ class PlanCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
             "tags",
         )
         extra_kwargs = {
-            "plan_name": {"write_only": True, "required": True},
-            "plan_duration": {"write_only": True, "required": True},
+            "plan_name": {"write_only": True},
+            "plan_duration": {"write_only": True},
             "initial_external_links": {"write_only": True},
-            "initial_version": {"write_only": True, "required": True},
+            "initial_version": {"write_only": True},
             "tags": {"write_only": True},
         }
 
-    initial_version = InitialPlanVersionCreateSerializer(required=True)
+    initial_version = InitialPlanVersionCreateSerializer()
     initial_external_links = InitialExternalPlanLinkSerializer(
         many=True, required=False
     )
@@ -1614,7 +1666,6 @@ class PlanCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
             initial_version_data["plan"] = plan
             initial_version_data["organization"] = validated_data["organization"]
             initial_version_data["created_by"] = validated_data["created_by"]
-            initial_version_data["make_active"] = True
             PlanVersionCreateSerializer(context=self.context).create(
                 initial_version_data
             )
@@ -1939,7 +1990,59 @@ class LightweightInvoiceLineItemSerializer(
 
 class InvoiceDetailSerializer(api_serializers.InvoiceSerializer):
     class Meta(api_serializers.InvoiceSerializer.Meta):
-        fields = api_serializers.InvoiceSerializer.Meta.fields
+        fields = tuple(
+            set(api_serializers.InvoiceSerializer.Meta.fields).union(
+                {
+                    "crm_provider",
+                    "crm_provider_id",
+                    "crm_provider_url",
+                }
+            )
+        )
+        extra_kwargs = {
+            **api_serializers.InvoiceSerializer.Meta.extra_kwargs,
+            **{
+                "crm_provider": {"required": True, "read_only": True},
+                "crm_provider_id": {
+                    "required": True,
+                    "read_only": True,
+                    "allow_null": True,
+                    "allow_blank": False,
+                },
+                "crm_provider_url": {
+                    "required": True,
+                    "read_only": True,
+                    "allow_null": True,
+                },
+            },
+        }
+
+    crm_provider = serializers.SerializerMethodField()
+    crm_provider_id = serializers.SerializerMethodField()
+    crm_provider_url = serializers.SerializerMethodField()
+
+    def get_crm_provider_url(
+        self, obj
+    ) -> serializers.URLField(allow_null=True, required=True):
+        if obj.salesforce_integration:
+            return obj.salesforce_integration.get_crm_url()
+        return None
+
+    def get_crm_provider(
+        self, obj
+    ) -> serializers.ChoiceField(
+        choices=UnifiedCRMOrganizationIntegration.CRMProvider.labels, required=True
+    ):
+        if obj.salesforce_integration:
+            return UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE.label
+        return None
+
+    def get_crm_provider_id(
+        self, obj
+    ) -> serializers.CharField(allow_null=True, required=True):
+        if obj.salesforce_integration:
+            return obj.salesforce_integration.native_invoice_id
+        return None
 
 
 class LightweightInvoiceSerializer(api_serializers.LightweightInvoiceSerializer):
@@ -2274,4 +2377,6 @@ class PlanVersionHistoricalSubscriptionSerializer(
         read_only_fields = fields
 
     customer_id = serializers.CharField(source="customer.customer_id")
+    customer_name = serializers.CharField(source="customer.customer_name")
+    customer_name = serializers.CharField(source="customer.customer_name")
     customer_name = serializers.CharField(source="customer.customer_name")

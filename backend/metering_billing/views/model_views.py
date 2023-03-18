@@ -529,7 +529,9 @@ class CustomerViewSet(api_views.CustomerViewSet):
             return CustomerUpdateSerializer
         elif self.action == "summary":
             return CustomerSummarySerializer
-        return super().get_serializer_class()
+        elif self.action == "totals":
+            return CustomerWithRevenueSerializer
+        return super().get_serializer_class(default=CustomerDetailSerializer)
 
     @extend_schema(responses=PlanVersionDetailSerializer)
     def update(self, request, *args, **kwargs):
@@ -1733,7 +1735,7 @@ class InvoiceViewSet(api_views.InvoiceViewSet):
     def get_serializer_class(self):
         if self.action == "send":
             return InvoiceDetailSerializer
-        return super().get_serializer_class()
+        return super().get_serializer_class(default=InvoiceDetailSerializer)
 
     @extend_schema(request=None)
     @action(detail=True, methods=["post"])

@@ -2,6 +2,7 @@ import json
 
 import pycountry
 import requests
+from api.serializers.model_serializers import InvoiceSerializer
 from django.conf import settings
 from django.db.models import Q
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -13,6 +14,7 @@ from metering_billing.exceptions import (
 from metering_billing.models import (
     Address,
     Customer,
+    Invoice,
     OrganizationSetting,
     UnifiedCRMCustomerIntegration,
     UnifiedCRMOrganizationIntegration,
@@ -22,6 +24,7 @@ from metering_billing.utils.enums import ORGANIZATION_SETTING_NAMES
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from scourgify import normalize_address_record
 
 SELF_HOSTED = settings.SELF_HOSTED
 VESSEL_API_KEY = settings.VESSEL_API_KEY
@@ -137,7 +140,6 @@ class CRMUnifiedAPIView(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
             headers={"vessel-api-token": VESSEL_API_KEY},
         )
         body = response.json()
-        print(body)
         return Response({"link_token": body["linkToken"]}, status=status.HTTP_200_OK)
 
     @extend_schema(
@@ -199,6 +201,49 @@ class CRMUnifiedAPIView(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         return Response({"success": True}, status=status.HTTP_200_OK)
 
 
+def sync_invoices_with_salesforce(organization):
+    connection = organization.unified_crm_organization_links.get(
+        crm_provider=UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE
+    )
+    access_token = connection.access_token
+    headers = {
+        "vessel-api-token": VESSEL_API_KEY,
+    }
+    url = "https://api.vessel.land/crm/note"
+
+    customers_with_integration = organization.customers.filter(
+        salesforce_integration__isnull=False
+    )
+    invoices_from_customers = Invoice.objects.filter(
+        customer__in=customers_with_integration
+    )
+    for customer in customers_with_integration:
+        invoices = invoices_from_customers.filter(customer=customer)
+        accountId = customer.salesforce_integration.native_customer_id
+        for invoice in invoices:
+            serialized_invoice = InvoiceSerializer(invoice).data
+            body = {"lotus_url": "", "invoice": serialized_invoice}
+            note = {
+                "accountId": accountId,
+                "content": body,
+                "isPrivate": False,
+                "additional": {
+                    "Title": f"[LOTUS] Invoice on {invoice.issue_date.strftime('%Y-%m-%d')}",
+                },
+            }
+            payload = {
+                "accessToken": access_token,
+                "note": note,
+            }
+            response = requests.post(url, headers=headers, json=payload)
+            try:
+                response.raise_for_status()  # raises exception when not a 2xx response
+            except requests.exceptions.HTTPError as e:
+                print(e)
+                print(response.text)
+                continue
+
+
 def sync_customers_with_salesforce(organization):
     org_setting = OrganizationSetting.objects.get(
         organization=organization,
@@ -214,12 +259,11 @@ def sync_customers_with_salesforce(organization):
     headers = {
         "vessel-api-token": VESSEL_API_KEY,
     }
-
     url = f"https://api.vessel.land/crm/accounts?accessToken={access_token}&allFields=true"
-    response = requests.post(url, headers=headers)
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()  # raises exception when not a 2xx response
     accounts = response.json()["accounts"]
     customer_ids_set = {x["additional"]["AccountNumber"]: x for x in accounts}
-    emails_set = {x["email"]: x for x in accounts}
     if lotus_is_source:
         url = "https://api.vessel.land/crm/account"
         headers = {
@@ -236,7 +280,7 @@ def sync_customers_with_salesforce(organization):
             }
             if customer.shipping_address:
                 payload["additional"] = {}
-                payload["additional"]["shippingAddress"] = {
+                payload["additional"]["ShippingAddress"] = {
                     "street": customer.shipping_address.line1,
                     "city": customer.shipping_address.city,
                     "state": customer.shipping_address.state,
@@ -246,18 +290,16 @@ def sync_customers_with_salesforce(organization):
             if customer.billing_address:
                 if not payload.get("additional"):
                     payload["additional"] = {}
-                payload["additional"]["billingAddress"] = {
+                payload["additional"]["BillingAddress"] = {
                     "street": customer.billing_address.line1,
                     "city": customer.billing_address.city,
                     "state": customer.billing_address.state,
                     "country": customer.billing_address.country,
                     "postalCode": customer.billing_address.postal_code,
                 }
-            if customer.customer_id in customer_ids_set or customer.email in emails_set:
+            if customer.customer_id in customer_ids_set:
                 # customer exists in salesforce
-                account = customer_ids_set.get(customer.customer_id) or emails_set.get(
-                    customer.email
-                )
+                account = customer_ids_set.get(customer.customer_id)
                 # they exist, but we haven't created the integration
                 integration, _ = UnifiedCRMCustomerIntegration.objects.update_or_create(
                     customer=customer,
@@ -284,70 +326,87 @@ def sync_customers_with_salesforce(organization):
                 )
     else:
         lotus_customers = organization.customers.filter(
-            Q(customer_id__in=customer_ids_set) | Q(email__in=emails_set)
+            Q(customer_id__in=customer_ids_set)
         )
         for account in accounts:
-            email = account["email"]
             name = account["name"]
             internal_id = account["additional"]["AccountNumber"] or account["nativeId"]
             native_id = account["nativeId"]
             unified_id = account["id"]
-            billing_address = account["additional"]["billingAddress"]
-            shipping_address = account["additional"]["shippingAddress"]
+            billing_address = account["additional"]["BillingAddress"]
+            shipping_address = account["additional"]["ShippingAddress"]
             if billing_address:
-                fuzzy_country = pycountry.countries.search_fuzzy(
-                    billing_address["country"]
-                )
-                if not fuzzy_country:
-                    billing_address = None
-                else:
+                try:
+                    fuzzy_country = pycountry.countries.search_fuzzy(
+                        billing_address["country"]
+                    )
+                except Exception:
+                    fuzzy_country = None
+
+                try:
+                    billing_address = Address.objects.get_or_create(
+                        line1=billing_address["street"],
+                        city=billing_address["city"],
+                        state=billing_address["state"],
+                        country=fuzzy_country[0].alpha_2,
+                        postal_code=billing_address["postalCode"],
+                    )
+                except Exception:
                     try:
+                        normalized = normalize_address_record(billing_address["street"])
                         billing_address = Address.objects.get_or_create(
-                            line1=billing_address["street"],
-                            city=billing_address["city"],
-                            state=billing_address["state"],
-                            country=fuzzy_country[0].alpha_2,
-                            postal_code=billing_address["postalCode"],
+                            line1=normalized["address_line_1"],
+                            line2=normalized["address_line_2"],
+                            city=normalized["city"],
+                            state=normalized["state"],
+                            country="US",
+                            postal_code=normalized["postal_code"],
                         )
                     except Exception:
                         billing_address = None
             if shipping_address:
-                fuzzy_country = pycountry.countries.search_fuzzy(
-                    shipping_address["country"]
-                )
-                if not fuzzy_country:
-                    shipping_address = None
-                else:
+                try:
+                    fuzzy_country = pycountry.countries.search_fuzzy(
+                        shipping_address["country"]
+                    )
+                except Exception:
+                    fuzzy_country = None
+
+                try:
+                    shipping_address = Address.objects.get_or_create(
+                        line1=shipping_address["street"],
+                        city=shipping_address["city"],
+                        state=shipping_address["state"],
+                        country=fuzzy_country[0].alpha_2,
+                        postal_code=shipping_address["postalCode"],
+                    )
+                except Exception:
                     try:
+                        normalized = normalize_address_record(
+                            shipping_address["street"]
+                        )
                         shipping_address = Address.objects.get_or_create(
-                            line1=shipping_address["street"],
-                            city=shipping_address["city"],
-                            state=shipping_address["state"],
-                            country=fuzzy_country[0].alpha_2,
-                            postal_code=shipping_address["postalCode"],
+                            line1=normalized["address_line_1"],
+                            line2=normalized["address_line_2"],
+                            city=normalized["city"],
+                            state=normalized["state"],
+                            country="US",
+                            postal_code=normalized["postal_code"],
                         )
                     except Exception:
                         shipping_address = None
-            customer = lotus_customers.filter(
-                Q(customer_id=internal_id) | Q(email=email)
-            ).first()
+
+            customer = lotus_customers.filter(Q(customer_id=internal_id)).first()
             defaults = {
                 "customer_name": name,
-                "email": email,
-                "name": name,
                 "billing_address": billing_address,
                 "shipping_address": shipping_address,
             }
-            if customer.customer_id == internal_id:
-                customer, _ = Customer.objects.update_or_create(
-                    organization=organization,
-                    customer_id=internal_id,
-                    defaults=defaults,
-                )
-            else:
-                customer, _ = Customer.objects.update_or_create(
-                    organization=organization, email=email, defaults=defaults
-                )
+            customer, _ = Customer.objects.update_or_create(
+                organization=organization,
+                customer_id=internal_id,
+                defaults=defaults,
+            )
             customer_integration = customer.salesforce_integration
             if not customer_integration:
                 customer_integration = UnifiedCRMCustomerIntegration.objects.create(
@@ -357,4 +416,6 @@ def sync_customers_with_salesforce(organization):
                     unified_account_id=unified_id,
                 )
                 customer.salesforce_integration = customer_integration
+                customer.save()
+                customer.save()
                 customer.save()
