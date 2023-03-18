@@ -14,9 +14,6 @@ import stripe
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import F, Prefetch, Q
-from rest_framework import serializers, status
-from rest_framework.response import Response
-
 from metering_billing.serializers.payment_processor_serializers import (
     PaymentProcesorPostResponseSerializer,
 )
@@ -30,6 +27,8 @@ from metering_billing.utils.enums import (
     ORGANIZATION_SETTING_NAMES,
     PAYMENT_PROCESSORS,
 )
+from rest_framework import serializers, status
+from rest_framework.response import Response
 
 logger = logging.getLogger("django.server")
 
@@ -1130,10 +1129,10 @@ class StripeConnector(PaymentProcesor):
             metadata = {}
             if sr is not None:
                 metadata["plan_name"] = sr.billing_plan.plan.plan_name
-                filters = sr.filters.all()
+                filters = sr.subscription_filters
                 for f in filters:
-                    metadata[f.property_name] = f.comparison_value[0]
-                    name += f" - ({f.property_name} : {f.comparison_value[0]})"
+                    metadata[f[0]] = f[1]
+                    name += f" - ({f[0]} : {f[1]})"
             inv_dict = {
                 "description": name,
                 "amount": int(amount * 100),

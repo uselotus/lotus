@@ -92,7 +92,6 @@ def calculate_invoice():
         "billing_plan__plan_components",
         "billing_plan__plan_components__billable_metric",
         "billing_plan__plan_components__tiers",
-        "filters",
         "billing_records",
     )
 
