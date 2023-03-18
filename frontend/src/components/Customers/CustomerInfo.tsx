@@ -231,7 +231,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
         <div className="col-span-2">
           <CustomerCard
             className={`overflow-x-clip ${
-              !isEditing ? "h-[215px]" : "min-h-[230px]"
+              !isEditing ? "h-[235px]" : "min-h-[250px]"
             }  `}
           >
             <CustomerCard.Heading>
@@ -406,7 +406,6 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                     )}
                   </div>
                 </CustomerCard.Item>
-
                 <CustomerCard.Item>
                   <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
                     Timezone
@@ -441,6 +440,10 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                       </div>
                     )}
                   </div>
+                </CustomerCard.Item>
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4"></div>
+                  <div className="flex gap-1"></div>
                 </CustomerCard.Item>
               </CustomerCard.Block>
               <CustomerCard.Block className="w-full p-2 -mt-4 ml-auto text-[14px] justify-between">
@@ -600,7 +603,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
           </CustomerCard>
         </div>
         <div className="col-span-1 mr-8">
-          <CustomerCard className="h-[215px]">
+          <CustomerCard className="h-[235px]">
             <CustomerCard.Heading>
               <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
                 Revenue Details
