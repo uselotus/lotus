@@ -3,7 +3,7 @@ from api.serializers.model_serializers import (
     LightweightCustomerSerializer,
     LightweightMetricSerializer,
     LightweightPlanVersionSerializer,
-    SubscriptionCategoricalFilterSerializer,
+    SubscriptionFilterSerializer,
 )
 from metering_billing.models import (
     Customer,
@@ -70,9 +70,7 @@ class AccessMethodsSubscriptionRecordSerializer(
             "plan": {"required": True, "read_only": True},
         }
 
-    subscription_filters = SubscriptionCategoricalFilterSerializer(
-        many=True, source="filters"
-    )
+    subscription_filters = SubscriptionFilterSerializer(many=True)
     plan = LightweightPlanVersionSerializer(source="billing_plan")
 
 
@@ -120,7 +118,7 @@ class MetricAccessRequestSerializer(serializers.Serializer):
         queryset=Metric.objects.all(),
         help_text="The metric_id of the metric you want to check access for.",
     )
-    subscription_filters = SubscriptionCategoricalFilterSerializer(
+    subscription_filters = SubscriptionFilterSerializer(
         many=True,
         required=False,
         help_text="Used if you want to restrict the access check to only plans that fulfill certain subscription filter criteria. If your billing model does not have the ability multiple plans or subscriptions per customer, this is likely not relevant for you. ",
@@ -158,7 +156,7 @@ class FeatureAccessRequestSerializer(serializers.Serializer):
         queryset=Feature.objects.all(),
         help_text="The feature_id of the feature you want to check access for.",
     )
-    subscription_filters = SubscriptionCategoricalFilterSerializer(
+    subscription_filters = SubscriptionFilterSerializer(
         many=True,
         required=False,
         help_text="The subscription filters that are applied to this plan's relationship with the customer. If your billing model does not have the ability multiple plans or subscriptions per customer, this is likely not relevant for you. ",

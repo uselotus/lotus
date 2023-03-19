@@ -31,7 +31,7 @@ from api.serializers.model_serializers import (
     ListPlanVersionsFilterSerializer,
     ListSubscriptionRecordFilter,
     PlanSerializer,
-    SubscriptionCategoricalFilterSerializer,
+    SubscriptionFilterSerializer,
     SubscriptionRecordCancelSerializer,
     SubscriptionRecordCreateSerializer,
     SubscriptionRecordCreateSerializerOld,
@@ -94,7 +94,6 @@ from metering_billing.invoice import generate_invoice
 from metering_billing.invoice_pdf import get_invoice_presigned_url
 from metering_billing.kafka.producer import Producer
 from metering_billing.models import (
-    CategoricalFilter,
     ComponentChargeRecord,
     Customer,
     CustomerBalanceAdjustment,
@@ -127,7 +126,6 @@ from metering_billing.serializers.serializer_utils import (
 )
 from metering_billing.utils import calculate_end_date, convert_to_datetime, now_utc
 from metering_billing.utils.enums import (
-    CATEGORICAL_FILTER_OPERATORS,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     INVOICING_BEHAVIOR,
     METRIC_STATUS,
@@ -185,7 +183,6 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 )
                 .select_related("customer", "billing_plan", "billing_plan__plan")
                 .prefetch_related(
-                    "filters",
                     "addon_subscription_records",
                     "organization",
                 ),
@@ -797,19 +794,13 @@ class SubscriptionViewSet(
             )
 
             if serializer.validated_data.get("subscription_filters"):
-                filters = []
                 for filter in serializer.validated_data["subscription_filters"]:
-                    m2m, _ = CategoricalFilter.objects.get_or_create(
-                        organization=organization,
-                        property_name=filter["property_name"],
-                        comparison_value=[filter["value"]],
-                        operator=CATEGORICAL_FILTER_OPERATORS.ISIN,
+                    qs = qs.filter(
+                        subscription_filters__contains=[
+                            [filter["property_name"], filter["value"]]
+                        ]
                     )
-                    filters.append(m2m)
-                query = reduce(
-                    lambda acc, filter: acc & Q(filters=filter), filters, Q()
-                )
-                qs = qs.filter(query)
+
         return qs
 
     @extend_schema(
@@ -1750,7 +1741,6 @@ class MetricAccessView(APIView):
             "billing_plan__plan_components__billable_metric",
             "billing_plan__plan_components__tiers",
             "billing_plan__plan",
-            "filters",
         )
         return_dict = {
             "customer": customer,
@@ -1760,7 +1750,7 @@ class MetricAccessView(APIView):
         }
         for sr in subscription_records.filter(billing_plan__addon_spec__isnull=True):
             if subscription_filters_set:
-                sr_filters_set = {(x.property_name, x.value) for x in sr.filters.all()}
+                sr_filters_set = {tuple(x) for x in sr.subscription_filters}
                 if not subscription_filters_set.issubset(sr_filters_set):
                     continue
             single_sr_dict = {
@@ -1846,7 +1836,6 @@ class FeatureAccessView(APIView):
         subscription_records = subscription_records.prefetch_related(
             "billing_plan__features",
             "billing_plan__plan",
-            "filters",
         )
         return_dict = {
             "customer": customer,
@@ -1856,7 +1845,7 @@ class FeatureAccessView(APIView):
         }
         for sr in subscription_records.filter(billing_plan__addon_spec__isnull=True):
             if subscription_filters_set:
-                sr_filters_set = {(x.property_name, x.value) for x in sr.filters.all()}
+                sr_filters_set = {tuple(x) for x in sr.subscription_filters}
                 if not subscription_filters_set.issubset(sr_filters_set):
                     continue
             single_sr_dict = {
@@ -2179,7 +2168,7 @@ class GetCustomerEventAccessRequestSerializer(serializers.Serializer):
         allow_null=True,
         help_text="The metric_id of the metric you are checking access for. Please note that you must porovide exactly one of event_name and metric_id are mutually; a validation error will be thrown if both or none are provided.",
     )
-    subscription_filters = SubscriptionCategoricalFilterSerializer(
+    subscription_filters = SubscriptionFilterSerializer(
         many=True,
         required=False,
         help_text="The subscription filters that are applied to this plan's relationship with the customer. If your billing model does not have the ability multiple plans or subscriptions per customer, this is likely not relevant for you. This must be passed in as a stringified JSON object.",
@@ -2210,7 +2199,7 @@ class GetCustomerFeatureAccessRequestSerializer(serializers.Serializer):
     feature_name = serializers.CharField(
         help_text="Name of the feature to check access for."
     )
-    subscription_filters = SubscriptionCategoricalFilterSerializer(
+    subscription_filters = SubscriptionFilterSerializer(
         many=True,
         required=False,
         help_text="The subscription filters that are applied to this plan's relationship with the customer. If your billing model does not have the ability multiple plans or subscriptions per customer, this is likely not relevant for you. This must be passed in as a stringified JSON object.",
@@ -2230,7 +2219,7 @@ class GetFeatureAccessSerializer(serializers.Serializer):
     plan_id = serializers.CharField(
         help_text="The plan_id of the plan we are checking that has access to this feature."
     )
-    subscription_filters = SubscriptionCategoricalFilterSerializer(
+    subscription_filters = SubscriptionFilterSerializer(
         many=True,
         help_text="The subscription filters that are applied to this plan's relationship with the customer. If your billing model does not have the ability multiple plans or subscriptions per customer, this is likely not relevant for you.",
     )
@@ -2264,7 +2253,7 @@ class GetEventAccessSerializer(serializers.Serializer):
     plan_id = serializers.CharField(
         help_text="The plan_id of the plan we are checking that has access to this feature."
     )
-    subscription_filters = SubscriptionCategoricalFilterSerializer(
+    subscription_filters = SubscriptionFilterSerializer(
         many=True,
         help_text="The subscription filters that are applied to this plan's relationship with the customer. If your billing model does not have the ability multiple plans or subscriptions per customer, this is likely not relevant for you.",
     )
@@ -2324,17 +2313,18 @@ class GetCustomerFeatureAccessView(APIView):
             for x in serializer.validated_data.get("subscription_filters", [])
         }
         for key, value in subscription_filters.items():
-            key = f"properties__{key}"
-            subscriptions = subscriptions.filter(**{key: value})
+            subscriptions = subscriptions.filter(
+                subscription_filters__contains=[[key, value]]
+            )
         features = []
         subscriptions = subscriptions.prefetch_related("billing_plan__features")
         for sub in subscriptions:
             subscription_filters = []
-            for filter in sub.filters.all():
+            for filter_arr in sub.subscription_filters:
                 subscription_filters.append(
                     {
-                        "property_name": filter.property_name,
-                        "value": filter.comparison_value[0],
+                        "property_name": filter_arr[0],
+                        "value": filter_arr[1],
                     }
                 )
             sub_dict = {
@@ -2407,22 +2397,22 @@ class GetCustomerEventAccessView(APIView):
             for x in serializer.validated_data.get("subscription_filters", [])
         }
         for key, value in subscription_filters.items():
-            key = f"properties__{key}"
-            subscription_records = subscription_records.filter(**{key: value})
+            subscription_records = subscription_records.filter(
+                subscription_filters__contains=[[key, value]]
+            )
         metrics = []
         subscription_records = subscription_records.prefetch_related(
             "billing_plan__plan_components",
             "billing_plan__plan_components__billable_metric",
             "billing_plan__plan_components__tiers",
-            "filters",
         )
         for sr in subscription_records:
             subscription_filters = []
-            for filter in sr.filters.all():
+            for filter_arr in sr.subscription_filters:
                 subscription_filters.append(
                     {
-                        "property_name": filter.property_name,
-                        "value": filter.comparison_value[0],
+                        "property_name": filter_arr[0],
+                        "value": filter_arr[1],
                     }
                 )
             single_sub_dict = {
