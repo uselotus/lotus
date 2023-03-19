@@ -2,9 +2,8 @@ import json
 
 import pycountry
 import requests
-from api.serializers.model_serializers import InvoiceSerializer
+import sentry_sdk
 from django.conf import settings
-from django.db.models import Q
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.exceptions import (
     CRMIntegrationNotAllowed,
@@ -17,13 +16,10 @@ from metering_billing.models import (
     Invoice,
     OrganizationSetting,
     UnifiedCRMCustomerIntegration,
+    UnifiedCRMInvoiceIntegration,
     UnifiedCRMOrganizationIntegration,
 )
 from metering_billing.permissions import ValidOrganization
-from metering_billing.utils import (
-    make_all_dates_times_strings,
-    make_all_decimals_floats,
-)
 from metering_billing.utils.enums import ORGANIZATION_SETTING_NAMES
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -32,6 +28,7 @@ from scourgify import normalize_address_record
 
 SELF_HOSTED = settings.SELF_HOSTED
 VESSEL_API_KEY = settings.VESSEL_API_KEY
+VITE_API_URL = settings.VITE_API_URL
 
 
 class SingleCRMProviderSerializer(serializers.Serializer):
@@ -205,15 +202,57 @@ class CRMUnifiedAPIView(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         return Response({"success": True}, status=status.HTTP_200_OK)
 
 
+def send_invoice_to_salesforce(invoice, customer, accountId, access_token):
+    headers = {
+        "vessel-api-token": VESSEL_API_KEY,
+    }
+    url = "https://api.vessel.land/crm/note"
+    body = {
+        "lotus_url": VITE_API_URL + f"customers/{customer.customer_id}",
+        "invoice_pdf": invoice.invoice_pdf,
+    }
+    note = {
+        "accountId": accountId,
+        "content": json.dumps(body),
+        "isPrivate": False,
+        "additional": {
+            "Title": f"[LOTUS] Invoice on {invoice.issue_date.strftime('%Y-%m-%d')}",
+        },
+    }
+    payload = {
+        "accessToken": access_token,
+        "note": note,
+    }
+    response = requests.post(url, headers=headers, json=payload)
+    try:
+        response.raise_for_status()  # raises exception when not a 2xx response
+    except requests.exceptions.HTTPError as e:
+        sentry_sdk.capture_exception(e)
+        print(e)
+        print(response.text)
+        return
+    unified_id = response.json()["id"]
+    get_url = url + f"?accessToken={access_token}&id={unified_id}"
+    response = requests.get(
+        get_url,
+        headers=headers,
+    )
+    response_json = response.json()
+    integration = UnifiedCRMInvoiceIntegration.objects.create(
+        organization=invoice.organization,
+        crm_provider=UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE,
+        unified_note_id=unified_id,
+        native_invoice_id=response_json["note"]["nativeId"],
+    )
+    invoice.salesforce_integration = integration
+    invoice.save()
+
+
 def sync_invoices_with_salesforce(organization):
     connection = organization.unified_crm_organization_links.get(
         crm_provider=UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE
     )
     access_token = connection.access_token
-    headers = {
-        "vessel-api-token": VESSEL_API_KEY,
-    }
-    url = "https://api.vessel.land/crm/note"
 
     customers_with_integration = organization.customers.filter(
         salesforce_integration__isnull=False
@@ -222,35 +261,14 @@ def sync_invoices_with_salesforce(organization):
         customer__in=customers_with_integration
     )
     for customer in customers_with_integration:
-        invoices = invoices_from_customers.filter(customer=customer)
-        accountId = customer.salesforce_integration.native_customer_id
+        invoices = invoices_from_customers.filter(
+            customer=customer, salesforce_integration__isnull=True
+        )
+        accountId = customer.salesforce_integration.unified_account_id
         if not accountId:
             continue
         for invoice in invoices:
-            serialized_invoice = InvoiceSerializer(invoice).data
-            serialized_invoice = make_all_decimals_floats(serialized_invoice)
-            serialized_invoice = make_all_dates_times_strings(serialized_invoice)
-            body = {"lotus_url": "", "invoice": serialized_invoice}
-            note = {
-                "accountId": accountId,
-                "content": json.dumps(body),
-                "isPrivate": False,
-                "additional": {
-                    "Title": f"[LOTUS] Invoice on {invoice.issue_date.strftime('%Y-%m-%d')}",
-                },
-            }
-            payload = {
-                "accessToken": access_token,
-                "note": note,
-            }
-            print("payload", payload)
-            response = requests.post(url, headers=headers, json=payload)
-            try:
-                response.raise_for_status()  # raises exception when not a 2xx response
-            except requests.exceptions.HTTPError as e:
-                print(e)
-                print(response.text)
-                continue
+            send_invoice_to_salesforce(invoice, customer, accountId, access_token)
 
 
 def sync_customers_with_salesforce(organization):
@@ -317,7 +335,7 @@ def sync_customers_with_salesforce(organization):
                 response = requests.post(url, headers=headers, data=json.dumps(payload))
                 unified_id = response.json()["id"]
                 get_url = url + f"?accessToken={access_token}&id={unified_id}"
-                response = requests.post(
+                response = requests.get(
                     get_url,
                     headers=headers,
                 )
@@ -326,16 +344,16 @@ def sync_customers_with_salesforce(organization):
                     organization=organization,
                     crm_provider=UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE,
                     unified_account_id=unified_id,
-                    native_customer_id=response_json["nativeId"],
+                    native_customer_id=response_json["account"]["nativeId"],
                 )
                 customer.salesforce_integration = integration
                 customer.save()
     else:
         lotus_customers = organization.customers.filter(
-            Q(customer_id__in=customer_ids_set)
+            customer_id__in=customer_ids_set
         )
         lotus_customer_integrations = organization.unified_crm_customer_links.filter(
-            Q(native_customer_id__in=native_ids_set)
+            native_customer_id__in=native_ids_set
         )
         for account in accounts:
             name = account["name"]
@@ -406,14 +424,11 @@ def sync_customers_with_salesforce(organization):
                         )
                     except Exception:
                         shipping_address = None
-
             integration = lotus_customer_integrations.filter(
                 native_customer_id=native_id
             ).first()
-            matching_customer = lotus_customers.filter(
-                Q(customer_id=internal_id)
-            ).first()
-            if lotus_customer_integrations:
+            matching_customer = lotus_customers.filter(customer_id=internal_id).first()
+            if integration:
                 customer = integration.customer
             elif matching_customer:
                 customer = matching_customer
@@ -442,3 +457,4 @@ def sync_customers_with_salesforce(organization):
                     unified_account_id=unified_id,
                 )
                 customer.salesforce_integration = customer_integration
+                customer.save()

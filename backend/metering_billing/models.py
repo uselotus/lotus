@@ -91,7 +91,7 @@ CUSTOMER_ID_NAMESPACE = settings.CUSTOMER_ID_NAMESPACE
 class Team(models.Model):
     name = models.CharField(max_length=100, blank=False, null=False)
     team_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    crm_integration_allowed = models.BooleanField(default=True)
+    crm_integration_allowed = models.BooleanField(default=False)
     # accounting_integration_allowed = models.BooleanField(default=False)
     __original_crm_integration_allowed = None
 
@@ -4067,6 +4067,9 @@ class UnifiedCRMCustomerIntegration(models.Model):
     )
     native_customer_id = models.TextField(null=True)
     unified_account_id = models.TextField()
+
+    def __str__(self):
+        return f"[{self.get_crm_provider_display()}] {self.native_customer_id} - {self.unified_account_id}"
 
     class Meta:
         constraints = [
