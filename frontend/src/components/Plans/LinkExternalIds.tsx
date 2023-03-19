@@ -118,5 +118,6 @@ const LinksExternalIds: React.FC<LinkExternalIdsProps> = ({
     </div>
   );
 };
+
 const LinkExternalIds = memo(LinksExternalIds);
 export default LinkExternalIds;

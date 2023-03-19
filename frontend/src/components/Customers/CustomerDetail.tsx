@@ -32,6 +32,7 @@ import { CurrencyType } from "../../types/pricing-unit-type";
 import { PageLayout } from "../base/PageLayout";
 import { QueryErrors } from "../../types/error-response-types";
 import { DeleteOutlined } from "@ant-design/icons";
+import { components } from "../../gen-types";
 
 type CustomerDetailsParams = {
   customerId: string;
@@ -49,7 +50,11 @@ function CustomerDetail() {
   const [endDate, setEndDate] = useState<string>(dayjs().format("YYYY-MM-DD"));
   const { data: plans }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
     ["plan_list"],
-    () => Plan.getPlans().then((res) => res)
+    () =>
+      Plan.getPlans({
+        version_custom_type: "public_only",
+        version_status: "active",
+      }).then((res) => res)
   );
 
   const { data: pricingUnits }: UseQueryResult<CurrencyType[]> = useQuery<
@@ -102,14 +107,18 @@ function CustomerDetail() {
       onError: (error: QueryErrors) => {
         toast.error(error.response.data.title);
       },
+      onMutate() {
+        toast.loading("Creating subscription...");
+      },
+      onSettled() {
+        toast.dismiss();
+      },
     }
   );
 
   const cancelSubscriptionMutation = useMutation(
-    (obj: {
-      post: CancelSubscriptionBody;
-      params: CancelSubscriptionQueryParams;
-    }) => Customer.cancelSubscription(obj.params, obj.post),
+    (obj: { post: CancelSubscriptionBody; subscription_id: string }) =>
+      Customer.cancelSubscription(obj.subscription_id, obj.post),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
@@ -126,8 +135,10 @@ function CustomerDetail() {
   );
 
   const changeSubscriptionPlanMutation = useMutation(
-    (obj: { params: object; post: ChangeSubscriptionPlanType }) =>
-      Customer.changeSubscriptionPlan(obj.post, obj.params),
+    (obj: {
+      post: components["schemas"]["SubscriptionRecordSwitchPlanRequest"];
+      subscription_id: string;
+    }) => Customer.switchPlanSubscription(obj.post, obj.subscription_id),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
@@ -138,14 +149,16 @@ function CustomerDetail() {
         toast.success("Subscription switched successfully");
       },
       onError: (error: QueryErrors) => {
-        toast.error(error.response.data.title);
+        toast.error(error.response.data.detail);
       },
     }
   );
 
   const turnSubscriptionAutoRenewOffMutation = useMutation(
-    (obj: { params: object; post: TurnSubscriptionAutoRenewOffType }) =>
-      Customer.turnSubscriptionAutoRenewOff(obj.post, obj.params),
+    (obj: {
+      subscription_id: string;
+      post: components["schemas"]["SubscriptionRecordUpdateRequest"];
+    }) => Customer.turnSubscriptionAutoRenewOff(obj.post, obj.subscription_id),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
@@ -160,30 +173,27 @@ function CustomerDetail() {
 
   const cancelSubscription = (
     props: CancelSubscriptionBody,
-    params: CancelSubscriptionQueryParams
+    subscription_id: string
   ) => {
     cancelSubscriptionMutation.mutate({
       post: props,
-      params,
+      subscription_id,
     });
   };
 
-  const changeSubscriptionPlan = (
-    params: object,
-    props: ChangeSubscriptionPlanType
-  ) => {
+  const changeSubscriptionPlan = (params: object, subscription_id) => {
     changeSubscriptionPlanMutation.mutate({
-      params,
-      post: props,
+      post: params,
+      subscription_id
     });
   };
 
   const turnSubscriptionAutoRenewOff = (
-    params: object,
-    props: TurnSubscriptionAutoRenewOffType
+    subscription_id: string,
+    props: components["schemas"]["SubscriptionRecordUpdateRequest"]
   ) => {
     turnSubscriptionAutoRenewOffMutation.mutate({
-      params,
+      subscription_id,
       post: props,
     });
   };
@@ -322,8 +332,8 @@ function CustomerDetail() {
         >
           <p>
             Are you sure you want to delete this customer? This action cannot be
-            undone and will cancel all of the customer's current subscriptions
-            without billing.
+            undone and will cancel all of the customer&apos;s current
+            subscriptions without billing.
           </p>
         </Modal>
       )}

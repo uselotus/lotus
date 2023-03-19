@@ -8,29 +8,24 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
-    NotFoundException,
 )
-from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
-    Customer,
     Event,
     Invoice,
     Metric,
     Organization,
     SubscriptionRecord,
 )
-from metering_billing.netsuite_csv import get_csv_presigned_url
+from metering_billing.netsuite_csv import get_invoices_csv_presigned_url
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
-from metering_billing.serializers.model_serializers import (
-    DraftInvoiceSerializer,
-    MetricDetailSerializer,
-)
+from metering_billing.serializers.model_serializers import MetricDetailSerializer
 from metering_billing.serializers.request_serializers import (
     CostAnalysisRequestSerializer,
-    DraftInvoiceRequestSerializer,
+    OptionalPeriodRequestSerializer,
     PeriodComparisonRequestSerializer,
     PeriodMetricUsageRequestSerializer,
+    URLResponseSerializer,
 )
 from metering_billing.serializers.response_serializers import (
     CostAnalysisSerializer,
@@ -47,21 +42,17 @@ from metering_billing.utils import (
     convert_to_decimal,
     date_as_max_dt,
     date_as_min_dt,
+    dates_bwn_two_dts,
     make_all_dates_times_strings,
     make_all_decimals_floats,
-    periods_bwn_twodates,
 )
-from metering_billing.utils.enums import (
-    METRIC_STATUS,
-    METRIC_TYPE,
-    PAYMENT_PROCESSORS,
-    USAGE_CALC_GRANULARITY,
-)
+from metering_billing.utils.enums import METRIC_STATUS, METRIC_TYPE, PAYMENT_PROCESSORS
 from rest_framework import serializers, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
 
 logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -105,13 +96,13 @@ class PeriodMetricRevenueView(APIView):
             issue_date__gte=p1_start,
             issue_date__lte=p1_end,
             payment_status=Invoice.PaymentStatus.PAID,
-        ).aggregate(tot=Sum("cost_due"))["tot"]
+        ).aggregate(tot=Sum("amount"))["tot"]
         p2_collected = Invoice.objects.filter(
             organization=organization,
             issue_date__gte=p2_start,
             issue_date__lte=p2_end,
             payment_status=Invoice.PaymentStatus.PAID,
-        ).aggregate(tot=Sum("cost_due"))["tot"]
+        ).aggregate(tot=Sum("amount"))["tot"]
         return_dict["total_revenue_period_1"] = p1_collected or Decimal(0)
         return_dict["total_revenue_period_2"] = p2_collected or Decimal(0)
         # earned
@@ -131,9 +122,7 @@ class PeriodMetricRevenueView(APIView):
                 .prefetch_related("billing_plan__plan_components__tiers")
             )
             per_day_dict = {}
-            for period in periods_bwn_twodates(
-                USAGE_CALC_GRANULARITY.DAILY, start, end
-            ):
+            for period in dates_bwn_two_dts(start, end):
                 period = convert_to_date(period)
                 per_day_dict[period] = {
                     "date": period,
@@ -214,26 +203,19 @@ class CostAnalysisView(APIView):
         Returns the revenue for an organization in a given time period.
         """
         organization = request.organization
-        serializer = CostAnalysisRequestSerializer(data=request.query_params)
+        serializer = CostAnalysisRequestSerializer(
+            data=request.query_params, context={"organization": organization}
+        )
         serializer.is_valid(raise_exception=True)
-        start_date, end_date, customer_id = (
+        customer = serializer.validated_data["customer"]
+        start_date, end_date = (
             serializer.validated_data.get(key, None)
-            for key in ["start_date", "end_date", "customer_id"]
+            for key in ["start_date", "end_date"]
         )
         start_time = convert_to_datetime(start_date, date_behavior="min")
         end_time = convert_to_datetime(end_date, date_behavior="max")
-        try:
-            customer = Customer.objects.get(
-                organization=organization, customer_id=customer_id
-            )
-        except Customer.DoesNotExist:
-            raise NotFoundException(
-                f"Customer with customer_id: {customer_id} not found"
-            )
         per_day_dict = {}
-        for period in periods_bwn_twodates(
-            USAGE_CALC_GRANULARITY.DAILY, start_date, end_date
-        ):
+        for period in dates_bwn_two_dts(start_date, end_date):
             period = convert_to_date(period)
             per_day_dict[period] = {
                 "date": period,
@@ -494,57 +476,6 @@ class TimezonesView(APIView):
         return Response(response, status=status.HTTP_200_OK)
 
 
-class DraftInvoiceView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
-
-    @extend_schema(
-        request=DraftInvoiceRequestSerializer,
-        parameters=[DraftInvoiceRequestSerializer],
-        responses={
-            200: inline_serializer(
-                name="DraftInvoiceResponse",
-                fields={"invoice": DraftInvoiceSerializer(required=False, many=True)},
-            )
-        },
-    )
-    def get(self, request, format=None):
-        """
-        Pagination-enabled endpoint for retrieving an organization's event stream.
-        """
-        organization = request.organization
-        serializer = DraftInvoiceRequestSerializer(
-            data=request.query_params, context={"organization": organization}
-        )
-        serializer.is_valid(raise_exception=True)
-        customer = serializer.validated_data.get("customer")
-        sub_records = SubscriptionRecord.objects.active().filter(
-            organization=organization,
-            customer=customer,
-        )
-        response = {"invoice": None}
-        if sub_records is None or len(sub_records) == 0:
-            response = {"invoices": []}
-        else:
-            sub_records = sub_records.select_related("billing_plan").prefetch_related(
-                "billing_plan__plan_components",
-                "billing_plan__plan_components__billable_metric",
-                "billing_plan__plan_components__tiers",
-                "billing_plan__pricing_unit",
-            )
-            invoices = generate_invoice(
-                sub_records,
-                draft=True,
-                charge_next_plan=serializer.validated_data.get(
-                    "include_next_period", True
-                ),
-            )
-            serializer = DraftInvoiceSerializer(invoices, many=True).data
-            for invoice in invoices:
-                invoice.delete()
-            response = {"invoices": serializer or []}
-        return Response(response, status=status.HTTP_200_OK)
-
-
 class ImportCustomersView(APIView):
     permission_classes = [IsAuthenticated | ValidOrganization]
 
@@ -742,23 +673,42 @@ class NetsuiteInvoiceCSVView(APIView):
     permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
-        request=inline_serializer(
-            name="PlansByNumCustomersRequest",
-            fields={},
-        ),
-        responses={
-            200: inline_serializer(
-                name="NetsuiteInvoiceCSVView",
-                fields={
-                    "url": serializers.URLField(),
-                },
-            ),
-        },
+        request=OptionalPeriodRequestSerializer,
+        responses=URLResponseSerializer,
     )
     def get(self, request, format=None):
         organization = request.organization
-        url = get_csv_presigned_url(organization)
+        serializer = OptionalPeriodRequestSerializer(
+            data=request.query_params, context={"organization": organization}
+        )
+        serializer.is_valid(raise_exception=True)
+        start_date = serializer.validated_data.get("start_date")
+        end_date = serializer.validated_data.get("end_date")
+        ret = get_invoices_csv_presigned_url(organization, start_date, end_date)
         return Response(
-            url,
+            URLResponseSerializer(ret).data,
+            status=status.HTTP_200_OK,
+        )
+
+
+class NetsuiteCustomerCSVView(APIView):
+    permission_classes = [IsAuthenticated | ValidOrganization]
+
+    @extend_schema(
+        request=OptionalPeriodRequestSerializer,
+        responses=URLResponseSerializer,
+    )
+    def get(self, request, format=None):
+        organization = request.organization
+        serializer = OptionalPeriodRequestSerializer(
+            data=request.query_params, context={"organization": organization}
+        )
+        serializer.is_valid(raise_exception=True)
+        # start_date = serializer.validated_data.get("start_date")
+        # end_date = serializer.validated_data.get("end_date")
+        # ret = get_customers_csv_presigned_url(organization, start_date, end_date)
+        # data = URLResponseSerializer(ret).data
+        return Response(
+            {},
             status=status.HTTP_200_OK,
         )

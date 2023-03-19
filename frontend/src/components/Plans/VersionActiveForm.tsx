@@ -49,7 +49,7 @@ function VersionActiveForm(props: {
             buttonStyle="solid"
           >
             <Radio.Button value={false}>Inactive</Radio.Button>
-            <Radio.Button value>Active</Radio.Button>
+            <Radio.Button value={true}>Active</Radio.Button>
           </Radio.Group>
         </div>
       </div>
@@ -64,13 +64,10 @@ function VersionActiveForm(props: {
               setActiveType(value);
             }}
           >
-            <Select.Option
-              value="replace_on_active_version_renewal"
-              className="my-3"
-            >
+            <Select.Option value="replace_on_renewal" className="my-3">
               Migrate When Subscriptions Renew
             </Select.Option>
-            <Select.Option value="grandfather_active">
+            <Select.Option value="grandfather">
               Grandfather Subscriptions, Do Not Migrate
             </Select.Option>
           </Select>

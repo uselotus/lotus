@@ -1,12 +1,23 @@
 import json
 
 import pytest
+from dateutil.relativedelta import relativedelta
 from django.urls import reverse
+from metering_billing.models import (
+    AddOnSpecification,
+    Customer,
+    Feature,
+    Invoice,
+    Plan,
+    PlanVersion,
+    PricingUnit,
+    RecurringCharge,
+    SubscriptionRecord,
+)
+from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
+from metering_billing.utils import now_utc
 from rest_framework import status
 from rest_framework.test import APIClient
-
-from metering_billing.models import Customer
-from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
 
 
 @pytest.fixture
@@ -50,6 +61,40 @@ def customer_test_common_setup(
         if num_customers > 0:
             setup_dict["org_customers"] = add_customers_to_org(org, n=num_customers)
             setup_dict["org2_customers"] = add_customers_to_org(org2, n=num_customers)
+
+        premium_support_feature = Feature.objects.create(
+            organization=org,
+            feature_name="premium_support",
+            feature_description="premium support",
+        )
+        flat_fee_addon_spec = AddOnSpecification.objects.create(
+            organization=org,
+            billing_frequency=AddOnSpecification.BillingFrequency.ONE_TIME,
+            flat_fee_invoicing_behavior_on_attach=AddOnSpecification.FlatFeeInvoicingBehaviorOnAttach.INVOICE_ON_ATTACH,
+        )
+        flat_fee_addon = Plan.addons.create(
+            organization=org, plan_name="flat_fee_addon", is_addon=True
+        )
+        flat_fee_addon_version = PlanVersion.addon_versions.create(
+            organization=org,
+            plan=flat_fee_addon,
+            addon_spec=flat_fee_addon_spec,
+            localized_name="flat_fee_addon_version",
+            currency=PricingUnit.objects.get(organization=org, code="USD"),
+        )
+        RecurringCharge.objects.create(
+            organization=org,
+            plan_version=flat_fee_addon_version,
+            charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+            charge_behavior=RecurringCharge.ChargeBehaviorType.PRORATE,
+            amount=10,
+            pricing_unit=flat_fee_addon_version.currency,
+        )
+        flat_fee_addon_version.features.add(premium_support_feature)
+        setup_dict["flat_fee_addon"] = flat_fee_addon
+        setup_dict["flat_fee_addon_version"] = flat_fee_addon_version
+        setup_dict["premium_support_feature"] = premium_support_feature
+        setup_dict["flat_fee_addon_spec"] = flat_fee_addon_spec
 
         return setup_dict
 
@@ -213,3 +258,66 @@ class TestInsertCustomer:
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) > 0  # check that the response is not empty
         assert len(get_customers_in_org(setup_dict["org"])) == num_customers + 1
+
+
+@pytest.mark.django_db(transaction=True)
+class TestDeleteCustomer:
+    def test_can_delete_customer_with_subscriptions(
+        self,
+        customer_test_common_setup,
+        insert_customer_payload,
+        get_customers_in_org,
+        add_product_to_org,
+        add_plan_to_product,
+        add_plan_version_to_plan,
+    ):
+        # covers num_customers_before_insert = 0, has_org_api_key=true, user_in_org=true, user_org_and_api_key_org_different=false
+        num_customers = 0
+        setup_dict = customer_test_common_setup(
+            num_customers=num_customers,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+
+        response = setup_dict["client"].post(
+            reverse("customer-list"),
+            data=json.dumps(insert_customer_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert len(response.data) > 0  # check that the response is not empty
+        assert len(get_customers_in_org(setup_dict["org"])) == 1
+
+        customer = Customer.objects.get(
+            customer_id=insert_customer_payload["customer_id"]
+        )
+        product = add_product_to_org(setup_dict["org"])
+        plan = add_plan_to_product(product)
+        plan_version = add_plan_version_to_plan(plan)
+        plan_version.target_customers.add(customer)
+        sr = SubscriptionRecord.create_subscription_record(
+            start_date=now_utc(),
+            end_date=now_utc() + relativedelta(days=30),
+            billing_plan=plan_version,
+            customer=customer,
+            organization=setup_dict["org"],
+        )
+        addon_sr = SubscriptionRecord.create_addon_subscription_record(
+            parent_subscription_record=sr,
+            addon_billing_plan=setup_dict["flat_fee_addon_version"],
+        )
+        invoices_before = Invoice.objects.all().count()
+        response = setup_dict["client"].post(
+            reverse("customer-delete", kwargs={"customer_id": customer.customer_id}),
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert len(get_customers_in_org(setup_dict["org"])) == 0
+
+        # subscription doesn't get deleted
+        invoices_after = Invoice.objects.all().count()
+        sr_updated = SubscriptionRecord.objects.get(id=sr.id)
+        addon_sr_updated = SubscriptionRecord.objects.get(id=addon_sr.id)
+        assert sr_updated.end_date < now_utc()
+        assert invoices_before == invoices_after
+        assert addon_sr_updated.end_date < now_utc()
+        assert customer not in plan_version.target_customers.all()

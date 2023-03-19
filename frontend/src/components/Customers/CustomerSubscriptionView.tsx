@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unstable-nested-components */
 /* eslint-disable no-case-declarations */
 /* eslint-disable no-shadow */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
@@ -48,27 +49,28 @@ import createShortenedText from "../../helpers/createShortenedText";
 import useMediaQuery from "../../hooks/useWindowQuery";
 import Badge from "../base/Badges/Badges";
 import DropdownComponent from "../base/Dropdown/Dropdown";
-import { Addon, Customer } from "../../api/api";
-import { AddonType } from "../../types/addon-type";
+import { AddOn, Customer } from "../../api/api";
+import { AddOnType } from "../../types/addon-type";
 
 import ChevronDown from "../base/ChevronDown";
 import CancelMenu from "./CancelMenu";
 import SwitchMenu from "./SwitchMenu";
 import CustomPagination from "../CustomPagination/CustomPagination";
+import { components } from "../../gen-types";
 
 interface Props {
   customer_id: string;
   subscriptions: SubscriptionType[];
   plans: PlanType[] | undefined;
   onAutoRenewOff: (
-    params: object,
-    props: TurnSubscriptionAutoRenewOffType
+    subscription_id: string,
+    props: components["schemas"]["SubscriptionRecordUpdateRequest"]
   ) => void;
-  onCancel: (
-    props: CancelSubscriptionBody,
-    params: CancelSubscriptionQueryParams
+  onCancel: (props: CancelSubscriptionBody, subscription_id: string) => void;
+  onPlanChange: (
+    params: components["schemas"]["SubscriptionRecordSwitchPlanRequest"],
+    subscription_id: string
   ) => void;
-  onPlanChange: (params: object, props: ChangeSubscriptionPlanType) => void;
   onCreate: (props: CreateSubscriptionType) => void;
 }
 
@@ -85,6 +87,12 @@ interface PlanOption {
   label: string;
   children?: ChangeOption[];
   disabled?: boolean;
+}
+
+export interface CascaderOptions {
+  value: string;
+  plan_id: string;
+  subscriptionFilters: SubscriptionType["subscription_filters"];
 }
 
 const dropDownOptions = [
@@ -128,11 +136,7 @@ const SubscriptionView: FC<Props> = ({
   const [showModal, setShowModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [title, setTitle] = useState("");
-  const [cascaderOptions, setCascaderOptions] = useState<{
-    value: string;
-    plan_id: string;
-    subscriptionFilters: SubscriptionType["subscription_filters"];
-  }>();
+  const [cascaderOptions, setCascaderOptions] = useState<CascaderOptions>();
   const [cancelBody, setCancelBody] = useState<CancelSubscriptionBody>({
     usage_behavior: "bill_full",
     flat_fee_behavior: "charge_full",
@@ -150,14 +154,17 @@ const SubscriptionView: FC<Props> = ({
     setSelectedPlan(plan_id);
   };
 
-  const { data: addOns, isLoading }: UseQueryResult<AddonType[]> = useQuery<
-    AddonType[]
-  >(["add-ons"], () => Addon.getAddons().then((res) => res), {
+  const { data: addOns, isLoading }: UseQueryResult<AddOnType[]> = useQuery<
+    AddOnType[]
+  >(["add-ons"], () => AddOn.getAddOns().then((res) => res), {
     refetchOnMount: "always",
   });
+
   const mutation = useMutation(
-    (add_on: CreateSubscriptionAddOnBody) =>
-      Customer.createSubscriptionAddOns(add_on),
+    (obj: {
+      add_on: components["schemas"]["AddOnSubscriptionRecordCreateRequest"];
+      subscription_id: string;
+    }) => Customer.createSubscriptionAddOns(obj.add_on, obj.subscription_id),
     {
       onSuccess: () => {
         toast.success("Successfully Created Subscription Add-on", {
@@ -176,13 +183,8 @@ const SubscriptionView: FC<Props> = ({
     }
   );
 
-  const cancelSubscription = (plan_id, subscription_filters) => {
-    const query_params: CancelSubscriptionQueryParams = {
-      customer_id,
-      plan_id,
-      subscription_filters,
-    };
-    onCancel(cancelBody, query_params);
+  const cancelSubscription = (subscription_id: string) => {
+    onCancel(cancelBody, subscription_id);
     setShowModal(false);
   };
 
@@ -214,17 +216,10 @@ const SubscriptionView: FC<Props> = ({
     setShowModal(false);
   };
 
-  const turnAutoRenewOff = (plan_id, subscription_filters) => {
-    onAutoRenewOff(
-      {
-        plan_id,
-        subscription_filters,
-        customer_id,
-      },
-      {
-        turn_off_auto_renew: true,
-      }
-    );
+  const turnAutoRenewOff = (subscription_id: string) => {
+    onAutoRenewOff(subscription_id, {
+      turn_off_auto_renew: true,
+    });
     setShowModal(false);
   };
 
@@ -237,12 +232,22 @@ const SubscriptionView: FC<Props> = ({
       setIDtoPlan(planMap);
       const newplanList: { label: string; value: string }[] = plans.reduce(
         (acc, plan) => {
-          if (
-            plan.target_customer === null ||
-            plan.target_customer?.customer_id === customer_id
-          ) {
-            acc.push({ label: plan.plan_name, value: plan.plan_id });
-          }
+          // for (let i = 0; i < plan.versions.length; i++) {
+          //   if (
+          //     plan.versions[i].status === "active" &&
+          //     (plan.versions[i].target_customer.length === 0 ||
+          //       plan.versions[i].target_customers.find(
+          //         (cust) => cust.customer_id == customer_id
+          //       ))
+          //   ) {
+          //     acc.push({
+          //       label: plan.versions[i].plan_name,
+          //       value: plan.plan_id,
+          //     });
+          //   }
+          // }
+
+          acc.push({ label: plan.plan_name, value: plan.plan_id });
           return acc;
         },
         [] as { label: string; value: string }[]
@@ -262,21 +267,8 @@ const SubscriptionView: FC<Props> = ({
       return acc;
     }, [] as PlanOption[]);
 
-  const onChange = (
-    value: string,
-    plan_id: string,
-    subscription_filters: object[]
-  ) => {
-    onPlanChange(
-      {
-        plan_id,
-        customer_id,
-        subscription_filters,
-      },
-      {
-        replace_plan_id: value as string,
-      }
-    );
+  const onChange = (value: string, subscription_id: string) => {
+    onPlanChange({ switch_plan_id: value as string }, subscription_id);
   };
 
   const handleAttachPlanSubmit = () => {
@@ -295,13 +287,10 @@ const SubscriptionView: FC<Props> = ({
     }
     form.resetFields();
   };
-  const submitAddOns = () => {
+  const submitAddOns = (subscription_id: string) => {
     const body = {
-      attach_to_customer_id: customer_id,
-      attach_to_plan_id: attachToPlanId,
-      attach_to_subscription_filters: attachToSubscriptionFilters || [],
-      addon_id: addOnId,
-      quantity,
+      add_on: { addon_id: addOnId, quantity },
+      subscription_id,
     };
 
     mutation.mutate(body);
@@ -427,9 +416,7 @@ const SubscriptionView: FC<Props> = ({
                 options={planList}
                 optionLabelProp="label"
                 value={selectedPlan}
-              >
-                {" "}
-              </Select>
+              />
             </Form.Item>
             <Form.Item>
               <Button htmlType="submit">
@@ -474,20 +461,20 @@ const SubscriptionView: FC<Props> = ({
               <CustomerCard.Block>
                 <CustomerCard.Item>
                   <div className="font-normal text-card-text font-alliance whitespace-nowrap leading-4">
-                    Plan ID
+                    Subscription ID
                   </div>
                   <div className="flex gap-1 !text-card-grey font-menlo">
                     {" "}
                     <div>
                       {createShortenedText(
-                        subPlan.billing_plan.plan_id as string,
+                        subPlan.subscription_id as string,
                         windowWidth >= 2500
                       )}
                     </div>
                     <CopyText
                       showIcon
                       onlyIcon
-                      textToCopy={subPlan.billing_plan.plan_id as string}
+                      textToCopy={subPlan.subscription_id as string}
                     />
                   </div>
                 </CustomerCard.Item>
@@ -636,10 +623,10 @@ const SubscriptionView: FC<Props> = ({
                       onClick={() => {
                         onChange(
                           cascaderOptions?.value as string,
-                          cascaderOptions?.plan_id as string,
-                          cascaderOptions!.subscriptionFilters
+                          subPlan.subscription_id
                         );
                         setShowModal(false);
+                        setCascaderOptions(undefined);
                       }}
                     >
                       Switch
@@ -660,7 +647,9 @@ const SubscriptionView: FC<Props> = ({
                         borderColor: "#C3986B",
                       }}
                       disabled={addOnId.length < 1}
-                      onClick={submitAddOns}
+                      onClick={() => {
+                        submitAddOns(selectedSubPlan.subscription_id);
+                      }}
                     >
                       Add
                     </Button>,
@@ -675,10 +664,7 @@ const SubscriptionView: FC<Props> = ({
                       type="primary"
                       className="!bg-rose-600 border !border-rose-600"
                       onClick={() => {
-                        turnAutoRenewOff(
-                          selectedSubPlan.billing_plan.plan_id,
-                          selectedSubPlan.subscription_filters
-                        );
+                        turnAutoRenewOff(selectedSubPlan!.subscription_id);
                       }}
                     >
                       Cancel Renewal
@@ -694,10 +680,7 @@ const SubscriptionView: FC<Props> = ({
                       type="primary"
                       className="!bg-rose-600 border !border-rose-600"
                       onClick={() => {
-                        cancelSubscription(
-                          selectedSubPlan.billing_plan.plan_id,
-                          selectedSubPlan.subscription_filters
-                        );
+                        cancelSubscription(selectedSubPlan!.subscription_id);
                       }}
                     >
                       Cancel Plan
@@ -749,6 +732,7 @@ const SubscriptionView: FC<Props> = ({
                     plansWithSwitchOptions(plan_id)
                   }
                   setCascaderOptions={(args) => setCascaderOptions(args)}
+                  cascaderOptions={cascaderOptions}
                 />
               ) : indexRef.current === 5 ? (
                 <Select
@@ -756,13 +740,15 @@ const SubscriptionView: FC<Props> = ({
                   placeholder="Select a plan"
                   onChange={selectPlan}
                   options={planList}
+                  value={selectedPlan}
                   optionLabelProp="label"
-                >
-                  {" "}
-                </Select>
+                ></Select>
               ) : indexRef.current === 2 ? null : indexRef.current ===
                 6 ? null : indexRef.current === 3 ? (
                 <CancelMenu
+                  recurringBehavior={cancelBody.flat_fee_behavior}
+                  usageBehavior={cancelBody.usage_behavior}
+                  invoiceBehavior={cancelBody.invoicing_behavior}
                   setRecurringBehavior={(e) =>
                     setCancelBody({
                       ...cancelBody,
@@ -804,6 +790,10 @@ const SubscriptionView: FC<Props> = ({
                           }
                         }}
                         style={{ width: "100%" }}
+                        value={
+                          addOns.find((addOn) => addOn.addon_id === addOnId)
+                            ?.addon_name
+                        }
                       >
                         {addOns && !isLoading
                           ? addOns.map((addOn) => (
@@ -881,7 +871,7 @@ const SubscriptionView: FC<Props> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Button
+          {/* <Button
             type="primary"
             className="hover:!bg-rose-700"
             size="large"
@@ -894,7 +884,7 @@ const SubscriptionView: FC<Props> = ({
             }}
           >
             Cancel All
-          </Button>
+          </Button> */}
           <Button
             type="primary"
             className="hover:!bg-primary-700"

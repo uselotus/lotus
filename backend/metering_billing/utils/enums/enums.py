@@ -91,6 +91,7 @@ class COMPONENT_RESET_FREQUENCY(models.TextChoices):
 
 class INVOICE_CHARGE_TIMING_TYPE(models.TextChoices):
     IN_ARREARS = ("in_arrears", _("In Arrears"))
+    INTERMEDIATE = ("intermediate", _("Intermediate"))
     IN_ADVANCE = ("in_advance", _("In Advance"))
     ONE_TIME = ("one_time", _("One Time"))
 
@@ -119,17 +120,24 @@ class SUBSCRIPTION_STATUS(models.TextChoices):
     NOT_STARTED = ("not_started", _("Not Started"))
 
 
+class PLAN_CUSTOM_TYPE(models.TextChoices):
+    CUSTOM_ONLY = ("custom_only", _("Custom Only"))
+    PUBLIC_ONLY = ("public_only", _("Public Only"))
+    ALL = ("all", _("All"))
+
+
 class PLAN_VERSION_STATUS(models.TextChoices):
     ACTIVE = ("active", _("Active"))
     RETIRING = ("retiring", _("Retiring"))
     GRANDFATHERED = ("grandfathered", _("Grandfathered"))
-    ARCHIVED = ("archived", _("Archived"))
+    DELETED = ("deleted", _("Deleted"))
     INACTIVE = ("inactive", _("Inactive"))
+    NOT_STARTED = ("not_started", _("Not Started"))
 
 
 class PLAN_STATUS(models.TextChoices):
     ACTIVE = ("active", _("Active"))
-    ARCHIVED = ("archived", _("Archived"))
+    DELETED = ("deleted", _("Deleted"))
     EXPERIMENTAL = ("experimental", _("Experimental"))
 
 
@@ -154,27 +162,11 @@ class METRIC_STATUS(models.TextChoices):
 
 
 class MAKE_PLAN_VERSION_ACTIVE_TYPE(models.TextChoices):
-    REPLACE_IMMEDIATELY = ("replace_immediately", _("Replace Immediately"))
-    REPLACE_ON_ACTIVE_VERSION_RENEWAL = (
-        "replace_on_active_version_renewal",
-        _("Replace on Active Version Renewal"),
+    REPLACE_ON_RENEWAL = (
+        "replace_on_renewal",
+        _("Replace on Renewal"),
     )
-    GRANDFATHER_ACTIVE = ("grandfather_active", _("Grandfather Active"))
-
-
-class REPLACE_IMMEDIATELY_TYPE(models.TextChoices):
-    END_CURRENT_SUBSCRIPTION_AND_BILL = (
-        "end_current_subscription_and_bill",
-        _("End Current Subscription and Bill"),
-    )
-    END_CURRENT_SUBSCRIPTION_DONT_BILL = (
-        "end_current_subscription_dont_bill",
-        _("End Current Subscription and Don't Bill"),
-    )
-    CHANGE_SUBSCRIPTION_PLAN = (
-        "change_subscription_plan",
-        _("Change Subscription Plan"),
-    )
+    GRANDFATHER = ("grandfather", _("Grandfather"))
 
 
 class ORGANIZATION_STATUS(models.TextChoices):
@@ -183,11 +175,14 @@ class ORGANIZATION_STATUS(models.TextChoices):
 
 
 class WEBHOOK_TRIGGER_EVENTS(models.TextChoices):
+    CUSTOMER_CREATED = ("customer.created", _("customer.created"))
     INVOICE_CREATED = ("invoice.created", _("invoice.created"))
     INVOICE_PAID = ("invoice.paid", _("invoice.paid"))
     INVOICE_PAST_DUE = ("invoice.past_due", _("invoice.past_due"))
+    SUBSCRIPTION_CREATED = ("subscription.created", _("subscription.created"))
     USAGE_ALERT_TRIGGERED = ("usage_alert.triggered", _("usage_alert.triggered"))
-    CUSTOMER_CREATED = ("customer.created", _("customer.created"))
+    SUBSCRIPTION_CANCELLED = ("subscription.cancelled", _("subscription.cancelled"))
+    SUBSCRIPTION_RENEWED = ("subscription.renewed", _("subscription.renewed"))
 
 
 class FLAT_FEE_BEHAVIOR(models.TextChoices):
@@ -211,6 +206,7 @@ class INVOICING_BEHAVIOR(models.TextChoices):
 
 class CHARGEABLE_ITEM_TYPE(models.TextChoices):
     USAGE_CHARGE = ("usage_charge", _("Usage Charge"))
+    PREPAID_USAGE_CHARGE = ("prepaid_usage_charge", _("Prepaid Usage Charge"))
     RECURRING_CHARGE = ("recurring_charge", _("Recurring Charge"))
     ONE_TIME_CHARGE = ("one_time_charge", _("One Time Charge"))
     PLAN_ADJUSTMENT = ("plan_adjustment", _("Plan Adjustment"))
@@ -235,8 +231,9 @@ SUPPORTED_CURRENCIES = [
     ("South African Rand", "ZAR", "R"),
     ("Brazilian Real", "BRL", "R$"),
     ("Danish Krone", "DKK", "kr"),
+    ("Nigerian Naira", "NGN", "₦"),
 ]
-SUPPORTED_CURRENCIES_VERSION = 1
+SUPPORTED_CURRENCIES_VERSION = 2
 
 
 class ACCOUNTS_RECEIVABLE_TRANSACTION_TYPES(models.IntegerChoices):
@@ -280,3 +277,4 @@ class ORGANIZATION_SETTING_GROUPS(models.TextChoices):
 class TAX_PROVIDER(models.IntegerChoices):
     TAXJAR = (1, _("taxjar"))
     LOTUS = (2, _("lotus"))
+    NETSUITE = (3, _("netsuite"))

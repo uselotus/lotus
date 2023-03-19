@@ -21,6 +21,7 @@ import PlanCard from "../components/Plans/PlanCard/PlanCard";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ViewPlansFilter from "./ViewPlansFilter";
 import useGlobalStore from "../stores/useGlobalstore";
+import { components } from "../gen-types";
 
 export interface Plan extends PlanType {
   from: boolean;
@@ -138,16 +139,21 @@ const ViewPlans: FC = () => {
     },
     []
   );
-  const { data }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
-    ["plan_list"],
-    () => Plan.getPlans().then((res) => res),
-    {
-      onSuccess: (data) => {
-        setPlans(data);
-      },
-      refetchOnMount: "always",
-    }
-  );
+  const { data }: UseQueryResult<PlanType[] | components["schemas"]["Plan"][]> =
+    useQuery<PlanType[] | components["schemas"]["Plan"][]>(
+      ["plan_list"],
+      () =>
+        Plan.getPlans({
+          version_custom_type: "public_only",
+          version_status: "active",
+        }).then((res) => res),
+      {
+        onSuccess: (data) => {
+          setPlans(data as PlanType[]);
+        },
+        refetchOnMount: "always",
+      }
+    );
   const createTag = useMutation(
     ({
       plan_id,
@@ -157,7 +163,7 @@ const ViewPlans: FC = () => {
       tags: PlanType["tags"];
       pane: "Monthly" | "Yearly" | "Quarterly" | "All";
     }) =>
-      Plan.updatePlan(plan_id, {
+      Plan.createTagsPlan(plan_id, {
         tags,
       }),
     {
@@ -171,7 +177,7 @@ const ViewPlans: FC = () => {
           if (index && changedElement) {
             changedElement.tags = newData.tags as PlanType["tags"];
             oldData[index] = changedElement;
-            setPlans(oldData);
+            setPlans(oldData as PlanType[]);
           }
         }
 
@@ -394,7 +400,6 @@ const ViewPlans: FC = () => {
               <PlusOutlined className="!text-white w-12 h-12 cursor-pointer" />
               Create Plan
             </div>
-            <ArrowRightOutlined className="pl-2" />
           </div>
         </Button>,
       ]}

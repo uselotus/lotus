@@ -1,4 +1,6 @@
-// @ts-ignore
+/* eslint-disable no-shadow */
+/* eslint-disable camelcase */
+
 import React, { FC, Fragment, useEffect, useState } from "react";
 import "./StateTabs.css";
 import { Tooltip, Modal, Select } from "antd";
@@ -10,6 +12,7 @@ interface StateTabsProps {
   activeTab: string;
   version: number | string;
   version_id: string;
+  plan_id: string;
   activeVersion: number | string | undefined;
 }
 
@@ -18,13 +21,14 @@ const StateTabs: FC<StateTabsProps> = ({
   activeTab,
   version,
   version_id,
+  plan_id,
   activeVersion,
 }) => {
   const [currentActiveTab, setCurrentActiveTab] = useState(activeTab);
   const [visible, setVisible] = useState(false);
   const [activeType, setActiveType] = useState<
-    "replace_on_active_version_renewal" | "grandfather_active"
-  >("replace_on_active_version_renewal");
+    "replace_on_renewal" | "grandfather"
+  >("replace_on_renewal");
   const queryClient = useQueryClient();
 
   const mutation = useMutation(
@@ -32,6 +36,7 @@ const StateTabs: FC<StateTabsProps> = ({
       Plan.replacePlanVersionLater(version_id, {
         status: "active",
         make_active_type: activeType,
+        transition_to_plan_id: plan_id,
       }),
     {
       onSuccess: () => {
@@ -61,17 +66,19 @@ const StateTabs: FC<StateTabsProps> = ({
     } else {
       switch (tab) {
         case "Inactive":
-          return "Inactive";
+          return "This version is not active and has no subscriptions on it.";
         case "Active":
           return "If you make this version active, your other active version will become inactive.";
         case "Grandfathered":
-          return "Grandfathered";
+          return "This version is no longer active, but customers on this version will be renewed to this version.";
+        case "Retiring":
+          return "This version is no longer active, and customers on this version will be renewed to the active version.";
       }
     }
   };
 
   return (
-    <div className="flex items-center w-full justify-between tabsContainer">
+    <div className="flex items-center justify-between">
       {tabs.map((tab) => (
         <Tooltip title={getToolTipText(tab)}>
           <div
@@ -102,7 +109,7 @@ const StateTabs: FC<StateTabsProps> = ({
         onCancel={() => {
           setVisible(false);
         }}
-        title={`Are you sure you want to make v${  version  } active?`}
+        title={`Are you sure you want to make v${version} active?`}
       >
         <div className="space-y-4 ">
           <div className="grid grid-row-3 items-center my-5">
@@ -114,13 +121,10 @@ const StateTabs: FC<StateTabsProps> = ({
                 setActiveType(value);
               }}
             >
-              <Select.Option
-                value="replace_on_active_version_renewal"
-                className="my-3"
-              >
+              <Select.Option value="replace_on_renewal" className="my-3">
                 Migrate When Subscriptions Renew
               </Select.Option>
-              <Select.Option value="grandfather_active">
+              <Select.Option value="grandfather">
                 Grandfather Subscriptions, Do Not Migrate
               </Select.Option>
             </Select>
@@ -142,7 +146,7 @@ const StateTabs: FC<StateTabsProps> = ({
                 <h3>Active</h3>
                 <h3>to</h3>
                 <h3>
-                  {activeType === "replace_on_active_version_renewal"
+                  {activeType === "replace_on_renewal"
                     ? "Retiring"
                     : "Grandfathered"}
                 </h3>

@@ -1,13 +1,14 @@
 import React from "react";
 import { Typography } from "antd";
 import capitalize from "../../../helpers/capitalize";
-import { AddonType } from "../../../types/addon-type";
+import { AddOnType } from "../../../types/addon-type";
 import createShortenedText from "../../../helpers/createShortenedText";
 import CopyText from "../../base/CopytoClipboard";
 import useMediaQuery from "../../../hooks/useWindowQuery";
+import { components } from "../../../gen-types";
 
 interface AddOnInfoProps {
-  addOnInfo: AddonType;
+  addOnInfo: components["schemas"]["AddOnDetail"];
 }
 export const constructBillType = (str: string) => {
   if (str.includes("_")) {
@@ -16,8 +17,7 @@ export const constructBillType = (str: string) => {
       .map((el) => capitalize(el))
       .join(" ");
   }
-    return str;
-
+  return str;
 };
 function AddOnInfo({ addOnInfo }: AddOnInfoProps) {
   const windowWidth = useMediaQuery();
@@ -49,15 +49,15 @@ function AddOnInfo({ addOnInfo }: AddOnInfoProps) {
               />
             </div>
           </div>
-          <div className="flex items-center  text-card-text justify-between mb-1">
+          {/* <div className="flex items-center  text-card-text justify-between mb-1">
             <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
               Price
             </div>
             <div className="flex gap-1 text-left">
               {" "}
-              <div className="text-gold Inter">{`${addOnInfo.currency?.symbol}${addOnInfo.flat_rate}`}</div>
+              <div className="text-gold Inter">{`${addOnInfo.versions[0].currency?.symbol}${addOnInfo.flat_rate}`}</div>
             </div>
-          </div>
+          </div> */}
         </div>
 
         <div className="w-[256px]">
@@ -68,7 +68,9 @@ function AddOnInfo({ addOnInfo }: AddOnInfoProps) {
             <div className="flex gap-1 ">
               {" "}
               <div className="!text-card-grey Inter">
-                {capitalize(constructBillType(addOnInfo.addon_type))}
+                {capitalize(
+                  constructBillType(addOnInfo.versions[0].addon_type)
+                )}
               </div>
             </div>
           </div>
@@ -79,7 +81,9 @@ function AddOnInfo({ addOnInfo }: AddOnInfoProps) {
             </div>
             <div>
               <div className="!text-card-grey Inter">
-                {constructBillType(addOnInfo.billing_frequency as string)}
+                {constructBillType(
+                  addOnInfo.versions[0].billing_frequency as string
+                )}
               </div>
             </div>
           </div>

@@ -6,8 +6,9 @@ import logging
 import boto3
 from botocore.exceptions import ClientError
 from django.conf import settings
+
 from metering_billing.invoice_pdf import s3_bucket_exists, s3_file_exists
-from metering_billing.models import Invoice, Organization
+from metering_billing.models import Organization
 from metering_billing.utils import convert_to_datetime, now_utc
 
 logger = logging.getLogger("django.server")
@@ -53,36 +54,68 @@ def generate_invoices_csv(organization, start_date=None, end_date=None):
         invoices = invoices.filter(issue_date__lte=end_time)
     writer.writerow(
         [
-            "External ID",
-            "Customer",
-            "Date",
-            "Date Created",
-            "Due Date",
-            "End Date",
-            "Posting Period",
-            "Amount Paid",
-            "Amount Remaining",
+            # HEADER
+            "externalId",
+            "entity",  # customer
+            "terms",  # unsure about this one, can work on case-by case
+            "tranDate",  # issue date
+            "postingPeriod",  # mmm yyyy format of issue date
+            "dueDate",  # due date
+            "currency",  # 3 letter iso code
+            # LINE ITEMS
+            "item",  # lets make this the internal lotus IDs of the plans
+            "description",
+            "quantity",
+            "rate",
+            "amount",
+            "taxCode",
         ]
     )
 
     for invoice in invoices:
-        tot = invoice.cost_due
-        amount_paid = tot if invoice.payment_status == Invoice.PaymentStatus.PAID else 0
-        amount_remaining = tot - amount_paid
-        due_date = invoice.due_date or invoice.issue_date
-        writer.writerow(
-            [
-                invoice.invoice_number,
-                invoice.customer.customer_id,
-                invoice.issue_date.strftime("%m/%d/%Y"),
-                invoice.issue_date.strftime("%m/%d/%Y"),
-                due_date.strftime("%m/%d/%Y"),
-                invoice.issue_date.strftime("%m/%d/%Y"),
-                invoice.issue_date.strftime("%B %Y"),
-                amount_paid,
-                amount_remaining,
-            ]
-        )
+        externalId = invoice.invoice_number
+        entity = invoice.customer.customer_id
+        terms = None
+        tranDate = invoice.issue_date.strftime("%m/%d/%Y")
+        postingPeriod = invoice.issue_date.strftime("%B %Y")
+        dueDate = invoice.due_date.strftime("%m/%d/%Y") if invoice.due_date else None
+        currency = invoice.currency.code
+        for line_item in invoice.line_items.all():
+            if line_item.associated_recurring_charge:
+                item = (
+                    "recurring_charge_"
+                    + line_item.associated_recurring_charge.recurring_charge_id.hex
+                )
+            elif line_item.associated_plan_component:
+                item = (
+                    "usage_component_"
+                    + line_item.associated_plan_component.usage_component_id.hex
+                )
+            else:
+                item = line_item.name
+            description = line_item.name
+            quantity = line_item.quantity or 1
+            amount = line_item.amount
+            rate = amount / quantity
+            taxCode = None
+            writer.writerow(
+                [
+                    externalId,
+                    entity,
+                    terms,
+                    tranDate,
+                    postingPeriod,
+                    dueDate,
+                    currency,
+                    item,
+                    description,
+                    quantity,
+                    rate,
+                    amount,
+                    taxCode,
+                ]
+            )
+
     upload_csv(organization, csv_buffer, CSV_FOLDER, csv_filename)
 
 
@@ -109,26 +142,18 @@ def upload_csv(organization, csv_buffer, csv_folder, csv_filename):
 
             key = get_key(organization, csv_folder, csv_filename)
             csv_bytes = csv_buffer.getvalue().encode()
-            print("uploading", key)
             s3.Bucket(bucket_name).upload_fileobj(io.BytesIO(csv_bytes), key)
-            print("uploaded", key)
 
         except Exception as e:
             print(e)
 
 
-def get_csv_presigned_url(organization, start_date=None, end_date=None):
+def get_invoices_csv_presigned_url(organization, start_date=None, end_date=None):
     # Format start and end dates as YYMMDD
     csv_filename = get_csv_filename(organization, start_date, end_date)
-
-    # if settings.DEBUG:
-    if (
-        settings.DEBUG
-        or organization.organization_type == Organization.OrganizationType.EXTERNAL_DEMO
-    ):
+    if organization.organization_type == Organization.OrganizationType.EXTERNAL_DEMO:
         bucket_name = "dev-" + BUCKET_NAME
         return {"exists": False, "url": ""}
-
     else:
         bucket_name = BUCKET_NAME
         key = get_key(organization, CSV_FOLDER, csv_filename)

@@ -13,15 +13,18 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-import api.views as api_views
 from django.conf import settings
 from django.conf.urls import include
 from django.contrib import admin
 from django.urls import path, re_path
 from django.views.generic import TemplateView
+from rest_framework import routers
+
+import api.views as api_views
 from metering_billing.views import auth_views, organization_views, webhook_views
 from metering_billing.views.model_views import (
     ActionViewSet,
+    AddOnVersionViewSet,
     AddOnViewSet,
     APITokenViewSet,
     BacktestViewSet,
@@ -37,19 +40,18 @@ from metering_billing.views.model_views import (
     PlanVersionViewSet,
     PlanViewSet,
     PricingUnitViewSet,
-    ProductViewSet,
     SubscriptionViewSet,
     UsageAlertViewSet,
     UserViewSet,
     WebhookViewSet,
 )
 from metering_billing.views.payment_processor_views import PaymentProcesorView
-from metering_billing.views.views import (  # MergeCustomersView,; ExperimentalToActiveView,
+from metering_billing.views.views import (
     ChangeUserOrganizationView,
     CostAnalysisView,
-    DraftInvoiceView,
     ImportCustomersView,
     ImportPaymentObjectsView,
+    NetsuiteCustomerCSVView,
     NetsuiteInvoiceCSVView,
     PeriodEventsView,
     PeriodMetricRevenueView,
@@ -59,7 +61,6 @@ from metering_billing.views.views import (  # MergeCustomersView,; ExperimentalT
     TimezonesView,
     TransferSubscriptionsView,
 )
-from rest_framework import routers
 
 DEBUG = settings.DEBUG
 PROFILER_ENABLED = settings.PROFILER_ENABLED
@@ -74,7 +75,7 @@ router.register(r"invoices", InvoiceViewSet, basename="invoice")
 router.register(r"features", FeatureViewSet, basename="feature")
 router.register(r"webhooks", WebhookViewSet, basename="webhook")
 router.register(r"backtests", BacktestViewSet, basename="backtest")
-router.register(r"products", ProductViewSet, basename="product")
+# router.register(r"products", ProductViewSet, basename="product")
 router.register(r"plans", PlanViewSet, basename="plan")
 router.register(r"plan_versions", PlanVersionViewSet, basename="plan_version")
 router.register(r"events", EventViewSet, basename="event")
@@ -96,6 +97,7 @@ router.register(
 )
 router.register(r"api_tokens", APITokenViewSet, basename="api_token")
 router.register(r"addons", AddOnViewSet, basename="addon")
+router.register(r"addon_versions", AddOnVersionViewSet, basename="addon_version")
 router.register(r"usage_alerts", UsageAlertViewSet, basename="usage_alert")
 
 
@@ -119,6 +121,7 @@ urlpatterns = [
     # API Views
     path("api/", include((api_router.urls, "api"), namespace="api")),
     path("api/ping/", api_views.Ping.as_view(), name="ping"),
+    path("api/healthcheck/", api_views.Healthcheck.as_view(), name="healthcheck"),
     path("api/track/", api_views.track_event, name="track_event"),
     path("api/invoice_url/", api_views.GetInvoicePdfURL.as_view(), name="invoice_url"),
     path(
@@ -183,7 +186,6 @@ urlpatterns = [
         PeriodSubscriptionsView.as_view(),
         name="period_subscriptions",
     ),
-    path("app/draft_invoice/", DraftInvoiceView.as_view(), name="draft_invoice"),
     path(
         "app/import_customers/",
         ImportCustomersView.as_view(),
@@ -197,7 +199,12 @@ urlpatterns = [
     path(
         "app/netsuite_invoices/",
         NetsuiteInvoiceCSVView.as_view(),
-        name="import_payment_objects",
+        name="netsuite_invoices",
+    ),
+    path(
+        "app/netsuite_customers/",
+        NetsuiteCustomerCSVView.as_view(),
+        name="netsuite_customers",
     ),
     path(
         "app/transfer_subscriptions/",
@@ -259,5 +266,4 @@ if PROFILER_ENABLED:
     urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
 
 if DEBUG:
-    urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]
     urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]

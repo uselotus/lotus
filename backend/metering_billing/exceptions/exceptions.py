@@ -9,6 +9,18 @@ class OrganizationMismatch(APIException):
     default_code = "authentication_failure"
 
 
+class SubscriptionAlreadyEnded(APIException):
+    status_code = 400
+    default_detail = "Subscription already ended"
+    default_code = "invalid_state"
+
+
+class InvalidOperation(APIException):
+    status_code = 400
+    default_detail = "Invalid operation"
+    default_code = "invalid_operation"
+
+
 class UserNoOrganization(APIException):
     status_code = 401
     default_detail = "User does not have an organization"
@@ -89,7 +101,7 @@ class NotFoundException(APIException):
 
 class DatabaseOperationFailed(APIException):
     status_code = 500
-    default_detail = "Database operation failed. Please double check your metrics/events and make sure you're not using a text field where you should be using a numeric field."
+    default_detail = "Database operation failed. Please double-check your metrics/events and make sure you're not using a text field where you should be using a numeric field."
     default_code = "aggregation_engine_failure"
 
 
@@ -126,13 +138,19 @@ class NotEditable(APIException):
 class RegistrationFailure(APIException):
     status_code = 400
     default_detail = "Registration failed"
-    default_code = "refistration_failure"
+    default_code = "registration_failure"
 
 
 class ServerError(APIException):
     status_code = 500
     default_detail = "Internal server error"
     default_code = "server_error"
+
+
+class PrepaymentMissingUnits(APIException):
+    status_code = 400
+    default_detail = "Input error"
+    default_code = "prepayment_cant_determine_units"
 
 
 class InvalidRequest(APIException):
@@ -163,3 +181,9 @@ class AlignmentEngineFailure(APIException):
     status_code = 500
     default_detail = "Alignment engine failed to perform alignment"
     default_code = "alignment_engine_failure"
+
+
+class IntermediateBillingEngineFailure(APIException):
+    status_code = 500
+    default_detail = "Intermediate billing engine ran into an unexpected state"
+    default_code = "intermediate_billing_engine_failure"

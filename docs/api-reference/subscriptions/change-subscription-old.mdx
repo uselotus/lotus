@@ -1,0 +1,39 @@
+---
+title: "Update a subscription"
+openapi: "POST /api/subscriptions/update/"
+description: "Upgrade, downgrade or cancel autorenew for a subscription plan"
+---
+
+<CodeGroup>
+
+```py Python
+lotus.update_subscription(
+  customer_id='cust_0569173ee6654369',
+  plan_id="plan_123",
+  replace_plan_id="plan_456",
+  invocing_behavior="add_to_next_invoice",
+  turn_off_auto_renew=True
+)
+
+lotus.update_subscription(
+  customer_id='cust_0569173ee6654369',
+  plan_id="plan_123",
+  subscription_filters=[{"property_name": "status", "value": "active"}],
+  end_date=datetime.date(2022, 12, 8),
+)
+```
+
+```ts Typescript
+await lotus.updateSubscription({
+  customerId: "cust_234";
+  planId: "plan_234";
+  subscriptionFilters: [{property_name: "project_id", value: "3234123"}];
+  replacePlanId: "plan_235";
+  invoicingBehavior: "add_to_next_invoice";
+  usageBehavior: "transfer_to_new_subscription"
+});
+```
+
+</CodeGroup>
+
+---

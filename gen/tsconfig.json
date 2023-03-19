@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+      "target": "es2016",
+      "module": "es6",
+      "moduleResolution": "node",
+      "declaration": true,
+      "esModuleInterop": true,
+      "outDir": "./dist",
+      "lib": ["es2016", "dom"],
+      "allowSyntheticDefaultImports": true
+    },
+    "include": ["*.ts",]
+  }
+  

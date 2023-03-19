@@ -4,7 +4,7 @@ interface AvatarProps {
   src?: string;
   className?: string;
 }
-const Avatar: React.FC<AvatarProps> = ({ src, className }) => (
+const Avatar: React.FC<AvatarProps> = ({ src, className = "" }) => (
   <div
     className={
       !className

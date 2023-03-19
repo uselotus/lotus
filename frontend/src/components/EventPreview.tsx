@@ -51,7 +51,7 @@ const EventPreview: FC = () => {
     return (
       <div className="align-center">
         <h3 className="text-xl font-main align-center">No Events</h3>
-        <div className="separator mb-5 mt-5" />
+        <div className="separator mb-6 mt-6" />
       </div>
     );
   }

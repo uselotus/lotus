@@ -19,7 +19,7 @@ import (
 	"github.com/uselotus/lotus/go/event-ingestion/config"
 	"github.com/uselotus/lotus/go/event-ingestion/database"
 	"github.com/uselotus/lotus/go/event-ingestion/kafka"
-	"github.com/uselotus/lotus/go/event-ingestion/types"
+	"github.com/uselotus/lotus/go/pkg/types"
 )
 
 type TrackEventResponse struct {

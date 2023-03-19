@@ -5,8 +5,8 @@ from decimal import Decimal
 
 import pytest
 from django.urls import reverse
-from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
+    BillingRecord,
     Event,
     Invoice,
     Metric,
@@ -115,8 +115,6 @@ def draft_invoice_test_common_setup(
                 metric_units_per_batch=mupb,
             )
         setup_dict["billing_plan"] = plan_version
-        plan.display_version = plan_version
-        plan.save()
         subscription_record = add_subscription_record_to_org(
             org, plan_version, customer, now_utc() - timedelta(days=3)
         )
@@ -135,8 +133,12 @@ class TestGenerateInvoice:
         prev_invoices_len = Invoice.objects.filter(
             payment_status=Invoice.PaymentStatus.DRAFT
         ).count()
-        payload = {"customer_id": setup_dict["customer"].customer_id}
-        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+        response = setup_dict["client"].get(
+            reverse(
+                "customer-draft_invoice",
+                kwargs={"customer_id": setup_dict["customer"].customer_id},
+            )
+        )
         assert response.status_code == status.HTTP_200_OK
         new_invoices_len = Invoice.objects.filter(
             payment_status=Invoice.PaymentStatus.DRAFT
@@ -147,15 +149,21 @@ class TestGenerateInvoice:
     def test_generate_invoice_with_price_adjustments(
         self, draft_invoice_test_common_setup
     ):
-        setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
+        # deleting inv objects because it marks it as already paid and we get 0s everywhere
 
-        payload = {
-            "customer_id": setup_dict["customer"].customer_id,
-            "include_next_period": False,
-        }
-        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+        setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
+        Invoice.objects.all().delete()
+        br = BillingRecord.objects.filter(recurring_charge__isnull=False).first()
+        br.next_invoicing_date = br.invoicing_dates[0]
+        br.save()
+        response = setup_dict["client"].get(
+            reverse(
+                "customer-draft_invoice",
+                kwargs={"customer_id": setup_dict["customer"].customer_id},
+            )
+        )
         assert response.status_code == status.HTTP_200_OK
-        before_cost = response.data["invoices"][0]["cost_due"]
+        before_cost = response.data["invoices"][0]["amount"]
         pct_price_adjustment = PriceAdjustment.objects.create(
             organization=setup_dict["org"],
             price_adjustment_name=r"1% discount",
@@ -166,9 +174,14 @@ class TestGenerateInvoice:
         setup_dict["billing_plan"].price_adjustment = pct_price_adjustment
         setup_dict["billing_plan"].save()
 
-        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+        response = setup_dict["client"].get(
+            reverse(
+                "customer-draft_invoice",
+                kwargs={"customer_id": setup_dict["customer"].customer_id},
+            ),
+        )
         assert response.status_code == status.HTTP_200_OK
-        after_cost = response.data["invoices"][0]["cost_due"]
+        after_cost = response.data["invoices"][0]["amount"]
         assert (before_cost * Decimal("0.99") - after_cost) < Decimal("0.01")
 
         fixed_price_adjustment = PriceAdjustment.objects.create(
@@ -181,10 +194,15 @@ class TestGenerateInvoice:
         setup_dict["billing_plan"].price_adjustment = fixed_price_adjustment
         setup_dict["billing_plan"].save()
 
-        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+        response = setup_dict["client"].get(
+            reverse(
+                "customer-draft_invoice",
+                kwargs={"customer_id": setup_dict["customer"].customer_id},
+            ),
+        )
 
         assert response.status_code == status.HTTP_200_OK
-        after_cost = response.data["invoices"][0]["cost_due"]
+        after_cost = response.data["invoices"][0]["amount"]
         assert before_cost - Decimal("1") == after_cost
 
         override_price_adjustment = PriceAdjustment.objects.create(
@@ -197,35 +215,57 @@ class TestGenerateInvoice:
         setup_dict["billing_plan"].price_adjustment = override_price_adjustment
         setup_dict["billing_plan"].save()
 
-        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+        response = setup_dict["client"].get(
+            reverse(
+                "customer-draft_invoice",
+                kwargs={"customer_id": setup_dict["customer"].customer_id},
+            ),
+        )
 
         assert response.status_code == status.HTTP_200_OK
-        after_cost = response.data["invoices"][0]["cost_due"]
+        after_cost = response.data["invoices"][0]["amount"]
         assert Decimal("20") == after_cost
 
     def test_generate_invoice_with_taxes(self, draft_invoice_test_common_setup):
         setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
 
         payload = {
-            "customer_id": setup_dict["customer"].customer_id,
             "include_next_period": False,
         }
-        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+        response = setup_dict["client"].get(
+            reverse(
+                "customer-draft_invoice",
+                kwargs={"customer_id": setup_dict["customer"].customer_id},
+            ),
+            payload,
+        )
         assert response.status_code == status.HTTP_200_OK
-        before_cost = response.data["invoices"][0]["cost_due"]
+        before_cost = response.data["invoices"][0]["amount"]
 
         setup_dict["org"].tax_rate = Decimal("10")
         setup_dict["org"].save()
-        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+        response = setup_dict["client"].get(
+            reverse(
+                "customer-draft_invoice",
+                kwargs={"customer_id": setup_dict["customer"].customer_id},
+            ),
+            payload,
+        )
         assert response.status_code == status.HTTP_200_OK
-        after_cost = response.data["invoices"][0]["cost_due"]
+        after_cost = response.data["invoices"][0]["amount"]
         assert (before_cost * Decimal("1.1") - after_cost) < Decimal("0.01")
 
         setup_dict["customer"].tax_rate = Decimal("20")
         setup_dict["customer"].save()
-        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+        response = setup_dict["client"].get(
+            reverse(
+                "customer-draft_invoice",
+                kwargs={"customer_id": setup_dict["customer"].customer_id},
+            ),
+            payload,
+        )
         assert response.status_code == status.HTTP_200_OK
-        after_cost = response.data["invoices"][0]["cost_due"]
+        after_cost = response.data["invoices"][0]["amount"]
         assert (before_cost * Decimal("1.2") - after_cost) < Decimal("0.01")
 
     def test_generate_invoice_pdf(self, draft_invoice_test_common_setup):
@@ -236,7 +276,7 @@ class TestGenerateInvoice:
         payload = {
             "start_date": now_utc() - timedelta(days=5),
             "customer_id": setup_dict["customer"].customer_id,
-            "plan_id": setup_dict["billing_plan"].plan.plan_id,
+            "version_id": setup_dict["billing_plan"].version_id,
         }
         for i in range(5):
             payload["subscription_filters"] = [
@@ -244,7 +284,7 @@ class TestGenerateInvoice:
             ]
 
             response = setup_dict["client"].post(
-                reverse("subscription-add"),
+                reverse("subscription-list"),
                 data=json.dumps(payload, cls=DjangoJSONEncoder),
                 content_type="application/json",
             )
@@ -265,15 +305,5 @@ class TestGenerateInvoice:
                 _quantity=3,
             )
 
-        payload = {
-            "customer_id": setup_dict["customer"].customer_id,
-            "include_next_period": False,
-        }
-        result_invoices = generate_invoice(
-            SubscriptionRecord.objects.all(),
-            draft=False,
-        )
-
-        assert len(result_invoices) == 1
-
-        assert result_invoices[0].invoice_pdf != ""
+        result_invoice = Invoice.objects.order_by("-invoice_number").first()
+        assert result_invoice.invoice_pdf != ""

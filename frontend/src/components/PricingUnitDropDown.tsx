@@ -1,5 +1,5 @@
 import { Select } from "antd";
-// @ts-ignore
+
 import React from "react";
 import { UseQueryResult, useQuery } from "react-query";
 import { PricingUnits } from "../api/api";
@@ -11,18 +11,23 @@ interface PricingUnitDropDownProps {
   setCurrentSymbol?: (symbol: string) => void;
   shouldShowAllOption?: boolean;
   disabled?: boolean;
+  size?: "large" | "small" | "middle";
+  className?: string;
 }
 
 const PricingUnitDropDown: React.FC<PricingUnitDropDownProps> = ({
   defaultValue,
   setCurrentCurrency,
   setCurrentSymbol,
+  size = "small",
   shouldShowAllOption,
+  className,
   disabled = false,
 }) => {
-  const { data, isLoading }: UseQueryResult<CurrencyType[]> = useQuery<
-    CurrencyType[]
-  >(["pricing_unit_list"], () => PricingUnits.list().then((res) => res));
+  const { data }: UseQueryResult<CurrencyType[]> = useQuery<CurrencyType[]>(
+    ["pricing_unit_list"],
+    () => PricingUnits.list().then((res) => res)
+  );
 
   const getCurrencies = () => {
     const items = data || [];
@@ -41,9 +46,10 @@ const PricingUnitDropDown: React.FC<PricingUnitDropDownProps> = ({
 
   return (
     <Select
-      size="small"
+      size={size}
       disabled={disabled}
       defaultValue={defaultValue}
+      className={className}
       onChange={(currency: string) => {
         setCurrentCurrency(currency);
         const selectedPricingUnit = data?.find(

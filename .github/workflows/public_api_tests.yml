@@ -52,6 +52,7 @@ jobs:
       KAFKA_URL: "localhost:9092"
       PYTHONDONTWRITEBYTECODE: 1
       SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      SELF_HOSTED: "${{ secrets.SELF_HOSTED }}"
 
     steps:
       - uses: actions/checkout@v3
@@ -71,7 +72,7 @@ jobs:
           python -m pip install --upgrade pipenv wheel && pipenv update
 
       - id: cache-pipenv
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: ~/.local/share/virtualenvs
           key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}

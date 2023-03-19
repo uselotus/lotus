@@ -17,11 +17,11 @@ import EditPlanLoader from "../pages/EditPlanLoader";
 import StripeIntegrationView from "../integrations/pages/StripeIntegrationView";
 import NetsuiteIntegrationView from "../integrations/pages/NetsuiteIntegrationView";
 import BraintreeIntegrationView from "../integrations/pages/BraintreeIntegrationView";
-import CreateCredit from "../pages/CreateBalanceAdjustment";
 import ViewAddOns from "../pages/ViewAddOns";
 import CreateAddOns from "../pages/CreateAddOns";
-import AddonDetails from "../components/Addons/AddonsDetails/AddonDetails";
+import AddOnDetails from "../components/Addons/AddonsDetails/AddonDetails";
 import CustomerDetail from "../components/Customers/CustomerDetail";
+import QuickstartPage from "../pages/Quickstart";
 
 const { Sider } = Layout;
 
@@ -71,7 +71,7 @@ const AppRoutes: FC = () => {
             <Route path="create-plan" element={<CreatePlan />} />
             <Route path="create-addons" element={<CreateAddOns />} />
             <Route path="/add-ons" element={<ViewAddOns />} />
-            <Route path="/add-ons/:addOnId" element={<AddonDetails />} />
+            <Route path="/add-ons/:addOnId" element={<AddOnDetails />} />
             <Route
               path="create-version/:planId"
               element={<EditPlanLoader type="version" />}
@@ -81,10 +81,15 @@ const AppRoutes: FC = () => {
               element={<EditPlanLoader type="custom" />}
             />{" "}
             <Route
+              path="add-currency/:planId/:versionId"
+              element={<EditPlanLoader type="currency" />}
+            />{" "}
+            <Route
               path="backtest-plan/:planId"
               element={<EditPlanLoader type="backtest" />}
             />
             <Route path="/plan" />
+            <Route path="/quickstart" element={<QuickstartPage />} />
             <Route path="/customers" element={<ViewCustomers />} />
             <Route path="/customers/:customerId" element={<CustomerDetail />} />
             <Route path="/metrics" element={<ViewMetrics />} />

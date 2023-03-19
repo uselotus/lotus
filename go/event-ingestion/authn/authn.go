@@ -2,17 +2,23 @@ package authn
 
 import (
 	"database/sql"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/uselotus/lotus/go/event-ingestion/cache"
-	"github.com/uselotus/lotus/go/event-ingestion/types"
+	"github.com/uselotus/lotus/go/pkg/types"
 )
 
 func getAPIKeyFromHeader(h http.Header) string {
-	key := h.Get("X-API-KEY")
+	key := ""
+
+	values := h.Values("X-Api-Key")
+	if len(values) > 0 {
+		key = values[0]
+	}
 
 	if key == "" {
 		for k, v := range h {
@@ -48,6 +54,9 @@ func Middleware(cacheClient cache.Cache) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			key := getAPIKeyFromHeader(c.Request().Header)
+
+			log.Printf("Request: %v", c.Request())
+
 			if key == "" {
 				return echo.NewHTTPError(http.StatusBadRequest, "No API key found in request")
 			}
@@ -61,7 +70,8 @@ func Middleware(cacheClient cache.Cache) echo.MiddlewareFunc {
 				c.Set("organizationID", organizationID)
 				return next(c)
 			} else if err != nil {
-				panic(err)
+				log.Printf("Error fetching organization ID from cache: %v", err)
+				return echo.NewHTTPError(http.StatusInternalServerError, "Error fetching organization ID from cache")
 			}
 			db := c.Get("db").(*sql.DB)
 
@@ -76,7 +86,6 @@ func Middleware(cacheClient cache.Cache) echo.MiddlewareFunc {
 			if err != nil {
 				return echo.NewHTTPError(http.StatusInternalServerError, err)
 			}
-
 			if err := apiKey.Validate(); err != nil {
 				return echo.NewHTTPError(http.StatusBadRequest, err)
 			}
@@ -85,7 +94,7 @@ func Middleware(cacheClient cache.Cache) echo.MiddlewareFunc {
 			cacheClient.Set(key, strconv.FormatInt(organizationID, 10))
 
 			c.Set("organizationID", organizationID)
-
+			log.Printf("Passing request to the next middleware or endpoint")
 			return next(c)
 		}
 	}

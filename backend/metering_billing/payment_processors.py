@@ -26,7 +26,6 @@ from metering_billing.utils.enums import (
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
     PAYMENT_PROCESSORS,
-    PLAN_STATUS,
 )
 from rest_framework import serializers, status
 from rest_framework.response import Response
@@ -489,7 +488,7 @@ class BraintreeConnector(PaymentProcesor):
             braintree_customer_id is not None
         ), "Customer does not have a Braintree ID"
         invoice_kwargs = {
-            "amount": convert_to_two_decimal_places(invoice.cost_due),
+            "amount": convert_to_two_decimal_places(invoice.amount),
             "customer_id": braintree_customer_id,
             "line_items": [],
             "options": {"submit_for_settlement": True},
@@ -498,9 +497,9 @@ class BraintreeConnector(PaymentProcesor):
             F("associated_subscription_record").desc(nulls_last=True)
         ):
             name = line_item.name[:35]
-            kind = "debit" if line_item.subtotal > 0 else "credit"
+            kind = "debit" if line_item.base > 0 else "credit"
             quantity = convert_to_two_decimal_places(line_item.quantity or 1)
-            total_amount = convert_to_two_decimal_places(abs(line_item.subtotal))
+            total_amount = convert_to_two_decimal_places(abs(line_item.base))
             unit_amount = convert_to_two_decimal_places(total_amount / quantity)
 
             invoice_kwargs["line_items"].append(
@@ -1024,10 +1023,10 @@ class StripeConnector(PaymentProcesor):
                 external_payment_obj_id=stripe_invoice.id,
             ).exists():
                 continue
-            cost_due = Decimal(stripe_invoice.amount_due) / 100
+            amount = Decimal(stripe_invoice.amount_due) / 100
             invoice_kwargs = {
                 "customer": customer,
-                "cost_due": cost_due,
+                "amount": amount,
                 "issue_date": datetime.datetime.fromtimestamp(
                     stripe_invoice.created, pytz.utc
                 ),
@@ -1119,7 +1118,7 @@ class StripeConnector(PaymentProcesor):
             F("associated_subscription_record").desc(nulls_last=True)
         ):
             name = line_item.name
-            amount = line_item.subtotal
+            amount = line_item.base
             customer = stripe_customer_id
             period = {
                 "start": int(line_item.start_date.timestamp()),
@@ -1130,10 +1129,10 @@ class StripeConnector(PaymentProcesor):
             metadata = {}
             if sr is not None:
                 metadata["plan_name"] = sr.billing_plan.plan.plan_name
-                filters = sr.filters.all()
+                filters = sr.subscription_filters
                 for f in filters:
-                    metadata[f.property_name] = f.comparison_value[0]
-                    name += f" - ({f.property_name} : {f.comparison_value[0]})"
+                    metadata[f[0]] = f[1]
+                    name += f" - ({f[0]} : {f[1]})"
             inv_dict = {
                 "description": name,
                 "amount": int(amount * 100),
@@ -1228,7 +1227,7 @@ class StripeConnector(PaymentProcesor):
             query="status:'active'", **stripe_cust_kwargs
         )
         plans_with_links = (
-            Plan.objects.filter(organization=organization, status=PLAN_STATUS.ACTIVE)
+            Plan.objects.filter(organization=organization)
             .prefetch_related(
                 Prefetch(
                     "external_links",
@@ -1272,12 +1271,14 @@ class StripeConnector(PaymentProcesor):
                 continue
             # great, in this case we transfer the subscription
             elif len(matching_plans) == 1:
-                billing_plan = Plan.objects.get(id=matching_plans[0][0])
+                billing_plan = Plan.objects.get(
+                    id=matching_plans[0][0]
+                ).versions.first()
                 # check to see if subscription exists
                 validated_data = {
                     "organization": organization,
                     "customer": customer,
-                    "billing_plan": billing_plan.display_version,
+                    "billing_plan": billing_plan,
                     "auto_renew": True,
                     "is_new": False,
                 }
@@ -1299,7 +1300,16 @@ class StripeConnector(PaymentProcesor):
                         **stripe_cust_kwargs,
                     )
                 ret_subs.append(sub)
-                SubscriptionRecord.objects.create(**validated_data)
+                SubscriptionRecord.create_subscription_record(
+                    start_date=validated_data["start_date"],
+                    end_date=validated_data.get("start_date"),
+                    billing_plan=billing_plan,
+                    customer=customer,
+                    organization=organization,
+                    subscription_filters=[],
+                    is_new=False,
+                    quantity=1,
+                )
             else:  # error if multiple plans match
                 err_msg = "Multiple Lotus plans match Stripe subscription {}.".format(
                     subscription

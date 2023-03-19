@@ -53,6 +53,7 @@ function CreateMetricForm(props: {
   const [showTags, setShowTags] = useState({});
   type MixedFilterType = CategoricalFilterType | NumericFilterType;
   const [filters, setFilters] = useState<MixedFilterType[]>([]);
+  const [expandForm, setExpandForm] = useState(false);
   const [customSQL, setCustomSQL] = useState<null | string>(
     "SELECT COUNT(*) as usage_qty FROM events"
   );
@@ -196,6 +197,9 @@ function CreateMetricForm(props: {
       title="Create Metric"
       okText="Create"
       okType="primary"
+      okButtonProps={{
+        id: "Create-metric-button",
+      }}
       cancelText="Cancel"
       width={800}
       onCancel={props.onCancel}
@@ -327,6 +331,7 @@ function CreateMetricForm(props: {
           form.resetFields();
           setEventType("counter");
           setPreset("none");
+          setExpandForm(false);
         });
 
         // form.validateFields().then((values) => {
@@ -349,10 +354,31 @@ function CreateMetricForm(props: {
           <Radio value="none">No Template</Radio>
           <Radio value="seats">Seats</Radio>
           <Radio value="calls">API Calls</Radio>
-          <Radio value="rate">Insert Rate</Radio>
+          <Radio value="rate">DB Insert Rate</Radio>
         </Radio.Group>
       </div>
-      <div className="seperator" />
+
+      <div className="text-center mb-6 mt-6">
+        <span className="bg-white px-3 text-gray-500 font-bold relative z-10">
+          or
+        </span>
+        <hr className="border-gray-300 border-1 mt-2" />
+      </div>
+
+      {(!expandForm || preset === "none") && (
+        <div className="flex justify-center items-center mt-8 mb-8">
+          <Button
+            type="default"
+            id="define-new-metric"
+            onClick={() => {
+              setExpandForm(true);
+            }}
+          >
+            Define a new metric
+          </Button>
+        </div>
+      )}
+
       <Form
         form={form}
         layout="vertical"
@@ -365,587 +391,591 @@ function CreateMetricForm(props: {
           event_type: "total",
         }}
       >
-        <div className="grid grid-cols-2 gap-4">
-          <Tooltip
-            placement="left"
-            title="Define a display name for this metric"
-          >
-            <Form.Item
-              name="metric_name"
-              label="Metric Name"
-              rules={[
-                {
-                  required: true,
-                  message: "Please define a unique name for this metric",
-                },
-              ]}
-            >
-              <Input />
-            </Form.Item>
-          </Tooltip>
-          {eventType !== "custom" && (
-            <Tooltip
-              placement="left"
-              title="Define the name of the event you want to track"
-            >
+        {(expandForm || preset !== "none") && (
+          <div>
+            <div className="grid grid-cols-2 gap-4">
+              <Tooltip
+                placement="left"
+                title="Define a display name for this metric"
+              >
+                <Form.Item
+                  name="metric_name"
+                  label="Metric Name"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Please define a unique name for this metric",
+                    },
+                  ]}
+                >
+                  <Input id="metric-name-input" />
+                </Form.Item>
+              </Tooltip>
+              {eventType !== "custom" && (
+                <Tooltip
+                  placement="left"
+                  title="Define the name of the event you want to track"
+                >
+                  <Form.Item
+                    name="event_name"
+                    label="Event Name"
+                    rules={[
+                      {
+                        required: true,
+                        message:
+                          "Please input the name of the event you want to track",
+                      },
+                    ]}
+                  >
+                    <Select
+                      mode="tags"
+                      placeholder="Start typing to look up matching events"
+                      id="event-name-input"
+                      onChange={(event_name: string) => {
+                        const selectedEvent = data?.results?.find(
+                          (e) => e.event_name == event_name
+                        );
+                        const temp = Object.keys(selectedEvent?.properties).map(
+                          (key) => key
+                        );
+                        setPropertyNames(temp);
+                      }}
+                    >
+                      {data?.results?.map((e) => (
+                        <Option value={e.event_name}>{e.event_name}</Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </Tooltip>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <Form.Item
-                name="event_name"
-                label="Event Name"
+                name="metric_type"
+                className="justify-center"
+                label="Type"
                 rules={[
                   {
                     required: true,
-                    message:
-                      "Please input the name of the event you want to track",
+                    message: "Metric type is required",
                   },
                 ]}
               >
-                <Select
-                  mode="tags"
-                  placeholder="Start typing to look up matching events"
-                  onChange={(event_name: string) => {
-                    const selectedEvent = data?.results?.find(
-                      (e) => e.event_name == event_name
-                    );
-                    const temp = Object.keys(selectedEvent?.properties).map(
-                      (key) => key
-                    );
-                    setPropertyNames(temp);
+                <Radio.Group
+                  optionType="button"
+                  buttonStyle="solid"
+                  value={eventType}
+                  defaultValue={eventType}
+                  onChange={(e) => {
+                    handleCreateMetricTypeChange(e.target.value);
+                    setPreset("none");
                   }}
                 >
-                  {data?.results?.map((e) => (
-                    <Option value={e.event_name}>{e.event_name}</Option>
-                  ))}
-                </Select>
+                  <Radio value="counter">Counter</Radio>
+                  <Radio value="gauge">Gauge</Radio>
+                  <Radio value="rate">Rate</Radio>
+                  <Radio value="custom">Custom (Beta)</Radio>
+                </Radio.Group>
               </Form.Item>
-            </Tooltip>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <Form.Item
-            name="metric_type"
-            className="justify-center"
-            label="Type"
-            rules={[
-              {
-                required: true,
-                message: "Metric type is required",
-              },
-            ]}
-          >
-            <Radio.Group
-              optionType="button"
-              buttonStyle="solid"
-              value={eventType}
-              defaultValue={eventType}
-              onChange={(e) => {
-                handleCreateMetricTypeChange(e.target.value);
-                setPreset("none");
-              }}
+            </div>
+            <Form.Item
+              noStyle
+              shouldUpdate={(prevValues, currentValues) =>
+                prevValues.metric_type !== currentValues.metric_type
+              }
             >
-              <Radio value="counter">Counter</Radio>
-              <Radio value="gauge">Gauge</Radio>
-              <Radio value="rate">Rate</Radio>
-              <Radio value="custom">Custom (Beta)</Radio>
-            </Radio.Group>
-          </Form.Item>
-        </div>
-        <Form.Item
-          noStyle
-          shouldUpdate={(prevValues, currentValues) =>
-            prevValues.metric_type !== currentValues.metric_type
-          }
-        >
-          {(eventType === "counter" || eventType === "rate") && (
-            <>
-              <Form.Item
-                name="usage_aggregation_type"
-                label="Aggregation Type"
-                rules={[
-                  {
-                    required: true,
-                    message: "Aggregation type is required",
-                  },
-                  // if rate is selected, don't allow unique
-                  {
-                    validator: (_, value) => {
-                      if (eventType == "rate" && value === "unique") {
-                        return Promise.reject(
-                          new Error("Cannot use unique with rate")
-                        );
-                      }
-                      return Promise.resolve();
-                    },
-                  },
-                ]}
-              >
-                <Select defaultValue="count">
-                  <Option value="count">count</Option>
-                  {eventType === "counter" && (
-                    <Option value="unique">unique</Option>
-                  )}
-                  <Option value="sum">sum</Option>
-                  <Option value="max">max</Option>
-                </Select>
-              </Form.Item>
-              <Form.Item
-                noStyle
-                shouldUpdate={(prevValues, currentValues) =>
-                  prevValues.usage_aggregation_type !==
-                    currentValues.usage_aggregation_type ||
-                  prevValues.metric_type !== currentValues.metric_type
-                }
-              >
-                {({ getFieldValue }) =>
-                  getFieldValue("usage_aggregation_type") === "sum" ||
-                  getFieldValue("usage_aggregation_type") === "max" ||
-                  getFieldValue("usage_aggregation_type") === "unique" ? (
-                    <Form.Item
-                      name="property_name"
-                      label="Property Name"
-                      rules={[
-                        {
-                          validator: (rule, value) => {
-                            if (value && value.length > 0) {
-                              return Promise.resolve();
-                            }
-                            return Promise.reject(
-                              "Please select a property name"
-                            );
-                          },
-                        },
-                      ]}
-                    >
-                      <Select
-                        mode="tags"
-                        maxTagCount={1}
-                        placeholder="Start typing to look up matching property names"
-                      >
-                        {propertyNames.map((p) => (
-                          <Option value={p}>{p}</Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                  ) : null
-                }
-              </Form.Item>
-
-              {eventType === "rate" && (
+              {(eventType === "counter" || eventType === "rate") && (
                 <>
                   <Form.Item
-                    name="rate_granularity"
-                    label="Rate Period"
-                    rules={getRateGranularityRules()}
+                    name="usage_aggregation_type"
+                    label="Aggregation Type"
+                    rules={[
+                      {
+                        required: true,
+                        message: "Aggregation type is required",
+                      },
+                      // if rate is selected, don't allow unique
+                      {
+                        validator: (_, value) => {
+                          if (eventType == "rate" && value === "unique") {
+                            return Promise.reject(
+                              new Error("Cannot use unique with rate")
+                            );
+                          }
+                          return Promise.resolve();
+                        },
+                      },
+                    ]}
                   >
-                    <Select>
-                      <Option value="minutes">minute</Option>
-
-                      <Option value="hours">hour</Option>
-
-                      <Option value="days">day</Option>
-
-                      <Option value="months">month</Option>
+                    <Select defaultValue="count">
+                      <Option value="count">count</Option>
+                      {eventType === "counter" && (
+                        <Option value="unique">unique</Option>
+                      )}
+                      <Option value="sum">sum</Option>
+                      <Option value="max">max</Option>
                     </Select>
+                  </Form.Item>
+                  <Form.Item
+                    noStyle
+                    shouldUpdate={(prevValues, currentValues) =>
+                      prevValues.usage_aggregation_type !==
+                        currentValues.usage_aggregation_type ||
+                      prevValues.metric_type !== currentValues.metric_type
+                    }
+                  >
+                    {({ getFieldValue }) =>
+                      getFieldValue("usage_aggregation_type") === "sum" ||
+                      getFieldValue("usage_aggregation_type") === "max" ||
+                      getFieldValue("usage_aggregation_type") === "unique" ? (
+                        <Form.Item
+                          name="property_name"
+                          label="Property Name"
+                          rules={[
+                            {
+                              validator: (rule, value) => {
+                                if (value && value.length > 0) {
+                                  return Promise.resolve();
+                                }
+                                return Promise.reject(
+                                  "Please select a property name"
+                                );
+                              },
+                            },
+                          ]}
+                        >
+                          <Select
+                            mode="tags"
+                            maxTagCount={1}
+                            placeholder="Start typing to look up matching property names"
+                          >
+                            {propertyNames.map((p) => (
+                              <Option value={p}>{p}</Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
+                      ) : null
+                    }
+                  </Form.Item>
+
+                  {eventType === "rate" && (
+                    <>
+                      <Form.Item
+                        name="rate_granularity"
+                        label="Rate Period"
+                        rules={getRateGranularityRules()}
+                      >
+                        <Select>
+                          <Option value="minutes">minute</Option>
+
+                          <Option value="hours">hour</Option>
+
+                          <Option value="days">day</Option>
+
+                          <Option value="months">month</Option>
+                        </Select>
+                      </Form.Item>
+                    </>
+                  )}
+                </>
+              )}
+              {eventType === "gauge" && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Form.Item
+                      name="event_type"
+                      label="Event Type (how the property amount is reported)"
+                      rules={[{ required: true }]}
+                    >
+                      <Select>
+                        <Option value="total">total</Option>
+                        <Option value="delta">delta</Option>
+                      </Select>
+                    </Form.Item>
+                  </div>
+
+                  <Form.Item
+                    name="property_name"
+                    label="Property Name"
+                    rules={[{ required: true }]}
+                  >
+                    <Select
+                      mode="tags"
+                      maxTagCount={1}
+                      placeholder="Start typing to look up matching property names"
+                    >
+                      {propertyNames.map((p) => (
+                        <Option value={p}>{p}</Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+
+                  <Form.Item
+                    name="gauge_granularity"
+                    label="Unit Defined Per"
+                    rules={getGaugeGranularityRules()}
+                  >
+                    <Tooltip
+                      placement="left"
+                      title="Define the unit of measurement for this gauge metric. This would be `hours` for AWS-style CPU-hour metrics, or `month` for a monthly metric based on seats/users."
+                    >
+                      <Select
+                        value={selectedGranularity}
+                        onChange={handleGranularityChange}
+                      >
+                        <Select.Option value="seconds">second</Select.Option>
+                        <Select.Option value="minutes">minute</Select.Option>
+                        <Select.Option value="hours">hour</Select.Option>
+                        <Select.Option value="days">day</Select.Option>
+                        <Select.Option value="months">month</Select.Option>
+                        <Select.Option value="total">
+                          plan duration
+                        </Select.Option>
+                      </Select>
+                    </Tooltip>
                   </Form.Item>
                 </>
               )}
-            </>
-          )}
-          {eventType === "gauge" && (
-            <>
-              <div className="grid grid-cols-2 gap-4">
-                <Form.Item
-                  name="event_type"
-                  label="Event Type (how the property amount is reported)"
-                  rules={[{ required: true }]}
+            </Form.Item>
+            {eventType === "custom" && (
+              <div>
+                <p>
+                  The query you're building should calculate the raw usage
+                  number for a customer's subscription. You'll define the price
+                  of the accumulated usage later. You'll have access to a table
+                  called <Tag>events</Tag>containing all of the events for the
+                  customer whose subscription usage you're calculating. Each row
+                  represents an event and has the following columns available:
+                </p>
+                <h4>
+                  <Tag>
+                    event_name (
+                    <a href="https://www.postgresql.org/docs/current/datatype-character.html">
+                      string
+                    </a>
+                    )
+                  </Tag>{" "}
+                  the name of the event.
+                </h4>
+                <h4>
+                  <Tag>
+                    properties (
+                    <a href="https://www.postgresql.org/docs/current/datatype-json.html">
+                      jsonb
+                    </a>
+                    )
+                  </Tag>{" "}
+                  the properties you specified when you sent the event.
+                </h4>
+                <h4>
+                  <Tag>
+                    time_created (
+                    <a href="https://www.postgresql.org/docs/current/datatype-datetime.html">
+                      timestamptz
+                    </a>
+                    )
+                  </Tag>{" "}
+                  the time the event happened.
+                </h4>
+                <h4>
+                  <Tag>
+                    start_date (
+                    <a href="https://www.postgresql.org/docs/current/datatype-datetime.html">
+                      timestamptz
+                    </a>
+                    )
+                  </Tag>{" "}
+                  the start time of the current subscription.
+                </h4>
+                <h4>
+                  <Tag>
+                    end_date (
+                    <a href="https://www.postgresql.org/docs/current/datatype-datetime.html">
+                      timestamptz
+                    </a>
+                    )
+                  </Tag>
+                  the end time of the current subscription.
+                </h4>
+                <p>
+                  Please return a single row with a a column named{" "}
+                  <Tag>usage_qty</Tag>. If you return more than one, we will use
+                  the first one. If you return none, we will assume the usage is
+                  0.{" "}
+                </p>
+                <p>
+                  Full SQL support is available, including joins, subqueries,
+                  CTEs, and window functions.
+                </p>
+                <Button
+                  className="float-right"
+                  onClick={() => {
+                    formatSQL();
+                  }}
                 >
-                  <Select>
-                    <Option value="total">total</Option>
-                    <Option value="delta">delta</Option>
-                  </Select>
-                </Form.Item>
+                  Format
+                </Button>
+                <AceEditor
+                  width="80%"
+                  mode="sql"
+                  theme="github"
+                  placeholder="SELECT * FROM events"
+                  onChange={(newValue) => setCustomSQL(newValue)}
+                  name="custom_sql"
+                  highlightActiveLine
+                  value={customSQL || ""}
+                  showGutter
+                  setOptions={{
+                    enableBasicAutocompletion: true,
+                    enableLiveAutocompletion: true,
+                    enableSnippets: true,
+                    showLineNumbers: true,
+                    tabSize: 2,
+                  }}
+                />
               </div>
+            )}
 
-              <Form.Item
-                name="property_name"
-                label="Property Name"
-                rules={[{ required: true }]}
-              >
-                <Select
-                  mode="tags"
-                  maxTagCount={1}
-                  placeholder="Start typing to look up matching property names"
-                >
-                  {propertyNames.map((p) => (
-                    <Option value={p}>{p}</Option>
-                  ))}
-                </Select>
-              </Form.Item>
-
-              <Form.Item
-                name="gauge_granularity"
-                label="Unit Defined Per"
-                rules={getGaugeGranularityRules()}
-              >
-                <Tooltip
-                  placement="left"
-                  title="Define the unit of measurement for this gauge metric. This would be `hours` for AWS-style CPU-hour metrics, or `month` for a monthly metric based on seats/users."
-                >
-                  <Select
-                    value={selectedGranularity}
-                    onChange={handleGranularityChange}
-                  >
-                    <Select.Option value="seconds">second</Select.Option>
-                    <Select.Option value="minutes">minute</Select.Option>
-                    <Select.Option value="hours">hour</Select.Option>
-                    <Select.Option value="days">day</Select.Option>
-                    <Select.Option value="months">month</Select.Option>
-                    <Select.Option value="total">plan duration</Select.Option>
-                  </Select>
-                </Tooltip>
-              </Form.Item>
-            </>
-          )}
-        </Form.Item>
-        {eventType === "custom" && (
-          <div>
-            <p>
-              The query you're building should calculate the raw usage number
-              for a customer's subscription. You'll define the price of the
-              accumulated usage later. You'll have access to a table called{" "}
-              <Tag>events</Tag>containing all of the events for the customer
-              whose subscription usage you're calculating. Each row represents
-              an event and has the following columns available:
-            </p>
-            <h4>
-              <Tag>
-                event_name (
-                <a href="https://www.postgresql.org/docs/current/datatype-character.html">
-                  string
-                </a>
-                )
-              </Tag>{" "}
-              the name of the event.
-            </h4>
-            <h4>
-              <Tag>
-                properties (
-                <a href="https://www.postgresql.org/docs/current/datatype-json.html">
-                  jsonb
-                </a>
-                )
-              </Tag>{" "}
-              the properties you specified when you sent the event.
-            </h4>
-            <h4>
-              <Tag>
-                time_created (
-                <a href="https://www.postgresql.org/docs/current/datatype-datetime.html">
-                  timestamptz
-                </a>
-                )
-              </Tag>{" "}
-              the time the event happened.
-            </h4>
-            <h4>
-              <Tag>
-                start_date (
-                <a href="https://www.postgresql.org/docs/current/datatype-datetime.html">
-                  timestamptz
-                </a>
-                )
-              </Tag>{" "}
-              the start time of the current subscription.
-            </h4>
-            <h4>
-              <Tag>
-                end_date (
-                <a href="https://www.postgresql.org/docs/current/datatype-datetime.html">
-                  timestamptz
-                </a>
-                )
-              </Tag>
-              the end time of the current subscription.
-            </h4>
-            <p>
-              Please return a single row with a a column named{" "}
-              <Tag>usage_qty</Tag>. If you return more than one, we will use the
-              first one. If you return none, we will assume the usage is 0.{" "}
-            </p>
-            <p>
-              Full SQL support is available, including joins, subqueries, CTEs,
-              and window functions.
-            </p>
-            <Button
-              className="float-right"
-              onClick={() => {
-                formatSQL();
-              }}
-            >
-              Format
-            </Button>
-            <AceEditor
-              width="80%"
-              mode="sql"
-              theme="github"
-              placeholder="SELECT * FROM events"
-              onChange={(newValue) => setCustomSQL(newValue)}
-              name="custom_sql"
-              highlightActiveLine
-              value={customSQL || ""}
-              showGutter
-              setOptions={{
-                enableBasicAutocompletion: true,
-                enableLiveAutocompletion: true,
-                enableSnippets: true,
-                showLineNumbers: true,
-                tabSize: 2,
-              }}
-            />
-          </div>
-        )}
-
-        {eventType !== "custom" && (
-          <Collapse>
-            <Panel header="Filters" key="1">
-              <Form.List name="filters">
-                {(fields, { add, remove }, { errors }) => (
-                  <>
-                    {fields.map((field, index) => (
-                      <Form.Item
-                        required={false}
-                        key={field.key}
-                        label={index === 0 ? "" : "and"}
-                        className="mt-4"
-                      >
-                        <div className="flex flex-col space-y-4">
+            {eventType !== "custom" && (
+              <Collapse>
+                <Panel header="Filters" key="1">
+                  <Form.List name="filters">
+                    {(fields, { add, remove }, { errors }) => (
+                      <>
+                        {fields.map((field, index) => (
                           <Form.Item
-                            {...field}
-                            name={[field.name, "property_name"]}
-                            validateTrigger={["onChange", "onBlur"]}
-                            rules={[
-                              {
-                                validator: (rule, value) => {
-                                  if (value && value.length > 0) {
-                                    return Promise.resolve();
-                                  }
-                                  return Promise.reject(
-                                    "Please select a property name"
-                                  );
-                                },
-                              },
-                            ]}
-                            noStyle
+                            required={false}
+                            key={field.key}
+                            label={index === 0 ? "" : "and"}
+                            className="mt-4"
                           >
-                            <Select
-                              placeholder="property name"
-                              mode="tags"
-                              maxTagCount={1}
-                              style={{ width: "30%" }}
-                            >
-                              {propertyNames.map((p) => (
-                                <Option value={p}>{p}</Option>
-                              ))}
-                            </Select>
-                          </Form.Item>
-                          <Form.Item
-                            name={[field.name, "operator"]}
-                            rules={[
-                              {
-                                required: true,
-                                whitespace: true,
-                                message:
-                                  "Please input an operator or delete this filter.",
-                              },
-                            ]}
-                          >
-                            <Select
-                              onChange={(e) => {
-                                let tagsShown = false;
-                                if (e === "isin" || e === "isnotin") {
-                                  tagsShown = true;
-                                } else {
-                                  tagsShown = false;
-                                }
-                                setShowTags({
-                                  ...showTags,
-                                  [field.name]: tagsShown,
-                                });
-                              }}
-                              style={{ width: "50%" }}
-                            >
-                              <Option value="isin">is one of</Option>
-                              <Option value="isnotin">is not one of</Option>
-                              <Option value="eq">= </Option>
-                              <Option value="gte">&#8805;</Option>
-                              <Option value="gt"> &#62; </Option>
-                              <Option value="lt"> &#60;</Option>
-                              <Option value="lte">&#8804;</Option>
-                            </Select>
-                          </Form.Item>
-
-                          <div className="grid grid-cols-2 w-6/12">
-                            <Form.Item
-                              name={[field.name, "comparison_value"]}
-                              style={{ alignSelf: "middle" }}
-                              dependencies={[field.name, "operator"]}
-                              validateTrigger={["onChange", "onBlur"]}
-                              rules={[
-                                ({ getFieldValue }) => ({
-                                  validator(_, value) {
-                                    if (showTags[field.name] || false) {
-                                      if (
-                                        Array.isArray(value) &&
-                                        value.length >= 1
-                                      ) {
-                                        return Promise.resolve();
-                                      }
-                                      return Promise.reject(
-                                        "Please select at least one value for this filter."
-                                      );
-                                    } else if (
-                                      value === undefined ||
-                                      value === null ||
-                                      value === "" ||
-                                      (Array.isArray(value) &&
-                                        value.length === 0)
-                                    ) {
-                                      return Promise.reject(
-                                        "Please input a comparison value or delete this filter."
-                                      );
-                                    }
-                                    return Promise.resolve();
+                            <div className="flex flex-col space-y-4">
+                              <Form.Item
+                                {...field}
+                                name={[field.name, "property_name"]}
+                                validateTrigger={["onChange", "onBlur"]}
+                                rules={[
+                                  {
+                                    required: true,
+                                    whitespace: true,
+                                    message:
+                                      "Please input a property name or delete this filter.",
                                   },
-                                }),
-                              ]}
-                            >
-                              {!showTags[field.name] || false ? (
-                                <InputNumber
-                                  placeholder="comparison value"
-                                  style={{ width: "100%" }}
-                                />
-                              ) : (
+                                ]}
+                                noStyle
+                              >
                                 <Select
+                                  placeholder="property name"
                                   mode="tags"
-                                  style={{ width: "100%" }}
-                                  placeholder="Input 1...n values"
-                                  options={[]}
-                                />
-                              )}
-                            </Form.Item>
+                                  maxTagCount={1}
+                                  style={{ width: "30%" }}
+                                >
+                                  {propertyNames.map((p) => (
+                                    <Option value={p}>{p}</Option>
+                                  ))}
+                                </Select>
+                              </Form.Item>
+                              <Form.Item
+                                name={[field.name, "operator"]}
+                                rules={[
+                                  {
+                                    required: true,
+                                    whitespace: true,
+                                    message:
+                                      "Please input an operator or delete this filter.",
+                                  },
+                                ]}
+                              >
+                                <Select
+                                  onChange={(e) => {
+                                    let tagsShown = false;
+                                    if (e === "isin" || e === "isnotin") {
+                                      tagsShown = true;
+                                    } else {
+                                      tagsShown = false;
+                                    }
+                                    setShowTags({
+                                      ...showTags,
+                                      [field.name]: tagsShown,
+                                    });
+                                  }}
+                                  style={{ width: "50%" }}
+                                >
+                                  <Option value="isin">is one of</Option>
+                                  <Option value="isnotin">is not one of</Option>
+                                  <Option value="eq">= </Option>
+                                  <Option value="gte">&#8805;</Option>
+                                  <Option value="gt"> &#62; </Option>
+                                  <Option value="lt"> &#60;</Option>
+                                  <Option value="lte">&#8804;</Option>
+                                </Select>
+                              </Form.Item>
 
-                            {fields.length > 0 ? (
-                              <MinusCircleOutlined
-                                className="hover:bg-background place-self-center p-4"
-                                onClick={() => remove(field.name)}
-                              />
-                            ) : null}
-                          </div>
+                              <div className="grid grid-cols-2 w-6/12">
+                                <Form.Item
+                                  name={[field.name, "comparison_value"]}
+                                  style={{ alignSelf: "middle" }}
+                                  dependencies={[field.name, "operator"]}
+                                  validateTrigger={["onChange", "onBlur"]}
+                                  rules={[
+                                    ({ getFieldValue }) => ({
+                                      validator(_, value) {
+                                        if (showTags[field.name] || false) {
+                                          if (
+                                            Array.isArray(value) &&
+                                            value.length >= 1
+                                          ) {
+                                            return Promise.resolve();
+                                          }
+                                          return Promise.reject(
+                                            "Please select at least one value for this filter."
+                                          );
+                                        } else if (
+                                          value === undefined ||
+                                          value === null ||
+                                          value === "" ||
+                                          (Array.isArray(value) &&
+                                            value.length === 0)
+                                        ) {
+                                          return Promise.reject(
+                                            "Please input a comparison value or delete this filter."
+                                          );
+                                        }
+                                        return Promise.resolve();
+                                      },
+                                    }),
+                                  ]}
+                                >
+                                  {!showTags[field.name] || false ? (
+                                    <InputNumber
+                                      placeholder="comparison value"
+                                      style={{ width: "100%" }}
+                                    />
+                                  ) : (
+                                    <Select
+                                      mode="tags"
+                                      style={{ width: "100%" }}
+                                      placeholder="Input 1...n values"
+                                      options={[]}
+                                    />
+                                  )}
+                                </Form.Item>
+
+                                {fields.length > 0 ? (
+                                  <MinusCircleOutlined
+                                    className="hover:bg-background place-self-center p-4"
+                                    onClick={() => remove(field.name)}
+                                  />
+                                ) : null}
+                              </div>
+                            </div>
+                          </Form.Item>
+                        ))}
+                        <Form.Item>
+                          <Button
+                            type="dashed"
+                            onClick={() => add()}
+                            style={{ width: "60%" }}
+                            icon={<PlusOutlined />}
+                          >
+                            Add filter
+                          </Button>
+                          <Form.ErrorList errors={errors} />
+                        </Form.Item>
+                      </>
+                    )}
+                  </Form.List>
+                  {errors?.length && errors.length > 0 ? (
+                    <div>
+                      {errors.map((el, idx) => (
+                        <div className="text-red-700" key={idx}>
+                          {el}
                         </div>
-                      </Form.Item>
-                    ))}
-                    <Form.Item>
-                      <Button
-                        type="dashed"
-                        onClick={() => add()}
-                        style={{ width: "60%" }}
-                        icon={<PlusOutlined />}
-                      >
-                        Add filter
-                      </Button>
-                      <Form.ErrorList errors={errors} />
-                    </Form.Item>
-                  </>
-                )}
-              </Form.List>
-              {errors?.length && errors.length > 0 ? (
-                <div>
-                  {errors.map((el, idx) => (
-                    <div className="text-red-700" key={idx}>
-                      {el}
+                      ))}
                     </div>
-                  ))}
-                </div>
-              ) : null}
-            </Panel>
-            <Panel header="Advanced Settings" key="2">
-              {eventType === "gauge" && (
-                <Form.Item name="proration" label="Proration">
-                  <Tooltip
-                    placement="left"
-                    title="You can define your proration in order to allow usage as a fractional amount of the granularity."
-                  >
-                    <Select
-                      value={selectedProration}
-                      onChange={handleProrationChange}
-                    >
-                      {/* <Select.Option
+                  ) : null}
+                </Panel>
+                <Panel header="Advanced Settings" key="2">
+                  {eventType === "gauge" && (
+                    <Form.Item name="proration" label="Proration">
+                      <Tooltip
+                        placement="left"
+                        title="You can define your proration in order to allow usage as a fractional amount of the granularity."
+                      >
+                        <Select
+                          value={selectedProration}
+                          onChange={handleProrationChange}
+                        >
+                          {/* <Select.Option
                         value="milliseconds"
                         disabled={disableOption("milliseconds")}
                       >
                         milliseconds
                       </Select.Option> */}
-                      <Select.Option
-                        value="seconds"
-                        disabled={disableOption("seconds")}
-                      >
-                        second
-                      </Select.Option>
-                      <Select.Option
-                        value="minutes"
-                        disabled={disableOption("minutes")}
-                      >
-                        minute
-                      </Select.Option>
-                      <Select.Option
-                        value="hours"
-                        disabled={disableOption("hours")}
-                      >
-                        hour
-                      </Select.Option>
-                      <Select.Option
-                        value="days"
-                        disabled={disableOption("days")}
-                      >
-                        day
-                      </Select.Option>
-                      <Select.Option
-                        value="months"
-                        disabled={disableOption("months")}
-                      >
-                        month
-                      </Select.Option>
-                      <Select.Option
-                        value="total"
-                        disabled={disableOption("total")}
-                      >
-                        no proration
-                      </Select.Option>
-                    </Select>
-                  </Tooltip>
-                </Form.Item>
-              )}
-              {eventType === "counter" && (
-                <Form.Item label="Does this metric represent a cost?">
-                  <Switch
-                    checked={costMetric}
-                    onChange={() => {
-                      setCostMetric(!costMetric);
-                      if (!costMetric) {
-                        form.setFieldsValue({
-                          is_cost_metric: false,
-                        });
-                      } else {
-                        form.setFieldsValue({
-                          is_cost_metric: true,
-                        });
-                      }
-                    }}
-                  />
-                </Form.Item>
-              )}
-            </Panel>
-          </Collapse>
+                          <Select.Option
+                            value="seconds"
+                            disabled={disableOption("seconds")}
+                          >
+                            second
+                          </Select.Option>
+                          <Select.Option
+                            value="minutes"
+                            disabled={disableOption("minutes")}
+                          >
+                            minute
+                          </Select.Option>
+                          <Select.Option
+                            value="hours"
+                            disabled={disableOption("hours")}
+                          >
+                            hour
+                          </Select.Option>
+                          <Select.Option
+                            value="days"
+                            disabled={disableOption("days")}
+                          >
+                            day
+                          </Select.Option>
+                          <Select.Option
+                            value="months"
+                            disabled={disableOption("months")}
+                          >
+                            month
+                          </Select.Option>
+                          <Select.Option
+                            value="total"
+                            disabled={disableOption("total")}
+                          >
+                            no proration
+                          </Select.Option>
+                        </Select>
+                      </Tooltip>
+                    </Form.Item>
+                  )}
+                  {eventType === "counter" && (
+                    <Form.Item label="Does this metric represent a cost?">
+                      <Switch
+                        checked={costMetric}
+                        onChange={() => {
+                          setCostMetric(!costMetric);
+                          if (!costMetric) {
+                            form.setFieldsValue({
+                              is_cost_metric: false,
+                            });
+                          } else {
+                            form.setFieldsValue({
+                              is_cost_metric: true,
+                            });
+                          }
+                        }}
+                      />
+                    </Form.Item>
+                  )}
+                </Panel>
+              </Collapse>
+            )}
+          </div>
         )}
       </Form>
     </Modal>

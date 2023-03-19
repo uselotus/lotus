@@ -4,23 +4,24 @@ import { Button, Typography } from "antd";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "react-query";
 import { PageLayout } from "../../base/PageLayout";
-import { Addon } from "../../../api/api";
+import { AddOn } from "../../../api/api";
 import LoadingSpinner from "../../LoadingSpinner";
-import { AddonType } from "../../../types/addon-type";
+import { AddOnType } from "../../../types/addon-type";
 import AddOnInfo from "./AddOnInfo";
 import AddOnComponents from "./AddOnComponents";
 import AddOnFeatures from "./AddOnFeatures";
+import { components } from "../../../gen-types";
 
-type AddonDetailsParams = {
+type AddOnDetailsParams = {
   addOnId: string;
 };
 
-const AddonDetails: FC = () => {
+const AddOnDetails: FC = () => {
   const navigate = useNavigate();
 
-  const { addOnId } = useParams<AddonDetailsParams>();
+  const { addOnId } = useParams<AddOnDetailsParams>();
   const queryClient = useQueryClient();
-  const [add_on, setAddOn] = useState<AddonType>({
+  const [add_on, setAddOn] = useState<AddOnType>({
     addon_name: "Unlimited Text Add-On",
     description: "Lorem Ipsum Dolores stuff",
     flat_rate: 49.0,
@@ -42,10 +43,9 @@ const AddonDetails: FC = () => {
     isLoading,
     isError,
     refetch,
-  } = useQuery<AddonType>(
+  } = useQuery<components["schemas"]["AddOnDetail"]>(
     ["addon_detail", addOnId],
-    () =>
-      Addon.getAddon(addOnId as string).then((res) => res),
+    () => AddOn.getAddOn(addOnId as string).then((res) => res),
     { refetchOnMount: "always" }
   );
 
@@ -73,7 +73,7 @@ const AddonDetails: FC = () => {
               <div>
                 <div className="font-alliance">{addon.addon_name}</div>
                 <div className="text-base Inter text-card-grey ml-2">
-                  {addon.description}
+                  {addon.addon_description}
                 </div>
               </div>
             }
@@ -97,7 +97,7 @@ const AddonDetails: FC = () => {
                 </Button>
               </div>
             }
-           />
+          />
           <div className="mx-10">
             <div className="bg-white mb-6 flex flex-col py-4 px-10 rounded-lg space-y-12">
               <div>
@@ -105,14 +105,14 @@ const AddonDetails: FC = () => {
               </div>
 
               <div className="grid gap-18 grid-cols-1  md:grid-cols-2 w-full">
-                {addon?.components.length > 0 && (
+                {addon?.versions[0].components.length > 0 && (
                   <AddOnComponents
                     refetch={refetch}
                     plan={addon}
-                    components={addon?.components}
+                    components={addon?.versions[0].components}
                   />
                 )}
-                <AddOnFeatures features={addon?.features} />
+                <AddOnFeatures features={addon?.versions[0].features} />
               </div>
             </div>
           </div>
@@ -122,4 +122,4 @@ const AddonDetails: FC = () => {
     </>
   );
 };
-export default AddonDetails;
+export default AddOnDetails;

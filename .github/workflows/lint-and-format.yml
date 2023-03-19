@@ -3,7 +3,7 @@ name: Lint and Prettier
 on: [push]
 
 jobs:
-  lint:
+  format-ts:
     runs-on: ubuntu-latest
 
     steps:
@@ -23,3 +23,19 @@ jobs:
       #   run: yarn lint
       - name: Run Prettier
         run: cd frontend/frontend && yarn pretty
+
+  format-py:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+
+      - name: Install dependencies
+        run: pip install black
+
+      - name: Run black
+        run: black backend/

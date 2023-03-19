@@ -1,9 +1,18 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable no-use-before-define */
+/* eslint-disable no-shadow */
+/* eslint-disable camelcase */
 // @ts-ignore
-import React, { FC, Fragment } from "react";
+import React, { FC, Fragment, useRef, useState } from "react";
 import "./PlanDetails.css";
-import { Button } from "antd";
+import { Button, Tabs, Select } from "antd";
 import { useNavigate, useParams } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  UseQueryResult,
+} from "react-query";
 import { PlusOutlined } from "@ant-design/icons";
 import { toast } from "react-toastify";
 import { PageLayout } from "../../base/PageLayout";
@@ -13,8 +22,11 @@ import {
   CreatePlanExternalLinkType,
   InitialExternalLinks,
   PlanDetailType,
+  PlanType,
 } from "../../../types/plan-type";
 import LoadingSpinner from "../../LoadingSpinner";
+import { components } from "../../../gen-types";
+import CustomPlanDetails from "./CustomPlanDetails";
 
 type PlanDetailParams = {
   planId: string;
@@ -22,7 +34,13 @@ type PlanDetailParams = {
 
 const PlanDetails: FC = () => {
   const navigate = useNavigate();
-
+  const [customPlans, setCustomPlans] =
+    useState<components["schemas"]["PlanDetail"]["versions"]>();
+  const [selectedCustomPlan, setSelectedCustomPlan] =
+    React.useState<components["schemas"]["PlanDetail"]["versions"][0]>();
+  const selectRef = useRef<HTMLSelectElement | null>(null!);
+  const dropdownSelectRef = useRef<HTMLSelectElement | null>(null!);
+  const [activeKey, setActiveKey] = useState("0");
   const { planId } = useParams<PlanDetailParams>();
   const queryClient = useQueryClient();
 
@@ -145,15 +163,32 @@ const PlanDetails: FC = () => {
     isLoading,
     isError,
     refetch,
-  } = useQuery<PlanDetailType>(
+  } = useQuery<components["schemas"]["PlanDetail"]>(
     ["plan_detail", planId],
-    () =>
-      Plan.getPlan(planId as string).then((res) => res),
+    () => Plan.getPlan(planId as string, "public_only").then((res) => res),
     { refetchOnMount: "always" }
   );
+  const {
+    data: customPlanData,
+  }: UseQueryResult<components["schemas"]["PlanDetail"]> = useQuery<
+    components["schemas"]["PlanDetail"]
+  >(
+    ["plan_list", planId],
+    () => Plan.getPlan(planId as string, "custom_only").then((res) => res),
+
+    {
+      onSuccess: (plan) => {
+        setCustomPlans(plan.versions);
+        setSelectedCustomPlan(plan.versions[0]);
+      },
+    }
+  );
+  const changeTab = (activeKey: string) => {
+    setActiveKey(activeKey);
+  };
 
   const navigateCreateCustomPlan = () => {
-    navigate(`/create-custom/${  planId}`);
+    navigate(`/create-custom/${planId}`);
   };
 
   return (
@@ -168,87 +203,118 @@ const PlanDetails: FC = () => {
       {isError && (
         <div className="flex flex-col items-center justify-center h-full">
           <h2 className="4">Could Not Load Plan</h2>
-          <Button type="primary" onClick={() => navigate(-1)}>
+          <Button type="primary" onClick={() => navigate("/plans")}>
             Go Back
           </Button>
         </div>
       )}
       {plan && (
-        <div>
-          <PageLayout
-            title={
-              plan.target_customer !== null ? (
-                <div>
-                  {" "}
-                  {plan.plan_name}
-                  <span className="block mt-4 text-neutral-500 text-base">
-                    {plan.display_version.description}
-                  </span>
+        <PageLayout
+          title={
+            <div>
+              {plan.plan_name}
+              <span className="block mt-4  text-neutral-500 text-base">
+                {plan.plan_description}
+              </span>
+            </div>
+          }
+          hasBackButton
+          aboveTitle
+          mx={false}
+          backButton={
+            <div>
+              <Button
+                onClick={() => navigate("/plans")}
+                type="primary"
+                size="large"
+                key="go-back"
+                style={{
+                  background: "#FAFAFA",
+                  borderColor: "#FAFAFA",
+                }}
+              >
+                <div className="flex items-center justify-between text-black">
+                  <div>&larr; Go back</div>
                 </div>
-              ) : (
+              </Button>
+            </div>
+          }
+          backIcon
+          extra={[
+            <Button
+              onClick={navigateCreateCustomPlan}
+              type="primary"
+              size="large"
+              key="create-custom-plan"
+              className="hover:!bg-primary-700"
+              style={{ background: "#C3986B", borderColor: "#C3986B" }}
+            >
+              <div className="flex items-center justify-between text-white">
                 <div>
-                  {plan.plan_name}
-                  <span className="block mt-4  text-neutral-500 text-base">
-                    {plan.display_version.description}
-                  </span>
+                  <PlusOutlined className="!text-white w-12 h-12 cursor-pointer" />
+                  Create Custom Plan
                 </div>
-              )
-            }
-            hasBackButton
-            aboveTitle
-            backButton={
-              <div>
-                <Button
-                  onClick={() => navigate(-1)}
-                  type="primary"
-                  size="large"
-                  key="go-back"
-                  style={{
-                    background: "#FAFAFA",
-                    borderColor: "#FAFAFA",
-                  }}
-                >
-                  <div className="flex items-center justify-between text-black">
-                    <div>&larr; Go back</div>
-                  </div>
-                </Button>
               </div>
-            }
-            backIcon
-            extra={
-              plan.target_customer === null && [
-                <Button
-                  onClick={navigateCreateCustomPlan}
-                  type="primary"
-                  size="large"
-                  key="create-custom-plan"
-                  className="hover:!bg-primary-700"
-                  style={{ background: "#C3986B", borderColor: "#C3986B" }}
-                >
-                  <div className="flex items-center justify-between text-white">
-                    <div>
-                      <PlusOutlined className="!text-white w-12 h-12 cursor-pointer" />
-                      Create Custom Plan
-                    </div>
+            </Button>,
+          ]}
+        >
+          <div>
+            <Tabs
+              onChange={changeTab}
+              defaultActiveKey="0"
+              activeKey={activeKey}
+              size="large"
+            >
+              <Tabs.TabPane tab="Versions" key="0">
+                {plan.versions.length > 0 && (
+                  <SwitchVersions
+                    refetch={refetch}
+                    activeKey={activeKey}
+                    versions={plan.versions}
+                    createPlanExternalLink={createPlanExternalLink}
+                    deletePlanExternalLink={deletePlanExternalLink}
+                    plan={plan}
+                    className="flex items-center my-5"
+                  />
+                )}
+              </Tabs.TabPane>
+              <Tabs.TabPane tab="Custom Plans" key="1">
+                <div>
+                  <div className="flex items-center gap-4">
+                    <span>Custom Plans</span>
+                    <Select
+                      className=""
+                      onChange={(e) => {
+                        const selectedType = customPlans?.find(
+                          (el) => el.plan_name === e
+                        );
+
+                        setSelectedCustomPlan(selectedType);
+                      }}
+                      value={selectedCustomPlan?.plan_name}
+                    >
+                      {customPlans?.map((el, index) => (
+                        <Select.Option value={el.plan_name} key={index}>
+                          {el.plan_name}
+                        </Select.Option>
+                      ))}
+                    </Select>
                   </div>
-                </Button>,
-              ]
-            }
-           />
-          <div className="mx-10">
-            {plan.versions.length > 0 && (
-              <SwitchVersions
-                refetch={refetch}
-                versions={plan.versions}
-                createPlanExternalLink={createPlanExternalLink}
-                deletePlanExternalLink={deletePlanExternalLink}
-                plan={plan}
-                className="flex items-center mx-10 my-5"
-              />
-            )}
+                  {selectedCustomPlan && (
+                    <CustomPlanDetails
+                      activeKey={activeKey}
+                      refetch={refetch}
+                      version={selectedCustomPlan}
+                      createPlanExternalLink={createPlanExternalLink}
+                      deletePlanExternalLink={deletePlanExternalLink}
+                      plan={plan!}
+                    />
+                  )}
+                </div>
+              </Tabs.TabPane>
+            </Tabs>
           </div>
-          <div className="separator mt-4" />
-        </div>
+        </PageLayout>
       )}
     </>
   );

@@ -11,6 +11,17 @@ module.exports = {
     "./index.html",
   ],
   theme: {
+    fontWeight: {
+      normal: 400,
+      medium: 500,
+      semiBold: 600,
+      bold: 700,
+      extrBbold: 800,
+      black: 900,
+    },
+
+    
+
     extend: {
       colors: {
         // custom color palette
@@ -81,7 +92,11 @@ module.exports = {
           divider: "#EAEAEB",
           text: "#3c3a38",
           grey: "#707070",
-          offGrey: "#6b7280"
+          offGrey: "#6b7280",
+        },
+        table: {
+          DEFAULT: "#6B7280",
+          black: "#292D32",
         },
       },
     },
@@ -92,21 +107,20 @@ module.exports = {
       arimo: ["Arimo", "sans-serif"],
     },
     fontSize: {
-      xs: '12px',
-      sm: '14px',
-      base: '16px',
-      lg: '18px',
-      xl: '20px',
-      '2xl': '24px',
-      '3xl': '30px',
-      '4xl': '36px',
-      '5xl': '48px',
-      '6xl': '64px',
-      '7xl': '72px',
-      '8xl': '96px',
-      '9xl': '128px',
+      xs: "12px",
+      sm: "14px",
+      base: "16px",
+      lg: "18px",
+      xl: "20px",
+      "2xl": "24px",
+      "3xl": "30px",
+      "4xl": "36px",
+      "5xl": "48px",
+      "6xl": "64px",
+      "7xl": "72px",
+      "8xl": "96px",
+      "9xl": "128px",
     },
-
 
     screens: {
       sm: "640px",

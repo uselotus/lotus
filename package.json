@@ -1,8 +1,10 @@
 {
   "dependencies": {
+    "lodash": "^4.17.21",
     "react-content-loader": "^6.2.0"
   },
   "devDependencies": {
-    "@ant-design/icons": "^5.0.1"
+    "@ant-design/icons": "^5.0.1",
+    "@types/lodash": "^4.14.191"
   }
 }
