@@ -148,3 +148,23 @@ jobs:
       - name: Test Setup Tasks
         run: |
           pipenv run python manage.py setup_tasks
+
+      - name: Run tests with coverage
+        run: |
+          for i in 1 2 3; do
+            if pytest --cov=. --cov-report term-missing --cov-fail-under=57; then
+              export PYTEST_COVERAGE_SUCCEEDED=true
+              break
+            else
+              export PYTEST_COVERAGE_SUCCEEDED=false
+            fi
+            sleep 5s
+          done 
+          if [[ "${PYTEST_COVERAGE_SUCCEEDED}" == "true" ]]; then
+            echo "Pytest succeeded"
+          else
+            echo "Pytest failed"
+            exit 1
+          fi
+        env:
+          RETRY_DESCRIPTION: "Running tests with coverage"
