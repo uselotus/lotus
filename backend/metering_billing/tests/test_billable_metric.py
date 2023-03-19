@@ -843,7 +843,7 @@ class TestCalculateMetricProrationForGauge:
         assert abs(usage_revenue_dict["revenue"] - calculated_amt) < Decimal(0.01)
 
         response = setup_dict["client"].get(
-            reverse("cost_analysis"),
+            reverse("customer-cost_analysis", kwargs={"customer_id": customer.customer_id}),
             {
                 "customer_id": customer.customer_id,
                 "start_date": subscription_record.start_date.date(),
@@ -953,7 +953,7 @@ class TestCalculateMetricProrationForGauge:
 
         {}
         response = setup_dict["client"].get(
-            reverse("cost_analysis"),
+            reverse("customer-cost_analysis", kwargs={"customer_id": customer.customer_id}),
             {
                 "customer_id": customer.customer_id,
                 "start_date": subscription_record.start_date.date(),
@@ -1070,7 +1070,7 @@ class TestCalculateMetricProrationForGauge:
 
         {}
         response = setup_dict["client"].get(
-            reverse("cost_analysis"),
+            reverse("customer-cost_analysis", kwargs={"customer_id": customer.customer_id}),
             {
                 "customer_id": customer.customer_id,
                 "start_date": subscription_record.start_date.date(),
