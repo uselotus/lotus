@@ -88,7 +88,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           for i in 1 2 3; do
-            if pytest --cov=. --cov-report term-missing --cov-fail-under=57; then
+            if pipenv run pytest --cov=. --cov-report term-missing --cov-fail-under=57; then
               export PYTEST_COVERAGE_SUCCEEDED=true
               break
             else
