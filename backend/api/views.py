@@ -339,9 +339,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         parameters=[CostAnalysisRequestSerializer],
         responses={200: CostAnalysisSerializer},
     )
-    @action(
-        detail=True, methods=["get"], url_path="cost_analysis", url_name="cost_analysis"
-    )
+    @action(detail=True, methods=["get"], url_path="cost_analysis", url_name="cost_analysis")
     def cost_analysis(self, request, customer_id=None):
         organization = request.organization
         serializer = CostAnalysisRequestSerializer(
