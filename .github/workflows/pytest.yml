@@ -85,65 +85,25 @@ jobs:
         run: |
           pipenv run python manage.py migrate --noinput
 
-      - name: Test Pytest Subscriptions
+      - name: Run tests with coverage
         run: |
           for i in 1 2 3; do
-            if pipenv run pytest -x -k "subscription"; then
-              export PYTEST_SUBSCRIPTIONS_SUCCEEDED=true
+            if pipenv run pytest --cov=. --cov-report term-missing --cov-fail-under=57; then
+              export PYTEST_COVERAGE_SUCCEEDED=true
               break
             else
-              export PYTEST_SUBSCRIPTIONS_SUCCEEDED=false
+              export PYTEST_COVERAGE_SUCCEEDED=false
             fi
             sleep 5s
-          done
-          if [[ "${PYTEST_SUBSCRIPTIONS_SUCCEEDED}" == "true" ]]; then
-            echo "Pytest Subscriptions succeeded"
-          else
-            echo "Pytest Subscriptions failed"
-            exit 1
-          fi
-        env:
-          RETRY_DESCRIPTION: "Running Pytest Subscriptions"
-
-      - name: Test Pytest
-        run: |
-          for i in 1 2 3; do
-            if pipenv run pytest -x -k "not integrations and not subscription"; then
-              export PYTEST_SUCCEEDED=true
-              break
-            else
-              export PYTEST_SUCCEEDED=false
-            fi
-            sleep 5s
-          done
-          if [[ "${PYTEST_SUCCEEDED}" == "true" ]]; then
+          done 
+          if [[ "${PYTEST_COVERAGE_SUCCEEDED}" == "true" ]]; then
             echo "Pytest succeeded"
           else
             echo "Pytest failed"
             exit 1
           fi
         env:
-          RETRY_DESCRIPTION: "Running Pytest"
-
-      - name: Test Pytest integrations
-        run: |
-          for i in 1 2 3; do
-            if pipenv run pytest -x -k "integrations"; then
-              export PYTEST_INTEGRATIONS_SUCCEEDED=true
-              break
-            else
-              export PYTEST_INTEGRATIONS_SUCCEEDED=false
-            fi
-            sleep 5s
-          done
-          if [[ "${PYTEST_INTEGRATIONS_SUCCEEDED}" == "true" ]]; then
-            echo "Pytest succeeded"
-          else
-            echo "Pytest failed"
-            exit 1
-          fi
-        env:
-          RETRY_DESCRIPTION: "Running Pytest Integrations"
+          RETRY_DESCRIPTION: "Running tests with coverage"
 
       - name: Test Setup Tasks
         run: |
