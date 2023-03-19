@@ -12,7 +12,6 @@ from django.apps import apps
 from django.conf import settings
 from django.db import connection
 from jinja2 import Template
-
 from metering_billing.exceptions import MetricValidationFailed
 from metering_billing.utils import (
     convert_to_date,
@@ -253,10 +252,8 @@ class CounterHandler(MetricHandler):
             organization.provision_subscription_filter_settings()
             groupby = []
         injection_dict["group_by"] = groupby
-        for filter in billing_record.subscription.filters.all():
-            injection_dict["filter_properties"][
-                filter.property_name
-            ] = filter.comparison_value
+        for filter in billing_record.subscription.subscription_filters:
+            injection_dict["filter_properties"][filter[0]] = [filter[1]]
         return injection_dict
 
     @staticmethod
@@ -702,10 +699,8 @@ class CustomHandler(MetricHandler):
         injection_dict["start_date"] = start
         injection_dict["end_date"] = end
         injection_dict["organization_id"] = organization.id
-        for filter in billing_record.subscription.filters.all():
-            injection_dict["filter_properties"][
-                filter.property_name
-            ] = filter.comparison_value
+        for filter in billing_record.subscription.subscription_filters:
+            injection_dict["filter_properties"][filter[0]] = [filter[1]]
         results = CustomHandler._run_query(metric.custom_sql, injection_dict)
         if len(results) == 0:
             return Decimal(0)
@@ -1141,10 +1136,8 @@ class GaugeHandler(MetricHandler):
             ],
             "property_name": metric.property_name,
         }
-        for filter in billing_record.subscription.filters.all():
-            injection_dict["filter_properties"][
-                filter.property_name
-            ] = filter.comparison_value
+        for filter in billing_record.subscription.subscription_filters:
+            injection_dict["filter_properties"][filter[0]] = [filter[1]]
         if metric.event_type == "delta":
             query = Template(GAUGE_DELTA_GET_TOTAL_USAGE_WITH_PRORATION).render(
                 **injection_dict
@@ -1227,10 +1220,8 @@ class GaugeHandler(MetricHandler):
             ],
             "property_name": metric.property_name,
         }
-        for filter in billing_record.subscription.filters.all():
-            injection_dict["filter_properties"][
-                filter.property_name
-            ] = filter.comparison_value
+        for filter in billing_record.subscription.subscription_filters:
+            injection_dict["filter_properties"][filter[0]] = [filter[1]]
         if metric.event_type == "delta":
             query = Template(GAUGE_DELTA_GET_CURRENT_USAGE).render(**injection_dict)
         elif metric.event_type == "total":
@@ -1309,10 +1300,8 @@ class GaugeHandler(MetricHandler):
             ],
             "property_name": metric.property_name,
         }
-        for filter in billing_record.subscription.filters.all():
-            injection_dict["filter_properties"][
-                filter.property_name
-            ] = filter.comparison_value
+        for filter in billing_record.subscription.subscription_filters:
+            injection_dict["filter_properties"][filter[0]] = [filter[1]]
         if metric.event_type == "delta":
             query = Template(GAUGE_DELTA_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY).render(
                 **injection_dict
@@ -1549,10 +1538,8 @@ class RateHandler(MetricHandler):
             organization.provision_subscription_filter_settings()
             groupby = []
         injection_dict["group_by"] = groupby
-        for filter in billing_record.subscription.filters.all():
-            injection_dict["filter_properties"][
-                filter.property_name
-            ] = filter.comparison_value
+        for filter in billing_record.subscription.subscription_filters:
+            injection_dict["filter_properties"][filter[0]] = [filter[1]]
         query = Template(RATE_CAGG_TOTAL).render(**injection_dict)
         with connection.cursor() as cursor:
             cursor.execute(query)
@@ -1618,10 +1605,8 @@ class RateHandler(MetricHandler):
             organization.provision_subscription_filter_settings()
             groupby = []
         injection_dict["group_by"] = groupby
-        for filter in billing_record.subscription.filters.all():
-            injection_dict["filter_properties"][
-                filter.property_name
-            ] = filter.comparison_value
+        for filter in billing_record.subscription.subscription_filters:
+            injection_dict["filter_properties"][filter[0]] = [filter[1]]
         query = Template(RATE_GET_CURRENT_USAGE).render(**injection_dict)
         with connection.cursor() as cursor:
             cursor.execute(query)
