@@ -533,23 +533,41 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   {data.payment_provider ? (
                     <Tooltip title={data.payment_provider_id}>
                       <div className="flex gap-1">
-                        <div className="Inter">
-                          {data.payment_provider === "stripe" ? (
+                        {data.payment_provider_url ? (
+                          <a
+                            href={data.payment_provider_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
                             <img
                               width={25}
-                              src={integrationsMap.stripe.icon}
-                              alt="stripe logo"
+                              src={
+                                data.payment_provider === "stripe"
+                                  ? integrationsMap.stripe.icon
+                                  : integrationsMap.braintree.icon
+                              }
+                              alt="payment provider logo"
                             />
-                          ) : data.payment_provider === "braintree" ? (
-                            <img
-                              width={25}
-                              src={integrationsMap.braintree.icon}
-                              alt="braintree logo"
-                            />
-                          ) : (
-                            "N/A"
-                          )}
-                        </div>
+                          </a>
+                        ) : (
+                          <div className="Inter">
+                            {data.payment_provider === "stripe" ? (
+                              <img
+                                width={25}
+                                src={integrationsMap.stripe.icon}
+                                alt="stripe logo"
+                              />
+                            ) : data.payment_provider === "braintree" ? (
+                              <img
+                                width={25}
+                                src={integrationsMap.braintree.icon}
+                                alt="braintree logo"
+                              />
+                            ) : (
+                              "N/A"
+                            )}
+                          </div>
+                        )}
                       </div>
                     </Tooltip>
                   ) : (

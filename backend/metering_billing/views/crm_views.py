@@ -20,6 +20,10 @@ from metering_billing.models import (
     UnifiedCRMOrganizationIntegration,
 )
 from metering_billing.permissions import ValidOrganization
+from metering_billing.utils import (
+    make_all_dates_times_strings,
+    make_all_decimals_floats,
+)
 from metering_billing.utils.enums import ORGANIZATION_SETTING_NAMES
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -220,12 +224,16 @@ def sync_invoices_with_salesforce(organization):
     for customer in customers_with_integration:
         invoices = invoices_from_customers.filter(customer=customer)
         accountId = customer.salesforce_integration.native_customer_id
+        if not accountId:
+            continue
         for invoice in invoices:
             serialized_invoice = InvoiceSerializer(invoice).data
+            serialized_invoice = make_all_decimals_floats(serialized_invoice)
+            serialized_invoice = make_all_dates_times_strings(serialized_invoice)
             body = {"lotus_url": "", "invoice": serialized_invoice}
             note = {
                 "accountId": accountId,
-                "content": body,
+                "content": json.dumps(body),
                 "isPrivate": False,
                 "additional": {
                     "Title": f"[LOTUS] Invoice on {invoice.issue_date.strftime('%Y-%m-%d')}",
@@ -235,6 +243,7 @@ def sync_invoices_with_salesforce(organization):
                 "accessToken": access_token,
                 "note": note,
             }
+            print("payload", payload)
             response = requests.post(url, headers=headers, json=payload)
             try:
                 response.raise_for_status()  # raises exception when not a 2xx response
@@ -263,7 +272,9 @@ def sync_customers_with_salesforce(organization):
     response = requests.get(url, headers=headers)
     response.raise_for_status()  # raises exception when not a 2xx response
     accounts = response.json()["accounts"]
-    customer_ids_set = {x["additional"]["AccountNumber"]: x for x in accounts}
+
+    customer_ids_set = {x["additional"].get("AccountNumber") for x in accounts}
+    native_ids_set = {x["nativeId"] for x in accounts}
     if lotus_is_source:
         url = "https://api.vessel.land/crm/account"
         headers = {
@@ -297,21 +308,7 @@ def sync_customers_with_salesforce(organization):
                     "country": customer.billing_address.country,
                     "postalCode": customer.billing_address.postal_code,
                 }
-            if customer.customer_id in customer_ids_set:
-                # customer exists in salesforce
-                account = customer_ids_set.get(customer.customer_id)
-                # they exist, but we haven't created the integration
-                integration, _ = UnifiedCRMCustomerIntegration.objects.update_or_create(
-                    customer=customer,
-                    crm_provider=UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE,
-                    unified_account_id=account["id"],
-                    defaults={
-                        "native_customer_id": account["nativeId"],
-                    },
-                )
-                if integration != customer.salesforce_integration:
-                    customer.salesforce_integration = integration
-                    customer.save()
+            if customer.salesforce_integration:
                 response = requests.patch(
                     url, headers=headers, data=json.dumps(payload)
                 )
@@ -319,18 +316,32 @@ def sync_customers_with_salesforce(organization):
                 # not in salesforce! We create
                 response = requests.post(url, headers=headers, data=json.dumps(payload))
                 unified_id = response.json()["id"]
+                get_url = url + f"?accessToken={access_token}&id={unified_id}"
+                response = requests.post(
+                    get_url,
+                    headers=headers,
+                )
+                response_json = response.json()
                 integration = UnifiedCRMCustomerIntegration.objects.create(
-                    customer=customer,
+                    organization=organization,
                     crm_provider=UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE,
                     unified_account_id=unified_id,
+                    native_customer_id=response_json["nativeId"],
                 )
+                customer.salesforce_integration = integration
+                customer.save()
     else:
         lotus_customers = organization.customers.filter(
             Q(customer_id__in=customer_ids_set)
         )
+        lotus_customer_integrations = organization.unified_crm_customer_links.filter(
+            Q(native_customer_id__in=native_ids_set)
+        )
         for account in accounts:
             name = account["name"]
-            internal_id = account["additional"]["AccountNumber"] or account["nativeId"]
+            internal_id = (
+                account["additional"].get("AccountNumber") or account["nativeId"]
+            )
             native_id = account["nativeId"]
             unified_id = account["id"]
             billing_address = account["additional"]["BillingAddress"]
@@ -396,17 +407,32 @@ def sync_customers_with_salesforce(organization):
                     except Exception:
                         shipping_address = None
 
-            customer = lotus_customers.filter(Q(customer_id=internal_id)).first()
-            defaults = {
-                "customer_name": name,
-                "billing_address": billing_address,
-                "shipping_address": shipping_address,
-            }
-            customer, _ = Customer.objects.update_or_create(
-                organization=organization,
-                customer_id=internal_id,
-                defaults=defaults,
-            )
+            integration = lotus_customer_integrations.filter(
+                native_customer_id=native_id
+            ).first()
+            matching_customer = lotus_customers.filter(
+                Q(customer_id=internal_id)
+            ).first()
+            if lotus_customer_integrations:
+                customer = integration.customer
+            elif matching_customer:
+                customer = matching_customer
+            else:
+                customer = None
+
+            if customer is None:
+                customer = Customer.objects.create(
+                    organization=organization,
+                    customer_id=internal_id,
+                    customer_name=name,
+                    billing_address=billing_address,
+                    shipping_address=shipping_address,
+                )
+            else:
+                customer.customer_name = name
+                customer.billing_address = billing_address
+                customer.shipping_address = shipping_address
+                customer.save()
             customer_integration = customer.salesforce_integration
             if not customer_integration:
                 customer_integration = UnifiedCRMCustomerIntegration.objects.create(
@@ -416,6 +442,3 @@ def sync_customers_with_salesforce(organization):
                     unified_account_id=unified_id,
                 )
                 customer.salesforce_integration = customer_integration
-                customer.save()
-                customer.save()
-                customer.save()

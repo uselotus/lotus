@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.utils.text import slugify
 from metering_billing.utils import (
@@ -7,8 +9,6 @@ from metering_billing.utils import (
 )
 from metering_billing.utils.enums import WEBHOOK_TRIGGER_EVENTS
 from svix.api import MessageIn
-import logging
-
 
 logger = logging.getLogger("django.server")
 
@@ -397,4 +397,5 @@ def subscription_renewed_webhook(subscription, subscription_data=None):
                     ),
                 )
             except Exception as e:
+                logger.error(e)
                 logger.error(e)

@@ -713,7 +713,7 @@ class Customer(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="customers",
+        related_name="customer",
     )
 
     # HISTORY FIELDS
@@ -4082,6 +4082,8 @@ class UnifiedCRMCustomerIntegration(models.Model):
             self.crm_provider
             == UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE
         ):
+            if self.native_customer_id is None:
+                return None
             objectType = "Account"
             objectId = self.native_customer_id
             nativeOrgURL = self.organization.unified_crm_organization_links.get(
@@ -4109,6 +4111,8 @@ class UnifiedCRMInvoiceIntegration(models.Model):
             self.crm_provider
             == UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE
         ):
+            if self.native_invoice_id is None:
+                return None
             objectType = "Note"
             objectId = self.native_invoice_id
             nativeOrgURL = self.organization.unified_crm_organization_links.get(
