@@ -5,6 +5,7 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable jsx-a11y/label-has-associated-control */
 /* eslint-disable camelcase */
+import moment from "moment";
 import React, { FC, useCallback, useEffect, useRef, useState } from "react";
 import {
   Form,
@@ -13,6 +14,7 @@ import {
   Typography,
   Select,
   Modal,
+  DatePicker,
   Input,
 } from "antd";
 import {
@@ -61,6 +63,7 @@ import { components } from "../../gen-types";
 interface Props {
   customer_id: string;
   subscriptions: SubscriptionType[];
+  upcomingSubscriptions: components["schemas"]["StripeSubscriptionRecord"][];
   plans: PlanType[] | undefined;
   onAutoRenewOff: (
     subscription_id: string,
@@ -106,6 +109,7 @@ const limit = 6;
 const SubscriptionView: FC<Props> = ({
   customer_id,
   subscriptions,
+  upcomingSubscriptions,
   plans,
   onCancel,
   onAutoRenewOff,
@@ -118,6 +122,7 @@ const SubscriptionView: FC<Props> = ({
   const [rightCursor, setRightCursor] = useState<string>("");
   const [leftCursor, setLeftCursor] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [subStartDate, setSubStartDate] = useState<string>("");
   const [next, setNext] = useState<string>("");
   const [previous, setPrev] = useState<string>("");
   const [selectedSubPlan, setSelectedSubPlan] = useState<
@@ -274,10 +279,11 @@ const SubscriptionView: FC<Props> = ({
   const handleAttachPlanSubmit = () => {
     if (selectedPlan) {
       const plan = idtoPlan[selectedPlan];
+      const start_date = subStartDate ? subStartDate : new Date().toISOString();
       const props: CreateSubscriptionType = {
         customer_id,
         plan_id: plan.plan_id,
-        start_date: new Date().toISOString(),
+        start_date: start_date,
         auto_renew: true,
         is_new: true,
         subscription_filters: [],
@@ -604,7 +610,7 @@ const SubscriptionView: FC<Props> = ({
             onCancel={() => {
               setShowModal(false);
               setTitle("");
-              setSelectedSubPlan();
+              setSelectedSubPlan(undefined);
             }}
             footer={
               indexRef.current === 0
@@ -688,7 +694,13 @@ const SubscriptionView: FC<Props> = ({
                   ]
                 : indexRef.current === 5
                 ? [
-                    <Button key="back" onClick={() => setShowModal(false)}>
+                    <Button
+                      key="back"
+                      onClick={() => {
+                        setShowModal(false);
+                        setSubStartDate("");
+                      }}
+                    >
                       Back
                     </Button>,
                     <Button
@@ -735,14 +747,23 @@ const SubscriptionView: FC<Props> = ({
                   cascaderOptions={cascaderOptions}
                 />
               ) : indexRef.current === 5 ? (
-                <Select
-                  showSearch
-                  placeholder="Select a plan"
-                  onChange={selectPlan}
-                  options={planList}
-                  value={selectedPlan}
-                  optionLabelProp="label"
-                ></Select>
+                [
+                  <Select
+                    showSearch
+                    placeholder="Select a plan"
+                    onChange={selectPlan}
+                    options={planList}
+                    value={selectedPlan}
+                    optionLabelProp="label"
+                  ></Select>,
+                  <DatePicker
+                    showTime
+                    className="mt-0"
+                    placeholder="Select start date"
+                    onChange={(date, dateString) => setSubStartDate(dateString)}
+                    value={subStartDate ? moment(subStartDate) : undefined}
+                  />,
+                ]
               ) : indexRef.current === 2 ? null : indexRef.current ===
                 6 ? null : indexRef.current === 3 ? (
                 <CancelMenu
@@ -864,7 +885,7 @@ const SubscriptionView: FC<Props> = ({
   return (
     <div className="mt-auto">
       <div className="flex mb-2 pb-4 pt-4 items-center justify-center">
-        <h2 className="font-bold text-main">Active Plans</h2>
+        <h2 className="font-bold text-main">Active Subscriptions</h2>
         <div className="ml-auto flex gap-2 max-h-[40px]">
           <Input
             placeholder="Search"
