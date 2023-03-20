@@ -14,9 +14,6 @@ import stripe
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import F, Prefetch, Q
-from rest_framework import serializers, status
-from rest_framework.response import Response
-
 from metering_billing.serializers.payment_processor_serializers import (
     PaymentProcesorPostResponseSerializer,
 )
@@ -30,6 +27,8 @@ from metering_billing.utils.enums import (
     ORGANIZATION_SETTING_NAMES,
     PAYMENT_PROCESSORS,
 )
+from rest_framework import serializers, status
+from rest_framework.response import Response
 
 logger = logging.getLogger("django.server")
 
@@ -1395,8 +1394,8 @@ class StripeConnector(PaymentProcesor):
             ] = organization.stripe_integration.stripe_account_id
 
         stripe_id = customer.stripe_integration.stripe_customer_id
-        stripe_subscriptions = stripe.Subscription.search(
-            query=f"status:'active' AND customer:'{stripe_id}'", **stripe_cust_kwargs
+        stripe_subscriptions = stripe.Subscription.list(
+            customer=stripe_id, status="active", **stripe_cust_kwargs
         )
         srs = []
         for stripe_sub in stripe_subscriptions.auto_paging_iter():
@@ -1436,8 +1435,10 @@ class StripeConnector(PaymentProcesor):
             stripe.Subscription.delete(
                 stripe_sub_id, prorate=True, invoice_now=True, **stripe_cust_kwargs
             )
-    
-    def turn_off_subscriptions_auto_renew(self, organization, customer, stripe_subscription_ids):
+
+    def turn_off_subscriptions_auto_renew(
+        self, organization, customer, stripe_subscription_ids
+    ):
         from metering_billing.models import Organization
 
         if organization.organization_type == Organization.OrganizationType.PRODUCTION:
