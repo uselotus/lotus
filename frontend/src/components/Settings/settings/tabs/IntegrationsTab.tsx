@@ -230,25 +230,6 @@ const IntegrationsTab: FC = () => {
         </Col>
         <Col span={6} className="h-full">
           <AppCard
-            connected={false}
-            title="Salesforce"
-            description="Sync your customers, subscriptions, and invoices to Salesforce"
-            icon={integrationsMap.salesforce.icon}
-            handleClickConnect={() => {
-              if (linkToken) {
-                open({
-                  integrationId: "salesforce",
-                  linkToken: linkToken,
-                });
-              } else {
-                toast.error("Failed to connect to Salesforce");
-              }
-            }}
-            hasAccess={org?.crm_integration_allowed || false}
-          />
-        </Col>
-        <Col span={6} className="h-full">
-          <AppCard
             connected={true}
             title="Netsuite"
             idValue="not_necessary"

@@ -24,8 +24,8 @@ const CancelMenuComponent = ({
 }) => (
   <div className=" space-y-10">
     <p className="text-base Inter">
-      If you cancel a plan the customer will lose it permanently, and you
-      won&apos;t be able to recover it.
+      Canceling a subscription is final, you will have to start a new one in
+      order to give the customer access to the plan again.
     </p>
 
     <h3>Recurring (Pre-paid) Charge Behavior</h3>

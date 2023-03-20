@@ -2715,7 +2715,15 @@ class ExternalPlanLink(models.Model):
         ]
 
 
+class StripeSubscriptionRecordManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(stripe_subscription_id__isnull=False)
+
+
 class SubscriptionRecordManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(stripe_subscription_id__isnull=True)
+
     def active(self, time=None):
         if time is None:
             time = now_utc()
@@ -2761,7 +2769,7 @@ class SubscriptionRecord(models.Model):
     billing_plan = models.ForeignKey(
         PlanVersion,
         on_delete=models.CASCADE,
-        null=False,
+        null=True,
         related_name="subscription_records",
         related_query_name="subscription_record",
         help_text="The plan associated with this subscription.",
@@ -2805,11 +2813,13 @@ class SubscriptionRecord(models.Model):
     )
     quantity = models.PositiveIntegerField(default=1)
     metadata = models.JSONField(default=dict, blank=True)
+    stripe_subscription_id = models.TextField(null=True, blank=True, default=None)
 
     # managers etc
     objects = SubscriptionRecordManager()
     addon_objects = AddOnSubscriptionRecordManager()
     base_objects = BaseSubscriptionRecordManager()
+    stripe_objects = StripeSubscriptionRecordManager()
     history = HistoricalRecords()
 
     class Meta:
@@ -2817,11 +2827,28 @@ class SubscriptionRecord(models.Model):
             CheckConstraint(
                 check=Q(start_date__lte=F("end_date")), name="end_date_gte_start_date"
             ),
+            CheckConstraint(check=Q(quantity__gt=0), name="quantity_gt_0"),
+            # check if stripe subscription id is null, then billing plan is not null, and vice versa
+            CheckConstraint(
+                check=(
+                    Q(stripe_subscription_id__isnull=False)
+                    & Q(billing_plan__isnull=True)
+                )
+                | (
+                    Q(stripe_subscription_id__isnull=True)
+                    & Q(billing_plan__isnull=False)
+                ),
+                name="stripe_subscription_id_xor_billing_plan",
+            ),
         ]
 
     def __str__(self):
         addon = "[ADDON] " if self.billing_plan.addon_spec else ""
-        return f"{addon}{self.customer.customer_name}  {self.billing_plan.plan.plan_name} : {self.start_date.date()} to {self.end_date.date()}"
+        if self.stripe_subscription_id:
+            plan_name = "Stripe Subscription {}".format(self.stripe_subscription_id)
+        else:
+            plan_name = self.billing_plan.plan.plan_name
+        return f"{addon}{self.customer.customer_name}  {plan_name} : {self.start_date.date()} to {self.end_date.date()}"
 
     @staticmethod
     def create_subscription_record(
