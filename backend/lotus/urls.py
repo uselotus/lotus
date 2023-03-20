@@ -13,12 +13,14 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-import api.views as api_views
 from django.conf import settings
 from django.conf.urls import include
 from django.contrib import admin
 from django.urls import path, re_path
 from django.views.generic import TemplateView
+from rest_framework import routers
+
+import api.views as api_views
 from metering_billing.views import auth_views, organization_views, webhook_views
 from metering_billing.views.crm_views import CRMUnifiedAPIView
 from metering_billing.views.model_views import (
@@ -57,10 +59,10 @@ from metering_billing.views.views import (
     PeriodMetricUsageView,
     PeriodSubscriptionsView,
     PlansByNumCustomersView,
+    StripeSubscriptionsView,
     TimezonesView,
     TransferSubscriptionsView,
 )
-from rest_framework import routers
 
 DEBUG = settings.DEBUG
 PROFILER_ENABLED = settings.PROFILER_ENABLED
@@ -275,6 +277,16 @@ urlpatterns = [
         "app/crm/set_customer_source/",
         CRMUnifiedAPIView.as_view({"post": "update_crm_customer_source_of_truth"}),
         name="set_customer_source",
+    ),
+    path(
+        "app/stripe/cancel_subscriptions/",
+        StripeSubscriptionsView.as_view({"post": "cancel_subscriptions"}),
+        name="stripe_cancel_subscriptions",
+    ),
+    path(
+        "app/stripe/cancel_at_period_end_subscriptions/",
+        StripeSubscriptionsView.as_view({"post": "turn_off_auto_renewal"}),
+        name="stripe_cancel_at_period_end_subscriptions",
     ),
 ]
 

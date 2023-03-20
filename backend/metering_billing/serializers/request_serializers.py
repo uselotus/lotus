@@ -1,5 +1,3 @@
-from rest_framework import serializers
-
 from metering_billing.models import (
     Customer,
     PlanVersion,
@@ -12,6 +10,7 @@ from metering_billing.utils.enums import (
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
 )
+from rest_framework import serializers
 
 
 class PeriodComparisonRequestSerializer(serializers.Serializer):
@@ -129,7 +128,7 @@ class CRMSyncRequestSerializer(serializers.Serializer):
     )
 
 
-class StripeCancelSubscriptionsSerializer(serializers.Serializer):
+class StripeMultiSubscriptionsSerializer(serializers.Serializer):
     customer_id = SlugRelatedFieldWithOrganization(
         slug_field="customer_id",
         queryset=Customer.objects.all(),

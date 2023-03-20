@@ -23,7 +23,7 @@ from metering_billing.serializers.request_serializers import (
     OptionalPeriodRequestSerializer,
     PeriodComparisonRequestSerializer,
     PeriodMetricUsageRequestSerializer,
-    StripeCancelSubscriptionsSerializer,
+    StripeMultiSubscriptionsSerializer,
     URLResponseSerializer,
 )
 from metering_billing.serializers.response_serializers import (
@@ -460,7 +460,7 @@ class StripeSubscriptionsView(viewsets.GenericViewSet, mixins.RetrieveModelMixin
     permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
-        request=StripeCancelSubscriptionsSerializer,
+        request=StripeMultiSubscriptionsSerializer,
         responses={
             200: inline_serializer(
                 name="StripeCancelSubscriptionsSuccess",
@@ -480,7 +480,7 @@ class StripeSubscriptionsView(viewsets.GenericViewSet, mixins.RetrieveModelMixin
     )
     def cancel_subscriptions(self, request, pk=None):
         organization = request.organization
-        serializer = StripeCancelSubscriptionsSerializer(data=request.data)
+        serializer = StripeMultiSubscriptionsSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         customer = serializer.validated_data["customer"]
         stripe_subscription_ids = serializer.validated_data["stripe_subscription_ids"]
@@ -490,7 +490,54 @@ class StripeSubscriptionsView(viewsets.GenericViewSet, mixins.RetrieveModelMixin
             )
         except Exception as e:
             raise ExternalConnectionFailure(f"Error cancelling subscriptions: {e}")
-        return Response(status=status.HTTP_200_OK)
+        return Response(
+            {
+                "status": "success",
+                "detail": f"Strtipe subscriptions cancelled for customer {customer}.",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        request=StripeMultiSubscriptionsSerializer,
+        responses={
+            200: inline_serializer(
+                name="StripeTurnOffAutoRenewalSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="StripeTurnOffAutoRenewalFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def turn_off_auto_renewal(self, request, pk=None):
+        organization = request.organization
+        serializer = StripeMultiSubscriptionsSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        customer = serializer.validated_data["customer"]
+        stripe_subscription_ids = serializer.validated_data["stripe_subscription_ids"]
+        try:
+            PAYMENT_PROCESSOR_MAP["stripe"].turn_off_subscriptions_auto_renew(
+                organization, customer, stripe_subscription_ids
+            )
+        except Exception as e:
+            raise ExternalConnectionFailure(
+                f"Error turning off auto renew for subscriptions: {e}"
+            )
+        return Response(
+            {
+                "status": "success",
+                "detail": f"Strtipe subscriptions turned off auto renew for customer {customer}.",
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class ImportSubscriptionsView(APIView):
