@@ -2,9 +2,13 @@ import React, { FC, useState, useEffect, useMemo } from "react";
 import { PageLayout } from "../components/base/PageLayout";
 import { useQuery } from "react-query";
 import useGlobalStore from "../stores/useGlobalstore";
-import CopyText from "../components/base/CopytoClipboard";
 import quickStartCheck from "../helpers/quickStartCheck";
 import { toast } from "react-toastify";
+import SyntaxHighlighter from "react-syntax-highlighter";
+import { docco } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import { CheckCircleOutlined, CopyOutlined } from "@ant-design/icons";
+import { Tooltip } from "antd";
+
 interface Props {
   text: string;
   subText: string;
@@ -16,8 +20,9 @@ interface Props {
   highlighted?: boolean;
 }
 
-const CodeExample = () => {
+const CodeExample = ({ complete }: { complete: boolean }) => {
   const [selectedTab, setSelectedTab] = useState("curl");
+  const [copySuccess, setCopySuccess] = useState(false);
 
   const codeExamples = {
     curl: {
@@ -66,6 +71,18 @@ const CodeExample = () => {
     setSelectedTab(tab);
   };
 
+  const copyToClipBoard = async (copyMe) => {
+    try {
+      await navigator.clipboard.writeText(copyMe);
+      setCopySuccess(true);
+      setTimeout(() => {
+        setCopySuccess(false);
+      }, 3000);
+    } catch (err) {
+      setCopySuccess(false);
+    }
+  };
+
   return (
     <div className="p-4 pt-0 bg-[#F5F5F5] w-full">
       <div className="flex space-x-4 mb-12">
@@ -83,12 +100,40 @@ const CodeExample = () => {
           </button>
         ))}
       </div>
-      <CopyText
-        textToCopy={codeExamples[selectedTab].code}
-        className=" text-sm mx-8"
-        showIcon
-        language={codeExamples[selectedTab].language}
-      />
+      <div
+        className={`relative rounded-md border p-4  ${
+          complete ? "bg-[#E3FFF1]" : "bg-slate-100"
+        }`}
+      >
+        <SyntaxHighlighter
+          customStyle={{
+            ...docco,
+            marginBottom: "0px",
+            background: "transparent",
+          }}
+          language={codeExamples[selectedTab].language}
+        >
+          {codeExamples[selectedTab].code}
+        </SyntaxHighlighter>
+        <div className="absolute bottom-4 right-4 cursor-pointer">
+          <Tooltip
+            placement="right"
+            title={
+              copySuccess ? (
+                <div className="copiedTag">
+                  <CheckCircleOutlined className="checkedIcon" /> Copied
+                </div>
+              ) : (
+                <span>Copy Code</span>
+              )
+            }
+          >
+            <CopyOutlined
+              onClick={() => copyToClipBoard(codeExamples[selectedTab].code)}
+            />
+          </Tooltip>
+        </div>
+      </div>
     </div>
   );
 };
@@ -179,7 +224,7 @@ const quickStartItem = ({
           <div className="absolute bottom-0 left-0 h-1 w-full bg-primary" />
         )}
       </div>
-      <CodeExample />
+      <CodeExample complete={complete} />
     </>
   );
 };

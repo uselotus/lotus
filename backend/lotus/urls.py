@@ -47,7 +47,6 @@ from metering_billing.views.model_views import (
 from metering_billing.views.payment_processor_views import PaymentProcesorView
 from metering_billing.views.views import (
     ChangeUserOrganizationView,
-    CostAnalysisView,
     ImportCustomersView,
     ImportPaymentObjectsView,
     NetsuiteCustomerCSVView,
@@ -151,11 +150,6 @@ urlpatterns = [
     ),
     # App views
     path("app/", include(router.urls)),
-    path(
-        "app/cost_analysis/",
-        CostAnalysisView.as_view(),
-        name="cost_analysis",
-    ),
     path(
         "app/switch_organization/",
         ChangeUserOrganizationView.as_view(),
