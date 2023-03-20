@@ -126,3 +126,15 @@ class CRMSyncRequestSerializer(serializers.Serializer):
     crm_provider_names = serializers.MultipleChoiceField(
         choices=UnifiedCRMOrganizationIntegration.CRMProvider.labels, required=False
     )
+
+
+class StripeMultiSubscriptionsSerializer(serializers.Serializer):
+    customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        required=True,
+        source="customer",
+    )
+    stripe_subscription_ids = serializers.ListField(
+        child=serializers.CharField(), required=True
+    )

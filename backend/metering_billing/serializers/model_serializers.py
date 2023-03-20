@@ -2,12 +2,15 @@ import logging
 import re
 from decimal import Decimal
 
-import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from dateutil import relativedelta
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import DecimalField, F, Q, Sum
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
+import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -65,8 +68,6 @@ from metering_billing.utils.enums import (
     TAX_PROVIDER,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -1653,6 +1654,23 @@ class SubscriptionRecordSerializer(api_serializers.SubscriptionRecordSerializer)
         fields = api_serializers.SubscriptionRecordSerializer.Meta.fields
 
 
+class StripeSubscriptionRecordSerializer(api_serializers.SubscriptionRecordSerializer):
+    class Meta(api_serializers.SubscriptionRecordSerializer.Meta):
+        fields = tuple(
+            set(api_serializers.SubscriptionRecordSerializer.Meta.fields).union(
+                {
+                    "stripe_subscription_id",
+                }
+            )
+        )
+        extra_kwargs = {
+            **api_serializers.PlanVersionSerializer.Meta.extra_kwargs,
+            **{
+                "stripe_subscription_id": {"read_only": True},
+            },
+        }
+
+
 class LightweightSubscriptionRecordSerializer(
     api_serializers.LightweightSubscriptionRecordSerializer
 ):
@@ -1937,6 +1955,8 @@ class CustomerDetailSerializer(api_serializers.CustomerSerializer):
                     "crm_provider_id",
                     "crm_provider_url",
                     "payment_provider_url",
+                    "stripe_subscriptions",
+                    "upcoming_subscriptions",
                 }
             )
         )
@@ -1960,6 +1980,16 @@ class CustomerDetailSerializer(api_serializers.CustomerSerializer):
                     "read_only": True,
                     "allow_null": True,
                 },
+                "stripe_subscriptions": {
+                    "required": True,
+                    "read_only": True,
+                    "allow_null": False,
+                },
+                "upcoming_subscriptions": {
+                    "required": True,
+                    "read_only": True,
+                    "allow_null": False,
+                },
             },
         }
 
@@ -1968,6 +1998,35 @@ class CustomerDetailSerializer(api_serializers.CustomerSerializer):
     crm_provider_url = serializers.SerializerMethodField()
     payment_provider_url = serializers.SerializerMethodField()
     invoices = serializers.SerializerMethodField()
+    stripe_subscriptions = serializers.SerializerMethodField()
+    upcoming_subscriptions = serializers.SerializerMethodField()
+
+    def get_upcoming_subscriptions(
+        self, obj
+    ) -> SubscriptionRecordSerializer(many=True):
+        sr_objs = (
+            obj.subscription_records.not_started()
+            .filter(organization=obj.organization)
+            .order_by("start_date")
+        )
+        return SubscriptionRecordSerializer(sr_objs, many=True).data
+
+    def get_stripe_subscriptions(
+        self, obj
+    ) -> StripeSubscriptionRecordSerializer(many=True):
+        from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
+
+        if obj.stripe_integration:
+            stripe_subs = PAYMENT_PROCESSOR_MAP[
+                PAYMENT_PROCESSORS.STRIPE
+            ].get_customer_subscriptions(obj.organization, obj)
+            serialized_data = StripeSubscriptionRecordSerializer(
+                stripe_subs, many=True
+            ).data
+            for sub in stripe_subs:
+                sub.delete()
+            return serialized_data
+        return []
 
     def get_invoices(self, obj) -> LightweightInvoiceDetailSerializer(many=True):
         try:
