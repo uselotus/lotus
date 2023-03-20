@@ -63,17 +63,9 @@ import { components } from "../../gen-types";
 
 interface Props {
   customer_id: string;
-<<<<<<< HEAD
-  subscriptions: SubscriptionType[];
-<<<<<<< HEAD
   upcomingSubscriptions: components["schemas"]["StripeSubscriptionRecord"][];
-=======
-  stripeSubscriptions?: components["schemas"]["StripeSubscriptionRecord"][];
->>>>>>> 0cadcb89 (Getting changes)
-=======
   subscriptions: components["schemas"]["CustomerDetail"]["subscriptions"];
   stripeSubscriptions: components["schemas"]["CustomerDetail"]["stripe_subscriptions"];
->>>>>>> f50ebc5a (shows subscriptions from stripe integration)
   plans: PlanType[] | undefined;
   onAutoRenewOff: (
     subscription_id: string,
@@ -119,11 +111,8 @@ const limit = 6;
 const SubscriptionView: FC<Props> = ({
   customer_id,
   subscriptions,
-<<<<<<< HEAD
   upcomingSubscriptions,
-=======
   stripeSubscriptions,
->>>>>>> 0cadcb89 (Getting changes)
   plans,
   onCancel,
   onAutoRenewOff,
@@ -891,7 +880,6 @@ const SubscriptionView: FC<Props> = ({
   }: {
     sub: components["schemas"]["StripeSubscriptionRecord"];
   }) {
-    console.log(sub);
     // It's kinda trash ik, should def be defined as one SubscriptionItem
     return (
       <div key={sub.subscription_id}>
