@@ -636,7 +636,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   </div>
                   <div className="Inter">
                     {data.default_currency.symbol}
-                    {cost_data.total_revenue.toFixed(2)}
+                    {(cost_data.total_revenue || 0).toFixed(2)}
                   </div>
                 </CustomerCard.Item>
 
@@ -646,7 +646,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   </div>
                   <div className="Inter">
                     {data.default_currency.symbol}
-                    {cost_data.total_cost.toFixed(2)}
+                    {(cost_data.total_cost || 0).toFixed(2)}
                   </div>
                 </CustomerCard.Item>
 

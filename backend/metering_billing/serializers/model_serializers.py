@@ -1987,7 +1987,7 @@ class CustomerDetailSerializer(api_serializers.CustomerSerializer):
         self, obj
     ) -> serializers.URLField(allow_null=True, required=True):
         if obj.stripe_integration:
-            return f"https://dashboard.stripe.com/customers/{obj.stripe_customer_id}"
+            return f"https://dashboard.stripe.com/customers/{obj.stripe_integration.stripe_customer_id}"
         return None
 
     def get_crm_provider_url(

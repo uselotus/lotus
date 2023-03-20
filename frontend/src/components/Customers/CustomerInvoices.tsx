@@ -184,9 +184,10 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
             record.external_payment_obj_url ? (
               <Tooltip
                 title={
-                  "Source: " + record.external_payment_obj_type === "stripe"
+                  "Source: " +
+                  (record.external_payment_obj_type === "stripe"
                     ? "Stripe"
-                    : "Braintree"
+                    : "Braintree")
                 }
               >
                 <a
@@ -194,21 +195,34 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <Tag color={"grey"} key={record.external_payment_obj_status}>
-                    {record.external_payment_obj_status}
+                  <Tag
+                    color={"grey"}
+                    key={
+                      record.external_payment_obj_status ||
+                      record.payment_status
+                    }
+                  >
+                    {record.external_payment_obj_status ||
+                      record.payment_status}
                   </Tag>
                 </a>
               </Tooltip>
             ) : (
               <Tooltip
                 title={
-                  "Source: " + record.external_payment_obj_type === "stripe"
+                  "Source: " +
+                  (record.external_payment_obj_type === "stripe"
                     ? "Stripe"
-                    : "Braintree"
+                    : "Braintree")
                 }
               >
-                <Tag color={"grey"} key={record.external_payment_obj_status}>
-                  {record.external_payment_obj_status}
+                <Tag
+                  color={"grey"}
+                  key={
+                    record.external_payment_obj_status || record.payment_status
+                  }
+                >
+                  {record.external_payment_obj_status || record.payment_status}
                 </Tag>
               </Tooltip>
             )
