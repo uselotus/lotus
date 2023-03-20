@@ -1653,6 +1653,23 @@ class SubscriptionRecordSerializer(api_serializers.SubscriptionRecordSerializer)
         fields = api_serializers.SubscriptionRecordSerializer.Meta.fields
 
 
+class StripeSubscriptionRecordSerializer(api_serializers.SubscriptionRecordSerializer):
+    class Meta(api_serializers.SubscriptionRecordSerializer.Meta):
+        fields = tuple(
+            set(api_serializers.SubscriptionRecordSerializer.Meta.fields).union(
+                {
+                    "stripe_subscription_id",
+                }
+            )
+        )
+        extra_kwargs = {
+            **api_serializers.PlanVersionSerializer.Meta.extra_kwargs,
+            **{
+                "stripe_subscription_id": {"read_only": True},
+            },
+        }
+
+
 class LightweightSubscriptionRecordSerializer(
     api_serializers.LightweightSubscriptionRecordSerializer
 ):
@@ -1937,6 +1954,7 @@ class CustomerDetailSerializer(api_serializers.CustomerSerializer):
                     "crm_provider_id",
                     "crm_provider_url",
                     "payment_provider_url",
+                    "stripe_subscriptions",
                 }
             )
         )
@@ -1960,6 +1978,11 @@ class CustomerDetailSerializer(api_serializers.CustomerSerializer):
                     "read_only": True,
                     "allow_null": True,
                 },
+                "stripe_subscriptions": {
+                    "required": True,
+                    "read_only": True,
+                    "allow_null": False,
+                },
             },
         }
 
@@ -1968,6 +1991,17 @@ class CustomerDetailSerializer(api_serializers.CustomerSerializer):
     crm_provider_url = serializers.SerializerMethodField()
     payment_provider_url = serializers.SerializerMethodField()
     invoices = serializers.SerializerMethodField()
+    stripe_subscriptions = serializers.SerializerMethodField()
+
+    def get_stripe_subscriptions(
+        self, obj
+    ) -> StripeSubscriptionRecordSerializer(many=True):
+        if obj.stripe_integration:
+            stripe_subs = SubscriptionRecord.stripe_objects.filter(
+                customer=obj, organization=obj.organization
+            )
+            return StripeSubscriptionRecordSerializer(stripe_subs, many=True).data
+        return []
 
     def get_invoices(self, obj) -> LightweightInvoiceDetailSerializer(many=True):
         try:

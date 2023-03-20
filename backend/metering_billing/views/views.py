@@ -9,26 +9,17 @@ from metering_billing.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
 )
-from metering_billing.models import (
-    Event,
-    Invoice,
-    Metric,
-    Organization,
-    SubscriptionRecord,
-)
+from metering_billing.models import Event, Invoice, Organization, SubscriptionRecord
 from metering_billing.netsuite_csv import get_invoices_csv_presigned_url
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
-from metering_billing.serializers.model_serializers import MetricDetailSerializer
 from metering_billing.serializers.request_serializers import (
-    CostAnalysisRequestSerializer,
     OptionalPeriodRequestSerializer,
     PeriodComparisonRequestSerializer,
     PeriodMetricUsageRequestSerializer,
     URLResponseSerializer,
 )
 from metering_billing.serializers.response_serializers import (
-    CostAnalysisSerializer,
     PeriodEventsResponseSerializer,
     PeriodMetricRevenueResponseSerializer,
     PeriodMetricUsageResponseSerializer,
@@ -52,7 +43,6 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
 
 logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -459,6 +449,52 @@ class ImportPaymentObjectsView(APIView):
             {
                 "status": "success",
                 "detail": f"Payment objects succesfully imported {num} payment objects from {source}.",
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class ImportSubscriptionsView(APIView):
+    permission_classes = [IsAuthenticated | ValidOrganization]
+
+    @extend_schema(
+        request=inline_serializer(
+            name="ImportSubscriptionsRequest",
+            fields={
+                "source": serializers.ChoiceField(choices=[("stripe", "Stripe")]),
+            },
+        ),
+        responses={
+            201: inline_serializer(
+                name="ImportSubscriptionsSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="ImportSubscriptionsFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def post(self, request, format=None):
+        organization = request.organization
+        source = request.data["source"]
+        if source != "stripe":
+            raise ExternalConnectionInvalid(f"Invalid source: {source}")
+        connector = PAYMENT_PROCESSOR_MAP[source]
+        try:
+            num = connector.import_subscriptions(organization)
+        except Exception as e:
+            raise ExternalConnectionFailure(f"Error importing subscriptions: {e}")
+        return Response(
+            {
+                "status": "success",
+                "detail": f"Succesfully imported {num} subscriptions from Stripe.",
             },
             status=status.HTTP_201_CREATED,
         )

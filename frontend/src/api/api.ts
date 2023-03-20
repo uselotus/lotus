@@ -596,7 +596,7 @@ export const PaymentProcessor = {
   transferSubscriptions: (
     post: TransferSub
   ): Promise<PaymentProcessorImportCustomerResponse> =>
-    requests.post("app/transfer_subscriptions/", post),
+    requests.post("app/import_subscriptions/", post),
 
   // Get Stripe Setting
   getPaymentProcessorSettings: (

@@ -49,6 +49,7 @@ from metering_billing.views.views import (
     ChangeUserOrganizationView,
     ImportCustomersView,
     ImportPaymentObjectsView,
+    ImportSubscriptionsView,
     NetsuiteCustomerCSVView,
     NetsuiteInvoiceCSVView,
     PeriodEventsView,
@@ -201,6 +202,11 @@ urlpatterns = [
         name="netsuite_customers",
     ),
     path(
+        "app/import_subscriptions/",
+        ImportSubscriptionsView.as_view(),
+        name="import_subscriptions",
+    ),
+    path(
         "app/transfer_subscriptions/",
         TransferSubscriptionsView.as_view(),
         name="transfer_subscriptions",
@@ -276,4 +282,5 @@ if PROFILER_ENABLED:
     urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
 
 if DEBUG:
+    urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]
     urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]
