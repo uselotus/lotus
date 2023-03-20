@@ -180,12 +180,61 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
       key: "status",
       render: (_, record) => (
         <div className="flex">
-          <Tag
-            color={record.payment_status === "paid" ? "green" : "red"}
-            key={record.payment_status}
-          >
-            {record.payment_status.toUpperCase()}
-          </Tag>
+          {record.external_payment_obj_type ? (
+            record.external_payment_obj_url ? (
+              <Tooltip
+                title={
+                  "Source: " +
+                  (record.external_payment_obj_type === "stripe"
+                    ? "Stripe"
+                    : "Braintree")
+                }
+              >
+                <a
+                  href={record.external_payment_obj_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Tag
+                    color={"grey"}
+                    key={
+                      record.external_payment_obj_status ||
+                      record.payment_status
+                    }
+                  >
+                    {record.external_payment_obj_status ||
+                      record.payment_status}
+                  </Tag>
+                </a>
+              </Tooltip>
+            ) : (
+              <Tooltip
+                title={
+                  "Source: " +
+                  (record.external_payment_obj_type === "stripe"
+                    ? "Stripe"
+                    : "Braintree")
+                }
+              >
+                <Tag
+                  color={"grey"}
+                  key={
+                    record.external_payment_obj_status || record.payment_status
+                  }
+                >
+                  {record.external_payment_obj_status || record.payment_status}
+                </Tag>
+              </Tooltip>
+            )
+          ) : (
+            <Tag
+              color={record.payment_status === "paid" ? "green" : "red"}
+              key={record.payment_status}
+            >
+              {record.payment_status.toUpperCase()}
+            </Tag>
+          )}
+
           <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
             <Dropdown
               overlay={
@@ -230,7 +279,9 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
                           }
                         }}
                       >
-                        <div className="archiveLabel">Send to Processor</div>
+                        <div className="archiveLabel">
+                          Send to Payment Processor
+                        </div>
                       </Menu.Item>
                     )}
                 </Menu>

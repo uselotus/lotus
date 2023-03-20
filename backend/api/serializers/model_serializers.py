@@ -477,6 +477,7 @@ class InvoiceSerializer(
             "payment_status",
             "external_payment_obj_id",
             "external_payment_obj_type",
+            "external_payment_obj_status",
             "line_items",
             "customer",
             "due_date",

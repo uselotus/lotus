@@ -1745,10 +1745,11 @@ class InvoiceViewSet(api_views.InvoiceViewSet):
         if customer.payment_provider and invoice.external_payment_obj_type is None:
             connector = PAYMENT_PROCESSOR_MAP.get(customer.payment_provider)
             if connector:
-                external_id = connector.create_payment_object(invoice)
+                external_id, external_status = connector.create_payment_object(invoice)
                 if external_id:
                     invoice.external_payment_obj_id = external_id
                     invoice.external_payment_obj_type = customer.payment_provider
+                    invoice.external_payment_obj_status = external_status
                     invoice.save()
         serializer = self.get_serializer(invoice)
         return Response(serializer.data, status=status.HTTP_200_OK)

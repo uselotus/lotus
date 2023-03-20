@@ -3,7 +3,7 @@ import base64
 import datetime
 import logging
 from decimal import Decimal
-from typing import Literal, Optional
+from typing import Literal, Optional, Tuple
 from urllib.parse import urlencode
 
 import braintree
@@ -153,8 +153,8 @@ class PaymentProcesor(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def create_payment_object(self, invoice) -> Optional[str]:
-        """This method will be called when an external payment object needs to be generated (this can vary greatly depending on the payment processor). It should return the id of this object as a string so that the status of the payment can later be updated."""
+    def create_payment_object(self, invoice) -> Tuple[Optional[str], Optional[str]]:
+        """This method will be called when an external payment object needs to be generated (this can vary greatly depending on the payment processor). It should return the id of this object and its status as a tuple of strings."""
         pass
 
     # FRONTEND REQUEST METHODS
@@ -476,7 +476,7 @@ class BraintreeConnector(PaymentProcesor):
                 "Invalid value for generate_customer_after_creating_in_lotus setting"
             )
 
-    def create_payment_object(self, invoice) -> Optional[str]:
+    def create_payment_object(self, invoice) -> Tuple[Optional[str], Optional[str]]:
         gateway = self._get_gateway(invoice.organization)
         # check everything works as expected + build invoice item
         assert (
@@ -515,11 +515,12 @@ class BraintreeConnector(PaymentProcesor):
         result = gateway.transaction.sale(invoice_kwargs)
         if result.is_success:
             invoice.external_payment_obj_id = result.transaction.id
+            invoice.external_payment_obj_status = result.transaction.status
             invoice.save()
-            return result.transaction.id
+            return result.transaction.id, result.transaction.status
         else:
             logger.error("Ran into error:", result.message)
-            return None
+            return None, None
 
     def update_payment_object_status(self, organization, payment_object_id):
         from metering_billing.models import Invoice
@@ -1034,6 +1035,7 @@ class StripeConnector(PaymentProcesor):
                 "cust_connected_to_payment_provider": True,
                 "external_payment_obj_id": stripe_invoice.id,
                 "external_payment_obj_type": PAYMENT_PROCESSORS.STRIPE,
+                "external_payment_obj_status": stripe_invoice.status,
                 "organization": customer.organization,
             }
             lotus_invoice = Invoice.objects.create(**invoice_kwargs)
@@ -1085,7 +1087,7 @@ class StripeConnector(PaymentProcesor):
                 "Invalid value for generate_customer_after_creating_in_lotus setting"
             )
 
-    def create_payment_object(self, invoice) -> Optional[str]:
+    def create_payment_object(self, invoice) -> Tuple[Optional[str], Optional[str]]:
         from metering_billing.models import Organization
 
         organization = invoice.organization
@@ -1114,6 +1116,7 @@ class StripeConnector(PaymentProcesor):
             ), "Organization does not have a Stripe account ID"
             invoice_kwargs["stripe_account"] = org_stripe_acct
 
+        stripe_invoice = stripe.Invoice.create(**invoice_kwargs)
         for line_item in invoice.line_items.all().order_by(
             F("associated_subscription_record").desc(nulls_last=True)
         ):
@@ -1141,12 +1144,13 @@ class StripeConnector(PaymentProcesor):
                 "currency": invoice.currency.code.lower(),
                 "tax_behavior": tax_behavior,
                 "metadata": metadata,
+                "invoice": stripe_invoice.id,
             }
             if not self.self_hosted:
                 inv_dict["stripe_account"] = org_stripe_acct
             stripe.InvoiceItem.create(**inv_dict)
-        stripe_invoice = stripe.Invoice.create(**invoice_kwargs)
-        return stripe_invoice.id
+
+        return stripe_invoice.id, stripe_invoice.status
 
     def get_post_data_serializer(self) -> serializers.Serializer:
         class StripePostRequestDataSerializer(serializers.Serializer):

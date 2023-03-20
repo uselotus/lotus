@@ -757,10 +757,11 @@ def generate_external_payment_obj(invoice):
         customer_conn = pp_connector.customer_connected(customer)
         org_conn = pp_connector.organization_connected(invoice.organization)
         if customer_conn and org_conn:
-            external_id = pp_connector.create_payment_object(invoice)
+            external_id, external_status = pp_connector.create_payment_object(invoice)
             if external_id:
                 invoice.external_payment_obj_id = external_id
                 invoice.external_payment_obj_type = pp
+                invoice.external_payment_obj_status = external_status
                 invoice.save()
                 return invoice
     if customer.salesforce_integration:

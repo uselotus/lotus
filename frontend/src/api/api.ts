@@ -170,8 +170,8 @@ export const Customer = {
     start_date: string,
     end_date: string
   ): Promise<CustomerCostType> {
-    return requests.get(`app/cost_analysis/`, {
-      params: { customer_id, start_date, end_date },
+    return requests.get(`app/customers/${customer_id}/cost_analysis/`, {
+      params: { start_date, end_date },
     });
   },
   createSubscription: (

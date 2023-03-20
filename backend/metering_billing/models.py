@@ -1853,6 +1853,7 @@ class Invoice(models.Model):
     external_payment_obj_type = models.CharField(
         choices=PAYMENT_PROCESSORS.choices, max_length=40, blank=True, null=True
     )
+    external_payment_obj_status = models.TextField(blank=True, null=True)
     salesforce_integration = models.OneToOneField(
         "UnifiedCRMInvoiceIntegration", on_delete=models.SET_NULL, null=True, blank=True
     )
