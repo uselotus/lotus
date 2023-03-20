@@ -744,11 +744,8 @@ class CategoricalFilterDetailSerializer(api_serializers.CategoricalFilterSeriali
         fields = api_serializers.CategoricalFilterSerializer.Meta.fields
 
 
-class SubscriptionCategoricalFilterDetailSerializer(
-    api_serializers.SubscriptionCategoricalFilterSerializer
-):
-    class Meta(api_serializers.SubscriptionCategoricalFilterSerializer.Meta):
-        fields = api_serializers.SubscriptionCategoricalFilterSerializer.Meta.fields
+class SubscriptionFilterDetailSerializer(api_serializers.SubscriptionFilterSerializer):
+    pass
 
 
 class NumericFilterDetailSerializer(api_serializers.NumericFilterSerializer):
@@ -2047,7 +2044,7 @@ class InvoiceListFilterSerializer(api_serializers.InvoiceListFilterSerializer):
 
 class GroupedLineItemSerializer(serializers.Serializer):
     plan_name = serializers.CharField()
-    subscription_filters = SubscriptionCategoricalFilterDetailSerializer(many=True)
+    subscription_filters = SubscriptionFilterDetailSerializer(many=True)
     base = serializers.DecimalField(max_digits=10, decimal_places=2)
     start_date = serializers.DateTimeField()
     end_date = serializers.DateTimeField()
@@ -2090,7 +2087,7 @@ class DraftInvoiceSerializer(InvoiceDetailSerializer):
             sr = line_items[0].associated_subscription_record
             grouped_line_item_dict = {
                 "plan_name": sr.billing_plan.plan.plan_name,
-                "subscription_filters": sr.filters.all(),
+                "subscription_filters": sr.subscription_filters,
                 "base": line_items.aggregate(Sum("amount"))["amount__sum"] or 0,
                 "start_date": sr.start_date,
                 "end_date": sr.end_date,

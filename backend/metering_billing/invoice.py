@@ -389,7 +389,7 @@ def create_next_subscription_record(subscription_record, next_bp):
         billing_plan=next_bp,
         customer=subscription_record.customer,
         organization=subscription_record.organization,
-        subscription_filters=subscription_record.filters.all(),
+        subscription_filters=subscription_record.subscription_filters,
         is_new=False,
         quantity=subscription_record.quantity,
         component_fixed_charges_initial_units=component_fixed_charges_initial_units,

@@ -22,7 +22,7 @@ from django.core.validators import (
     MinValueValidator,
 )
 from django.db import connection, models
-from django.db.models import Count, F, FloatField, Prefetch, Q, QuerySet, Sum
+from django.db.models import Count, F, FloatField, Q, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
@@ -1164,22 +1164,6 @@ class CategoricalFilter(models.Model):
 
     def __str__(self):
         return f"{self.property_name} {self.operator} {self.comparison_value}"
-
-    @staticmethod
-    def overlaps(filters1, filters2):
-        # Convert the inputs to sets of primary keys
-        if isinstance(filters1, (set, list)):
-            if all(isinstance(f, CategoricalFilter) for f in filters1):
-                filters1 = {f.pk for f in filters1}
-        if isinstance(filters2, (set, list)):
-            if all(isinstance(f, CategoricalFilter) for f in filters2):
-                filters2 = {f.pk for f in filters2}
-        if isinstance(filters1, QuerySet):
-            filters1 = set(filters1.values_list("pk", flat=True))
-        if isinstance(filters2, QuerySet):
-            filters2 = set(filters2.values_list("pk", flat=True))
-        # Check if there is an overlap between the sets
-        return filters1.issubset(filters2) or filters2.issubset(filters1)
 
 
 class Metric(models.Model):
@@ -2722,12 +2706,6 @@ class ExternalPlanLink(models.Model):
 
 
 class SubscriptionRecordManager(models.Manager):
-    def create_with_filters(self, *args, **kwargs):
-        subscription_filters = kwargs.pop("subscription_filters", [])
-        sr = self.model(**kwargs)
-        sr.save(subscription_filters=subscription_filters)
-        return sr
-
     def active(self, time=None):
         if time is None:
             time = now_utc()
@@ -2796,10 +2774,12 @@ class SubscriptionRecord(models.Model):
     subscription_record_id = models.UUIDField(
         default=uuid.uuid4, editable=False, unique=True
     )
-    filters = models.ManyToManyField(
-        CategoricalFilter,
-        blank=True,
-        help_text="Add filter key, value pairs that define which events will be applied to this plan subscription.",
+    subscription_filters = ArrayField(
+        ArrayField(
+            models.TextField(blank=False, null=False),
+            size=2,
+        ),
+        default=list,
     )
     invoice_usage_charges = models.BooleanField(default=True)
     flat_fee_behavior = models.CharField(
@@ -2855,7 +2835,7 @@ class SubscriptionRecord(models.Model):
         assert (
             billing_plan.addon_spec is None
         ), "Cannot create a base subscription record with an addon plan"
-        sr = SubscriptionRecord.objects.create_with_filters(
+        sr = SubscriptionRecord.objects.create(
             start_date=start_date,
             end_date=end_date,
             billing_plan=billing_plan,
@@ -2888,14 +2868,14 @@ class SubscriptionRecord(models.Model):
         assert (
             addon_billing_plan.addon_spec is not None
         ), "Cannot create an addon subscription record with a base plan"
-        sr = SubscriptionRecord.objects.create_with_filters(
+        sr = SubscriptionRecord.objects.create(
             parent=parent_subscription_record,
             start_date=now,
             end_date=parent_subscription_record.end_date,
             billing_plan=addon_billing_plan,
             customer=parent_subscription_record.customer,
             organization=parent_subscription_record.organization,
-            subscription_filters=parent_subscription_record.filters.all(),
+            subscription_filters=parent_subscription_record.subscription_filters,
             is_new=True,
             quantity=quantity,
             auto_renew=addon_billing_plan.addon_spec.billing_frequency
@@ -3017,7 +2997,8 @@ class SubscriptionRecord(models.Model):
         return brs
 
     def save(self, *args, **kwargs):
-        new_filters = kwargs.pop("subscription_filters", []) or []
+        if self.subscription_filters is None:
+            self.subscription_filters = []
         now = now_utc()
         timezone = self.customer.timezone
         if not self.end_date:
@@ -3034,34 +3015,23 @@ class SubscriptionRecord(models.Model):
             )
         new = self._state.adding is True
         if new:
+            new_filters = set(tuple(x) for x in self.subscription_filters)
             overlapping_subscriptions = SubscriptionRecord.objects.filter(
                 Q(start_date__range=(self.start_date, self.end_date))
                 | Q(end_date__range=(self.start_date, self.end_date)),
                 organization=self.organization,
                 customer=self.customer,
                 billing_plan=self.billing_plan,
-            ).prefetch_related(
-                Prefetch(
-                    "filters",
-                    queryset=CategoricalFilter.objects.filter(
-                        organization=self.organization
-                    ),
-                    to_attr="filters_lst",
-                )
             )
             for subscription in overlapping_subscriptions:
-                old_filters = subscription.filters_lst
-                if CategoricalFilter.overlaps(old_filters, new_filters):
+                old_filters = set(tuple(x) for x in subscription.subscription_filters)
+                if old_filters.issubset(new_filters) or new_filters.issubset(
+                    old_filters
+                ):
                     raise OverlappingPlans(
                         f"Overlapping subscriptions with the same filters are not allowed. \n Plan: {self.billing_plan} \n Customer: {self.customer}. \n New dates: ({self.start_date, self.end_date}) \n New subscription_filters: {new_filters} \n Old dates: ({self.start_date, self.end_date}) \n Old subscription_filters: {list(old_filters)}"
                     )
         super(SubscriptionRecord, self).save(*args, **kwargs)
-        for filter in new_filters:
-            self.filters.add(filter)
-        for filter in self.filters.all():
-            if not filter.organization:
-                filter.organization = self.organization
-                filter.save()
         if new:
             alerts = UsageAlert.objects.filter(
                 organization=self.organization, plan_version=self.billing_plan
@@ -3077,9 +3047,7 @@ class SubscriptionRecord(models.Model):
                 )
 
     def get_filters_dictionary(self):
-        filters_dict = {}
-        for filter in self.filters.all():
-            filters_dict[filter.property_name] = filter.comparison_value[0]
+        filters_dict = {f[0]: f[1] for f in self.subscription_filters}
         return filters_dict
 
     def amt_already_invoiced(self):

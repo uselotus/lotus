@@ -53,7 +53,6 @@ from metering_billing.serializers.serializer_utils import (
 )
 from metering_billing.utils import convert_to_date, now_utc
 from metering_billing.utils.enums import (
-    CATEGORICAL_FILTER_OPERATORS,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     FLAT_FEE_BEHAVIOR,
     INVOICE_STATUS_ENUM,
@@ -198,36 +197,18 @@ class CategoricalFilterSerializer(
     comparison_value = serializers.ListField(child=serializers.CharField())
 
 
-class SubscriptionCategoricalFilterSerializer(
-    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.ModelSerializer
+class SubscriptionFilterSerializer(
+    ConvertEmptyStringToNullMixin, TimezoneFieldMixin, serializers.Serializer
 ):
-    class Meta:
-        model = CategoricalFilter
-        fields = ("value", "property_name")
-        extra_kwargs = {
-            "property_name": {
-                "required": True,
-            },
-            "value": {"required": True},
-        }
-
     value = serializers.CharField()
     property_name = serializers.CharField(
         help_text="The string name of the property to filter on. Example: 'product_id'"
     )
 
-    def create(self, validated_data):
-        comparison_value = validated_data.pop("value")
-        comparison_value = [comparison_value]
-        validated_data["comparison_value"] = comparison_value
-        return CategoricalFilter.objects.get_or_create(
-            **validated_data, operator=CATEGORICAL_FILTER_OPERATORS.ISIN
-        )
-
     def to_representation(self, instance):
         data = {
-            "property_name": instance.property_name,
-            "value": instance.comparison_value[0],
+            "property_name": instance[0],
+            "value": instance[1],
         }
         return data
 
@@ -344,9 +325,7 @@ class SubscriptionRecordSerializer(
         }
 
     subscription_id = SubscriptionUUIDField(source="subscription_record_id")
-    subscription_filters = SubscriptionCategoricalFilterSerializer(
-        many=True, source="filters"
-    )
+    subscription_filters = SubscriptionFilterSerializer(many=True)
     customer = LightweightCustomerSerializer()
     billing_plan = LightweightPlanVersionSerializer()
     addons = LightweightAddOnSubscriptionRecordSerializer(
@@ -444,11 +423,11 @@ class InvoiceLineItemSerializer(
 
     def get_subscription_filters(
         self, obj
-    ) -> SubscriptionCategoricalFilterSerializer(many=True, allow_null=True):
+    ) -> SubscriptionFilterSerializer(many=True, allow_null=True):
         ass_sub_record = obj.associated_subscription_record
         if ass_sub_record:
-            return SubscriptionCategoricalFilterSerializer(
-                ass_sub_record.filters.all(), many=True
+            return SubscriptionFilterSerializer(
+                ass_sub_record.subscription_filters, many=True
             ).data
         return None
 
@@ -1644,7 +1623,7 @@ class SubscriptionRecordCreateSerializerOld(
         help_text="Whether the subscription automatically renews. Defaults to true.",
     )
     is_new = serializers.BooleanField(required=False)
-    subscription_filters = SubscriptionCategoricalFilterSerializer(
+    subscription_filters = SubscriptionFilterSerializer(
         many=True,
         required=False,
         help_text="Add filter key, value pairs that define which events will be applied to this plan subscription.",
@@ -1687,22 +1666,9 @@ class SubscriptionRecordCreateSerializerOld(
         filters = validated_data.pop("subscription_filters", [])
         subscription_filters = []
         for filter_data in filters:
-            sub_cat_filter_dict = {
-                "organization": validated_data["customer"].organization,
-                "property_name": filter_data["property_name"],
-                "operator": CATEGORICAL_FILTER_OPERATORS.ISIN,
-                "comparison_value": [filter_data["value"]],
-            }
-            try:
-                cf, _ = CategoricalFilter.objects.get_or_create(**sub_cat_filter_dict)
-            except CategoricalFilter.MultipleObjectsReturned:
-                cf = (
-                    CategoricalFilter.objects.filter(**sub_cat_filter_dict)
-                    .first()
-                    .delete()
-                )
-                cf = CategoricalFilter.objects.filter(**sub_cat_filter_dict).first()
-            subscription_filters.append(cf)
+            subscription_filters.append(
+                [filter_data["property_name"], filter_data["value"]]
+            )
         sr = SubscriptionRecord.create_subscription_record(
             start_date=validated_data["start_date"],
             end_date=validated_data.get("end_date"),
@@ -1763,7 +1729,7 @@ class SubscriptionRecordCreateSerializer(
         help_text="Whether the subscription automatically renews. Defaults to true.",
     )
     is_new = serializers.BooleanField(required=False)
-    subscription_filters = SubscriptionCategoricalFilterSerializer(
+    subscription_filters = SubscriptionFilterSerializer(
         many=True,
         required=False,
         help_text="Add filter key, value pairs that define which events will be applied to this plan subscription.",
@@ -1829,22 +1795,9 @@ class SubscriptionRecordCreateSerializer(
         filters = validated_data.pop("subscription_filters", [])
         subscription_filters = []
         for filter_data in filters:
-            sub_cat_filter_dict = {
-                "organization": validated_data["customer"].organization,
-                "property_name": filter_data["property_name"],
-                "operator": CATEGORICAL_FILTER_OPERATORS.ISIN,
-                "comparison_value": [filter_data["value"]],
-            }
-            try:
-                cf, _ = CategoricalFilter.objects.get_or_create(**sub_cat_filter_dict)
-            except CategoricalFilter.MultipleObjectsReturned:
-                cf = (
-                    CategoricalFilter.objects.filter(**sub_cat_filter_dict)
-                    .first()
-                    .delete()
-                )
-                cf = CategoricalFilter.objects.filter(**sub_cat_filter_dict).first()
-            subscription_filters.append(cf)
+            subscription_filters.append(
+                [filter_data["property_name"], filter_data["value"]]
+            )
         sr = SubscriptionRecord.create_subscription_record(
             start_date=validated_data["start_date"],
             end_date=validated_data.get("end_date"),
@@ -1873,9 +1826,7 @@ class LightweightSubscriptionRecordSerializer(SubscriptionRecordSerializer):
     plan_detail = LightweightPlanVersionSerializer(
         source="billing_plan", read_only=True
     )
-    subscription_filters = SubscriptionCategoricalFilterSerializer(
-        source="filters", many=True, read_only=True
-    )
+    subscription_filters = SubscriptionFilterSerializer(many=True, read_only=True)
 
 
 class SubscriptionInvoiceSerializer(SubscriptionRecordSerializer):
@@ -2141,7 +2092,7 @@ class SubscriptionRecordFilterSerializer(serializers.Serializer):
         required=True,
         help_text="Filter to a specific plan.",
     )
-    subscription_filters = SubscriptionCategoricalFilterSerializer(
+    subscription_filters = SubscriptionFilterSerializer(
         many=True,
         required=False,
         help_text="Filter to a specific set of subscription filters. If your billing model only allows for one subscription per customer, you very likely do not need this field. Must be formatted as a JSON-encoded + stringified list of dictionaries, where each dictionary has a key of 'property_name' and a key of 'value'.",
@@ -2226,7 +2177,7 @@ class AddOnSubscriptionRecordFilterSerializer(serializers.Serializer):
         required=True,
         help_text="Filter to a specific plan.",
     )
-    attached_subscription_filters = SubscriptionCategoricalFilterSerializer(
+    attached_subscription_filters = SubscriptionFilterSerializer(
         many=True,
         required=False,
         help_text="Filter to a specific set of subscription filters. If your billing model only allows for one subscription per customer, you very likely do not need this field. Must be formatted as a JSON-encoded + stringified list of dictionaries, where each dictionary has a key of 'property_name' and a key of 'value'.",
