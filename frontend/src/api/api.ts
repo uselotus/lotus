@@ -135,7 +135,9 @@ const requests = {
 export const Customer = {
   getCustomers: (): Promise<CustomerSummary[]> =>
     requests.get("app/customers/summary/"),
-  getCustomerDetail: (customer_id: string): Promise<CustomerType> =>
+  getCustomerDetail: (
+    customer_id: string
+  ): Promise<components["schemas"]["CustomerDetail"]> =>
     requests.get(`app/customers/${customer_id}/`),
   createCustomer: (post: CustomerCreateType): Promise<CustomerType> =>
     requests.post("app/customers/", post),
