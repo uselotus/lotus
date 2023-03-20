@@ -172,7 +172,7 @@ const IntegrationsTab: FC = () => {
                 }
                 idValue={item.account_id}
                 working={item.working}
-                hasAccess={true}
+                hasAccess
               />
             </Col>
           ))}
