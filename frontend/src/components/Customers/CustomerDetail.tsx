@@ -184,7 +184,7 @@ function CustomerDetail() {
   const changeSubscriptionPlan = (params: object, subscription_id) => {
     changeSubscriptionPlanMutation.mutate({
       post: params,
-      subscription_id
+      subscription_id,
     });
   };
 
