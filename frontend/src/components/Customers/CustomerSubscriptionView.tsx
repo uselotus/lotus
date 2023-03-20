@@ -63,9 +63,9 @@ import { components } from "../../gen-types";
 
 interface Props {
   customer_id: string;
-  upcomingSubscriptions: components["schemas"]["StripeSubscriptionRecord"][];
   subscriptions: components["schemas"]["CustomerDetail"]["subscriptions"];
   stripeSubscriptions: components["schemas"]["CustomerDetail"]["stripe_subscriptions"];
+  upcomingSubscriptions: components["schemas"]["CustomerDetail"]["upcoming_subscriptions"];
   plans: PlanType[] | undefined;
   onAutoRenewOff: (
     subscription_id: string,
@@ -425,7 +425,11 @@ const SubscriptionView: FC<Props> = ({
       setRightCursor("");
     }
   }, [offset, subscriptions]);
-  if (subscriptions.length === 0 && stripeSubscriptions.length === 0) {
+  if (
+    subscriptions.length === 0 &&
+    stripeSubscriptions.length === 0 &&
+    upcomingSubscriptions.length === 0
+  ) {
     return (
       <div className="flex flex-col items-center justify-center">
         <h2 className="mb-2 pb-4 pt-4 font-bold text-main">No Subscription</h2>
@@ -1387,6 +1391,8 @@ const SubscriptionView: FC<Props> = ({
     );
   }
 
+  console.log(subscriptions, upcomingSubscriptions);
+
   return (
     <div className="mt-auto">
       <div className="flex mb-2 pb-4 pt-4 items-center justify-center">
@@ -1465,8 +1471,23 @@ const SubscriptionView: FC<Props> = ({
             </button>
           </div>
         </div>
-        <DraftInvoice customer_id={customer_id} />
       </div>
+      {upcomingSubscriptions.length > 0 && (
+        <>
+          <div className="flex mb-2 pb-4 pt-4 items-center justify-start">
+            <h2 className="font-bold text-main">Upcoming Subscriptions</h2>
+          </div>
+          <div className="flex flex-col justify-center">
+            <div className="grid gap-20 min-h-[564px]  grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+              {upcomingSubscriptions.map((sub) => (
+                <SubscriptionItem subPlan={sub} />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      <DraftInvoice customer_id={customer_id} />
     </div>
   );
 };

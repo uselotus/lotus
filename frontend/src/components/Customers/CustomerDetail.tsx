@@ -208,6 +208,8 @@ function CustomerDetail() {
     createSubscriptionMutation.mutate(props);
   };
 
+  console.log(data);
+
   return (
     <PageLayout
       title={data?.customer_name}
@@ -280,6 +282,7 @@ function CustomerDetail() {
                 <SubscriptionView
                   customer_id={customer_id as string}
                   subscriptions={data.subscriptions}
+                  upcomingSubscriptions={data.upcoming_subscriptions}
                   stripeSubscriptions={data.stripe_subscriptions}
                   plans={plans}
                   onCreate={createSubscription}
