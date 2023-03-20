@@ -167,7 +167,7 @@ const StripeIntegrationView: FC = () => {
           >
             Import
           </Button>
-          <h3>Import Subscriptions:</h3>
+          {/* <h3>Import Subscriptions:</h3>
           <Button
             size="large"
             className="w-4/12"
@@ -182,7 +182,7 @@ const StripeIntegrationView: FC = () => {
             }}
           >
             Import
-          </Button>
+          </Button> */}
           <h3>Create Lotus Customers In Stripe:</h3>
           <div className="flex h-6 items-center">
             <input

@@ -480,7 +480,9 @@ class StripeSubscriptionsView(viewsets.GenericViewSet, mixins.RetrieveModelMixin
     )
     def cancel_subscriptions(self, request, pk=None):
         organization = request.organization
-        serializer = StripeMultiSubscriptionsSerializer(data=request.data)
+        serializer = StripeMultiSubscriptionsSerializer(
+            data=request.data, context={"organization": organization}
+        )
         serializer.is_valid(raise_exception=True)
         customer = serializer.validated_data["customer"]
         stripe_subscription_ids = serializer.validated_data["stripe_subscription_ids"]
@@ -493,7 +495,7 @@ class StripeSubscriptionsView(viewsets.GenericViewSet, mixins.RetrieveModelMixin
         return Response(
             {
                 "status": "success",
-                "detail": f"Strtipe subscriptions cancelled for customer {customer}.",
+                "detail": f"Stripe subscriptions cancelled for customer {customer}.",
             },
             status=status.HTTP_200_OK,
         )
@@ -519,7 +521,9 @@ class StripeSubscriptionsView(viewsets.GenericViewSet, mixins.RetrieveModelMixin
     )
     def turn_off_auto_renewal(self, request, pk=None):
         organization = request.organization
-        serializer = StripeMultiSubscriptionsSerializer(data=request.data)
+        serializer = StripeMultiSubscriptionsSerializer(
+            data=request.data, context={"organization": organization}
+        )
         serializer.is_valid(raise_exception=True)
         customer = serializer.validated_data["customer"]
         stripe_subscription_ids = serializer.validated_data["stripe_subscription_ids"]
@@ -534,7 +538,7 @@ class StripeSubscriptionsView(viewsets.GenericViewSet, mixins.RetrieveModelMixin
         return Response(
             {
                 "status": "success",
-                "detail": f"Strtipe subscriptions turned off auto renew for customer {customer}.",
+                "detail": f"Stripe subscriptions turned off auto renew for customer {customer}.",
             },
             status=status.HTTP_200_OK,
         )

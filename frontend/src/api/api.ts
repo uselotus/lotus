@@ -121,6 +121,11 @@ export const instance = axios.create({
 const responseBody = (response: AxiosResponse) => response.data;
 type GetPlansQuery = operations["app_plans_list"]["parameters"];
 
+interface StripeMultiSubscriptionsParams {
+  customer_id: string;
+  stripe_subscription_ids: string[];
+}
+
 const requests = {
   get: (url: string, params?: object) =>
     instance.get(url, params).then(responseBody),
@@ -613,6 +618,14 @@ export const PaymentProcessor = {
     requests.patch(`app/organization_settings/${data.setting_id}/`, {
       setting_values: data.setting_values,
     }),
+
+  cancelStripeSubscriptions: (
+    data: StripeMultiSubscriptionsParams
+  ): Promise<any> => requests.post(`app/stripe/cancel_subscriptions/`, data),
+  cancelAtPeriodEndStripeSubscriptions: (
+    data: StripeMultiSubscriptionsParams
+  ): Promise<any> =>
+    requests.post(`app/stripe/cancel_at_period_end_subscriptions/`, data),
 };
 
 export const PaymentProcessorIntegration = {

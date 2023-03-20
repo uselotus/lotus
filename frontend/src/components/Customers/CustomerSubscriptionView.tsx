@@ -52,7 +52,7 @@ import createShortenedText from "../../helpers/createShortenedText";
 import useMediaQuery from "../../hooks/useWindowQuery";
 import Badge from "../base/Badges/Badges";
 import DropdownComponent from "../base/Dropdown/Dropdown";
-import { AddOn, Customer } from "../../api/api";
+import { AddOn, Customer, PaymentProcessor } from "../../api/api";
 import { AddOnType } from "../../types/addon-type";
 
 import ChevronDown from "../base/ChevronDown";
@@ -708,7 +708,22 @@ const SubscriptionView: FC<Props> = ({
                       type="primary"
                       className="!bg-rose-600 border !border-rose-600"
                       onClick={() => {
-                        cancelSubscription(selectedSubPlan!.subscription_id);
+                        if (selectedSubPlan?.stripe_subscription_id) {
+                          PaymentProcessor.cancelStripeSubscriptions({
+                            customer_id:
+                              selectedSubPlan?.customer.customer_id || "",
+                            stripe_subscription_ids: [
+                              selectedSubPlan.stripe_subscription_id,
+                            ],
+                          });
+                          setShowModal(false);
+                          queryClient.invalidateQueries([
+                            "customer_detail",
+                            customer_id,
+                          ]);
+                        } else {
+                          cancelSubscription(selectedSubPlan!.subscription_id);
+                        }
                       }}
                     >
                       Cancel Plan
@@ -786,8 +801,11 @@ const SubscriptionView: FC<Props> = ({
                     value={subStartDate ? moment(subStartDate) : undefined}
                   />,
                 ]
-              ) : indexRef.current === 2 ? null : indexRef.current ===
-                6 ? null : indexRef.current === 3 ? (
+              ) : indexRef.current === 2 ||
+                indexRef.current === 6 ||
+                (indexRef.current === 3 &&
+                  selectedSubPlan?.stripe_subscription_id) ? null : indexRef.current ===
+                3 ? (
                 <CancelMenu
                   recurringBehavior={cancelBody.flat_fee_behavior}
                   usageBehavior={cancelBody.usage_behavior}
@@ -882,19 +900,20 @@ const SubscriptionView: FC<Props> = ({
   }) {
     // It's kinda trash ik, should def be defined as one SubscriptionItem
     return (
-      <div key={sub.subscription_id}>
+      <div key={sub.stripe_subscription_id}>
         <CustomerCard
           className={`shadow-none ${
             windowWidth > 2500 ? `h-[290px]` : "h-[270px]"
           } `}
-          key={sub.subscription_id}
+          key={sub.stripe_subscription_id}
         >
           <CustomerCard.Heading>
             <div className="flex flex-row justify-between">
               <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
                 <div>
                   <div>
-                    Stripe Subscription ...{sub.subscription_id.slice(-5)}
+                    Stripe Subscription ...
+                    {sub.stripe_subscription_id.slice(-5)}
                   </div>
                   {sub.subscription_filters ? (
                     sub.subscription_filters.length > 0 ? (
@@ -927,14 +946,14 @@ const SubscriptionView: FC<Props> = ({
                     {" "}
                     <div>
                       {createShortenedText(
-                        sub.subscription_id as string,
+                        sub.stripe_subscription_id as string,
                         windowWidth >= 2500
                       )}
                     </div>
                     <CopyText
                       showIcon
                       onlyIcon
-                      textToCopy={sub.subscription_id as string}
+                      textToCopy={sub.stripe_subscription_id as string}
                     />
                   </div>
                 </CustomerCard.Item>
@@ -1109,7 +1128,24 @@ const SubscriptionView: FC<Props> = ({
                       type="primary"
                       className="!bg-rose-600 border !border-rose-600"
                       onClick={() => {
-                        turnAutoRenewOff(selectedSubPlan!.subscription_id);
+                        if (selectedSubPlan?.stripe_subscription_id) {
+                          PaymentProcessor.cancelAtPeriodEndStripeSubscriptions(
+                            {
+                              customer_id:
+                                selectedSubPlan?.customer.customer_id || "",
+                              stripe_subscription_ids: [
+                                selectedSubPlan.stripe_subscription_id,
+                              ],
+                            }
+                          );
+                          setShowModal(false);
+                          queryClient.invalidateQueries([
+                            "customer_detail",
+                            customer_id,
+                          ]);
+                        } else {
+                          turnAutoRenewOff(selectedSubPlan!.subscription_id);
+                        }
                       }}
                     >
                       Cancel Renewal
@@ -1125,7 +1161,22 @@ const SubscriptionView: FC<Props> = ({
                       type="primary"
                       className="!bg-rose-600 border !border-rose-600"
                       onClick={() => {
-                        cancelSubscription(selectedSubPlan!.subscription_id);
+                        if (selectedSubPlan?.stripe_subscription_id) {
+                          PaymentProcessor.cancelStripeSubscriptions({
+                            customer_id:
+                              selectedSubPlan?.customer.customer_id || "",
+                            stripe_subscription_ids: [
+                              selectedSubPlan.stripe_subscription_id,
+                            ],
+                          });
+                          setShowModal(false);
+                          queryClient.invalidateQueries([
+                            "customer_detail",
+                            customer_id,
+                          ]);
+                        } else {
+                          cancelSubscription(selectedSubPlan!.subscription_id);
+                        }
                       }}
                     >
                       Cancel Plan
@@ -1180,16 +1231,28 @@ const SubscriptionView: FC<Props> = ({
                   cascaderOptions={cascaderOptions}
                 />
               ) : indexRef.current === 5 ? (
-                <Select
-                  showSearch
-                  placeholder="Select a plan"
-                  onChange={selectPlan}
-                  options={planList}
-                  value={selectedPlan}
-                  optionLabelProp="label"
-                ></Select>
-              ) : indexRef.current === 2 ? null : indexRef.current ===
-                6 ? null : indexRef.current === 3 ? (
+                [
+                  <Select
+                    showSearch
+                    placeholder="Select a plan"
+                    onChange={selectPlan}
+                    options={planList}
+                    value={selectedPlan}
+                    optionLabelProp="label"
+                  ></Select>,
+                  <DatePicker
+                    showTime
+                    className="mt-0"
+                    placeholder="Select start date"
+                    onChange={(date, dateString) => setSubStartDate(dateString)}
+                    value={subStartDate ? moment(subStartDate) : undefined}
+                  />,
+                ]
+              ) : indexRef.current === 2 ||
+                indexRef.current === 6 ||
+                (indexRef.current === 3 &&
+                  selectedSubPlan?.stripe_subscription_id) ? null : indexRef.current ===
+                3 ? (
                 <CancelMenu
                   recurringBehavior={cancelBody.flat_fee_behavior}
                   usageBehavior={cancelBody.usage_behavior}
