@@ -2004,14 +2004,11 @@ class CustomerDetailSerializer(api_serializers.CustomerSerializer):
     def get_upcoming_subscriptions(
         self, obj
     ) -> SubscriptionRecordSerializer(many=True):
-        try:
-            sr_objs = obj.active_subscription_records
-        except AttributeError:
-            sr_objs = (
-                obj.subscription_records.not_started()
-                .filter(organization=obj.organization)
-                .order_by("start_date")
-            )
+        sr_objs = (
+            obj.subscription_records.not_started()
+            .filter(organization=obj.organization)
+            .order_by("start_date")
+        )
         return SubscriptionRecordSerializer(sr_objs, many=True).data
 
     def get_stripe_subscriptions(
