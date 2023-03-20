@@ -131,6 +131,10 @@ services:
     depends_on:
       - redis
       - backend
+    volumes:
+      - ./backend/lotus:/lotus/lotus
+      - ./backend/metering_billing:/lotus/metering_billing
+      - ./backend/api:/lotus/api
     restart: on-failure
 
   celery-beat:
@@ -141,6 +145,10 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: development
+    volumes:
+      - ./backend/lotus:/lotus/lotus
+      - ./backend/metering_billing:/lotus/metering_billing
+      - ./backend/api:/lotus/api
     command: bash -c "while ! nc -q 1 db 5432 </dev/null; do sleep 5; done; celery -A lotus beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler;"
     depends_on:
       - celery

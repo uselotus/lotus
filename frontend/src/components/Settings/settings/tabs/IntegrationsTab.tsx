@@ -4,7 +4,11 @@ import { useNavigate } from "react-router-dom";
 import { Divider, Typography, Row, Col, Modal, Input } from "antd";
 import Nango from "@nangohq/frontend";
 import { toast } from "react-toastify";
-import { PaymentProcessorIntegration, Organization } from "../../../../api/api";
+import {
+  PaymentProcessorIntegration,
+  Organization,
+  CRM,
+} from "../../../../api/api";
 import {
   PaymentProcessorStatusType,
   integrationsMap,
@@ -13,8 +17,15 @@ import {
   BraintreeConnectionRequestType,
   PaymentProcessorConnectionResponseType,
 } from "../../../../types/payment-processor-type";
+import {
+  CRMConnectionStatus,
+  CRMProviderType,
+  CRMSetting,
+} from "../../../../types/crm-types";
+
 import { AppCard } from "../components/AppCard";
 import useGlobalStore from "../../../../stores/useGlobalstore";
+import { useVesselLink } from "@vesselapi/react-vessel-link";
 
 const IntegrationsTab: FC = () => {
   const navigate = useNavigate();
@@ -26,12 +37,48 @@ const IntegrationsTab: FC = () => {
         (res) => res
       )
   );
-  const org = useGlobalStore((state) => state.org);
 
+  const {
+    data: crmData,
+    isLoading: crmLoading,
+    refetch: refetchCrm,
+  } = useQuery<CRMConnectionStatus[]>(["CRMIntegration"], () =>
+    CRM.getCRMConnectionStatus().then((res) => res)
+  );
+
+  const {
+    data: linkToken,
+    isLoading: linkTokenLoading,
+    refetch: refetchLinkToken,
+  } = useQuery<string | undefined>(["CRMProviderLinkToken"], () =>
+    CRM.getLinkToken()
+      .then((res) => res.link_token)
+      .catch((err) => undefined)
+  );
+
+  const org = useGlobalStore((state) => state.org);
   var nango = new Nango({
     publicKey: (import.meta as any).env.VITE_NANGO_PK,
     debug: true,
   }); // Nango Cloud
+
+  const { open } = useVesselLink({
+    onSuccess: (publicToken) =>
+      CRM.storePublicToken(publicToken)
+        .then((response) => {
+          if (response?.success) {
+            refetchCrm();
+            toast.success("Successfully connected to Salesforce");
+          } else {
+            toast.error("Failed to connect to Salesforce");
+          }
+        })
+        .catch((error) => {
+          toast.error("Failed to connect to Salesforce");
+        }),
+    onClose: () => console.log("closed"),
+    onLoad: () => console.log("loaded"),
+  });
 
   const handleConnectWithPaymentProcessorClick = (
     item: PaymentProcessorStatusType
@@ -123,6 +170,49 @@ const IntegrationsTab: FC = () => {
                 }
                 idValue={item.account_id}
                 working={item.working}
+                hasAccess={true}
+              />
+            </Col>
+          ))}
+        {crmData &&
+          crmData !== undefined &&
+          crmData.map((crmItem, index) => (
+            <Col span={6} key={index}>
+              <AppCard
+                connected={crmItem.connected}
+                title={
+                  integrationsMap[crmItem.crm_provider_name.toLowerCase()].name
+                }
+                description={
+                  integrationsMap[crmItem.crm_provider_name.toLowerCase()]
+                    .description
+                }
+                selfHosted={crmItem.self_hosted}
+                idName={
+                  integrationsMap[crmItem.crm_provider_name.toLowerCase()]
+                    .account_id_name
+                }
+                idValue={crmItem.account_id}
+                icon={
+                  integrationsMap[crmItem.crm_provider_name.toLowerCase()].icon
+                }
+                handleClickConnect={() => {
+                  if (linkToken) {
+                    open({
+                      integrationId: crmItem.crm_provider_name.toLowerCase(),
+                      linkToken: linkToken,
+                    });
+                  } else {
+                    toast.error(
+                      `Failed to connect to ${
+                        integrationsMap[crmItem.crm_provider_name.toLowerCase()]
+                          .name
+                      }!`
+                    );
+                  }
+                }}
+                hasAccess={org?.crm_integration_allowed || false}
+                working={crmItem.working}
               />
             </Col>
           ))}
@@ -135,17 +225,26 @@ const IntegrationsTab: FC = () => {
             handleClickConnect={() =>
               navigate("/settings/integrations/snowflake")
             }
+            hasAccess={false}
           />
         </Col>
         <Col span={6} className="h-full">
           <AppCard
             connected={false}
             title="Salesforce"
-            description="Sync your products, customers, and invoices to Salesforce"
+            description="Sync your customers, subscriptions, and invoices to Salesforce"
             icon={integrationsMap.salesforce.icon}
-            handleClickConnect={() =>
-              navigate("/settings/integrations/snowflake")
-            }
+            handleClickConnect={() => {
+              if (linkToken) {
+                open({
+                  integrationId: "salesforce",
+                  linkToken: linkToken,
+                });
+              } else {
+                toast.error("Failed to connect to Salesforce");
+              }
+            }}
+            hasAccess={org?.crm_integration_allowed || false}
           />
         </Col>
         <Col span={6} className="h-full">
@@ -157,6 +256,7 @@ const IntegrationsTab: FC = () => {
             icon={integrationsMap.netsuite.icon}
             working={true}
             handleClickConnect={() => {}}
+            hasAccess={true}
           />
         </Col>
         <Col span={6} className="h-full">
@@ -168,6 +268,7 @@ const IntegrationsTab: FC = () => {
             handleClickConnect={() =>
               navigate("/settings/integrations/snowflake")
             }
+            hasAccess={false}
           />
         </Col>
       </Row>

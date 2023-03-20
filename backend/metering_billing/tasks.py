@@ -33,6 +33,29 @@ POSTHOG_PERSON = settings.POSTHOG_PERSON
 
 
 @shared_task
+def sync_all_crm_integrations():
+    from metering_billing.models import UnifiedCRMOrganizationIntegration
+
+    for integration in UnifiedCRMOrganizationIntegration.objects.all():
+        integration.perform_sync()
+
+
+@shared_task
+def sync_single_organization_integrations(
+    organization_integration_pk, crm_provider_values=None
+):
+    from metering_billing.models import UnifiedCRMOrganizationIntegration
+
+    if crm_provider_values is None:
+        crm_provider_values = UnifiedCRMOrganizationIntegration.CRMProvider.values
+    for integration in UnifiedCRMOrganizationIntegration.objects.filter(
+        organization_id=organization_integration_pk,
+        crm_provider__in=crm_provider_values,
+    ):
+        integration.perform_sync()
+
+
+@shared_task
 def update_subscription_filter_settings_task(org_pk, subscription_filter_keys):
     from metering_billing.models import Organization
 
