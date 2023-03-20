@@ -138,6 +138,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
         id: component.billable_metric.metric_id,
         metric_id: component.billable_metric.metric_id,
         pricing_unit: component.pricing_unit,
+        bulk_pricing_enabled: component.bulk_pricing_enabled ?? false,
         prepaid_charge: component.prepaid_charge,
         invoicing_interval_count: component.invoicing_interval_count,
         invoicing_interval_unit: component.invoicing_interval_unit,
@@ -374,6 +375,7 @@ function EditPlan({ type, plan, versionIndex }: Props) {
               reset_interval_count: components[i].reset_interval_count,
               reset_interval_unit: components[i].reset_interval_unit,
               prepaid_charge: components[i].prepaid_charge,
+              bulk_pricing_enabled: components[i].bulk_pricing_enabled,
             };
             usagecomponentslist.push(usagecomponent);
           }

@@ -1006,6 +1006,7 @@ class PlanComponentCreateSerializer(TimezoneFieldMixin, serializers.ModelSeriali
             "reset_interval_unit",
             "reset_interval_count",
             "prepaid_charge",
+            "bulk_pricing_enabled"
         )
         extra_kwargs = {
             "metric_id": {"required": True, "write_only": True},
@@ -1015,6 +1016,7 @@ class PlanComponentCreateSerializer(TimezoneFieldMixin, serializers.ModelSeriali
             "reset_interval_unit": {"required": False},
             "reset_interval_count": {"required": False},
             "prepaid_charge": {"required": False},
+            "bulk_pricing_enabled": {"required": False, "default": False},
         }
 
     metric_id = SlugRelatedFieldWithOrganization(

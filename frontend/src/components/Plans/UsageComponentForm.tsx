@@ -599,6 +599,7 @@ function UsageComponentForm({
               const currentMetric = metricObjects.find(
                 (metric) => metric.metric_name === form.getFieldValue("metric")
               );
+
               handleComponentAdd({
                 metric: values.metric,
                 tiers: currentTiers,
@@ -607,6 +608,7 @@ function UsageComponentForm({
                 reset_interval_unit: values.reset_interval_unit,
                 invoicing_interval_count: values.invoicing_interval_count,
                 invoicing_interval_unit: values.invoicing_interval_unit,
+                bulk_pricing_enabled: values.bulk_pricing_enabled,
                 id: initialData?.id,
                 prepaid_charge: prepaid
                   ? {
@@ -671,6 +673,11 @@ function UsageComponentForm({
           dataSource={currentTiers}
           pagination={false}
         />
+        <div className="flex w-full mt-4">
+          <Form.Item name="bulk_pricing_enabled" valuePropName="checked">
+            <Checkbox>Bulk pricing</Checkbox>
+          </Form.Item>
+        </div>
         <div className="flex justify-center w-full mt-4">
           <Button
             onClick={handleAdd}
