@@ -425,7 +425,11 @@ const SubscriptionView: FC<Props> = ({
       setRightCursor("");
     }
   }, [offset, subscriptions]);
-  if (subscriptions.length === 0 && stripeSubscriptions.length === 0) {
+  if (
+    subscriptions.length === 0 &&
+    stripeSubscriptions.length === 0 &&
+    upcomingSubscriptions.length === 0
+  ) {
     return (
       <div className="flex flex-col items-center justify-center">
         <h2 className="mb-2 pb-4 pt-4 font-bold text-main">No Subscription</h2>
