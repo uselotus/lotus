@@ -34,206 +34,12 @@ import { QueryErrors } from "../../types/error-response-types";
 import { DeleteOutlined } from "@ant-design/icons";
 import { components } from "../../gen-types";
 
-// REMOVE THIS, this is so I can test subs that come from stripe
-const testCustomer = [
-  {
-    crm_provider_id: "string",
-    payment_provider: "stripe",
-    billing_address: {
-      city: "string",
-      country: "AW",
-      line1: "string",
-      line2: "string",
-      postal_code: "string",
-      state: "string",
-    },
-    has_payment_method: true,
-    crm_provider_url: "http://example.com",
-    subscriptions: [
-      {
-        subscription_id: "string",
-        start_date: "2019-08-24T14:15:22Z",
-        end_date: "2019-08-24T14:15:22Z",
-        auto_renew: true,
-        is_new: true,
-        subscription_filters: [
-          {
-            value: "string",
-            property_name: "string",
-          },
-        ],
-        customer: {
-          customer_name: "string",
-          email: "user@example.com",
-          customer_id: "string",
-        },
-        billing_plan: {
-          plan_name: "string",
-          plan_id: "string",
-          version_id: "string",
-          version: 0,
-        },
-        fully_billed: true,
-        addons: [
-          {
-            addon_subscription_id: "string",
-            start_date: "2019-08-24T14:15:22Z",
-            end_date: "2019-08-24T14:15:22Z",
-            addon: {
-              addon_name: "string",
-              addon_id: "string",
-              addon_type: "flat",
-              billing_frequency: "one_time",
-            },
-            fully_billed: true,
-          },
-        ],
-        metadata: {
-          property1: null,
-          property2: null,
-        },
-      },
-    ],
-    address: {
-      city: "string",
-      country: "AW",
-      line1: "string",
-      line2: "string",
-      postal_code: "string",
-      state: "string",
-    },
-    payment_provider_url: "http://example.com",
-    tax_rate: -1000,
-    payment_provider_id: "string",
-    customer_id: "string",
-    email: "user@example.com",
-    shipping_address: {
-      city: "string",
-      country: "AW",
-      line1: "string",
-      line2: "string",
-      postal_code: "string",
-      state: "string",
-    },
-    timezone: "Africa/Abidjan",
-    invoices: [
-      {
-        crm_provider_id: "string",
-        invoice_id: "string",
-        end_date: "2019-08-24",
-        external_payment_obj_status: "string",
-        seller: {
-          name: "string",
-          address: {
-            city: "string",
-            country: "AW",
-            line1: "string",
-            line2: "string",
-            postal_code: "string",
-            state: "string",
-          },
-          phone: "string",
-          email: "user@example.com",
-        },
-        crm_provider_url: "http://example.com",
-        payment_status: "draft",
-        issue_date: "2019-08-24T14:15:22Z",
-        external_payment_obj_id: "string",
-        amount: -10000000000,
-        due_date: "2019-08-24T14:15:22Z",
-        cost_due: 0,
-        external_payment_obj_url: "http://example.com",
-        crm_provider: "salesforce",
-        external_payment_obj_type: "stripe",
-        invoice_number: "string",
-        start_date: "2019-08-24",
-        currency: {
-          code: "string",
-          name: "string",
-          symbol: "string",
-        },
-        invoice_pdf: "http://example.com",
-      },
-    ],
-    total_amount_due: 0,
-    stripe_subscriptions: [
-      {
-        addons: [
-          {
-            addon_subscription_id: "string",
-            start_date: "2019-08-24T14:15:22Z",
-            end_date: "2019-08-24T14:15:22Z",
-            addon: {
-              addon_name: "string",
-              addon_id: "string",
-              addon_type: "flat",
-              billing_frequency: "one_time",
-            },
-            fully_billed: true,
-          },
-        ],
-        auto_renew: true,
-        end_date: "2019-08-24T14:15:22Z",
-        subscription_id: "string",
-        fully_billed: true,
-        metadata: {
-          property1: null,
-          property2: null,
-        },
-        is_new: true,
-        customer: {
-          customer_name: "string",
-          email: "user@example.com",
-          customer_id: "string",
-        },
-        subscription_filters: [
-          {
-            value: "string",
-            property_name: "string",
-          },
-        ],
-        billing_plan: {
-          plan_name: "string",
-          plan_id: "string",
-          version_id: "string",
-          version: 0,
-        },
-        start_date: "2019-08-24T14:15:22Z",
-        stripe_subscription_id: "string",
-      },
-    ],
-    crm_provider: "salesforce",
-    customer_name: "string",
-    tax_providers: ["taxjar"],
-    default_currency: {
-      code: "string",
-      name: "string",
-      symbol: "string",
-    },
-    integrations: {
-      stripe: {
-        stripe_id: "string",
-        has_payment_method: true,
-      },
-      braintree: {
-        braintree_id: "string",
-        has_payment_method: true,
-      },
-    },
-  },
-];
-
 type CustomerDetailsParams = {
   customerId: string;
 };
 function CustomerDetail() {
   const { customerId: customer_id } = useParams<CustomerDetailsParams>();
-
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
-
-  const [stripeSubscriptions, setStripeSubscriptions] = useState<
-    components["schemas"]["StripeSubscriptionRecord"][]
-  >([]);
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -253,10 +59,11 @@ function CustomerDetail() {
   const { data: pricingUnits }: UseQueryResult<CurrencyType[]> = useQuery<
     CurrencyType[]
   >(["pricing_unit_list"], () => PricingUnits.list().then((res) => res));
-  const { data, refetch }: UseQueryResult<CustomerType> =
-    useQuery<CustomerType>(["customer_detail", customer_id], () =>
-      Customer.getCustomerDetail(customer_id as string).then((res) => res)
-    );
+
+  const { data, refetch } = useQuery<components["schemas"]["CustomerDetail"]>(
+    ["customer_detail", customer_id],
+    () => Customer.getCustomerDetail(customer_id as string).then((res) => res)
+  );
 
   const { data: cost_analysis } = useQuery<CustomerCostType>(
     ["customer_cost_analysis", customer_id, startDate, endDate],
@@ -473,6 +280,7 @@ function CustomerDetail() {
                 <SubscriptionView
                   customer_id={customer_id as string}
                   subscriptions={data.subscriptions}
+                  stripeSubscriptions={data.stripe_subscriptions}
                   plans={plans}
                   onCreate={createSubscription}
                   onCancel={cancelSubscription}
