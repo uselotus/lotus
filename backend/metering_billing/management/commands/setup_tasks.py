@@ -61,3 +61,9 @@ class Command(BaseCommand):
             task="metering_billing.tasks.check_past_due_invoices",
             defaults={"interval": every_15_mins, "crontab": None},
         )
+
+        PeriodicTask.objects.update_or_create(
+            name="Sync with CRM",
+            task="metering_billing.tasks.sync_all_crm_integrations",
+            defaults={"interval": every_hour, "crontab": None},
+        )

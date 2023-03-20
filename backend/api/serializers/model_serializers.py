@@ -620,7 +620,12 @@ class CustomerSerializer(
             "subscriptions": {"required": True, "read_only": True},
             "integrations": {"required": True, "read_only": True},
             "default_currency": {"required": True, "read_only": True},
-            "payment_provider": {"required": True, "read_only": True},
+            "payment_provider": {
+                "required": True,
+                "read_only": True,
+                "allow_null": True,
+                "allow_blank": False,
+            },
             "payment_provider_id": {
                 "required": True,
                 "read_only": True,
@@ -634,7 +639,7 @@ class CustomerSerializer(
         }
 
     customer_id = serializers.CharField()
-    email = serializers.EmailField()
+    email = serializers.EmailField(allow_null=True)
     subscriptions = serializers.SerializerMethodField()
     invoices = serializers.SerializerMethodField()
     total_amount_due = serializers.SerializerMethodField()
@@ -2755,4 +2760,5 @@ class AddOnSubscriptionRecordCreateSerializer(
         )
         sr.metadata = validated_data.get("metadata", {})
         sr.save()
+        return sr
         return sr

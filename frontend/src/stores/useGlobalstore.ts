@@ -27,6 +27,7 @@ interface IOrgStoreType {
   plan_tags: PlanType["tags"];
   current_user: { username: string };
   linked_organizations?: OrganizationType["linked_organizations"];
+  crm_integration_allowed: boolean;
 }
 
 const useGlobalStore = create<GlobalStoreState>((set) => ({
@@ -39,6 +40,7 @@ const useGlobalStore = create<GlobalStoreState>((set) => ({
     current_user: { username: "" },
     plan_tags: [],
     linked_organizations: undefined,
+    crm_integration_allowed: false,
   },
   quickStartProgress: {
     hasAPIKey: false,

@@ -50,6 +50,7 @@ function App() {
           plan_tags: data.plan_tags,
           current_user: data.current_user,
           linked_organizations: data.linked_organizations,
+          crm_integration_allowed: data.crm_integration_allowed,
         };
 
         setOrgInfoToStore(storeOrgObject);

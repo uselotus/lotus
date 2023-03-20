@@ -13,15 +13,14 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+import api.views as api_views
 from django.conf import settings
 from django.conf.urls import include
 from django.contrib import admin
 from django.urls import path, re_path
 from django.views.generic import TemplateView
-from rest_framework import routers
-
-import api.views as api_views
 from metering_billing.views import auth_views, organization_views, webhook_views
+from metering_billing.views.crm_views import CRMUnifiedAPIView
 from metering_billing.views.model_views import (
     ActionViewSet,
     AddOnVersionViewSet,
@@ -48,7 +47,6 @@ from metering_billing.views.model_views import (
 from metering_billing.views.payment_processor_views import PaymentProcesorView
 from metering_billing.views.views import (
     ChangeUserOrganizationView,
-    CostAnalysisView,
     ImportCustomersView,
     ImportPaymentObjectsView,
     NetsuiteCustomerCSVView,
@@ -61,6 +59,7 @@ from metering_billing.views.views import (
     TimezonesView,
     TransferSubscriptionsView,
 )
+from rest_framework import routers
 
 DEBUG = settings.DEBUG
 PROFILER_ENABLED = settings.PROFILER_ENABLED
@@ -152,11 +151,6 @@ urlpatterns = [
     # App views
     path("app/", include(router.urls)),
     path(
-        "app/cost_analysis/",
-        CostAnalysisView.as_view(),
-        name="cost_analysis",
-    ),
-    path(
         "app/switch_organization/",
         ChangeUserOrganizationView.as_view(),
         name="switch_organization",
@@ -221,11 +215,6 @@ urlpatterns = [
         PaymentProcesorView.as_view(),
         name="payment_providers",
     ),
-    # path(
-    #     "app/experimental_to_active/",
-    #     ExperimentalToActiveView.as_view(),
-    #     name="expertimental-to-active",
-    # ),
     path("app/login/", auth_views.LoginView.as_view(), name="api-login"),
     path("app/demo_login/", auth_views.DemoLoginView.as_view(), name="api-demo-login"),
     path("app/logout/", auth_views.LogoutView.as_view(), name="api-logout"),
@@ -259,6 +248,27 @@ urlpatterns = [
     # Stripe
     path(
         "stripe/webhook/", webhook_views.stripe_webhook_endpoint, name="stripe-webhook"
+    ),
+    # crm
+    path(
+        "app/crm/link_token/",
+        CRMUnifiedAPIView.as_view({"post": "link_token"}),
+        name="link_token",
+    ),
+    path(
+        "app/crm/store_token/",
+        CRMUnifiedAPIView.as_view({"post": "store_token"}),
+        name="store_token",
+    ),
+    path(
+        "app/crm/",
+        CRMUnifiedAPIView.as_view({"get": "get_crms"}),
+        name="get_crms",
+    ),
+    path(
+        "app/crm/set_customer_source/",
+        CRMUnifiedAPIView.as_view({"post": "update_crm_customer_source_of_truth"}),
+        name="set_customer_source",
     ),
 ]
 

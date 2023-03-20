@@ -17,6 +17,7 @@ import EditPlanLoader from "../pages/EditPlanLoader";
 import StripeIntegrationView from "../integrations/pages/StripeIntegrationView";
 import NetsuiteIntegrationView from "../integrations/pages/NetsuiteIntegrationView";
 import BraintreeIntegrationView from "../integrations/pages/BraintreeIntegrationView";
+import SalesforceIntegrationView from "../integrations/pages/SalesforceIntegrationView";
 import ViewAddOns from "../pages/ViewAddOns";
 import CreateAddOns from "../pages/CreateAddOns";
 import AddOnDetails from "../components/Addons/AddonsDetails/AddonDetails";
@@ -113,6 +114,10 @@ const AppRoutes: FC = () => {
             <Route
               path="settings/integrations/netsuite"
               element={getSettingsTab(<NetsuiteIntegrationView />)}
+            />
+            <Route
+              path="settings/integrations/salesforce"
+              element={getSettingsTab(<SalesforceIntegrationView />)}
             />
             <Route path="/redirectstripe" element={<StripeRedirect />} />
             <Route path="/experiments" element={<ViewExperiments />} />

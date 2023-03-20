@@ -109,10 +109,12 @@ from metering_billing.models import (
     Tag,
 )
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
-from metering_billing.serializers.model_serializers import DraftInvoiceSerializer
+from metering_billing.serializers.model_serializers import DraftInvoiceSerializer, MetricDetailSerializer
 from metering_billing.serializers.request_serializers import (
     DraftInvoiceRequestSerializer,
+    CostAnalysisRequestSerializer,
 )
+from metering_billing.serializers.response_serializers import CostAnalysisSerializer
 from metering_billing.serializers.serializer_utils import (
     AddOnUUIDField,
     AddOnVersionUUIDField,
@@ -124,7 +126,16 @@ from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganizationPK,
     SubscriptionUUIDField,
 )
-from metering_billing.utils import calculate_end_date, convert_to_datetime, now_utc
+from metering_billing.utils import (
+    calculate_end_date, 
+    convert_to_datetime, 
+    now_utc, 
+    dates_bwn_two_dts, 
+    convert_to_date,
+    convert_to_decimal,
+    make_all_decimals_floats,
+    make_all_dates_times_strings
+)
 from metering_billing.utils.enums import (
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     INVOICING_BEHAVIOR,
@@ -229,11 +240,14 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         )
         return qs
 
-    def get_serializer_class(self):
+    def get_serializer_class(self, default=None):
         if self.action == "create":
             return CustomerCreateSerializer
         elif self.action == "archive":
             return EmptySerializer
+
+        if default:
+            return default
         return CustomerSerializer
 
     @extend_schema(responses=CustomerSerializer)
@@ -241,7 +255,10 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = self.perform_create(serializer)
-        customer_data = CustomerSerializer(instance).data
+
+        # return serializer
+        self.action = "retrieve"
+        customer_data = self.get_serializer(instance).data
         customer_created_webhook(instance, customer_data=customer_data)
         return Response(customer_data, status=status.HTTP_201_CREATED)
 
@@ -322,6 +339,105 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 invoice.delete()
             response = {"invoices": serializer or []}
         return Response(response, status=status.HTTP_200_OK)
+    
+    @extend_schema(
+        request=CostAnalysisRequestSerializer,
+        parameters=[CostAnalysisRequestSerializer],
+        responses={200: CostAnalysisSerializer},
+    )
+    @action(detail=True, methods=["get"], url_path="cost_analysis", url_name="cost_analysis")
+    def cost_analysis(self, request, customer_id=None):
+        organization = request.organization
+        serializer = CostAnalysisRequestSerializer(
+            data=request.query_params, context={"organization": organization}
+        )
+        serializer.is_valid(raise_exception=True)
+        customer = serializer.validated_data["customer"]
+        start_date, end_date = (
+            serializer.validated_data.get(key, None)
+            for key in ["start_date", "end_date"]
+        )
+        start_time = convert_to_datetime(start_date, date_behavior="min")
+        end_time = convert_to_datetime(end_date, date_behavior="max")
+        per_day_dict = {}
+        for period in dates_bwn_two_dts(start_date, end_date):
+            period = convert_to_date(period)
+            per_day_dict[period] = {
+                "date": period,
+                "cost_data": {},
+                "revenue": Decimal(0),
+            }
+        cost_metrics = Metric.objects.filter(
+            organization=organization, is_cost_metric=True, status=METRIC_STATUS.ACTIVE
+        )
+        for metric in cost_metrics:
+            usage_ret = metric.get_daily_total_usage(
+                start_date,
+                end_date,
+                customer=customer,
+            ).get(customer, {})
+            for date, usage in usage_ret.items():
+                date = convert_to_date(date)
+                usage = convert_to_decimal(usage)
+                if date in per_day_dict:
+                    if (
+                        metric.billable_metric_name
+                        not in per_day_dict[date]["cost_data"]
+                    ):
+                        per_day_dict[date]["cost_data"][metric.billable_metric_name] = {
+                            "metric": MetricDetailSerializer(metric).data,
+                            "cost": Decimal(0),
+                        }
+                    per_day_dict[date]["cost_data"][metric.billable_metric_name][
+                        "cost"
+                    ] += usage 
+        for date, items in per_day_dict.items():
+            items["cost_data"] = [v for k,v in items["cost_data"].items()]
+        subscriptions = (
+            SubscriptionRecord.objects.filter(
+                Q(start_date__range=[start_time, end_time])
+                | Q(end_date__range=[start_time, end_time])
+                | (Q(start_date__lte=start_time) & Q(end_date__gte=end_time)),
+                organization=organization,
+                customer=customer,
+            )
+            .select_related("billing_plan")
+            .select_related("customer")
+            .prefetch_related("billing_plan__recurring_charges")
+            .prefetch_related("billing_plan__plan_components")
+            .prefetch_related("billing_plan__plan_components__billable_metric")
+            .prefetch_related("billing_plan__plan_components__tiers")
+        )
+        for subscription in subscriptions:
+            earned_revenue = subscription.calculate_earned_revenue_per_day()
+            for date, earned_revenue in earned_revenue.items():
+                date = convert_to_date(date)
+                if date in per_day_dict:
+                    per_day_dict[date]["revenue"] += earned_revenue
+        return_dict = {
+            "per_day": [v for k, v in per_day_dict.items()],
+        }
+        total_cost = Decimal(0)
+        for day in per_day_dict.values():
+            for cost_data in day["cost_data"]:
+                total_cost += convert_to_decimal(cost_data["cost"])
+        total_revenue = Decimal(0)
+        for day in per_day_dict.values():
+            total_revenue += day["revenue"]
+        return_dict["total_cost"] = total_cost
+        return_dict["total_revenue"] = total_revenue
+        if total_revenue == 0:
+            return_dict["margin"] = 0
+        else:
+            return_dict["margin"] = convert_to_decimal(
+                (total_revenue - total_cost) / total_revenue
+            )
+        serializer = CostAnalysisSerializer(data=return_dict)
+        serializer.is_valid(raise_exception=True)
+        ret = serializer.validated_data
+        ret = make_all_decimals_floats(ret)
+        ret = make_all_dates_times_strings(ret)
+        return Response(ret, status=status.HTTP_200_OK)
 
     def perform_create(self, serializer):
         try:
@@ -1415,9 +1531,11 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
         return Invoice.objects.filter(*args)
 
-    def get_serializer_class(self):
+    def get_serializer_class(self, default=None):
         if self.action == "partial_update":
             return InvoiceUpdateSerializer
+        if default:
+            return default
         return InvoiceSerializer
 
     @extend_schema(responses=InvoiceSerializer)
