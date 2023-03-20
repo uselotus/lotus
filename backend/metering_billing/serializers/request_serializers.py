@@ -1,3 +1,5 @@
+from rest_framework import serializers
+
 from metering_billing.models import (
     Customer,
     PlanVersion,
@@ -10,7 +12,6 @@ from metering_billing.utils.enums import (
     ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
 )
-from rest_framework import serializers
 
 
 class PeriodComparisonRequestSerializer(serializers.Serializer):
@@ -125,4 +126,16 @@ class PlansSetTransitionToForVersionNumberSerializer(serializers.Serializer):
 class CRMSyncRequestSerializer(serializers.Serializer):
     crm_provider_names = serializers.MultipleChoiceField(
         choices=UnifiedCRMOrganizationIntegration.CRMProvider.labels, required=False
+    )
+
+
+class StripeCancelSubscriptionsSerializer(serializers.Serializer):
+    customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        required=True,
+        source="customer",
+    )
+    stripe_subscription_ids = serializers.ListField(
+        child=serializers.CharField(), required=True
     )

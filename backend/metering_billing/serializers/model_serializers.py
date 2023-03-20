@@ -1955,6 +1955,7 @@ class CustomerDetailSerializer(api_serializers.CustomerSerializer):
                     "crm_provider_url",
                     "payment_provider_url",
                     "stripe_subscriptions",
+                    "upcoming_subscriptions",
                 }
             )
         )
@@ -1983,6 +1984,11 @@ class CustomerDetailSerializer(api_serializers.CustomerSerializer):
                     "read_only": True,
                     "allow_null": False,
                 },
+                "upcoming_subscriptions": {
+                    "required": True,
+                    "read_only": True,
+                    "allow_null": False,
+                },
             },
         }
 
@@ -1992,15 +1998,36 @@ class CustomerDetailSerializer(api_serializers.CustomerSerializer):
     payment_provider_url = serializers.SerializerMethodField()
     invoices = serializers.SerializerMethodField()
     stripe_subscriptions = serializers.SerializerMethodField()
+    upcoming_subscriptions = serializers.SerializerMethodField()
+
+    def get_upcoming_subscriptions(
+        self, obj
+    ) -> SubscriptionRecordSerializer(many=True):
+        try:
+            sr_objs = obj.active_subscription_records
+        except AttributeError:
+            sr_objs = (
+                obj.subscription_records.not_started()
+                .filter(organization=obj.organization)
+                .order_by("start_date")
+            )
+        return SubscriptionRecordSerializer(sr_objs, many=True).data
 
     def get_stripe_subscriptions(
         self, obj
     ) -> StripeSubscriptionRecordSerializer(many=True):
+        from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
+
         if obj.stripe_integration:
-            stripe_subs = SubscriptionRecord.stripe_objects.filter(
-                customer=obj, organization=obj.organization
-            )
-            return StripeSubscriptionRecordSerializer(stripe_subs, many=True).data
+            stripe_subs = PAYMENT_PROCESSOR_MAP[
+                PAYMENT_PROCESSORS.STRIPE
+            ].get_customer_subscriptions()
+            serialized_data = StripeSubscriptionRecordSerializer(
+                stripe_subs, many=True
+            ).data
+            for sub in stripe_subs:
+                sub.delete()
+            return serialized_data
         return []
 
     def get_invoices(self, obj) -> LightweightInvoiceDetailSerializer(many=True):

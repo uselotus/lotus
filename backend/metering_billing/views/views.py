@@ -5,6 +5,12 @@ import pytz
 from django.conf import settings
 from django.db.models import Count, F, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from metering_billing.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
@@ -17,6 +23,7 @@ from metering_billing.serializers.request_serializers import (
     OptionalPeriodRequestSerializer,
     PeriodComparisonRequestSerializer,
     PeriodMetricUsageRequestSerializer,
+    StripeCancelSubscriptionsSerializer,
     URLResponseSerializer,
 )
 from metering_billing.serializers.response_serializers import (
@@ -38,11 +45,6 @@ from metering_billing.utils import (
     make_all_decimals_floats,
 )
 from metering_billing.utils.enums import METRIC_STATUS, METRIC_TYPE, PAYMENT_PROCESSORS
-from rest_framework import serializers, status
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -452,6 +454,43 @@ class ImportPaymentObjectsView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class StripeSubscriptionsView(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
+    permission_classes = [IsAuthenticated | ValidOrganization]
+
+    @extend_schema(
+        request=StripeCancelSubscriptionsSerializer,
+        responses={
+            200: inline_serializer(
+                name="StripeCancelSubscriptionsSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="StripeCancelSubscriptionsFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def cancel_subscriptions(self, request, pk=None):
+        organization = request.organization
+        serializer = StripeCancelSubscriptionsSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        customer = serializer.validated_data["customer"]
+        stripe_subscription_ids = serializer.validated_data["stripe_subscription_ids"]
+        try:
+            PAYMENT_PROCESSOR_MAP["stripe"].cancel_subscriptions(
+                organization, customer, stripe_subscription_ids
+            )
+        except Exception as e:
+            raise ExternalConnectionFailure(f"Error cancelling subscriptions: {e}")
+        return Response(status=status.HTTP_200_OK)
 
 
 class ImportSubscriptionsView(APIView):

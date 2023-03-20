@@ -1377,6 +1377,65 @@ class StripeConnector(PaymentProcesor):
             n += 1
         return n
 
+    def get_customer_subscriptions(self, organization, customer):
+        from metering_billing.models import Organization, SubscriptionRecord
+
+        assert customer.stripe_integration is not None
+
+        if organization.organization_type == Organization.OrganizationType.PRODUCTION:
+            stripe.api_key = self.live_secret_key
+        else:
+            stripe.api_key = self.test_secret_key
+
+        stripe_cust_kwargs = {}
+        if not self.self_hosted:
+            stripe_cust_kwargs[
+                "stripe_account"
+            ] = organization.stripe_integration.stripe_account_id
+
+        stripe_id = customer.stripe_integration.stripe_customer_id
+        stripe_subscriptions = stripe.Subscription.search(
+            query=f"status:'active' AND customer:'{stripe_id}'", **stripe_cust_kwargs
+        )
+        srs = []
+        for stripe_sub in stripe_subscriptions.auto_paging_iter():
+            sr = SubscriptionRecord.stripe_objects.create(
+                organization=organization,
+                customer=customer,
+                billing_plan=None,
+                start_date=datetime.datetime.utcfromtimestamp(
+                    stripe_sub.current_period_start,
+                ).replace(tzinfo=pytz.utc),
+                end_date=datetime.datetime.utcfromtimestamp(
+                    stripe_sub.current_period_end,
+                ).replace(tzinfo=pytz.utc),
+                auto_renew=(not stripe_sub.cancel_at_period_end),
+                is_new=False,
+                invoice_usage_charges=False,
+                stripe_subscription_id=stripe_sub.id,
+            )
+            srs.append(sr)
+        return srs
+
+    def cancel_subscriptions(self, organization, customer, stripe_subscription_ids):
+        from metering_billing.models import Organization
+
+        if organization.organization_type == Organization.OrganizationType.PRODUCTION:
+            stripe.api_key = self.live_secret_key
+        else:
+            stripe.api_key = self.test_secret_key
+
+        stripe_cust_kwargs = {}
+        if not self.self_hosted:
+            stripe_cust_kwargs[
+                "stripe_account"
+            ] = organization.stripe_integration.stripe_account_id
+
+        for stripe_sub_id in stripe_subscription_ids:
+            stripe.Subscription.delete(
+                stripe_sub_id, prorate=True, invoice_now=True, **stripe_cust_kwargs
+            )
+
     def initialize_settings(self, organization, **kwargs):
         from metering_billing.models import OrganizationSetting
 
