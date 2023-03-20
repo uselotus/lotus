@@ -63,7 +63,11 @@ import { components } from "../../gen-types";
 interface Props {
   customer_id: string;
   subscriptions: SubscriptionType[];
+<<<<<<< HEAD
   upcomingSubscriptions: components["schemas"]["StripeSubscriptionRecord"][];
+=======
+  stripeSubscriptions?: components["schemas"]["StripeSubscriptionRecord"][];
+>>>>>>> 0cadcb89 (Getting changes)
   plans: PlanType[] | undefined;
   onAutoRenewOff: (
     subscription_id: string,
@@ -109,7 +113,11 @@ const limit = 6;
 const SubscriptionView: FC<Props> = ({
   customer_id,
   subscriptions,
+<<<<<<< HEAD
   upcomingSubscriptions,
+=======
+  stripeSubscriptions,
+>>>>>>> 0cadcb89 (Getting changes)
   plans,
   onCancel,
   onAutoRenewOff,
@@ -131,6 +139,7 @@ const SubscriptionView: FC<Props> = ({
   const [selectedPlan, setSelectedPlan] = useState<string>();
   const [paginatedSubscriptions, setPaginatedSubscriptions] =
     useState<SubscriptionType[]>(subscriptions);
+
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const [addOnId, setAddOnId] = useState("");
