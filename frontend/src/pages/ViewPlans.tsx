@@ -6,7 +6,7 @@
 import React, { FC, useCallback, useEffect, useState } from "react";
 import { Button, Tabs } from "antd";
 // eslint-disable-next-line import/no-extraneous-dependencies
-import { ArrowRightOutlined, PlusOutlined } from "@ant-design/icons";
+import { PlusOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import {
   useQuery,
@@ -23,20 +23,35 @@ import ViewPlansFilter from "./ViewPlansFilter";
 import useGlobalStore from "../stores/useGlobalstore";
 import { components } from "../gen-types";
 
-export interface Plan extends PlanType {
-  from: boolean;
-}
+// export interface Plan extends PlanType {
+//   from: boolean;
+// }
+type Plan = components["schemas"]["Plan"] & { from: boolean };
 const ViewPlans: FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [yearlyPlans, setYearlyPlans] = useState<PlanType[]>([]);
-  const [yearlyCustom, setYearlyCustom] = useState<PlanType[]>([]);
-  const [monthlyCustom, setMonthlyCustom] = useState<PlanType[]>([]);
-  const [monthlyPlans, setMonthlyPlans] = useState<PlanType[]>([]);
-  const [quarterlyPlans, setQuarterlyPlans] = useState<PlanType[]>([]);
-  const [quarterlyCustom, setQuarterlyCustom] = useState<PlanType[]>([]);
-  const [allPlans, setAllPlans] = useState<PlanType[]>([]);
-  const [allCustom, setAllCustom] = useState<PlanType[]>([]);
+  const [yearlyPlans, setYearlyPlans] = useState<
+    components["schemas"]["Plan"][]
+  >([]);
+  const [yearlyCustom, setYearlyCustom] = useState<
+    components["schemas"]["Plan"][]
+  >([]);
+  const [monthlyCustom, setMonthlyCustom] = useState<
+    components["schemas"]["Plan"][]
+  >([]);
+  const [monthlyPlans, setMonthlyPlans] = useState<
+    components["schemas"]["Plan"][]
+  >([]);
+  const [quarterlyPlans, setQuarterlyPlans] = useState<
+    components["schemas"]["Plan"][]
+  >([]);
+  const [quarterlyCustom, setQuarterlyCustom] = useState<
+    components["schemas"]["Plan"][]
+  >([]);
+  const [allPlans, setAllPlans] = useState<components["schemas"]["Plan"][]>([]);
+  const [allCustom, setAllCustom] = useState<components["schemas"]["Plan"][]>(
+    []
+  );
 
   const [activeKey, setActiveKey] = useState("0");
   const [focus, setFocus] = useState(false);
@@ -58,7 +73,7 @@ const ViewPlans: FC = () => {
   };
   const setPlans = useCallback(
     (
-      data: PlanType[],
+      data: components["schemas"]["Plan"][],
       tabPane?: "Monthly" | "Yearly" | "Quarterly" | "All"
     ) => {
       if (tabPane) {
@@ -139,21 +154,22 @@ const ViewPlans: FC = () => {
     },
     []
   );
-  const { data }: UseQueryResult<PlanType[] | components["schemas"]["Plan"][]> =
-    useQuery<PlanType[] | components["schemas"]["Plan"][]>(
-      ["plan_list"],
-      () =>
-        Plan.getPlans({
-          version_custom_type: "public_only",
-          version_status: "active",
-        }).then((res) => res),
-      {
-        onSuccess: (data) => {
-          setPlans(data as PlanType[]);
-        },
-        refetchOnMount: "always",
-      }
-    );
+  const { data }: UseQueryResult<components["schemas"]["Plan"][]> = useQuery<
+    components["schemas"]["Plan"][]
+  >(
+    ["plan_list"],
+    () =>
+      Plan.getPlans({
+        version_custom_type: "public_only",
+        version_status: ["active"],
+      }).then((res) => res),
+    {
+      onSuccess: (data) => {
+        setPlans(data);
+      },
+      refetchOnMount: "always",
+    }
+  );
   const createTag = useMutation(
     ({
       plan_id,
@@ -177,7 +193,7 @@ const ViewPlans: FC = () => {
           if (index && changedElement) {
             changedElement.tags = newData.tags as PlanType["tags"];
             oldData[index] = changedElement;
-            setPlans(oldData as PlanType[]);
+            setPlans(oldData);
           }
         }
 
@@ -247,7 +263,8 @@ const ViewPlans: FC = () => {
             const element = r[index];
             const idx = element.index;
             for (let j = 0; j < element.tags.length; j++) {
-              if (element.tags[j].tag_name.toLowerCase().includes(tagName)) {
+              const tags = element.tags as any[];
+              if (tags[j].tag_name.toLowerCase().includes(tagName)) {
                 p2 = allPlans[idx] as Plan;
               }
             }
@@ -267,7 +284,8 @@ const ViewPlans: FC = () => {
             const element = rs[index];
             const idx = element.index;
             for (let j = 0; j < element.tags.length; j++) {
-              if (element.tags[j].tag_name.toLowerCase().includes(tagName)) {
+              const tags = element.tags as any[];
+              if (tags[j].tag_name.toLowerCase().includes(tagName)) {
                 p = allPlans[idx] as Plan;
               }
             }
@@ -286,7 +304,8 @@ const ViewPlans: FC = () => {
             const element = r3[index];
             const idx = element.index;
             for (let j = 0; j < element.tags.length; j++) {
-              if (element.tags[j].tag_name.toLowerCase().includes(tagName)) {
+              const tags = element.tags as any[];
+              if (tags[j].tag_name.toLowerCase().includes(tagName)) {
                 p3 = allPlans[idx] as Plan;
               }
             }
@@ -305,7 +324,8 @@ const ViewPlans: FC = () => {
             const element = r4[index];
             const idx = element.index;
             for (let j = 0; j < element.tags.length; j++) {
-              if (element.tags[j].tag_name.toLowerCase().includes(tagName)) {
+              const tags = element.tags as any[];
+              if (tags[j].tag_name.toLowerCase().includes(tagName)) {
                 p4 = allPlans[idx] as Plan;
               }
             }

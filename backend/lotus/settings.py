@@ -328,6 +328,7 @@ KAFKA_EVENTS_TOPIC = KAFKA_PREFIX + config("EVENTS_TOPIC", default="test-topic")
 if type(KAFKA_EVENTS_TOPIC) is bytes:
     KAFKA_EVENTS_TOPIC = KAFKA_EVENTS_TOPIC.decode("utf-8")
 KAFKA_INVOICE_TOPIC = KAFKA_PREFIX + config("INVOICE_TOPIC", default="invoice-test")
+KAFKA_PAYMENT_TOPIC = KAFKA_PREFIX + config("PAYMENT_TOPIC", default="payment-test")
 KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
 KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
 KAFKA_HOST = config("KAFKA_URL", default="127.0.0.1:9092")

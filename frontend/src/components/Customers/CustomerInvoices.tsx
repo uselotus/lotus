@@ -1,3 +1,6 @@
+/* eslint-disable camelcase */
+/* eslint-disable prefer-template */
+/* eslint-disable no-nested-ternary */
 import { Button, Dropdown, Menu, Table, Tag, Tooltip } from "antd";
 import React, { FC, useEffect } from "react";
 import dayjs from "dayjs";
@@ -9,6 +12,7 @@ import { integrationsMap } from "../../types/payment-processor-type";
 
 import { Invoices } from "../../api/api";
 import { InvoiceType, MarkPaymentStatusAsPaid } from "../../types/invoice-type";
+import { components } from "../../gen-types";
 
 const downloadFile = async (s3link) => {
   if (!s3link) {
@@ -18,7 +22,9 @@ const downloadFile = async (s3link) => {
   window.open(s3link);
 };
 
-const getPdfUrl = async (invoice: InvoiceType) => {
+const getPdfUrl = async (
+  invoice: components["schemas"]["CustomerDetail"]["invoices"][0]
+) => {
   try {
     const response = await Invoices.getInvoiceUrl(invoice.invoice_id);
     const pdfUrl = response.url;
@@ -31,12 +37,13 @@ const getPdfUrl = async (invoice: InvoiceType) => {
 const lotusUrl = new URL("./lotusIcon.svg", import.meta.url).href;
 
 interface Props {
-  invoices: InvoiceType[] | undefined;
+  invoices: components["schemas"]["CustomerDetail"]["invoices"] | undefined;
   paymentMethod: string;
 }
 
 const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
-  const [selectedRecord, setSelectedRecord] = React.useState();
+  const [selectedRecord, setSelectedRecord] =
+    React.useState<components["schemas"]["CustomerDetail"]["invoices"][0]>();
   const changeStatus = useMutation(
     (post: MarkPaymentStatusAsPaid) => Invoices.changeStatus(post),
     {
@@ -179,7 +186,10 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
       title: "Status",
       dataIndex: "payment_status",
       key: "status",
-      render: (_, record) => (
+      render: (
+        _,
+        record: components["schemas"]["CustomerDetail"]["invoices"][0]
+      ) => (
         <div className="flex">
           {record.external_payment_obj_type ? (
             record.external_payment_obj_url ? (
@@ -236,37 +246,50 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
             </Tag>
           )}
 
-          <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="ml-auto"
+            aria-hidden
+            onClick={(e) => e.stopPropagation()}
+          >
             <Dropdown
               overlay={
                 <Menu>
-                  <Menu.Item key="1" onClick={() => getPdfUrl(record)}>
+                  <Menu.Item
+                    key="1"
+                    onClick={() => {
+                      if ((import.meta as any).env.VITE_IS_DEMO === "true") {
+                        toast.error("This feature is disabled in the demo", {
+                          position: toast.POSITION.TOP_CENTER,
+                        });
+                      } else {
+                        getPdfUrl(record);
+                      }
+                    }}
+                  >
                     <div className="archiveLabel">Download Invoice PDF</div>
                   </Menu.Item>
-                  {!record.external_payment_obj_type && (
+                  {!record.external_payment_obj_type && record.payment_status === "unpaid" && (
                     <Menu.Item
                       key="2"
                       onClick={() => {
-                        if (selectedRecord === record) {
-                          changeStatus.mutate({
-                            invoice_id: record.invoice_id,
-                            payment_status:
-                              record.payment_status === "unpaid"
-                                ? "paid"
-                                : "unpaid",
+                        if ((import.meta as any).env.VITE_IS_DEMO === "true") {
+                          toast.error("This feature is disabled in the demo", {
+                            position: toast.POSITION.TOP_CENTER,
                           });
                         } else {
-                          setSelectedRecord(record);
-                        }
-                      }}
-                    >
-                      <div className="archiveLabel">
-                        {record.payment_status === "unpaid"
-                          ? "Mark As Paid"
-                          : "Mark As Unpaid"}
-                      </div>
-                    </Menu.Item>
-                  )}
+                          if (selectedRecord === record) {
+                            changeStatus.mutate({
+                              invoice_id: record.invoice_id,
+                              payment_status: "paid",
+                            });
+                          } else {
+                            setSelectedRecord(record);
+                          }
+                        }}
+                      >
+                        <div className="archiveLabel">Mark As Paid</div>
+                      </Menu.Item>
+                    )}
                   {!record.external_payment_obj_type &&
                     paymentMethod &&
                     record.payment_status === "unpaid" && (

@@ -1,7 +1,6 @@
 import React from "react";
 import { Typography } from "antd";
 import capitalize from "../../../helpers/capitalize";
-import { AddOnType } from "../../../types/addon-type";
 import createShortenedText from "../../../helpers/createShortenedText";
 import CopyText from "../../base/CopytoClipboard";
 import useMediaQuery from "../../../hooks/useWindowQuery";

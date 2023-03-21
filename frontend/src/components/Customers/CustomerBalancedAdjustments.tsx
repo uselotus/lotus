@@ -1,3 +1,5 @@
+/* eslint-disable no-nested-ternary */
+/* eslint-disable camelcase */
 import { Table, Button, Select, Dropdown, Menu, Tag } from "antd";
 import React, { FC, useState, useEffect } from "react";
 import dayjs from "dayjs";
@@ -15,6 +17,7 @@ import { Credits } from "../../api/api";
 import PricingUnitDropDown from "../PricingUnitDropDown";
 import { CreditType, DrawdownType } from "../../types/balance-adjustment";
 import CreateCredit from "../../pages/CreateBalanceAdjustment";
+import { components } from "../../gen-types";
 
 interface Props {
   customerId: string;
@@ -42,13 +45,17 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
     setSumOfCredits(total);
   }, [selectedCurrency, transformedData]);
 
-  const { data, isLoading, refetch }: UseQueryResult<CreditType[]> = useQuery<
-    CreditType[]
-  >(["balance_adjustments", customerId], () =>
-    Credits.getCreditsByCustomer({
-      customer_id: customerId,
-    }).then((res) => res)
-  );
+  const {
+    data,
+    refetch,
+  }: UseQueryResult<components["schemas"]["CustomerBalanceAdjustment"][]> =
+    useQuery<components["schemas"]["CustomerBalanceAdjustment"][]>(
+      ["balance_adjustments", customerId],
+      () =>
+        Credits.getCreditsByCustomer({
+          customer_id: customerId,
+        }).then((res) => res)
+    );
 
   const deleteCredit = useMutation(
     (adjustment_id: string) =>
@@ -108,17 +115,6 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
       ),
     },
   ];
-  const navigate = useNavigate();
-
-  // if (isLoading) {
-  //   return (
-  //     <div className="flex">
-  //       <div className="m-auto">
-  //         <LoadingSpinner />
-  //       </div>
-  //     </div>
-  //   );
-  // }
 
   const actionColumn = {
     title: "-",
@@ -218,7 +214,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
           className="hover:!bg-primary-700"
           style={{ background: "#C3986B", borderColor: "#C3986B" }}
           size="large"
-          disabled={false}
+          disabled={(import.meta as any).env.VITE_IS_DEMO === "true"}
           onClick={() => setShowCreateCredit(true)}
         >
           Create Credit
@@ -266,7 +262,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
             No credits have been created for this customer.
           </div>
           <div className="text-base Inter mt-2 mb-2">
-            Credits are used to adjust a customer's balance.
+            Credits are used to adjust a customer&apos;s balance.
           </div>
         </div>
       )}

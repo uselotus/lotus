@@ -194,7 +194,9 @@ const SideBar: FC = () => {
   ];
 
   const menuItems =
-    import.meta.env.VITE_IS_DEMO === "true" ? menuItemsBasic : menuItemsAdmin;
+    (import.meta as any).env.VITE_IS_DEMO === "true"
+      ? menuItemsBasic
+      : menuItemsAdmin;
 
   return (
     <div

@@ -4,8 +4,8 @@
 import React from "react";
 import { Form, Cascader, Input } from "antd";
 import { DefaultOptionType } from "antd/lib/select";
-import { SubscriptionType } from "../../types/subscription-type";
 import { CascaderOptions } from "./CustomerSubscriptionView";
+import { components } from "../../gen-types";
 
 interface ChangeOption {
   value:
@@ -36,8 +36,8 @@ const SwitchMenuComponent = ({
   cascaderOptions,
 }: {
   plan_id: string;
-  subscription_filters: SubscriptionType["subscription_filters"];
-  subscriptions: SubscriptionType[];
+  subscription_filters: components["schemas"]["CustomerDetail"]["subscriptions"][0]["subscription_filters"];
+  subscriptions: components["schemas"]["CustomerDetail"]["subscriptions"];
   plansWithSwitchOptions: (plan_id: string) => PlanOption[] | undefined;
   setCascaderOptions: (args: CascaderOptions) => void;
   cascaderOptions: CascaderOptions;
