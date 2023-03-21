@@ -67,6 +67,7 @@ export interface OrganizationType {
     organization_name: string;
   }[];
   tax_providers: TaxProviderType[];
+  crm_integration_allowed: boolean;
 }
 
 export interface UpdateOrganizationType {

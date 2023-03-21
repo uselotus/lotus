@@ -103,13 +103,13 @@ describe("Testing customer details tab", () => {
     // go to subscription tab
     cy.get(".ant-tabs-tab-btn").contains("Subscriptions").click();
     cy.wait(5000);
-    cy.contains("Active Plans");
+    cy.contains("Active Subscriptions");
     cy.get("h2").contains("Draft Invoice View");
     // go to Invoices tab
     cy.get(".ant-tabs-tab-btn").contains("Invoices").click();
     cy.wait(5000);
     cy.get("h2").contains("Invoices");
-    cy.contains("Source");
+    cy.contains("Connections");
     cy.contains("Amount");
     // go to credits tab
     cy.get(".ant-tabs-tab-btn").contains("Invoices").click();

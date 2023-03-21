@@ -1,4 +1,8 @@
-from metering_billing.models import Customer, PlanVersion
+from metering_billing.models import (
+    Customer,
+    PlanVersion,
+    UnifiedCRMOrganizationIntegration,
+)
 from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganization,
 )
@@ -115,4 +119,22 @@ class PlansSetTransitionToForVersionNumberSerializer(serializers.Serializer):
         required=True,
         help_text="The plan that the current version will transition to.",
         source="transition_to_plan",
+    )
+
+
+class CRMSyncRequestSerializer(serializers.Serializer):
+    crm_provider_names = serializers.MultipleChoiceField(
+        choices=UnifiedCRMOrganizationIntegration.CRMProvider.labels, required=False
+    )
+
+
+class StripeMultiSubscriptionsSerializer(serializers.Serializer):
+    customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        required=True,
+        source="customer",
+    )
+    stripe_subscription_ids = serializers.ListField(
+        child=serializers.CharField(), required=True
     )

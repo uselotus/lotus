@@ -2,12 +2,15 @@ import logging
 import re
 from decimal import Decimal
 
-import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from dateutil import relativedelta
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import DecimalField, F, Q, Sum
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
+import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -34,6 +37,7 @@ from metering_billing.models import (
     SubscriptionRecord,
     Tag,
     TeamInviteToken,
+    UnifiedCRMOrganizationIntegration,
     UsageAlert,
     User,
     WebhookEndpoint,
@@ -64,8 +68,6 @@ from metering_billing.utils.enums import (
     TAX_PROVIDER,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -213,6 +215,7 @@ class OrganizationSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
             "stripe_account_id",
             "braintree_merchant_id",
             "tax_providers",
+            "crm_integration_allowed",
         )
 
     organization_id = OrganizationUUIDField()
@@ -230,6 +233,9 @@ class OrganizationSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     stripe_account_id = serializers.SerializerMethodField()
     braintree_merchant_id = serializers.SerializerMethodField()
     tax_providers = serializers.SerializerMethodField()
+    crm_integration_allowed = serializers.BooleanField(
+        source="team.crm_integration_allowed"
+    )
 
     def get_tax_providers(
         self, obj
@@ -734,32 +740,6 @@ class CustomerWithRevenueSerializer(TimezoneFieldMixin, serializers.ModelSeriali
             )
 
 
-class CustomerDetailSerializer(api_serializers.CustomerSerializer):
-    def update(self, instance, validated_data, behavior="merge"):
-        instance.customer_id = validated_data.get(
-            "customer_id", instance.customer_id if behavior == "merge" else None
-        )
-        instance.tax_rate = validated_data.get(
-            "tax_rate", instance.tax_rate if behavior == "merge" else None
-        )
-        instance.customer_name = validated_data.get(
-            "customer_name", instance.customer_name if behavior == "merge" else None
-        )
-        instance.email = validated_data.get(
-            "email", instance.email if behavior == "merge" else None
-        )
-        instance.payment_provider = validated_data.get(
-            "payment_provider",
-            instance.payment_provider if behavior == "merge" else None,
-        )
-        instance.properties = (
-            {**instance.properties, **validated_data.get("properties", {})}
-            if behavior == "merge"
-            else validated_data.get("properties", {})
-        )
-        return instance
-
-
 class CategoricalFilterDetailSerializer(api_serializers.CategoricalFilterSerializer):
     class Meta(api_serializers.CategoricalFilterSerializer.Meta):
         fields = api_serializers.CategoricalFilterSerializer.Meta.fields
@@ -1097,11 +1077,7 @@ class PlanComponentCreateSerializer(TimezoneFieldMixin, serializers.ModelSeriali
                 "organization": self.context["organization"],
                 "component": pc,
             }
-            cc = ComponentChargeCreateSerializer(context=self.context).create(
-                prepaid_charge
-            )
-            pc.fixed_charge = cc
-            pc.save()
+            ComponentChargeCreateSerializer(context=self.context).create(prepaid_charge)
         return pc
 
 
@@ -1569,14 +1545,14 @@ class PlanCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
             "tags",
         )
         extra_kwargs = {
-            "plan_name": {"write_only": True, "required": True},
-            "plan_duration": {"write_only": True, "required": True},
+            "plan_name": {"write_only": True},
+            "plan_duration": {"write_only": True},
             "initial_external_links": {"write_only": True},
-            "initial_version": {"write_only": True, "required": True},
+            "initial_version": {"write_only": True},
             "tags": {"write_only": True},
         }
 
-    initial_version = InitialPlanVersionCreateSerializer(required=True)
+    initial_version = InitialPlanVersionCreateSerializer()
     initial_external_links = InitialExternalPlanLinkSerializer(
         many=True, required=False
     )
@@ -1607,7 +1583,6 @@ class PlanCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
             initial_version_data["plan"] = plan
             initial_version_data["organization"] = validated_data["organization"]
             initial_version_data["created_by"] = validated_data["created_by"]
-            initial_version_data["make_active"] = True
             PlanVersionCreateSerializer(context=self.context).create(
                 initial_version_data
             )
@@ -1677,6 +1652,23 @@ class AddOnUpdateSerializer(PlanUpdateSerializer):
 class SubscriptionRecordSerializer(api_serializers.SubscriptionRecordSerializer):
     class Meta(api_serializers.SubscriptionRecordSerializer.Meta):
         fields = api_serializers.SubscriptionRecordSerializer.Meta.fields
+
+
+class StripeSubscriptionRecordSerializer(api_serializers.SubscriptionRecordSerializer):
+    class Meta(api_serializers.SubscriptionRecordSerializer.Meta):
+        fields = tuple(
+            set(api_serializers.SubscriptionRecordSerializer.Meta.fields).union(
+                {
+                    "stripe_subscription_id",
+                }
+            )
+        )
+        extra_kwargs = {
+            **api_serializers.PlanVersionSerializer.Meta.extra_kwargs,
+            **{
+                "stripe_subscription_id": {"read_only": True},
+            },
+        }
 
 
 class LightweightSubscriptionRecordSerializer(
@@ -1815,69 +1807,6 @@ class CustomerSummarySerializer(TimezoneFieldMixin, serializers.ModelSerializer)
         return SubscriptionCustomerSummarySerializer(sub_obj, many=True).data
 
 
-class CustomerActionSerializer(CustomerDetailSerializer):
-    class Meta(CustomerDetailSerializer.Meta):
-        model = Customer
-        fields = CustomerDetailSerializer.Meta.fields + ("string_repr", "object_type")
-
-    string_repr = serializers.SerializerMethodField()
-    object_type = serializers.SerializerMethodField()
-
-    def get_string_repr(self, obj):
-        return obj.customer_name
-
-    def get_object_type(self, obj):
-        return "Customer"
-
-
-GFK_MODEL_SERIALIZER_MAPPING = {
-    User: UserActionSerializer,
-    PlanVersion: PlanVersionActionSerializer,
-    Plan: PlanActionSerializer,
-    SubscriptionRecord: SubscriptionActionSerializer,
-    Metric: MetricActionSerializer,
-    Customer: CustomerActionSerializer,
-}
-
-
-class ActivityGenericRelatedField(serializers.Field):
-    """
-    DRF Serializer field that serializers GenericForeignKey fields on the :class:`~activity.models.Action`
-    of known model types to their respective ActionSerializer implementation.
-    """
-
-    def to_representation(self, value):
-        serializer_cls = GFK_MODEL_SERIALIZER_MAPPING.get(type(value), None)
-        return (
-            serializer_cls(value, context=self.context).data
-            if serializer_cls
-            else str(value)
-        )
-
-
-class ActionSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
-    """
-    DRF serializer for :class:`~activity.models.Action`.
-    """
-
-    actor = ActivityGenericRelatedField(read_only=True)
-    action_object = ActivityGenericRelatedField(read_only=True)
-    target = ActivityGenericRelatedField(read_only=True)
-
-    class Meta:
-        model = Action
-        fields = (
-            "id",
-            "actor",
-            "verb",
-            "action_object",
-            "target",
-            "public",
-            "description",
-            "timestamp",
-        )
-
-
 class OrganizationSettingUpdateSerializer(
     TimezoneFieldMixin, serializers.ModelSerializer
 ):
@@ -1932,12 +1861,240 @@ class LightweightInvoiceLineItemSerializer(
 
 class InvoiceDetailSerializer(api_serializers.InvoiceSerializer):
     class Meta(api_serializers.InvoiceSerializer.Meta):
-        fields = api_serializers.InvoiceSerializer.Meta.fields
+        fields = tuple(
+            set(api_serializers.InvoiceSerializer.Meta.fields).union(
+                {
+                    "crm_provider",
+                    "crm_provider_id",
+                    "crm_provider_url",
+                    "external_payment_obj_url",
+                }
+            )
+        )
+        extra_kwargs = {
+            **api_serializers.InvoiceSerializer.Meta.extra_kwargs,
+            **{
+                "crm_provider": {"required": True, "read_only": True},
+                "crm_provider_id": {
+                    "required": True,
+                    "read_only": True,
+                    "allow_null": True,
+                    "allow_blank": False,
+                },
+                "crm_provider_url": {
+                    "required": True,
+                    "read_only": True,
+                    "allow_null": True,
+                },
+                "external_payment_obj_url": {
+                    "required": True,
+                    "read_only": True,
+                    "allow_null": True,
+                },
+            },
+        }
+
+    crm_provider = serializers.SerializerMethodField()
+    crm_provider_id = serializers.SerializerMethodField()
+    crm_provider_url = serializers.SerializerMethodField()
+    external_payment_obj_url = serializers.SerializerMethodField()
+
+    def get_external_payment_obj_url(
+        self, obj
+    ) -> serializers.URLField(allow_null=True, required=True):
+        if obj.external_payment_obj_type == PAYMENT_PROCESSORS.STRIPE:
+            return (
+                f"https://dashboard.stripe.com/invoices/{obj.external_payment_obj_id}"
+            )
+        return None
+
+    def get_crm_provider_url(
+        self, obj
+    ) -> serializers.URLField(allow_null=True, required=True):
+        if obj.salesforce_integration:
+            return obj.salesforce_integration.get_crm_url()
+        return None
+
+    def get_crm_provider(
+        self, obj
+    ) -> serializers.ChoiceField(
+        choices=UnifiedCRMOrganizationIntegration.CRMProvider.labels, required=True
+    ):
+        if obj.salesforce_integration:
+            return UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE.label
+        return None
+
+    def get_crm_provider_id(
+        self, obj
+    ) -> serializers.CharField(allow_null=True, required=True):
+        if obj.salesforce_integration:
+            return obj.salesforce_integration.native_invoice_id
+        return None
 
 
-class LightweightInvoiceSerializer(api_serializers.LightweightInvoiceSerializer):
-    class Meta(api_serializers.LightweightInvoiceSerializer.Meta):
-        fields = api_serializers.LightweightInvoiceSerializer.Meta.fields
+class LightweightInvoiceDetailSerializer(InvoiceDetailSerializer):
+    class Meta(InvoiceDetailSerializer.Meta):
+        fields = tuple(
+            set(InvoiceDetailSerializer.Meta.fields)
+            - set(
+                [
+                    "line_items",
+                    "customer",
+                ]
+            )
+        )
+        extra_kwargs = {**InvoiceDetailSerializer.Meta.extra_kwargs}
+
+
+class CustomerDetailSerializer(api_serializers.CustomerSerializer):
+    class Meta(api_serializers.CustomerSerializer.Meta):
+        fields = tuple(
+            set(api_serializers.CustomerSerializer.Meta.fields).union(
+                {
+                    "crm_provider",
+                    "crm_provider_id",
+                    "crm_provider_url",
+                    "payment_provider_url",
+                    "stripe_subscriptions",
+                    "upcoming_subscriptions",
+                }
+            )
+        )
+        extra_kwargs = {
+            **api_serializers.CustomerSerializer.Meta.extra_kwargs,
+            **{
+                "crm_provider": {"required": True, "read_only": True},
+                "crm_provider_id": {
+                    "required": True,
+                    "read_only": True,
+                    "allow_null": True,
+                    "allow_blank": False,
+                },
+                "crm_provider_url": {
+                    "required": True,
+                    "read_only": True,
+                    "allow_null": True,
+                },
+                "payment_provider_url": {
+                    "required": True,
+                    "read_only": True,
+                    "allow_null": True,
+                },
+                "stripe_subscriptions": {
+                    "required": True,
+                    "read_only": True,
+                    "allow_null": False,
+                },
+                "upcoming_subscriptions": {
+                    "required": True,
+                    "read_only": True,
+                    "allow_null": False,
+                },
+            },
+        }
+
+    crm_provider = serializers.SerializerMethodField()
+    crm_provider_id = serializers.SerializerMethodField()
+    crm_provider_url = serializers.SerializerMethodField()
+    payment_provider_url = serializers.SerializerMethodField()
+    invoices = serializers.SerializerMethodField()
+    stripe_subscriptions = serializers.SerializerMethodField()
+    upcoming_subscriptions = serializers.SerializerMethodField()
+
+    def get_upcoming_subscriptions(
+        self, obj
+    ) -> SubscriptionRecordSerializer(many=True):
+        sr_objs = (
+            obj.subscription_records.not_started()
+            .filter(organization=obj.organization)
+            .order_by("start_date")
+        )
+        return SubscriptionRecordSerializer(sr_objs, many=True).data
+
+    def get_stripe_subscriptions(
+        self, obj
+    ) -> StripeSubscriptionRecordSerializer(many=True):
+        from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
+
+        if obj.stripe_integration:
+            stripe_subs = PAYMENT_PROCESSOR_MAP[
+                PAYMENT_PROCESSORS.STRIPE
+            ].get_customer_subscriptions(obj.organization, obj)
+            serialized_data = StripeSubscriptionRecordSerializer(
+                stripe_subs, many=True
+            ).data
+            for sub in stripe_subs:
+                sub.delete()
+            return serialized_data
+        return []
+
+    def get_invoices(self, obj) -> LightweightInvoiceDetailSerializer(many=True):
+        try:
+            timeline = obj.active_invoices
+        except AttributeError:
+            timeline = obj.invoices.filter(
+                payment_status__in=[
+                    Invoice.PaymentStatus.PAID,
+                    Invoice.PaymentStatus.UNPAID,
+                ],
+                organization=obj.organization,
+            ).order_by("-issue_date")
+        timeline = LightweightInvoiceDetailSerializer(timeline, many=True).data
+        return timeline
+
+    def get_payment_provider_url(
+        self, obj
+    ) -> serializers.URLField(allow_null=True, required=True):
+        if obj.stripe_integration:
+            return f"https://dashboard.stripe.com/customers/{obj.stripe_integration.stripe_customer_id}"
+        return None
+
+    def get_crm_provider_url(
+        self, obj
+    ) -> serializers.URLField(allow_null=True, required=True):
+        if obj.salesforce_integration:
+            return obj.salesforce_integration.get_crm_url()
+        return None
+
+    def get_crm_provider(
+        self, obj
+    ) -> serializers.ChoiceField(
+        choices=UnifiedCRMOrganizationIntegration.CRMProvider.labels, required=True
+    ):
+        if obj.salesforce_integration:
+            return UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE.label
+        return None
+
+    def get_crm_provider_id(
+        self, obj
+    ) -> serializers.CharField(allow_null=True, required=True):
+        if obj.salesforce_integration:
+            return obj.salesforce_integration.native_customer_id
+        return None
+
+    def update(self, instance, validated_data, behavior="merge"):
+        instance.customer_id = validated_data.get(
+            "customer_id", instance.customer_id if behavior == "merge" else None
+        )
+        instance.tax_rate = validated_data.get(
+            "tax_rate", instance.tax_rate if behavior == "merge" else None
+        )
+        instance.customer_name = validated_data.get(
+            "customer_name", instance.customer_name if behavior == "merge" else None
+        )
+        instance.email = validated_data.get(
+            "email", instance.email if behavior == "merge" else None
+        )
+        instance.payment_provider = validated_data.get(
+            "payment_provider",
+            instance.payment_provider if behavior == "merge" else None,
+        )
+        instance.properties = (
+            {**instance.properties, **validated_data.get("properties", {})}
+            if behavior == "merge"
+            else validated_data.get("properties", {})
+        )
+        return instance
 
 
 class InvoiceListFilterSerializer(api_serializers.InvoiceListFilterSerializer):
@@ -2268,3 +2425,68 @@ class PlanVersionHistoricalSubscriptionSerializer(
 
     customer_id = serializers.CharField(source="customer.customer_id")
     customer_name = serializers.CharField(source="customer.customer_name")
+    customer_name = serializers.CharField(source="customer.customer_name")
+    customer_name = serializers.CharField(source="customer.customer_name")
+
+
+class CustomerActionSerializer(CustomerDetailSerializer):
+    class Meta(CustomerDetailSerializer.Meta):
+        model = Customer
+        fields = CustomerDetailSerializer.Meta.fields + ("string_repr", "object_type")
+
+    string_repr = serializers.SerializerMethodField()
+    object_type = serializers.SerializerMethodField()
+
+    def get_string_repr(self, obj):
+        return obj.customer_name
+
+    def get_object_type(self, obj):
+        return "Customer"
+
+
+GFK_MODEL_SERIALIZER_MAPPING = {
+    User: UserActionSerializer,
+    PlanVersion: PlanVersionActionSerializer,
+    Plan: PlanActionSerializer,
+    SubscriptionRecord: SubscriptionActionSerializer,
+    Metric: MetricActionSerializer,
+    Customer: CustomerActionSerializer,
+}
+
+
+class ActivityGenericRelatedField(serializers.Field):
+    """
+    DRF Serializer field that serializers GenericForeignKey fields on the :class:`~activity.models.Action`
+    of known model types to their respective ActionSerializer implementation.
+    """
+
+    def to_representation(self, value):
+        serializer_cls = GFK_MODEL_SERIALIZER_MAPPING.get(type(value), None)
+        return (
+            serializer_cls(value, context=self.context).data
+            if serializer_cls
+            else str(value)
+        )
+
+
+class ActionSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
+    """
+    DRF serializer for :class:`~activity.models.Action`.
+    """
+
+    actor = ActivityGenericRelatedField(read_only=True)
+    action_object = ActivityGenericRelatedField(read_only=True)
+    target = ActivityGenericRelatedField(read_only=True)
+
+    class Meta:
+        model = Action
+        fields = (
+            "id",
+            "actor",
+            "verb",
+            "action_object",
+            "target",
+            "public",
+            "description",
+            "timestamp",
+        )

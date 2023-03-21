@@ -6,6 +6,7 @@ from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
+
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
@@ -27,9 +28,30 @@ from metering_billing.utils.enums import (
 from metering_billing.webhooks import invoice_past_due_webhook
 
 logger = logging.getLogger("django.server")
-EVENT_CACHE_FLUSH_COUNT = settings.EVENT_CACHE_FLUSH_COUNT
-EVENT_CACHE_FLUSH_SECONDS = settings.EVENT_CACHE_FLUSH_SECONDS
 POSTHOG_PERSON = settings.POSTHOG_PERSON
+
+
+@shared_task
+def sync_all_crm_integrations():
+    from metering_billing.models import UnifiedCRMOrganizationIntegration
+
+    for integration in UnifiedCRMOrganizationIntegration.objects.all():
+        integration.perform_sync()
+
+
+@shared_task
+def sync_single_organization_integrations(
+    organization_integration_pk, crm_provider_values=None
+):
+    from metering_billing.models import UnifiedCRMOrganizationIntegration
+
+    if crm_provider_values is None:
+        crm_provider_values = UnifiedCRMOrganizationIntegration.CRMProvider.values
+    for integration in UnifiedCRMOrganizationIntegration.objects.filter(
+        organization_id=organization_integration_pk,
+        crm_provider__in=crm_provider_values,
+    ):
+        integration.perform_sync()
 
 
 @shared_task

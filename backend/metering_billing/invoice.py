@@ -747,6 +747,9 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
 
 
 def generate_external_payment_obj(invoice):
+    from metering_billing.models import UnifiedCRMOrganizationIntegration
+    from metering_billing.views.crm_views import send_invoice_to_salesforce
+
     customer = invoice.customer
     pp = customer.payment_provider
     if pp in PAYMENT_PROCESSOR_MAP and PAYMENT_PROCESSOR_MAP[pp].working():
@@ -754,12 +757,20 @@ def generate_external_payment_obj(invoice):
         customer_conn = pp_connector.customer_connected(customer)
         org_conn = pp_connector.organization_connected(invoice.organization)
         if customer_conn and org_conn:
-            external_id = pp_connector.create_payment_object(invoice)
+            external_id, external_status = pp_connector.create_payment_object(invoice)
             if external_id:
                 invoice.external_payment_obj_id = external_id
                 invoice.external_payment_obj_type = pp
+                invoice.external_payment_obj_status = external_status
                 invoice.save()
                 return invoice
+    if customer.salesforce_integration:
+        connection = customer.organization.unified_crm_organization_links.get(
+            crm_provider=UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE
+        )
+        access_token = connection.access_token
+        accountId = customer.salesforce_integration.unified_account_id
+        send_invoice_to_salesforce(invoice, customer, accountId, access_token)
     return None
 
 

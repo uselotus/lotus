@@ -232,8 +232,10 @@ SUPPORTED_CURRENCIES = [
     ("Brazilian Real", "BRL", "R$"),
     ("Danish Krone", "DKK", "kr"),
     ("Nigerian Naira", "NGN", "₦"),
+    ("Russian Ruble", "RUB", "₽"),
+    ("Kazakhstani Tenge", "KZT", "₸"),
 ]
-SUPPORTED_CURRENCIES_VERSION = 2
+SUPPORTED_CURRENCIES_VERSION = 3
 
 
 class ACCOUNTS_RECEIVABLE_TRANSACTION_TYPES(models.IntegerChoices):
@@ -262,6 +264,7 @@ class ORGANIZATION_SETTING_NAMES(models.TextChoices):
         _("Subscription Filter Keys"),
     )
     PAYMENT_GRACE_PERIOD = ("payment_grace_period", _("Payment Grace Period"))
+    CRM_CUSTOMER_SOURCE = ("crm_customer_source", _("CRM Customer Source"))
 
 
 class TAG_GROUP(models.TextChoices):
@@ -272,6 +275,7 @@ class ORGANIZATION_SETTING_GROUPS(models.TextChoices):
     STRIPE = ("stripe", _("Stripe"))
     BRAINTREE = ("braintree", _("Braintree"))
     BILLING = ("billing", _("Billing"))
+    CRM = ("crm", _("CRM"))
 
 
 class TAX_PROVIDER(models.IntegerChoices):

@@ -22,6 +22,7 @@ from rest_framework import routers
 
 import api.views as api_views
 from metering_billing.views import auth_views, organization_views, webhook_views
+from metering_billing.views.crm_views import CRMUnifiedAPIView
 from metering_billing.views.model_views import (
     ActionViewSet,
     AddOnVersionViewSet,
@@ -50,6 +51,7 @@ from metering_billing.views.views import (
     ChangeUserOrganizationView,
     ImportCustomersView,
     ImportPaymentObjectsView,
+    ImportSubscriptionsView,
     NetsuiteCustomerCSVView,
     NetsuiteInvoiceCSVView,
     PeriodEventsView,
@@ -57,6 +59,7 @@ from metering_billing.views.views import (
     PeriodMetricUsageView,
     PeriodSubscriptionsView,
     PlansByNumCustomersView,
+    StripeSubscriptionsView,
     TimezonesView,
     TransferSubscriptionsView,
 )
@@ -201,6 +204,11 @@ urlpatterns = [
         name="netsuite_customers",
     ),
     path(
+        "app/import_subscriptions/",
+        ImportSubscriptionsView.as_view(),
+        name="import_subscriptions",
+    ),
+    path(
         "app/transfer_subscriptions/",
         TransferSubscriptionsView.as_view(),
         name="transfer_subscriptions",
@@ -215,11 +223,6 @@ urlpatterns = [
         PaymentProcesorView.as_view(),
         name="payment_providers",
     ),
-    # path(
-    #     "app/experimental_to_active/",
-    #     ExperimentalToActiveView.as_view(),
-    #     name="expertimental-to-active",
-    # ),
     path("app/login/", auth_views.LoginView.as_view(), name="api-login"),
     path("app/demo_login/", auth_views.DemoLoginView.as_view(), name="api-demo-login"),
     path("app/logout/", auth_views.LogoutView.as_view(), name="api-logout"),
@@ -254,10 +257,42 @@ urlpatterns = [
     path(
         "stripe/webhook/", webhook_views.stripe_webhook_endpoint, name="stripe-webhook"
     ),
+    # crm
+    path(
+        "app/crm/link_token/",
+        CRMUnifiedAPIView.as_view({"post": "link_token"}),
+        name="link_token",
+    ),
+    path(
+        "app/crm/store_token/",
+        CRMUnifiedAPIView.as_view({"post": "store_token"}),
+        name="store_token",
+    ),
+    path(
+        "app/crm/",
+        CRMUnifiedAPIView.as_view({"get": "get_crms"}),
+        name="get_crms",
+    ),
+    path(
+        "app/crm/set_customer_source/",
+        CRMUnifiedAPIView.as_view({"post": "update_crm_customer_source_of_truth"}),
+        name="set_customer_source",
+    ),
+    path(
+        "app/stripe/cancel_subscriptions/",
+        StripeSubscriptionsView.as_view({"post": "cancel_subscriptions"}),
+        name="stripe_cancel_subscriptions",
+    ),
+    path(
+        "app/stripe/cancel_at_period_end_subscriptions/",
+        StripeSubscriptionsView.as_view({"post": "turn_off_auto_renewal"}),
+        name="stripe_cancel_at_period_end_subscriptions",
+    ),
 ]
 
 if PROFILER_ENABLED:
     urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
 
 if DEBUG:
+    urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]
     urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]

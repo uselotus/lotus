@@ -1,6 +1,8 @@
 import stripe
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
+from metering_billing.models import Invoice
+from metering_billing.utils.enums import PAYMENT_PROCESSORS
 from rest_framework import status
 from rest_framework.decorators import (
     api_view,
@@ -8,9 +10,6 @@ from rest_framework.decorators import (
     permission_classes,
 )
 from rest_framework.response import Response
-
-from metering_billing.models import Invoice
-from metering_billing.utils.enums import PAYMENT_PROCESSORS
 
 STRIPE_WEBHOOK_SECRET = settings.STRIPE_WEBHOOK_SECRET
 STRIPE_TEST_SECRET_KEY = settings.STRIPE_TEST_SECRET_KEY
@@ -25,6 +24,17 @@ def _invoice_paid_handler(event):
     ).first()
     if matching_invoice:
         matching_invoice.payment_status = Invoice.PaymentStatus.PAID
+        matching_invoice.save()
+
+
+def _invoice_updated_handler(event):
+    invoice = event["data"]["object"]
+    id = invoice.id
+    matching_invoice = Invoice.objects.filter(
+        external_payment_obj_type=PAYMENT_PROCESSORS.STRIPE, external_payment_obj_id=id
+    ).first()
+    if matching_invoice:
+        matching_invoice.external_payment_obj_status = invoice.status
         matching_invoice.save()
 
 
@@ -50,6 +60,9 @@ def stripe_webhook_endpoint(request):
     # Handle the checkout.session.completed event
     if event["type"] == "invoice.paid":
         _invoice_paid_handler(event)
+
+    if event["type"] == "invoice.updated":
+        _invoice_updated_handler(event)
 
     # Passed signature verification
     return Response(status=status.HTTP_200_OK)

@@ -44,8 +44,6 @@ except Exception:
     pass
 
 VITE_API_URL = config("VITE_API_URL", default="http://localhost:8000")
-EVENT_CACHE_FLUSH_SECONDS = config("EVENT_CACHE_FLUSH_SECONDS", default=180, cast=int)
-EVENT_CACHE_FLUSH_COUNT = config("EVENT_CACHE_FLUSH_COUNT", default=1000, cast=int)
 DOCKERIZED = config("DOCKERIZED", default=False, cast=bool)
 DEBUG = config("DEBUG", default=False, cast=bool)
 PROFILER_ENABLED = config("PROFILER_ENABLED", default=False, cast=bool)
@@ -114,6 +112,8 @@ CRONITOR_API_KEY = config("CRONITOR_API_KEY", default="")
 CUSTOMER_ID_NAMESPACE = uuid.UUID("D1337E57-E6A0-4650-B1C3-D6487AFFB8CA")
 EVENT_NAME_NAMESPACE = uuid.UUID("843D7005-63DE-4B72-B731-77E2866DCCFF")
 IDEMPOTENCY_ID_NAMESPACE = uuid.UUID("904C0FFB-7005-414E-9B7D-8E3C5DDE266D")
+# CRM Integration
+VESSEL_API_KEY = config("VESSEL_API_KEY", default=None)
 
 if SENTRY_DSN != "":
     if not DEBUG:
@@ -432,12 +432,19 @@ CELERY_TIMEZONE = "UTC"
 if REDIS_URL is not None:
     CACHES = {
         "default": {
+            "BACKEND": "cache_fallback.FallbackCache",
+        },
+        "main_cache": {
             "BACKEND": "django_redis.cache.RedisCache",
             "LOCATION": f"{REDIS_URL}/0",
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
             },
-        }
+        },
+        "fallback_cache": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "unique-snowflake",
+        },
     }
 else:
     CACHES = {

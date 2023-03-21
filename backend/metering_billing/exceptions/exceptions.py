@@ -9,6 +9,24 @@ class OrganizationMismatch(APIException):
     default_code = "authentication_failure"
 
 
+class CRMNotSupported(APIException):
+    status_code = 400
+    default_detail = "CRM not supported"
+    default_code = "crm_not_supported"
+
+
+class EnvironmentNotConnected(APIException):
+    status_code = 400
+    default_detail = "Environment not connected to Unified CRM API"
+    default_code = "environment_not_connected"
+
+
+class CRMIntegrationNotAllowed(APIException):
+    status_code = 400
+    default_detail = "CRM Integration not allowed for Team"
+    default_code = "crm_integration_not_allowed"
+
+
 class SubscriptionAlreadyEnded(APIException):
     status_code = 400
     default_detail = "Subscription already ended"

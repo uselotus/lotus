@@ -50,6 +50,12 @@ import {
   TransferSub,
   UpdatePaymentProcessorSettingParams,
 } from "../types/payment-processor-type";
+import {
+  CRMConnectionStatus,
+  CRMProviderType,
+  CRMSetting,
+  CRMSettingsParams,
+} from "../types/crm-types";
 import { CustomerCostType, RevenueType } from "../types/revenue-type";
 import {
   SubscriptionTotals,
@@ -99,7 +105,7 @@ const cookies = new Cookies();
 
 axios.defaults.headers.common.Authorization = `Token ${cookies.get("Token")}`;
 
-const API_HOST = import.meta.env.VITE_API_URL;
+const API_HOST = (import.meta as any).env.VITE_API_URL;
 
 axios.defaults.baseURL = API_HOST;
 // axios.defaults.xsrfCookieName = "csrftoken";
@@ -115,6 +121,11 @@ export const instance = axios.create({
 const responseBody = (response: AxiosResponse) => response.data;
 type GetPlansQuery = operations["app_plans_list"]["parameters"];
 
+interface StripeMultiSubscriptionsParams {
+  customer_id: string;
+  stripe_subscription_ids: string[];
+}
+
 const requests = {
   get: (url: string, params?: object) =>
     instance.get(url, params).then(responseBody),
@@ -129,14 +140,16 @@ const requests = {
 export const Customer = {
   getCustomers: (): Promise<CustomerSummary[]> =>
     requests.get("app/customers/summary/"),
-  getCustomerDetail: (customer_id: string): Promise<CustomerType> =>
+  getCustomerDetail: (
+    customer_id: string
+  ): Promise<components["schemas"]["CustomerDetail"]> =>
     requests.get(`app/customers/${customer_id}/`),
   createCustomer: (post: CustomerCreateType): Promise<CustomerType> =>
     requests.post("app/customers/", post),
   getCustomerTotals: (): Promise<CustomerTotal[]> =>
     requests.get("app/customers/totals/"),
   deleteCustomer: (customer_id: string): Promise<CustomerType> =>
-    requests.post(`app/customers/${customer_id}/delete/`, {}),
+    requests.post(`app/ /${customer_id}/delete/`, {}),
   updateCustomer: (
     customer_id: string,
     default_currency_code: string,
@@ -164,8 +177,8 @@ export const Customer = {
     start_date: string,
     end_date: string
   ): Promise<CustomerCostType> {
-    return requests.get(`app/cost_analysis/`, {
-      params: { customer_id, start_date, end_date },
+    return requests.get(`app/customers/${customer_id}/cost_analysis/`, {
+      params: { start_date, end_date },
     });
   },
   createSubscription: (
@@ -590,7 +603,7 @@ export const PaymentProcessor = {
   transferSubscriptions: (
     post: TransferSub
   ): Promise<PaymentProcessorImportCustomerResponse> =>
-    requests.post("app/transfer_subscriptions/", post),
+    requests.post("app/import_subscriptions/", post),
 
   // Get Stripe Setting
   getPaymentProcessorSettings: (
@@ -605,6 +618,14 @@ export const PaymentProcessor = {
     requests.patch(`app/organization_settings/${data.setting_id}/`, {
       setting_values: data.setting_values,
     }),
+
+  cancelStripeSubscriptions: (
+    data: StripeMultiSubscriptionsParams
+  ): Promise<any> => requests.post(`app/stripe/cancel_subscriptions/`, data),
+  cancelAtPeriodEndStripeSubscriptions: (
+    data: StripeMultiSubscriptionsParams
+  ): Promise<any> =>
+    requests.post(`app/stripe/cancel_at_period_end_subscriptions/`, data),
 };
 
 export const PaymentProcessorIntegration = {
@@ -678,4 +699,31 @@ export const Netsuite = {
         end_date: endDate?.toISOString().split("T")[0] ?? undefined,
       },
     }),
+};
+
+export const CRM = {
+  getCRMConnectionStatus: (): Promise<CRMConnectionStatus[]> =>
+    requests.get("app/crm/"),
+  getLinkToken: (): Promise<{ link_token: string }> =>
+    requests.post("app/crm/link_token/", {}),
+  storePublicToken: (public_token: string): Promise<{ success: boolean }> =>
+    requests.post("app/crm/store_token/", { public_token }),
+  setCustomerSourceOfTruth: (
+    crm_provider_name: string,
+    lotus_is_source: boolean
+  ): Promise<{ success: boolean }> =>
+    requests.post("app/crm/set_customer_source/", {
+      crm_provider_name,
+      lotus_is_source,
+    }),
+  syncCRM: (
+    organization_id: string,
+    crm_provider_names?: CRMProviderType[]
+  ): Promise<{ success: boolean; message: string }> =>
+    requests.post(`app/organizations/${organization_id}/sync_crm/`, {
+      crm_provider_names,
+    }),
+
+  getCRMSettings: (data: CRMSettingsParams): Promise<CRMSetting[]> =>
+    requests.get("app/organization_settings/", { params: data }),
 };

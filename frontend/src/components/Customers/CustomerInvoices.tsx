@@ -85,32 +85,71 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
 
   const columns = [
     {
-      title: "Source",
-      dataIndex: "source",
-      key: "source",
+      title: "Connections",
+      dataIndex: "connections",
+      key: "connections",
       render: (_, record) => (
-        <div className="flex">
-          <Tooltip
-            title={
-              record.external_payment_obj_type === "stripe"
-                ? "Stripe"
-                : record.external_payment_obj_type === "braintree"
-                ? "Braintree"
-                : "Lotus"
-            }
-          >
-            <img
-              className="sourceIcon"
-              src={
-                record.external_payment_obj_type === "stripe"
-                  ? integrationsMap.stripe.icon
-                  : record.external_payment_obj_type === "braintree"
-                  ? integrationsMap.braintree.icon
-                  : lotusUrl
-              }
-              alt="Source icon"
-            />
-          </Tooltip>
+        <div className="flex gap-1">
+          {record.external_payment_obj_type && (
+            <Tooltip title={record.external_payment_obj_id}>
+              {record.external_payment_obj_url ? (
+                <a
+                  href={record.external_payment_obj_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <img
+                    className="sourceIcon"
+                    src={
+                      record.external_payment_obj_type === "stripe"
+                        ? integrationsMap.stripe.icon
+                        : record.external_payment_obj_type === "braintree"
+                        ? integrationsMap.braintree.icon
+                        : lotusUrl
+                    }
+                    alt={`${record.external_payment_obj_type} icon`}
+                  />
+                </a>
+              ) : (
+                <img
+                  className="sourceIcon"
+                  src={
+                    record.external_payment_obj_type === "stripe"
+                      ? integrationsMap.stripe.icon
+                      : integrationsMap.braintree.icon
+                  }
+                  alt={`${record.external_payment_obj_type} icon`}
+                />
+              )}
+            </Tooltip>
+          )}
+          {record.crm_provider && (
+            <Tooltip title={record.crm_provider_id}>
+              {record.crm_provider_url ? (
+                <a
+                  href={record.crm_provider_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <img
+                    className="sourceIcon"
+                    src={integrationsMap.salesforce.icon}
+                    alt={`${record.crm_provider} icon`}
+                  />
+                </a>
+              ) : (
+                <img
+                  className="sourceIcon"
+                  src={
+                    record.crm_provider === "salesforce"
+                      ? integrationsMap.salesforce.icon
+                      : lotusUrl
+                  }
+                  alt={`${record.crm_provider} icon`}
+                />
+              )}
+            </Tooltip>
+          )}
         </div>
       ),
     },
@@ -141,12 +180,61 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
       key: "status",
       render: (_, record) => (
         <div className="flex">
-          <Tag
-            color={record.payment_status === "paid" ? "green" : "red"}
-            key={record.payment_status}
-          >
-            {record.payment_status.toUpperCase()}
-          </Tag>
+          {record.external_payment_obj_type ? (
+            record.external_payment_obj_url ? (
+              <Tooltip
+                title={
+                  "Source: " +
+                  (record.external_payment_obj_type === "stripe"
+                    ? "Stripe"
+                    : "Braintree")
+                }
+              >
+                <a
+                  href={record.external_payment_obj_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Tag
+                    color={"grey"}
+                    key={
+                      record.external_payment_obj_status ||
+                      record.payment_status
+                    }
+                  >
+                    {record.external_payment_obj_status ||
+                      record.payment_status}
+                  </Tag>
+                </a>
+              </Tooltip>
+            ) : (
+              <Tooltip
+                title={
+                  "Source: " +
+                  (record.external_payment_obj_type === "stripe"
+                    ? "Stripe"
+                    : "Braintree")
+                }
+              >
+                <Tag
+                  color={"grey"}
+                  key={
+                    record.external_payment_obj_status || record.payment_status
+                  }
+                >
+                  {record.external_payment_obj_status || record.payment_status}
+                </Tag>
+              </Tooltip>
+            )
+          ) : (
+            <Tag
+              color={record.payment_status === "paid" ? "green" : "red"}
+              key={record.payment_status}
+            >
+              {record.payment_status.toUpperCase()}
+            </Tag>
+          )}
+
           <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
             <Dropdown
               overlay={
@@ -191,7 +279,9 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
                           }
                         }}
                       >
-                        <div className="archiveLabel">Send to Processor</div>
+                        <div className="archiveLabel">
+                          Send to Payment Processor
+                        </div>
                       </Menu.Item>
                     )}
                 </Menu>

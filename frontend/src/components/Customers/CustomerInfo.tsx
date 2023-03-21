@@ -29,8 +29,10 @@ import Badge from "../base/Badges/Badges";
 import { fourDP } from "../../helpers/fourDP";
 import { timezones } from "../../assets/timezones";
 
+import { components } from "../../gen-types";
+
 interface CustomerInfoViewProps {
-  data: CustomerType;
+  data: components["schemas"]["CustomerDetail"];
   cost_data: CustomerCostType;
   pricingUnits: CurrencyType[];
   onDateChange: (start_date: string, end_date: string) => void;
@@ -231,7 +233,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
         <div className="col-span-2">
           <CustomerCard
             className={`overflow-x-clip ${
-              !isEditing ? "h-[215px]" : "min-h-[230px]"
+              !isEditing ? "h-[235px]" : "min-h-[250px]"
             }  `}
           >
             <CustomerCard.Heading>
@@ -406,7 +408,6 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                     )}
                   </div>
                 </CustomerCard.Item>
-
                 <CustomerCard.Item>
                   <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
                     Timezone
@@ -442,6 +443,10 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                     )}
                   </div>
                 </CustomerCard.Item>
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4"></div>
+                  <div className="flex gap-1"></div>
+                </CustomerCard.Item>
               </CustomerCard.Block>
               <CustomerCard.Block className="w-full p-2 -mt-4 ml-auto text-[14px] justify-between">
                 <CustomerCard.Item>
@@ -454,14 +459,14 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                       {" "}
                       <div>
                         {createShortenedText(
-                          data.email as string,
+                          data?.email || ("" as string),
                           windowWidth >= 2500
                         )}
                       </div>
                       <CopyText
                         showIcon
                         onlyIcon
-                        textToCopy={data.email as string}
+                        textToCopy={data?.email || ("" as string)}
                       />
                     </div>
                   </div>
@@ -530,19 +535,77 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   {data.payment_provider ? (
                     <Tooltip title={data.payment_provider_id}>
                       <div className="flex gap-1">
+                        {data.payment_provider_url ? (
+                          <a
+                            href={data.payment_provider_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <img
+                              width={25}
+                              src={
+                                data.payment_provider === "stripe"
+                                  ? integrationsMap.stripe.icon
+                                  : integrationsMap.braintree.icon
+                              }
+                              alt="payment provider logo"
+                            />
+                          </a>
+                        ) : (
+                          <div className="Inter">
+                            {data.payment_provider === "stripe" ? (
+                              <img
+                                width={25}
+                                src={integrationsMap.stripe.icon}
+                                alt="stripe logo"
+                              />
+                            ) : data.payment_provider === "braintree" ? (
+                              <img
+                                width={25}
+                                src={integrationsMap.braintree.icon}
+                                alt="braintree logo"
+                              />
+                            ) : (
+                              "N/A"
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </Tooltip>
+                  ) : (
+                    <div className="flex gap-1">
+                      <div className="Inter">N/A</div>
+                    </div>
+                  )}
+                </CustomerCard.Item>
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    CRM Connected
+                  </div>
+                  {data.crm_provider ? (
+                    <Tooltip title={data.crm_provider_id}>
+                      <div className="flex gap-1">
                         <div className="Inter">
-                          {data.payment_provider === "stripe" ? (
-                            <img
-                              width={25}
-                              src={integrationsMap.stripe.icon}
-                              alt="stripe logo"
-                            />
-                          ) : data.payment_provider === "braintree" ? (
-                            <img
-                              width={25}
-                              src={integrationsMap.braintree.icon}
-                              alt="braintree logo"
-                            />
+                          {data.crm_provider === "salesforce" ? (
+                            data.crm_provider_url ? (
+                              <a
+                                href={data.crm_provider_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <img
+                                  width={25}
+                                  src={integrationsMap.salesforce.icon}
+                                  alt="salesforce logo"
+                                />
+                              </a>
+                            ) : (
+                              <img
+                                width={25}
+                                src={integrationsMap.salesforce.icon}
+                                alt="salesforce logo"
+                              />
+                            )
                           ) : (
                             "N/A"
                           )}
@@ -560,7 +623,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
           </CustomerCard>
         </div>
         <div className="col-span-1 mr-8">
-          <CustomerCard className="h-[215px]">
+          <CustomerCard className="h-[235px]">
             <CustomerCard.Heading>
               <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
                 Revenue Details
@@ -575,7 +638,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   </div>
                   <div className="Inter">
                     {data.default_currency.symbol}
-                    {cost_data.total_revenue.toFixed(2)}
+                    {(cost_data.total_revenue || 0).toFixed(2)}
                   </div>
                 </CustomerCard.Item>
 
@@ -585,7 +648,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   </div>
                   <div className="Inter">
                     {data.default_currency.symbol}
-                    {cost_data.total_cost.toFixed(2)}
+                    {(cost_data.total_cost || 0).toFixed(2)}
                   </div>
                 </CustomerCard.Item>
 
