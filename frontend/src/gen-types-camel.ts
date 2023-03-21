@@ -518,23 +518,14 @@ export interface components {
       initialVersion: components["schemas"]["InitialAddOnVersionCreateRequest"];
     };
     AddOnDetail: {
-<<<<<<< HEAD
-      /** @description The description of the add-on plan. */
-      addonDescription: string;
-      /** @description This addon's versions. */
-      versions: (components["schemas"]["AddOnVersion"])[];
       /** @description The name of the add-on plan. */
       addonName: string;
-=======
-      /** @description The name of the add-on plan. */
-      addonName: string;
-      /** @description This addon's versions. */
-      versions: (components["schemas"]["AddOnVersion"])[];
       /** @description The description of the add-on plan. */
       addonDescription: string;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
       /** @description The ID of the add-on plan. */
       addonId: string;
+      /** @description This addon's versions. */
+      versions: (components["schemas"]["AddOnVersion"])[];
     };
     AddOnSubscriptionRecord: {
       addonSubscriptionId: string;
@@ -1247,25 +1238,15 @@ export interface components {
       backtestName: string;
     };
     BacktestDetail: {
-<<<<<<< HEAD
-      backtestName: string;
       backtestId: string;
-      backtestSubstitutions: (components["schemas"]["BacktestSubstitution"])[];
       /** Format: date */
       endDate: string;
-      /** Format: date */
-      startDate: string;
+      backtestName: string;
       kpis?: {
         [key: string]: unknown | undefined;
       };
+      backtestSubstitutions: (components["schemas"]["BacktestSubstitution"])[];
       backtestResults: components["schemas"]["AllSubstitutionResults"];
-      /** Format: date-time */
-      timeCreated?: string;
-=======
-      kpis?: {
-        [key: string]: Record<string, never> | undefined;
-      };
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
       /**
        * @description * `running` - Running
        * * `completed` - Completed
@@ -1273,19 +1254,10 @@ export interface components {
        * @enum {string}
        */
       status?: "running" | "completed" | "failed";
-<<<<<<< HEAD
-=======
-      /** Format: date */
-      startDate: string;
-      backtestName: string;
-      backtestSubstitutions: (components["schemas"]["BacktestSubstitution"])[];
-      backtestResults: components["schemas"]["AllSubstitutionResults"];
       /** Format: date-time */
       timeCreated?: string;
       /** Format: date */
-      endDate: string;
-      backtestId: string;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
+      startDate: string;
     };
     BacktestSubstitution: {
       newPlan: components["schemas"]["PlanVersionDetail"];
@@ -2067,15 +2039,14 @@ export interface components {
       numAddonsDeleted: number;
     };
     CustomerDetail: {
-<<<<<<< HEAD
-      /** @description A list of tax providers that are enabled for this customer. The list is ordered, meaning we will succesively try to calculate taxes using each provider until we find one that works. */
-      taxProviders: readonly ("taxjar" | "lotus" | "netsuite")[];
-      hasPaymentMethod: boolean;
-      /** Format: uri */
-      paymentProviderUrl: string | null;
+      defaultCurrency: components["schemas"]["PricingUnit"];
+      /**
+       * Format: double 
+       * @description Tax rate as percentage. For example, 10.5 for 10.5%
+       */
+      taxRate: number | null;
+      crmProviderId: string | null;
       customerId: string;
-=======
-      crmProviderId: string;
       /**
        * @description * `salesforce` - salesforce 
        * @enum {string}
@@ -2083,17 +2054,23 @@ export interface components {
       crmProvider: "salesforce";
       /** @description A list of tax providers that are enabled for this customer. The list is ordered, meaning we will succesively try to calculate taxes using each provider until we find one that works. */
       taxProviders: readonly ("taxjar" | "lotus" | "netsuite")[];
-      billingAddress: components["schemas"]["Address"] | null;
+      upcomingSubscriptions: readonly (components["schemas"]["SubscriptionRecord"])[];
       /** Format: uri */
-      crmProviderUrl: string;
+      paymentProviderUrl: string | null;
       /** @deprecated */
       address: components["schemas"]["Address"] | null;
-      /** Format: double */
-      totalAmountDue: number;
+      invoices: readonly (components["schemas"]["LightweightInvoiceDetail"])[];
       /** @description A dictionary containing the customer's integrations. Keys are the integration type, and the value is a dictionary containing the integration's properties, which can vary by integration. */
       integrations: components["schemas"]["CustomerIntegrations"];
       hasPaymentMethod: boolean;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
+      stripeSubscriptions: readonly (components["schemas"]["StripeSubscriptionRecord"])[];
+      subscriptions: readonly (components["schemas"]["SubscriptionRecord"])[];
+      /** Format: double */
+      totalAmountDue: number;
+      shippingAddress: components["schemas"]["Address"] | null;
+      billingAddress: components["schemas"]["Address"] | null;
+      /** @description The display name of the customer */
+      customerName: string | null;
       /**
        * @description * `Africa/Abidjan` - Africa/Abidjan
        * * `Africa/Accra` - Africa/Accra
@@ -2532,67 +2509,17 @@ export interface components {
        * @enum {string}
        */
       timezone: "Africa/Abidjan" | "Africa/Accra" | "Africa/Addis_Ababa" | "Africa/Algiers" | "Africa/Asmara" | "Africa/Bamako" | "Africa/Bangui" | "Africa/Banjul" | "Africa/Bissau" | "Africa/Blantyre" | "Africa/Brazzaville" | "Africa/Bujumbura" | "Africa/Cairo" | "Africa/Casablanca" | "Africa/Ceuta" | "Africa/Conakry" | "Africa/Dakar" | "Africa/DarEs_Salaam" | "Africa/Djibouti" | "Africa/Douala" | "Africa/El_Aaiun" | "Africa/Freetown" | "Africa/Gaborone" | "Africa/Harare" | "Africa/Johannesburg" | "Africa/Juba" | "Africa/Kampala" | "Africa/Khartoum" | "Africa/Kigali" | "Africa/Kinshasa" | "Africa/Lagos" | "Africa/Libreville" | "Africa/Lome" | "Africa/Luanda" | "Africa/Lubumbashi" | "Africa/Lusaka" | "Africa/Malabo" | "Africa/Maputo" | "Africa/Maseru" | "Africa/Mbabane" | "Africa/Mogadishu" | "Africa/Monrovia" | "Africa/Nairobi" | "Africa/Ndjamena" | "Africa/Niamey" | "Africa/Nouakchott" | "Africa/Ouagadougou" | "Africa/Porto-Novo" | "Africa/Sao_Tome" | "Africa/Tripoli" | "Africa/Tunis" | "Africa/Windhoek" | "America/Adak" | "America/Anchorage" | "America/Anguilla" | "America/Antigua" | "America/Araguaina" | "America/Argentina/Buenos_Aires" | "America/Argentina/Catamarca" | "America/Argentina/Cordoba" | "America/Argentina/Jujuy" | "America/Argentina/La_Rioja" | "America/Argentina/Mendoza" | "America/Argentina/Rio_Gallegos" | "America/Argentina/Salta" | "America/Argentina/San_Juan" | "America/Argentina/San_Luis" | "America/Argentina/Tucuman" | "America/Argentina/Ushuaia" | "America/Aruba" | "America/Asuncion" | "America/Atikokan" | "America/Bahia" | "America/Bahia_Banderas" | "America/Barbados" | "America/Belem" | "America/Belize" | "America/Blanc-Sablon" | "America/Boa_Vista" | "America/Bogota" | "America/Boise" | "America/Cambridge_Bay" | "America/Campo_Grande" | "America/Cancun" | "America/Caracas" | "America/Cayenne" | "America/Cayman" | "America/Chicago" | "America/Chihuahua" | "America/Ciudad_Juarez" | "America/Costa_Rica" | "America/Creston" | "America/Cuiaba" | "America/Curacao" | "America/Danmarkshavn" | "America/Dawson" | "America/Dawson_Creek" | "America/Denver" | "America/Detroit" | "America/Dominica" | "America/Edmonton" | "America/Eirunepe" | "America/El_Salvador" | "America/Fort_Nelson" | "America/Fortaleza" | "America/Glace_Bay" | "America/Goose_Bay" | "America/Grand_Turk" | "America/Grenada" | "America/Guadeloupe" | "America/Guatemala" | "America/Guayaquil" | "America/Guyana" | "America/Halifax" | "America/Havana" | "America/Hermosillo" | "America/Indiana/Indianapolis" | "America/Indiana/Knox" | "America/Indiana/Marengo" | "America/Indiana/Petersburg" | "America/Indiana/Tell_City" | "America/Indiana/Vevay" | "America/Indiana/Vincennes" | "America/Indiana/Winamac" | "America/Inuvik" | "America/Iqaluit" | "America/Jamaica" | "America/Juneau" | "America/Kentucky/Louisville" | "America/Kentucky/Monticello" | "America/Kralendijk" | "America/La_Paz" | "America/Lima" | "America/Los_Angeles" | "America/Lower_Princes" | "America/Maceio" | "America/Managua" | "America/Manaus" | "America/Marigot" | "America/Martinique" | "America/Matamoros" | "America/Mazatlan" | "America/Menominee" | "America/Merida" | "America/Metlakatla" | "America/Mexico_City" | "America/Miquelon" | "America/Moncton" | "America/Monterrey" | "America/Montevideo" | "America/Montserrat" | "America/Nassau" | "America/New_York" | "America/Nome" | "America/Noronha" | "America/North_Dakota/Beulah" | "America/North_Dakota/Center" | "America/North_Dakota/New_Salem" | "America/Nuuk" | "America/Ojinaga" | "America/Panama" | "America/Paramaribo" | "America/Phoenix" | "America/Port-au-Prince" | "America/PortOf_Spain" | "America/Porto_Velho" | "America/Puerto_Rico" | "America/Punta_Arenas" | "America/Rankin_Inlet" | "America/Recife" | "America/Regina" | "America/Resolute" | "America/Rio_Branco" | "America/Santarem" | "America/Santiago" | "America/Santo_Domingo" | "America/Sao_Paulo" | "America/Scoresbysund" | "America/Sitka" | "America/St_Barthelemy" | "America/St_Johns" | "America/St_Kitts" | "America/St_Lucia" | "America/St_Thomas" | "America/St_Vincent" | "America/Swift_Current" | "America/Tegucigalpa" | "America/Thule" | "America/Tijuana" | "America/Toronto" | "America/Tortola" | "America/Vancouver" | "America/Whitehorse" | "America/Winnipeg" | "America/Yakutat" | "America/Yellowknife" | "Antarctica/Casey" | "Antarctica/Davis" | "Antarctica/DumontDUrville" | "Antarctica/Macquarie" | "Antarctica/Mawson" | "Antarctica/McMurdo" | "Antarctica/Palmer" | "Antarctica/Rothera" | "Antarctica/Syowa" | "Antarctica/Troll" | "Antarctica/Vostok" | "Arctic/Longyearbyen" | "Asia/Aden" | "Asia/Almaty" | "Asia/Amman" | "Asia/Anadyr" | "Asia/Aqtau" | "Asia/Aqtobe" | "Asia/Ashgabat" | "Asia/Atyrau" | "Asia/Baghdad" | "Asia/Bahrain" | "Asia/Baku" | "Asia/Bangkok" | "Asia/Barnaul" | "Asia/Beirut" | "Asia/Bishkek" | "Asia/Brunei" | "Asia/Chita" | "Asia/Choibalsan" | "Asia/Colombo" | "Asia/Damascus" | "Asia/Dhaka" | "Asia/Dili" | "Asia/Dubai" | "Asia/Dushanbe" | "Asia/Famagusta" | "Asia/Gaza" | "Asia/Hebron" | "Asia/Ho_Chi_Minh" | "Asia/Hong_Kong" | "Asia/Hovd" | "Asia/Irkutsk" | "Asia/Jakarta" | "Asia/Jayapura" | "Asia/Jerusalem" | "Asia/Kabul" | "Asia/Kamchatka" | "Asia/Karachi" | "Asia/Kathmandu" | "Asia/Khandyga" | "Asia/Kolkata" | "Asia/Krasnoyarsk" | "Asia/Kuala_Lumpur" | "Asia/Kuching" | "Asia/Kuwait" | "Asia/Macau" | "Asia/Magadan" | "Asia/Makassar" | "Asia/Manila" | "Asia/Muscat" | "Asia/Nicosia" | "Asia/Novokuznetsk" | "Asia/Novosibirsk" | "Asia/Omsk" | "Asia/Oral" | "Asia/Phnom_Penh" | "Asia/Pontianak" | "Asia/Pyongyang" | "Asia/Qatar" | "Asia/Qostanay" | "Asia/Qyzylorda" | "Asia/Riyadh" | "Asia/Sakhalin" | "Asia/Samarkand" | "Asia/Seoul" | "Asia/Shanghai" | "Asia/Singapore" | "Asia/Srednekolymsk" | "Asia/Taipei" | "Asia/Tashkent" | "Asia/Tbilisi" | "Asia/Tehran" | "Asia/Thimphu" | "Asia/Tokyo" | "Asia/Tomsk" | "Asia/Ulaanbaatar" | "Asia/Urumqi" | "Asia/Ust-Nera" | "Asia/Vientiane" | "Asia/Vladivostok" | "Asia/Yakutsk" | "Asia/Yangon" | "Asia/Yekaterinburg" | "Asia/Yerevan" | "Atlantic/Azores" | "Atlantic/Bermuda" | "Atlantic/Canary" | "Atlantic/Cape_Verde" | "Atlantic/Faroe" | "Atlantic/Madeira" | "Atlantic/Reykjavik" | "Atlantic/South_Georgia" | "Atlantic/St_Helena" | "Atlantic/Stanley" | "Australia/Adelaide" | "Australia/Brisbane" | "Australia/Broken_Hill" | "Australia/Darwin" | "Australia/Eucla" | "Australia/Hobart" | "Australia/Lindeman" | "Australia/Lord_Howe" | "Australia/Melbourne" | "Australia/Perth" | "Australia/Sydney" | "Canada/Atlantic" | "Canada/Central" | "Canada/Eastern" | "Canada/Mountain" | "Canada/Newfoundland" | "Canada/Pacific" | "Europe/Amsterdam" | "Europe/Andorra" | "Europe/Astrakhan" | "Europe/Athens" | "Europe/Belgrade" | "Europe/Berlin" | "Europe/Bratislava" | "Europe/Brussels" | "Europe/Bucharest" | "Europe/Budapest" | "Europe/Busingen" | "Europe/Chisinau" | "Europe/Copenhagen" | "Europe/Dublin" | "Europe/Gibraltar" | "Europe/Guernsey" | "Europe/Helsinki" | "Europe/IsleOf_Man" | "Europe/Istanbul" | "Europe/Jersey" | "Europe/Kaliningrad" | "Europe/Kirov" | "Europe/Kyiv" | "Europe/Lisbon" | "Europe/Ljubljana" | "Europe/London" | "Europe/Luxembourg" | "Europe/Madrid" | "Europe/Malta" | "Europe/Mariehamn" | "Europe/Minsk" | "Europe/Monaco" | "Europe/Moscow" | "Europe/Oslo" | "Europe/Paris" | "Europe/Podgorica" | "Europe/Prague" | "Europe/Riga" | "Europe/Rome" | "Europe/Samara" | "Europe/San_Marino" | "Europe/Sarajevo" | "Europe/Saratov" | "Europe/Simferopol" | "Europe/Skopje" | "Europe/Sofia" | "Europe/Stockholm" | "Europe/Tallinn" | "Europe/Tirane" | "Europe/Ulyanovsk" | "Europe/Vaduz" | "Europe/Vatican" | "Europe/Vienna" | "Europe/Vilnius" | "Europe/Volgograd" | "Europe/Warsaw" | "Europe/Zagreb" | "Europe/Zurich" | "GMT" | "Indian/Antananarivo" | "Indian/Chagos" | "Indian/Christmas" | "Indian/Cocos" | "Indian/Comoro" | "Indian/Kerguelen" | "Indian/Mahe" | "Indian/Maldives" | "Indian/Mauritius" | "Indian/Mayotte" | "Indian/Reunion" | "Pacific/Apia" | "Pacific/Auckland" | "Pacific/Bougainville" | "Pacific/Chatham" | "Pacific/Chuuk" | "Pacific/Easter" | "Pacific/Efate" | "Pacific/Fakaofo" | "Pacific/Fiji" | "Pacific/Funafuti" | "Pacific/Galapagos" | "Pacific/Gambier" | "Pacific/Guadalcanal" | "Pacific/Guam" | "Pacific/Honolulu" | "Pacific/Kanton" | "Pacific/Kiritimati" | "Pacific/Kosrae" | "Pacific/Kwajalein" | "Pacific/Majuro" | "Pacific/Marquesas" | "Pacific/Midway" | "Pacific/Nauru" | "Pacific/Niue" | "Pacific/Norfolk" | "Pacific/Noumea" | "Pacific/Pago_Pago" | "Pacific/Palau" | "Pacific/Pitcairn" | "Pacific/Pohnpei" | "Pacific/Port_Moresby" | "Pacific/Rarotonga" | "Pacific/Saipan" | "Pacific/Tahiti" | "Pacific/Tarawa" | "Pacific/Tongatapu" | "Pacific/Wake" | "Pacific/Wallis" | "US/Alaska" | "US/Arizona" | "US/Central" | "US/Eastern" | "US/Hawaii" | "US/Mountain" | "US/Pacific" | "UTC";
-<<<<<<< HEAD
-      subscriptions: readonly (components["schemas"]["SubscriptionRecord"])[];
+      /** Format: email */
+      email: string | null;
       paymentProviderId: string | null;
       /** Format: uri */
       crmProviderUrl: string | null;
-      /** @description The display name of the customer */
-      customerName: string | null;
-      /** @deprecated */
-      address: components["schemas"]["Address"] | null;
-      upcomingSubscriptions: readonly (components["schemas"]["SubscriptionRecord"])[];
-      shippingAddress: components["schemas"]["Address"] | null;
-      defaultCurrency: components["schemas"]["PricingUnit"];
-      crmProviderId: string | null;
-      /** @description A dictionary containing the customer's integrations. Keys are the integration type, and the value is a dictionary containing the integration's properties, which can vary by integration. */
-      integrations: components["schemas"]["CustomerIntegrations"];
-      invoices: readonly (components["schemas"]["LightweightInvoiceDetail"])[];
-      /** Format: email */
-      email: string | null;
-      /** Format: double */
-      totalAmountDue: number;
-      /**
-       * Format: double 
-       * @description Tax rate as percentage. For example, 10.5 for 10.5%
-       */
-      taxRate: number | null;
-      billingAddress: components["schemas"]["Address"] | null;
-=======
-      /** Format: uri */
-      paymentProviderUrl: string;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
-      /**
-       * Format: double 
-       * @description Tax rate as percentage. For example, 10.5 for 10.5%
-       */
-<<<<<<< HEAD
-      crmProvider: "salesforce";
-      stripeSubscriptions: readonly (components["schemas"]["StripeSubscriptionRecord"])[];
-=======
-      taxRate: number;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
       /**
        * @description * `stripe` - Stripe
        * * `braintree` - Braintree 
        * @enum {string|null}
        */
       paymentProvider: "stripe" | "braintree" | "" | null;
-<<<<<<< HEAD
-=======
-      subscriptions: readonly (components["schemas"]["SubscriptionRecord"])[];
-      /** @description The display name of the customer */
-      customerName: string;
-      upcomingSubscriptions: readonly (components["schemas"]["SubscriptionRecord"])[];
-      /** Format: email */
-      email: string;
-      invoices: readonly (components["schemas"]["LightweightInvoiceDetail"])[];
-      defaultCurrency: components["schemas"]["PricingUnit"];
-      customerId: string;
-      stripeSubscriptions: readonly (components["schemas"]["StripeSubscriptionRecord"])[];
-      shippingAddress: components["schemas"]["Address"] | null;
-      paymentProviderId: string;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
     };
     CustomerIntegrations: {
       stripe?: components["schemas"]["CustomerStripeIntegration"] | null;
@@ -3747,38 +3674,22 @@ export interface components {
       email: string;
     };
     InitialAddOnVersionCreateRequest: {
-      currencyCode: string;
       recurringCharges?: (components["schemas"]["RecurringChargeCreateRequest"])[] | null;
-      features?: (string)[];
-      components?: (components["schemas"]["PlanComponentCreateRequest"])[] | null;
       /**
-<<<<<<< HEAD
-       * @description * `oneTime` - oneTime
-       * * `recurring` - recurring 
-       * @enum {unknown}
-       */
-      billingFrequency: "oneTime" | "recurring";
-      /**
-=======
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
        * @description * `invoiceOnAttach` - invoiceOnAttach
        * * `invoiceOnSubscriptionEnd` - invoiceOnSubscriptionEnd 
        * @enum {unknown}
        */
       invoiceWhen: "invoiceOnAttach" | "invoiceOnSubscriptionEnd";
-<<<<<<< HEAD
-=======
-      components?: (components["schemas"]["PlanComponentCreateRequest"])[];
+      components?: (components["schemas"]["PlanComponentCreateRequest"])[] | null;
       features?: (string)[];
-      recurringCharges?: (components["schemas"]["RecurringChargeCreateRequest"])[];
+      currencyCode: string;
       /**
        * @description * `oneTime` - oneTime
        * * `recurring` - recurring 
        * @enum {unknown}
        */
       billingFrequency: "oneTime" | "recurring";
-      currencyCode: string;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
     };
     InitialExternalPlanLink: {
       /**
@@ -3799,26 +3710,14 @@ export interface components {
       externalPlanId: string;
     };
     InitialPlanVersionCreateRequest: {
-<<<<<<< HEAD
-      currencyCode: string;
-      recurringCharges?: (components["schemas"]["RecurringChargeCreateRequest"])[];
-      priceAdjustment?: components["schemas"]["PriceAdjustmentRequest"];
-      monthAnchor?: number | null;
-      version: number;
-      features?: (string)[];
-      dayAnchor?: number | null;
-=======
-      dayAnchor?: number;
-      components?: (components["schemas"]["PlanComponentCreateRequest"])[];
-      monthAnchor?: number;
-      recurringCharges?: (components["schemas"]["RecurringChargeCreateRequest"])[];
-      features?: (string)[];
-      targetCustomerIds?: (string)[];
-      localizedName?: string;
+      targetCustomerIds?: (string | null)[];
+      localizedName?: string | null;
       /** @default false */
       makeActive?: boolean;
+      recurringCharges?: (components["schemas"]["RecurringChargeCreateRequest"])[];
       version: number;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
+      components?: (components["schemas"]["PlanComponentCreateRequest"])[];
+      features?: (string)[];
       /**
        * @description * `replaceOnRenewal` - Replace on Renewal
        * * `grandfather` - Grandfather 
@@ -3826,16 +3725,10 @@ export interface components {
        * @enum {string}
        */
       makeActiveType?: "replaceOnRenewal" | "grandfather";
-<<<<<<< HEAD
-      /** @default false */
-      makeActive?: boolean;
-      targetCustomerIds?: (string | null)[];
-      components?: (components["schemas"]["PlanComponentCreateRequest"])[];
-      localizedName?: string | null;
-=======
-      currencyCode: string;
       priceAdjustment?: components["schemas"]["PriceAdjustmentRequest"];
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
+      currencyCode: string;
+      dayAnchor?: number | null;
+      monthAnchor?: number | null;
     };
     InviteLinkResponse: {
       /** Format: email */
@@ -3896,44 +3789,20 @@ export interface components {
       payload: components["schemas"]["InvoiceRequest"];
     };
     InvoiceDetail: {
-<<<<<<< HEAD
-      /** Format: uri */
-      externalPaymentObjUrl: string | null;
-      externalPaymentObjStatus?: string | null;
-      /** Format: date-time */
-      dueDate: string | null;
-      seller: components["schemas"]["Seller"];
-      /** Format: date */
-      endDate: string;
-      /** Format: uri */
-      crmProviderUrl: string | null;
-      /** Format: date */
-      startDate: string;
       invoiceNumber: string;
-      customer: components["schemas"]["LightweightCustomerSerializerForInvoice"];
-      /** Format: date-time */
-      issueDate: string;
       crmProviderId: string | null;
-=======
-      crmProviderId: string;
+      externalPaymentObjId: string | null;
       /**
        * @description * `salesforce` - salesforce 
        * @enum {string}
        */
       crmProvider: "salesforce";
-      /** Format: date-time */
-      dueDate: string;
-      /** Format: date */
-      startDate: string;
       /** Format: uri */
-      crmProviderUrl: string;
-      invoiceNumber: string;
-      invoiceId: string;
-      customer: components["schemas"]["LightweightCustomerSerializerForInvoice"];
-      seller: components["schemas"]["Seller"];
-      /** Format: date */
-      endDate: string;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
+      externalPaymentObjUrl: string | null;
+      /** Format: uri */
+      invoicePdf: string | null;
+      /** Format: date-time */
+      dueDate: string | null;
       /**
        * @description * `draft` - draft
        * * `voided` - voided
@@ -3942,11 +3811,15 @@ export interface components {
        * @enum {unknown}
        */
       paymentStatus: "draft" | "voided" | "paid" | "unpaid";
-<<<<<<< HEAD
-      /** Format: double */
-      amount: number;
-      /** Format: uri */
-      invoicePdf: string | null;
+      /** Format: date */
+      endDate: string;
+      invoiceId: string;
+      /** Format: date */
+      startDate: string;
+      lineItems: (components["schemas"]["InvoiceLineItem"])[];
+      customer: components["schemas"]["LightweightCustomerSerializerForInvoice"];
+      currency: components["schemas"]["PricingUnit"];
+      seller: components["schemas"]["Seller"];
       /**
        * Format: double 
        * @deprecated
@@ -3958,72 +3831,31 @@ export interface components {
        * @enum {string|null}
        */
       externalPaymentObjType: "stripe" | "braintree" | "" | null;
-      externalPaymentObjId: string | null;
-      /**
-       * @description * `salesforce` - salesforce 
-       * @enum {string}
-       */
-      crmProvider: "salesforce";
-      lineItems: (components["schemas"]["InvoiceLineItem"])[];
-      invoiceId: string;
-      currency: components["schemas"]["PricingUnit"];
-    };
-    InvoiceDetailRequest: {
-      externalPaymentObjStatus?: string | null;
-      seller: components["schemas"]["SellerRequest"];
-      /**
-       * Format: double 
-       * @deprecated
-       */
-      costDue: number;
-=======
-      /** Format: uri */
-      externalPaymentObjUrl: string;
+      /** Format: double */
+      amount: number;
       /** Format: date-time */
       issueDate: string;
-      currency: components["schemas"]["PricingUnit"];
-      /** Format: double */
-      amount: number;
-      lineItems: (components["schemas"]["InvoiceLineItem"])[];
       /** Format: uri */
-      invoicePdf: string;
-      externalPaymentObjStatus?: string;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
-      /**
-       * @description * `stripe` - Stripe
-       * * `braintree` - Braintree 
-       * @enum {string|null}
-       */
-      externalPaymentObjType: "stripe" | "braintree" | "" | null;
-<<<<<<< HEAD
-      lineItems: (components["schemas"]["InvoiceLineItemRequest"])[];
-      invoiceId: string;
-=======
-      externalPaymentObjId: string;
-      /**
-       * Format: double 
-       * @deprecated
-       */
-      costDue: number;
+      crmProviderUrl: string | null;
+      externalPaymentObjStatus?: string | null;
     };
     InvoiceDetailRequest: {
       invoiceId: string;
-      seller: components["schemas"]["SellerRequest"];
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
-      currency: components["schemas"]["PricingUnitRequest"];
       lineItems: (components["schemas"]["InvoiceLineItemRequest"])[];
-      externalPaymentObjStatus?: string;
+      currency: components["schemas"]["PricingUnitRequest"];
+      seller: components["schemas"]["SellerRequest"];
+      /**
+       * Format: double 
+       * @deprecated
+       */
+      costDue: number;
       /**
        * @description * `stripe` - Stripe
        * * `braintree` - Braintree 
        * @enum {string|null}
        */
       externalPaymentObjType: "stripe" | "braintree" | "" | null;
-      /**
-       * Format: double 
-       * @deprecated
-       */
-      costDue: number;
+      externalPaymentObjStatus?: string | null;
     };
     InvoiceLineItem: {
       name: string;
@@ -4213,29 +4045,12 @@ export interface components {
       address?: components["schemas"]["Address"] | null;
     };
     LightweightInvoice: {
-<<<<<<< HEAD
-      externalPaymentObjStatus?: string | null;
+      invoiceNumber: string;
+      externalPaymentObjId: string | null;
+      /** Format: uri */
+      invoicePdf: string | null;
       /** Format: date-time */
       dueDate: string | null;
-      seller: components["schemas"]["Seller"];
-      /** Format: date */
-      endDate: string;
-      /** Format: date */
-      startDate: string;
-      invoiceNumber: string;
-      /** Format: date-time */
-      issueDate: string;
-=======
-      /** Format: date-time */
-      dueDate: string;
-      /** Format: date */
-      startDate: string;
-      invoiceNumber: string;
-      invoiceId: string;
-      seller: components["schemas"]["Seller"];
-      /** Format: date */
-      endDate: string;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
       /**
        * @description * `draft` - draft
        * * `voided` - voided
@@ -4244,107 +4059,45 @@ export interface components {
        * @enum {unknown}
        */
       paymentStatus: "draft" | "voided" | "paid" | "unpaid";
-<<<<<<< HEAD
-      /** Format: double */
-      amount: number;
-      /** Format: uri */
-      invoicePdf: string | null;
-=======
-      /** Format: date-time */
-      issueDate: string;
+      /** Format: date */
+      endDate: string;
+      invoiceId: string;
+      /** Format: date */
+      startDate: string;
       currency: components["schemas"]["PricingUnit"];
-      /** Format: double */
-      amount: number;
-      /** Format: uri */
-      invoicePdf: string;
-      externalPaymentObjStatus?: string;
-      /**
-       * @description * `stripe` - Stripe
-       * * `braintree` - Braintree 
-       * @enum {string|null}
-       */
-      externalPaymentObjType: "stripe" | "braintree" | "" | null;
-      externalPaymentObjId: string;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
+      seller: components["schemas"]["Seller"];
       /**
        * Format: double 
        * @deprecated
        */
       costDue: number;
-<<<<<<< HEAD
       /**
        * @description * `stripe` - Stripe
        * * `braintree` - Braintree 
        * @enum {string|null}
        */
       externalPaymentObjType: "stripe" | "braintree" | "" | null;
-      externalPaymentObjId: string | null;
-      invoiceId: string;
-      currency: components["schemas"]["PricingUnit"];
-    };
-    LightweightInvoiceDetail: {
-      /** Format: uri */
-      externalPaymentObjUrl: string | null;
-      /** Format: date-time */
-      dueDate: string | null;
-      externalPaymentObjStatus?: string | null;
-      seller: components["schemas"]["Seller"];
-      /** Format: date */
-      endDate: string;
-      /** Format: uri */
-      crmProviderUrl: string | null;
-      /** Format: date */
-      startDate: string;
-      invoiceNumber: string;
+      /** Format: double */
+      amount: number;
       /** Format: date-time */
       issueDate: string;
+      externalPaymentObjStatus?: string | null;
+    };
+    LightweightInvoiceDetail: {
+      invoiceNumber: string;
       crmProviderId: string | null;
-      /**
-       * @description * `draft` - draft
-       * * `voided` - voided
-       * * `paid` - paid
-       * * `unpaid` - unpaid 
-       * @enum {unknown}
-       */
-      paymentStatus: "draft" | "voided" | "paid" | "unpaid";
-      /** Format: double */
-      amount: number;
-      /** Format: uri */
-      invoicePdf: string | null;
-      /**
-       * Format: double 
-       * @deprecated
-       */
-      costDue: number;
-      /**
-       * @description * `stripe` - Stripe
-       * * `braintree` - Braintree 
-       * @enum {string|null}
-       */
-      externalPaymentObjType: "stripe" | "braintree" | "" | null;
       externalPaymentObjId: string | null;
-=======
-    };
-    LightweightInvoiceDetail: {
-      crmProviderId: string;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
       /**
        * @description * `salesforce` - salesforce 
        * @enum {string}
        */
       crmProvider: "salesforce";
-<<<<<<< HEAD
-      invoiceId: string;
-      currency: components["schemas"]["PricingUnit"];
-=======
-      /** Format: date */
-      startDate: string;
-      /** Format: date-time */
-      dueDate: string;
       /** Format: uri */
-      crmProviderUrl: string;
-      invoiceId: string;
-      seller: components["schemas"]["Seller"];
+      externalPaymentObjUrl: string | null;
+      /** Format: uri */
+      invoicePdf: string | null;
+      /** Format: date-time */
+      dueDate: string | null;
       /** Format: date */
       endDate: string;
       /**
@@ -4355,30 +4108,29 @@ export interface components {
        * @enum {unknown}
        */
       paymentStatus: "draft" | "voided" | "paid" | "unpaid";
-      /** Format: uri */
-      externalPaymentObjUrl: string;
-      /** Format: date-time */
-      issueDate: string;
+      invoiceId: string;
+      /** Format: date */
+      startDate: string;
       currency: components["schemas"]["PricingUnit"];
-      /** Format: double */
-      amount: number;
-      externalPaymentObjStatus?: string;
-      /** Format: uri */
-      invoicePdf: string;
-      invoiceNumber: string;
+      seller: components["schemas"]["Seller"];
+      /**
+       * Format: double 
+       * @deprecated
+       */
+      costDue: number;
       /**
        * @description * `stripe` - Stripe
        * * `braintree` - Braintree 
        * @enum {string|null}
        */
       externalPaymentObjType: "stripe" | "braintree" | "" | null;
-      externalPaymentObjId: string;
-      /**
-       * Format: double 
-       * @deprecated
-       */
-      costDue: number;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
+      /** Format: double */
+      amount: number;
+      /** Format: date-time */
+      issueDate: string;
+      /** Format: uri */
+      crmProviderUrl: string | null;
+      externalPaymentObjStatus?: string | null;
     };
     LightweightMetric: {
       metricId: string;
@@ -4414,91 +4166,52 @@ export interface components {
       planId: string;
     };
     LightweightSubscriptionRecord: {
-<<<<<<< HEAD
-      subscriptionId: string;
-      /**
-       * Format: date-time 
-       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
-       */
-      endDate: string;
-      planDetail: components["schemas"]["LightweightPlanVersion"];
       /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
       isNew: boolean;
-=======
-      addons: (components["schemas"]["LightweightAddOnSubscriptionRecord"])[];
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
-      /**
-       * Format: date-time 
-       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
-       */
-      startDate: string;
-<<<<<<< HEAD
-      subscriptionFilters: readonly (components["schemas"]["SubscriptionFilter"])[];
-      billingPlan: components["schemas"]["LightweightPlanVersion"];
-      addons: (components["schemas"]["LightweightAddOnSubscriptionRecord"])[];
-=======
-      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
-      isNew: boolean;
-      subscriptionFilters: readonly (components["schemas"]["SubscriptionFilter"])[];
-      subscriptionId: string;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
-      metadata: {
-        [key: string]: unknown | undefined;
-      };
       customer: components["schemas"]["LightweightCustomer"];
       billingPlan: components["schemas"]["LightweightPlanVersion"];
+      metadata: {
+        [key: string]: unknown | undefined;
+      };
       fullyBilled: boolean;
-      /** @description Whether the subscription automatically renews. Defaults to true. */
-      autoRenew: boolean;
-<<<<<<< HEAD
-    };
-    LightweightSubscriptionRecordRequest: {
+      subscriptionFilters: readonly (components["schemas"]["SubscriptionFilter"])[];
       subscriptionId: string;
-=======
       planDetail: components["schemas"]["LightweightPlanVersion"];
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
       /**
        * Format: date-time 
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
       endDate: string;
-<<<<<<< HEAD
-      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
-      isNew: boolean;
-=======
-    };
-    LightweightSubscriptionRecordRequest: {
-      addons: (components["schemas"]["LightweightAddOnSubscriptionRecordRequest"])[];
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
+      /** @description Whether the subscription automatically renews. Defaults to true. */
+      autoRenew: boolean;
+      addons: (components["schemas"]["LightweightAddOnSubscriptionRecord"])[];
       /**
        * Format: date-time 
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
       startDate: string;
-<<<<<<< HEAD
-      billingPlan: components["schemas"]["LightweightPlanVersionRequest"];
-      addons: (components["schemas"]["LightweightAddOnSubscriptionRecordRequest"])[];
-=======
+    };
+    LightweightSubscriptionRecordRequest: {
       /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
       isNew: boolean;
-      subscriptionId: string;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
+      billingPlan: components["schemas"]["LightweightPlanVersionRequest"];
       metadata: {
         [key: string]: unknown | undefined;
       };
-<<<<<<< HEAD
-      /** @description Whether the subscription automatically renews. Defaults to true. */
-      autoRenew: boolean;
-=======
-      billingPlan: components["schemas"]["LightweightPlanVersionRequest"];
-      /** @description Whether the subscription automatically renews. Defaults to true. */
-      autoRenew: boolean;
+      subscriptionId: string;
       /**
        * Format: date-time 
        * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
        */
       endDate: string;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
+      /** @description Whether the subscription automatically renews. Defaults to true. */
+      autoRenew: boolean;
+      addons: (components["schemas"]["LightweightAddOnSubscriptionRecordRequest"])[];
+      /**
+       * Format: date-time 
+       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
+       */
+      startDate: string;
     };
     LightweightUser: {
       /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
@@ -4717,42 +4430,12 @@ export interface components {
       numericFilters?: (components["schemas"]["NumericFilterDetailRequest"])[];
     };
     MetricDetail: {
-<<<<<<< HEAD
-      /** @description The name of the property of the event that should be used for this metric. Doesn't apply if the metric is of type 'counter' with an aggregation of count. */
-      propertyName: string | null;
-=======
-      categoricalFilters: (components["schemas"]["CategoricalFilter"])[];
-      metricId: string;
-      /**
-       * @description The proration of the metric. Only applies to metrics of type 'gauge'.
-       * 
-       * * `seconds` - Second
-       * * `minutes` - Minute
-       * * `hours` - Hour
-       * * `days` - Day
-       * * `months` - Month
-       * * `quarters` - Quarter
-       * * `years` - Year
-       * * `total` - Total 
-       * @enum {string|null}
-       */
-      proration: "seconds" | "minutes" | "hours" | "days" | "months" | "quarters" | "years" | "total" | "" | null;
-      /** @description Whether or not this metric is a cost metric (used to track costs to your business). */
-      isCostMetric: boolean;
       /** @description Name of the event that this metric is tracking. */
       eventName: string;
-      /** @description A custom SQL query that can be used to define the metric. Please refer to our documentation for more information. */
-      customSql: string;
-      numericFilters: (components["schemas"]["NumericFilter"])[];
-      /**
-       * @description Used only for metrics of type 'gauge'. Please refer to our documentation for an explanation of the different types.
-       * 
-       * * `delta` - Delta
-       * * `total` - Total 
-       * @enum {string|null}
-       */
-      eventType: "delta" | "total" | "" | null;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
+      /** @description Whether or not this metric is a cost metric (used to track costs to your business). */
+      isCostMetric: boolean;
+      metricName: string;
+      metricId: string;
       /**
        * @description The granularity of the metric. Only applies to metrics of type 'gauge' or 'rate'.
        * 
@@ -4767,12 +4450,18 @@ export interface components {
        * @enum {string|null}
        */
       granularity: "seconds" | "minutes" | "hours" | "days" | "months" | "quarters" | "years" | "total" | "" | null;
-<<<<<<< HEAD
+      /**
+       * @description Used only for metrics of type 'gauge'. Please refer to our documentation for an explanation of the different types.
+       * 
+       * * `delta` - Delta
+       * * `total` - Total 
+       * @enum {string|null}
+       */
+      eventType: "delta" | "total" | "" | null;
+      /** @description The name of the property of the event that should be used for this metric. Doesn't apply if the metric is of type 'counter' with an aggregation of count. */
+      propertyName: string | null;
+      numericFilters: (components["schemas"]["NumericFilter"])[];
       categoricalFilters: (components["schemas"]["CategoricalFilter"])[];
-      metricName: string;
-      /** @description Whether or not this metric is a cost metric (used to track costs to your business). */
-      isCostMetric: boolean;
-      metricId: string;
       /**
        * @description The proration of the metric. Only applies to metrics of type 'gauge'.
        * 
@@ -4787,9 +4476,8 @@ export interface components {
        * @enum {string|null}
        */
       proration: "seconds" | "minutes" | "hours" | "days" | "months" | "quarters" | "years" | "total" | "" | null;
-=======
-      metricName: string;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
+      /** @description A custom SQL query that can be used to define the metric. Please refer to our documentation for more information. */
+      customSql: string | null;
       /**
        * @description The type of metric that this is. Please refer to our documentation for an explanation of the different types.
        * 
@@ -4800,24 +4488,6 @@ export interface components {
        * @enum {string}
        */
       metricType: "counter" | "rate" | "custom" | "gauge";
-<<<<<<< HEAD
-      /** @description Name of the event that this metric is tracking. */
-      eventName: string;
-      numericFilters: (components["schemas"]["NumericFilter"])[];
-      /** @description A custom SQL query that can be used to define the metric. Please refer to our documentation for more information. */
-      customSql: string | null;
-      /**
-       * @description Used only for metrics of type 'gauge'. Please refer to our documentation for an explanation of the different types.
-       * 
-       * * `delta` - Delta
-       * * `total` - Total 
-       * @enum {string|null}
-       */
-      eventType: "delta" | "total" | "" | null;
-=======
-      /** @description The name of the property of the event that should be used for this metric. Doesn't apply if the metric is of type 'counter' with an aggregation of count. */
-      propertyName: string;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
       /**
        * @description The type of aggregation that should be used for this metric. Please refer to our documentation for an explanation of the different types.
        * 
@@ -6561,34 +6231,14 @@ export interface components {
       tags?: (components["schemas"]["TagRequest"])[];
     };
     PlanDetail: {
-<<<<<<< HEAD
       /** @description Name of the plan */
       planName: string;
-      /** @description The number of versions that this plan has. */
-      numVersions: number;
-      /** @description The tags that this plan has. */
-      tags: readonly (components["schemas"]["Tag"])[];
-      /** @description Description of the plan */
-      planDescription: string | null;
-      /** @description This plan's currently active version. */
-      activeVersion: number;
-      /** @description The external links that this plan has. */
-      externalLinks: (components["schemas"]["InitialExternalPlanLink"])[];
-=======
-      /** @description The external links that this plan has. */
-      externalLinks: (components["schemas"]["InitialExternalPlanLink"])[];
-      /** @description This plan's currently active version. */
-      activeVersion: number;
-      versions: readonly (components["schemas"]["PlanVersionDetail"])[];
-      taxjarCode?: string;
       planId: string;
-      /** @description Name of the plan */
-      planName: string;
-      /** @description Description of the plan */
-      planDescription: string;
-      /** @description The number of versions that this plan has. */
-      numVersions: number;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
+      /** @description The number of active subscriptions that this plan has across all versions. */
+      activeSubscriptions: number;
+      versions: readonly (components["schemas"]["PlanVersionDetail"])[];
+      /** @description The external links that this plan has. */
+      externalLinks: (components["schemas"]["InitialExternalPlanLink"])[];
       /**
        * @description Duration of the plan
        * 
@@ -6598,18 +6248,15 @@ export interface components {
        * @enum {string|null}
        */
       planDuration: "monthly" | "quarterly" | "yearly" | "" | null;
-<<<<<<< HEAD
-      planId: string;
-      versions: readonly (components["schemas"]["PlanVersionDetail"])[];
-      /** @description The number of active subscriptions that this plan has across all versions. */
-      activeSubscriptions: number;
       taxjarCode?: string | null;
-=======
+      /** @description Description of the plan */
+      planDescription: string | null;
+      /** @description This plan's currently active version. */
+      activeVersion: number;
       /** @description The tags that this plan has. */
       tags: readonly (components["schemas"]["Tag"])[];
-      /** @description The number of active subscriptions that this plan has across all versions. */
-      activeSubscriptions: number;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
+      /** @description The number of versions that this plan has. */
+      numVersions: number;
     };
     PlanNameAndID: {
       /** @description Name of the plan */
@@ -6700,27 +6347,27 @@ export interface components {
       makeActiveType?: "replaceOnRenewal" | "grandfather";
     };
     PlanVersionDetail: {
-      /** Format: date-time */
-      activeFrom: string | null;
+      planId: string;
+      localizedName: string | null;
+      activeSubscriptions: number;
+      version: number | "customVersion";
+      recurringCharges: readonly (components["schemas"]["RecurringCharge"])[];
+      components: (components["schemas"]["PlanComponent"])[];
       transitionTo: components["schemas"]["LightweightPlan"];
+      replaceWith: components["schemas"]["LightweightPlanVersion"];
       targetCustomers: (components["schemas"]["LightweightCustomer"])[];
       versionId: string;
-      recurringCharges: readonly (components["schemas"]["RecurringCharge"])[];
-      alerts: readonly (components["schemas"]["UsageAlert"])[];
-      features: (components["schemas"]["Feature"])[];
-      /** Format: date-time */
-      activeTo: string | null;
       /** Format: date-time */
       createdOn: string;
-      replaceWith: components["schemas"]["LightweightPlanVersion"];
-      activeSubscriptions: number;
       planName: string;
-      priceAdjustment: components["schemas"]["PriceAdjustment"] | null;
-      version: number | "customVersion";
-      planId: string;
       currency: components["schemas"]["PricingUnit"];
-      components: (components["schemas"]["PlanComponent"])[];
-      localizedName: string | null;
+      /** Format: date-time */
+      activeFrom: string | null;
+      alerts: readonly (components["schemas"]["UsageAlert"])[];
+      features: (components["schemas"]["Feature"])[];
+      priceAdjustment: components["schemas"]["PriceAdjustment"] | null;
+      /** Format: date-time */
+      activeTo: string | null;
       /**
        * @description * `active` - Active
        * * `retiring` - Retiring
@@ -6731,30 +6378,6 @@ export interface components {
        * @enum {string}
        */
       status: "active" | "retiring" | "grandfathered" | "deleted" | "inactive" | "notStarted";
-<<<<<<< HEAD
-=======
-      alerts: readonly (components["schemas"]["UsageAlert"])[];
-      recurringCharges: readonly (components["schemas"]["RecurringCharge"])[];
-      replaceWith: components["schemas"]["LightweightPlanVersion"];
-      targetCustomers: (components["schemas"]["LightweightCustomer"])[];
-      priceAdjustment: components["schemas"]["PriceAdjustment"] | null;
-      activeSubscriptions: number;
-      currency: components["schemas"]["PricingUnit"];
-      transitionTo: components["schemas"]["LightweightPlan"];
-      versionId: string;
-      components: (components["schemas"]["PlanComponent"])[];
-      features: (components["schemas"]["Feature"])[];
-      planId: string;
-      localizedName: string;
-      /** Format: date-time */
-      activeFrom: string;
-      planName: string;
-      version: number | "customVersion";
-      /** Format: date-time */
-      createdOn: string;
-      /** Format: date-time */
-      activeTo: string;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
     };
     PlanVersionHistoricalSubscription: {
       customerId: string;
@@ -7147,55 +6770,30 @@ export interface components {
       stripeSubscriptionIds: (string)[];
     };
     StripeSubscriptionRecord: {
-<<<<<<< HEAD
-      subscriptionId: string;
-      stripeSubscriptionId: string | null;
-=======
-      addons: (components["schemas"]["LightweightAddOnSubscriptionRecord"])[];
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
-      /**
-       * Format: date-time 
-       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
-       */
-<<<<<<< HEAD
-      endDate: string;
       /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
       isNew?: boolean;
-=======
-      startDate: string;
-      /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
-      isNew?: boolean;
-      subscriptionFilters: (components["schemas"]["SubscriptionFilter"])[];
-      subscriptionId: string;
-      metadata?: {
-        [key: string]: Record<string, never> | undefined;
-      };
       customer: components["schemas"]["LightweightCustomer"];
       billingPlan: components["schemas"]["LightweightPlanVersion"];
-      fullyBilled: boolean;
-      stripeSubscriptionId: string;
-      /** @description Whether the subscription automatically renews. Defaults to true. */
-      autoRenew?: boolean;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
-      /**
-       * Format: date-time 
-       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
-       */
-<<<<<<< HEAD
-      startDate: string;
-      subscriptionFilters: (components["schemas"]["SubscriptionFilter"])[];
-      billingPlan: components["schemas"]["LightweightPlanVersion"];
-      addons: (components["schemas"]["LightweightAddOnSubscriptionRecord"])[];
       metadata?: {
         [key: string]: unknown | undefined;
       };
-      customer: components["schemas"]["LightweightCustomer"];
+      stripeSubscriptionId: string | null;
       fullyBilled: boolean;
+      subscriptionFilters: (components["schemas"]["SubscriptionFilter"])[];
+      subscriptionId: string;
+      /**
+       * Format: date-time 
+       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
+       */
+      endDate: string;
       /** @description Whether the subscription automatically renews. Defaults to true. */
       autoRenew?: boolean;
-=======
-      endDate: string;
->>>>>>> 39bbeaccdc62cfaa32694a758f64ba149727b4a2
+      addons: (components["schemas"]["LightweightAddOnSubscriptionRecord"])[];
+      /**
+       * Format: date-time 
+       * @description The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time.
+       */
+      startDate: string;
     };
     StripeTurnOffAutoRenewalFailure: {
       /**
