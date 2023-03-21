@@ -115,37 +115,43 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     setIsEditing(true);
   };
   const EditCustomerHandler = async () => {
-    let submittedAddress;
-    if (
-      city === "" &&
-      line1 === "" &&
-      country === "" &&
-      postalCode === "" &&
-      state === "" &&
-      line2 === ""
-    ) {
-      submittedAddress = null;
+    if ((import.meta as any).env.VITE_IS_DEMO === "true") {
+      return;
     } else {
-      submittedAddress = {
-        city: city === "" ? null : city,
-        line1: line1 === "" ? null : line1,
-        line2: line2 === "" ? null : line2,
-        country: country === "" ? null : country,
-        postal_code: postalCode === "" ? null : postalCode,
-        state: state === "" ? null : state,
-      };
-    }
-    await updateCustomer.mutateAsync({
-      customer_id: data.customer_id,
-      address: submittedAddress,
-      default_currency_code: currentCurrency,
-      tax_rate: fourDP(taxRate),
-      timezone,
-      customer_name: customerName,
-      new_customer_id: customerId,
-    });
+      let submittedAddress;
 
-    refetch();
+      if (
+        city === "" &&
+        line1 === "" &&
+        country === "" &&
+        postalCode === "" &&
+        state === "" &&
+        line2 === ""
+      ) {
+        submittedAddress = null;
+      } else {
+        submittedAddress = {
+          city: city === "" ? null : city,
+          line1: line1 === "" ? null : line1,
+          line2: line2 === "" ? null : line2,
+          country: country === "" ? null : country,
+          postal_code: postalCode === "" ? null : postalCode,
+          state: state === "" ? null : state,
+        };
+      }
+      await updateCustomer.mutateAsync({
+        customer_id: data.customer_id,
+        address: submittedAddress,
+        default_currency_code: currentCurrency,
+        tax_rate: fourDP(taxRate),
+        timezone,
+        customer_name: customerName,
+        new_customer_id: customerId,
+      });
+
+      refetch();
+    }
+
     setIsEditing(false);
   };
   const displayMetric = (metric: number | undefined): number => {
