@@ -232,8 +232,10 @@ SUPPORTED_CURRENCIES = [
     ("Brazilian Real", "BRL", "R$"),
     ("Danish Krone", "DKK", "kr"),
     ("Nigerian Naira", "NGN", "₦"),
+    ("Russian Ruble", "RUB", "₽"),
+    ("Kazakhstani Tenge", "KZT", "₸"),
 ]
-SUPPORTED_CURRENCIES_VERSION = 2
+SUPPORTED_CURRENCIES_VERSION = 3
 
 
 class ACCOUNTS_RECEIVABLE_TRANSACTION_TYPES(models.IntegerChoices):
