@@ -80,22 +80,6 @@ const BraintreeIntegrationView: FC = () => {
 
   const resolveAfter3Sec = new Promise((resolve) => setTimeout(resolve, 3000));
 
-  const transferSubscriptionsMutation = useMutation(
-    (post: TransferSub) => PaymentProcessor.transferSubscriptions(post),
-    {
-      onSuccess: (data: PaymentProcessorImportCustomerResponse) => {
-        toast.success(data.detail, {
-          position: TOAST_POSITION,
-        });
-      },
-      onError: () => {
-        toast.error("Failed to transfer subscriptions", {
-          position: TOAST_POSITION,
-        });
-      },
-    }
-  );
-
   const updateBraintreeSettings = useMutation(
     (post: UpdatePaymentProcessorSettingParams) =>
       PaymentProcessor.updatePaymentProcessorSetting(post),
