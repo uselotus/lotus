@@ -11,7 +11,7 @@ def transfer_subscription_keys(apps, schema_editor):
         setting_name="subscription_filter_keys"
     ):
         organization = org_setting.organization
-        organization.subscription_filter_keys = org_setting.values
+        organization.subscription_filter_keys = org_setting.setting_values
         organization.save()
         # just to be safe w the timescale background workers
         time.sleep(1)
