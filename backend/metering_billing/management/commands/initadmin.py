@@ -32,7 +32,6 @@ class Command(BaseCommand):
 
         for org in Organization.objects.all():
             org.provision_currencies()
-            org.provision_subscription_filter_settings()
 
         for metric in Metric.objects.filter(
             status=METRIC_STATUS.ACTIVE, mat_views_provisioned=False

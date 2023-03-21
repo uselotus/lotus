@@ -59,7 +59,8 @@ def update_subscription_filter_settings_task(org_pk, subscription_filter_keys):
     from metering_billing.models import Organization
 
     org = Organization.objects.get(pk=org_pk)
-    org.update_subscription_filter_settings(subscription_filter_keys)
+    org.subscription_filter_keys = subscription_filter_keys
+    org.save()
 
 
 @shared_task

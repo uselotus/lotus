@@ -228,7 +228,6 @@ class OrganizationSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     current_user = serializers.SerializerMethodField()
     address = serializers.SerializerMethodField()
     team_name = serializers.SerializerMethodField()
-    subscription_filter_keys = serializers.SerializerMethodField()
     timezone = TimeZoneSerializerField(use_pytz=True)
     stripe_account_id = serializers.SerializerMethodField()
     braintree_merchant_id = serializers.SerializerMethodField()
@@ -257,17 +256,6 @@ class OrganizationSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         if obj.braintree_integration:
             return obj.braintree_integration.braintree_merchant_id
         return None
-
-    def get_subscription_filter_keys(
-        self, obj
-    ) -> serializers.ListField(child=serializers.CharField()):
-        if not obj.subscription_filters_setting_provisioned:
-            return []
-        else:
-            setting = obj.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-            )
-            return setting.setting_values
 
     def get_team_name(self, obj) -> str:
         team = obj.team
@@ -1816,27 +1804,15 @@ class OrganizationSettingUpdateSerializer(
 
     def update(self, instance, validated_data):
         setting_values = validated_data.get("setting_values")
-        if instance.setting_name == ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS:
-            if not isinstance(setting_values, list):
-                raise serializers.ValidationError(
-                    "Setting values must be a list of strings"
-                )
-            if not all(isinstance(item, str) for item in setting_values):
-                raise serializers.ValidationError(
-                    "Setting values must be a list of strings"
-                )
-            current_setting_values = set(instance.setting_values)
-            new_setting_values = set(setting_values)
-            validated_data["setting_values"] = list(
-                current_setting_values.union(new_setting_values)
-            )
-        elif instance.setting_name in [
+        if instance.setting_name in [
             ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS,
             ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_BRAINTREE_AFTER_LOTUS,
         ]:
             if not isinstance(setting_values, bool):
                 raise serializers.ValidationError("Setting values must be a boolean")
             setting_values = {"value": setting_values}
+        else:
+            raise serializers.ValidationError("Setting name not supported for updating")
         instance.setting_values = setting_values
         instance.save()
         return instance
