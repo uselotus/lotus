@@ -1,3 +1,4 @@
+/* eslint-disable camelcase */
 /* eslint-disable prefer-template */
 /* eslint-disable no-nested-ternary */
 import { Button, Dropdown, Menu, Table, Tag, Tooltip } from "antd";
@@ -21,7 +22,9 @@ const downloadFile = async (s3link) => {
   window.open(s3link);
 };
 
-const getPdfUrl = async (invoice: InvoiceType) => {
+const getPdfUrl = async (
+  invoice: components["schemas"]["CustomerDetail"]["invoices"][0]
+) => {
   try {
     const response = await Invoices.getInvoiceUrl(invoice.invoice_id);
     const pdfUrl = response.url;
@@ -39,7 +42,8 @@ interface Props {
 }
 
 const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
-  const [selectedRecord, setSelectedRecord] = React.useState();
+  const [selectedRecord, setSelectedRecord] =
+    React.useState<components["schemas"]["CustomerDetail"]["invoices"][0]>();
   const changeStatus = useMutation(
     (post: MarkPaymentStatusAsPaid) => Invoices.changeStatus(post),
     {
@@ -242,7 +246,11 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
             </Tag>
           )}
 
-          <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="ml-auto"
+            aria-hidden
+            onClick={(e) => e.stopPropagation()}
+          >
             <Dropdown
               overlay={
                 <Menu>

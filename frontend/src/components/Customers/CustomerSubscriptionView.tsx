@@ -129,7 +129,9 @@ const SubscriptionView: FC<Props> = ({
   const [next, setNext] = useState<string>("");
   const [previous, setPrev] = useState<string>("");
   const [selectedSubPlan, setSelectedSubPlan] = useState<
-    components["schemas"]["CustomerDetail"]["subscriptions"][0] | undefined
+    | components["schemas"]["CustomerDetail"]["subscriptions"][0]
+    | components["schemas"]["CustomerDetail"]["stripe_subscriptions"][0]
+    | undefined
   >();
   const [selectedPlan, setSelectedPlan] = useState<string>();
 

@@ -660,7 +660,7 @@ export const Credits = {
   getCreditsByCustomer: (params: {
     customer_id: string;
     format?: string;
-  }): Promise<CreditType[]> => {
+  }): Promise<components["schemas"]["CustomerBalanceAdjustment"][]> => {
     if (params.format) {
       return requests.get(
         `app/credits/?customer_id=${params.customer_id}?format=${params.format}`
