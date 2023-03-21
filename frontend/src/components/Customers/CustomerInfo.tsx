@@ -30,8 +30,6 @@ import { fourDP } from "../../helpers/fourDP";
 import { timezones } from "../../assets/timezones";
 import { components } from "../../gen-types";
 
-import { components } from "../../gen-types";
-
 interface CustomerInfoViewProps {
   data: components["schemas"]["CustomerDetail"];
   cost_data: CustomerCostType;
