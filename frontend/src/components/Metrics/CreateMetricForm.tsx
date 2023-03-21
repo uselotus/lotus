@@ -31,6 +31,7 @@ import "ace-builds/src-noconflict/mode-sql";
 import "ace-builds/src-noconflict/theme-github";
 import "ace-builds/src-noconflict/ext-language_tools";
 import { format } from "sql-formatter";
+import { toast } from "react-toastify";
 
 const { Option } = Select;
 const { Panel } = Collapse;
@@ -195,6 +196,11 @@ function CreateMetricForm(props: {
       width={800}
       onCancel={props.onCancel}
       onOk={() => {
+        if ((import.meta as any).env.VITE_IS_DEMO === "true") {
+          toast.error("This feature is disabled in the demo");
+          return;
+        }
+
         form.validateFields().then((values) => {
           var { filters } = values;
           filters = filters || [];
