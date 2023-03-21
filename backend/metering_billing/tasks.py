@@ -6,6 +6,7 @@ from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
+
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
@@ -60,7 +61,8 @@ def update_subscription_filter_settings_task(org_pk, subscription_filter_keys):
     from metering_billing.models import Organization
 
     org = Organization.objects.get(pk=org_pk)
-    org.update_subscription_filter_settings(subscription_filter_keys)
+    org.subscription_filter_keys = subscription_filter_keys
+    org.save()
 
 
 @shared_task
