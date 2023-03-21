@@ -1,3 +1,4 @@
+/* eslint-disable camelcase */
 // @ts-ignore
 import React, { FC, useRef } from "react";
 import { Menu, Dropdown, Button, Typography, Tag } from "antd";
@@ -22,13 +23,16 @@ import useMediaQuery from "../../../hooks/useWindowQuery";
 import createTags from "../helpers/createTags";
 import useGlobalStore from "../../../stores/useGlobalstore";
 import createPlanTagsList from "../helpers/createPlanTagsList";
+import { components } from "../../../gen-types";
 
 interface PlanCardProps {
-  plan: PlanType;
+  plan: components["schemas"]["Plan"];
   pane: "All" | "Monthly" | "Yearly" | "Quarterly";
   createTagMutation: (variables: {
     plan_id: string;
-    tags: PlanType["tags"];
+    tags:
+      | components["schemas"]["PlanDetail"]["tags"]
+      | components["schemas"]["Plan"]["tags"];
     pane: "All" | "Monthly" | "Yearly" | "Quarterly";
   }) => void;
 }
@@ -84,6 +88,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
 
   return (
     <div
+      aria-hidden
       className="min-h-[200px]  min-w-[246px] p-6 cursor-pointer  rounded-sm bg-card  shadow-lg hover:shadow-neutral-400"
       onClick={(e) => {
         if ((e.target as HTMLInputElement).nodeName === "DIV") gotoPlanDetail();
@@ -162,6 +167,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
               {plan_tags &&
                 createPlanTagsList(plan.tags, plan_tags).map((tag, index) => (
                   <DropdownComponent.MenuItem
+                    key={tag.tag_name}
                     onSelect={() => {
                       if (tag.from !== "plans") {
                         const planTags = [...plan.tags];

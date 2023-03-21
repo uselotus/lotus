@@ -3,7 +3,9 @@ import { components } from "../../gen-types";
 import Badge from "../base/Badges/Badges";
 
 interface PlanTagsProps {
-  tags: components["schemas"]["PlanDetail"]["tags"];
+  tags:
+    | components["schemas"]["PlanDetail"]["tags"]
+    | components["schemas"]["Plan"]["tags"];
   showAddTagButton?: boolean;
 }
 
