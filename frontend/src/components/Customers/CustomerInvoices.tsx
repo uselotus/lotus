@@ -243,30 +243,24 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
                   <Menu.Item key="1" onClick={() => getPdfUrl(record)}>
                     <div className="archiveLabel">Download Invoice PDF</div>
                   </Menu.Item>
-                  {!record.external_payment_obj_type && (
-                    <Menu.Item
-                      key="2"
-                      onClick={() => {
-                        if (selectedRecord === record) {
-                          changeStatus.mutate({
-                            invoice_id: record.invoice_id,
-                            payment_status:
-                              record.payment_status === "unpaid"
-                                ? "paid"
-                                : "unpaid",
-                          });
-                        } else {
-                          setSelectedRecord(record);
-                        }
-                      }}
-                    >
-                      <div className="archiveLabel">
-                        {record.payment_status === "unpaid"
-                          ? "Mark As Paid"
-                          : "Mark As Unpaid"}
-                      </div>
-                    </Menu.Item>
-                  )}
+                  {!record.external_payment_obj_type &&
+                    record.payment_status === "unpaid" && (
+                      <Menu.Item
+                        key="2"
+                        onClick={() => {
+                          if (selectedRecord === record) {
+                            changeStatus.mutate({
+                              invoice_id: record.invoice_id,
+                              payment_status: "paid",
+                            });
+                          } else {
+                            setSelectedRecord(record);
+                          }
+                        }}
+                      >
+                        <div className="archiveLabel">Mark As Paid</div>
+                      </Menu.Item>
+                    )}
                   {!record.external_payment_obj_type &&
                     paymentMethod &&
                     record.payment_status === "unpaid" && (
