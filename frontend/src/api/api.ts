@@ -554,6 +554,9 @@ export const Metrics = {
 export const Events = {
   getEventPreviews: (c: string): Promise<EventPages> =>
     requests.get("app/events/", { params: { c } }),
+  // TODO Add the real type here
+  getEventProperties: (): Promise<components["schemas"]["EventProperties"]> =>
+    requests.get("app/events/properties/"),
   getEventCount: (
     period_1_start_date: string,
     period_1_end_date: string,
