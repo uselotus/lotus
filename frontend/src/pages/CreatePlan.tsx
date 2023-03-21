@@ -435,8 +435,9 @@ function CreatePlan() {
                 <Button
                   type="primary"
                   disabled={
-                    !isCurrentStepValid &&
-                    (import.meta as any).env.VITE_IS_DEMO === "true"
+                    !isCurrentStepValid ||
+                    (currentStep === STEPS.length - 1 &&
+                      (import.meta as any).env.VITE_IS_DEMO === "true")
                   }
                   style={{
                     background: "#C3986B",

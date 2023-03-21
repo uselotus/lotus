@@ -30,7 +30,7 @@ const Heading: React.FC<HeadingProps> = ({
       : "";
   return (
     <div className="mt-16">
-      <div className="flex cursor-pointer justify-end">
+      <div className="flex cursor-pointer justify-end items-center">
         {/* <div className="bg-red">
           <input
             type="text"
@@ -43,6 +43,7 @@ const Heading: React.FC<HeadingProps> = ({
           />
         </div> */}
         <h1 className="text-xl">{headingText}</h1>
+
         <div className="flex items-center ml-[58%]">
           <div className="mr-10">
             <Badge

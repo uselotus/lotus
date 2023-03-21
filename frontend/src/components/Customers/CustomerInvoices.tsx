@@ -240,23 +240,40 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
             <Dropdown
               overlay={
                 <Menu>
-                  <Menu.Item key="1" onClick={() => getPdfUrl(record)}>
+                  <Menu.Item
+                    key="1"
+                    onClick={() => {
+                      if ((import.meta as any).env.VITE_IS_DEMO === "true") {
+                        toast.error("This feature is disabled in the demo", {
+                          position: toast.POSITION.TOP_CENTER,
+                        });
+                      } else {
+                        getPdfUrl(record);
+                      }
+                    }}
+                  >
                     <div className="archiveLabel">Download Invoice PDF</div>
                   </Menu.Item>
                   {!record.external_payment_obj_type && (
                     <Menu.Item
                       key="2"
                       onClick={() => {
-                        if (selectedRecord === record) {
-                          changeStatus.mutate({
-                            invoice_id: record.invoice_id,
-                            payment_status:
-                              record.payment_status === "unpaid"
-                                ? "paid"
-                                : "unpaid",
+                        if ((import.meta as any).env.VITE_IS_DEMO === "true") {
+                          toast.error("This feature is disabled in the demo", {
+                            position: toast.POSITION.TOP_CENTER,
                           });
                         } else {
-                          setSelectedRecord(record);
+                          if (selectedRecord === record) {
+                            changeStatus.mutate({
+                              invoice_id: record.invoice_id,
+                              payment_status:
+                                record.payment_status === "unpaid"
+                                  ? "paid"
+                                  : "unpaid",
+                            });
+                          } else {
+                            setSelectedRecord(record);
+                          }
                         }
                       }}
                     >

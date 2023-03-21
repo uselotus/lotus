@@ -56,6 +56,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
           onClick={() => {
             mutation.mutate(metric.metric_id);
           }}
+          disabled={(import.meta as any).env.VITE_IS_DEMO === "true"}
         >
           Archive
         </Button>,

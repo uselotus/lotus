@@ -33,8 +33,16 @@ const CodeExample = ({ complete }: { complete: boolean }) => {
       --header 'X-API-KEY: AUTH_VALUE' \
       --header 'Content-Type: application/json' \
       --data '{
-  "batch": "array"
- }'`,
+      "batch": [
+        {
+          event_name: "test"
+          time_created: "2023-03-21T21:26:43.545Z"
+          customer_id: "cust_5894767364aa4e64"
+          properties: { test: "test", numeric_quantity: 3.1415 }
+          idempotency_id: "c2c5eb5d-de4b-44e0"
+        },
+      ]
+    }'`,
     },
     pythonSDK: {
       label: "Python SDK",
@@ -110,6 +118,7 @@ const CodeExample = ({ complete }: { complete: boolean }) => {
             ...docco,
             marginBottom: "0px",
             background: "transparent",
+            fontSize: "14px",
           }}
           language={codeExamples[selectedTab].language}
         >
@@ -140,8 +149,7 @@ const CodeExample = ({ complete }: { complete: boolean }) => {
 
 function demoLink(link) {
   if ((import.meta as any).env.VITE_IS_DEMO === "true") {
-    toast.error("This is not available in the demo.");
-    return;
+    return "/";
   } else {
     return link;
   }

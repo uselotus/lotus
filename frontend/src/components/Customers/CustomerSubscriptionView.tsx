@@ -585,6 +585,14 @@ const SubscriptionView: FC<Props> = ({
                           // eslint-disable-next-line react/no-array-index-key
                           key={index}
                           onSelect={() => {
+                            if (
+                              (import.meta as any).env.VITE_IS_DEMO === "true"
+                            ) {
+                              toast.error(
+                                "This feature does not work in the demo"
+                              );
+                              return;
+                            }
                             setSelectedSubPlan(subPlan);
                             switch (index) {
                               case 0:
@@ -629,6 +637,14 @@ const SubscriptionView: FC<Props> = ({
                           // eslint-disable-next-line react/no-array-index-key
                           key={index}
                           onSelect={() => {
+                            if (
+                              (import.meta as any).env.VITE_IS_DEMO === "true"
+                            ) {
+                              toast.error(
+                                "This feature does not work in the demo"
+                              );
+                              return;
+                            }
                             setSelectedSubPlan(subPlan);
                             switch (index) {
                               case 0:
@@ -1448,6 +1464,7 @@ const SubscriptionView: FC<Props> = ({
               key="submit"
               type="primary"
               className="hover:!bg-primary-700"
+              disabled={(import.meta as any).env.VITE_IS_DEMO === "true"}
               onClick={() => {
                 handleAttachPlanSubmit();
                 setShowAddModal(false);
