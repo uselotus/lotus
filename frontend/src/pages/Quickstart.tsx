@@ -139,7 +139,7 @@ const CodeExample = ({ complete }: { complete: boolean }) => {
 };
 
 function demoLink(link) {
-  if (import.meta.env.VITE_IS_DEMO === "true") {
+  if ((import.meta as any).env.VITE_IS_DEMO === "true") {
     toast.error("This is not available in the demo.");
     return;
   } else {

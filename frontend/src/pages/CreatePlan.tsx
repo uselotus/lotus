@@ -434,7 +434,10 @@ function CreatePlan() {
                 />
                 <Button
                   type="primary"
-                  disabled={!isCurrentStepValid}
+                  disabled={
+                    !isCurrentStepValid &&
+                    (import.meta as any).env.VITE_NANGO_PK === "true"
+                  }
                   style={{
                     background: "#C3986B",
                     color: "#FFFFFF",

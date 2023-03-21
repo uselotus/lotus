@@ -216,7 +216,11 @@ const GeneralTab: FC = () => {
     <div>
       <div className="flex justify-between w-6/12">
         <Typography.Title level={2}>Environment Settings</Typography.Title>
-        <Button onClick={() => setIsEdit(true)} className="justify-self-end">
+        <Button
+          onClick={() => setIsEdit(true)}
+          className="justify-self-end"
+          disabled={(import.meta as any).env.VITE_NANGO_PK === "true"}
+        >
           Edit
         </Button>
       </div>

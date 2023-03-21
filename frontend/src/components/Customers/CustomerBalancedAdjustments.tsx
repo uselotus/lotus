@@ -218,7 +218,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
           className="hover:!bg-primary-700"
           style={{ background: "#C3986B", borderColor: "#C3986B" }}
           size="large"
-          disabled={false}
+          disabled={(import.meta as any).env.VITE_IS_DEMO === "true"}
           onClick={() => setShowCreateCredit(true)}
         >
           Create Credit

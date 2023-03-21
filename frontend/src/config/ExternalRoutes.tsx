@@ -7,31 +7,31 @@ import SetNewPassword from "../pages/SetNewPassword";
 import DemoSignup from "../pages/DemoSignup";
 
 const ExternalRoutes: FC = () => (
-    <Routes>
-      <Route
-        path="/register"
-        element={
-          import.meta.env.VITE_IS_DEMO === "true" ? (
-            <DemoSignup />
-          ) : (
-            <Register />
-          )
-        }
-      />
-      <Route path="/login" element={<Login />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/set-new-password" element={<SetNewPassword />} />
-      <Route
-        path="/*"
-        element={
-          import.meta.env.VITE_IS_DEMO === "true" ? (
-            <Navigate replace to="/register" />
-          ) : (
-            <Login />
-          )
-        }
-      />
-    </Routes>
-  );
+  <Routes>
+    <Route
+      path="/register"
+      element={
+        (import.meta as any).env.VITE_IS_DEMO === "true" ? (
+          <DemoSignup />
+        ) : (
+          <Register />
+        )
+      }
+    />
+    <Route path="/login" element={<Login />} />
+    <Route path="/reset-password" element={<ResetPassword />} />
+    <Route path="/set-new-password" element={<SetNewPassword />} />
+    <Route
+      path="/*"
+      element={
+        (import.meta as any).env.VITE_IS_DEMO === "true" ? (
+          <Navigate replace to="/register" />
+        ) : (
+          <Login />
+        )
+      }
+    />
+  </Routes>
+);
 
 export default ExternalRoutes;

@@ -456,7 +456,10 @@ const SubscriptionView: FC<Props> = ({
               />
             </Form.Item>
             <Form.Item>
-              <Button htmlType="submit">
+              <Button
+                htmlType="submit"
+                disabled={(import.meta as any).env.VITE_IS_DEMO === "true"}
+              >
                 {" "}
                 Attach Plan and Start Subscription
               </Button>

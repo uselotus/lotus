@@ -171,6 +171,7 @@ const TeamTab: FC = () => {
             </Form>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <Button
+                disabled={(import.meta as any).env.VITE_NANGO_PK === "true"}
                 style={{ marginRight: "6px" }}
                 onClick={() => {
                   setAction("sendInvite");
@@ -180,6 +181,7 @@ const TeamTab: FC = () => {
                 Send Invite
               </Button>
               <Button
+                disabled={(import.meta as any).env.VITE_NANGO_PK === "true"}
                 style={{ marginLeft: "6px" }}
                 onClick={() => {
                   setAction("generateInviteLink");

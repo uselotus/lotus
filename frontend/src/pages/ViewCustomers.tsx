@@ -28,14 +28,10 @@ const ViewCustomers: FC = () => {
 
   const { data, isLoading }: UseQueryResult<CustomerSummary[]> = useQuery<
     CustomerSummary[]
-  >(["customer_list"], () =>
-    Customer.getCustomers().then((res) => res)
-  );
+  >(["customer_list"], () => Customer.getCustomers().then((res) => res));
   const { data: customerTotals, isLoading: totalLoading } = useQuery<
     CustomerTotal[]
-  >(["customer_totals"], () =>
-    Customer.getCustomerTotals().then((res) => res)
-  );
+  >(["customer_totals"], () => Customer.getCustomerTotals().then((res) => res));
 
   const mutation = useMutation(
     (post: CustomerCreateType) => Customer.createCustomer(post),
@@ -88,10 +84,11 @@ const ViewCustomers: FC = () => {
       extra={[
         <Button
           onClick={openCustomerModal}
-            type="primary"
-            id='create-cutsomer-model'
+          type="primary"
+          id="create-cutsomer-model"
           size="large"
           key="create-plan"
+          disabled={(import.meta as any).env.VITE_NANGO_PK === "true"}
           className="hover:!bg-primary-700"
           style={{ background: "#C3986B", borderColor: "#C3986B" }}
         >

@@ -391,6 +391,7 @@ const ViewPlans: FC = () => {
           onClick={navigateCreatePlan}
           type="primary"
           size="large"
+          disabled={(import.meta as any).env.VITE_IS_DEMO === "true"}
           key="create-plan"
           className="hover:!bg-primary-700"
           style={{ background: "#C3986B", borderColor: "#C3986B" }}
