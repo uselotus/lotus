@@ -1,5 +1,6 @@
 {
   "name": "Lotus",
+  "openapi": "/openapi.yaml",
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg"

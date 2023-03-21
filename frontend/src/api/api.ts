@@ -144,7 +144,9 @@ export const Customer = {
     customer_id: string
   ): Promise<components["schemas"]["CustomerDetail"]> =>
     requests.get(`app/customers/${customer_id}/`),
-  createCustomer: (post: CustomerCreateType): Promise<CustomerType> =>
+  createCustomer: (
+    post: components["schemas"]["CustomerCreateRequest"]
+  ): Promise<components["schemas"]["Customer"]> =>
     requests.post("app/customers/", post),
   getCustomerTotals: (): Promise<CustomerTotal[]> =>
     requests.get("app/customers/totals/"),
@@ -153,8 +155,8 @@ export const Customer = {
   updateCustomer: (
     customer_id: string,
     default_currency_code: string,
-    shipping_address: CustomerType["shipping_address"],
-    billing_address: CustomerType["billing_address"],
+    shipping_address: components["schemas"]["PatchedCustomerUpdateRequest"]["shipping_address"],
+    billing_address: components["schemas"]["PatchedCustomerUpdateRequest"]["billing_address"],
     tax_rate: number,
     timezone: string,
     customer_name?: string,
@@ -257,7 +259,7 @@ export const Plan = {
     version_currency_code?: string;
     version_custom_type?: "custom_only" | "public_only" | "all";
     version_status?: ("active" | "ended" | "not_started")[];
-  }): Promise<PlanType[] | components["schemas"]["PlanDetail"][]> =>
+  }): Promise<components["schemas"]["PlanDetail"][]> =>
     requests.get("app/plans/", { params }),
   getPlan: (
     plan_id: string,
@@ -658,7 +660,7 @@ export const Credits = {
   getCreditsByCustomer: (params: {
     customer_id: string;
     format?: string;
-  }): Promise<CreditType[]> => {
+  }): Promise<components["schemas"]["CustomerBalanceAdjustment"][]> => {
     if (params.format) {
       return requests.get(
         `app/credits/?customer_id=${params.customer_id}?format=${params.format}`

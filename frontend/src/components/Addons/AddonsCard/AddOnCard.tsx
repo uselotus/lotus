@@ -1,13 +1,11 @@
 /* eslint-disable camelcase */
-import React, { FC, useRef } from "react";
+import React, { FC } from "react";
 import { Typography } from "antd";
-import { useQueryClient } from "react-query";
 import { useNavigate } from "react-router-dom";
 import CopyText from "../../base/CopytoClipboard";
 import createShortenedText from "../../../helpers/createShortenedText";
 import capitalize from "../../../helpers/capitalize";
 import useMediaQuery from "../../../hooks/useWindowQuery";
-import { AddOnType } from "../../../types/addon-type";
 import { constructBillType } from "../AddonsDetails/AddOnInfo";
 import { components } from "../../../gen-types";
 
@@ -16,10 +14,8 @@ interface AddOnCardProps {
 }
 
 const AddOnsCard: FC<AddOnCardProps> = ({ add_on }) => {
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const windowWidth = useMediaQuery();
-  const inputRef = useRef<HTMLInputElement | null>(null!);
 
   const goToAddOnDetail = () => {
     navigate(`/add-ons/${add_on.addon_id}`);

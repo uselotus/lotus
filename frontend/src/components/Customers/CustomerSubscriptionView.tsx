@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 /* eslint-disable react/no-unstable-nested-components */
 /* eslint-disable no-case-declarations */
 /* eslint-disable no-shadow */
@@ -131,13 +132,11 @@ const SubscriptionView: FC<Props> = ({
   const [next, setNext] = useState<string>("");
   const [previous, setPrev] = useState<string>("");
   const [selectedSubPlan, setSelectedSubPlan] = useState<
-    | SubscriptionType
-    | components["schemas"]["StripeSubscriptionRecord"]
+    | components["schemas"]["CustomerDetail"]["subscriptions"][0]
+    | components["schemas"]["CustomerDetail"]["stripe_subscriptions"][0]
     | undefined
   >();
   const [selectedPlan, setSelectedPlan] = useState<string>();
-  const [paginatedSubscriptions, setPaginatedSubscriptions] =
-    useState<SubscriptionType[]>(subscriptions);
 
   const [form] = Form.useForm();
   const navigate = useNavigate();
@@ -373,26 +372,6 @@ const SubscriptionView: FC<Props> = ({
           setOffset(subscriptions.length);
           setRightCursor("RIGHT-END");
         }
-        // if (Number(next) <= subscriptions.length) {
-        //   const newPage = currentPage + 1;
-        //   setCursor(next);
-        //   setCurrentPage(newPage);
-        //   setPaginatedSubscriptions(
-        //     subscriptions.slice(Number(previous), Number(next))
-        //   );
-        //   setNext(String(Number(next) + limit));
-        //   setPrev(String(Number(next)));
-        // } else {
-        //   const newPage = currentPage + 1;
-        //   setCursor(next);
-        //   setCurrentPage(newPage);
-        //   setPaginatedSubscriptions(
-        //     subscriptions.slice(Number(previous), subscriptions.length - 1)
-        //   );
-        //   setNext(String(subscriptions.length - 1));
-        //   setPrev(previous);
-        //   setRightCursor("RIGHT-END");
-        // }
         break;
       case "START":
         setCursor("");
@@ -405,13 +384,6 @@ const SubscriptionView: FC<Props> = ({
         } else {
           setRightCursor("");
         }
-        // setPaginatedSubscriptions(subscriptions.slice(0, limit));
-        // // const next = limit + limit;
-        // setNext(String(limit + limit));
-        // setPrev(String(Number(limit)));
-        // if (limit + limit > subscriptions.length) {
-        //   setRightCursor("RIGHT-END");
-        // }
         break;
       default:
         break;
@@ -467,7 +439,13 @@ const SubscriptionView: FC<Props> = ({
     );
   }
 
-  function SubscriptionItem({ subPlan, fromUpcoming }) {
+  function SubscriptionItem({
+    subPlan,
+    fromUpcoming,
+  }: {
+    subPlan: components["schemas"]["CustomerDetail"]["subscriptions"][0];
+    fromUpcoming: boolean;
+  }) {
     return (
       <div key={subPlan.billing_plan.plan_id + subPlan.subscription_filters}>
         <CustomerCard
@@ -724,7 +702,7 @@ const SubscriptionView: FC<Props> = ({
                       }}
                       disabled={addOnId.length < 1}
                       onClick={() => {
-                        submitAddOns(selectedSubPlan.subscription_id);
+                        submitAddOns(selectedSubPlan!.subscription_id);
                       }}
                     >
                       Add
@@ -1280,6 +1258,11 @@ const SubscriptionView: FC<Props> = ({
     stripeSubscriptions,
     startingPoint,
     offset,
+  }: {
+    searchQuery: string;
+    subscriptions: components["schemas"]["CustomerDetail"]["subscriptions"];
+    startingPoint: number;
+    offset: number;
   }) {
     const subscriptionList = searchQuery
       ? getFilteredSubscriptions().map((subPlan) => (
@@ -1411,7 +1394,11 @@ const SubscriptionView: FC<Props> = ({
           <div className="flex flex-col justify-center">
             <div className="grid gap-20 min-h-[564px]  grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
               {upcomingSubscriptions.map((sub) => (
-                <SubscriptionItem fromUpcoming={true} subPlan={sub} />
+                <SubscriptionItem
+                  key={sub.subscription_id}
+                  fromUpcoming
+                  subPlan={sub}
+                />
               ))}
             </div>
           </div>
