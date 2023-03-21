@@ -1,6 +1,6 @@
 // @ts-ignore
 import React, { FC, useState, useEffect, Fragment } from "react";
-import { useQuery, UseQueryResult, useQueryClient } from "react-query";
+import { useQuery, UseQueryResult, useQueryClient } from '@tanstack/react-query';
 import { Button, Collapse, Divider } from "antd";
 import dayjs from "dayjs";
 import { EventPages } from "../types/event-type";
@@ -75,114 +75,111 @@ const EventPreview: FC = () => {
     }
   };
 
-  return (
-    <>
-      <div className="flex justify-between mb-4">
-        <h1 className="text-2xl font-main mb-5">
-          Event Stream (recent events first)
-        </h1>
-        <Button
-          onClick={() => {
-            queryClient.invalidateQueries("preview events");
-          }}
-          loading={isLoading}
-        >
-          Refresh
-        </Button>
+  return (<>
+    <div className="flex justify-between mb-4">
+      <h1 className="text-2xl font-main mb-5">
+        Event Stream (recent events first)
+      </h1>
+      <Button
+        onClick={() => {
+          queryClient.invalidateQueries(['preview events']);
+        }}
+        loading={isLoading}
+      >
+        Refresh
+      </Button>
+    </div>
+    <Divider />
+    {data?.results.length === 0 ? (
+      <div className="align-center">
+        <h3 className="text-xl font-main align-center">No Events</h3>
+        <div className="separator mb-5 mt-5" />
       </div>
-      <Divider />
+    ) : (
+      <div className="w-full rounded border border-[#1d1d1f]">
+        <Collapse
+          expandIconPosition="end"
+          bordered={false}
+          className="hover:bg-background"
+          style={{ background: "#ffffff" }}
+        >
+          {!data && !!cursor.length && (
+            <div className="loadMoreSpinner">
+              <LoadingSpinner />
+            </div>
+          )}
 
-      {data?.results.length === 0 ? (
-        <div className="align-center">
-          <h3 className="text-xl font-main align-center">No Events</h3>
-          <div className="separator mb-5 mt-5" />
-        </div>
-      ) : (
-        <div className="w-full rounded border border-[#1d1d1f]">
-          <Collapse
-            expandIconPosition="end"
-            bordered={false}
-            className="hover:bg-background"
-            style={{ background: "#ffffff" }}
-          >
-            {!data && !!cursor.length && (
-              <div className="loadMoreSpinner">
-                <LoadingSpinner />
-              </div>
-            )}
-
-            {data?.results.map((event) => (
-              <Panel
-                header={
-                  <div className="grid grid-cols-2 my-2 font-alliance">
-                    <div className="flex align-middle text-[16px] ">
-                      <p className="leading-[24px]">event_name: </p>
-                      <p className="infoValue"> {event.event_name}</p>
-                    </div>
-                    <div className="flex align-middle text-[16px]">
-                      <p className="leading-[24px]">customer_id: </p>
-                      <p className="infoValue">
-                        {" "}
-                        <CopyText showIcon textToCopy={event.customer_id} />
-                      </p>
-                    </div>
+          {data?.results.map((event) => (
+            <Panel
+              header={
+                <div className="grid grid-cols-2 my-2 font-alliance">
+                  <div className="flex align-middle text-[16px] ">
+                    <p className="leading-[24px]">event_name: </p>
+                    <p className="infoValue"> {event.event_name}</p>
                   </div>
-                }
-                className=" hover:bg-background"
-                key={event.id}
-              >
-                <div className="grid grid-row-2 font-alliance">
-                  <div className="grid grid-cols-2">
-                    <div className="flex align-middle text-[16px] ">
-                      <p className="leading-[24px]">ID: </p>
-                      <p className="infoValue">
-                        {" "}
-                        <CopyText showIcon textToCopy={event.idempotency_id} />
-                      </p>
-                    </div>
-
-                    <p className="text-[16px]">Properties: </p>
-                  </div>
-                  <div className="grid grid-cols-2">
-                    <div className="flex align-middle text-[16px] text-left">
-                      <p className="leading-[24px]">time_created: </p>
-                      <p className="infoValue">
-                        {" "}
-                        {dayjs(event.time_created).format(
-                          "YYYY/MM/DD HH:mm:ss"
-                        )}
-                      </p>
-                    </div>
-                    <div className="text-left flex-col flex">
-                      {event.properties &&
-                        Object.keys(event.properties).map((keyName, i) => (
-                          <li className="travelcompany-input" key={i}>
-                            {event.properties !== undefined && (
-                              <span className="input-label">
-                                {keyName} : {event.properties[keyName]}{" "}
-                              </span>
-                            )}
-                          </li>
-                        ))}
-                    </div>
+                  <div className="flex align-middle text-[16px]">
+                    <p className="leading-[24px]">customer_id: </p>
+                    <p className="infoValue">
+                      {" "}
+                      <CopyText showIcon textToCopy={event.customer_id} />
+                    </p>
                   </div>
                 </div>
-              </Panel>
-            ))}
-          </Collapse>
-          <div className="separator mb-5 mt-5" />
+              }
+              className=" hover:bg-background"
+              key={event.id}
+            >
+              <div className="grid grid-row-2 font-alliance">
+                <div className="grid grid-cols-2">
+                  <div className="flex align-middle text-[16px] ">
+                    <p className="leading-[24px]">ID: </p>
+                    <p className="infoValue">
+                      {" "}
+                      <CopyText showIcon textToCopy={event.idempotency_id} />
+                    </p>
+                  </div>
 
-          <CustomPagination
-            cursor={cursor}
-            previous={previous}
-            next={next}
-            currentPage={currentPage}
-            handleMovements={handleMovements}
-          />
-        </div>
-      )}
-    </>
-  );
+                  <p className="text-[16px]">Properties: </p>
+                </div>
+                <div className="grid grid-cols-2">
+                  <div className="flex align-middle text-[16px] text-left">
+                    <p className="leading-[24px]">time_created: </p>
+                    <p className="infoValue">
+                      {" "}
+                      {dayjs(event.time_created).format(
+                        "YYYY/MM/DD HH:mm:ss"
+                      )}
+                    </p>
+                  </div>
+                  <div className="text-left flex-col flex">
+                    {event.properties &&
+                      Object.keys(event.properties).map((keyName, i) => (
+                        <li className="travelcompany-input" key={i}>
+                          {event.properties !== undefined && (
+                            <span className="input-label">
+                              {keyName} : {event.properties[keyName]}{" "}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            </Panel>
+          ))}
+        </Collapse>
+        <div className="separator mb-5 mt-5" />
+
+        <CustomPagination
+          cursor={cursor}
+          previous={previous}
+          next={next}
+          currentPage={currentPage}
+          handleMovements={handleMovements}
+        />
+      </div>
+    )}
+  </>);
 };
 
 export default EventPreview;

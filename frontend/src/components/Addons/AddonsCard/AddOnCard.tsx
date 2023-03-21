@@ -1,7 +1,7 @@
 /* eslint-disable camelcase */
 import React, { FC, useRef } from "react";
 import { Typography } from "antd";
-import { useQueryClient } from "react-query";
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from "react-router-dom";
 import CopyText from "../../base/CopytoClipboard";
 import createShortenedText from "../../../helpers/createShortenedText";

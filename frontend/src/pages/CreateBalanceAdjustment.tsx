@@ -6,7 +6,7 @@ import {
   useQueryClient,
   UseQueryResult,
   useQuery,
-} from "react-query";
+} from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import dayjs from "dayjs";
 import { Credits, PricingUnits } from "../api/api";
@@ -26,9 +26,9 @@ function CreateCredit({ customerId, visible, onCancel, onSubmit }: Params) {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
 
-  const { data, isLoading }: UseQueryResult<CurrencyType[]> = useQuery<
-    CurrencyType[]
-  >(["pricing_unit_list"], () => PricingUnits.list().then((res) => res));
+  useQuery<CurrencyType[]>(["pricing_unit_list"], () =>
+    PricingUnits.list().then((res) => res)
+  );
   const [amount_paid, setAmountPaid] = useState(
     form.getFieldValue("amount_paid")
   );

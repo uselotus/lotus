@@ -1,5 +1,5 @@
 import React, { FC, useState } from "react";
-import { useQuery } from "react-query";
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from "react-router-dom";
 import { Divider, Typography, Row, Col, Modal, Input } from "antd";
 import Nango from "@nangohq/frontend";

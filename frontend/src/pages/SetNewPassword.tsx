@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Authentication , instance } from "../api/api";
 import { Card, Input, Button, Form } from "antd";
 import "./Login.css";
-import { useQueryClient, useMutation } from "react-query";
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import Cookies from "universal-cookie";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -49,7 +49,7 @@ const SetNewPassword: FC = () => {
         cookies.set("Token", token);
         instance.defaults.headers.common.Authorization = `Token ${token}`;
         setIsAuthenticated(true);
-        queryClient.refetchQueries("session");
+        queryClient.refetchQueries(['session']);
         redirectDashboard();
       },
       onError: (error: QueryErrors) => {

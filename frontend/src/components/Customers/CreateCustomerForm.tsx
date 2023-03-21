@@ -1,7 +1,7 @@
 import { Modal, Form, Input, Select } from "antd";
 // @ts-ignore
 import React from "react";
-import { useQuery } from "react-query";
+import { useQuery } from "@tanstack/react-query";
 import PricingUnitDropDown from "../PricingUnitDropDown";
 import { PaymentProcessorIntegration } from "../../api/api";
 import { PaymentProcessorStatusType } from "../../types/payment-processor-type";
@@ -26,7 +26,7 @@ function CreateCustomerForm(props: {
   const [form] = Form.useForm();
   const [paymentProcessors, setPaymentProviders] = React.useState<string[]>([]);
 
-  const { data, isLoading } = useQuery<PaymentProcessorStatusType[]>(
+  useQuery<PaymentProcessorStatusType[]>(
     ["payment_processor_integration_list"],
     () => PaymentProcessorIntegration.getPaymentProcessorConnectionStatus(),
     {

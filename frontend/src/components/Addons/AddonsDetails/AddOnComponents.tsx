@@ -1,5 +1,5 @@
 import React, { useState, useRef, FC } from "react";
-import { QueryClient, useMutation } from "react-query";
+import { QueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import { Table, Typography, Modal, Button, InputNumber } from "antd";
 import { Plan } from "../../../api/api";

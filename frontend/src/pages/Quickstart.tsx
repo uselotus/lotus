@@ -1,6 +1,6 @@
 import React, { FC, useState, useEffect, useMemo } from "react";
 import { PageLayout } from "../components/base/PageLayout";
-import { useQuery } from "react-query";
+import { useQuery } from '@tanstack/react-query';
 import useGlobalStore from "../stores/useGlobalstore";
 import quickStartCheck from "../helpers/quickStartCheck";
 import { toast } from "react-toastify";

@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Authentication , instance } from "../api/api";
 import { Card, Input, Button, Form } from "antd";
 import "./Login.css";
-import { useQueryClient, useMutation } from "react-query";
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import Cookies from "universal-cookie";
 import posthog from "posthog-js";
@@ -73,7 +73,7 @@ const Login: FC = () => {
 
         cookies.set("Token", token);
         instance.defaults.headers.common.Authorization = `Token ${token}`;
-        queryClient.refetchQueries("session");
+        queryClient.refetchQueries(['session']);
         redirectDashboard();
       },
       onError: (error: QueryErrors) => {
