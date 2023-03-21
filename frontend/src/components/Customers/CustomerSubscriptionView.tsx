@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 /* eslint-disable react/no-unstable-nested-components */
 /* eslint-disable no-case-declarations */
 /* eslint-disable no-shadow */
@@ -440,8 +441,10 @@ const SubscriptionView: FC<Props> = ({
 
   function SubscriptionItem({
     subPlan,
+    fromUpcoming,
   }: {
     subPlan: components["schemas"]["CustomerDetail"]["subscriptions"][0];
+    fromUpcoming: boolean;
   }) {
     return (
       <div key={subPlan.billing_plan.plan_id + subPlan.subscription_filters}>
@@ -1391,7 +1394,11 @@ const SubscriptionView: FC<Props> = ({
           <div className="flex flex-col justify-center">
             <div className="grid gap-20 min-h-[564px]  grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
               {upcomingSubscriptions.map((sub) => (
-                <SubscriptionItem fromUpcoming={true} subPlan={sub} />
+                <SubscriptionItem
+                  key={sub.subscription_id}
+                  fromUpcoming
+                  subPlan={sub}
+                />
               ))}
             </div>
           </div>
