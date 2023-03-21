@@ -44,8 +44,6 @@ except Exception:
     pass
 
 VITE_API_URL = config("VITE_API_URL", default="http://localhost:8000")
-EVENT_CACHE_FLUSH_SECONDS = config("EVENT_CACHE_FLUSH_SECONDS", default=180, cast=int)
-EVENT_CACHE_FLUSH_COUNT = config("EVENT_CACHE_FLUSH_COUNT", default=1000, cast=int)
 DOCKERIZED = config("DOCKERIZED", default=False, cast=bool)
 DEBUG = config("DEBUG", default=False, cast=bool)
 PROFILER_ENABLED = config("PROFILER_ENABLED", default=False, cast=bool)
@@ -434,12 +432,19 @@ CELERY_TIMEZONE = "UTC"
 if REDIS_URL is not None:
     CACHES = {
         "default": {
+            "BACKEND": "cache_fallback.FallbackCache",
+        },
+        "main_cache": {
             "BACKEND": "django_redis.cache.RedisCache",
             "LOCATION": f"{REDIS_URL}/0",
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
             },
-        }
+        },
+        "fallback_cache": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "unique-snowflake",
+        },
     }
 else:
     CACHES = {

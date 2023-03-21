@@ -5,30 +5,28 @@ import pytz
 from django.conf import settings
 from django.db.models import Count, F, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from metering_billing.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
 )
-from metering_billing.models import (
-    Event,
-    Invoice,
-    Metric,
-    Organization,
-    SubscriptionRecord,
-)
+from metering_billing.models import Event, Invoice, Organization, SubscriptionRecord
 from metering_billing.netsuite_csv import get_invoices_csv_presigned_url
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
-from metering_billing.serializers.model_serializers import MetricDetailSerializer
 from metering_billing.serializers.request_serializers import (
-    CostAnalysisRequestSerializer,
     OptionalPeriodRequestSerializer,
     PeriodComparisonRequestSerializer,
     PeriodMetricUsageRequestSerializer,
+    StripeMultiSubscriptionsSerializer,
     URLResponseSerializer,
 )
 from metering_billing.serializers.response_serializers import (
-    CostAnalysisSerializer,
     PeriodEventsResponseSerializer,
     PeriodMetricRevenueResponseSerializer,
     PeriodMetricUsageResponseSerializer,
@@ -47,12 +45,6 @@ from metering_billing.utils import (
     make_all_decimals_floats,
 )
 from metering_billing.utils.enums import METRIC_STATUS, METRIC_TYPE, PAYMENT_PROCESSORS
-from rest_framework import serializers, status
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
 
 logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -459,6 +451,140 @@ class ImportPaymentObjectsView(APIView):
             {
                 "status": "success",
                 "detail": f"Payment objects succesfully imported {num} payment objects from {source}.",
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class StripeSubscriptionsView(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
+    permission_classes = [IsAuthenticated | ValidOrganization]
+
+    @extend_schema(
+        request=StripeMultiSubscriptionsSerializer,
+        responses={
+            200: inline_serializer(
+                name="StripeCancelSubscriptionsSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="StripeCancelSubscriptionsFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def cancel_subscriptions(self, request, pk=None):
+        organization = request.organization
+        serializer = StripeMultiSubscriptionsSerializer(
+            data=request.data, context={"organization": organization}
+        )
+        serializer.is_valid(raise_exception=True)
+        customer = serializer.validated_data["customer"]
+        stripe_subscription_ids = serializer.validated_data["stripe_subscription_ids"]
+        try:
+            PAYMENT_PROCESSOR_MAP["stripe"].cancel_subscriptions(
+                organization, customer, stripe_subscription_ids
+            )
+        except Exception as e:
+            raise ExternalConnectionFailure(f"Error cancelling subscriptions: {e}")
+        return Response(
+            {
+                "status": "success",
+                "detail": f"Stripe subscriptions cancelled for customer {customer}.",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        request=StripeMultiSubscriptionsSerializer,
+        responses={
+            200: inline_serializer(
+                name="StripeTurnOffAutoRenewalSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="StripeTurnOffAutoRenewalFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def turn_off_auto_renewal(self, request, pk=None):
+        organization = request.organization
+        serializer = StripeMultiSubscriptionsSerializer(
+            data=request.data, context={"organization": organization}
+        )
+        serializer.is_valid(raise_exception=True)
+        customer = serializer.validated_data["customer"]
+        stripe_subscription_ids = serializer.validated_data["stripe_subscription_ids"]
+        try:
+            PAYMENT_PROCESSOR_MAP["stripe"].turn_off_subscriptions_auto_renew(
+                organization, customer, stripe_subscription_ids
+            )
+        except Exception as e:
+            raise ExternalConnectionFailure(
+                f"Error turning off auto renew for subscriptions: {e}"
+            )
+        return Response(
+            {
+                "status": "success",
+                "detail": f"Stripe subscriptions turned off auto renew for customer {customer}.",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class ImportSubscriptionsView(APIView):
+    permission_classes = [IsAuthenticated | ValidOrganization]
+
+    @extend_schema(
+        request=inline_serializer(
+            name="ImportSubscriptionsRequest",
+            fields={
+                "source": serializers.ChoiceField(choices=[("stripe", "Stripe")]),
+            },
+        ),
+        responses={
+            201: inline_serializer(
+                name="ImportSubscriptionsSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="ImportSubscriptionsFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def post(self, request, format=None):
+        organization = request.organization
+        source = request.data["source"]
+        if source != "stripe":
+            raise ExternalConnectionInvalid(f"Invalid source: {source}")
+        connector = PAYMENT_PROCESSOR_MAP[source]
+        try:
+            num = connector.import_subscriptions(organization)
+        except Exception as e:
+            raise ExternalConnectionFailure(f"Error importing subscriptions: {e}")
+        return Response(
+            {
+                "status": "success",
+                "detail": f"Succesfully imported {num} subscriptions from Stripe.",
             },
             status=status.HTTP_201_CREATED,
         )

@@ -26,6 +26,15 @@ from django.db.models import Count, F, FloatField, Q, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
+
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     NotEditable,
@@ -73,14 +82,6 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -271,11 +272,19 @@ class Organization(models.Model):
     timezone = TimeZoneField(default="UTC", use_pytz=True)
     __original_timezone = None
 
+    # SUBSCRIPTION RELATED FIELDS
+    subscription_filter_keys = ArrayField(
+        models.TextField(),
+        default=list,
+        blank=True,
+        help_text="Allowed subscription filter keys",
+    )
+    __original_subscription_filter_keys = None
+
     # PROVISIONING FIELDS
     webhooks_provisioned = models.BooleanField(default=False)
     currencies_provisioned = models.IntegerField(default=0)
     crm_settings_provisioned = models.BooleanField(default=False)
-    subscription_filters_setting_provisioned = models.BooleanField(default=False)
 
     # HISTORY RELATED FIELDS
     history = HistoricalRecords()
@@ -283,6 +292,7 @@ class Organization(models.Model):
     def __init__(self, *args, **kwargs):
         super(Organization, self).__init__(*args, **kwargs)
         self.__original_timezone = self.timezone
+        self.__original_subscription_filter_keys = self.subscription_filter_keys
 
     class Meta:
         indexes = [
@@ -296,6 +306,8 @@ class Organization(models.Model):
         return self.organization_name
 
     def save(self, *args, **kwargs):
+        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+
         new = self._state.adding is True
         # self._state.adding represents whether creating new instance or updating
         if self.timezone != self.__original_timezone and not new:
@@ -310,8 +322,23 @@ class Organization(models.Model):
                 cache.delete_many(customer_cache_keys)
         if self.team is None:
             self.team = Team.objects.create(name=self.organization_name)
+        if self.subscription_filter_keys is None:
+            self.subscription_filter_keys = []
+        self.subscription_filter_keys = sorted(
+            list(
+                set(self.subscription_filter_keys).union(
+                    set(self.__original_subscription_filter_keys)
+                )
+            )
+        )
         super(Organization, self).save(*args, **kwargs)
+        if self.subscription_filter_keys != self.__original_subscription_filter_keys:
+            for metric in self.metrics.all():
+                METRIC_HANDLER_MAP[metric.metric_type].create_continuous_aggregate(
+                    metric, refresh=True
+                )
         self.__original_timezone = self.timezone
+        self.__original_subscription_filter_keys = self.subscription_filter_keys
         if new:
             self.provision_currencies()
         if not self.default_currency:
@@ -319,8 +346,6 @@ class Organization(models.Model):
                 organization=self, code="USD"
             )
             self.save()
-        if not self.subscription_filters_setting_provisioned:
-            self.provision_subscription_filter_settings()
         if not self.webhooks_provisioned:
             self.provision_webhooks()
 
@@ -343,16 +368,6 @@ class Organization(models.Model):
         else:
             return self.address
 
-    def provision_subscription_filter_settings(self):
-        if not self.subscription_filters_setting_provisioned:
-            OrganizationSetting.objects.get_or_create(
-                organization=self,
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS,
-                defaults={"setting_values": []},
-            )
-            self.subscription_filters_setting_provisioned = True
-            self.save()
-
     def provision_crm_settings(self):
         if not self.crm_settings_provisioned:
             OrganizationSetting.objects.get_or_create(
@@ -363,32 +378,6 @@ class Organization(models.Model):
             )
             self.crm_settings_provisioned = True
             self.save()
-
-    def update_subscription_filter_settings(self, filter_keys):
-        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
-
-        if not self.subscription_filters_setting_provisioned:
-            self.provision_subscription_filter_settings()
-        try:
-            setting = self.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-            )
-        except OrganizationSetting.DoesNotExist:
-            self.subscription_filters_setting_provisioned = False
-            self.save()
-            self.provision_subscription_filter_settings()
-            setting = self.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-            )
-        current_setting_values = set(setting.setting_values)
-        new_setting_values = set(filter_keys)
-        combined = sorted(list(current_setting_values.union(new_setting_values)))
-        setting.setting_values = combined
-        setting.save()
-        for metric in self.metrics.all():
-            METRIC_HANDLER_MAP[metric.metric_type].create_continuous_aggregate(
-                metric, refresh=True
-            )
 
     def provision_webhooks(self):
         if SVIX_CONNECTOR is not None and not self.webhooks_provisioned:
@@ -2706,7 +2695,15 @@ class ExternalPlanLink(models.Model):
         ]
 
 
+class StripeSubscriptionRecordManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(stripe_subscription_id__isnull=False)
+
+
 class SubscriptionRecordManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(stripe_subscription_id__isnull=True)
+
     def active(self, time=None):
         if time is None:
             time = now_utc()
@@ -2752,7 +2749,7 @@ class SubscriptionRecord(models.Model):
     billing_plan = models.ForeignKey(
         PlanVersion,
         on_delete=models.CASCADE,
-        null=False,
+        null=True,
         related_name="subscription_records",
         related_query_name="subscription_record",
         help_text="The plan associated with this subscription.",
@@ -2796,11 +2793,13 @@ class SubscriptionRecord(models.Model):
     )
     quantity = models.PositiveIntegerField(default=1)
     metadata = models.JSONField(default=dict, blank=True)
+    stripe_subscription_id = models.TextField(null=True, blank=True, default=None)
 
     # managers etc
     objects = SubscriptionRecordManager()
     addon_objects = AddOnSubscriptionRecordManager()
     base_objects = BaseSubscriptionRecordManager()
+    stripe_objects = StripeSubscriptionRecordManager()
     history = HistoricalRecords()
 
     class Meta:
@@ -2808,11 +2807,28 @@ class SubscriptionRecord(models.Model):
             CheckConstraint(
                 check=Q(start_date__lte=F("end_date")), name="end_date_gte_start_date"
             ),
+            CheckConstraint(check=Q(quantity__gt=0), name="quantity_gt_0"),
+            # check if stripe subscription id is null, then billing plan is not null, and vice versa
+            CheckConstraint(
+                check=(
+                    Q(stripe_subscription_id__isnull=False)
+                    & Q(billing_plan__isnull=True)
+                )
+                | (
+                    Q(stripe_subscription_id__isnull=True)
+                    & Q(billing_plan__isnull=False)
+                ),
+                name="stripe_subscription_id_xor_billing_plan",
+            ),
         ]
 
     def __str__(self):
         addon = "[ADDON] " if self.billing_plan.addon_spec else ""
-        return f"{addon}{self.customer.customer_name}  {self.billing_plan.plan.plan_name} : {self.start_date.date()} to {self.end_date.date()}"
+        if self.stripe_subscription_id:
+            plan_name = "Stripe Subscription {}".format(self.stripe_subscription_id)
+        else:
+            plan_name = self.billing_plan.plan.plan_name
+        return f"{addon}{self.customer.customer_name}  {plan_name} : {self.start_date.date()} to {self.end_date.date()}"
 
     @staticmethod
     def create_subscription_record(

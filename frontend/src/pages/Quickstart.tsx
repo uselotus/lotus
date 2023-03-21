@@ -53,7 +53,7 @@ const CodeExample = ({ complete }: { complete: boolean }) => {
     typescriptSDK: {
       label: "TypeScript SDK",
       language: "typescript",
-      code: `await lotus.trackEvent({
+      code: `lotus.trackEvent({
         batch: [
           {
             event_name: "test", // required

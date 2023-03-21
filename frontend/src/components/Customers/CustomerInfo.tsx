@@ -28,8 +28,10 @@ import Badge from "../base/Badges/Badges";
 import { fourDP } from "../../helpers/fourDP";
 import { timezones } from "../../assets/timezones";
 
+import { components } from "../../gen-types";
+
 interface CustomerInfoViewProps {
-  data: CustomerType;
+  data: components["schemas"]["CustomerDetail"];
   cost_data: CustomerCostType;
   pricingUnits: CurrencyType[];
   onDateChange: (start_date: string, end_date: string) => void;

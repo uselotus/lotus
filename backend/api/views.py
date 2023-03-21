@@ -143,7 +143,6 @@ from metering_billing.utils.enums import (
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     INVOICING_BEHAVIOR,
     METRIC_STATUS,
-    ORGANIZATION_SETTING_NAMES,
     PLAN_CUSTOM_TYPE,
     SUBSCRIPTION_STATUS,
     USAGE_BEHAVIOR,
@@ -941,11 +940,8 @@ class SubscriptionViewSet(
         serializer.is_valid(raise_exception=True)
         # make sure subscription filters are valid
         subscription_filters = serializer.validated_data.get("subscription_filters", [])
-        sf_setting = organization.settings.get(
-            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-        )
         for sf in subscription_filters:
-            if sf["property_name"] not in sf_setting.setting_values:
+            if sf["property_name"] not in organization.subscription_filter_keys:
                 raise ValidationError(
                     "Invalid subscription filter. Please check your subscription filters setting."
                 )
@@ -1273,11 +1269,8 @@ class SubscriptionViewSet(
         serializer.is_valid(raise_exception=True)
         # make sure subscription filters are valid
         subscription_filters = serializer.validated_data.get("subscription_filters", [])
-        sf_setting = organization.settings.get(
-            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-        )
         for sf in subscription_filters:
-            if sf["property_name"] not in sf_setting.setting_values:
+            if sf["property_name"] not in organization.subscription_filter_keys:
                 raise ValidationError(
                     "Invalid subscription filter. Please check your subscription filters setting."
                 )

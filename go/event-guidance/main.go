@@ -84,9 +84,13 @@ func main() {
 	ctx := context.Background()
 
 	// Setup kafka consumer
+	consumerGroup := os.Getenv("KAFKA_CONSUMER_GROUP")
+	if consumerGroup == "" {
+		consumerGroup = "default"
+	}
 	opts := []kgo.Opt{
 		kgo.SeedBrokers(seeds...),
-		kgo.ConsumerGroup("default"),
+		kgo.ConsumerGroup(consumerGroup),
 		kgo.ConsumeTopics(kafkaTopic),
 		kgo.DisableAutoCommit(),
 	}

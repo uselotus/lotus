@@ -1,5 +1,5 @@
 /* eslint-disable camelcase */
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Tabs, Button, Modal } from "antd";
 import {
   useMutation,
@@ -39,7 +39,6 @@ type CustomerDetailsParams = {
 };
 function CustomerDetail() {
   const { customerId: customer_id } = useParams<CustomerDetailsParams>();
-
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
 
   const navigate = useNavigate();
@@ -60,10 +59,11 @@ function CustomerDetail() {
   const { data: pricingUnits }: UseQueryResult<CurrencyType[]> = useQuery<
     CurrencyType[]
   >(["pricing_unit_list"], () => PricingUnits.list().then((res) => res));
-  const { data, refetch }: UseQueryResult<CustomerType> =
-    useQuery<CustomerType>(["customer_detail", customer_id], () =>
-      Customer.getCustomerDetail(customer_id as string).then((res) => res)
-    );
+
+  const { data, refetch } = useQuery<components["schemas"]["CustomerDetail"]>(
+    ["customer_detail", customer_id],
+    () => Customer.getCustomerDetail(customer_id as string).then((res) => res)
+  );
 
   const { data: cost_analysis } = useQuery<CustomerCostType>(
     ["customer_cost_analysis", customer_id, startDate, endDate],
@@ -184,7 +184,7 @@ function CustomerDetail() {
   const changeSubscriptionPlan = (params: object, subscription_id) => {
     changeSubscriptionPlanMutation.mutate({
       post: params,
-      subscription_id
+      subscription_id,
     });
   };
 
@@ -207,6 +207,8 @@ function CustomerDetail() {
   const createSubscription = (props: CreateSubscriptionType) => {
     createSubscriptionMutation.mutate(props);
   };
+
+  console.log(data);
 
   return (
     <PageLayout
@@ -280,6 +282,8 @@ function CustomerDetail() {
                 <SubscriptionView
                   customer_id={customer_id as string}
                   subscriptions={data.subscriptions}
+                  upcomingSubscriptions={data.upcoming_subscriptions}
+                  stripeSubscriptions={data.stripe_subscriptions}
                   plans={plans}
                   onCreate={createSubscription}
                   onCancel={cancelSubscription}

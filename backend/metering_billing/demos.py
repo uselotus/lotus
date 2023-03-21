@@ -8,8 +8,6 @@ import uuid
 import numpy as np
 import pytz
 from dateutil.relativedelta import relativedelta
-from model_bakery import baker
-
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     APIToken,
@@ -49,9 +47,9 @@ from metering_billing.utils.enums import (
     METRIC_AGGREGATION,
     METRIC_GRANULARITY,
     METRIC_TYPE,
-    ORGANIZATION_SETTING_NAMES,
     PLAN_DURATION,
 )
+from model_bakery import baker
 
 logger = logging.getLogger("django.server")
 
@@ -1257,10 +1255,7 @@ def setup_paas_demo(
         user.save()
         organization.save()
     organization = user.organization
-    setting = organization.settings.get(
-        setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-    )
-    setting.setting_values = ["shard_id"]
+    organization.subscription_filter_keys = ["shard_id"]
     big_customers = []
     for _ in range(1):
         customer = Customer.objects.create(

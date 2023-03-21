@@ -87,6 +87,7 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
     {
       title: "Connections",
       dataIndex: "connections",
+      width: 100,
       key: "connections",
       render: (_, record) => (
         <div className="flex gap-1">
