@@ -7,6 +7,7 @@ from django.conf import settings
 from django.db.models import Max, Min, Sum
 from drf_spectacular.utils import extend_schema_serializer
 from metering_billing.invoice import generate_balance_adjustment_invoice
+from metering_billing.kafka.producer import Producer
 from metering_billing.models import (
     AddOnSpecification,
     Address,
@@ -71,6 +72,7 @@ from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
+kafka_producer = Producer()
 
 
 class TagNameSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
@@ -1431,10 +1433,18 @@ class InvoiceUpdateSerializer(
         return data
 
     def update(self, instance, validated_data):
+        if instance.payment_status == Invoice.PaymentStatus.PAID:
+            raise serializers.ValidationError(
+                "Cannot update a paid invoice. Please create a credit note instead."
+            )
         instance.payment_status = validated_data.get(
             "payment_status", instance.payment_status
         )
         instance.save()
+        if instance.payment_status == Invoice.PaymentStatus.PAID:
+            kafka_producer.produce_invoice_pay_in_full(
+                invoice=instance, payment_date=now_utc(), source="lotus_out_of_band"
+            )
         return instance
 
 
@@ -2762,4 +2772,33 @@ class AddOnSubscriptionRecordCreateSerializer(
         sr.metadata = validated_data.get("metadata", {})
         sr.save()
         return sr
-        return sr
+
+
+LOTUS_OUT_OF_BAND = "lotus_out_of_band"
+
+
+class InvoicePaymentSerializer(InvoiceSerializer):
+    class Meta(InvoiceSerializer.Meta):
+        model = Invoice
+        fields = (
+            "invoice_id",
+            "invoice_number",
+            "customer",
+            "amount",
+            "currency",
+            "payment_date",
+            "source",
+        )
+
+    payment_date = serializers.SerializerMethodField()
+    source = serializers.SerializerMethodField()
+
+    def get_payment_date(self, obj) -> serializers.DateTimeField():
+        return self.context["payment_date"]
+
+    def get_source(
+        self, obj
+    ) -> serializers.ChoiceField(
+        choices=PAYMENT_PROCESSORS.values + [LOTUS_OUT_OF_BAND]
+    ):
+        return self.context["source"]
