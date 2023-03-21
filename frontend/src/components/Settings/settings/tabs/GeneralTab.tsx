@@ -219,7 +219,7 @@ const GeneralTab: FC = () => {
         <Button
           onClick={() => setIsEdit(true)}
           className="justify-self-end"
-          disabled={(import.meta as any).env.VITE_NANGO_PK === "true"}
+          disabled={(import.meta as any).env.VITE_IS_DEMO === "true"}
         >
           Edit
         </Button>

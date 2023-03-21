@@ -436,7 +436,7 @@ function CreatePlan() {
                   type="primary"
                   disabled={
                     !isCurrentStepValid &&
-                    (import.meta as any).env.VITE_NANGO_PK === "true"
+                    (import.meta as any).env.VITE_IS_DEMO === "true"
                   }
                   style={{
                     background: "#C3986B",

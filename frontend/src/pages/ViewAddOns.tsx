@@ -38,7 +38,7 @@ const ViewAddOns: FC = () => {
                 onClick={navigateCreatePlan}
                 type="primary"
                 size="large"
-                disabled={(import.meta as any).env.VITE_NANGO_PK === "true"}
+                disabled={(import.meta as any).env.VITE_IS_DEMO === "true"}
                 key="create-addon"
                 className="hover:!bg-primary-700"
                 style={{ background: "#C3986B", borderColor: "#C3986B" }}
@@ -84,7 +84,7 @@ const ViewAddOns: FC = () => {
                   type="primary"
                   size="large"
                   key="create-addon"
-                  disabled={(import.meta as any).env.VITE_NANGO_PK === "true"}
+                  disabled={(import.meta as any).env.VITE_IS_DEMO === "true"}
                   className="hover:!bg-primary-700"
                   style={{ background: "#C3986B", borderColor: "#C3986B" }}
                 >

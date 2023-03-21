@@ -101,7 +101,7 @@ const SetNewPassword: FC = () => {
             <Button
               type="primary"
               onClick={() => navigate("/login")}
-              disabled={(import.meta as any).env.VITE_NANGO_PK === "true"}
+              disabled={(import.meta as any).env.VITE_IS_DEMO === "true"}
             >
               Login
             </Button>

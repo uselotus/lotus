@@ -88,7 +88,7 @@ const ViewCustomers: FC = () => {
           id="create-cutsomer-model"
           size="large"
           key="create-plan"
-          disabled={(import.meta as any).env.VITE_NANGO_PK === "true"}
+          disabled={(import.meta as any).env.VITE_IS_DEMO === "true"}
           className="hover:!bg-primary-700"
           style={{ background: "#C3986B", borderColor: "#C3986B" }}
         >
