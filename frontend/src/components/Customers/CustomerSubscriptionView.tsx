@@ -1454,7 +1454,7 @@ const SubscriptionView: FC<Props> = ({
             </Button>,
           ]}
         >
-          <div>
+          <div className="flex flex-col gap-2">
             <Select
               showSearch
               placeholder="Select a plan"
