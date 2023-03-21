@@ -268,22 +268,29 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
                   >
                     <div className="archiveLabel">Download Invoice PDF</div>
                   </Menu.Item>
-                  {!record.external_payment_obj_type && record.payment_status === "unpaid" && (
-                    <Menu.Item
-                      key="2"
-                      onClick={() => {
-                        if ((import.meta as any).env.VITE_IS_DEMO === "true") {
-                          toast.error("This feature is disabled in the demo", {
-                            position: toast.POSITION.TOP_CENTER,
-                          });
-                        } else {
-                          if (selectedRecord === record) {
-                            changeStatus.mutate({
-                              invoice_id: record.invoice_id,
-                              payment_status: "paid",
-                            });
+                  {!record.external_payment_obj_type &&
+                    record.payment_status === "unpaid" && (
+                      <Menu.Item
+                        key="2"
+                        onClick={() => {
+                          if (
+                            (import.meta as any).env.VITE_IS_DEMO === "true"
+                          ) {
+                            toast.error(
+                              "This feature is disabled in the demo",
+                              {
+                                position: toast.POSITION.TOP_CENTER,
+                              }
+                            );
                           } else {
-                            setSelectedRecord(record);
+                            if (selectedRecord === record) {
+                              changeStatus.mutate({
+                                invoice_id: record.invoice_id,
+                                payment_status: "paid",
+                              });
+                            } else {
+                              setSelectedRecord(record);
+                            }
                           }
                         }}
                       >
