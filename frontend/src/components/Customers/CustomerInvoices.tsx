@@ -1,3 +1,5 @@
+/* eslint-disable prefer-template */
+/* eslint-disable no-nested-ternary */
 import { Button, Dropdown, Menu, Table, Tag, Tooltip } from "antd";
 import React, { FC, useEffect } from "react";
 import dayjs from "dayjs";
@@ -9,6 +11,7 @@ import { integrationsMap } from "../../types/payment-processor-type";
 
 import { Invoices } from "../../api/api";
 import { InvoiceType, MarkPaymentStatusAsPaid } from "../../types/invoice-type";
+import { components } from "../../gen-types";
 
 const downloadFile = async (s3link) => {
   if (!s3link) {
@@ -31,7 +34,7 @@ const getPdfUrl = async (invoice: InvoiceType) => {
 const lotusUrl = new URL("./lotusIcon.svg", import.meta.url).href;
 
 interface Props {
-  invoices: InvoiceType[] | undefined;
+  invoices: components["schemas"]["CustomerDetail"]["invoices"] | undefined;
   paymentMethod: string;
 }
 
@@ -179,7 +182,10 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
       title: "Status",
       dataIndex: "payment_status",
       key: "status",
-      render: (_, record) => (
+      render: (
+        _,
+        record: components["schemas"]["CustomerDetail"]["invoices"][0]
+      ) => (
         <div className="flex">
           {record.external_payment_obj_type ? (
             record.external_payment_obj_url ? (
