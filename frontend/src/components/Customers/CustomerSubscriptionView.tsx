@@ -412,28 +412,20 @@ const SubscriptionView: FC<Props> = ({
         <h2 className="mb-2 pb-4 pt-4 font-bold text-main">No Subscription</h2>
         <p className="font-bold">Please attach a Plan</p>
         <div className=" h-3/6">
-          <Form
-            onFinish={handleAttachPlanSubmit}
-            form={form}
-            name="create_subscription"
+          <Button
+            type="primary"
+            className="hover:!bg-primary-700"
+            style={{
+              background: "#C3986B",
+              borderColor: "#C3986B",
+            }}
+            onClick={() => {
+              setTitle("Add New Plan");
+              setShowAddModal(true);
+            }}
           >
-            <Form.Item name="plan">
-              <Select
-                showSearch
-                placeholder="Select a plan"
-                onChange={selectPlan}
-                options={planList}
-                optionLabelProp="label"
-                value={selectedPlan}
-              />
-            </Form.Item>
-            <Form.Item>
-              <Button htmlType="submit">
-                {" "}
-                Attach Plan and Start Subscription
-              </Button>
-            </Form.Item>
-          </Form>
+            Start A Subscription
+          </Button>
         </div>
       </div>
     );
