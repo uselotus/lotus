@@ -81,13 +81,13 @@ jobs:
           PORTER_PROJECT: 5324
           PORTER_TOKEN: ${{ secrets.PORTER_TOKEN_5324 }}
           
-      # - name: Run Migration Job
-      #   uses: porter-dev/porter-run-job-action@v0.1.0
-      #   with:
-      #     job: backend-release
-      #     cluster: 2539
-      #     project: 5324
-      #     token: ${{ secrets.PORTER_TOKEN_5324 }}
+      - name: Run Migration Job
+        uses: porter-dev/porter-run-job-action@v0.1.0
+        with:
+          job: backend-release
+          cluster: 2539
+          project: 5324
+          token: ${{ secrets.PORTER_TOKEN_5324 }}
 
       - name: Update Celery Worker
         timeout-minutes: 20
