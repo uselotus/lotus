@@ -6,6 +6,7 @@ from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
+
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.serializers.experiment_serializers import (
     AllSubstitutionResultsSerializer,
@@ -507,7 +508,7 @@ def run_generate_invoice(subscription_record_pk_set, **kwargs):
     from metering_billing.models import SubscriptionRecord
 
     subscription_record_set = SubscriptionRecord.objects.filter(
-        pk__in=subscription_record_pk_set
+        pk__in=subscription_record_pk_set,
     )
     generate_invoice(subscription_record_set, **kwargs)
 

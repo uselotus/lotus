@@ -11,6 +11,7 @@ from dateutil.relativedelta import relativedelta
 from model_bakery import baker
 
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     APIToken,
     Backtest,
@@ -1556,7 +1557,7 @@ def setup_database_demo(
             "event_name": "storage_change",
             "property_name": "gb_storage",
             "usage_aggregation_type": METRIC_AGGREGATION.MAX,
-            "billable_metric_name": "GB Storage",
+            "billable_metric_name": "GB Storage - Total",
             "metric_type": METRIC_TYPE.GAUGE,
             "granularity": METRIC_GRANULARITY.MONTH,
             "event_type": EVENT_TYPE.TOTAL,
@@ -1568,7 +1569,7 @@ def setup_database_demo(
             "event_name": "storage_change",
             "property_name": "gb_storage",
             "usage_aggregation_type": METRIC_AGGREGATION.MAX,
-            "billable_metric_name": "GB Storage",
+            "billable_metric_name": "GB Storage - Hourly Billing",
             "metric_type": METRIC_TYPE.GAUGE,
             "granularity": METRIC_GRANULARITY.HOUR,
             "proration": METRIC_GRANULARITY.MINUTE,
@@ -1964,37 +1965,30 @@ def setup_database_demo(
         ("small", small_customers),
     ]:
         plan_dict = {
-            "big": {
-                0: basic_bp_monthly,
-                1: basic_bp_monthly,
-                2: pay_as_you_go_bp_monthly,
-                3: pay_as_you_go_bp_monthly,
-                4: pay_as_you_go_bp_monthly,
-                5: pay_as_you_go_bp_monthly,
-            },
-            "medium": {
-                0: free_bp,
-                1: basic_bp_monthly,
-                2: basic_bp_monthly,
-                3: pay_as_you_go_bp_monthly,
-                4: pay_as_you_go_bp_monthly,
-                5: pay_as_you_go_bp_monthly,
-            },
-            "small": {
-                0: free_bp,
-                1: free_bp,
-                2: basic_bp_monthly,
-                3: basic_bp_monthly,
-                4: basic_bp_monthly,
-                5: basic_bp_monthly,
-            },
+            "big": [(0, basic_bp_monthly), (1 / 3, pay_as_you_go_bp_monthly)],
+            "medium": [
+                (0, free_bp),
+                (1 / 6, basic_bp_monthly),
+                (1 / 2, pay_as_you_go_bp_monthly),
+            ],
+            "small": [(0, free_bp), (1 / 3, basic_bp_monthly)],
         }
-        for i, customer in enumerate(cust_set):
+        for customer in cust_set:
             offset = np.random.randint(0, 30)
             beginning = start_of_sim + relativedelta(days=offset)
             for months in range(n_months):
                 sub_start = beginning + relativedelta(months=months)
-                plan = plan_dict[cust_set_name][months]
+                cur_pct = (months + 1) / n_months
+                for i in range(len(plan_dict[cust_set_name])):
+                    lower_bound = plan_dict[cust_set_name][i][0]
+                    upper_bound = (
+                        plan_dict[cust_set_name][i + 1][0]
+                        if i + 1 < len(plan_dict[cust_set_name])
+                        else float("inf")
+                    )
+                    if lower_bound < cur_pct <= upper_bound:
+                        plan = plan_dict[cust_set_name][i][1]
+                        break
                 # number of gauge events is irrespective
                 n_storage_events = max(int(random.gauss(100, 20) // 1), 1)
                 n_gb_ram_events = max(int(random.gauss(20, 3) // 1), 1)
@@ -2023,14 +2017,20 @@ def setup_database_demo(
                     pct_of_max__mean = 0.6
                 else:
                     pct_of_max__mean = 0.6
-
-                sr = make_subscription_record(
-                    organization=organization,
-                    customer=customer,
-                    plan=plan,
-                    start_date=sub_start,
-                    is_new=months == 0,
-                )
+                if months == 0:
+                    sr = make_subscription_record(
+                        organization=organization,
+                        customer=customer,
+                        plan=plan,
+                        start_date=sub_start,
+                        is_new=months == 0,
+                    )
+                else:
+                    sr = SubscriptionRecord.objects.get(
+                        organization=organization,
+                        customer=customer,
+                        start_date__gt=sr.start_date,
+                    )
                 # ALL EVENTS
                 events = []
                 # storage events
@@ -2089,7 +2089,7 @@ def setup_database_demo(
                 cur_egress = 0
                 n_egress_events = 0
                 while cur_egress < target_egress:
-                    dt = random_date(sr.start_date, sr.end_date, 1)[0]
+                    dt = next(random_date(sr.start_date, sr.end_date, 1))
                     egress = np.random.random() * 25
                     if cur_egress + egress > target_egress:
                         break
@@ -2113,7 +2113,7 @@ def setup_database_demo(
                 cur_rows = 0
                 n_insert_events = 0
                 while cur_rows < target_rows:
-                    dt = random_date(sr.start_date, sr.end_date, 1)[0]
+                    dt = next(random_date(sr.start_date, sr.end_date, 1))
                     rows = np.random.random() * 800
                     if cur_rows + rows > target_rows:
                         break
@@ -2137,7 +2137,7 @@ def setup_database_demo(
                 n_cost_events = total_events // 10
                 dts = list(random_date(sr.start_date, sr.end_date, n_cost_events))
                 for dt in dts:
-                    cost = np.random.random() * 10
+                    cost = np.random.random()
                     e = Event(
                         organization=organization,
                         event_name="server_costs",
@@ -2150,33 +2150,39 @@ def setup_database_demo(
                     )
                     events.append(e)
 
-                next_plan = plan_dict[cust_set_name].get(months + 1, plan)
+                next_pct = (months + 2) / n_months
+                for i in range(len(plan_dict[cust_set_name])):
+                    lower_bound = plan_dict[cust_set_name][i][0]
+                    upper_bound = (
+                        plan_dict[cust_set_name][i + 1][0]
+                        if i + 1 < len(plan_dict[cust_set_name])
+                        else float("inf")
+                    )
+                    if lower_bound < next_pct <= upper_bound:
+                        next_plan = plan_dict[cust_set_name][i][1]
+                        break
                 Event.objects.bulk_create(events)
                 if months == 0:
-                    try:
-                        run_generate_invoice.delay(
-                            [sr.pk],
-                            issue_date=sr.start_date,
-                        )
-                    except Exception as e:
-                        print(e)
-                        pass
-                if months != 5:
-                    cur_replace_with = sr.billing_plan.replace_with
-                    sr.billing_plan.replace_with = next_plan
-                    sr.save()
-                    try:
-                        run_generate_invoice.delay(
-                            [sr.pk], issue_date=sr.end_date, charge_next_plan=True
-                        )
-                    except Exception as e:
-                        print(e)
-                        pass
-                    sr.fully_billed = True
-                    sr.billing_plan.replace_with = cur_replace_with
-                    sr.save()
-                time.time()
-    now_utc()
+                    print("THIS IS INITIAL")
+                    generate_invoice(
+                        [sr],
+                        issue_date=sr.start_date,
+                    )
+                if now_utc() > sr.end_date:
+                    print("THIS IS END")
+                    cur_bp = sr.billing_plan
+                    cur_replace_with = cur_bp.replace_with
+                    cur_bp.replace_with = next_plan
+                    cur_bp.save()
+                    generate_invoice(
+                        [sr],
+                        issue_date=sr.end_date,
+                        charge_next_plan=True,
+                        generate_next_subscription_record=True,
+                    )
+                    cur_bp.replace_with = cur_replace_with
+                    cur_bp.save()
+
     return user
 
 
@@ -2268,6 +2274,7 @@ def make_subscription_record(
         subscription_filters=None,
         is_new=is_new,
         quantity=1,
+        generate_invoice=False,
     )
     return sr
 
@@ -2301,7 +2308,7 @@ def create_pc_plus_tiers_new(plan_versions, pcs_dict):
                         range_end=tier.get("range_end"),
                         type=tier.get("type"),
                         cost_per_batch=tier.get("cost_per_batch"),
-                        metric_units_per_batch=tier.get("metric_units_per_batch"),
+                        metric_units_per_batch=tier.get("metric_units_per_batch", 1),
                         organization=plan_version.organization,
                         batch_rounding_type=tier.get("batch_rounding_type"),
                     )

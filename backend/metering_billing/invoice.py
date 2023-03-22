@@ -46,6 +46,7 @@ def generate_invoice(
     generate_next_subscription_record=False,
     issue_date=None,
 ):
+    print(f"GENERATING INVOICE FOR {subscription_records}, issue_date={issue_date}")
     """
     Generate an invoice for a subscription.
 
@@ -373,7 +374,7 @@ def create_next_subscription_record(subscription_record, next_bp):
     ccrs = (
         ComponentChargeRecord.objects.filter(
             organization=subscription_record.organization,
-            billing_record__subscription_record=subscription_record,
+            billing_record__subscription=subscription_record,
         )
         .order_by("component", "-end_date")
         .distinct("component")

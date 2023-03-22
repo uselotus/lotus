@@ -1,10 +1,29 @@
 # import lotus_python
 import logging
 
-import api.views as api_views
 import posthog
 import sentry_sdk
 from actstream.models import Action
+from django.conf import settings
+from django.core.cache import cache
+from django.core.validators import MinValueValidator
+from django.db.models import Max
+from django.db.utils import IntegrityError
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiCallback,
+    OpenApiParameter,
+    extend_schema,
+    inline_serializer,
+)
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.pagination import CursorPagination
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+import api.views as api_views
 from api.serializers.nonmodel_serializers import (
     AddFeatureSerializer,
     AddFeatureToAddOnSerializer,
@@ -21,18 +40,6 @@ from api.serializers.webhook_serializers import (
     SubscriptionRenewedSerializer,
     UsageAlertTriggeredSerializer,
 )
-from django.conf import settings
-from django.core.cache import cache
-from django.core.validators import MinValueValidator
-from django.db.models import Max
-from django.db.utils import IntegrityError
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import (
-    OpenApiCallback,
-    OpenApiParameter,
-    extend_schema,
-    inline_serializer,
-)
 from metering_billing.exceptions import (
     DuplicateMetric,
     DuplicateWebhookEndpoint,
@@ -40,12 +47,12 @@ from metering_billing.exceptions import (
     ServerError,
 )
 from metering_billing.models import (
+    Analysis,
     APIToken,
     Backtest,
     Event,
     ExternalPlanLink,
     Feature,
-    HistoricalAnalysis,
     Metric,
     Organization,
     OrganizationSetting,
@@ -138,12 +145,6 @@ from metering_billing.utils.enums import (
     PAYMENT_PROCESSORS,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
-from rest_framework.pagination import CursorPagination
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -1834,7 +1835,7 @@ class AnalysisViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         "create": [IsAuthenticated & ValidOrganization],
         "destroy": [IsAuthenticated & ValidOrganization],
     }
-    queryset = HistoricalAnalysis.objects.all()
+    queryset = Analysis.objects.all()
 
     def get_object(self):
         string_uuid = self.kwargs[self.lookup_field]
@@ -1852,7 +1853,7 @@ class AnalysisViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         organization = self.request.organization
-        return HistoricalAnalysis.objects.filter(organization=organization)
+        return Analysis.objects.filter(organization=organization)
 
     def perform_create(self, serializer):
         analysis_obj = serializer.save(organization=self.request.organization)

@@ -2842,6 +2842,7 @@ class SubscriptionRecord(models.Model):
         is_new=True,
         quantity=1,
         component_fixed_charges_initial_units=None,
+        generate_invoice=True,
     ):
         from metering_billing.invoice import generate_invoice
 
@@ -2871,7 +2872,8 @@ class SubscriptionRecord(models.Model):
             sr._create_component_billing_records(component, **kwargs)
         for recurring_charge in sr.billing_plan.recurring_charges.all():
             sr._create_recurring_charge_billing_records(recurring_charge)
-        generate_invoice(sr)
+        if generate_invoice:
+            generate_invoice(sr)
         return sr
 
     @staticmethod
@@ -3631,7 +3633,7 @@ class ComponentChargeRecord(models.Model):
         super().save(*args, **kwargs)
 
 
-class HistoricalAnalysis(models.Model):
+class Analysis(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="historical_analyses"
     )

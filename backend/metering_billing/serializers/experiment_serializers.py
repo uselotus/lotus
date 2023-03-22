@@ -1,17 +1,18 @@
+from rest_framework import serializers
+
 from api.serializers.model_serializers import (
     LightweightCustomerSerializer,
     LightweightMetricSerializer,
     LightweightPlanVersionSerializer,
 )
 from metering_billing.models import (
+    Analysis,
     Backtest,
     BacktestSubstitution,
-    HistoricalAnalysis,
     PlanVersion,
 )
 from metering_billing.serializers.model_serializers import PlanVersionDetailSerializer
 from metering_billing.utils.enums import ANALYSIS_KPI, BACKTEST_KPI
-from rest_framework import serializers
 
 from .serializer_utils import (
     AnalysisUUIDField,
@@ -159,7 +160,7 @@ class BacktestDetailSerializer(BacktestSummarySerializer):
 
 class AnalysisSummarySerializer(serializers.ModelSerializer):
     class Meta:
-        model = HistoricalAnalysis
+        model = Analysis
         fields = (
             "analysis_name",
             "start_date",
