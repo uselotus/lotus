@@ -179,6 +179,7 @@ const EventPreview: FC = () => {
             currentPage={currentPage}
             handleMovements={handleMovements}
           />
+          <div className="mt-5" />
         </div>
       )}
     </>
