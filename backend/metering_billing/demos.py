@@ -8,6 +8,8 @@ import uuid
 import numpy as np
 import pytz
 from dateutil.relativedelta import relativedelta
+from model_bakery import baker
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     APIToken,
@@ -50,7 +52,6 @@ from metering_billing.utils.enums import (
     METRIC_TYPE,
     PLAN_DURATION,
 )
-from model_bakery import baker
 
 logger = logging.getLogger("django.server")
 
@@ -1587,13 +1588,13 @@ def setup_database_demo(
     insert_rate = METRIC_HANDLER_MAP[METRIC_TYPE.RATE].create_metric(
         {
             "organization": organization,
-            "event_name": "insert_rows",
+            "event_name": "db_insert",
             "property_name": "num_rows",
             "usage_aggregation_type": METRIC_AGGREGATION.SUM,
             "billable_aggregation_type": METRIC_AGGREGATION.MAX,
             "billable_metric_name": "Rows Insert Rate",
             "metric_type": METRIC_TYPE.RATE,
-            "granularity": METRIC_GRANULARITY.HOUR,
+            "granularity": METRIC_GRANULARITY.DAY,
         }
     )
     METRIC_HANDLER_MAP[METRIC_TYPE.COUNTER].create_metric(
@@ -2003,16 +2004,19 @@ def setup_database_demo(
                     max_gb_ram = 4
                     max_cpus = 2
                     max_egress = 100
+                    max_insert_rate = 1000
                 elif plan == basic_bp_monthly:
                     max_storage = 100
                     max_gb_ram = 8
                     max_cpus = 4
                     max_egress = 1000
+                    max_insert_rate = 10_000
                 else:
                     max_storage = 4000
                     max_gb_ram = 32
                     max_cpus = 16
                     max_egress = 10_000
+                    max_insert_rate = 100_000
                 if cust_set_name == "big":
                     pct_of_max__mean = 0.8
                 elif cust_set_name == "medium":
@@ -2083,10 +2087,12 @@ def setup_database_demo(
                     min(random.gauss(pct_of_max__mean, 0.05), 1) * max_egress
                 )
                 cur_egress = 0
-                n_events = 0
+                n_egress_events = 0
                 while cur_egress < target_egress:
                     dt = random_date(sr.start_date, sr.end_date, 1)[0]
-                    egress = min(target_egress - cur_egress, np.random.random() * 25)
+                    egress = np.random.random() * 25
+                    if cur_egress + egress > target_egress:
+                        break
                     e = Event(
                         organization=organization,
                         event_name="data_egress",
@@ -2099,9 +2105,35 @@ def setup_database_demo(
                     )
                     events.append(e)
                     cur_egress += egress
-                    n_events += 1
+                    n_egress_events += 1
+                # db insert events
+                target_rows = (
+                    min(random.gauss(pct_of_max__mean, 0.05), 1) * max_insert_rate * 10
+                )
+                cur_rows = 0
+                n_insert_events = 0
+                while cur_rows < target_rows:
+                    dt = random_date(sr.start_date, sr.end_date, 1)[0]
+                    rows = np.random.random() * 800
+                    if cur_rows + rows > target_rows:
+                        break
+                    e = Event(
+                        organization=organization,
+                        event_name="db_insert",
+                        properties={
+                            "num_rows": rows,
+                        },
+                        time_created=dt,
+                        idempotency_id=uuid.uuid4().hex,
+                        cust_id=customer.customer_id,
+                    )
+                    events.append(e)
+                    cur_rows += rows
+                    n_insert_events += 1
                 # cost events
-                total_events = n_cpu_events + n_gb_ram_events + n_storage_events
+                total_events = (
+                    n_cpu_events + n_gb_ram_events + n_storage_events + n_egress_events
+                )
                 n_cost_events = total_events // 10
                 dts = list(random_date(sr.start_date, sr.end_date, n_cost_events))
                 for dt in dts:
@@ -2119,6 +2151,7 @@ def setup_database_demo(
                     events.append(e)
 
                 next_plan = plan_dict[cust_set_name].get(months + 1, plan)
+                Event.objects.bulk_create(events)
                 if months == 0:
                     try:
                         run_generate_invoice.delay(

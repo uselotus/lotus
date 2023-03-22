@@ -56,11 +56,12 @@ from metering_billing.utils import (
 )
 from metering_billing.utils.enums import (
     ACCOUNTS_RECEIVABLE_TRANSACTION_TYPES,
-    BACKTEST_STATUS,
+    ANALYSIS_KPI,
     CATEGORICAL_FILTER_OPERATORS,
     CHARGEABLE_ITEM_TYPE,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     EVENT_TYPE,
+    EXPERIMENT_STATUS,
     FLAT_FEE_BEHAVIOR,
     INVOICE_CHARGE_TIMING_TYPE,
     METRIC_AGGREGATION,
@@ -3630,6 +3631,31 @@ class ComponentChargeRecord(models.Model):
         super().save(*args, **kwargs)
 
 
+class HistoricalAnalysis(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="historical_analyses"
+    )
+    analysis_name = models.TextField()
+    start_date = models.DateField()
+    end_date = models.DateField()
+    time_created = models.DateTimeField(default=now_utc)
+    analysis_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    kpis = ArrayField(models.TextField(choices=ANALYSIS_KPI.choices), default=list)
+    analysis_results = models.JSONField(default=dict, blank=True)
+    status = models.CharField(
+        choices=EXPERIMENT_STATUS.choices,
+        default=EXPERIMENT_STATUS.RUNNING,
+        max_length=40,
+    )
+
+    def save(self, *args, **kwargs):
+        self.kpis = sorted(list(set(self.kpis)))
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.analysis_name} - {self.start_date}"
+
+
 class Backtest(models.Model):
     """
     This model is used to store the results of a backtest.
@@ -3646,11 +3672,10 @@ class Backtest(models.Model):
     kpis = models.JSONField(default=list)
     backtest_results = models.JSONField(default=dict, blank=True)
     status = models.CharField(
-        choices=BACKTEST_STATUS.choices,
-        default=BACKTEST_STATUS.RUNNING,
+        choices=EXPERIMENT_STATUS.choices,
+        default=EXPERIMENT_STATUS.RUNNING,
         max_length=40,
     )
-    history = HistoricalRecords()
 
     def __str__(self):
         return f"{self.backtest_name} - {self.start_date}"
@@ -3676,7 +3701,6 @@ class BacktestSubstitution(models.Model):
     new_plan = models.ForeignKey(
         PlanVersion, on_delete=models.CASCADE, related_name="+"
     )
-    history = HistoricalRecords()
 
     def __str__(self):
         return f"{self.backtest}"
@@ -3701,7 +3725,6 @@ class OrganizationSetting(models.Model):
         null=True,
         max_length=64,
     )
-    history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
         super(OrganizationSetting, self).save(*args, **kwargs)

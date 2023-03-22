@@ -616,7 +616,7 @@ SPECTACULAR_SETTINGS = {
     "ENUM_NAME_OVERRIDES": {
         "numeric_filter_operators": "metering_billing.utils.enums.NUMERIC_FILTER_OPERATORS.choices",
         "categorical_filter_operators": "metering_billing.utils.enums.CATEGORICAL_FILTER_OPERATORS.choices",
-        "BacktestStatusEnum": "metering_billing.utils.enums.BACKTEST_STATUS.choices",
+        "BacktestStatusEnum": "metering_billing.utils.enums.EXPERIMENT_STATUS.choices",
         "BacktestKPIEnum": "metering_billing.utils.enums.BACKTEST_KPI.choices",
         "PaymentProcesorsEnum": "metering_billing.utils.enums.PAYMENT_PROCESSORS.choices",
         "MetricAggregationEnum": "metering_billing.utils.enums.METRIC_AGGREGATION.choices",

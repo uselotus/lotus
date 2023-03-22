@@ -1,9 +1,20 @@
-from metering_billing.models import Backtest, BacktestSubstitution, PlanVersion
+from api.serializers.model_serializers import (
+    LightweightCustomerSerializer,
+    LightweightMetricSerializer,
+    LightweightPlanVersionSerializer,
+)
+from metering_billing.models import (
+    Backtest,
+    BacktestSubstitution,
+    HistoricalAnalysis,
+    PlanVersion,
+)
 from metering_billing.serializers.model_serializers import PlanVersionDetailSerializer
-from metering_billing.utils.enums import BACKTEST_KPI
+from metering_billing.utils.enums import ANALYSIS_KPI, BACKTEST_KPI
 from rest_framework import serializers
 
 from .serializer_utils import (
+    AnalysisUUIDField,
     BacktestUUIDField,
     SlugRelatedFieldWithOrganization,
     TimezoneFieldMixin,
@@ -99,9 +110,10 @@ class MetricRevenueSerializer(serializers.Serializer):
 
 
 class SingleCustomerValueSerializer(serializers.Serializer):
-    customer_id = serializers.CharField()
-    customer_name = serializers.CharField()
-    value = serializers.FloatField()
+    customer = LightweightCustomerSerializer()
+    value = serializers.DecimalField(
+        max_digits=20, decimal_places=10, coerce_to_string=True
+    )
 
 
 class TopCustomersSerializer(serializers.Serializer):
@@ -144,5 +156,84 @@ class BacktestDetailSerializer(BacktestSummarySerializer):
     backtest_results = AllSubstitutionResultsSerializer()
     backtest_substitutions = BacktestSubstitutionSerializer(many=True)
 
-    backtest_results = AllSubstitutionResultsSerializer()
-    backtest_substitutions = BacktestSubstitutionSerializer(many=True)
+
+class AnalysisSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HistoricalAnalysis
+        fields = (
+            "analysis_name",
+            "start_date",
+            "end_date",
+            "time_created",
+            "kpis",
+            "status",
+            "analysis_id",
+        )
+
+    analysis_id = AnalysisUUIDField()
+
+
+class SingleKPISerializer(serializers.Serializer):
+    kpi = serializers.ChoiceField(choices=ANALYSIS_KPI.choices)
+    value = serializers.DecimalField(
+        max_digits=20, decimal_places=10, coerce_to_string=True
+    )
+
+
+class SinglePlanAnalysisSerializer(serializers.Serializer):
+    plan = LightweightPlanVersionSerializer()
+    kpis = SingleKPISerializer(many=True)
+
+
+class PerPlanPerDaySerializer(serializers.Serializer):
+    plan = LightweightPlanVersionSerializer()
+    revenue = serializers.DecimalField(
+        max_digits=20, decimal_places=10, coerce_to_string=True
+    )
+
+
+class RevenuePerDaySerializer(serializers.Serializer):
+    date = serializers.DateField()
+    revenue_per_plan = PerPlanPerDaySerializer(many=True)
+
+
+class RevenueByMetricSerializer(serializers.Serializer):
+    metric = LightweightMetricSerializer()
+    revenue = serializers.DecimalField(
+        max_digits=20, decimal_places=10, coerce_to_string=True
+    )
+
+
+class RevenueByPlanMetricSerializer(serializers.Serializer):
+    plan = LightweightPlanVersionSerializer()
+    by_metric = RevenueByMetricSerializer(many=True)
+
+
+class TopCustomersAnalysisSerializer(serializers.Serializer):
+    top_customers_by_revenue = serializers.ListField(
+        child=SingleCustomerValueSerializer(), max_length=10
+    )
+
+
+top_customers_by_average_revenue = serializers.ListField(
+    child=SingleCustomerValueSerializer(), max_length=10
+)
+
+
+class AnalysisResultsSerializer(serializers.Serializer):
+    analysis_summary = SinglePlanAnalysisSerializer(many=True)
+    revenue_per_day_graph = RevenuePerDaySerializer(many=True)
+    revenue_by_metric_graph = RevenueByPlanMetricSerializer(many=True)
+    top_customers = TopCustomersAnalysisSerializer()
+
+
+class AnalysisDetailSerializer(AnalysisSummarySerializer):
+    class Meta(AnalysisSummarySerializer.Meta):
+        fields = tuple(
+            set(AnalysisSummarySerializer.Meta.fields) | {"analysis_results"}
+        )
+
+    analysis_results = AnalysisResultsSerializer()
+
+
+# end

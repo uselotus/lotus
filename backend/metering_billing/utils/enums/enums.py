@@ -145,7 +145,16 @@ class BACKTEST_KPI(models.TextChoices):
     TOTAL_REVENUE = ("total_revenue", _("Total Revenue"))
 
 
-class BACKTEST_STATUS(models.TextChoices):
+class ANALYSIS_KPI(models.TextChoices):
+    TOTAL_REVENUE = ("total_revenue", _("Total Revenue"))
+    AVERAGE_REVENUE = ("average_revenue", _("Average Revenue"))
+    NEW_REVENUE = ("new_revenue", _("New Revenue"))
+    TOTAL_COST = ("total_cost", _("Total Cost"))
+    PROFIT = ("profit", _("Profit"))
+    CHURN = ("churn", _("Churn"))
+
+
+class EXPERIMENT_STATUS(models.TextChoices):
     RUNNING = ("running", _("Running"))
     COMPLETED = ("completed", _("Completed"))
     FAILED = ("failed", _("Failed"))

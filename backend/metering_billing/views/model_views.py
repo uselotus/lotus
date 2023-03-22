@@ -45,6 +45,7 @@ from metering_billing.models import (
     Event,
     ExternalPlanLink,
     Feature,
+    HistoricalAnalysis,
     Metric,
     Organization,
     OrganizationSetting,
@@ -60,7 +61,9 @@ from metering_billing.models import (
 )
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import ValidOrganization
-from metering_billing.serializers.backtest_serializers import (
+from metering_billing.serializers.experiment_serializers import (
+    AnalysisDetailSerializer,
+    AnalysisSummarySerializer,
     BacktestCreateSerializer,
     BacktestDetailSerializer,
     BacktestSummarySerializer,
@@ -119,6 +122,7 @@ from metering_billing.serializers.request_serializers import (
 from metering_billing.serializers.serializer_utils import (
     AddOnUUIDField,
     AddOnVersionUUIDField,
+    AnalysisUUIDField,
     MetricUUIDField,
     OrganizationSettingUUIDField,
     OrganizationUUIDField,
@@ -1819,6 +1823,70 @@ class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return context
 
 
+class AnalysisViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
+    lookup_field = "analysis_id"
+    http_method_names = [
+        "get",
+        "post",
+        "head",
+    ]
+    permission_classes_per_method = {
+        "create": [IsAuthenticated & ValidOrganization],
+        "destroy": [IsAuthenticated & ValidOrganization],
+    }
+    queryset = HistoricalAnalysis.objects.all()
+
+    def get_object(self):
+        string_uuid = self.kwargs[self.lookup_field]
+        uuid = AnalysisUUIDField().to_internal_value(string_uuid)
+        self.kwargs[self.lookup_field] = uuid
+        return super().get_object()
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return AnalysisSummarySerializer
+        elif self.action == "retrieve":
+            return AnalysisDetailSerializer
+        else:
+            return BacktestCreateSerializer
+
+    def get_queryset(self):
+        organization = self.request.organization
+        return HistoricalAnalysis.objects.filter(organization=organization)
+
+    def perform_create(self, serializer):
+        analysis_obj = serializer.save(organization=self.request.organization)
+        an_id = analysis_obj.backtest_id
+        run_backtest.delay(an_id)
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            try:
+                username = self.request.user.username
+            except Exception:
+                username = None
+            organization = self.request.organization
+            posthog.capture(
+                POSTHOG_PERSON
+                if POSTHOG_PERSON
+                else (
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
+                ),
+                event=f"{self.action}_analysis",
+                properties={"organization": organization.organization_name},
+            )
+        return response
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        organization = self.request.organization
+        context.update({"organization": organization})
+        return context
+
+
 class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     lookup_field = "product_id"
@@ -2458,11 +2526,5 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
     def get_serializer_context(self):
         context = super().get_serializer_context()
         organization = self.request.organization
-        context.update({"organization": organization})
-        return context
-        context = super().get_serializer_context()
-        organization = self.request.organization
-        context.update({"organization": organization})
-        return context
         context.update({"organization": organization})
         return context
