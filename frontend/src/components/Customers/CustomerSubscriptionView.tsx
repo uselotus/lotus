@@ -144,7 +144,6 @@ function AddPlanModal({
   handleStartSubscription: () => void;
   handleCancel: () => void;
 }) {
-  console.log("render");
   return (
     <Fragment>
       {showAddModal ? (
@@ -364,7 +363,6 @@ const SubscriptionView: FC<Props> = ({
     if (selectedPlan) {
       const planObject = plans?.find((plan) => plan.plan_id == selectedPlan);
       const relevantVersions = planObject.versions;
-      console.log(relevantVersions, "relevantVersions");
       if (relevantVersions !== undefined) {
         const versionMap = relevantVersions.reduce((acc, version) => {
           acc[version.version_id] = version;
@@ -396,14 +394,12 @@ const SubscriptionView: FC<Props> = ({
             return acc;
           }, [] as { label: string; value: string }[]);
 
-        console.log(newVersionList, "newVersionList");
         setVersionList(newVersionList);
       }
     }
   }, [selectedPlan]);
 
   useEffect(() => {
-    console.log(plans, "plans");
     if (plans !== undefined) {
       const planMap = plans.reduce((acc, plan) => {
         acc[plan.plan_id] = plan;
@@ -432,7 +428,6 @@ const SubscriptionView: FC<Props> = ({
         },
         [] as { label: string; value: string }[]
       );
-      console.log(newplanList, "newplanList");
       setPlanList(newplanList);
     }
   }, [customer_id, plans]);
@@ -1500,8 +1495,6 @@ const SubscriptionView: FC<Props> = ({
       </div>
     );
   }
-
-  console.log(subscriptions, upcomingSubscriptions);
 
   return (
     <div className="mt-auto">
