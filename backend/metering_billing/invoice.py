@@ -46,7 +46,9 @@ def generate_invoice(
     generate_next_subscription_record=False,
     issue_date=None,
 ):
-    print(f"GENERATING INVOICE FOR {subscription_records}, issue_date={issue_date}")
+    print(
+        f"generate_invoice for subscription_records {subscription_records}, issue_date {issue_date}"
+    )
     """
     Generate an invoice for a subscription.
 
@@ -394,6 +396,7 @@ def create_next_subscription_record(subscription_record, next_bp):
         is_new=False,
         quantity=subscription_record.quantity,
         component_fixed_charges_initial_units=component_fixed_charges_initial_units,
+        do_generate_invoice=False,
     )
     return next_sr
 
@@ -403,6 +406,12 @@ def charge_next_plan_flat_fee(
 ):
     from metering_billing.models import InvoiceLineItem, RecurringCharge
 
+    print(
+        "Charging next plan flat fee",
+        draft,
+        subscription_record.id,
+        next_subscription_record.id,
+    )
     if draft or subscription_record == next_subscription_record:
         # if its a draft, OR if we are not generating the next subscription record
         timezone = subscription_record.customer.timezone
@@ -437,6 +446,7 @@ def charge_next_plan_flat_fee(
                     invoice=invoice,
                     associated_subscription_record=next_subscription_record,
                     associated_plan_version=next_bp,
+                    associated_billing_record=next_subscription_record.billing_record,
                     organization=subscription_record.organization,
                 )
     else:

@@ -26,15 +26,6 @@ from django.db.models import Count, F, FloatField, Q, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
-
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     NotEditable,
@@ -83,6 +74,14 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -2842,7 +2841,7 @@ class SubscriptionRecord(models.Model):
         is_new=True,
         quantity=1,
         component_fixed_charges_initial_units=None,
-        generate_invoice=True,
+        do_generate_invoice=True,
     ):
         from metering_billing.invoice import generate_invoice
 
@@ -2872,7 +2871,7 @@ class SubscriptionRecord(models.Model):
             sr._create_component_billing_records(component, **kwargs)
         for recurring_charge in sr.billing_plan.recurring_charges.all():
             sr._create_recurring_charge_billing_records(recurring_charge)
-        if generate_invoice:
+        if do_generate_invoice:
             generate_invoice(sr)
         return sr
 
@@ -3485,13 +3484,13 @@ class BillingRecord(models.Model):
         dates = dates_bwn_two_dts(self.start_date, self.end_date)
         rev_per_day = dict.fromkeys(dates, Decimal(0))
         if self.recurring_charge:
-            for day in dates:
+            for day in rev_per_day:
                 if day == self.start_date.date():
-                    start_of_day = datetime.datetime.combine(
-                        day, datetime.time.min
+                    end_of_day = datetime.datetime.combine(
+                        day, datetime.time.max
                     ).replace(tzinfo=self.start_date.tzinfo)
                     duration_microseconds = convert_to_decimal(
-                        (self.start_date - start_of_day).total_seconds() * 10**6
+                        (end_of_day - self.start_date).total_seconds() * 10**6
                     )
                 elif day == self.end_date.date():
                     start_of_day = datetime.datetime.combine(
@@ -3505,7 +3504,7 @@ class BillingRecord(models.Model):
                 rev_per_day[day] = convert_to_decimal(
                     self.recurring_charge.amount
                     * self.subscription.quantity
-                    / self.subscription.unadjusted_duration_microseconds
+                    / self.unadjusted_duration_microseconds
                     * duration_microseconds
                 )
         else:  # components

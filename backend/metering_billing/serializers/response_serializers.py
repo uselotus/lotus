@@ -1,5 +1,6 @@
-from metering_billing.serializers.model_serializers import MetricDetailSerializer
 from rest_framework import serializers
+
+from metering_billing.serializers.model_serializers import MetricDetailSerializer
 
 
 class PeriodSubscriptionsResponseSerializer(serializers.Serializer):
@@ -68,4 +69,5 @@ class CostAnalysisSerializer(serializers.Serializer):
     per_day = serializers.ListField(child=SingleDayCostAnalysisSerializer())
     total_cost = serializers.DecimalField(decimal_places=10, max_digits=20)
     total_revenue = serializers.DecimalField(decimal_places=10, max_digits=20)
-    margin = serializers.DecimalField(decimal_places=10, max_digits=20)
+    profit_margin = serializers.DecimalField(decimal_places=10, max_digits=20)
+    markup = serializers.DecimalField(decimal_places=10, max_digits=20)

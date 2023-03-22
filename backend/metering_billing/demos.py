@@ -8,8 +8,6 @@ import uuid
 import numpy as np
 import pytz
 from dateutil.relativedelta import relativedelta
-from model_bakery import baker
-
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
@@ -53,6 +51,7 @@ from metering_billing.utils.enums import (
     METRIC_TYPE,
     PLAN_DURATION,
 )
+from model_bakery import baker
 
 logger = logging.getLogger("django.server")
 
@@ -1557,7 +1556,7 @@ def setup_database_demo(
             "event_name": "storage_change",
             "property_name": "gb_storage",
             "usage_aggregation_type": METRIC_AGGREGATION.MAX,
-            "billable_metric_name": "GB Storage - Total",
+            "billable_metric_name": "GB Months",
             "metric_type": METRIC_TYPE.GAUGE,
             "granularity": METRIC_GRANULARITY.MONTH,
             "event_type": EVENT_TYPE.TOTAL,
@@ -1569,7 +1568,7 @@ def setup_database_demo(
             "event_name": "storage_change",
             "property_name": "gb_storage",
             "usage_aggregation_type": METRIC_AGGREGATION.MAX,
-            "billable_metric_name": "GB Storage - Hourly Billing",
+            "billable_metric_name": "GB Hours - Minute Proration",
             "metric_type": METRIC_TYPE.GAUGE,
             "granularity": METRIC_GRANULARITY.HOUR,
             "proration": METRIC_GRANULARITY.MINUTE,
@@ -1606,6 +1605,7 @@ def setup_database_demo(
             "usage_aggregation_type": METRIC_AGGREGATION.SUM,
             "billable_metric_name": "AWS Server Costs",
             "metric_type": METRIC_TYPE.COUNTER,
+            "is_cost_metric": True,
         }
     )
     gb_ram = METRIC_HANDLER_MAP[METRIC_TYPE.GAUGE].create_metric(
@@ -1614,7 +1614,7 @@ def setup_database_demo(
             "event_name": "ram_change",
             "property_name": "gb_ram",
             "usage_aggregation_type": METRIC_AGGREGATION.MAX,
-            "billable_metric_name": "GB RAM",
+            "billable_metric_name": "GB RAM Months - Daily Proration",
             "metric_type": METRIC_TYPE.GAUGE,
             "granularity": METRIC_GRANULARITY.MONTH,
             "proration": METRIC_GRANULARITY.DAY,
@@ -1627,7 +1627,7 @@ def setup_database_demo(
             "event_name": "cpu_change",
             "property_name": "number_cpus",
             "usage_aggregation_type": METRIC_AGGREGATION.MAX,
-            "billable_metric_name": "Number of CPUs",
+            "billable_metric_name": "CPU Months - Daily Proration",
             "metric_type": METRIC_TYPE.GAUGE,
             "granularity": METRIC_GRANULARITY.MONTH,
             "proration": METRIC_GRANULARITY.DAY,
@@ -1725,7 +1725,7 @@ def setup_database_demo(
     RecurringCharge.objects.create(
         organization=organization,
         plan_version=basic_bp_monthly,
-        amount=50,
+        amount=250,
         name="Flat Rate",
         charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
         pricing_unit=basic_bp_monthly.currency,
@@ -1744,7 +1744,7 @@ def setup_database_demo(
     RecurringCharge.objects.create(
         organization=organization,
         plan_version=basic_bp_yearly,
-        amount=500,
+        amount=2500,
         name="Flat Rate",
         charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
         pricing_unit=basic_bp_yearly.currency,
@@ -1830,7 +1830,7 @@ def setup_database_demo(
     RecurringCharge.objects.create(
         organization=organization,
         plan_version=pay_as_you_go_bp_monthly,
-        amount=10,
+        amount=100,
         name="Flat Rate",
         charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
         pricing_unit=pay_as_you_go_bp_monthly.currency,
@@ -1849,7 +1849,7 @@ def setup_database_demo(
     RecurringCharge.objects.create(
         organization=organization,
         plan_version=pay_as_you_go_bp_yearly,
-        amount=100,
+        amount=1000,
         name="Flat Rate",
         charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
         pricing_unit=pay_as_you_go_bp_yearly.currency,
@@ -1879,10 +1879,17 @@ def setup_database_demo(
                     },
                     {
                         "range_start": 7200,
+                        "range_end": 20000,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.PER_UNIT,
+                        "cost_per_batch": 0.0001,
+                    },
+                    {
+                        "range_start": 20000,
                         "range_end": None,
                         "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
                         "type": PriceTier.PriceTierType.PER_UNIT,
-                        "cost_per_batch": 0.01,
+                        "cost_per_batch": 0.00005,
                     },
                 ],
                 "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
@@ -2075,7 +2082,7 @@ def setup_database_demo(
                         organization=organization,
                         event_name="cpu_change",
                         properties={
-                            "cpu": number_cpus,
+                            "number_cpus": number_cpus,
                         },
                         time_created=dt,
                         idempotency_id=uuid.uuid4().hex,
@@ -2097,7 +2104,7 @@ def setup_database_demo(
                         organization=organization,
                         event_name="data_egress",
                         properties={
-                            "gb_egress": egress,
+                            "gb_data_egress": egress,
                         },
                         time_created=dt,
                         idempotency_id=uuid.uuid4().hex,
@@ -2137,7 +2144,7 @@ def setup_database_demo(
                 n_cost_events = total_events // 10
                 dts = list(random_date(sr.start_date, sr.end_date, n_cost_events))
                 for dt in dts:
-                    cost = np.random.random()
+                    cost = np.random.random() * 8
                     e = Event(
                         organization=organization,
                         event_name="server_costs",
@@ -2163,13 +2170,11 @@ def setup_database_demo(
                         break
                 Event.objects.bulk_create(events)
                 if months == 0:
-                    print("THIS IS INITIAL")
                     generate_invoice(
                         [sr],
                         issue_date=sr.start_date,
                     )
                 if now_utc() > sr.end_date:
-                    print("THIS IS END")
                     cur_bp = sr.billing_plan
                     cur_replace_with = cur_bp.replace_with
                     cur_bp.replace_with = next_plan
@@ -2274,7 +2279,7 @@ def make_subscription_record(
         subscription_filters=None,
         is_new=is_new,
         quantity=1,
-        generate_invoice=False,
+        do_generate_invoice=False,
     )
     return sr
 
