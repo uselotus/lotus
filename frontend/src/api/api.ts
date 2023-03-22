@@ -363,6 +363,15 @@ export const Plan = {
     requests.delete(`app/usage_alerts/${post.usage_alert_id}/`),
 };
 
+export const Experiments = {
+  getExperiments: (): Promise<components["schemas"]["AnalysisSummary"]> =>
+    requests.get("app/analysis/"),
+  getAnalysis: (
+    analysis_id: string
+  ): Promise<components["schemas"]["AnalysisDetail"]> =>
+    requests.get(`app/analysis/${analysis_id}/`),
+};
+
 export const Webhook = {
   getEndpoints: (): Promise<WebhookEndpoint[]> => requests.get("app/webhooks/"),
   createEndpoint: (post: WebhookEndpointCreate): Promise<WebhookEndpoint> =>

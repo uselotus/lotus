@@ -5,11 +5,12 @@ import { Card, Flex, Metric } from "@tremor/react";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { useQuery, UseQueryResult } from "react-query";
 import dayjs from "dayjs";
-import { Backtests } from "../api/api";
+import { Experiments } from "../api/api";
 import { BacktestResultType, SpecificResults } from "../types/experiment-type";
 import { PageLayout } from "../components/base/PageLayout";
 import BacktestSubstitution from "../components/Experiments/BacktestSubsitution";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { components } from "../gen-types";
 
 const arrowURL = new URL("../components/arrow.svg", import.meta.url).href;
 
@@ -35,12 +36,10 @@ const ExperimentResults: FC = () => {
     data: experiment,
     isLoading,
     isError,
-  }: UseQueryResult<BacktestResultType> = useQuery<BacktestResultType>(
-    ["experiment_results", experimentId],
-    () =>
-      Backtests.getBacktestResults(experimentId).then(
-        (res: BacktestResultType) => res
-      )
+  }: UseQueryResult<components["schemas"]["AnalysisDetail"]> = useQuery<
+    components["schemas"]["AnalysisDetail"]
+  >(["experiment_results", experimentId], () =>
+    Experiments.getAnalysis(experimentId).then((res) => res)
   );
 
   const changeSubstitution = (value: string) => {
