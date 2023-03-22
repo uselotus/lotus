@@ -364,7 +364,7 @@ export const Plan = {
 };
 
 export const Experiments = {
-  getExperiments: (): Promise<components["schemas"]["AnalysisSummary"]> =>
+  getExperiments: (): Promise<components["schemas"]["AnalysisSummary"][]> =>
     requests.get("app/analysis/"),
   getAnalysis: (
     analysis_id: string

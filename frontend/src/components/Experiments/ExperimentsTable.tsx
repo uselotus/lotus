@@ -55,7 +55,7 @@ interface Props {
   backtests: BacktestType[];
 }
 
-const BacktestTable: FC<Props> = ({ backtests }) => {
+const ExperimentsTable: FC<Props> = ({ backtests }) => {
   const navigate = useNavigate();
   const navigateToExperiment = (row: BacktestType) => {
     navigate(`/experiment/${row.backtest_id}`);
@@ -69,14 +69,14 @@ const BacktestTable: FC<Props> = ({ backtests }) => {
         toolBarRender={false}
         search={false}
         onRow={(record, rowIndex) => ({
-            onClick: (event) => {
-              if (record.status === "completed") {
-                navigateToExperiment(record);
-              } else {
-                toast("Experiment is still running");
-              }
-            }, // click row
-          })}
+          onClick: (event) => {
+            if (record.status === "completed") {
+              navigateToExperiment(record);
+            } else {
+              toast("Experiment is still running");
+            }
+          }, // click row
+        })}
         pagination={{
           showTotal: (total, range) => (
             <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
@@ -88,4 +88,4 @@ const BacktestTable: FC<Props> = ({ backtests }) => {
   );
 };
 
-export default BacktestTable;
+export default ExperimentsTable;
