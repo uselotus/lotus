@@ -373,8 +373,12 @@ const SubscriptionView: FC<Props> = ({
         const newVersionList: { label: string; value: string }[] =
           relevantVersions.reduce((acc, version) => {
             if (version.target_customers.length === 0) {
+              var label = version.version;
+              if (version.localized_name) {
+                label = label + " - " + version.localized_name;
+              }
               acc.push({
-                label: version.version + " - " + version.localized_name ?? " ",
+                label: label,
                 value: version.version_id,
               });
             } else {
