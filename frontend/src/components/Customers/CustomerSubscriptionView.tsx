@@ -166,7 +166,11 @@ function AddPlanModal({
               type="primary"
               className="hover:!bg-primary-700"
               disabled={(import.meta as any).env.VITE_IS_DEMO === "true"}
-              onClick={() => handleStartSubscription()}
+              onClick={() => {
+                if (selectedPlan) {
+                  handleStartSubscription();
+                }
+              }}
             >
               Start Subscription
             </Button>,
@@ -266,6 +270,7 @@ const SubscriptionView: FC<Props> = ({
   const queryClient = useQueryClient();
 
   const selectPlan = (plan_id: string) => {
+    setSelectedVersion(undefined);
     setSelectedPlan(plan_id);
   };
   const selectVersion = (version_id: string) => {
@@ -356,34 +361,40 @@ const SubscriptionView: FC<Props> = ({
   };
 
   useEffect(() => {
-    const planObject = plans?.find((plan) => plan.plan_id == selectedPlan);
-
-    const relevantVersions = planObject?.versions.filter(
-      (version) => version.status === "active"
-    );
-    if (relevantVersions !== undefined) {
-      const versionMap = relevantVersions.reduce((acc, version) => {
-        acc[version.version_id] = version;
-        return acc;
-      }, {} as { [key: number]: PlanVersionType });
-      const newVersionList: { label: string; value: string }[] =
-        relevantVersions.reduce((acc, version) => {
-          if (version.target_customers.length === 0) {
-            acc.push({
-              label: version.version,
-              value: version.version_id,
-            });
-          } else {
-            acc.push({
-              label: version.plan_name,
-              value: version.version_id,
-            });
-          }
+    if (selectedPlan) {
+      const planObject = plans?.find((plan) => plan.plan_id == selectedPlan);
+      const relevantVersions = planObject.versions;
+      console.log(relevantVersions, "relevantVersions");
+      if (relevantVersions !== undefined) {
+        const versionMap = relevantVersions.reduce((acc, version) => {
+          acc[version.version_id] = version;
           return acc;
-        }, [] as { label: string; value: string }[]);
+        }, {} as { [key: number]: PlanVersionType });
+        const newVersionList: { label: string; value: string }[] =
+          relevantVersions.reduce((acc, version) => {
+            if (version.target_customers.length === 0) {
+              acc.push({
+                label: version.version + " - " + version.localized_name ?? " ",
+                value: version.version_id,
+              });
+            } else {
+              if (
+                version.target_customers.some(
+                  (customer) => customer.customer_id === customer_id
+                )
+              ) {
+                acc.push({
+                  label: version.plan_name,
+                  value: version.version_id,
+                });
+              }
+            }
+            return acc;
+          }, [] as { label: string; value: string }[]);
 
-      console.log(newVersionList, "newVersionList");
-      setVersionList(newVersionList);
+        console.log(newVersionList, "newVersionList");
+        setVersionList(newVersionList);
+      }
     }
   }, [selectedPlan]);
 
@@ -443,7 +454,8 @@ const SubscriptionView: FC<Props> = ({
       const start_date = subStartDate ? subStartDate : new Date().toISOString();
       const props: CreateSubscriptionType = {
         customer_id,
-        plan_id: selectedVersion !== undefined ? selectedPlan : plan.plan_id,
+        plan_id: selectedVersion === undefined ? plan.plan_id : null,
+        version_id: selectedVersion !== undefined ? selectedVersion : null,
         start_date: start_date,
         auto_renew: true,
         is_new: true,
@@ -587,9 +599,9 @@ const SubscriptionView: FC<Props> = ({
           planList={planList}
           versionList={versionList}
           selectedPlan={selectedPlan}
-          setSelectedPlan={selectNewPlan}
+          selectPlan={selectPlan}
           selectedVersion={selectedVersion}
-          setSelectedVersion={setSelectedVersion}
+          selectVersion={selectVersion}
           subStartDate={subStartDate}
           handleDateChange={setSubStartDate}
           handleCancel={handleCancelAddSubscription}
@@ -616,7 +628,11 @@ const SubscriptionView: FC<Props> = ({
           <CustomerCard.Heading>
             <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
               <div>
-                <div> {subPlan.billing_plan.plan_name}</div>
+                <div>
+                  {" "}
+                  {subPlan.billing_plan.plan_name} :{" v"}
+                  {subPlan.billing_plan.version}
+                </div>
                 {subPlan.subscription_filters ? (
                   subPlan.subscription_filters.length > 0 ? (
                     <p>
@@ -1578,7 +1594,20 @@ const SubscriptionView: FC<Props> = ({
           </div>
         </>
       )}
-      <AddPlanModal />
+      <AddPlanModal
+        title={title}
+        showAddModal={showAddModal}
+        handleStartSubscription={handleAttachPlanSubmit}
+        planList={planList}
+        versionList={versionList}
+        selectedPlan={selectedPlan}
+        selectPlan={selectPlan}
+        selectedVersion={selectedVersion}
+        selectVersion={selectVersion}
+        subStartDate={subStartDate}
+        handleDateChange={setSubStartDate}
+        handleCancel={handleCancelAddSubscription}
+      />
 
       <DraftInvoice customer_id={customer_id} />
     </div>
