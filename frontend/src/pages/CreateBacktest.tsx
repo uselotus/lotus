@@ -1,5 +1,5 @@
 import React, { FC, useEffect, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "react-query";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from "react-router-dom";
 import { Form, Button, Input, Radio, Select, Modal } from "antd";
 import { toast } from "react-toastify";

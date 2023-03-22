@@ -1,7 +1,7 @@
 import { Column } from "@ant-design/plots";
 import React, { useState, useEffect } from "react";
 import { Select } from "antd";
-import { useQuery, UseQueryResult } from "react-query";
+import { useQuery, UseQueryResult } from '@tanstack/react-query';
 import LoadingSpinner from "../LoadingSpinner";
 import { MetricUsage } from "../../types/metric-type";
 import { Metrics } from "../../api/api";

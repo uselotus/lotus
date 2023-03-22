@@ -1,6 +1,10 @@
 // @ts-ignore
 import React, { FC, useState, useEffect, Fragment } from "react";
-import { useQuery, UseQueryResult, useQueryClient } from "react-query";
+import {
+  useQuery,
+  UseQueryResult,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { Button, Collapse, Divider } from "antd";
 import dayjs from "dayjs";
 import { EventPages } from "../types/event-type";
@@ -83,7 +87,7 @@ const EventPreview: FC = () => {
         </h1>
         <Button
           onClick={() => {
-            queryClient.invalidateQueries("preview events");
+            queryClient.invalidateQueries(["preview events"]);
           }}
           loading={isLoading}
         >
@@ -91,7 +95,6 @@ const EventPreview: FC = () => {
         </Button>
       </div>
       <Divider />
-
       {data?.results.length === 0 ? (
         <div className="align-center">
           <h3 className="text-xl font-main align-center">No Events</h3>

@@ -15,7 +15,7 @@ import "./SwitchVersions.css";
 import { PlusOutlined } from "@ant-design/icons";
 import { Link, useNavigate } from "react-router-dom";
 import { Dropdown, Select, Menu } from "antd";
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PlanType } from "../../../types/plan-type";
 import PlanComponents, { PlanInfo, PlanSummary } from "./PlanComponent";
 import PlanFeatures from "./PlanFeatures";
@@ -136,7 +136,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
       }),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries("plan_list");
+        queryClient.invalidateQueries(["plan_list"]);
         queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
       },
     }
@@ -148,7 +148,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
       }),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries("plan_list");
+        queryClient.invalidateQueries(["plan_list"]);
         queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
       },
     }
