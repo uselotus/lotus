@@ -5,7 +5,7 @@
 /* eslint-disable camelcase */
 import React, { FC, useEffect } from "react";
 import { Column } from "@ant-design/plots";
-import { useQueryClient, useMutation } from "react-query";
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 
 import { Select, Form, Typography, Tooltip } from "antd";
 import dayjs from "dayjs";

@@ -1,5 +1,5 @@
 import React, { FC } from "react";
-import { useQuery, UseQueryResult, useQueryClient } from "react-query";
+import { useQuery, UseQueryResult, useQueryClient } from '@tanstack/react-query';
 import { Button } from "antd";
 import { useNavigate } from "react-router-dom";
 import BacktestTable from "../components/Experiments/BacktestTable";

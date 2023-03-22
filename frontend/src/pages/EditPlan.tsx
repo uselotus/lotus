@@ -6,7 +6,7 @@ import {
   useQuery,
   useQueryClient,
   UseQueryResult,
-} from "react-query";
+} from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import { compact, noop, sortBy } from "lodash";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";

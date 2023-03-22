@@ -12,7 +12,7 @@ import {
   useQuery,
   useQueryClient,
   UseQueryResult,
-} from "react-query";
+} from '@tanstack/react-query';
 import { PlusOutlined } from "@ant-design/icons";
 import { toast } from "react-toastify";
 import { PageLayout } from "../../base/PageLayout";

@@ -5,7 +5,7 @@
 import React, { FC, useCallback, useEffect, useState } from "react";
 import "./PlanDetails.css";
 import { Typography } from "antd";
-import { useMutation, useQuery, useQueryClient } from "react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import capitalize from "../../../helpers/capitalize";
 import { Plan } from "../../../api/api";
 import { components } from "../../../gen-types";
@@ -32,7 +32,7 @@ const PlanCustomerSubscriptions: FC<PlanCustomerSubscriptionProps> = ({
     {
       onSuccess: (data) => {
         setTableData(data);
-        queryClient.invalidateQueries("plan_list");
+        queryClient.invalidateQueries(["plan_list"]);
         queryClient.invalidateQueries(["plan_detail", plan_id]);
       },
       refetchOnMount: "always",

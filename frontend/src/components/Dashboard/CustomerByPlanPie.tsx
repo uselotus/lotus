@@ -1,6 +1,6 @@
 import React from "react";
 import { Pie } from "@ant-design/plots";
-import { useQuery, UseQueryResult } from "react-query";
+import { useQuery, UseQueryResult } from '@tanstack/react-query';
 import { Paper } from "../base/Paper";
 import { PlansByCustomer } from "../../api/api";
 import LoadingSpinner from "../LoadingSpinner";
