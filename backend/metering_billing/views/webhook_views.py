@@ -1,8 +1,6 @@
 import stripe
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
-from metering_billing.models import Invoice
-from metering_billing.utils.enums import PAYMENT_PROCESSORS
 from rest_framework import status
 from rest_framework.decorators import (
     api_view,
@@ -11,9 +9,15 @@ from rest_framework.decorators import (
 )
 from rest_framework.response import Response
 
+from metering_billing.kafka.producer import Producer
+from metering_billing.models import Invoice
+from metering_billing.utils import now_utc
+from metering_billing.utils.enums import PAYMENT_PROCESSORS
+
 STRIPE_WEBHOOK_SECRET = settings.STRIPE_WEBHOOK_SECRET
 STRIPE_TEST_SECRET_KEY = settings.STRIPE_TEST_SECRET_KEY
 STRIPE_LIVE_SECRET_KEY = settings.STRIPE_LIVE_SECRET_KEY
+kafka_producer = Producer()
 
 
 def _invoice_paid_handler(event):
@@ -25,6 +29,11 @@ def _invoice_paid_handler(event):
     if matching_invoice:
         matching_invoice.payment_status = Invoice.PaymentStatus.PAID
         matching_invoice.save()
+        kafka_producer.produce_invoice_pay_in_full(
+            invoice=matching_invoice,
+            payment_date=now_utc(),
+            source=PAYMENT_PROCESSORS.STRIPE,
+        )
 
 
 def _invoice_updated_handler(event):

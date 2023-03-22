@@ -25,6 +25,7 @@ from api.serializers.model_serializers import (
     CustomerSerializer,
     EventSerializer,
     InvoiceListFilterSerializer,
+    InvoicePaymentSerializer,
     InvoiceSerializer,
     InvoiceUpdateSerializer,
     ListPlansFilterSerializer,
@@ -1536,7 +1537,10 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             return default
         return InvoiceSerializer
 
-    @extend_schema(responses=InvoiceSerializer)
+    @extend_schema(request=InvoiceUpdateSerializer, responses=InvoicePaymentSerializer)
+    def partial_update(self, request, *args, **kwargs):
+        super().partial_update(request, *args, **kwargs)
+
     def update(self, request, *args, **kwargs):
         invoice = self.get_object()
         serializer = self.get_serializer(invoice, data=request.data, partial=True)

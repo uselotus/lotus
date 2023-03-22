@@ -7,7 +7,14 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 /* eslint-disable camelcase */
 import moment from "moment";
-import React, { FC, useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  FC,
+  Fragment,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   Form,
   Button,
@@ -32,7 +39,7 @@ import {
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
-import { PlanType } from "../../types/plan-type";
+import { PlanDetailType, PlanType } from "../../types/plan-type";
 import {
   CreateSubscriptionType,
   TurnSubscriptionAutoRenewOffType,
@@ -110,6 +117,96 @@ const dropDownOptions = [
 
 const subDropdownOptions = ["Cancel Now", "Cancel Renewal"];
 
+function AddPlanModal({
+  showAddModal,
+  title,
+  planList,
+  versionList,
+  selectedPlan,
+  selectedVersion,
+  selectPlan,
+  selectVersion,
+  handleDateChange,
+  handleStartSubscription,
+  handleCancel,
+  subStartDate,
+}: {
+  showAddModal: boolean;
+  title: string;
+  planList: PlanOption[];
+  versionList: PlanOption[];
+  selectedPlan: string | undefined;
+  selectedVersion: string | undefined;
+  selectPlan: (value: string) => void;
+  subStartDate: string | undefined;
+  selectVersion: (value: string) => void;
+  handleDateChange: (dateString: string) => void;
+  handleStartSubscription: () => void;
+  handleCancel: () => void;
+}) {
+  console.log("render");
+  return (
+    <Fragment>
+      {showAddModal ? (
+        <Modal
+          transitionName=""
+          maskTransitionName=""
+          className="font-alliance"
+          title={title}
+          visible={showAddModal}
+          cancelButtonProps={{ hidden: true }}
+          closeIcon={<div style={{ display: "none" }} className="hidden" />}
+          onCancel={handleCancel}
+          footer={[
+            <Button key="back" onClick={() => handleCancel()}>
+              Back
+            </Button>,
+            <Button
+              key="submit"
+              type="primary"
+              className="hover:!bg-primary-700"
+              disabled={(import.meta as any).env.VITE_IS_DEMO === "true"}
+              onClick={() => handleStartSubscription()}
+            >
+              Start Subscription
+            </Button>,
+          ]}
+        >
+          <div className="flex flex-col gap-6">
+            <Select
+              showSearch
+              placeholder="Select a plan"
+              onChange={(value: string) => {
+                selectPlan(value);
+              }}
+              options={planList}
+              value={selectedPlan}
+              optionLabelProp="label"
+            ></Select>
+            <Select
+              placeholder="Select a version"
+              onChange={(value: string) => {
+                selectVersion(value);
+              }}
+              options={versionList}
+              value={selectedVersion}
+              optionLabelProp="label"
+            ></Select>
+
+            <DatePicker
+              showTime
+              className="mt-0"
+              placeholder="Select start date"
+              onChange={(date, dateString) => handleDateChange(dateString)}
+              value={subStartDate ? moment(subStartDate) : undefined}
+            />
+          </div>
+        </Modal>
+      ) : null}
+    </Fragment>
+  );
+}
+
 const limit = 6;
 const SubscriptionView: FC<Props> = ({
   customer_id,
@@ -163,10 +260,25 @@ const SubscriptionView: FC<Props> = ({
   const [planList, setPlanList] =
     useState<{ label: string; value: string }[]>();
 
+  const [versionList, setVersionList] =
+    useState<{ label: string; value: string }[]>();
+  const [selectedVersion, setSelectedVersion] = useState<string>();
   const queryClient = useQueryClient();
 
   const selectPlan = (plan_id: string) => {
     setSelectedPlan(plan_id);
+  };
+  const selectVersion = (version_id: string) => {
+    setSelectedVersion(version_id);
+  };
+
+  const handleCancelAddSubscription = () => {
+    setShowAddModal(false);
+    setTitle("");
+    setSelectedSubPlan(undefined);
+    setSelectedPlan(undefined);
+    setSelectedVersion(undefined);
+    setSubStartDate("");
   };
 
   const { data: addOns, isLoading }: UseQueryResult<AddOnType[]> = useQuery<
@@ -197,6 +309,11 @@ const SubscriptionView: FC<Props> = ({
       },
     }
   );
+
+  const selectNewPlan = (plan_id: string) => {
+    console.log(plan_id);
+    setSelectedPlan(plan_id);
+  };
 
   const cancelSubscription = (subscription_id: string) => {
     onCancel(cancelBody, subscription_id);
@@ -239,11 +356,44 @@ const SubscriptionView: FC<Props> = ({
   };
 
   useEffect(() => {
+    const planObject = plans?.find((plan) => plan.plan_id == selectedPlan);
+
+    const relevantVersions = planObject?.versions.filter(
+      (version) => version.status === "active"
+    );
+    if (relevantVersions !== undefined) {
+      const versionMap = relevantVersions.reduce((acc, version) => {
+        acc[version.version_id] = version;
+        return acc;
+      }, {} as { [key: number]: PlanVersionType });
+      const newVersionList: { label: string; value: string }[] =
+        relevantVersions.reduce((acc, version) => {
+          if (version.target_customers.length === 0) {
+            acc.push({
+              label: version.version,
+              value: version.version_id,
+            });
+          } else {
+            acc.push({
+              label: version.plan_name,
+              value: version.version_id,
+            });
+          }
+          return acc;
+        }, [] as { label: string; value: string }[]);
+
+      console.log(newVersionList, "newVersionList");
+      setVersionList(newVersionList);
+    }
+  }, [selectedPlan]);
+
+  useEffect(() => {
+    console.log(plans, "plans");
     if (plans !== undefined) {
       const planMap = plans.reduce((acc, plan) => {
         acc[plan.plan_id] = plan;
         return acc;
-      }, {} as { [key: number]: PlanType });
+      }, {} as { [key: number]: PlanDetailType });
       setIDtoPlan(planMap);
       const newplanList: { label: string; value: string }[] = plans.reduce(
         (acc, plan) => {
@@ -267,6 +417,7 @@ const SubscriptionView: FC<Props> = ({
         },
         [] as { label: string; value: string }[]
       );
+      console.log(newplanList, "newplanList");
       setPlanList(newplanList);
     }
   }, [customer_id, plans]);
@@ -292,7 +443,7 @@ const SubscriptionView: FC<Props> = ({
       const start_date = subStartDate ? subStartDate : new Date().toISOString();
       const props: CreateSubscriptionType = {
         customer_id,
-        plan_id: plan.plan_id,
+        plan_id: selectedVersion !== undefined ? selectedPlan : plan.plan_id,
         start_date: start_date,
         auto_renew: true,
         is_new: true,
@@ -302,6 +453,9 @@ const SubscriptionView: FC<Props> = ({
       onCreate(props);
     }
     form.resetFields();
+    setSelectedPlan(undefined);
+    setSelectedVersion(undefined);
+    setShowAddModal(false);
   };
   const submitAddOns = (subscription_id: string) => {
     const body = {
@@ -410,7 +564,6 @@ const SubscriptionView: FC<Props> = ({
     return (
       <div className="flex flex-col items-center justify-center">
         <h2 className="mb-2 pb-4 pt-4 font-bold text-main">No Subscription</h2>
-        <p className="font-bold">Please attach a Plan</p>
         <div className=" h-3/6">
           <Button
             type="primary"
@@ -427,6 +580,20 @@ const SubscriptionView: FC<Props> = ({
             Start A Subscription
           </Button>
         </div>
+        <AddPlanModal
+          title={title}
+          showAddModal={showAddModal}
+          handleStartSubscription={handleAttachPlanSubmit}
+          planList={planList}
+          versionList={versionList}
+          selectedPlan={selectedPlan}
+          setSelectedPlan={selectNewPlan}
+          selectedVersion={selectedVersion}
+          setSelectedVersion={setSelectedVersion}
+          subStartDate={subStartDate}
+          handleDateChange={setSubStartDate}
+          handleCancel={handleCancelAddSubscription}
+        />
       </div>
     );
   }
@@ -552,6 +719,14 @@ const SubscriptionView: FC<Props> = ({
                           // eslint-disable-next-line react/no-array-index-key
                           key={index}
                           onSelect={() => {
+                            if (
+                              (import.meta as any).env.VITE_IS_DEMO === "true"
+                            ) {
+                              toast.error(
+                                "This feature does not work in the demo"
+                              );
+                              return;
+                            }
                             setSelectedSubPlan(subPlan);
                             switch (index) {
                               case 0:
@@ -596,6 +771,14 @@ const SubscriptionView: FC<Props> = ({
                           // eslint-disable-next-line react/no-array-index-key
                           key={index}
                           onSelect={() => {
+                            if (
+                              (import.meta as any).env.VITE_IS_DEMO === "true"
+                            ) {
+                              toast.error(
+                                "This feature does not work in the demo"
+                              );
+                              return;
+                            }
                             setSelectedSubPlan(subPlan);
                             switch (index) {
                               case 0:
@@ -1332,7 +1515,6 @@ const SubscriptionView: FC<Props> = ({
             disabled={false}
             onClick={() => {
               setTitle("Add New Plan");
-
               setShowAddModal(true);
             }}
           >
@@ -1396,63 +1578,8 @@ const SubscriptionView: FC<Props> = ({
           </div>
         </>
       )}
-      {showAddModal ? (
-        <Modal
-          transitionName=""
-          maskTransitionName=""
-          className="font-alliance"
-          title={title}
-          visible={showAddModal}
-          cancelButtonProps={{ hidden: true }}
-          closeIcon={<div style={{ display: "none" }} className="hidden" />}
-          onCancel={() => {
-            setShowAddModal(false);
-            setTitle("");
-            setSelectedSubPlan(undefined);
-          }}
-          footer={[
-            <Button
-              key="back"
-              onClick={() => {
-                setShowAddModal(false);
-                setSubStartDate("");
-              }}
-            >
-              Back
-            </Button>,
-            <Button
-              key="submit"
-              type="primary"
-              className="hover:!bg-primary-700"
-              onClick={() => {
-                handleAttachPlanSubmit();
-                setShowAddModal(false);
-              }}
-            >
-              Start Subscription
-            </Button>,
-          ]}
-        >
-          <div className="flex flex-col gap-2">
-            <Select
-              showSearch
-              placeholder="Select a plan"
-              onChange={selectPlan}
-              options={planList}
-              value={selectedPlan}
-              optionLabelProp="label"
-            ></Select>
+      <AddPlanModal />
 
-            <DatePicker
-              showTime
-              className="mt-0"
-              placeholder="Select start date"
-              onChange={(date, dateString) => setSubStartDate(dateString)}
-              value={subStartDate ? moment(subStartDate) : undefined}
-            />
-          </div>
-        </Modal>
-      ) : null}
       <DraftInvoice customer_id={customer_id} />
     </div>
   );
