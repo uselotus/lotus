@@ -1001,8 +1001,8 @@ const SubscriptionView: FC<Props> = ({
                 />
               ) : indexRef.current ===
                 "Cancel Renewal" ? null : indexRef.current === "Cancel Now" &&
-                selectedSubPlan?.stripe_subscription_id ? null : indexRef.current ===
-                "Cancel Now" ? (
+                (selectedSubPlan?.stripe_subscription_id ||
+                  fromUpcoming) ? null : indexRef.current === "Cancel Now" ? (
                 <CancelMenu
                   recurringBehavior={cancelBody.flat_fee_behavior}
                   usageBehavior={cancelBody.usage_behavior}
