@@ -1758,6 +1758,7 @@ class SubscriptionRecordCreateSerializer(
         source="billing_plan",
         queryset=PlanVersion.plan_versions.all(),
         write_only=True,
+        allow_null=True,
         help_text="The Lotus version_id, found in the billing plan object. For maximum specificity, you can use this to control exactly what plan version becomes part of the subscription.",
         required=False,
     )
@@ -1767,6 +1768,7 @@ class SubscriptionRecordCreateSerializer(
         queryset=Plan.objects.all(),
         write_only=True,
         required=False,
+        allow_null=True,
         help_text="The Lotus plan_id, found in the billing plan object. We will make a best-effort attempt to find the correct plan version (matching preferred currencies, prioritizing custom plans), but if more than one plan version or no plan version matches these criteria this will return an error.",
     )
     component_fixed_charges_initial_units = ComponentsFixedChargeInitialValueSerializer(
