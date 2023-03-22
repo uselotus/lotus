@@ -33,6 +33,7 @@ import "ace-builds/src-noconflict/theme-github";
 import "ace-builds/src-noconflict/ext-language_tools";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "sql-formatter";
+import { toast } from "react-toastify";
 import OptionInput, { Option as InputOption } from "../base/OptionInput";
 
 const { Option } = Select;
@@ -237,6 +238,11 @@ function CreateMetricForm(props: {
       width={800}
       onCancel={props.onCancel}
       onOk={() => {
+        if ((import.meta as any).env.VITE_IS_DEMO === "true") {
+          toast.error("This feature is disabled in the demo");
+          return;
+        }
+
         form.validateFields().then((values) => {
           var { filters } = values;
           filters = filters || [];
