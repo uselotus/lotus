@@ -7,7 +7,7 @@ from actstream.models import Action
 from django.conf import settings
 from django.core.cache import cache
 from django.core.validators import MinValueValidator
-from django.db.models import Max
+from django.db.models import Func, Max
 from django.db.utils import IntegrityError
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
@@ -500,6 +500,42 @@ class EventViewSet(
         organization = self.request.organization
         context.update({"organization": organization})
         return context
+
+    @extend_schema(
+        request=None,
+        responses=inline_serializer(
+            name="EventProperties",
+            fields={
+                "event_names": serializers.ListField(child=serializers.CharField()),
+                "event_name_to_props": serializers.DictField(
+                    child=serializers.ListField(child=serializers.CharField())
+                ),
+            },
+        ),
+    )
+    @action(detail=False, methods=["get"], url_path="properties")
+    def event_properties(self, request):
+        org = request.organization
+        event_names = list(
+            Event.objects.filter(organization=org)
+            .values_list("event_name", flat=True)
+            .distinct()
+        )
+        event_name_to_props = {}
+        for event_name in event_names:
+            props = (
+                Event.objects.filter(organization=org)
+                .annotate(props_keys=Func("properties", function="jsonb_object_keys"))
+                .filter(event_name=event_name)
+                .values_list("props_keys", flat=True)
+                .distinct()
+            )
+            event_name_to_props[event_name] = list(props)
+
+        return Response(
+            {"event_names": event_names, "event_name_to_props": event_name_to_props},
+            status=status.HTTP_200_OK,
+        )
 
 
 class UserViewSet(

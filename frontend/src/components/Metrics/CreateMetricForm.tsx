@@ -25,12 +25,16 @@ import {
   CategoricalFilterType,
   NumericFilterType,
 } from "../../types/metric-type";
+import { Events } from "../../api/api";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-sql";
 import "ace-builds/src-noconflict/theme-github";
 import "ace-builds/src-noconflict/ext-language_tools";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "sql-formatter";
+import { toast } from "react-toastify";
+import OptionInput, { Option as InputOption } from "../base/OptionInput";
 
 const { Option } = Select;
 const { Panel } = Collapse;
@@ -182,6 +186,45 @@ function CreateMetricForm(props: {
     }
   };
 
+  // Loads in current event names, and get the options
+  const [eventNameOptions, setEventNameOptions] = useState<InputOption[]>([]);
+  const [eventPropOptions, setEventPropOptions] = useState<InputOption[]>([]);
+  const [eventProperties, setEventProperties] = useState<
+    Record<string, string[]>
+  >({});
+
+  useEffect(() => {
+    // Run api call and sets the options upon initialization
+    Events.getEventProperties().then((res) => {
+      const eventEntries = Object.entries(res.event_name_to_props).map(
+        ([key, val]) => [key, val ? val : []]
+      );
+      setEventProperties(Object.fromEntries(eventEntries));
+      setEventNameOptions(
+        res.event_names.map((name) => ({ value: name, label: name }))
+      );
+      setEventPropOptions(
+        [...new Set(eventEntries.flatMap((entry) => entry[1]))].map((prop) => ({
+          value: prop,
+          label: prop,
+        }))
+      );
+    });
+  }, []);
+  const currEventName = Form.useWatch("event_name", form);
+  useEffect(() => {
+    if (currEventName && currEventName in eventProperties) {
+      setEventPropOptions(
+        eventProperties[currEventName].map((prop) => ({
+          label: prop,
+          value: prop,
+        }))
+      );
+    } else {
+      setEventPropOptions([]);
+    }
+  }, [currEventName, eventProperties]);
+
   return (
     <Modal
       visible={props.visible}
@@ -195,6 +238,11 @@ function CreateMetricForm(props: {
       width={800}
       onCancel={props.onCancel}
       onOk={() => {
+        if ((import.meta as any).env.VITE_IS_DEMO === "true") {
+          toast.error("This feature is disabled in the demo");
+          return;
+        }
+
         form.validateFields().then((values) => {
           var { filters } = values;
           filters = filters || [];
@@ -410,7 +458,11 @@ function CreateMetricForm(props: {
                       },
                     ]}
                   >
-                    <Input id="event-name-input" />
+                    <OptionInput
+                      name="event_name"
+                      form={form}
+                      options={eventNameOptions}
+                    />
                   </Form.Item>
                 </Tooltip>
               )}
@@ -445,6 +497,7 @@ function CreateMetricForm(props: {
                 </Radio.Group>
               </Form.Item>
             </div>
+
             <Form.Item
               noStyle
               shouldUpdate={(prevValues, currentValues) =>
@@ -500,7 +553,11 @@ function CreateMetricForm(props: {
                           label="Property Name"
                           rules={[{ required: true }]}
                         >
-                          <Input />
+                          <OptionInput
+                            form={form}
+                            name="property_name"
+                            options={eventPropOptions}
+                          />
                         </Form.Item>
                       ) : null
                     }
@@ -547,7 +604,11 @@ function CreateMetricForm(props: {
                     label="Property Name"
                     rules={[{ required: true }]}
                   >
-                    <Input />
+                    <OptionInput
+                      form={form}
+                      name="property_name"
+                      options={eventPropOptions}
+                    />
                   </Form.Item>
 
                   <Form.Item

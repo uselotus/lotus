@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 /* eslint-disable react/jsx-props-no-spreading */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-shadow */
@@ -5,9 +6,8 @@
 import React, { FC, useEffect } from "react";
 import { Column } from "@ant-design/plots";
 import { useQueryClient, useMutation } from "react-query";
-import { Tooltip } from "antd";
 
-import { Select, Form, Typography, Input } from "antd";
+import { Select, Form, Typography, Tooltip } from "antd";
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
 import { DraftInvoiceType } from "../../types/invoice-type";
@@ -28,7 +28,6 @@ import Divider from "../base/Divider/Divider";
 import Badge from "../base/Badges/Badges";
 import { fourDP } from "../../helpers/fourDP";
 import { timezones } from "../../assets/timezones";
-
 import { components } from "../../gen-types";
 
 interface CustomerInfoViewProps {
@@ -82,7 +81,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     (obj: {
       customer_id: string;
       default_currency_code: string;
-      address: CustomerType["address"];
+      address: components["schemas"]["PatchedCustomerUpdateRequest"]["billing_address"];
       tax_rate: number;
       timezone: string;
       customer_name?: string;
@@ -116,37 +115,43 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     setIsEditing(true);
   };
   const EditCustomerHandler = async () => {
-    let submittedAddress;
-    if (
-      city === "" &&
-      line1 === "" &&
-      country === "" &&
-      postalCode === "" &&
-      state === "" &&
-      line2 === ""
-    ) {
-      submittedAddress = null;
+    if ((import.meta as any).env.VITE_IS_DEMO === "true") {
+      return;
     } else {
-      submittedAddress = {
-        city: city === "" ? null : city,
-        line1: line1 === "" ? null : line1,
-        line2: line2 === "" ? null : line2,
-        country: country === "" ? null : country,
-        postal_code: postalCode === "" ? null : postalCode,
-        state: state === "" ? null : state,
-      };
-    }
-    await updateCustomer.mutateAsync({
-      customer_id: data.customer_id,
-      address: submittedAddress,
-      default_currency_code: currentCurrency,
-      tax_rate: fourDP(taxRate),
-      timezone,
-      customer_name: customerName,
-      new_customer_id: customerId,
-    });
+      let submittedAddress;
 
-    refetch();
+      if (
+        city === "" &&
+        line1 === "" &&
+        country === "" &&
+        postalCode === "" &&
+        state === "" &&
+        line2 === ""
+      ) {
+        submittedAddress = null;
+      } else {
+        submittedAddress = {
+          city: city === "" ? null : city,
+          line1: line1 === "" ? null : line1,
+          line2: line2 === "" ? null : line2,
+          country: country === "" ? null : country,
+          postal_code: postalCode === "" ? null : postalCode,
+          state: state === "" ? null : state,
+        };
+      }
+      await updateCustomer.mutateAsync({
+        customer_id: data.customer_id,
+        address: submittedAddress,
+        default_currency_code: currentCurrency,
+        tax_rate: fourDP(taxRate),
+        timezone,
+        customer_name: customerName,
+        new_customer_id: customerId,
+      });
+
+      refetch();
+    }
+
     setIsEditing(false);
   };
   const displayMetric = (metric: number | undefined): number => {

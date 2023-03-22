@@ -10,6 +10,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from metering_billing.invoice import generate_balance_adjustment_invoice
+from metering_billing.kafka.producer import Producer
 from metering_billing.models import (
     AddOnSpecification,
     Address,
@@ -72,6 +73,7 @@ from metering_billing.utils.enums import (
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
+kafka_producer = Producer()
 
 
 class TagNameSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
@@ -1432,10 +1434,18 @@ class InvoiceUpdateSerializer(
         return data
 
     def update(self, instance, validated_data):
+        if instance.payment_status == Invoice.PaymentStatus.PAID:
+            raise serializers.ValidationError(
+                "Cannot update a paid invoice. Please create a credit note instead."
+            )
         instance.payment_status = validated_data.get(
             "payment_status", instance.payment_status
         )
         instance.save()
+        if instance.payment_status == Invoice.PaymentStatus.PAID:
+            kafka_producer.produce_invoice_pay_in_full(
+                invoice=instance, payment_date=now_utc(), source="lotus_out_of_band"
+            )
         return instance
 
 
@@ -1749,6 +1759,7 @@ class SubscriptionRecordCreateSerializer(
         source="billing_plan",
         queryset=PlanVersion.plan_versions.all(),
         write_only=True,
+        allow_null=True,
         help_text="The Lotus version_id, found in the billing plan object. For maximum specificity, you can use this to control exactly what plan version becomes part of the subscription.",
         required=False,
     )
@@ -1758,6 +1769,7 @@ class SubscriptionRecordCreateSerializer(
         queryset=Plan.objects.all(),
         write_only=True,
         required=False,
+        allow_null=True,
         help_text="The Lotus plan_id, found in the billing plan object. We will make a best-effort attempt to find the correct plan version (matching preferred currencies, prioritizing custom plans), but if more than one plan version or no plan version matches these criteria this will return an error.",
     )
     component_fixed_charges_initial_units = ComponentsFixedChargeInitialValueSerializer(
@@ -2763,4 +2775,33 @@ class AddOnSubscriptionRecordCreateSerializer(
         sr.metadata = validated_data.get("metadata", {})
         sr.save()
         return sr
-        return sr
+
+
+LOTUS_OUT_OF_BAND = "lotus_out_of_band"
+
+
+class InvoicePaymentSerializer(InvoiceSerializer):
+    class Meta(InvoiceSerializer.Meta):
+        model = Invoice
+        fields = (
+            "invoice_id",
+            "invoice_number",
+            "customer",
+            "amount",
+            "currency",
+            "payment_date",
+            "source",
+        )
+
+    payment_date = serializers.SerializerMethodField()
+    source = serializers.SerializerMethodField()
+
+    def get_payment_date(self, obj) -> serializers.DateTimeField():
+        return self.context["payment_date"]
+
+    def get_source(
+        self, obj
+    ) -> serializers.ChoiceField(
+        choices=PAYMENT_PROCESSORS.values + [LOTUS_OUT_OF_BAND]
+    ):
+        return self.context["source"]

@@ -1,10 +1,13 @@
 import { components } from "../../../gen-types";
 
 const createPlanTagsList = (
-  planTags: components["schemas"]["PlanDetail"]["tags"],
+  planTags: any,
   orgPlanTypes: components["schemas"]["PlanDetail"]["tags"]
 ) => {
-  const pt = [...planTags].map((el) => ({ ...el, from: "plans" }));
+  const pt = [...planTags].map((el) => ({
+    ...el,
+    from: "plans",
+  })) as components["schemas"]["PlanDetail"]["tags"];
   const flat = [...planTags].map((el) => el.tag_name);
 
   const opt = [...orgPlanTypes].map((el) => ({ ...el, from: "org" }));

@@ -29,6 +29,7 @@ export interface CreateSubscriptionType
   customer_id: string;
   plan_id: string;
   end_date?: string;
+  version_id?: string;
 }
 
 export interface UpdateSubscriptionType {
