@@ -1539,7 +1539,8 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     @extend_schema(request=InvoiceUpdateSerializer, responses=InvoicePaymentSerializer)
     def partial_update(self, request, *args, **kwargs):
-        super().partial_update(request, *args, **kwargs)
+        kwargs["partial"] = True
+        return self.update(request, *args, **kwargs)
 
     def update(self, request, *args, **kwargs):
         invoice = self.get_object()
