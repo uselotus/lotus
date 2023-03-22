@@ -8,8 +8,9 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import { MoreOutlined } from "@ant-design/icons";
 import axios from "axios";
+import { ProTable } from "@ant-design/pro-components";
+import type { ProColumns } from "@ant-design/pro-components";
 import { integrationsMap } from "../../types/payment-processor-type";
-
 import { Invoices } from "../../api/api";
 import { InvoiceType, MarkPaymentStatusAsPaid } from "../../types/invoice-type";
 import { components } from "../../gen-types";
@@ -90,7 +91,9 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
     }
   }, [selectedRecord]);
 
-  const columns = [
+  const columns: ProColumns<
+    components["schemas"]["CustomerDetail"]["invoices"][0]
+  >[] = [
     {
       title: "Connections",
       dataIndex: "connections",
@@ -170,15 +173,15 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
       title: "Amount",
       dataIndex: "cost_due",
       key: "cost_due",
-      render: (cost_due: string) => (
-        <span>${parseFloat(cost_due).toFixed(2)}</span>
+      render: (_, { cost_due }) => (
+        <span>${parseFloat(String(cost_due)).toFixed(2)}</span>
       ),
     },
     {
       title: "Issue Date",
       dataIndex: "issue_date",
       key: "issue_date",
-      render: (issue_date: string) => (
+      render: (_, { issue_date }) => (
         <span>{dayjs(issue_date).format("YYYY/MM/DD")}</span>
       ),
     },
@@ -207,7 +210,7 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
                   rel="noopener noreferrer"
                 >
                   <Tag
-                    color={"grey"}
+                    color="grey"
                     key={
                       record.external_payment_obj_status ||
                       record.payment_status
@@ -228,7 +231,7 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
                 }
               >
                 <Tag
-                  color={"grey"}
+                  color="grey"
                   key={
                     record.external_payment_obj_status || record.payment_status
                   }
@@ -337,16 +340,19 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
     <div>
       <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Invoices</h2>
       {invoices !== undefined ? (
-        <Table
+        <ProTable
           columns={columns}
           dataSource={invoices}
+          rowKey="invoice_id"
           pagination={{
             showTotal: (total, range) => (
               <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
             ),
             pageSize: 8,
           }}
-          showSorterTooltip={false}
+          options={false}
+          toolBarRender={false}
+          search={false}
         />
       ) : (
         <p>No invoices found</p>
