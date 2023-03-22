@@ -170,7 +170,7 @@ const EventPreview: FC = () => {
               </Panel>
             ))}
           </Collapse>
-          <div className="separator mb-5 mt-5" />
+          <div className="separator mb-6 mt-6" />
 
           <CustomPagination
             cursor={cursor}
@@ -179,7 +179,7 @@ const EventPreview: FC = () => {
             currentPage={currentPage}
             handleMovements={handleMovements}
           />
-          <div className="mt-5" />
+          <div className="mt-6" />
         </div>
       )}
     </>
