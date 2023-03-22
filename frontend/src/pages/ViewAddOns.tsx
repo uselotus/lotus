@@ -8,7 +8,6 @@ import DBSVG from "../components/base/db-svg";
 import { PageLayout } from "../components/base/PageLayout";
 import LoadingSpinner from "../components/LoadingSpinner";
 import AddOnsCard from "../components/Addons/AddonsCard/AddOnCard";
-import { AddOnType } from "../types/addon-type";
 import { components } from "../gen-types";
 
 const ViewAddOns: FC = () => {

@@ -12,6 +12,7 @@ from .singleton import Singleton
 
 KAFKA_EVENTS_TOPIC = settings.KAFKA_EVENTS_TOPIC
 KAFKA_INVOICE_TOPIC = settings.KAFKA_INVOICE_TOPIC
+KAFKA_PAYMENT_TOPIC = settings.KAFKA_PAYMENT_TOPIC
 producer_config = settings.PRODUCER_CONFIG
 
 logger = logging.getLogger("django.server")
@@ -59,6 +60,31 @@ class Producer(metaclass=Singleton):
             value=json.dumps(message, cls=InvoiceEncoder).encode("utf-8"),
         )
         logger.info(f"Produced invoice to topic {KAFKA_INVOICE_TOPIC}")
+
+    def produce_invoice_pay_in_full(self, invoice, payment_date, source):
+        from api.serializers.model_serializers import InvoicePaymentSerializer
+
+        payment_data = InvoicePaymentSerializer(
+            invoice,
+            context={
+                "payment_date": payment_date,
+                "source": source,
+            },
+        ).data
+        message = {
+            "messageType": "update",
+            "team": invoice.organization.organization_id.hex,
+            "payload": payment_data,
+        }
+        logger.info(
+            f"Producing payment. key={invoice.invoice_id.hex}, value={payment_data}"
+        )
+        self.__connection.send(
+            topic=KAFKA_PAYMENT_TOPIC,
+            key=invoice.invoice_id.hex.encode("utf-8"),
+            value=json.dumps(message, cls=InvoiceEncoder).encode("utf-8"),
+        )
+        logger.info(f"Produced payment to topic {KAFKA_PAYMENT_TOPIC}")
 
     def test(self):
         logger.info("test")
