@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from "@tanstack/react-query";
 import { ToastContainer } from "react-toastify";
 import { useNavigate, useLocation } from "react-router-dom";
 import posthog from "posthog-js";
@@ -66,7 +66,11 @@ function App() {
           error?.response?.status === 401 &&
           !publicRoutes.includes(pathname)
         ) {
-          navigate("/");
+          navigate("/", {
+            state: {
+              redirectTo: pathname,
+            },
+          });
         }
         return error;
       });
