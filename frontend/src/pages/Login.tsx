@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Authentication, instance } from "../api/api";
 import { Card, Input, Button, Form } from "antd";
 import "./Login.css";
-import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import Cookies from "universal-cookie";
 import posthog from "posthog-js";
@@ -25,9 +25,14 @@ interface FormElements extends HTMLFormElement {
   readonly elements: LoginForm;
 }
 
-const Login: FC = () => {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+interface LoginProps {
+  username?: string;
+  password?: string;
+}
+
+const Login: FC<LoginProps> = (props) => {
+  const [username, setUsername] = useState(props.username || "");
+  const [password, setPassword] = useState(props.password || "");
   const [error, setError] = useState("");
   const setUsernameToStore = useGlobalStore((state) => state.setUsername);
   const queryClient = useQueryClient();
@@ -73,7 +78,7 @@ const Login: FC = () => {
 
         cookies.set("Token", token);
         instance.defaults.headers.common.Authorization = `Token ${token}`;
-        queryClient.refetchQueries(['session']);
+        queryClient.refetchQueries(["session"]);
         redirectDashboard();
       },
       onError: (error: QueryErrors) => {
