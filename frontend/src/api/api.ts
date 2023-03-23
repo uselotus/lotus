@@ -501,17 +501,13 @@ export const Organization = {
 
 export const GetRevenue = {
   getMonthlyRevenue: (
-    period_1_start_date: string,
-    period_1_end_date: string,
-    period_2_start_date: string,
-    period_2_end_date: string
-  ): Promise<RevenueType> =>
+    start_date: string,
+    end_date: string
+  ): Promise<components["schemas"]["PeriodMetricRevenueResponse"]> =>
     requests.get("app/period_metric_revenue/", {
       params: {
-        period_1_start_date,
-        period_1_end_date,
-        period_2_start_date,
-        period_2_end_date,
+        start_date,
+        end_date,
       },
     }),
 };

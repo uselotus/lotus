@@ -1,11 +1,11 @@
 import React from "react";
 import { Pie } from "@ant-design/plots";
-import { useQuery, UseQueryResult } from '@tanstack/react-query';
+import { useQuery, UseQueryResult } from "@tanstack/react-query";
 import { Paper } from "../base/Paper";
 import { PlansByCustomer } from "../../api/api";
 import LoadingSpinner from "../LoadingSpinner";
 
-export function CustomerByPlanPie(props: any) {
+export function CustomerByPlanPie() {
   const { data, isLoading }: UseQueryResult<any> = useQuery<any>(
     ["customer_by_plan_pie"],
     () => PlansByCustomer.getPlansByCustomer().then((res) => res)

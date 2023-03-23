@@ -13,6 +13,11 @@ from metering_billing.utils.enums import (
 from rest_framework import serializers
 
 
+class SinglePeriodRequestSerializer(serializers.Serializer):
+    start_date = serializers.DateField(required=True)
+    end_date = serializers.DateField(required=True)
+
+
 class PeriodComparisonRequestSerializer(serializers.Serializer):
     period_1_start_date = serializers.DateField()
     period_1_end_date = serializers.DateField()
