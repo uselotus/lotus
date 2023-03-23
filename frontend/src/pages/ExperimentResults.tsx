@@ -242,6 +242,7 @@ const ExperimentResults: FC = () => {
         }
       }
       setKpiOptions(newKPIOptions);
+      setSelectedKPI(newKPIOptions[0].value);
     }
     console.log(kpiOptions);
   }, [experiment]);
@@ -295,7 +296,7 @@ const ExperimentResults: FC = () => {
                 return (
                   <div
                     key={index}
-                    className="border-2 border-solid rounded border-[#EAEAEB] px-6  bg-[#F9F9F9] flex-grow"
+                    className=" rounded border-[#EAEAEB] px-6  bg-[#F9F9F9] flex-grow"
                   >
                     <div className=" mt-8">
                       <div className="">

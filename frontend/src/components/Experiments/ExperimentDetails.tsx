@@ -8,7 +8,7 @@ import {
   ListItem,
   Title,
 } from "@tremor/react";
-import { Pie } from "@ant-design/plots";
+import { Pie, Line } from "@ant-design/plots";
 import { SpecificResults } from "../../types/experiment-type";
 import { components } from "../../gen-types";
 
@@ -56,12 +56,19 @@ const ExperimentDetails: FC<Props> = ({ data, kpi }) => {
     }
 
     if (data && data.revenue_per_day_graph !== undefined) {
-      const revenueData = data.revenue_per_day_graph.map((entry) => {
-        const obj = { date: entry.date };
+      const revenueData: {
+        date: string;
+        revenue: number;
+        plan_name: string;
+      }[] = [];
+      data.revenue_per_day_graph.forEach((entry) => {
         entry.revenue_per_plan.forEach((plan) => {
-          obj[plan.plan.plan_name] = plan.revenue;
+          revenueData.push({
+            date: entry.date,
+            revenue: parseFloat(plan.revenue),
+            plan_name: plan.plan.plan_name,
+          });
         });
-        return obj;
       });
       console.log(revenueData);
       console.log(categories);
@@ -132,35 +139,52 @@ const ExperimentDetails: FC<Props> = ({ data, kpi }) => {
   return (
     <div>
       {revenueLineGraph !== undefined && (
-        <div className="border-2 bg-[#F9F9F9] px-4 py-6 sm:px-6 my-6 ">
+        <div className=" bg-[#F9F9F9] px-4 py-6 sm:px-6 my-6">
           <div className="text-xl text-black font-semiBold">
             Revenue over time
           </div>
 
-          <LineChart
+          <Line
             data={revenueLineGraph}
-            categories={categories}
-            dataKey="date"
-            colors={["amber", "yellow"]}
-            valueFormatter={dataFormatter}
-            showXAxis
-            showYAxis
-            yAxisWidth="w-20"
-            showTooltip
-            showLegend
-            showAnimation
-            height="h-80"
+            seriesField="plan_name"
+            xField="date"
+            yField="revenue"
+            color={["#C3986B", "#E4D5C5", "#EAECF0", "#065F46", "#171412"]}
+            lineStyle={{
+              lineWidth: 2,
+            }}
+            yAxis={{
+              grid: {
+                line: {
+                  style: {
+                    stroke: "rgba(0, 0, 0, 0.05)",
+                  },
+                },
+              },
+            }}
+            xAxis={{
+              type: "time",
+
+              label: {
+                autoHide: true,
+                autoRotate: false,
+              },
+            }}
+            legend={{
+              position: "top",
+              layout: "horizontal",
+            }}
           />
         </div>
       )}
 
       {revenuePerMetric !== undefined && (
-        <div className="border-2 bg-[#F9F9F9] px-4 py-6 sm:px-6 my-6 ">
+        <div className=" bg-[#F9F9F9] px-4 py-6 sm:px-6 my-6 ">
           <div className="text-xl font-semiBold text-black">
             Revenue by metric
           </div>
           <div className="w-full h-[1.5px] my-8 bg-card-divider" />
-          <div className=" flex flex-wrap gap-26 ">
+          <div className="flex flex-wrap gap-26 ">
             {data.revenue_by_metric_graph.map((item) => (
               <div className="flex-grow">
                 <div className="text-xl  font-semiBold">
@@ -184,7 +208,7 @@ const ExperimentDetails: FC<Props> = ({ data, kpi }) => {
         </div>
       )}
 
-      <div className="border-2 bg-[#F9F9F9] px-4 py-6 sm:px-6 my-6 ">
+      <div className=" bg-[#F9F9F9] px-4 py-6 sm:px-6 my-6 ">
         <div className="text-xl  font-semiBold text-black">Top Customers</div>
         <div className="w-full h-[1.5px] my-8 bg-card-divider" />
 
