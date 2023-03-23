@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Select, Button } from "antd";
 import { Card, Flex, Metric } from "@tremor/react";
 import { ArrowLeftOutlined } from "@ant-design/icons";
-import { useQuery, UseQueryResult } from '@tanstack/react-query';
+import { useQuery, UseQueryResult } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { Experiments } from "../api/api";
 import { BacktestResultType, SpecificResults } from "../types/experiment-type";
