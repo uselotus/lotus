@@ -315,14 +315,18 @@ const ExperimentResults: FC = () => {
                               <div className="text-2xl font-semiBold">
                                 {kpi.value}
                               </div>
-                              <div className="text-sm">{kpi.kpi}</div>
+                              <div className="text-sm  text-card-grey">
+                                {kpi.kpi}
+                              </div>
                             </div>
                           );
                         })}
                       </div>
-                      <div className=" text-sm my-8">
-                        Date Range: {experiment.start_date} -
-                        {experiment.end_date}
+                      <div className=" text-sm my-8 flex align-middle">
+                        Date Range:{" "}
+                        <div className=" text-card-grey">
+                          {experiment.start_date} -{experiment.end_date}
+                        </div>
                       </div>
                     </div>
                   </div>

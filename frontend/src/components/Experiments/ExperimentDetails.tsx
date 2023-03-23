@@ -149,9 +149,9 @@ const ExperimentDetails: FC<Props> = ({ data, kpi }) => {
             Revenue by metric
           </div>
           <div className="w-full h-[1.5px] my-8 bg-card-divider" />
-          <div className="flex flex-wrap gap-24 max-h-20overflow-y-auto">
+          <div className="grid grid-cols-2 gap-24">
             {data.revenue_by_metric_graph.map((item) => (
-              <div className="flex-grow">
+              <div className="col-span-1">
                 <div className="text-base  font-semiBold">
                   {item.plan.plan_name}
                 </div>
