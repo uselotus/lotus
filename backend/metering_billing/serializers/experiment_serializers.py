@@ -210,22 +210,21 @@ class RevenueByPlanMetricSerializer(serializers.Serializer):
     by_metric = RevenueByMetricSerializer(many=True)
 
 
-class TopCustomersAnalysisSerializer(serializers.Serializer):
+class TopCustomersPerPlanAnalysisSerializer(serializers.Serializer):
     top_customers_by_revenue = serializers.ListField(
         child=SingleCustomerValueSerializer(), max_length=10
     )
-
-
-top_customers_by_average_revenue = serializers.ListField(
-    child=SingleCustomerValueSerializer(), max_length=10
-)
+    top_customers_by_average_revenue = serializers.ListField(
+        child=SingleCustomerValueSerializer(), max_length=10
+    )
+    plan = LightweightPlanVersionSerializer()
 
 
 class AnalysisResultsSerializer(serializers.Serializer):
     analysis_summary = SinglePlanAnalysisSerializer(many=True)
     revenue_per_day_graph = RevenuePerDaySerializer(many=True)
     revenue_by_metric_graph = RevenueByPlanMetricSerializer(many=True)
-    top_customers = TopCustomersAnalysisSerializer()
+    top_customers_by_plan = TopCustomersPerPlanAnalysisSerializer(many=True)
 
 
 class AnalysisDetailSerializer(AnalysisSummarySerializer):
