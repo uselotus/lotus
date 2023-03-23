@@ -1,5 +1,5 @@
 import React, { useState, useRef, FC } from "react";
-import { QueryClient, useMutation } from '@tanstack/react-query';
+import { QueryClient, useMutation } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { Table, Typography, Modal, Button, InputNumber } from "antd";
 import { Plan } from "../../../api/api";
@@ -262,7 +262,10 @@ const AddOnComponents: FC<AddOnsComponentsProps> = ({
                       <Button
                         key="submit"
                         type="primary"
-                        disabled={isInvalid}
+                        disabled={
+                          isInvalid ||
+                          (import.meta as any).env.VITE_IS_DEMO === "true"
+                        }
                         onClick={() => submitAlertModal(currentComponent)}
                       >
                         Create

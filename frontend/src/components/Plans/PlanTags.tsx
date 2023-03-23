@@ -51,11 +51,13 @@ function PlansTags({ tags, showAddTagButton }: PlanTagsProps) {
                 </span>
               ))
             )}
-            {showAddTagButton && tags.length < 3 && (
-              <Badge className="bg-[#E0E7FF] text-[#3730A3] text-[12px] px-[6px] py-2 ml-2 whitespace-nowrap">
-                <Badge.Content>+ Add Tag</Badge.Content>
-              </Badge>
-            )}
+            {showAddTagButton &&
+              !((import.meta as any).env.VITE_IS_DEMO === "true") &&
+              tags.length < 3 && (
+                <Badge className="bg-[#E0E7FF] text-[#3730A3] text-[12px] px-[6px] py-2 ml-2 whitespace-nowrap">
+                  <Badge.Content>+ Add Tag</Badge.Content>
+                </Badge>
+              )}
           </span>
         </span>
       )}
