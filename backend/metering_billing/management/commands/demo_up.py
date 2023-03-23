@@ -6,21 +6,22 @@ from metering_billing.demos import setup_database_demo
 class Command(BaseCommand):
     "Django command to pause execution until the database is available"
 
-    def handle(self, *args, **options):
-        from metering_billing.models import Organization
+    def add_arguments(self, parser):
+        # Named (optional) arguments
+        parser.add_argument(
+            "--large",
+            help="whether to use the expanded version or not",
+        )
+        parser.add_argument(
+            "--name",
+            help="name of the demo organization",
+        )
 
-        # setup_demo4(
-        #     organization_name="demo4",
-        #     username="demo4",
-        #     email="demo4@demo4.com",
-        #     password="demo4",
-        #     org_type=Organization.OrganizationType.INTERNAL_DEMO,
-        # )
+    def handle(self, *args, **options):
         setup_database_demo(
-            organization_name="lotus-demo",
-            username="lotus-demo",
-            email="demo5@demo5.com",
-            password="lotus-demo-password",
-            org_type=Organization.OrganizationType.INTERNAL_DEMO,
-            size="small",
+            organization_name=options.get("name", "demo"),
+            username=options.get("name", "demo"),
+            email=options.get("name", "demo") + "@demo.com",
+            password=options.get("name", "demo"),
+            size=options.get("large", "small"),
         )
