@@ -23,9 +23,8 @@ import (
 const batchSize = 1000
 
 type StreamEvents struct {
-	Events         *[]types.VerifiedEvent `json:"events"`
-	OrganizationID int64                  `json:"organization_id"`
-	Event          *types.VerifiedEvent   `json:"event"`
+	OrganizationID int64                `json:"organization_id"`
+	Event          *types.VerifiedEvent `json:"event"`
 }
 
 type batch struct {
@@ -136,6 +135,7 @@ func main() {
 
 		dbURL = fmt.Sprintf("postgres://%s:%s@%s:5432/%s?sslmode=disable", pgUser, pgPassword, host, pgDB)
 	}
+	log.Printf("Connecting to database: %s", dbURL)
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Printf("Error opening database url: %s", dbURL)
@@ -219,17 +219,8 @@ func main() {
 			}
 
 			if streamEvents.Event == nil {
-				if streamEvents.Events != nil {
-					if len(*streamEvents.Events) > 0 {
-						streamEvents.Event = &(*streamEvents.Events)[0]
-					} else {
-						log.Println("Error: event is nil and events is empty")
-						panic(fmt.Errorf("event is nil and events is empty"))
-					}
-				} else {
-					log.Println("Error: both event and events fields are missing from stream_events")
-					panic(fmt.Errorf("both event and events fields are missing from stream_events"))
-				}
+				log.Printf("event from OrganizationID %d is empty", streamEvents.OrganizationID)
+				panic(fmt.Errorf("event from OrganizationID %d is empty", streamEvents.OrganizationID))
 			}
 
 			event := streamEvents.Event
@@ -247,7 +238,7 @@ func main() {
 							Set("customer", event.CustID),
 					})
 				}
-
+				log.Printf("Committed record: %s\n committed? %t", r.Value, committed)
 				if committed {
 					if err := cl.CommitUncommittedOffsets(context.Background()); err != nil {
 						// this is a fatal error
