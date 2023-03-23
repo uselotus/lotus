@@ -1,5 +1,9 @@
 import React, { FC } from "react";
-import { useQuery, UseQueryResult, useQueryClient } from '@tanstack/react-query';
+import {
+  useQuery,
+  UseQueryResult,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { Button } from "antd";
 import { useNavigate } from "react-router-dom";
 import ExperimentsTable from "../components/Experiments/ExperimentsTable";
@@ -53,7 +57,7 @@ const ViewExperiments: FC = () => {
           <LoadingSpinner />
         ) : (
           <div>
-            <ExperimentsTable backtests={data} />
+            <ExperimentsTable experiments={data} />
           </div>
         )}
       </div>

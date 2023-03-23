@@ -19,12 +19,6 @@ const columns: ProColumns<BacktestType>[] = [
     width: 120,
   },
   {
-    title: "Creator",
-    dataIndex: "",
-    align: "left",
-    width: 150,
-  },
-  {
     title: "Date Created",
     width: 150,
     dataIndex: "time_created",
