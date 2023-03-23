@@ -13,18 +13,21 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-import api.views as api_views
 from django.conf import settings
 from django.conf.urls import include
 from django.contrib import admin
 from django.urls import path, re_path
 from django.views.generic import TemplateView
+from rest_framework import routers
+
+import api.views as api_views
 from metering_billing.views import auth_views, organization_views, webhook_views
 from metering_billing.views.crm_views import CRMUnifiedAPIView
 from metering_billing.views.model_views import (
     ActionViewSet,
     AddOnVersionViewSet,
     AddOnViewSet,
+    AnalysisViewSet,
     APITokenViewSet,
     BacktestViewSet,
     CustomerBalanceAdjustmentViewSet,
@@ -49,6 +52,7 @@ from metering_billing.views.views import (
     ChangeUserOrganizationView,
     ImportCustomersView,
     ImportPaymentObjectsView,
+    ImportSubscriptionsView,
     NetsuiteCustomerCSVView,
     NetsuiteInvoiceCSVView,
     PeriodEventsView,
@@ -56,10 +60,10 @@ from metering_billing.views.views import (
     PeriodMetricUsageView,
     PeriodSubscriptionsView,
     PlansByNumCustomersView,
+    StripeSubscriptionsView,
     TimezonesView,
     TransferSubscriptionsView,
 )
-from rest_framework import routers
 
 DEBUG = settings.DEBUG
 PROFILER_ENABLED = settings.PROFILER_ENABLED
@@ -74,7 +78,7 @@ router.register(r"invoices", InvoiceViewSet, basename="invoice")
 router.register(r"features", FeatureViewSet, basename="feature")
 router.register(r"webhooks", WebhookViewSet, basename="webhook")
 router.register(r"backtests", BacktestViewSet, basename="backtest")
-# router.register(r"products", ProductViewSet, basename="product")
+router.register(r"analysis", AnalysisViewSet, basename="analysis")
 router.register(r"plans", PlanViewSet, basename="plan")
 router.register(r"plan_versions", PlanVersionViewSet, basename="plan_version")
 router.register(r"events", EventViewSet, basename="event")
@@ -121,7 +125,6 @@ urlpatterns = [
     path("api/", include((api_router.urls, "api"), namespace="api")),
     path("api/ping/", api_views.Ping.as_view(), name="ping"),
     path("api/healthcheck/", api_views.Healthcheck.as_view(), name="healthcheck"),
-    path("api/track/", api_views.track_event, name="track_event"),
     path("api/invoice_url/", api_views.GetInvoicePdfURL.as_view(), name="invoice_url"),
     path(
         "api/metric_access/",
@@ -201,6 +204,11 @@ urlpatterns = [
         name="netsuite_customers",
     ),
     path(
+        "app/import_subscriptions/",
+        ImportSubscriptionsView.as_view(),
+        name="import_subscriptions",
+    ),
+    path(
         "app/transfer_subscriptions/",
         TransferSubscriptionsView.as_view(),
         name="transfer_subscriptions",
@@ -270,10 +278,21 @@ urlpatterns = [
         CRMUnifiedAPIView.as_view({"post": "update_crm_customer_source_of_truth"}),
         name="set_customer_source",
     ),
+    path(
+        "app/stripe/cancel_subscriptions/",
+        StripeSubscriptionsView.as_view({"post": "cancel_subscriptions"}),
+        name="stripe_cancel_subscriptions",
+    ),
+    path(
+        "app/stripe/cancel_at_period_end_subscriptions/",
+        StripeSubscriptionsView.as_view({"post": "turn_off_auto_renewal"}),
+        name="stripe_cancel_at_period_end_subscriptions",
+    ),
 ]
 
 if PROFILER_ENABLED:
     urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
 
 if DEBUG:
+    urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]
     urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]

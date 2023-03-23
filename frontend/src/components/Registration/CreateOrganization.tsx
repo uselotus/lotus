@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Input, Button, Form, Select } from "antd";
-import { useQueryClient } from "react-query";
+import { useQueryClient } from '@tanstack/react-query';
 
 interface LoginForm extends HTMLFormControlsCollection {
   username: string;

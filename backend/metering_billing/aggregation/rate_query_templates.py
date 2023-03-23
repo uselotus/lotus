@@ -194,7 +194,7 @@ WITH rate_per_bucket AS (
             )
         {%- endfor %}
     )
-SELECT DISTINCT ON (
+    SELECT DISTINCT ON (
     uuidv5_customer_id
     {%- for group_by_field in group_by %}
     , {{ group_by_field }}

@@ -2,7 +2,7 @@
 import React, { FC, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "antd";
-import { useMutation, useQuery } from "react-query";
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import { PageLayout } from "../../components/base/PageLayout";
 import { PaymentProcessor } from "../../api/api";
@@ -79,22 +79,6 @@ const BraintreeIntegrationView: FC = () => {
   );
 
   const resolveAfter3Sec = new Promise((resolve) => setTimeout(resolve, 3000));
-
-  const transferSubscriptionsMutation = useMutation(
-    (post: TransferSub) => PaymentProcessor.transferSubscriptions(post),
-    {
-      onSuccess: (data: PaymentProcessorImportCustomerResponse) => {
-        toast.success(data.detail, {
-          position: TOAST_POSITION,
-        });
-      },
-      onError: () => {
-        toast.error("Failed to transfer subscriptions", {
-          position: TOAST_POSITION,
-        });
-      },
-    }
-  );
 
   const updateBraintreeSettings = useMutation(
     (post: UpdatePaymentProcessorSettingParams) =>

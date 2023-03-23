@@ -1,5 +1,5 @@
 import React, { Fragment, useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "react-query";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from "dayjs";
 import { Typography } from "antd";
 import { Paper } from "../../../base/Paper";

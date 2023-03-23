@@ -1,9 +1,9 @@
 import React, { FC, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Authentication , instance } from "../api/api";
+import { Authentication, instance } from "../api/api";
 import { Card, Input, Button, Form } from "antd";
 import "./Login.css";
-import { useQueryClient, useMutation } from "react-query";
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import Cookies from "universal-cookie";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -49,7 +49,7 @@ const SetNewPassword: FC = () => {
         cookies.set("Token", token);
         instance.defaults.headers.common.Authorization = `Token ${token}`;
         setIsAuthenticated(true);
-        queryClient.refetchQueries("session");
+        queryClient.refetchQueries(['session']);
         redirectDashboard();
       },
       onError: (error: QueryErrors) => {
@@ -67,44 +67,48 @@ const SetNewPassword: FC = () => {
   if (!isAuthenticated) {
     return (
       <div className="grid h-screen place-items-center">
-          <div className=" space-y-4">
-            <Card
-              title="Login"
-              className="flex flex-col"
-              style={{
-                borderRadius: "0.5rem",
-                borderWidth: "2px",
-                borderColor: "#EAEAEB",
-                borderStyle: "solid",
-              }}
+        <div className=" space-y-4">
+          <Card
+            title="Login"
+            className="flex flex-col"
+            style={{
+              borderRadius: "0.5rem",
+              borderWidth: "2px",
+              borderColor: "#EAEAEB",
+              borderStyle: "solid",
+            }}
+          >
+            <Form onFinish={handleUpdatePassword} name="normal_login">
+              <label htmlFor="password">New Password</label>
+              <Form.Item>
+                <Input
+                  type="password"
+                  name="password"
+                  value={password}
+                  defaultValue="password123"
+                  onChange={handlePasswordChange}
+                />
+                <div>
+                  {error && <small className="text-danger">{error}</small>}
+                </div>
+              </Form.Item>
+              <Form.Item>
+                <Button htmlType="submit">Change Password</Button>
+              </Form.Item>
+            </Form>
+          </Card>
+          <div>
+            <Button
+              type="primary"
+              onClick={() => navigate("/login")}
+              disabled={(import.meta as any).env.VITE_IS_DEMO === "true"}
             >
-              <Form onFinish={handleUpdatePassword} name="normal_login">
-                <label htmlFor="password">New Password</label>
-                <Form.Item>
-                  <Input
-                    type="password"
-                    name="password"
-                    value={password}
-                    defaultValue="password123"
-                    onChange={handlePasswordChange}
-                  />
-                  <div>
-                    {error && <small className="text-danger">{error}</small>}
-                  </div>
-                </Form.Item>
-                <Form.Item>
-                  <Button htmlType="submit">Change Password</Button>
-                </Form.Item>
-              </Form>
-            </Card>
-            <div>
-              <Button type="primary" onClick={() => navigate("/login")}>
-                Login
-              </Button>
-            </div>
+              Login
+            </Button>
           </div>
-          {mutation.isLoading && <LoadingSpinner />}
         </div>
+        {mutation.isLoading && <LoadingSpinner />}
+      </div>
     );
   }
 

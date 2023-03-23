@@ -1,10 +1,29 @@
 # import lotus_python
 import logging
 
-import api.views as api_views
 import posthog
 import sentry_sdk
 from actstream.models import Action
+from django.conf import settings
+from django.core.cache import cache
+from django.core.validators import MinValueValidator
+from django.db.models import Func, Max
+from django.db.utils import IntegrityError
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiCallback,
+    OpenApiParameter,
+    extend_schema,
+    inline_serializer,
+)
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.pagination import CursorPagination
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+import api.views as api_views
 from api.serializers.nonmodel_serializers import (
     AddFeatureSerializer,
     AddFeatureToAddOnSerializer,
@@ -21,18 +40,6 @@ from api.serializers.webhook_serializers import (
     SubscriptionRenewedSerializer,
     UsageAlertTriggeredSerializer,
 )
-from django.conf import settings
-from django.core.cache import cache
-from django.core.validators import MinValueValidator
-from django.db.models import Max
-from django.db.utils import IntegrityError
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import (
-    OpenApiCallback,
-    OpenApiParameter,
-    extend_schema,
-    inline_serializer,
-)
 from metering_billing.exceptions import (
     DuplicateMetric,
     DuplicateWebhookEndpoint,
@@ -40,6 +47,7 @@ from metering_billing.exceptions import (
     ServerError,
 )
 from metering_billing.models import (
+    Analysis,
     APIToken,
     Backtest,
     Event,
@@ -60,7 +68,9 @@ from metering_billing.models import (
 )
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import ValidOrganization
-from metering_billing.serializers.backtest_serializers import (
+from metering_billing.serializers.experiment_serializers import (
+    AnalysisDetailSerializer,
+    AnalysisSummarySerializer,
     BacktestCreateSerializer,
     BacktestDetailSerializer,
     BacktestSummarySerializer,
@@ -119,6 +129,7 @@ from metering_billing.serializers.request_serializers import (
 from metering_billing.serializers.serializer_utils import (
     AddOnUUIDField,
     AddOnVersionUUIDField,
+    AnalysisUUIDField,
     MetricUUIDField,
     OrganizationSettingUUIDField,
     OrganizationUUIDField,
@@ -134,12 +145,6 @@ from metering_billing.utils.enums import (
     PAYMENT_PROCESSORS,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
-from rest_framework.pagination import CursorPagination
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -495,6 +500,42 @@ class EventViewSet(
         organization = self.request.organization
         context.update({"organization": organization})
         return context
+
+    @extend_schema(
+        request=None,
+        responses=inline_serializer(
+            name="EventProperties",
+            fields={
+                "event_names": serializers.ListField(child=serializers.CharField()),
+                "event_name_to_props": serializers.DictField(
+                    child=serializers.ListField(child=serializers.CharField())
+                ),
+            },
+        ),
+    )
+    @action(detail=False, methods=["get"], url_path="properties")
+    def event_properties(self, request):
+        org = request.organization
+        event_names = list(
+            Event.objects.filter(organization=org)
+            .values_list("event_name", flat=True)
+            .distinct()
+        )
+        event_name_to_props = {}
+        for event_name in event_names:
+            props = (
+                Event.objects.filter(organization=org)
+                .annotate(props_keys=Func("properties", function="jsonb_object_keys"))
+                .filter(event_name=event_name)
+                .values_list("props_keys", flat=True)
+                .distinct()
+            )
+            event_name_to_props[event_name] = list(props)
+
+        return Response(
+            {"event_names": event_names, "event_name_to_props": event_name_to_props},
+            status=status.HTTP_200_OK,
+        )
 
 
 class UserViewSet(
@@ -1819,6 +1860,70 @@ class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return context
 
 
+class AnalysisViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
+    lookup_field = "analysis_id"
+    http_method_names = [
+        "get",
+        "post",
+        "head",
+    ]
+    permission_classes_per_method = {
+        "create": [IsAuthenticated & ValidOrganization],
+        "destroy": [IsAuthenticated & ValidOrganization],
+    }
+    queryset = Analysis.objects.all()
+
+    def get_object(self):
+        string_uuid = self.kwargs[self.lookup_field]
+        uuid = AnalysisUUIDField().to_internal_value(string_uuid)
+        self.kwargs[self.lookup_field] = uuid
+        return super().get_object()
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return AnalysisSummarySerializer
+        elif self.action == "retrieve":
+            return AnalysisDetailSerializer
+        else:
+            return BacktestCreateSerializer
+
+    def get_queryset(self):
+        organization = self.request.organization
+        return Analysis.objects.filter(organization=organization)
+
+    def perform_create(self, serializer):
+        analysis_obj = serializer.save(organization=self.request.organization)
+        an_id = analysis_obj.backtest_id
+        run_backtest.delay(an_id)
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            try:
+                username = self.request.user.username
+            except Exception:
+                username = None
+            organization = self.request.organization
+            posthog.capture(
+                POSTHOG_PERSON
+                if POSTHOG_PERSON
+                else (
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
+                ),
+                event=f"{self.action}_analysis",
+                properties={"organization": organization.organization_name},
+            )
+        return response
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        organization = self.request.organization
+        context.update({"organization": organization})
+        return context
+
+
 class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     lookup_field = "product_id"
@@ -2458,11 +2563,5 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
     def get_serializer_context(self):
         context = super().get_serializer_context()
         organization = self.request.organization
-        context.update({"organization": organization})
-        return context
-        context = super().get_serializer_context()
-        organization = self.request.organization
-        context.update({"organization": organization})
-        return context
         context.update({"organization": organization})
         return context

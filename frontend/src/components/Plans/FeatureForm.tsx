@@ -5,7 +5,7 @@ import {
   useQuery,
   useMutation,
   useQueryClient,
-} from "react-query";
+} from "@tanstack/react-query";
 import { FeatureType, CreateFeatureType } from "../../types/feature-type";
 import { Features } from "../../api/api";
 
@@ -57,7 +57,7 @@ function FeatureForm(props: {
         };
 
         Features.createFeature(newFeature).then((res) => {
-          queryClient.invalidateQueries("feature_list");
+          queryClient.invalidateQueries(["feature_list"]);
           setNewFeatures([...newFeatures, res]);
         });
         setCreatedFeatureName("");

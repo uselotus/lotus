@@ -2,7 +2,7 @@
 import React, { FC, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "antd";
-import { useMutation, useQuery } from "react-query";
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import { PageLayout } from "../../components/base/PageLayout";
 import { PaymentProcessor } from "../../api/api";
@@ -167,7 +167,7 @@ const StripeIntegrationView: FC = () => {
           >
             Import
           </Button>
-          <h3>Transfer Subscriptions:</h3>
+          {/* <h3>Import Subscriptions:</h3>
           <Button
             size="large"
             className="w-4/12"
@@ -181,8 +181,8 @@ const StripeIntegrationView: FC = () => {
               });
             }}
           >
-            Transfer
-          </Button>
+            Import
+          </Button> */}
           <h3>Create Lotus Customers In Stripe:</h3>
           <div className="flex h-6 items-center">
             <input

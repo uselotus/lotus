@@ -3,14 +3,13 @@
 import { Button, Card, Form, Input, InputNumber, Select } from "antd";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import {
   CreateComponent,
   CreateRecurringCharge,
   PlanType,
 } from "../types/plan-type";
-import { PlusOutlined } from "@ant-design/icons";
 import { Plan, Organization, AddOn } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
@@ -18,11 +17,9 @@ import { PageLayout } from "../components/base/PageLayout";
 import { ComponentDisplay } from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import { CurrencyType } from "../types/pricing-unit-type";
-import { AddOnTypeOption, CreateAddOnType } from "../types/addon-type";
+import { AddOnTypeOption } from "../types/addon-type";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
 import { components } from "../gen-types";
-import RecurringChargesDisplay from "../components/Plans/RecurringChargesDisplay";
-import RecurringChargeForm from "../components/Plans/RecurringChargeForm";
 
 interface ComponentDisplay {
   metric: string;

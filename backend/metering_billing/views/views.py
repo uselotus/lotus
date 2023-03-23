@@ -9,26 +9,19 @@ from metering_billing.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
 )
-from metering_billing.models import (
-    Event,
-    Invoice,
-    Metric,
-    Organization,
-    SubscriptionRecord,
-)
+from metering_billing.models import Event, Invoice, Organization, SubscriptionRecord
 from metering_billing.netsuite_csv import get_invoices_csv_presigned_url
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
-from metering_billing.serializers.model_serializers import MetricDetailSerializer
 from metering_billing.serializers.request_serializers import (
-    CostAnalysisRequestSerializer,
     OptionalPeriodRequestSerializer,
     PeriodComparisonRequestSerializer,
     PeriodMetricUsageRequestSerializer,
+    SinglePeriodRequestSerializer,
+    StripeMultiSubscriptionsSerializer,
     URLResponseSerializer,
 )
 from metering_billing.serializers.response_serializers import (
-    CostAnalysisSerializer,
     PeriodEventsResponseSerializer,
     PeriodMetricRevenueResponseSerializer,
     PeriodMetricUsageResponseSerializer,
@@ -47,12 +40,11 @@ from metering_billing.utils import (
     make_all_decimals_floats,
 )
 from metering_billing.utils.enums import METRIC_STATUS, METRIC_TYPE, PAYMENT_PROCESSORS
-from rest_framework import serializers, status
+from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
 
 logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -62,8 +54,7 @@ class PeriodMetricRevenueView(APIView):
     permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
-        request=PeriodComparisonRequestSerializer,
-        parameters=[PeriodComparisonRequestSerializer],
+        parameters=[SinglePeriodRequestSerializer],
         responses={200: PeriodMetricRevenueResponseSerializer},
     )
     def get(self, request, format=None):
@@ -72,71 +63,50 @@ class PeriodMetricRevenueView(APIView):
         """
         organization = request.organization
         timezone = organization.timezone
-        serializer = PeriodComparisonRequestSerializer(data=request.query_params)
+        serializer = SinglePeriodRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        p1_start, p1_end, p2_start, p2_end = (
-            serializer.validated_data.get(key, None)
-            for key in [
-                "period_1_start_date",
-                "period_1_end_date",
-                "period_2_start_date",
-                "period_2_end_date",
-            ]
-        )
-        p1_start, p2_start = date_as_min_dt(p1_start, timezone), date_as_min_dt(
-            p2_start, timezone
-        )
-        p1_end, p2_end = date_as_max_dt(p1_end, timezone), date_as_max_dt(
-            p2_end, timezone
-        )
+        start = date_as_min_dt(serializer.validated_data["start_date"], timezone)
+        end = date_as_max_dt(serializer.validated_data["end_date"], timezone)
         return_dict = {}
         # collected
-        p1_collected = Invoice.objects.filter(
+        collected = Invoice.objects.filter(
             organization=organization,
-            issue_date__gte=p1_start,
-            issue_date__lte=p1_end,
+            issue_date__gte=start,
+            issue_date__lte=end,
             payment_status=Invoice.PaymentStatus.PAID,
         ).aggregate(tot=Sum("amount"))["tot"]
-        p2_collected = Invoice.objects.filter(
-            organization=organization,
-            issue_date__gte=p2_start,
-            issue_date__lte=p2_end,
-            payment_status=Invoice.PaymentStatus.PAID,
-        ).aggregate(tot=Sum("amount"))["tot"]
-        return_dict["total_revenue_period_1"] = p1_collected or Decimal(0)
-        return_dict["total_revenue_period_2"] = p2_collected or Decimal(0)
+        return_dict["total_revenue"] = collected or Decimal(0)
         # earned
-        for start, end, num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
-            subs = (
-                SubscriptionRecord.objects.filter(
-                    Q(start_date__range=(start, end))
-                    | Q(end_date__range=(start, end))
-                    | Q(start_date__lte=start, end_date__gte=end),
-                    organization=organization,
-                )
-                .select_related("billing_plan")
-                .select_related("customer")
-                .prefetch_related("billing_plan__recurring_charges")
-                .prefetch_related("billing_plan__plan_components")
-                .prefetch_related("billing_plan__plan_components__billable_metric")
-                .prefetch_related("billing_plan__plan_components__tiers")
+        subs = (
+            SubscriptionRecord.objects.filter(
+                Q(start_date__range=(start, end))
+                | Q(end_date__range=(start, end))
+                | Q(start_date__lte=start, end_date__gte=end),
+                organization=organization,
             )
-            per_day_dict = {}
-            for period in dates_bwn_two_dts(start, end):
-                period = convert_to_date(period)
-                per_day_dict[period] = {
-                    "date": period,
-                    "revenue": Decimal(0),
-                }
-            for subscription in subs:
-                earned_revenue = subscription.calculate_earned_revenue_per_day()
-                for date, earned_revenue in earned_revenue.items():
-                    date = convert_to_date(date)
-                    if date in per_day_dict:
-                        per_day_dict[date]["revenue"] += earned_revenue
-            return_dict[f"earned_revenue_period_{num}"] = sum(
-                [x["revenue"] for x in per_day_dict.values()]
-            )
+            .select_related("billing_plan")
+            .select_related("customer")
+            .prefetch_related("billing_plan__recurring_charges")
+            .prefetch_related("billing_plan__plan_components")
+            .prefetch_related("billing_plan__plan_components__billable_metric")
+            .prefetch_related("billing_plan__plan_components__tiers")
+        )
+        per_day_dict = {}
+        for period in dates_bwn_two_dts(start, end):
+            period = convert_to_date(period)
+            per_day_dict[period] = {
+                "date": period,
+                "revenue": Decimal(0),
+            }
+        for subscription in subs:
+            earned_revenue = subscription.calculate_earned_revenue_per_day()
+            for date, earned_revenue in earned_revenue.items():
+                date = convert_to_date(date)
+                if date in per_day_dict:
+                    per_day_dict[date]["revenue"] += earned_revenue
+        return_dict["earned_revenue"] = sum(
+            [x["revenue"] for x in per_day_dict.values()]
+        )
         serializer = PeriodMetricRevenueResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data
@@ -459,6 +429,140 @@ class ImportPaymentObjectsView(APIView):
             {
                 "status": "success",
                 "detail": f"Payment objects succesfully imported {num} payment objects from {source}.",
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class StripeSubscriptionsView(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
+    permission_classes = [IsAuthenticated | ValidOrganization]
+
+    @extend_schema(
+        request=StripeMultiSubscriptionsSerializer,
+        responses={
+            200: inline_serializer(
+                name="StripeCancelSubscriptionsSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="StripeCancelSubscriptionsFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def cancel_subscriptions(self, request, pk=None):
+        organization = request.organization
+        serializer = StripeMultiSubscriptionsSerializer(
+            data=request.data, context={"organization": organization}
+        )
+        serializer.is_valid(raise_exception=True)
+        customer = serializer.validated_data["customer"]
+        stripe_subscription_ids = serializer.validated_data["stripe_subscription_ids"]
+        try:
+            PAYMENT_PROCESSOR_MAP["stripe"].cancel_subscriptions(
+                organization, customer, stripe_subscription_ids
+            )
+        except Exception as e:
+            raise ExternalConnectionFailure(f"Error cancelling subscriptions: {e}")
+        return Response(
+            {
+                "status": "success",
+                "detail": f"Stripe subscriptions cancelled for customer {customer}.",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        request=StripeMultiSubscriptionsSerializer,
+        responses={
+            200: inline_serializer(
+                name="StripeTurnOffAutoRenewalSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="StripeTurnOffAutoRenewalFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def turn_off_auto_renewal(self, request, pk=None):
+        organization = request.organization
+        serializer = StripeMultiSubscriptionsSerializer(
+            data=request.data, context={"organization": organization}
+        )
+        serializer.is_valid(raise_exception=True)
+        customer = serializer.validated_data["customer"]
+        stripe_subscription_ids = serializer.validated_data["stripe_subscription_ids"]
+        try:
+            PAYMENT_PROCESSOR_MAP["stripe"].turn_off_subscriptions_auto_renew(
+                organization, customer, stripe_subscription_ids
+            )
+        except Exception as e:
+            raise ExternalConnectionFailure(
+                f"Error turning off auto renew for subscriptions: {e}"
+            )
+        return Response(
+            {
+                "status": "success",
+                "detail": f"Stripe subscriptions turned off auto renew for customer {customer}.",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class ImportSubscriptionsView(APIView):
+    permission_classes = [IsAuthenticated | ValidOrganization]
+
+    @extend_schema(
+        request=inline_serializer(
+            name="ImportSubscriptionsRequest",
+            fields={
+                "source": serializers.ChoiceField(choices=[("stripe", "Stripe")]),
+            },
+        ),
+        responses={
+            201: inline_serializer(
+                name="ImportSubscriptionsSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="ImportSubscriptionsFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def post(self, request, format=None):
+        organization = request.organization
+        source = request.data["source"]
+        if source != "stripe":
+            raise ExternalConnectionInvalid(f"Invalid source: {source}")
+        connector = PAYMENT_PROCESSOR_MAP[source]
+        try:
+            num = connector.import_subscriptions(organization)
+        except Exception as e:
+            raise ExternalConnectionFailure(f"Error importing subscriptions: {e}")
+        return Response(
+            {
+                "status": "success",
+                "detail": f"Succesfully imported {num} subscriptions from Stripe.",
             },
             status=status.HTTP_201_CREATED,
         )

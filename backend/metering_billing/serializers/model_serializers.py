@@ -227,7 +227,6 @@ class OrganizationSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     current_user = serializers.SerializerMethodField()
     address = serializers.SerializerMethodField()
     team_name = serializers.SerializerMethodField()
-    subscription_filter_keys = serializers.SerializerMethodField()
     timezone = TimeZoneSerializerField(use_pytz=True)
     stripe_account_id = serializers.SerializerMethodField()
     braintree_merchant_id = serializers.SerializerMethodField()
@@ -256,17 +255,6 @@ class OrganizationSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         if obj.braintree_integration:
             return obj.braintree_integration.braintree_merchant_id
         return None
-
-    def get_subscription_filter_keys(
-        self, obj
-    ) -> serializers.ListField(child=serializers.CharField()):
-        if not obj.subscription_filters_setting_provisioned:
-            return []
-        else:
-            setting = obj.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-            )
-            return setting.setting_values
 
     def get_team_name(self, obj) -> str:
         team = obj.team
@@ -1584,6 +1572,7 @@ class PlanCreateSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
             initial_version_data["plan"] = plan
             initial_version_data["organization"] = validated_data["organization"]
             initial_version_data["created_by"] = validated_data["created_by"]
+            initial_version_data["make_active"] = True
             PlanVersionCreateSerializer(context=self.context).create(
                 initial_version_data
             )
@@ -1653,6 +1642,23 @@ class AddOnUpdateSerializer(PlanUpdateSerializer):
 class SubscriptionRecordSerializer(api_serializers.SubscriptionRecordSerializer):
     class Meta(api_serializers.SubscriptionRecordSerializer.Meta):
         fields = api_serializers.SubscriptionRecordSerializer.Meta.fields
+
+
+class StripeSubscriptionRecordSerializer(api_serializers.SubscriptionRecordSerializer):
+    class Meta(api_serializers.SubscriptionRecordSerializer.Meta):
+        fields = tuple(
+            set(api_serializers.SubscriptionRecordSerializer.Meta.fields).union(
+                {
+                    "stripe_subscription_id",
+                }
+            )
+        )
+        extra_kwargs = {
+            **api_serializers.PlanVersionSerializer.Meta.extra_kwargs,
+            **{
+                "stripe_subscription_id": {"read_only": True},
+            },
+        }
 
 
 class LightweightSubscriptionRecordSerializer(
@@ -1800,27 +1806,15 @@ class OrganizationSettingUpdateSerializer(
 
     def update(self, instance, validated_data):
         setting_values = validated_data.get("setting_values")
-        if instance.setting_name == ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS:
-            if not isinstance(setting_values, list):
-                raise serializers.ValidationError(
-                    "Setting values must be a list of strings"
-                )
-            if not all(isinstance(item, str) for item in setting_values):
-                raise serializers.ValidationError(
-                    "Setting values must be a list of strings"
-                )
-            current_setting_values = set(instance.setting_values)
-            new_setting_values = set(setting_values)
-            validated_data["setting_values"] = list(
-                current_setting_values.union(new_setting_values)
-            )
-        elif instance.setting_name in [
+        if instance.setting_name in [
             ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS,
             ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_BRAINTREE_AFTER_LOTUS,
         ]:
             if not isinstance(setting_values, bool):
                 raise serializers.ValidationError("Setting values must be a boolean")
             setting_values = {"value": setting_values}
+        else:
+            raise serializers.ValidationError("Setting name not supported for updating")
         instance.setting_values = setting_values
         instance.save()
         return instance
@@ -1939,6 +1933,8 @@ class CustomerDetailSerializer(api_serializers.CustomerSerializer):
                     "crm_provider_id",
                     "crm_provider_url",
                     "payment_provider_url",
+                    "stripe_subscriptions",
+                    "upcoming_subscriptions",
                 }
             )
         )
@@ -1962,6 +1958,16 @@ class CustomerDetailSerializer(api_serializers.CustomerSerializer):
                     "read_only": True,
                     "allow_null": True,
                 },
+                "stripe_subscriptions": {
+                    "required": True,
+                    "read_only": True,
+                    "allow_null": False,
+                },
+                "upcoming_subscriptions": {
+                    "required": True,
+                    "read_only": True,
+                    "allow_null": False,
+                },
             },
         }
 
@@ -1970,6 +1976,35 @@ class CustomerDetailSerializer(api_serializers.CustomerSerializer):
     crm_provider_url = serializers.SerializerMethodField()
     payment_provider_url = serializers.SerializerMethodField()
     invoices = serializers.SerializerMethodField()
+    stripe_subscriptions = serializers.SerializerMethodField()
+    upcoming_subscriptions = serializers.SerializerMethodField()
+
+    def get_upcoming_subscriptions(
+        self, obj
+    ) -> SubscriptionRecordSerializer(many=True):
+        sr_objs = (
+            obj.subscription_records.not_started()
+            .filter(organization=obj.organization)
+            .order_by("start_date")
+        )
+        return SubscriptionRecordSerializer(sr_objs, many=True).data
+
+    def get_stripe_subscriptions(
+        self, obj
+    ) -> StripeSubscriptionRecordSerializer(many=True):
+        from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
+
+        if obj.stripe_integration:
+            stripe_subs = PAYMENT_PROCESSOR_MAP[
+                PAYMENT_PROCESSORS.STRIPE
+            ].get_customer_subscriptions(obj.organization, obj)
+            serialized_data = StripeSubscriptionRecordSerializer(
+                stripe_subs, many=True
+            ).data
+            for sub in stripe_subs:
+                sub.delete()
+            return serialized_data
+        return []
 
     def get_invoices(self, obj) -> LightweightInvoiceDetailSerializer(many=True):
         try:

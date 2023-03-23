@@ -13,6 +13,11 @@ from metering_billing.utils.enums import (
 from rest_framework import serializers
 
 
+class SinglePeriodRequestSerializer(serializers.Serializer):
+    start_date = serializers.DateField(required=True)
+    end_date = serializers.DateField(required=True)
+
+
 class PeriodComparisonRequestSerializer(serializers.Serializer):
     period_1_start_date = serializers.DateField()
     period_1_end_date = serializers.DateField()
@@ -125,4 +130,16 @@ class PlansSetTransitionToForVersionNumberSerializer(serializers.Serializer):
 class CRMSyncRequestSerializer(serializers.Serializer):
     crm_provider_names = serializers.MultipleChoiceField(
         choices=UnifiedCRMOrganizationIntegration.CRMProvider.labels, required=False
+    )
+
+
+class StripeMultiSubscriptionsSerializer(serializers.Serializer):
+    customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        required=True,
+        source="customer",
+    )
+    stripe_subscription_ids = serializers.ListField(
+        child=serializers.CharField(), required=True
     )

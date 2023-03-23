@@ -1,9 +1,9 @@
 import React, { FC, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Authentication , instance } from "../api/api";
+import { Authentication, instance } from "../api/api";
 import { Card, Input, Button, Form } from "antd";
 import "./Login.css";
-import { useQueryClient, useMutation } from "react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import Cookies from "universal-cookie";
 import posthog from "posthog-js";
@@ -25,9 +25,14 @@ interface FormElements extends HTMLFormElement {
   readonly elements: LoginForm;
 }
 
-const Login: FC = () => {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+interface LoginProps {
+  username?: string;
+  password?: string;
+}
+
+const Login: FC<LoginProps> = (props) => {
+  const [username, setUsername] = useState(props.username || "");
+  const [password, setPassword] = useState(props.password || "");
   const [error, setError] = useState("");
   const setUsernameToStore = useGlobalStore((state) => state.setUsername);
   const queryClient = useQueryClient();
@@ -47,7 +52,7 @@ const Login: FC = () => {
     navigate("/dashboard");
   };
 
-  const isDemo = import.meta.env.VITE_IS_DEMO === "true";
+  const isDemo = (import.meta as any).env.VITE_IS_DEMO === "true";
 
   const mutation = useMutation(
     (data: { username: string; password: string }) =>
@@ -73,7 +78,7 @@ const Login: FC = () => {
 
         cookies.set("Token", token);
         instance.defaults.headers.common.Authorization = `Token ${token}`;
-        queryClient.refetchQueries("session");
+        queryClient.refetchQueries(["session"]);
         redirectDashboard();
       },
       onError: (error: QueryErrors) => {
@@ -97,71 +102,71 @@ const Login: FC = () => {
   if (!isAuthenticated) {
     return (
       <div className="grid h-screen place-items-center">
-          <div className="space-y-4">
-            <Card
-              title="Login"
-              className="flex flex-col"
-              style={{
-                borderRadius: "0.5rem",
-                borderWidth: "2px",
-                borderColor: "#EAEAEB",
-                borderStyle: "solid",
-              }}
-            >
-              {/* <img src="../assets/images/logo_large.jpg" alt="logo" /> */}
-              <Form onFinish={handleLogin} name="normal_login">
-                <Form.Item>
-                  <label htmlFor="username">Username or Email</label>
-                  <Input
-                    type="text"
-                    name="username"
-                    id="username"
-                    value={username}
-                    defaultValue="username123"
-                    onChange={handleUserNameChange}
-                  />
-                </Form.Item>
-                <label htmlFor="password">Password</label>
+        <div className="space-y-4">
+          <Card
+            title="Login"
+            className="flex flex-col"
+            style={{
+              borderRadius: "0.5rem",
+              borderWidth: "2px",
+              borderColor: "#EAEAEB",
+              borderStyle: "solid",
+            }}
+          >
+            {/* <img src="../assets/images/logo_large.jpg" alt="logo" /> */}
+            <Form onFinish={handleLogin} name="normal_login">
+              <Form.Item>
+                <label htmlFor="username">Username or Email</label>
+                <Input
+                  type="text"
+                  name="username"
+                  id="username"
+                  value={username}
+                  defaultValue="username123"
+                  onChange={handleUserNameChange}
+                />
+              </Form.Item>
+              <label htmlFor="password">Password</label>
 
-                <Form.Item>
-                  <Input
-                    type="password"
-                    id='password'
-                    name="password"
-                    value={password}
-                    defaultValue="password123"
-                    onChange={handlePasswordChange}
-                  />
-                  <div>
-                    {error && <small className="text-danger">{error}</small>}
-                  </div>
-                </Form.Item>
-                <Form.Item>
-                  <Button htmlType="submit">Login</Button>
-                </Form.Item>
-                <Link
-                  to="/reset-password"
-                  className=" text-darkgold hover:text-black"
-                >
-                  Forgot Password?
-                </Link>
-              </Form>
-            </Card>
-            {(import.meta.env.VITE_API_URL !== "https://api.uselotus.io/" ||
-              import.meta.env.IS_DEMO == "true") && (
-              <div>
-                <Button
-                  type="primary"
-                  className="w-full"
-                  onClick={() => navigate("/register")}
-                >
-                  Sign Up
-                </Button>
-              </div>
-            )}
-          </div>
-          {mutation.isLoading && <LoadingSpinner />}
+              <Form.Item>
+                <Input
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={password}
+                  defaultValue="password123"
+                  onChange={handlePasswordChange}
+                />
+                <div>
+                  {error && <small className="text-danger">{error}</small>}
+                </div>
+              </Form.Item>
+              <Form.Item>
+                <Button htmlType="submit">Login</Button>
+              </Form.Item>
+              <Link
+                to="/reset-password"
+                className=" text-darkgold hover:text-black"
+              >
+                Forgot Password?
+              </Link>
+            </Form>
+          </Card>
+          {(import.meta.env.VITE_API_URL !== "https://api.uselotus.io/" ||
+            import.meta.env.IS_DEMO == "true") && (
+            <div>
+              <Button
+                type="primary"
+                className="w-full"
+                onClick={() => navigate("/register")}
+              >
+                Sign Up
+              </Button>
+            </div>
+          )}
         </div>
+        {mutation.isLoading && <LoadingSpinner />}
+      </div>
     );
   }
 

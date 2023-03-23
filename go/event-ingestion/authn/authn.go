@@ -91,7 +91,7 @@ func Middleware(cacheClient cache.Cache) echo.MiddlewareFunc {
 			}
 
 			organizationID := apiKey.OrganizationID
-			cacheClient.Set(key, strconv.FormatInt(organizationID, 10))
+			cacheClient.Set(key, strconv.FormatInt(organizationID, 10), nil)
 
 			c.Set("organizationID", organizationID)
 			log.Printf("Passing request to the next middleware or endpoint")

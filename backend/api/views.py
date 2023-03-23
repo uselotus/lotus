@@ -25,6 +25,7 @@ from api.serializers.model_serializers import (
     CustomerSerializer,
     EventSerializer,
     InvoiceListFilterSerializer,
+    InvoicePaymentSerializer,
     InvoiceSerializer,
     InvoiceUpdateSerializer,
     ListPlansFilterSerializer,
@@ -143,7 +144,6 @@ from metering_billing.utils.enums import (
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     INVOICING_BEHAVIOR,
     METRIC_STATUS,
-    ORGANIZATION_SETTING_NAMES,
     PLAN_CUSTOM_TYPE,
     SUBSCRIPTION_STATUS,
     USAGE_BEHAVIOR,
@@ -432,10 +432,16 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return_dict["total_cost"] = total_cost
         return_dict["total_revenue"] = total_revenue
         if total_revenue == 0:
-            return_dict["margin"] = 0
+            return_dict["profit_margin"] = 0
         else:
-            return_dict["margin"] = convert_to_decimal(
+            return_dict["profit_margin"] = convert_to_decimal(
                 (total_revenue - total_cost) / total_revenue
+            )
+        if total_cost == 0:
+            return_dict["markup"] = 0
+        else:
+            return_dict["markup"] = convert_to_decimal(
+                (total_revenue - total_cost) / total_cost
             )
         serializer = CostAnalysisSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
@@ -572,11 +578,6 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         # we need to construct the prefetch objects so that we are prefetching the more
         # deeply nested objectsd as part of the call:
         # https://forum.djangoproject.com/t/drf-and-nested-serialisers-optimisation-with-prefect-related/4272
-        active_subscriptions_subquery = SubscriptionRecord.objects.filter(
-            billing_plan=OuterRef("pk"),
-            start_date__lte=now,
-            end_date__gte=now,
-        ).annotate(active_subscriptions=Count("*"))
         qs = qs.prefetch_related(
             Prefetch(
                 "versions",
@@ -587,9 +588,14 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 .annotate(
                     active_subscriptions=Coalesce(
                         Subquery(
-                            active_subscriptions_subquery.values(
-                                "active_subscriptions"
-                            )[:1]
+                            SubscriptionRecord.objects.filter(
+                                billing_plan=OuterRef("pk"),
+                                start_date__lte=now,
+                                end_date__gte=now,
+                            )
+                            .values("billing_plan")
+                            .annotate(active_subscriptions=Count("id"))
+                            .values("active_subscriptions")[:1]
                         ),
                         Value(0),
                     )
@@ -941,11 +947,8 @@ class SubscriptionViewSet(
         serializer.is_valid(raise_exception=True)
         # make sure subscription filters are valid
         subscription_filters = serializer.validated_data.get("subscription_filters", [])
-        sf_setting = organization.settings.get(
-            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-        )
         for sf in subscription_filters:
-            if sf["property_name"] not in sf_setting.setting_values:
+            if sf["property_name"] not in organization.subscription_filter_keys:
                 raise ValidationError(
                     "Invalid subscription filter. Please check your subscription filters setting."
                 )
@@ -1273,11 +1276,8 @@ class SubscriptionViewSet(
         serializer.is_valid(raise_exception=True)
         # make sure subscription filters are valid
         subscription_filters = serializer.validated_data.get("subscription_filters", [])
-        sf_setting = organization.settings.get(
-            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-        )
         for sf in subscription_filters:
-            if sf["property_name"] not in sf_setting.setting_values:
+            if sf["property_name"] not in organization.subscription_filter_keys:
                 raise ValidationError(
                     "Invalid subscription filter. Please check your subscription filters setting."
                 )
@@ -1543,7 +1543,11 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             return default
         return InvoiceSerializer
 
-    @extend_schema(responses=InvoiceSerializer)
+    @extend_schema(request=InvoiceUpdateSerializer, responses=InvoicePaymentSerializer)
+    def partial_update(self, request, *args, **kwargs):
+        kwargs["partial"] = True
+        return self.update(request, *args, **kwargs)
+
     def update(self, request, *args, **kwargs):
         invoice = self.get_object()
         serializer = self.get_serializer(invoice, data=request.data, partial=True)

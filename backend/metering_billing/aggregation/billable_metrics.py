@@ -25,7 +25,6 @@ from metering_billing.utils.enums import (
     METRIC_AGGREGATION,
     METRIC_GRANULARITY,
     METRIC_TYPE,
-    ORGANIZATION_SETTING_NAMES,
     PLAN_DURATION,
 )
 
@@ -137,7 +136,7 @@ class MetricHandler(abc.ABC):
         """
         This method just returns the usage of the metric in that day, without worrying about whether it's billable, prorations, etc. Typically used for visualization purposes only and not in any billing runs. Can optionally include a customer to get a single customers usage. Can also incldue top_n, which will group the usage of the non top_n customers into a field called Other.
         """
-        from metering_billing.models import Customer, Organization, OrganizationSetting
+        from metering_billing.models import Customer, Organization
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
@@ -177,15 +176,7 @@ class MetricHandler(abc.ABC):
                 )
             )
         )
-        try:
-            sf_setting = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-            )
-            groupby = sf_setting.setting_values
-        except OrganizationSetting.DoesNotExist:
-            organization.provision_subscription_filter_settings()
-            groupby = []
-        injection_dict["group_by"] = groupby
+        injection_dict["group_by"] = organization.subscription_filter_keys
         query = Template(query_template).render(**injection_dict)
         with connection.cursor() as cursor:
             cursor.execute(query)
@@ -230,8 +221,6 @@ class CounterHandler(MetricHandler):
         billing_record: BillingRecord,
         organization: Organization,
     ) -> dict:
-        from metering_billing.models import OrganizationSetting
-
         customer = billing_record.subscription.customer
         uuidv5_customer_id = customer.uuidv5_customer_id
         if uuidv5_customer_id is None:
@@ -243,15 +232,7 @@ class CounterHandler(MetricHandler):
             "filter_properties": {},
             "uuidv5_customer_id": uuidv5_customer_id,
         }
-        try:
-            sf_setting = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-            )
-            groupby = sf_setting.setting_values
-        except OrganizationSetting.DoesNotExist:
-            organization.provision_subscription_filter_settings()
-            groupby = []
-        injection_dict["group_by"] = groupby
+        injection_dict["group_by"] = organization.subscription_filter_keys
         for filter in billing_record.subscription.subscription_filters:
             injection_dict["filter_properties"][filter[0]] = [filter[1]]
         return injection_dict
@@ -572,7 +553,7 @@ class CounterHandler(MetricHandler):
         # make one for the total daily usage graph, but not for second
         # if we're refreshing the matview, then we need to drop the last
         # one and recreate it
-        from metering_billing.models import Organization, OrganizationSetting
+        from metering_billing.models import Organization
 
         from .common_query_templates import CAGG_COMPRESSION, CAGG_DROP, CAGG_REFRESH
         from .counter_query_templates import COUNTER_CAGG_QUERY
@@ -580,14 +561,7 @@ class CounterHandler(MetricHandler):
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
         )
-        try:
-            groupby = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-            )
-            groupby = groupby.setting_values
-        except OrganizationSetting.DoesNotExist:
-            organization.provision_subscription_filter_settings()
-            groupby = []
+        groupby = organization.subscription_filter_keys
         sql_injection_data = {
             "query_type": metric.usage_aggregation_type,
             "property_name": metric.property_name,
@@ -987,7 +961,7 @@ class GaugeHandler(MetricHandler):
 
     @staticmethod
     def create_continuous_aggregate(metric: Metric, refresh=False):
-        from metering_billing.models import Organization, OrganizationSetting
+        from metering_billing.models import Organization
 
         from .common_query_templates import CAGG_COMPRESSION, CAGG_DROP, CAGG_REFRESH
         from .gauge_query_templates import (
@@ -999,14 +973,7 @@ class GaugeHandler(MetricHandler):
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
         )
-        try:
-            groupby = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-            )
-            groupby = groupby.setting_values
-        except OrganizationSetting.DoesNotExist:
-            organization.provision_subscription_filter_settings()
-            groupby = []
+        groupby = organization.subscription_filter_keys
         sql_injection_data = {
             "property_name": metric.property_name,
             "group_by": groupby,
@@ -1073,7 +1040,7 @@ class GaugeHandler(MetricHandler):
     def get_billing_record_total_billable_usage(
         metric: Metric, billing_record: BillingRecord
     ) -> Decimal:
-        from metering_billing.models import Organization, OrganizationSetting
+        from metering_billing.models import Organization
 
         from .gauge_query_templates import (
             GAUGE_DELTA_GET_TOTAL_USAGE_WITH_PRORATION,
@@ -1083,14 +1050,7 @@ class GaugeHandler(MetricHandler):
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
         )
-        try:
-            groupby = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-            )
-            groupby = groupby.setting_values
-        except OrganizationSetting.DoesNotExist:
-            organization.provision_subscription_filter_settings()
-            groupby = []
+        groupby = organization.subscription_filter_keys
         metric_granularity = metric.granularity
         if metric_granularity == METRIC_GRANULARITY.TOTAL:
             plan_duration = billing_record.billing_plan.plan.plan_duration
@@ -1157,7 +1117,7 @@ class GaugeHandler(MetricHandler):
     def get_billing_record_current_usage(
         metric: Metric, billing_record: BillingRecord
     ) -> Decimal:
-        from metering_billing.models import Organization, OrganizationSetting
+        from metering_billing.models import Organization
 
         from .gauge_query_templates import (
             GAUGE_DELTA_GET_CURRENT_USAGE,
@@ -1167,14 +1127,7 @@ class GaugeHandler(MetricHandler):
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
         )
-        try:
-            groupby = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-            )
-            groupby = groupby.setting_values
-        except OrganizationSetting.DoesNotExist:
-            organization.provision_subscription_filter_settings()
-            groupby = []
+        groupby = organization.subscription_filter_keys
         metric_granularity = metric.granularity
         if metric_granularity == METRIC_GRANULARITY.TOTAL:
             plan_duration = billing_record.billing_plan.plan.plan_duration
@@ -1237,7 +1190,7 @@ class GaugeHandler(MetricHandler):
     def get_billing_record_daily_billable_usage(
         metric: Metric, billing_record: BillingRecord
     ) -> dict[datetime.date, Decimal]:
-        from metering_billing.models import Organization, OrganizationSetting
+        from metering_billing.models import Organization
 
         from .gauge_query_templates import (
             GAUGE_DELTA_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY,
@@ -1247,14 +1200,7 @@ class GaugeHandler(MetricHandler):
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
         )
-        try:
-            groupby = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-            )
-            groupby = groupby.setting_values
-        except OrganizationSetting.DoesNotExist:
-            organization.provision_subscription_filter_settings()
-            groupby = []
+        groupby = organization.subscription_filter_keys
         metric_granularity = metric.granularity
         if metric_granularity == METRIC_GRANULARITY.TOTAL:
             plan_duration = billing_record.billing_plan.plan.plan_duration
@@ -1428,22 +1374,13 @@ class RateHandler(MetricHandler):
 
     @staticmethod
     def create_continuous_aggregate(metric: Metric, refresh=False):
-        from metering_billing.models import OrganizationSetting
-
         from .common_query_templates import CAGG_COMPRESSION, CAGG_DROP, CAGG_REFRESH
         from .rate_query_templates import RATE_CAGG_QUERY
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
         )
-        try:
-            groupby = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-            )
-            groupby = groupby.setting_values
-        except OrganizationSetting.DoesNotExist:
-            organization.provision_subscription_filter_settings()
-            groupby = []
+        groupby = organization.subscription_filter_keys
         sql_injection_data = {
             "query_type": metric.usage_aggregation_type,
             "property_name": metric.property_name,
@@ -1505,7 +1442,7 @@ class RateHandler(MetricHandler):
     @staticmethod
     def _rate_cagg_total_results(metric: Metric, billing_record: BillingRecord):
         from metering_billing.aggregation.rate_query_templates import RATE_CAGG_TOTAL
-        from metering_billing.models import Organization, OrganizationSetting
+        from metering_billing.models import Organization
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
@@ -1529,15 +1466,7 @@ class RateHandler(MetricHandler):
             "property_name": metric.property_name,
             "uuidv5_event_name": uuid.uuid5(EVENT_NAME_NAMESPACE, metric.event_name),
         }
-        try:
-            sf_setting = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-            )
-            groupby = sf_setting.setting_values
-        except OrganizationSetting.DoesNotExist:
-            organization.provision_subscription_filter_settings()
-            groupby = []
-        injection_dict["group_by"] = groupby
+        injection_dict["group_by"] = organization.subscription_filter_keys
         for filter in billing_record.subscription.subscription_filters:
             injection_dict["filter_properties"][filter[0]] = [filter[1]]
         query = Template(RATE_CAGG_TOTAL).render(**injection_dict)
@@ -1563,7 +1492,7 @@ class RateHandler(MetricHandler):
         from metering_billing.aggregation.rate_query_templates import (
             RATE_GET_CURRENT_USAGE,
         )
-        from metering_billing.models import Organization, OrganizationSetting
+        from metering_billing.models import Organization
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
@@ -1596,15 +1525,7 @@ class RateHandler(MetricHandler):
             "lookback_units": metric.granularity,
             "reference_time": now_utc(),
         }
-        try:
-            sf_setting = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-            )
-            groupby = sf_setting.setting_values
-        except OrganizationSetting.DoesNotExist:
-            organization.provision_subscription_filter_settings()
-            groupby = []
-        injection_dict["group_by"] = groupby
+        injection_dict["group_by"] = organization.subscription_filter_keys
         for filter in billing_record.subscription.subscription_filters:
             injection_dict["filter_properties"][filter[0]] = [filter[1]]
         query = Template(RATE_GET_CURRENT_USAGE).render(**injection_dict)
@@ -1620,6 +1541,8 @@ class RateHandler(MetricHandler):
         metric: Metric, billing_record: BillingRecord
     ) -> dict[datetime.date, Decimal]:
         results = RateHandler._rate_cagg_total_results(metric, billing_record)
+        if len(results) == 0:
+            return {}
         total = results[0].usage_qty
         date = convert_to_date(results[0].bucket)
         return {date: total}

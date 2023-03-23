@@ -3,14 +3,16 @@ import { components } from "../../gen-types";
 import Badge from "../base/Badges/Badges";
 
 interface PlanTagsProps {
-  tags: components["schemas"]["PlanDetail"]["tags"];
+  tags:
+    | components["schemas"]["PlanDetail"]["tags"]
+    | components["schemas"]["Plan"]["tags"];
   showAddTagButton?: boolean;
 }
 
 function PlansTags({ tags, showAddTagButton }: PlanTagsProps) {
   return (
     <span>
-      {!tags.length ? (
+      {!tags.length && !((import.meta as any).env.VITE_IS_DEMO === "true") ? (
         <Badge className="bg-[#E0E7FF] text-[#3730A3] text-[12px] px-[6px] py-2">
           <Badge.Content>+ Add Tag</Badge.Content>
         </Badge>
@@ -49,11 +51,13 @@ function PlansTags({ tags, showAddTagButton }: PlanTagsProps) {
                 </span>
               ))
             )}
-            {showAddTagButton && tags.length < 3 && (
-              <Badge className="bg-[#E0E7FF] text-[#3730A3] text-[12px] px-[6px] py-2 ml-2 whitespace-nowrap">
-                <Badge.Content>+ Add Tag</Badge.Content>
-              </Badge>
-            )}
+            {showAddTagButton &&
+              !((import.meta as any).env.VITE_IS_DEMO === "true") &&
+              tags.length < 3 && (
+                <Badge className="bg-[#E0E7FF] text-[#3730A3] text-[12px] px-[6px] py-2 ml-2 whitespace-nowrap">
+                  <Badge.Content>+ Add Tag</Badge.Content>
+                </Badge>
+              )}
           </span>
         </span>
       )}

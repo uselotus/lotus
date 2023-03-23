@@ -45,6 +45,8 @@ def draft_invoice_test_common_setup(
             "org2": org2,
             "key2": key2,
         }
+        org.subscription_filter_keys = ["email"]
+        org.save()
         # set up the client with the appropriate api key spec
         if auth_method == "api_key":
             client = api_client_with_api_key_auth(key)
@@ -272,7 +274,6 @@ class TestGenerateInvoice:
         setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
         SubscriptionRecord.objects.all().delete()
         Event.objects.all().delete()
-        setup_dict["org"].update_subscription_filter_settings(["email"])
         payload = {
             "start_date": now_utc() - timedelta(days=5),
             "customer_id": setup_dict["customer"].customer_id,

@@ -5,7 +5,7 @@ import { Button, Col, Form, Modal, Row } from "antd";
 // @ts-ignore
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import clsx from "clsx";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
@@ -435,7 +435,11 @@ function CreatePlan() {
                 />
                 <Button
                   type="primary"
-                  disabled={!isCurrentStepValid}
+                  disabled={
+                    !isCurrentStepValid ||
+                    (currentStep === STEPS.length - 1 &&
+                      (import.meta as any).env.VITE_IS_DEMO === "true")
+                  }
                   style={{
                     background: "#C3986B",
                     color: "#FFFFFF",

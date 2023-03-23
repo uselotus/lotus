@@ -1,5 +1,5 @@
 import { Modal, Tag, Button } from "antd";
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import React, { FC } from "react";
 import { format } from "sql-formatter";
@@ -35,7 +35,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
     (metric_id: string) => Metrics.archiveMetric(metric_id),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries("metric_list");
+        queryClient.invalidateQueries(["metric_list"]);
         toast.success("Metric archived");
         onclose();
       },
@@ -56,6 +56,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
           onClick={() => {
             mutation.mutate(metric.metric_id);
           }}
+          disabled={(import.meta as any).env.VITE_IS_DEMO === "true"}
         >
           Archive
         </Button>,

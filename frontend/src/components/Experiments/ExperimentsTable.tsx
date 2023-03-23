@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import dayjs from "dayjs";
 import { BacktestType } from "../../types/experiment-type";
+import { components } from "../../gen-types";
 
 const columns: ProColumns<BacktestType>[] = [
   {
@@ -13,15 +14,9 @@ const columns: ProColumns<BacktestType>[] = [
   },
   {
     title: "Name",
-    dataIndex: "backtest_name",
+    dataIndex: "analysis_name",
     align: "left",
     width: 120,
-  },
-  {
-    title: "Creator",
-    dataIndex: "creator",
-    align: "left",
-    width: 150,
   },
   {
     title: "Date Created",
@@ -52,31 +47,33 @@ const columns: ProColumns<BacktestType>[] = [
 ];
 
 interface Props {
-  backtests: BacktestType[];
+  experiments: components["schemas"]["AnalysisSummary"][];
 }
 
-const BacktestTable: FC<Props> = ({ backtests }) => {
+const ExperimentsTable: FC<Props> = ({ experiments }) => {
   const navigate = useNavigate();
-  const navigateToExperiment = (row: BacktestType) => {
-    navigate(`/experiment/${row.backtest_id}`);
+  const navigateToExperiment = (
+    row: components["schemas"]["AnalysisSummary"]
+  ) => {
+    navigate(`/experiment/${row.analysis_id}`);
   };
   return (
     <div className="border-2 border-solid rounded border-[#EAEAEB]">
       <ProTable
         columns={columns}
-        dataSource={backtests}
+        dataSource={experiments}
         options={false}
         toolBarRender={false}
         search={false}
         onRow={(record, rowIndex) => ({
-            onClick: (event) => {
-              if (record.status === "completed") {
-                navigateToExperiment(record);
-              } else {
-                toast("Experiment is still running");
-              }
-            }, // click row
-          })}
+          onClick: (event) => {
+            if (record.status === "completed") {
+              navigateToExperiment(record);
+            } else {
+              toast("Experiment is still running");
+            }
+          }, // click row
+        })}
         pagination={{
           showTotal: (total, range) => (
             <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
@@ -88,4 +85,4 @@ const BacktestTable: FC<Props> = ({ backtests }) => {
   );
 };
 
-export default BacktestTable;
+export default ExperimentsTable;

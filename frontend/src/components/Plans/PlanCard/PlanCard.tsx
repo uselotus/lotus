@@ -1,3 +1,4 @@
+/* eslint-disable camelcase */
 // @ts-ignore
 import React, { FC, useRef } from "react";
 import { Menu, Dropdown, Button, Typography, Tag } from "antd";
@@ -8,7 +9,7 @@ import {
 } from "@ant-design/icons";
 import { PlanType, UpdatePlanType } from "../../../types/plan-type";
 import "./PlanCard.css";
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Plan } from "../../../api/api";
@@ -22,13 +23,16 @@ import useMediaQuery from "../../../hooks/useWindowQuery";
 import createTags from "../helpers/createTags";
 import useGlobalStore from "../../../stores/useGlobalstore";
 import createPlanTagsList from "../helpers/createPlanTagsList";
+import { components } from "../../../gen-types";
 
 interface PlanCardProps {
-  plan: PlanType;
+  plan: components["schemas"]["Plan"];
   pane: "All" | "Monthly" | "Yearly" | "Quarterly";
   createTagMutation: (variables: {
     plan_id: string;
-    tags: PlanType["tags"];
+    tags:
+      | components["schemas"]["PlanDetail"]["tags"]
+      | components["schemas"]["Plan"]["tags"];
     pane: "All" | "Monthly" | "Yearly" | "Quarterly";
   }) => void;
 }
@@ -42,7 +46,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
   const inputRef = useRef<HTMLInputElement | null>(null!);
   const mutation = useMutation((plan_id: string) => Plan.deletePlan(plan_id), {
     onSuccess: () => {
-      queryClient.invalidateQueries("plan_list");
+      queryClient.invalidateQueries(["plan_list"]);
 
       toast.success("Plan archived");
     },
@@ -56,7 +60,10 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
       <Menu.Item
         key="1"
         onClick={() => mutation.mutate(plan.plan_id)}
-        disabled={plan.active_subscriptions > 0}
+        disabled={
+          plan.active_subscriptions > 0 ||
+          (import.meta as any).env.VITE_IS_DEMO === "true"
+        }
       >
         <div className="planMenuArchiveIcon">
           <div>
@@ -84,6 +91,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
 
   return (
     <div
+      aria-hidden
       className="min-h-[200px]  min-w-[246px] p-6 cursor-pointer  rounded-sm bg-card  shadow-lg hover:shadow-neutral-400"
       onClick={(e) => {
         if ((e.target as HTMLInputElement).nodeName === "DIV") gotoPlanDetail();
@@ -156,12 +164,18 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation, pane }) => {
         <div className="flex mt-2">
           <DropdownComponent>
             <DropdownComponent.Trigger>
-              <PlansTags showAddTagButton tags={plan.tags} />
+              <PlansTags
+                showAddTagButton={
+                  !((import.meta as any).env.VITE_IS_DEMO === "true")
+                }
+                tags={plan.tags}
+              />
             </DropdownComponent.Trigger>
             <DropdownComponent.Container>
               {plan_tags &&
                 createPlanTagsList(plan.tags, plan_tags).map((tag, index) => (
                   <DropdownComponent.MenuItem
+                    key={tag.tag_name}
                     onSelect={() => {
                       if (tag.from !== "plans") {
                         const planTags = [...plan.tags];

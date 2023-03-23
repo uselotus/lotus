@@ -2,13 +2,12 @@ import React, { FC } from "react";
 import { Button } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import { useQuery, UseQueryResult } from "react-query";
+import { useQuery, UseQueryResult } from '@tanstack/react-query';
 import { AddOn } from "../api/api";
 import DBSVG from "../components/base/db-svg";
 import { PageLayout } from "../components/base/PageLayout";
 import LoadingSpinner from "../components/LoadingSpinner";
 import AddOnsCard from "../components/Addons/AddonsCard/AddOnCard";
-import { AddOnType } from "../types/addon-type";
 import { components } from "../gen-types";
 
 const ViewAddOns: FC = () => {
@@ -38,7 +37,8 @@ const ViewAddOns: FC = () => {
                 onClick={navigateCreatePlan}
                 type="primary"
                 size="large"
-                key="create-plan"
+                disabled={(import.meta as any).env.VITE_IS_DEMO === "true"}
+                key="create-addon"
                 className="hover:!bg-primary-700"
                 style={{ background: "#C3986B", borderColor: "#C3986B" }}
               >
@@ -82,7 +82,8 @@ const ViewAddOns: FC = () => {
                   onClick={navigateCreatePlan}
                   type="primary"
                   size="large"
-                  key="create-plan"
+                  key="create-addon"
+                  disabled={(import.meta as any).env.VITE_IS_DEMO === "true"}
                   className="hover:!bg-primary-700"
                   style={{ background: "#C3986B", borderColor: "#C3986B" }}
                 >
