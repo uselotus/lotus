@@ -96,50 +96,10 @@ const ExperimentDetails: FC<Props> = ({ data, kpi }) => {
     }
   }, [data]);
 
-  const pieConfigNew = {
-    appendPadding: 20,
-    data: data.revenue_by_metric_graph,
-    angleField: "new_plan_revenue",
-    colorField: "metric_name",
-    radius: 1,
-    color: ["#33658A", "#547AA5", "#C3986B", "#D9D9D9", "#171412"],
-
-    innerRadius: 0.5,
-    label: {
-      type: "inner",
-      offset: "-50%",
-      content: "{value}",
-      style: {
-        textAlign: "center",
-        fontSize: 14,
-      },
-    },
-    interactions: [
-      {
-        type: "element-selected",
-      },
-      {
-        type: "element-active",
-      },
-    ],
-    statistic: {
-      title: false,
-
-      content: {
-        content: "",
-        style: {
-          whiteSpace: "pre-wrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        },
-      },
-    },
-  };
-
   return (
     <div>
       {revenueLineGraph !== undefined && (
-        <div className=" bg-[#F9F9F9] px-4 py-6 sm:px-6 my-6">
+        <div className=" bg-[#F9F9F9] px-10 py-10 my-6 ">
           <div className="text-xl text-black font-semiBold">
             Revenue over time
           </div>
@@ -173,13 +133,18 @@ const ExperimentDetails: FC<Props> = ({ data, kpi }) => {
             legend={{
               position: "top",
               layout: "horizontal",
+              label: {
+                style: {
+                  fontSize: 30,
+                },
+              },
             }}
           />
         </div>
       )}
 
       {revenuePerMetric !== undefined && (
-        <div className=" bg-[#F9F9F9] px-4 py-6 sm:px-6 my-6 ">
+        <div className=" bg-[#F9F9F9] px-10 py-10 my-6 ">
           <div className="text-xl font-semiBold text-black">
             Revenue by metric
           </div>
@@ -194,6 +159,15 @@ const ExperimentDetails: FC<Props> = ({ data, kpi }) => {
                   data={getPlanData(item.plan.plan_name)}
                   colorField="metric_name"
                   angleField="revenue"
+                  legend={{
+                    position: "right",
+                    layout: "vertical",
+                    label: {
+                      style: {
+                        fontSize: 30,
+                      },
+                    },
+                  }}
                   color={[
                     "#C3986B",
                     "#E4D5C5",
@@ -208,46 +182,48 @@ const ExperimentDetails: FC<Props> = ({ data, kpi }) => {
         </div>
       )}
 
-      <div className=" bg-[#F9F9F9] px-4 py-6 sm:px-6 my-6 ">
+      <div className=" bg-[#F9F9F9] px-10 py-10 my-6 ">
         <div className="text-xl  font-semiBold text-black">Top Customers</div>
         <div className="w-full h-[1.5px] my-8 bg-card-divider" />
         <div className="flex flex-wrap gap-24 ">
-          {data.top_customers_by_plan.map((item) => (
-            <div className="flex-grow">
-              <div className="text-base  font-semiBold">
-                Revenue On {item.plan.plan_name}
+          {data.top_customers_by_plan &&
+            data.top_customers_by_plan.map((item) => (
+              <div className="flex-grow">
+                <div className="text-base  font-semiBold">
+                  Revenue On {item.plan.plan_name}
+                </div>
+                <List marginTop="mt-2">
+                  {item.top_customers_by_revenue.map((item) => (
+                    <ListItem key={item.customer.customer_id}>
+                      <Text>{item.customer.customer_name}</Text>
+                      <Text>
+                        <Bold>{(parseFloat(item.value) * 100).toFixed(2)}</Bold>
+                        {"% "}
+                      </Text>
+                    </ListItem>
+                  ))}
+                </List>
               </div>
-              <List marginTop="mt-2">
-                {item.top_customers_by_revenue.map((item) => (
-                  <ListItem key={item.customer.customer_id}>
-                    <Text>{item.customer.customer_name}</Text>
-                    <Text>
-                      <Bold>{(parseFloat(item.value) * 100).toFixed(2)}</Bold>
-                      {"% "}
-                    </Text>
-                  </ListItem>
-                ))}
-              </List>
-            </div>
-          ))}
-          {data.top_customers_by_plan.map((item) => (
-            <div className="flex-grow">
-              <div className="text-base  font-semiBold">
-                Revenue On {item.plan.plan_name}
+            ))}
+          {data.top_customers_by_plan &&
+            data.top_customers_by_plan.map((item) => (
+              <div className="flex-grow">
+                <div className="text-base  font-semiBold">
+                  Revenue On {item.plan.plan_name}
+                </div>
+                <List marginTop="mt-2">
+                  {item.top_customers_by_revenue.map((item) => (
+                    <ListItem key={item.customer.customer_id}>
+                      <Text>{item.customer.customer_name}</Text>
+                      <Text>
+                        <Bold>{(parseFloat(item.value) * 100).toFixed(2)}</Bold>
+                        {"% "}
+                      </Text>
+                    </ListItem>
+                  ))}
+                </List>
               </div>
-              <List marginTop="mt-2">
-                {item.top_customers_by_revenue.map((item) => (
-                  <ListItem key={item.customer.customer_id}>
-                    <Text>{item.customer.customer_name}</Text>
-                    <Text>
-                      <Bold>{(parseFloat(item.value) * 100).toFixed(2)}</Bold>
-                      {"% "}
-                    </Text>
-                  </ListItem>
-                ))}
-              </List>
-            </div>
-          ))}
+            ))}
         </div>
 
         {/* <ColGrid numColsMd={4} gapX="gap-x-8" gapY="gap-y-2">
