@@ -1,24 +1,31 @@
 import React, { FC } from "react";
-import { useQuery, UseQueryResult, useQueryClient } from '@tanstack/react-query';
+import {
+  useQuery,
+  UseQueryResult,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { Button } from "antd";
 import { useNavigate } from "react-router-dom";
-import BacktestTable from "../components/Experiments/BacktestTable";
+import ExperimentsTable from "../components/Experiments/ExperimentsTable";
 
-import { Backtests } from "../api/api";
+import { Backtests, Experiments } from "../api/api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { PageLayout } from "../components/base/PageLayout";
 import { BacktestType } from "../types/experiment-type";
+import { components } from "../gen-types";
 
 const ViewExperiments: FC = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const { data, isLoading }: UseQueryResult<BacktestType[]> = useQuery<
-    BacktestType[]
+  const {
+    data,
+    isLoading,
+  }: UseQueryResult<components["schemas"]["AnalysisSummary"][]> = useQuery<
+    components["schemas"]["AnalysisSummary"][]
   >(
     ["experiments_list"],
-    () =>
-      Backtests.getBacktests().then((res) => res),
+    () => Experiments.getExperiments().then((res) => res),
     {
       // Refetch the data every second
       refetchInterval: 5000,
@@ -39,7 +46,7 @@ const ViewExperiments: FC = () => {
           size="large"
           key="create-plan"
           type="primary"
-          disabled
+          disabled={true}
         >
           Create Experiment
         </Button>,
@@ -50,7 +57,7 @@ const ViewExperiments: FC = () => {
           <LoadingSpinner />
         ) : (
           <div>
-            <BacktestTable backtests={data} />
+            <ExperimentsTable experiments={data} />
           </div>
         )}
       </div>

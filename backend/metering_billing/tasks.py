@@ -8,7 +8,7 @@ from django.conf import settings
 from django.db.models import Q
 
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
-from metering_billing.serializers.backtest_serializers import (
+from metering_billing.serializers.experiment_serializers import (
     AllSubstitutionResultsSerializer,
 )
 from metering_billing.serializers.serializer_utils import PlanVersionUUIDField
@@ -22,8 +22,8 @@ from metering_billing.utils import (
     now_utc,
 )
 from metering_billing.utils.enums import (
-    BACKTEST_STATUS,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
+    EXPERIMENT_STATUS,
 )
 from metering_billing.webhooks import invoice_past_due_webhook
 
@@ -494,10 +494,10 @@ def run_backtest(backtest_id):
             raise Exception
         results = make_all_dates_times_strings(serializer.validated_data)
         backtest.backtest_results = results
-        backtest.status = BACKTEST_STATUS.COMPLETED
+        backtest.status = EXPERIMENT_STATUS.COMPLETED
         backtest.save()
     except Exception as e:
-        backtest.status = BACKTEST_STATUS.FAILED
+        backtest.status = EXPERIMENT_STATUS.FAILED
         backtest.save()
         raise e
 
@@ -508,7 +508,7 @@ def run_generate_invoice(subscription_record_pk_set, **kwargs):
     from metering_billing.models import SubscriptionRecord
 
     subscription_record_set = SubscriptionRecord.objects.filter(
-        pk__in=subscription_record_pk_set
+        pk__in=subscription_record_pk_set,
     )
     generate_invoice(subscription_record_set, **kwargs)
 

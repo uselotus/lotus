@@ -1,5 +1,5 @@
 import React, { useState, useRef, FC } from "react";
-import { QueryClient, useMutation } from '@tanstack/react-query';
+import { QueryClient, useMutation } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { Table, Typography, Modal, Button, InputNumber } from "antd";
 import { Plan } from "../../../api/api";
@@ -262,8 +262,18 @@ const AddOnComponents: FC<AddOnsComponentsProps> = ({
                       <Button
                         key="submit"
                         type="primary"
-                        disabled={isInvalid}
-                        onClick={() => submitAlertModal(currentComponent)}
+                        disabled={
+                          isInvalid ||
+                          (import.meta as any).env.VITE_IS_DEMO === "true"
+                        }
+                        onClick={() => {
+                          if (import.meta.env.VITE_IS_DEMO === "true") {
+                            toast.error("Not available in demo mode");
+                            return;
+                          }
+                          console.log(import.meta.env.VITE_IS_DEMO);
+                          submitAlertModal(currentComponent);
+                        }}
                       >
                         Create
                       </Button>,

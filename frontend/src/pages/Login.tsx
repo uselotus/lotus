@@ -24,14 +24,17 @@ interface LoginForm extends HTMLFormControlsCollection {
 interface FormElements extends HTMLFormElement {
   readonly elements: LoginForm;
 }
-
 interface LocationState {
   redirectTo?: string;
 }
+interface LoginProps {
+  username?: string;
+  password?: string;
+}
 
-const Login: FC = () => {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+const Login: FC<LoginProps> = (props) => {
+  const [username, setUsername] = useState(props.username || "");
+  const [password, setPassword] = useState(props.password || "");
   const [error, setError] = useState("");
   const setUsernameToStore = useGlobalStore((state) => state.setUsername);
   const queryClient = useQueryClient();

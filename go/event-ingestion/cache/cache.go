@@ -11,7 +11,7 @@ import (
 
 type Cache interface {
 	Get(key string) (string, error)
-	Set(key string, value interface{}) error
+	Set(key string, value interface{}, expiration *time.Duration) error
 }
 
 type RedisCache struct {
@@ -34,8 +34,14 @@ func (c *RedisCache) Get(key string) (string, error) {
 	return val, nil
 }
 
-func (c *RedisCache) Set(key string, value interface{}) error {
-	return c.rdb.Set(ctx, key, value, c.defaultExpiration).Err()
+func (c *RedisCache) Set(key string, value interface{}, expiration *time.Duration) error {
+	var realExpiration time.Duration
+	if expiration == nil {
+		realExpiration = c.defaultExpiration
+	} else {
+		realExpiration = *expiration
+	}
+	return c.rdb.Set(ctx, key, value, realExpiration).Err()
 }
 
 func New(config config.Config) (Cache, error) {
@@ -55,7 +61,7 @@ func New(config config.Config) (Cache, error) {
 
 	cache := &RedisCache{
 		rdb:               rdb,
-		defaultExpiration: 5 * time.Hour,
+		defaultExpiration: 10 * time.Second,
 	}
 
 	return cache, nil

@@ -5,7 +5,7 @@ import {
   UseQueryResult,
   useMutation,
   useQueryClient,
-} from '@tanstack/react-query';
+} from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import MetricTable from "../components/Metrics/MetricTable";
 import { Metrics } from "../api/api";
@@ -93,7 +93,6 @@ const ViewMetrics: FC = () => {
           type="primary"
           size="large"
           id="create-metric-button"
-          disabled={(import.meta as any).env.VITE_IS_DEMO === "true"}
           key={"create-plan"}
           onClick={createMetricButton}
           className="hover:!bg-primary-700"

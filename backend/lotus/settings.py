@@ -325,8 +325,6 @@ def key_deserializer(key):
 # Kafka/Redpanda Settings
 KAFKA_PREFIX = config("KAFKA_PREFIX", default="")
 KAFKA_EVENTS_TOPIC = KAFKA_PREFIX + config("EVENTS_TOPIC", default="test-topic")
-if type(KAFKA_EVENTS_TOPIC) is bytes:
-    KAFKA_EVENTS_TOPIC = KAFKA_EVENTS_TOPIC.decode("utf-8")
 KAFKA_INVOICE_TOPIC = KAFKA_PREFIX + config("INVOICE_TOPIC", default="invoice-test")
 KAFKA_PAYMENT_TOPIC = KAFKA_PREFIX + config("PAYMENT_TOPIC", default="payment-test")
 KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
@@ -380,7 +378,7 @@ if KAFKA_HOST:
     ADMIN_CLIENT = KafkaAdminClient(**admin_client_config)
 
     existing_topics = ADMIN_CLIENT.list_topics()
-    if KAFKA_EVENTS_TOPIC not in existing_topics and SELF_HOSTED:
+    if KAFKA_EVENTS_TOPIC not in existing_topics and DOCKERIZED:
         try:
             ADMIN_CLIENT.create_topics(
                 new_topics=[
@@ -393,12 +391,25 @@ if KAFKA_HOST:
             )
         except TopicAlreadyExistsError:
             pass
-    if KAFKA_INVOICE_TOPIC not in existing_topics and SELF_HOSTED:
+    if KAFKA_INVOICE_TOPIC not in existing_topics and DOCKERIZED:
         try:
             ADMIN_CLIENT.create_topics(
                 new_topics=[
                     NewTopic(
                         name=KAFKA_INVOICE_TOPIC,
+                        num_partitions=KAFKA_NUM_PARTITIONS,
+                        replication_factor=KAFKA_REPLICATION_FACTOR,
+                    )
+                ]
+            )
+        except TopicAlreadyExistsError:
+            pass
+    if KAFKA_PAYMENT_TOPIC not in existing_topics and DOCKERIZED:
+        try:
+            ADMIN_CLIENT.create_topics(
+                new_topics=[
+                    NewTopic(
+                        name=KAFKA_PAYMENT_TOPIC,
                         num_partitions=KAFKA_NUM_PARTITIONS,
                         replication_factor=KAFKA_REPLICATION_FACTOR,
                     )
@@ -433,7 +444,7 @@ CELERY_TIMEZONE = "UTC"
 if REDIS_URL is not None:
     CACHES = {
         "default": {
-            "BACKEND": "cache_fallback.FallbackCache",
+            "BACKEND": "lotus.cache_utils.FallbackCache",
         },
         "main_cache": {
             "BACKEND": "django_redis.cache.RedisCache",
@@ -450,11 +461,17 @@ if REDIS_URL is not None:
 else:
     CACHES = {
         "default": {
+            "BACKEND": "lotus.cache_utils.FallbackCache",
+        },
+        "main_cache": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "wild-alpaca",
+        },
+        "fallback_cache": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
             "LOCATION": "unique-snowflake",
-        }
+        },
     }
-
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
@@ -525,8 +542,6 @@ VITE_APP_DIR = BASE_DIR / "src"
 ### AWS S3 ###
 AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID", default="")
 AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY", default="")
-AWS_S3_INVOICE_BUCKET = config("AWS_S3_INVOICE_BUCKET", default="")
-AWS_STORAGE_BUCKET_NAME = AWS_S3_INVOICE_BUCKET
 
 
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
@@ -617,7 +632,7 @@ SPECTACULAR_SETTINGS = {
     "ENUM_NAME_OVERRIDES": {
         "numeric_filter_operators": "metering_billing.utils.enums.NUMERIC_FILTER_OPERATORS.choices",
         "categorical_filter_operators": "metering_billing.utils.enums.CATEGORICAL_FILTER_OPERATORS.choices",
-        "BacktestStatusEnum": "metering_billing.utils.enums.BACKTEST_STATUS.choices",
+        "BacktestStatusEnum": "metering_billing.utils.enums.EXPERIMENT_STATUS.choices",
         "BacktestKPIEnum": "metering_billing.utils.enums.BACKTEST_KPI.choices",
         "PaymentProcesorsEnum": "metering_billing.utils.enums.PAYMENT_PROCESSORS.choices",
         "MetricAggregationEnum": "metering_billing.utils.enums.METRIC_AGGREGATION.choices",
@@ -795,4 +810,5 @@ if SVIX_CONNECTOR is not None:
                 )
             )
     except Exception:
+        SVIX_CONNECTOR = None
         SVIX_CONNECTOR = None
