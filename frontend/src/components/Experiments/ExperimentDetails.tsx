@@ -20,32 +20,32 @@ interface Props {
 }
 
 const ExperimentDetails: FC<Props> = ({ data, kpi }) => {
-  const dataFormatter = (number: number) => `$${parseFloat(number).toFixed(2)}`;
   const dataFormatterNumber = (number: number) =>
     Math.round((number + Number.EPSILON) * 100) / 100;
   const [revenueLineGraph, setRevenueLineGraph] = React.useState<any>();
   const [revenuePerMetric, setRevenuePerMetric] = React.useState<{
     [planName: string]: { metric_name: string; revenue: number }[];
   }>();
+
   const [categories, setCategories] = React.useState<string[]>([]);
 
   function getPlanData(planName: string) {
-    console.log(planName, 22);
-    const matchingKey = Object.keys(revenuePerMetric).find(
-      (key) => key === planName
-    );
-    console.log(planName);
-    if (matchingKey !== undefined) {
-      const matchingEntry = revenuePerMetric[matchingKey];
-      console.log(matchingEntry, "matching");
-      return matchingEntry;
-    } else {
-      console.log(`No entry found for plan ${planName}`);
+    if (revenuePerMetric !== undefined) {
+      const matchingKey = Object.keys(revenuePerMetric).find(
+        (key) => key === planName
+      );
+      console.log(planName);
+      if (matchingKey !== undefined) {
+        const matchingEntry = revenuePerMetric[matchingKey];
+        console.log(matchingEntry, "matching");
+        return matchingEntry;
+      } else {
+        console.log(`No entry found for plan ${planName}`);
+      }
     }
   }
 
   useEffect(() => {
-    console.log(data);
     if (data && data.revenue_by_metric_graph !== undefined) {
       console.log(data.revenue_by_metric_graph, 23);
       let newPlans: string[] = [];
@@ -184,10 +184,10 @@ const ExperimentDetails: FC<Props> = ({ data, kpi }) => {
             Revenue by metric
           </div>
           <div className="w-full h-[1.5px] my-8 bg-card-divider" />
-          <div className="flex flex-wrap gap-26 ">
+          <div className="flex flex-wrap gap-24 max-h-20overflow-y-auto">
             {data.revenue_by_metric_graph.map((item) => (
               <div className="flex-grow">
-                <div className="text-xl  font-semiBold">
+                <div className="text-base  font-semiBold">
                   {item.plan.plan_name}
                 </div>
                 <Pie
@@ -211,10 +211,48 @@ const ExperimentDetails: FC<Props> = ({ data, kpi }) => {
       <div className=" bg-[#F9F9F9] px-4 py-6 sm:px-6 my-6 ">
         <div className="text-xl  font-semiBold text-black">Top Customers</div>
         <div className="w-full h-[1.5px] my-8 bg-card-divider" />
+        <div className="flex flex-wrap gap-24 ">
+          {data.top_customers_by_plan.map((item) => (
+            <div className="flex-grow">
+              <div className="text-base  font-semiBold">
+                Revenue On {item.plan.plan_name}
+              </div>
+              <List marginTop="mt-2">
+                {item.top_customers_by_revenue.map((item) => (
+                  <ListItem key={item.customer.customer_id}>
+                    <Text>{item.customer.customer_name}</Text>
+                    <Text>
+                      <Bold>{(parseFloat(item.value) * 100).toFixed(2)}</Bold>
+                      {"% "}
+                    </Text>
+                  </ListItem>
+                ))}
+              </List>
+            </div>
+          ))}
+          {data.top_customers_by_plan.map((item) => (
+            <div className="flex-grow">
+              <div className="text-base  font-semiBold">
+                Revenue On {item.plan.plan_name}
+              </div>
+              <List marginTop="mt-2">
+                {item.top_customers_by_revenue.map((item) => (
+                  <ListItem key={item.customer.customer_id}>
+                    <Text>{item.customer.customer_name}</Text>
+                    <Text>
+                      <Bold>{(parseFloat(item.value) * 100).toFixed(2)}</Bold>
+                      {"% "}
+                    </Text>
+                  </ListItem>
+                ))}
+              </List>
+            </div>
+          ))}
+        </div>
 
         {/* <ColGrid numColsMd={4} gapX="gap-x-8" gapY="gap-y-2">
           <div>
-            <Title marginTop="">Revenue on Original</Title>
+            <Title marginTop="">Revenue on </Title>
             <List marginTop="mt-2">
               {data.top_customers.top_customers_by_revenue.map((item) => (
                 <ListItem key={item.customer.customer_id}>

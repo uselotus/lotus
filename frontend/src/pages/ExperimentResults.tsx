@@ -247,8 +247,6 @@ const ExperimentResults: FC = () => {
     console.log(kpiOptions);
   }, [experiment]);
 
-  const dataFormatter = (number: number) => `$${number.toFixed(2)}`;
-
   // if (isLoading) {
   //   return (
   //     <div className="flex h-screen">
