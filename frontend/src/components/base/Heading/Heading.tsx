@@ -43,12 +43,13 @@ const Heading: React.FC<HeadingProps> = ({
             placeholder="Search..."
           />
         </div> */}
-        <h1 className="text-xl">{headingText}</h1>
+        <h1 className="text-xl ml-6">{headingText}</h1>
 
         <div className="flex items-center ml-[58%]">
           {(import.meta as any).env.VITE_IS_DEMO === "true" && (
             <Button
               type="primary"
+              size="small"
               className="hover:!bg-primary-700 mr-8"
               style={{ background: "#C3986B", borderColor: "#C3986B" }}
               onClick={() => {
