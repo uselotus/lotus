@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cat > /env/env.prod << EOL
+cat > ./env/.env.prod << EOL
 DJANGO_SETTINGS_MODULE = lotus.settings
 PYTHONPATH = .
 SECRET_KEY = ${SECRET_KEY}
