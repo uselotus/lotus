@@ -30,5 +30,6 @@ export interface CustomerCostType {
   }[];
   total_cost: number;
   total_revenue: number;
-  margin: number;
+  profit_margin: number;
+  markup: number;
 }

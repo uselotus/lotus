@@ -97,6 +97,34 @@ def make_all_decimals_floats(data):
         return data
 
 
+def round_all_decimals_to_two_places(data):
+    if isinstance(data, list):
+        return [round_all_decimals_to_two_places(x) for x in data]
+    elif isinstance(data, (dict, collections.OrderedDict)):
+        return {
+            round_all_decimals_to_two_places(key): round_all_decimals_to_two_places(val)
+            for key, val in data.items()
+        }
+    elif isinstance(data, Decimal):
+        return data.quantize(Decimal(".01"), rounding=ROUND_HALF_UP)
+    else:
+        return data
+
+
+def make_all_decimals_strings(data):
+    if isinstance(data, list):
+        return [make_all_decimals_strings(x) for x in data]
+    elif isinstance(data, (dict, collections.OrderedDict)):
+        return {
+            make_all_decimals_strings(key): make_all_decimals_strings(val)
+            for key, val in data.items()
+        }
+    elif isinstance(data, Decimal):
+        return str(data)
+    else:
+        return data
+
+
 def make_all_dates_times_strings(data):
     if isinstance(data, list):
         return [make_all_dates_times_strings(x) for x in data]

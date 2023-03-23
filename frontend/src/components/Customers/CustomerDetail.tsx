@@ -73,7 +73,8 @@ function CustomerDetail() {
         per_day: [],
         total_revenue: 0,
         total_cost: 0,
-        margin: 0,
+        profit_margin: 0,
+        markup: 0,
       },
     }
   );
