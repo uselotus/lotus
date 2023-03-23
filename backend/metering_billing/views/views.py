@@ -5,12 +5,6 @@ import pytz
 from django.conf import settings
 from django.db.models import Count, F, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
 from metering_billing.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
@@ -23,6 +17,7 @@ from metering_billing.serializers.request_serializers import (
     OptionalPeriodRequestSerializer,
     PeriodComparisonRequestSerializer,
     PeriodMetricUsageRequestSerializer,
+    SinglePeriodRequestSerializer,
     StripeMultiSubscriptionsSerializer,
     URLResponseSerializer,
 )
@@ -45,6 +40,11 @@ from metering_billing.utils import (
     make_all_decimals_floats,
 )
 from metering_billing.utils.enums import METRIC_STATUS, METRIC_TYPE, PAYMENT_PROCESSORS
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -54,8 +54,7 @@ class PeriodMetricRevenueView(APIView):
     permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
-        request=PeriodComparisonRequestSerializer,
-        parameters=[PeriodComparisonRequestSerializer],
+        parameters=[SinglePeriodRequestSerializer],
         responses={200: PeriodMetricRevenueResponseSerializer},
     )
     def get(self, request, format=None):
@@ -64,71 +63,50 @@ class PeriodMetricRevenueView(APIView):
         """
         organization = request.organization
         timezone = organization.timezone
-        serializer = PeriodComparisonRequestSerializer(data=request.query_params)
+        serializer = SinglePeriodRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        p1_start, p1_end, p2_start, p2_end = (
-            serializer.validated_data.get(key, None)
-            for key in [
-                "period_1_start_date",
-                "period_1_end_date",
-                "period_2_start_date",
-                "period_2_end_date",
-            ]
-        )
-        p1_start, p2_start = date_as_min_dt(p1_start, timezone), date_as_min_dt(
-            p2_start, timezone
-        )
-        p1_end, p2_end = date_as_max_dt(p1_end, timezone), date_as_max_dt(
-            p2_end, timezone
-        )
+        start = date_as_min_dt(serializer.validated_data["start_date"], timezone)
+        end = date_as_max_dt(serializer.validated_data["end_date"], timezone)
         return_dict = {}
         # collected
-        p1_collected = Invoice.objects.filter(
+        collected = Invoice.objects.filter(
             organization=organization,
-            issue_date__gte=p1_start,
-            issue_date__lte=p1_end,
+            issue_date__gte=start,
+            issue_date__lte=end,
             payment_status=Invoice.PaymentStatus.PAID,
         ).aggregate(tot=Sum("amount"))["tot"]
-        p2_collected = Invoice.objects.filter(
-            organization=organization,
-            issue_date__gte=p2_start,
-            issue_date__lte=p2_end,
-            payment_status=Invoice.PaymentStatus.PAID,
-        ).aggregate(tot=Sum("amount"))["tot"]
-        return_dict["total_revenue_period_1"] = p1_collected or Decimal(0)
-        return_dict["total_revenue_period_2"] = p2_collected or Decimal(0)
+        return_dict["total_revenue"] = collected or Decimal(0)
         # earned
-        for start, end, num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
-            subs = (
-                SubscriptionRecord.objects.filter(
-                    Q(start_date__range=(start, end))
-                    | Q(end_date__range=(start, end))
-                    | Q(start_date__lte=start, end_date__gte=end),
-                    organization=organization,
-                )
-                .select_related("billing_plan")
-                .select_related("customer")
-                .prefetch_related("billing_plan__recurring_charges")
-                .prefetch_related("billing_plan__plan_components")
-                .prefetch_related("billing_plan__plan_components__billable_metric")
-                .prefetch_related("billing_plan__plan_components__tiers")
+        subs = (
+            SubscriptionRecord.objects.filter(
+                Q(start_date__range=(start, end))
+                | Q(end_date__range=(start, end))
+                | Q(start_date__lte=start, end_date__gte=end),
+                organization=organization,
             )
-            per_day_dict = {}
-            for period in dates_bwn_two_dts(start, end):
-                period = convert_to_date(period)
-                per_day_dict[period] = {
-                    "date": period,
-                    "revenue": Decimal(0),
-                }
-            for subscription in subs:
-                earned_revenue = subscription.calculate_earned_revenue_per_day()
-                for date, earned_revenue in earned_revenue.items():
-                    date = convert_to_date(date)
-                    if date in per_day_dict:
-                        per_day_dict[date]["revenue"] += earned_revenue
-            return_dict[f"earned_revenue_period_{num}"] = sum(
-                [x["revenue"] for x in per_day_dict.values()]
-            )
+            .select_related("billing_plan")
+            .select_related("customer")
+            .prefetch_related("billing_plan__recurring_charges")
+            .prefetch_related("billing_plan__plan_components")
+            .prefetch_related("billing_plan__plan_components__billable_metric")
+            .prefetch_related("billing_plan__plan_components__tiers")
+        )
+        per_day_dict = {}
+        for period in dates_bwn_two_dts(start, end):
+            period = convert_to_date(period)
+            per_day_dict[period] = {
+                "date": period,
+                "revenue": Decimal(0),
+            }
+        for subscription in subs:
+            earned_revenue = subscription.calculate_earned_revenue_per_day()
+            for date, earned_revenue in earned_revenue.items():
+                date = convert_to_date(date)
+                if date in per_day_dict:
+                    per_day_dict[date]["revenue"] += earned_revenue
+        return_dict["earned_revenue"] = sum(
+            [x["revenue"] for x in per_day_dict.values()]
+        )
         serializer = PeriodMetricRevenueResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data

@@ -5,6 +5,7 @@ import Avatar from "../Avatar/Avatar";
 import Badge from "../Badges/Badges";
 import useGlobalStore from "../../../stores/useGlobalstore";
 import useToggleSlideOver from "../../../stores/useToggleSlideOver";
+import { Button } from "antd";
 
 interface HeadingProps {
   hasBackButton?: boolean;
@@ -45,6 +46,18 @@ const Heading: React.FC<HeadingProps> = ({
         <h1 className="text-xl">{headingText}</h1>
 
         <div className="flex items-center ml-[58%]">
+          {(import.meta as any).env.VITE_IS_DEMO === "true" && (
+            <Button
+              type="primary"
+              className="hover:!bg-primary-700 mr-8"
+              style={{ background: "#C3986B", borderColor: "#C3986B" }}
+              onClick={() => {
+                window.location.href = "https://github.com/uselotus/lotus";
+              }}
+            >
+              Star Us On Github
+            </Button>
+          )}
           <div className="mr-10">
             <Badge
               onClick={setOpen}
@@ -65,6 +78,7 @@ const Heading: React.FC<HeadingProps> = ({
               </Badge.Content>
             </Badge>
           </div>
+
           <div
             aria-hidden
             onClick={setOpen}

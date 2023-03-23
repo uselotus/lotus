@@ -4,16 +4,28 @@ import logging
 import random
 import time
 import uuid
+from decimal import Decimal
 
 import numpy as np
 import pytz
 from dateutil.relativedelta import relativedelta
+from django.db.models import DecimalField, Sum
+from model_bakery import baker
+
+from api.serializers.model_serializers import (
+    LightweightCustomerSerializer,
+    LightweightMetricSerializer,
+    LightweightPlanVersionSerializer,
+)
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
+    Analysis,
     APIToken,
     Backtest,
     BacktestSubstitution,
     CategoricalFilter,
+    ComponentFixedCharge,
     Customer,
     CustomerBalanceAdjustment,
     CustomPricingUnitConversion,
@@ -40,16 +52,26 @@ from metering_billing.models import (
     WebhookTrigger,
 )
 from metering_billing.tasks import run_backtest, run_generate_invoice
-from metering_billing.utils import date_as_max_dt, date_as_min_dt, now_utc
+from metering_billing.utils import (
+    convert_to_decimal,
+    date_as_max_dt,
+    date_as_min_dt,
+    dates_bwn_two_dts,
+    make_all_decimals_strings,
+    now_utc,
+    round_all_decimals_to_two_places,
+)
 from metering_billing.utils.enums import (
+    ANALYSIS_KPI,
     BACKTEST_KPI,
     EVENT_TYPE,
+    EXPERIMENT_STATUS,
     METRIC_AGGREGATION,
     METRIC_GRANULARITY,
+    METRIC_STATUS,
     METRIC_TYPE,
     PLAN_DURATION,
 )
-from model_bakery import baker
 
 logger = logging.getLogger("django.server")
 
@@ -1459,6 +1481,1116 @@ def setup_paas_demo(
             component.save()
 
 
+def setup_database_demo(
+    organization_name,
+    username=None,
+    email=None,
+    password=None,
+    mode="create",
+    org_type=Organization.OrganizationType.EXTERNAL_DEMO,
+    size="small",
+):
+    if mode == "create":
+        try:
+            org = Organization.objects.get(organization_name=organization_name)
+            Event.objects.filter(organization=org).delete()
+            org.delete()
+            logger.info("[DBDEMO]: Deleted existing organization, replacing")
+        except Organization.DoesNotExist:
+            logger.info("[DBDEMO]: creating from scratch")
+        try:
+            user = User.objects.get(username=username, email=email)
+        except Exception:
+            user = User.objects.create_user(
+                username=username, email=email, password=password
+            )
+        if user.organization is None:
+            organization, _ = Organization.objects.get_or_create(
+                organization_name=organization_name
+            )
+            organization.organization_type = org_type
+            user.organization = organization
+            user.save()
+            organization.save()
+    elif mode == "regenerate":
+        organization = Organization.objects.get(organization_name=organization_name)
+        user = organization.users.all().first()
+        WebhookEndpoint.objects.filter(organization=organization).delete()
+        WebhookTrigger.objects.filter(organization=organization).delete()
+        PlanVersion.objects.filter(organization=organization).delete()
+        Plan.objects.filter(organization=organization).delete()
+        Customer.objects.filter(organization=organization).delete()
+        Event.objects.filter(organization=organization).delete()
+        Metric.objects.filter(organization=organization).delete()
+        Product.objects.filter(organization=organization).delete()
+        CustomerBalanceAdjustment.objects.filter(organization=organization).delete()
+        Feature.objects.filter(organization=organization).delete()
+        Invoice.objects.filter(organization=organization).delete()
+        APIToken.objects.filter(organization=organization).delete()
+        TeamInviteToken.objects.filter(organization=organization).delete()
+        PriceAdjustment.objects.filter(organization=organization).delete()
+        ExternalPlanLink.objects.filter(organization=organization).delete()
+        SubscriptionRecord.objects.filter(organization=organization).delete()
+        Backtest.objects.filter(organization=organization).delete()
+        PricingUnit.objects.filter(organization=organization).delete()
+        NumericFilter.objects.filter(organization=organization).delete()
+        CategoricalFilter.objects.filter(organization=organization).delete()
+        PriceTier.objects.filter(organization=organization).delete()
+        PlanComponent.objects.filter(organization=organization).delete()
+        InvoiceLineItem.objects.filter(organization=organization).delete()
+        BacktestSubstitution.objects.filter(organization=organization).delete()
+        CustomPricingUnitConversion.objects.filter(organization=organization).delete()
+        if user is None:
+            organization.delete()
+            return
+    organization = user.organization
+    big_customers = []
+    for _ in range(1 if size == "small" else 5):
+        customer = Customer.objects.create(
+            organization=organization,
+            customer_name="BigCompany " + str(uuid.uuid4().hex)[:6],
+            email=f"{str(uuid.uuid4().hex)}@{str(uuid.uuid4().hex)}.com",
+        )
+        big_customers.append(customer)
+    medium_customers = []
+    for _ in range(2 if size == "small" else 10):
+        customer = Customer.objects.create(
+            organization=organization,
+            customer_name="MediumCompany " + str(uuid.uuid4().hex)[:6],
+            email=f"{str(uuid.uuid4().hex)}@{str(uuid.uuid4().hex)}.com",
+        )
+        medium_customers.append(customer)
+    small_customers = []
+    for _ in range(4 if size == "small" else 20):
+        customer = Customer.objects.create(
+            organization=organization,
+            customer_name="SmallCompany " + str(uuid.uuid4().hex)[:6],
+            email=f"{str(uuid.uuid4().hex)}@{str(uuid.uuid4().hex)}.com",
+        )
+        small_customers.append(customer)
+    organization.subscription_filter_keys = ["environment"]
+    organization.save()
+    gb_storage = METRIC_HANDLER_MAP[METRIC_TYPE.GAUGE].create_metric(
+        {
+            "organization": organization,
+            "event_name": "storage_change",
+            "property_name": "gb_storage",
+            "usage_aggregation_type": METRIC_AGGREGATION.MAX,
+            "billable_metric_name": "GB Months",
+            "metric_type": METRIC_TYPE.GAUGE,
+            "granularity": METRIC_GRANULARITY.MONTH,
+            "event_type": EVENT_TYPE.TOTAL,
+        }
+    )
+    gb_storage_hours = METRIC_HANDLER_MAP[METRIC_TYPE.GAUGE].create_metric(
+        {
+            "organization": organization,
+            "event_name": "storage_change",
+            "property_name": "gb_storage",
+            "usage_aggregation_type": METRIC_AGGREGATION.MAX,
+            "billable_metric_name": "GB Hours - Minute Proration",
+            "metric_type": METRIC_TYPE.GAUGE,
+            "granularity": METRIC_GRANULARITY.HOUR,
+            "proration": METRIC_GRANULARITY.MINUTE,
+            "event_type": EVENT_TYPE.TOTAL,
+        }
+    )
+    data_egress = METRIC_HANDLER_MAP[METRIC_TYPE.COUNTER].create_metric(
+        {
+            "organization": organization,
+            "event_name": "data_egress",
+            "property_name": "gb_data_egress",
+            "usage_aggregation_type": METRIC_AGGREGATION.SUM,
+            "billable_metric_name": "GB Data Egress",
+            "metric_type": METRIC_TYPE.COUNTER,
+        }
+    )
+    insert_rate = METRIC_HANDLER_MAP[METRIC_TYPE.RATE].create_metric(
+        {
+            "organization": organization,
+            "event_name": "db_insert",
+            "property_name": "num_rows",
+            "usage_aggregation_type": METRIC_AGGREGATION.SUM,
+            "billable_aggregation_type": METRIC_AGGREGATION.MAX,
+            "billable_metric_name": "Rows Insert Rate",
+            "metric_type": METRIC_TYPE.RATE,
+            "granularity": METRIC_GRANULARITY.DAY,
+        }
+    )
+    METRIC_HANDLER_MAP[METRIC_TYPE.COUNTER].create_metric(
+        {
+            "organization": organization,
+            "event_name": "server_costs",
+            "property_name": "cost",
+            "usage_aggregation_type": METRIC_AGGREGATION.SUM,
+            "billable_metric_name": "AWS Server Costs",
+            "metric_type": METRIC_TYPE.COUNTER,
+            "is_cost_metric": True,
+        }
+    )
+    gb_ram = METRIC_HANDLER_MAP[METRIC_TYPE.GAUGE].create_metric(
+        {
+            "organization": organization,
+            "event_name": "ram_change",
+            "property_name": "gb_ram",
+            "usage_aggregation_type": METRIC_AGGREGATION.MAX,
+            "billable_metric_name": "GB RAM Months - Daily Proration",
+            "metric_type": METRIC_TYPE.GAUGE,
+            "granularity": METRIC_GRANULARITY.MONTH,
+            "proration": METRIC_GRANULARITY.DAY,
+            "event_type": EVENT_TYPE.TOTAL,
+        }
+    )
+    number_cpus = METRIC_HANDLER_MAP[METRIC_TYPE.GAUGE].create_metric(
+        {
+            "organization": organization,
+            "event_name": "cpu_change",
+            "property_name": "number_cpus",
+            "usage_aggregation_type": METRIC_AGGREGATION.MAX,
+            "billable_metric_name": "CPU Months - Daily Proration",
+            "metric_type": METRIC_TYPE.GAUGE,
+            "granularity": METRIC_GRANULARITY.MONTH,
+            "proration": METRIC_GRANULARITY.DAY,
+            "event_type": EVENT_TYPE.TOTAL,
+        }
+    )
+    # SET THE BILLING PLANS
+    # FREE PLAN -- up to 10 GB storage, 100 GB data egress, 1000 rows/hour insert rate, 4GB RAM, 2 CPU -- flat fee
+    plan = Plan.objects.create(
+        plan_name="Free Plan",
+        organization=organization,
+        plan_duration=PLAN_DURATION.MONTHLY,
+    )
+    free_bp = PlanVersion.objects.create(
+        organization=organization,
+        plan=plan,
+        version=1,
+        currency=PricingUnit.objects.get(organization=organization, code="USD"),
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=free_bp,
+        amount=0,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=free_bp.currency,
+    )
+    create_pc_plus_tiers_new(
+        [free_bp],
+        pcs_dict={
+            gb_storage: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 10,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    }
+                ],
+            },
+            data_egress: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 100,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    }
+                ],
+            },
+            insert_rate: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 1000,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    }
+                ],
+            },
+            gb_ram: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 4,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    }
+                ],
+            },
+            number_cpus: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 2,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    }
+                ],
+            },
+        },
+    )
+    # BASIC PLAN -- up to 100 GB storage, 1000 GB data egress, 10,000 rows/hour insert rate, 8GB RAM, 4 CPUs -- flat fee
+    plan = Plan.objects.create(
+        plan_name="Basic Plan",
+        organization=organization,
+        plan_duration=PLAN_DURATION.MONTHLY,
+    )
+    basic_bp_monthly = PlanVersion.objects.create(
+        organization=organization,
+        plan=plan,
+        version=1,
+        currency=free_bp.currency,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=basic_bp_monthly,
+        amount=250,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=basic_bp_monthly.currency,
+    )
+    plan_yearly = Plan.objects.create(
+        plan_name="Basic Plan",
+        organization=organization,
+        plan_duration=PLAN_DURATION.YEARLY,
+    )
+    basic_bp_yearly = PlanVersion.objects.create(
+        organization=organization,
+        plan=plan_yearly,
+        version=1,
+        currency=free_bp.currency,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=basic_bp_yearly,
+        amount=2500,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=basic_bp_yearly.currency,
+    )
+    create_pc_plus_tiers_new(
+        [basic_bp_monthly, basic_bp_yearly],
+        pcs_dict={
+            gb_storage: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 100,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    }
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+            },
+            data_egress: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 1000,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    }
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+            },
+            insert_rate: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 10_000,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    }
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+            },
+            gb_ram: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 8,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    }
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+            },
+            number_cpus: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 4,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    }
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+            },
+        },
+    )
+
+    # PAY AS YOU GO PLAN -- unlimited BUT pay for what you use.. $0.01/GB/hour storage above 24*30*100 = 7200 GB/hr, $0.05 per GB data egress above 1000 GB, 100,000 rows/hour insert rate, $50 per month per 4GB RAM up to 32GB with 8 prepaid, $25 per month per 1 CPU up to 16 CPUs with 4 prepaid
+    plan = Plan.objects.create(
+        plan_name="Pay As You Go Plan",
+        organization=organization,
+        plan_duration=PLAN_DURATION.MONTHLY,
+    )
+    pay_as_you_go_bp_monthly = PlanVersion.objects.create(
+        organization=organization,
+        plan=plan,
+        version=1,
+        currency=free_bp.currency,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=pay_as_you_go_bp_monthly,
+        amount=100,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=pay_as_you_go_bp_monthly.currency,
+    )
+    plan_yearly = Plan.objects.create(
+        plan_name="Pay As You Go Plan",
+        organization=organization,
+        plan_duration=PLAN_DURATION.YEARLY,
+    )
+    pay_as_you_go_bp_yearly = PlanVersion.objects.create(
+        organization=organization,
+        plan=plan_yearly,
+        version=1,
+        currency=free_bp.currency,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=pay_as_you_go_bp_yearly,
+        amount=1000,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=pay_as_you_go_bp_yearly.currency,
+    )
+    create_pc_plus_tiers_new(
+        [pay_as_you_go_bp_monthly, pay_as_you_go_bp_yearly],
+        pcs_dict={
+            gb_storage: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 4000,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    }
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+            },
+            gb_storage_hours: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 7200,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    },
+                    {
+                        "range_start": 7200,
+                        "range_end": 20000,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.PER_UNIT,
+                        "cost_per_batch": 0.0001,
+                    },
+                    {
+                        "range_start": 20000,
+                        "range_end": None,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.PER_UNIT,
+                        "cost_per_batch": 0.00005,
+                    },
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+            },
+            data_egress: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 1000,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    },
+                    {
+                        "range_start": 1000,
+                        "range_end": None,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.PER_UNIT,
+                        "cost_per_batch": 0.05,
+                    },
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+            },
+            insert_rate: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 100_000,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    }
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+            },
+            gb_ram: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 32,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.PER_UNIT,
+                        "cost_per_batch": 50,
+                        "metric_units_per_batch": 4,
+                    },
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+                "prepaid_charge": {
+                    "units": 8,
+                    "charge_behavior": ComponentFixedCharge.ChargeBehavior.FULL,
+                },
+            },
+            number_cpus: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 16,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.PER_UNIT,
+                        "cost_per_batch": 25,
+                        "metric_units_per_batch": 1,
+                    },
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+                "prepaid_charge": {
+                    "units": 4,
+                    "charge_behavior": ComponentFixedCharge.ChargeBehavior.FULL,
+                },
+            },
+        },
+    )
+    # Pro Plan
+    plan = Plan.objects.create(
+        plan_name="Pro Plan - Usage Based",
+        organization=organization,
+        plan_duration=PLAN_DURATION.MONTHLY,
+    )
+    pro_plan_bp_monthly = PlanVersion.objects.create(
+        organization=organization,
+        plan=plan,
+        version=1,
+        currency=free_bp.currency,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=pro_plan_bp_monthly,
+        amount=500,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=pay_as_you_go_bp_monthly.currency,
+    )
+    plan_yearly = Plan.objects.create(
+        plan_name="Pro Plan - Usage Based",
+        organization=organization,
+        plan_duration=PLAN_DURATION.YEARLY,
+    )
+    pro_plan_bp_yearly = PlanVersion.objects.create(
+        organization=organization,
+        plan=plan_yearly,
+        version=1,
+        currency=free_bp.currency,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=pro_plan_bp_yearly,
+        amount=5000,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=pay_as_you_go_bp_yearly.currency,
+    )
+    create_pc_plus_tiers_new(
+        [pro_plan_bp_monthly, pro_plan_bp_yearly],
+        pcs_dict={
+            gb_storage: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 4000,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    }
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+            },
+            gb_storage_hours: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 10_000,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    },
+                    {
+                        "range_start": 10_000,
+                        "range_end": 20000,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.PER_UNIT,
+                        "cost_per_batch": 0.00005,
+                    },
+                    {
+                        "range_start": 20000,
+                        "range_end": None,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.PER_UNIT,
+                        "cost_per_batch": 0.000025,
+                    },
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+            },
+            data_egress: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 2500,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    },
+                    {
+                        "range_start": 2500,
+                        "range_end": None,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.PER_UNIT,
+                        "cost_per_batch": 0.035,
+                    },
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+            },
+            insert_rate: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 100_000,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    }
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+            },
+            gb_ram: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 32,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.PER_UNIT,
+                        "cost_per_batch": 40,
+                        "metric_units_per_batch": 4,
+                    },
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+                "prepaid_charge": {
+                    "units": 16,
+                    "charge_behavior": ComponentFixedCharge.ChargeBehavior.FULL,
+                },
+            },
+            number_cpus: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 16,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.PER_UNIT,
+                        "cost_per_batch": 20,
+                        "metric_units_per_batch": 1,
+                    },
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+                "prepaid_charge": {
+                    "units": 8,
+                    "charge_behavior": ComponentFixedCharge.ChargeBehavior.FULL,
+                },
+            },
+        },
+    )
+    # ADDON:
+    n_months = 4 if size == "small" else 12
+    start_of_sim = now_utc() - relativedelta(months=n_months) - relativedelta(days=5)
+    for cust_set_name, cust_set in [
+        ("big", big_customers),
+        ("medium", medium_customers),
+        ("small", small_customers),
+    ]:
+        plan_dict = {
+            "big": [
+                (0, basic_bp_monthly),
+                (1 / 3, pay_as_you_go_bp_monthly),
+                (5 / 6, pro_plan_bp_monthly),
+            ],
+            "medium": [
+                (0, free_bp),
+                (1 / 6, basic_bp_monthly),
+                (1 / 2, pay_as_you_go_bp_monthly),
+            ],
+            "small": [(0, free_bp), (1 / 3, basic_bp_monthly)],
+        }
+        for customer in cust_set:
+            offset = np.random.randint(0, 30)
+            beginning = start_of_sim + relativedelta(days=offset)
+            for months in range(n_months):
+                sub_start = beginning + relativedelta(months=months)
+                cur_pct = (months + 1) / n_months
+                for i in range(len(plan_dict[cust_set_name])):
+                    lower_bound = plan_dict[cust_set_name][i][0]
+                    upper_bound = (
+                        plan_dict[cust_set_name][i + 1][0]
+                        if i + 1 < len(plan_dict[cust_set_name])
+                        else float("inf")
+                    )
+                    if lower_bound < cur_pct <= upper_bound:
+                        plan = plan_dict[cust_set_name][i][1]
+                        break
+                # number of gauge events is irrespective
+                n_storage_events = max(int(random.gauss(100, 20) // 1), 1)
+                n_gb_ram_events = max(int(random.gauss(20, 3) // 1), 1)
+                n_cpu_events = max(int(random.gauss(10, 2) // 1), 1)
+                if plan == free_bp:
+                    max_storage = 10
+                    max_gb_ram = 4
+                    max_cpus = 2
+                    max_egress = 100
+                    max_insert_rate = 1000
+                elif plan == basic_bp_monthly:
+                    max_storage = 100
+                    max_gb_ram = 8
+                    max_cpus = 4
+                    max_egress = 1000
+                    max_insert_rate = 10_000
+                else:
+                    max_storage = 4000
+                    max_gb_ram = 32
+                    max_cpus = 16
+                    max_egress = 10_000
+                    max_insert_rate = 100_000
+                if cust_set_name == "big":
+                    pct_of_max__mean = 0.8
+                elif cust_set_name == "medium":
+                    pct_of_max__mean = 0.6
+                else:
+                    pct_of_max__mean = 0.6
+                if months == 0:
+                    sr = make_subscription_record(
+                        organization=organization,
+                        customer=customer,
+                        plan=plan,
+                        start_date=sub_start,
+                        is_new=months == 0,
+                    )
+                else:
+                    sr = SubscriptionRecord.objects.get(
+                        organization=organization,
+                        customer=customer,
+                        start_date__gt=sr.start_date,
+                    )
+                # ALL EVENTS
+                events = []
+                # storage events
+                dts = list(random_date(sr.start_date, sr.end_date, n_storage_events))
+                for dt in dts:
+                    gb_storage = (
+                        min(random.gauss(pct_of_max__mean, 0.05), 1) * max_storage
+                    )
+                    e = Event(
+                        organization=organization,
+                        event_name="storage_change",
+                        properties={
+                            "gb_storage": gb_storage,
+                        },
+                        time_created=dt,
+                        idempotency_id=uuid.uuid4().hex,
+                        cust_id=customer.customer_id,
+                    )
+                    events.append(e)
+                # gb ram events
+                dts = list(random_date(sr.start_date, sr.end_date, n_gb_ram_events))
+                for dt in dts:
+                    gb_ram = min(random.gauss(pct_of_max__mean, 0.05), 1) * max_gb_ram
+                    e = Event(
+                        organization=organization,
+                        event_name="ram_change",
+                        properties={
+                            "gb_ram": gb_ram,
+                        },
+                        time_created=dt,
+                        idempotency_id=uuid.uuid4().hex,
+                        cust_id=customer.customer_id,
+                    )
+                    events.append(e)
+                # cpu events
+                dts = list(random_date(sr.start_date, sr.end_date, n_cpu_events))
+                for dt in dts:
+                    number_cpus = (
+                        min(random.gauss(pct_of_max__mean, 0.05), 1) * max_cpus
+                    )
+                    e = Event(
+                        organization=organization,
+                        event_name="cpu_change",
+                        properties={
+                            "number_cpus": number_cpus,
+                        },
+                        time_created=dt,
+                        idempotency_id=uuid.uuid4().hex,
+                        cust_id=customer.customer_id,
+                    )
+                    events.append(e)
+                # data egress events
+                target_egress = (
+                    min(random.gauss(pct_of_max__mean, 0.05), 1) * max_egress
+                )
+                cur_egress = 0
+                n_egress_events = 0
+                while cur_egress < target_egress:
+                    dt = next(random_date(sr.start_date, sr.end_date, 1))
+                    egress = np.random.random() * 25
+                    if cur_egress + egress > target_egress:
+                        break
+                    e = Event(
+                        organization=organization,
+                        event_name="data_egress",
+                        properties={
+                            "gb_data_egress": egress,
+                        },
+                        time_created=dt,
+                        idempotency_id=uuid.uuid4().hex,
+                        cust_id=customer.customer_id,
+                    )
+                    events.append(e)
+                    cur_egress += egress
+                    n_egress_events += 1
+                # db insert events
+                target_rows = (
+                    min(random.gauss(pct_of_max__mean, 0.05), 1) * max_insert_rate * 10
+                )
+                cur_rows = 0
+                n_insert_events = 0
+                while cur_rows < target_rows:
+                    dt = next(random_date(sr.start_date, sr.end_date, 1))
+                    rows = np.random.random() * 800
+                    if cur_rows + rows > target_rows:
+                        break
+                    e = Event(
+                        organization=organization,
+                        event_name="db_insert",
+                        properties={
+                            "num_rows": rows,
+                        },
+                        time_created=dt,
+                        idempotency_id=uuid.uuid4().hex,
+                        cust_id=customer.customer_id,
+                    )
+                    events.append(e)
+                    cur_rows += rows
+                    n_insert_events += 1
+                # cost events
+                total_events = (
+                    n_cpu_events + n_gb_ram_events + n_storage_events + n_egress_events
+                )
+                n_cost_events = total_events // 10
+                dts = list(random_date(sr.start_date, sr.end_date, n_cost_events))
+                for dt in dts:
+                    cost = np.random.random() * 8
+                    e = Event(
+                        organization=organization,
+                        event_name="server_costs",
+                        properties={
+                            "cost": cost,
+                        },
+                        time_created=dt,
+                        idempotency_id=uuid.uuid4().hex,
+                        cust_id=customer.customer_id,
+                    )
+                    events.append(e)
+
+                next_pct = (months + 2) / n_months
+                for i in range(len(plan_dict[cust_set_name])):
+                    lower_bound = plan_dict[cust_set_name][i][0]
+                    upper_bound = (
+                        plan_dict[cust_set_name][i + 1][0]
+                        if i + 1 < len(plan_dict[cust_set_name])
+                        else float("inf")
+                    )
+                    if lower_bound < next_pct <= upper_bound:
+                        next_plan = plan_dict[cust_set_name][i][1]
+                        break
+                Event.objects.bulk_create(events)
+                if months == 0:
+                    generate_invoice(
+                        [sr],
+                        issue_date=sr.start_date,
+                    )
+                if now_utc() > sr.end_date:
+                    cur_bp = sr.billing_plan
+                    cur_replace_with = cur_bp.replace_with
+                    cur_bp.replace_with = next_plan
+                    cur_bp.save()
+                    generate_invoice(
+                        [sr],
+                        issue_date=sr.end_date,
+                        charge_next_plan=True,
+                        generate_next_subscription_record=True,
+                    )
+                    cur_bp.replace_with = cur_replace_with
+                    cur_bp.save()
+    analysis_results = {}
+    end_date = now_utc()
+    start_date = end_date - relativedelta(days=90)
+
+    # analysis summary
+    analysis_summary = []
+    for plan in [pro_plan_bp_monthly, pay_as_you_go_bp_monthly]:
+        plan_ser = LightweightPlanVersionSerializer(plan).data
+        kpis = []
+        for kpi, _ in ANALYSIS_KPI.choices:
+            if kpi == ANALYSIS_KPI.TOTAL_REVENUE:
+                value = (
+                    InvoiceLineItem.objects.filter(
+                        associated_plan_version=pay_as_you_go_bp_monthly
+                    ).aggregate(
+                        total_revenue=Sum("amount", output_field=DecimalField())
+                    )[
+                        "total_revenue"
+                    ]
+                    or 0
+                )
+                if plan == pro_plan_bp_monthly:
+                    value = value * convert_to_decimal(random.gauss(0.8, 0.05))
+            elif kpi == ANALYSIS_KPI.NEW_REVENUE:
+                value = (
+                    InvoiceLineItem.objects.filter(
+                        associated_plan_version=pay_as_you_go_bp_monthly
+                    ).aggregate(
+                        total_revenue=Sum("amount", output_field=DecimalField())
+                    )[
+                        "total_revenue"
+                    ]
+                    or 0
+                )
+                if plan == pro_plan_bp_monthly:
+                    value = value * convert_to_decimal(random.gauss(0.8, 0.05))
+                value = value * Decimal("0.2")
+            elif kpi == ANALYSIS_KPI.AVERAGE_REVENUE:
+                value_tot = (
+                    InvoiceLineItem.objects.filter(
+                        associated_plan_version=pay_as_you_go_bp_monthly
+                    ).aggregate(
+                        total_revenue=Sum("amount", output_field=DecimalField())
+                    )[
+                        "total_revenue"
+                    ]
+                    or 0
+                )
+                if plan == pro_plan_bp_monthly:
+                    value_tot = value_tot * convert_to_decimal(random.gauss(0.8, 0.05))
+                value_count = SubscriptionRecord.objects.filter(
+                    billing_plan=pay_as_you_go_bp_monthly
+                ).count()
+                if plan == pro_plan_bp_monthly:
+                    value_count = value_count * convert_to_decimal(
+                        random.gauss(0.8, 0.05)
+                    )
+                value = Decimal(value_tot) / Decimal(value_count)
+            elif kpi == ANALYSIS_KPI.TOTAL_COST:
+                cost_metrics = Metric.objects.filter(
+                    organization=organization,
+                    is_cost_metric=True,
+                    status=METRIC_STATUS.ACTIVE,
+                )
+                metric_cost_dict = {}
+                for metric in cost_metrics:
+                    metric_cost_dict[metric.billable_metric_name] = Decimal(0)
+                    usage_ret = metric.get_daily_total_usage(
+                        start_date,
+                        end_date,
+                        customer=customer,
+                    ).get(customer, {})
+                    for _, usage in usage_ret.items():
+                        metric_cost_dict[metric.billable_metric_name] += Decimal(usage)
+                value = sum(metric_cost_dict.values())
+                if plan == pro_plan_bp_monthly:
+                    value = value * convert_to_decimal(random.gauss(1.2, 0.05))
+            elif kpi == ANALYSIS_KPI.PROFIT:
+                continue
+            else:
+                value = Decimal("3.16")
+                if plan == pro_plan_bp_monthly:
+                    value = value * convert_to_decimal(random.gauss(1.2, 0.05))
+            single_kpi = {"kpi": kpi, "value": value}
+            kpis.append(single_kpi)
+        revenue_kpi = [x for x in kpis if x["kpi"] == ANALYSIS_KPI.TOTAL_REVENUE][0][
+            "value"
+        ]
+        cost_kpi = [x for x in kpis if x["kpi"] == ANALYSIS_KPI.TOTAL_COST][0]["value"]
+        profit_kpi = {
+            "kpi": ANALYSIS_KPI.PROFIT,
+            "value": revenue_kpi - cost_kpi,
+        }
+        kpis.append(profit_kpi)
+        single_plan_analysis = {
+            "plan": plan_ser,
+            "kpis": kpis,
+        }
+        analysis_summary.append(single_plan_analysis)
+
+    analysis_results["analysis_summary"] = analysis_summary
+    # revenue per day graph
+    revenue_per_day = []
+    for date in dates_bwn_two_dts(start_date, end_date):
+        d = {
+            "date": str(date),
+        }
+        rev_per_plan = []
+        for plan in [pro_plan_bp_monthly, pay_as_you_go_bp_monthly]:
+            plan_repr = LightweightPlanVersionSerializer(plan).data
+            # create random gaussin with mean 1/90 and standard dev a tenth of that
+            kpi_dict = [
+                x
+                for x in analysis_summary
+                if x["plan"]["plan_id"] == plan_repr["plan_id"]
+            ][0]
+            revenue_kpi = [
+                x for x in kpi_dict["kpis"] if x["kpi"] == ANALYSIS_KPI.TOTAL_REVENUE
+            ][0]["value"]
+            value = revenue_kpi * Decimal(random.gauss(1 / 90, 1 / 500))
+            single_plan_rev = {
+                "plan": plan_repr,
+                "revenue": value,
+            }
+            rev_per_plan.append(single_plan_rev)
+        d["revenue_per_plan"] = rev_per_plan
+        revenue_per_day.append(d)
+    analysis_results["revenue_per_day_graph"] = revenue_per_day
+    # revenue by metric graph
+    revenue_by_metric = []
+    for plan in [pro_plan_bp_monthly, pay_as_you_go_bp_monthly]:
+        plan_repr = LightweightPlanVersionSerializer(plan).data
+        by_metric = []
+        kpi_dict = [
+            x for x in analysis_summary if x["plan"]["plan_id"] == plan_repr["plan_id"]
+        ][0]
+        revenue_kpi = [
+            x for x in kpi_dict["kpis"] if x["kpi"] == ANALYSIS_KPI.TOTAL_REVENUE
+        ][0]["value"]
+        pcs = plan.plan_components.all()
+        for pc in pcs:
+            metric = pc.billable_metric
+            value = revenue_kpi * Decimal(
+                random.gauss(1 / len(pcs), 1 / (len(pcs) * 2))
+            )
+            single_metric = {
+                "metric": LightweightMetricSerializer(metric).data,
+                "revenue": value,
+            }
+            by_metric.append(single_metric)
+        single_plan_metrics = {
+            "plan": plan_repr,
+            "by_metric": by_metric,
+        }
+        revenue_by_metric.append(single_plan_metrics)
+    analysis_results["revenue_by_metric_graph"] = revenue_by_metric
+    # top customers by plan
+    top_customers_by_plan = []
+    for plan in [pro_plan_bp_monthly, pay_as_you_go_bp_monthly]:
+        customers = Customer.objects.filter(
+            organization=organization,
+        ).order_by(
+            "?"
+        )[:5]
+        top_customers_by_total_revenue = []
+        for customer in customers:
+            kpi_dict = [
+                x
+                for x in analysis_summary
+                if x["plan"]["plan_id"] == plan_repr["plan_id"]
+            ][0]
+            revenue_kpi = [
+                x for x in kpi_dict["kpis"] if x["kpi"] == ANALYSIS_KPI.TOTAL_REVENUE
+            ][0]["value"]
+            value = revenue_kpi * convert_to_decimal(
+                abs(Decimal(random.gauss(1 / 5, 1 / 10)))
+            )
+            single_customer = {
+                "customer": LightweightCustomerSerializer(customer).data,
+                "value": value,
+            }
+            top_customers_by_total_revenue.append(single_customer)
+        top_customers_by_total_revenue = sorted(
+            top_customers_by_total_revenue, key=lambda x: x["value"], reverse=True
+        )
+        top_customers_by_average_revenue = []
+        for customer in customers:
+            kpi_dict = [
+                x
+                for x in analysis_summary
+                if x["plan"]["plan_id"] == plan_repr["plan_id"]
+            ][0]
+            revenue_kpi = [
+                x for x in kpi_dict["kpis"] if x["kpi"] == ANALYSIS_KPI.TOTAL_REVENUE
+            ][0]["value"]
+            value = (
+                revenue_kpi
+                * convert_to_decimal(abs(Decimal(random.gauss(1 / 5, 1 / 10))))
+                / convert_to_decimal(abs(random.gauss(3, 1)))
+            )
+            single_customer = {
+                "customer": LightweightCustomerSerializer(customer).data,
+                "value": value,
+            }
+            top_customers_by_average_revenue.append(single_customer)
+        top_customers_by_average_revenue = sorted(
+            top_customers_by_average_revenue, key=lambda x: x["value"], reverse=True
+        )
+        single_plan = {
+            "plan": LightweightPlanVersionSerializer(plan).data,
+            "top_customers_by_average_revenue": top_customers_by_average_revenue,
+            "top_customers_by_revenue": top_customers_by_total_revenue,
+        }
+        top_customers_by_plan.append(single_plan)
+    analysis_results["top_customers_by_plan"] = top_customers_by_plan
+    # create actual analysis
+    analysis_results = round_all_decimals_to_two_places(analysis_results)
+    analysis_results = make_all_decimals_strings(analysis_results)
+    Analysis.objects.create(
+        organization=organization,
+        analysis_results=analysis_results,
+        analysis_name="test",
+        start_date=start_date,
+        end_date=end_date,
+        kpis=[kpi for kpi, _ in ANALYSIS_KPI.choices],
+        status=EXPERIMENT_STATUS.COMPLETED,
+    )
+    return user
+
+
 def create_pc_and_tiers(
     organization,
     plan_version,
@@ -1547,5 +2679,44 @@ def make_subscription_record(
         subscription_filters=None,
         is_new=is_new,
         quantity=1,
+        do_generate_invoice=False,
     )
     return sr
+
+
+def create_pc_plus_tiers_new(plan_versions, pcs_dict):
+    for plan_version in plan_versions:
+        for metric, pc_info in pcs_dict.items():
+            pc = PlanComponent.objects.create(
+                plan_version=plan_version,
+                billable_metric=metric,
+                organization=plan_version.organization,
+                pricing_unit=plan_version.currency,
+                invoicing_interval_unit=pc_info.get("invoicing_interval_unit"),
+                invoicing_interval_count=pc_info.get("invoicing_interval_count"),
+                reset_interval_unit=pc_info.get("reset_interval_unit"),
+                reset_interval_count=pc_info.get("reset_interval_count"),
+            )
+            if pc_info.get("fixed_charge"):
+                fc = ComponentFixedCharge.objects.create(
+                    organization=plan_version.organization,
+                    units=pc_info.get("units"),
+                    charge_behavior=pc_info.get("charge_behavior"),
+                )
+                pc.fixed_charge = fc
+                pc.save()
+            if pc_info.get("tiers"):
+                for tier in pc_info.get("tiers"):
+                    PriceTier.objects.create(
+                        plan_component=pc,
+                        range_start=tier.get("range_start"),
+                        range_end=tier.get("range_end"),
+                        type=tier.get("type"),
+                        cost_per_batch=tier.get("cost_per_batch"),
+                        metric_units_per_batch=tier.get("metric_units_per_batch", 1),
+                        organization=plan_version.organization,
+                        batch_rounding_type=tier.get("batch_rounding_type"),
+                    )
+
+
+# eof

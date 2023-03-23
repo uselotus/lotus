@@ -918,7 +918,10 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                       <Button
                         key="submit"
                         type="primary"
-                        disabled={isInvalid}
+                        disabled={
+                          isInvalid ||
+                          (import.meta as any).env.VITE_IS_DEMO === "true"
+                        }
                         onClick={() => submitAlertModal(currentComponent)}
                       >
                         Create

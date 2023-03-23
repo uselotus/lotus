@@ -1541,6 +1541,8 @@ class RateHandler(MetricHandler):
         metric: Metric, billing_record: BillingRecord
     ) -> dict[datetime.date, Decimal]:
         results = RateHandler._rate_cagg_total_results(metric, billing_record)
+        if len(results) == 0:
+            return {}
         total = results[0].usage_qty
         date = convert_to_date(results[0].bucket)
         return {date: total}
