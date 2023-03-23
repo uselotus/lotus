@@ -1489,9 +1489,9 @@ def setup_database_demo(
             org = Organization.objects.get(organization_name=organization_name)
             Event.objects.filter(organization=org).delete()
             org.delete()
-            logger.info("[DEMO4]: Deleted existing organization, replacing")
+            logger.info("[DBDEMO]: Deleted existing organization, replacing")
         except Organization.DoesNotExist:
-            logger.info("[DEMO4]: creating from scratch")
+            logger.info("[DBDEMO]: creating from scratch")
         try:
             user = User.objects.get(username=username, email=email)
         except Exception:
@@ -2365,14 +2365,14 @@ def setup_database_demo(
         plan_ser = LightweightPlanVersionSerializer(plan).data
         kpis = []
         for kpi, _ in ANALYSIS_KPI.choices:
-            single_kpi = {"kpi": kpi, "value": str(Decimal(15.43))}
+            single_kpi = {"kpi": kpi, "value": str(Decimal("15.43"))}
             kpis.append(single_kpi)
         single_plan_analysis = {
             "plan": plan_ser,
             "kpis": kpis,
         }
         analysis_summary.append(single_plan_analysis)
-    analysis_results["analysis_summary"] = single_plan_analysis
+    analysis_results["analysis_summary"] = analysis_summary
     # revenue per day graph
     revenue_per_day = []
     for date in dates_bwn_two_dts(start_date, end_date):
@@ -2383,7 +2383,7 @@ def setup_database_demo(
         for plan in [pro_plan_bp_monthly, pay_as_you_go_bp_monthly]:
             single_plan_rev = {
                 "plan": LightweightPlanVersionSerializer(plan).data,
-                "revenue": str(Decimal(15.43)),
+                "revenue": str(Decimal("15.43")),
             }
             rev_per_plan.append(single_plan_rev)
         d["revenue_per_plan"] = rev_per_plan
@@ -2396,15 +2396,16 @@ def setup_database_demo(
         for pc in plan.plan_components.all():
             metric = pc.billable_metric
             single_metric = {
-                "metric": LightweightMetricSerializer(metric),
-                "revenue": str(Decimal(15.43)),
+                "metric": LightweightMetricSerializer(metric).data,
+                "revenue": str(Decimal("15.43")),
             }
             by_metric.append(single_metric)
         single_plan_metrics = {
             "plan": LightweightPlanVersionSerializer(plan).data,
-            "metrics": by_metric,
+            "by_metric": by_metric,
         }
         revenue_by_metric.append(single_plan_metrics)
+    analysis_results["revenue_by_metric_graph"] = revenue_by_metric
     # top customers by plan
     top_customers_by_plan = []
     for plan in [pro_plan_bp_monthly, pay_as_you_go_bp_monthly]:
@@ -2417,23 +2418,23 @@ def setup_database_demo(
         for customer in customers:
             single_customer = {
                 "customer": LightweightCustomerSerializer(customer).data,
-                "value": str(Decimal(15.43)),
+                "value": str(Decimal("15.43")),
             }
             top_customers_by_total_revenue.append(single_customer)
         top_customers_by_average_revenue = []
         for customer in customers:
             single_customer = {
                 "customer": LightweightCustomerSerializer(customer).data,
-                "value": str(Decimal(15.43)),
+                "value": str(Decimal("15.43")),
             }
             top_customers_by_average_revenue.append(single_customer)
-        {
+        single_plan = {
             "plan": LightweightPlanVersionSerializer(plan).data,
             "top_customers_by_average_revenue": top_customers_by_average_revenue,
-            "top_customers_by_total_revenue": top_customers_by_total_revenue,
+            "top_customers_by_revenue": top_customers_by_total_revenue,
         }
+        top_customers_by_plan.append(single_plan)
     analysis_results["top_customers_by_plan"] = top_customers_by_plan
-    print(analysis_results)
     # create actual analysis
     Analysis.objects.create(
         organization=organization,

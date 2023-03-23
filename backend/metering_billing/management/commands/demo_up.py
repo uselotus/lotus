@@ -9,7 +9,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         # Named (optional) arguments
         parser.add_argument(
-            "--large",
+            "--size",
             help="whether to use the expanded version or not",
         )
         parser.add_argument(
@@ -18,10 +18,19 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        from metering_billing.models import Organization
+
+        size = options.get("size")
+        if size is None:
+            size = "small"
+        elif size not in ("small", "large"):
+            raise ValueError("Invalid size: %s" % size)
+        name = options.get("name") or "demo"
         setup_database_demo(
-            organization_name=options.get("name", "demo"),
-            username=options.get("name", "demo"),
-            email=options.get("name", "demo") + "@demo.com",
-            password=options.get("name", "demo"),
-            size=options.get("large", "small"),
+            organization_name=name,
+            username=name,
+            email=name + "@demo.com",
+            password=name,
+            size=size,
+            org_type=Organization.OrganizationType.INTERNAL_DEMO,
         )

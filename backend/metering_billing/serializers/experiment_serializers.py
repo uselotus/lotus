@@ -1,5 +1,3 @@
-from rest_framework import serializers
-
 from api.serializers.model_serializers import (
     LightweightCustomerSerializer,
     LightweightMetricSerializer,
@@ -13,6 +11,7 @@ from metering_billing.models import (
 )
 from metering_billing.serializers.model_serializers import PlanVersionDetailSerializer
 from metering_billing.utils.enums import ANALYSIS_KPI, BACKTEST_KPI
+from rest_framework import serializers
 
 from .serializer_utils import (
     AnalysisUUIDField,
@@ -233,7 +232,12 @@ class AnalysisDetailSerializer(AnalysisSummarySerializer):
             set(AnalysisSummarySerializer.Meta.fields) | {"analysis_results"}
         )
 
-    analysis_results = AnalysisResultsSerializer()
+    analysis_results = serializers.SerializerMethodField()
+
+    def get_analysis_results(self, obj) -> AnalysisResultsSerializer():
+        serializer = AnalysisResultsSerializer(data=obj.analysis_results)
+        serializer.is_valid(raise_exception=True)
+        return serializer.validated_data
 
 
 # end
