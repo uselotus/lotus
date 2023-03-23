@@ -536,8 +536,6 @@ VITE_APP_DIR = BASE_DIR / "src"
 ### AWS S3 ###
 AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID", default="")
 AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY", default="")
-AWS_S3_INVOICE_BUCKET = config("AWS_S3_INVOICE_BUCKET", default="")
-AWS_STORAGE_BUCKET_NAME = AWS_S3_INVOICE_BUCKET
 
 
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
