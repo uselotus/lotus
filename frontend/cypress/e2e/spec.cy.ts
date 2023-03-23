@@ -17,12 +17,18 @@ function getEmail(length) {
 }
 
 const Login = () => {
+  // Intercept the login API request and alias it as 'loginRequest'
+  cy.intercept("POST", "/api/login").as("loginRequest");
+
   cy.visit("http://localhost:3000/login");
   cy.contains("Username or Email");
   cy.get("[name='username']").type("demo");
   cy.get("[name='password']").type("demo");
   cy.get("form").contains("Login").click();
-  cy.wait(5000);
+
+  // Wait for the loginRequest to complete
+  cy.wait("@loginRequest");
+
   cy.on("uncaught:exception", (err) => {
     if (err.message.includes("_a6.join is not a function")) {
       return false;
