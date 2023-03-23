@@ -35,7 +35,7 @@ import {
   useQuery,
   useQueryClient,
   UseQueryResult,
-} from "react-query";
+} from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
@@ -617,7 +617,7 @@ const SubscriptionView: FC<Props> = ({
     fromUpcoming: boolean;
   }) {
     return (
-      <div key={subPlan.billing_plan.plan_id + subPlan.subscription_filters}>
+      (<div key={subPlan.billing_plan.plan_id + subPlan.subscription_filters}>
         <CustomerCard
           className={`shadow-none ${
             windowWidth > 2500 ? `h-[290px]` : "h-[270px]"
@@ -779,7 +779,7 @@ const SubscriptionView: FC<Props> = ({
                     </DropdownComponent.Container>
                   ) : (
                     // from upcoming
-                    <DropdownComponent.Container className="!bg-[#fff4e9] ">
+                    (<DropdownComponent.Container className="!bg-[#fff4e9] ">
                       {subDropdownOptions.map((key, index) => (
                         <DropdownComponent.MenuItem
                           className="hover:text-black hover:bg-[#f8e8d7] whitespace-nowrap"
@@ -814,7 +814,7 @@ const SubscriptionView: FC<Props> = ({
                           {key}
                         </DropdownComponent.MenuItem>
                       ))}
-                    </DropdownComponent.Container>
+                    </DropdownComponent.Container>)
                   )}
                 </DropdownComponent>
                 <div className=" flex-row flex font-alliance  items-center border-inherit w-full">
@@ -835,7 +835,6 @@ const SubscriptionView: FC<Props> = ({
             </CustomerCard.Container>
           </CustomerCard.Heading>
         </CustomerCard>
-
         {showModal ? (
           <Modal
             transitionName=""
@@ -1086,7 +1085,7 @@ const SubscriptionView: FC<Props> = ({
             </div>
           </Modal>
         ) : null}
-      </div>
+      </div>)
     );
   }
 

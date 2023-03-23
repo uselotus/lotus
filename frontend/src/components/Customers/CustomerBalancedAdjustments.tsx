@@ -9,7 +9,7 @@ import {
   useQuery,
   useQueryClient,
   UseQueryResult,
-} from "react-query";
+} from "@tanstack/react-query";
 import { MoreOutlined } from "@ant-design/icons";
 import { toast } from "react-toastify";
 import { ColumnsType } from "antd/es/table";
@@ -187,7 +187,6 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
   return (
     <div>
       <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Credits</h2>
-
       <div className="flex items-center justify-between pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center justify-between pr-6">
@@ -228,7 +227,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
           }}
           onSubmit={() => {
             setShowCreateCredit(false);
-            queryClient.invalidateQueries("credits");
+            queryClient.invalidateQueries(["credits"]);
           }}
           visible={showCreateCredit}
         />

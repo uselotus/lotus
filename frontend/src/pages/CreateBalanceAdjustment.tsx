@@ -6,7 +6,7 @@ import {
   useQueryClient,
   UseQueryResult,
   useQuery,
-} from "react-query";
+} from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import dayjs from "dayjs";
 import { Credits, PricingUnits } from "../api/api";

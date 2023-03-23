@@ -325,8 +325,6 @@ def key_deserializer(key):
 # Kafka/Redpanda Settings
 KAFKA_PREFIX = config("KAFKA_PREFIX", default="")
 KAFKA_EVENTS_TOPIC = KAFKA_PREFIX + config("EVENTS_TOPIC", default="test-topic")
-if type(KAFKA_EVENTS_TOPIC) is bytes:
-    KAFKA_EVENTS_TOPIC = KAFKA_EVENTS_TOPIC.decode("utf-8")
 KAFKA_INVOICE_TOPIC = KAFKA_PREFIX + config("INVOICE_TOPIC", default="invoice-test")
 KAFKA_PAYMENT_TOPIC = KAFKA_PREFIX + config("PAYMENT_TOPIC", default="payment-test")
 KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
@@ -380,7 +378,7 @@ if KAFKA_HOST:
     ADMIN_CLIENT = KafkaAdminClient(**admin_client_config)
 
     existing_topics = ADMIN_CLIENT.list_topics()
-    if KAFKA_EVENTS_TOPIC not in existing_topics and SELF_HOSTED:
+    if KAFKA_EVENTS_TOPIC not in existing_topics and DOCKERIZED:
         try:
             ADMIN_CLIENT.create_topics(
                 new_topics=[
@@ -393,12 +391,25 @@ if KAFKA_HOST:
             )
         except TopicAlreadyExistsError:
             pass
-    if KAFKA_INVOICE_TOPIC not in existing_topics and SELF_HOSTED:
+    if KAFKA_INVOICE_TOPIC not in existing_topics and DOCKERIZED:
         try:
             ADMIN_CLIENT.create_topics(
                 new_topics=[
                     NewTopic(
                         name=KAFKA_INVOICE_TOPIC,
+                        num_partitions=KAFKA_NUM_PARTITIONS,
+                        replication_factor=KAFKA_REPLICATION_FACTOR,
+                    )
+                ]
+            )
+        except TopicAlreadyExistsError:
+            pass
+    if KAFKA_PAYMENT_TOPIC not in existing_topics and DOCKERIZED:
+        try:
+            ADMIN_CLIENT.create_topics(
+                new_topics=[
+                    NewTopic(
+                        name=KAFKA_PAYMENT_TOPIC,
                         num_partitions=KAFKA_NUM_PARTITIONS,
                         replication_factor=KAFKA_REPLICATION_FACTOR,
                     )
