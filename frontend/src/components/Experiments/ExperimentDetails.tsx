@@ -152,7 +152,7 @@ const ExperimentDetails: FC<Props> = ({ data, kpi }) => {
           <div className="grid grid-cols-2 gap-24">
             {data.revenue_by_metric_graph.map((item) => (
               <div className="col-span-1">
-                <div className="text-base  font-semiBold">
+                <div className="text-base  font-semiBold mb-6">
                   {item.plan.plan_name}
                 </div>
                 <Pie
@@ -185,21 +185,26 @@ const ExperimentDetails: FC<Props> = ({ data, kpi }) => {
       <div className=" bg-[#F9F9F9] px-10 py-10 my-6 ">
         <div className="text-xl  font-semiBold text-black">Top Customers</div>
         <div className="w-full h-[1.5px] my-8 bg-card-divider" />
-        <div className="flex flex-wrap gap-24 ">
+        <div className="grid grid-cols-4  gap-12 ">
           {data.top_customers_by_plan &&
             data.top_customers_by_plan.map((item) => (
-              <div className="flex-grow">
+              <div className="col-span-1">
                 <div className="text-base  font-semiBold">
-                  Revenue On {item.plan.plan_name}
+                  Total Revenue On:
                 </div>
-                <List marginTop="mt-2">
+                <div className="text-base  font-semiBold">
+                  {item.plan.plan_name}
+                </div>
+                <List marginTop="mt-4">
                   {item.top_customers_by_revenue.map((item) => (
                     <ListItem key={item.customer.customer_id}>
-                      <Text>{item.customer.customer_name}</Text>
-                      <Text>
-                        <Bold>{(parseFloat(item.value) * 100).toFixed(2)}</Bold>
+                      <div className="text-sm  text-card-grey">
+                        {item.customer.customer_name}
+                      </div>
+                      <div className=" text-black">
+                        {(parseFloat(item.value) * 100).toFixed(2)}
                         {"% "}
-                      </Text>
+                      </div>
                     </ListItem>
                   ))}
                 </List>
@@ -207,18 +212,23 @@ const ExperimentDetails: FC<Props> = ({ data, kpi }) => {
             ))}
           {data.top_customers_by_plan &&
             data.top_customers_by_plan.map((item) => (
-              <div className="flex-grow">
+              <div className="col-span-1">
                 <div className="text-base  font-semiBold">
-                  Revenue On {item.plan.plan_name}
+                  Average Revenue On:
                 </div>
-                <List marginTop="mt-2">
-                  {item.top_customers_by_revenue.map((item) => (
+                <div className="text-base  font-semiBold">
+                  {item.plan.plan_name}
+                </div>
+                <List marginTop="mt-4">
+                  {item.top_customers_by_average_revenue.map((item) => (
                     <ListItem key={item.customer.customer_id}>
-                      <Text>{item.customer.customer_name}</Text>
-                      <Text>
-                        <Bold>{(parseFloat(item.value) * 100).toFixed(2)}</Bold>
+                      <div className="text-sm  text-card-grey">
+                        {item.customer.customer_name}
+                      </div>{" "}
+                      <div className=" text-black">
+                        {(parseFloat(item.value) * 100).toFixed(2)}
                         {"% "}
-                      </Text>
+                      </div>
                     </ListItem>
                   ))}
                 </List>

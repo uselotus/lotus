@@ -306,7 +306,7 @@ const ExperimentResults: FC = () => {
 
                       <div className="w-full h-[1.5px] my-8 bg-card-divider" />
 
-                      <div className="grid grid-cols-4">
+                      <div className="grid grid-cols-4 gap-y-4">
                         {summary.kpis.map((kpi, kpiIndex) => {
                           return (
                             <div

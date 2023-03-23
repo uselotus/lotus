@@ -12,7 +12,7 @@ interface PlanTagsProps {
 function PlansTags({ tags, showAddTagButton }: PlanTagsProps) {
   return (
     <span>
-      {!tags.length ? (
+      {!tags.length && !((import.meta as any).env.VITE_IS_DEMO === "true") ? (
         <Badge className="bg-[#E0E7FF] text-[#3730A3] text-[12px] px-[6px] py-2">
           <Badge.Content>+ Add Tag</Badge.Content>
         </Badge>
