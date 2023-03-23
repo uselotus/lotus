@@ -197,17 +197,16 @@ const ExperimentResults: FC = () => {
     SpecificResults | undefined
   >();
 
-  // const {
-  //   data: experiment,
-  //   isLoading,
-  //   isError,
-  // }: UseQueryResult<components["schemas"]["AnalysisDetail"]> = useQuery<
-  //   components["schemas"]["AnalysisDetail"]
-  // >(["experiment_results", experimentId], () =>
-  //   Experiments.getAnalysis(experimentId).then((res) => dummyData)
-  // );
+  const {
+    data: experiment,
+    isLoading,
+    isError,
+  }: UseQueryResult<components["schemas"]["AnalysisDetail"]> = useQuery<
+    components["schemas"]["AnalysisDetail"]
+  >(["experiment_results", experimentId], () =>
+    Experiments.getAnalysis(experimentId).then((res) => dummyData)
+  );
 
-  const experiment = dummyData;
   const [selectedKPI, setSelectedKPI] = React.useState<string>();
   const [kpiOptions, setKpiOptions] = React.useState<
     { value: string; label: string }[]
@@ -284,8 +283,10 @@ const ExperimentResults: FC = () => {
         </div>
       }
     >
-      {experiment === undefined ? (
-        <div>Something went wrong</div>
+      {experiment === undefined || isLoading ? (
+        <div className="min-h-[60%]">
+          <LoadingSpinner />
+        </div>
       ) : (
         <div className="">
           <div className="flex flex-wrap gap-18">
