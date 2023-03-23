@@ -266,7 +266,14 @@ const AddOnComponents: FC<AddOnsComponentsProps> = ({
                           isInvalid ||
                           (import.meta as any).env.VITE_IS_DEMO === "true"
                         }
-                        onClick={() => submitAlertModal(currentComponent)}
+                        onClick={() => {
+                          if (import.meta.env.VITE_IS_DEMO === "true") {
+                            toast.error("Not available in demo mode");
+                            return;
+                          }
+                          console.log(import.meta.env.VITE_IS_DEMO);
+                          submitAlertModal(currentComponent);
+                        }}
                       >
                         Create
                       </Button>,

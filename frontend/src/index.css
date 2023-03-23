@@ -12,7 +12,7 @@
 }
 @font-face {
   font-family: "Alliance No.2";
-  src: local url("../fonts/Alliance-No.2-Regular.otf") format("woff");
+  src: local url("../fonts/Alliance-No.2-Regular.otf") format("otf");
 }
 .Inter {
   font-family: "Inter", sans-serif;
