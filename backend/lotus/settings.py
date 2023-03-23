@@ -444,7 +444,7 @@ CELERY_TIMEZONE = "UTC"
 if REDIS_URL is not None:
     CACHES = {
         "default": {
-            "BACKEND": "lotus.cache_utils.FallbackCache",
+            "BACKEND": "cache_fallback.FallbackCache",
         },
         "main_cache": {
             "BACKEND": "django_redis.cache.RedisCache",
@@ -461,17 +461,11 @@ if REDIS_URL is not None:
 else:
     CACHES = {
         "default": {
-            "BACKEND": "lotus.cache_utils.FallbackCache",
-        },
-        "main_cache": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "wild-alpaca",
-        },
-        "fallback_cache": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
             "LOCATION": "unique-snowflake",
-        },
+        }
     }
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
@@ -810,5 +804,4 @@ if SVIX_CONNECTOR is not None:
                 )
             )
     except Exception:
-        SVIX_CONNECTOR = None
         SVIX_CONNECTOR = None

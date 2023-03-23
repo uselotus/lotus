@@ -1,4 +1,4 @@
-name: Pytest
+name: E2E Events
 
 on:
   push:
@@ -27,6 +27,10 @@ jobs:
       DEBUG: False
       PYTHONDONTWRITEBYTECODE: 1
       SELF_HOSTED: "${{ secrets.SELF_HOSTED }}"
+      DOCKERIZED: True
+      POSTGRES_USER: lotus
+      POSTGRES_PASSWORD: lotus
+      POSTGRES_DB: lotus
 
     steps:
       - uses: actions/checkout@v3
@@ -34,6 +38,9 @@ jobs:
       - name: start-all
         run: |
           docker-compose -f docker-compose.prod.yaml up --build &
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
 
       - name: get-api-key
         run: |
