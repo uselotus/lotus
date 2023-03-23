@@ -6,9 +6,11 @@ import logging
 import boto3
 from botocore.exceptions import ClientError
 from django.conf import settings
+from django.utils.text import slugify
 
 from metering_billing.invoice_pdf import s3_bucket_exists, s3_file_exists
 from metering_billing.models import Organization
+from metering_billing.s3_utils import get_bucket_name
 from metering_billing.utils import convert_to_datetime, now_utc
 
 logger = logging.getLogger("django.server")
@@ -22,16 +24,12 @@ try:
 except ClientError:
     pass
 
-BUCKET_NAME = "lotus-invoice-csvs-d8d79027"
 CSV_FOLDER = "invoice_csvs"
 
 
 def get_key(organization, csv_folder, csv_filename):
     organization_id = organization.organization_id.hex
-    team = organization.team
-    team_id = team.team_id.hex
-
-    key = f"{team_id}/{organization_id}/{csv_folder}/{csv_filename}.csv"
+    key = f"{organization_id}/{csv_folder}/{csv_filename}.csv"
     return key
 
 
@@ -128,12 +126,7 @@ def upload_csv(organization, csv_buffer, csv_folder, csv_filename):
     ):
         try:
             # Upload the file to s3
-
-            if settings.DEBUG:
-                bucket_name = "dev-" + BUCKET_NAME
-            else:
-                bucket_name = BUCKET_NAME
-
+            bucket_name, prod = get_bucket_name(organization)
             if s3_bucket_exists(bucket_name):
                 logger.error("Bucket exists")
             else:
@@ -141,6 +134,11 @@ def upload_csv(organization, csv_buffer, csv_folder, csv_filename):
                 logger.error("Created bucket", bucket_name)
 
             key = get_key(organization, csv_folder, csv_filename)
+            if not prod:
+                team_id = organization.team.team_id.hex
+                team = organization.team
+                team_id = team.team_id.hex + "-" + slugify(team.name)
+                key = f"{team_id}/{key}"
             csv_bytes = csv_buffer.getvalue().encode()
             s3.Bucket(bucket_name).upload_fileobj(io.BytesIO(csv_bytes), key)
 
@@ -151,23 +149,31 @@ def upload_csv(organization, csv_buffer, csv_folder, csv_filename):
 def get_invoices_csv_presigned_url(organization, start_date=None, end_date=None):
     # Format start and end dates as YYMMDD
     csv_filename = get_csv_filename(organization, start_date, end_date)
-    if organization.organization_type == Organization.OrganizationType.EXTERNAL_DEMO:
-        bucket_name = "dev-" + BUCKET_NAME
-        return {"exists": False, "url": ""}
-    else:
-        bucket_name = BUCKET_NAME
-        key = get_key(organization, CSV_FOLDER, csv_filename)
-        exists = s3_file_exists(bucket_name=bucket_name, key=key)
-        if not exists:
-            generate_invoices_csv(organization, start_date, end_date)
-        s3_resource = boto3.resource("s3")
-        bucket = s3_resource.Bucket(bucket_name)
-        object = bucket.Object(key)
-        url = object.meta.client.generate_presigned_url(
-            ClientMethod="get_object",
-            Params={"Bucket": bucket_name, "Key": key},
-            ExpiresIn=3600,
-        )
+    bucket_name, prod = get_bucket_name(organization)
+    key = get_key(organization, CSV_FOLDER, csv_filename)
+    if not prod:
+        team_id = organization.team.team_id.hex
+        team = organization.team
+        team_id = team.team_id.hex + "-" + slugify(team.name)
+        key = f"{team_id}/{key}"
+    # if its an external demo, or we're in debug mode, don't generate these
+    if (
+        organization.organization_type == Organization.OrganizationType.EXTERNAL_DEMO
+        or settings.DEBUG
+    ):
+        return {"exists": False, "url": None}
+
+    exists = s3_file_exists(bucket_name=bucket_name, key=key)
+    if not exists:
+        generate_invoices_csv(organization, start_date, end_date)
+    s3_resource = boto3.resource("s3")
+    bucket = s3_resource.Bucket(bucket_name)
+    object = bucket.Object(key)
+    url = object.meta.client.generate_presigned_url(
+        ClientMethod="get_object",
+        Params={"Bucket": bucket_name, "Key": key},
+        ExpiresIn=3600,
+    )
     return {"exists": True, "url": url}
 
 
@@ -191,47 +197,3 @@ def get_csv_filename(organization, start_date, end_date):
         now_str = datetime.datetime.strftime(now, "%y%m%d")
         csv_filename = f"start-{now_str}"
     return csv_filename
-
-
-# def generate_subscription_plan_csv(organization):
-#     # create a file-like object for the CSV data
-#     buffer = io.StringIO()
-#     writer = csv.writer(buffer)
-
-#     writer.writerow(
-#         [
-#             "Subscription Plan Name",
-#             "Initial Term",
-#             "Location",
-#             "Income Account",
-#             "Subscription Plan Members: Line Number",
-#             "Subscription Plan Members: Item",
-#             "Subscription Plan Members: Type",
-#         ]
-#     )
-#     for plan in organization.plans.filter(status=PLAN_STATUS.ACTIVE):
-#         for pv in plan.plan_versions.filter(status=PLAN_STATUS.ACTIVE):
-#             subscription_plan_name = str(pv)
-#             initial_term = (
-#                 "12 Month"
-#                 if plan.duration == PLAN_DURATION.YEARLY
-#                 else "1 Month"
-#                 if plan.duration == PLAN_DURATION.MONTHLY
-#                 else "3 Month"
-#             )
-#             i = 1
-#             for charge in pv.recurring_charges.all():
-#                 row = ["", "", "", "", i, charge.name, "Recurring"]
-#                 if i == 1:
-#                     row[0] = subscription_plan_name
-#                     row[1] = initial_term
-#                 writer.writerow(row)
-#                 i += 1
-#             for component in pv.plan_components.all():
-#                 row = ["", "", "", "", i, str(component), "Usage"]
-#                 if i == 1:
-#                     row[0] = subscription_plan_name
-#                     row[1] = initial_term
-#                 writer.writerow(row)
-#                 i += 1
-#     return buffer
