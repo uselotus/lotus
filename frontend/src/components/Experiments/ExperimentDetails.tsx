@@ -24,8 +24,25 @@ const ExperimentDetails: FC<Props> = ({ data, kpi }) => {
   const dataFormatterNumber = (number: number) =>
     Math.round((number + Number.EPSILON) * 100) / 100;
   const [revenueLineGraph, setRevenueLineGraph] = React.useState<any>();
-  const [revenuePerMetric, setRevenuePerMetric] = React.useState<any>();
+  const [revenuePerMetric, setRevenuePerMetric] = React.useState<{
+    [planName: string]: { metric_name: string; revenue: number }[];
+  }>();
   const [categories, setCategories] = React.useState<string[]>([]);
+
+  function getPlanData(planName: string) {
+    console.log(planName, 22);
+    const matchingKey = Object.keys(revenuePerMetric).find(
+      (key) => key === planName
+    );
+    console.log(planName);
+    if (matchingKey !== undefined) {
+      const matchingEntry = revenuePerMetric[matchingKey];
+      console.log(matchingEntry, "matching");
+      return matchingEntry;
+    } else {
+      console.log(`No entry found for plan ${planName}`);
+    }
+  }
 
   useEffect(() => {
     console.log(data);
@@ -53,14 +70,17 @@ const ExperimentDetails: FC<Props> = ({ data, kpi }) => {
 
     if (data && data.revenue_by_metric_graph) {
       const result: {
-        plan_name: string;
-        value: { type: string; value: number }[];
-      } = [];
+        [planName: string]: { metric_name: string; revenue: number }[];
+      } = {};
       data.revenue_by_metric_graph.forEach((entry) => {
+        const planName = entry.plan.plan_name;
+        if (!(planName in result)) {
+          result[planName] = [];
+        }
         entry.by_metric.forEach((metric) => {
-          result.push({
-            type: metric.metric.metric_name,
-            value: parseFloat(metric.revenue),
+          result[planName].push({
+            metric_name: metric.metric.metric_name,
+            revenue: parseFloat(metric.revenue),
           });
         });
       });
@@ -147,9 +167,16 @@ const ExperimentDetails: FC<Props> = ({ data, kpi }) => {
                   {item.plan.plan_name}
                 </div>
                 <Pie
-                  data={revenuePerMetric}
+                  data={getPlanData(item.plan.plan_name)}
                   colorField="metric_name"
                   angleField="revenue"
+                  color={[
+                    "#C3986B",
+                    "#E4D5C5",
+                    "#EAECF0",
+                    "#065F46",
+                    "#171412",
+                  ]}
                 />
               </div>
             ))}

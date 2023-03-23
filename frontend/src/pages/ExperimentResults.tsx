@@ -265,6 +265,7 @@ const ExperimentResults: FC = () => {
       hasBackButton={true}
       aboveTitle
       mx={false}
+      extra={<Button disabled={true}>Settings</Button>}
       backButton={
         <div>
           <Button
