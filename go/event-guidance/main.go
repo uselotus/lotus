@@ -261,12 +261,6 @@ func main() {
 				log.Printf("commit records failed: %v", err)
 				panic(fmt.Errorf("commit records failed: %w", err))
 			}
-		} else {
-			if err := tx.Rollback(); err != nil {
-				// again, this should be a fatal error
-				log.Printf("Error rolling back transaction: %s\n", err)
-				panic(err)
-			}
 		}
 
 	}
