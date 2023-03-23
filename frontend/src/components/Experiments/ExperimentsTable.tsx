@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import dayjs from "dayjs";
 import { BacktestType } from "../../types/experiment-type";
+import { components } from "../../gen-types";
 
 const columns: ProColumns<BacktestType>[] = [
   {
@@ -13,13 +14,13 @@ const columns: ProColumns<BacktestType>[] = [
   },
   {
     title: "Name",
-    dataIndex: "backtest_name",
+    dataIndex: "analysis_name",
     align: "left",
     width: 120,
   },
   {
     title: "Creator",
-    dataIndex: "creator",
+    dataIndex: "",
     align: "left",
     width: 150,
   },
@@ -52,19 +53,21 @@ const columns: ProColumns<BacktestType>[] = [
 ];
 
 interface Props {
-  backtests: BacktestType[];
+  experiments: components["schemas"]["AnalysisSummary"][];
 }
 
-const ExperimentsTable: FC<Props> = ({ backtests }) => {
+const ExperimentsTable: FC<Props> = ({ experiments }) => {
   const navigate = useNavigate();
-  const navigateToExperiment = (row: BacktestType) => {
-    navigate(`/experiment/${row.backtest_id}`);
+  const navigateToExperiment = (
+    row: components["schemas"]["AnalysisSummary"]
+  ) => {
+    navigate(`/experiment/${row.analysis_id}`);
   };
   return (
     <div className="border-2 border-solid rounded border-[#EAEAEB]">
       <ProTable
         columns={columns}
-        dataSource={backtests}
+        dataSource={experiments}
         options={false}
         toolBarRender={false}
         search={false}
