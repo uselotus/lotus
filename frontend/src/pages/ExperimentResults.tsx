@@ -204,7 +204,7 @@ const ExperimentResults: FC = () => {
   }: UseQueryResult<components["schemas"]["AnalysisDetail"]> = useQuery<
     components["schemas"]["AnalysisDetail"]
   >(["experiment_results", experimentId], () =>
-    Experiments.getAnalysis(experimentId).then((res) => dummyData)
+    Experiments.getAnalysis(experimentId).then((res) => res)
   );
 
   const [selectedKPI, setSelectedKPI] = React.useState<string>();
@@ -299,7 +299,7 @@ const ExperimentResults: FC = () => {
                   >
                     <div className=" mt-8">
                       <div className="">
-                        <h2 className="font-semiBold text-xl">
+                        <h2 className="font-semiBold text-xl text-black">
                           {summary.plan.plan_name}
                         </h2>
                       </div>

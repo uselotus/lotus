@@ -25,7 +25,7 @@ const ExternalRoutes: FC = () => (
       path="/*"
       element={
         (import.meta as any).env.VITE_IS_DEMO === "true" ? (
-          <Login username="lotus-demo" password="lotus-demo-password" />
+          <Login username="demo" password="demo" />
         ) : (
           <Login />
         )
