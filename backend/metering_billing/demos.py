@@ -4,15 +4,20 @@ import logging
 import random
 import time
 import uuid
+from decimal import Decimal
 
 import numpy as np
 import pytz
+from api.serializers.model_serializers import (
+    LightweightCustomerSerializer,
+    LightweightMetricSerializer,
+    LightweightPlanVersionSerializer,
+)
 from dateutil.relativedelta import relativedelta
-from model_bakery import baker
-
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
+    Analysis,
     APIToken,
     Backtest,
     BacktestSubstitution,
@@ -44,15 +49,23 @@ from metering_billing.models import (
     WebhookTrigger,
 )
 from metering_billing.tasks import run_backtest, run_generate_invoice
-from metering_billing.utils import date_as_max_dt, date_as_min_dt, now_utc
+from metering_billing.utils import (
+    date_as_max_dt,
+    date_as_min_dt,
+    dates_bwn_two_dts,
+    now_utc,
+)
 from metering_billing.utils.enums import (
+    ANALYSIS_KPI,
     BACKTEST_KPI,
     EVENT_TYPE,
+    EXPERIMENT_STATUS,
     METRIC_AGGREGATION,
     METRIC_GRANULARITY,
     METRIC_TYPE,
     PLAN_DURATION,
 )
+from model_bakery import baker
 
 logger = logging.getLogger("django.server")
 
@@ -1965,6 +1978,155 @@ def setup_database_demo(
             },
         },
     )
+    # Pro Plan
+    plan = Plan.objects.create(
+        plan_name="Pro Plan - Usage Based",
+        organization=organization,
+        plan_duration=PLAN_DURATION.MONTHLY,
+    )
+    pro_plan_bp_monthly = PlanVersion.objects.create(
+        organization=organization,
+        plan=plan,
+        version=1,
+        currency=free_bp.currency,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=pro_plan_bp_monthly,
+        amount=500,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=pay_as_you_go_bp_monthly.currency,
+    )
+    plan_yearly = Plan.objects.create(
+        plan_name="Pro Plan - Usage Based",
+        organization=organization,
+        plan_duration=PLAN_DURATION.YEARLY,
+    )
+    pro_plan_bp_yearly = PlanVersion.objects.create(
+        organization=organization,
+        plan=plan_yearly,
+        version=1,
+        currency=free_bp.currency,
+    )
+    RecurringCharge.objects.create(
+        organization=organization,
+        plan_version=pro_plan_bp_yearly,
+        amount=5000,
+        name="Flat Rate",
+        charge_timing=RecurringCharge.ChargeTimingType.IN_ADVANCE,
+        pricing_unit=pay_as_you_go_bp_yearly.currency,
+    )
+    create_pc_plus_tiers_new(
+        [pro_plan_bp_monthly, pro_plan_bp_yearly],
+        pcs_dict={
+            gb_storage: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 4000,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    }
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+            },
+            gb_storage_hours: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 10_000,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    },
+                    {
+                        "range_start": 10_000,
+                        "range_end": 20000,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.PER_UNIT,
+                        "cost_per_batch": 0.00005,
+                    },
+                    {
+                        "range_start": 20000,
+                        "range_end": None,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.PER_UNIT,
+                        "cost_per_batch": 0.000025,
+                    },
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+            },
+            data_egress: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 2500,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    },
+                    {
+                        "range_start": 2500,
+                        "range_end": None,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.PER_UNIT,
+                        "cost_per_batch": 0.035,
+                    },
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+            },
+            insert_rate: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 100_000,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.FREE,
+                    }
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+            },
+            gb_ram: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 32,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.PER_UNIT,
+                        "cost_per_batch": 40,
+                        "metric_units_per_batch": 4,
+                    },
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+                "prepaid_charge": {
+                    "units": 16,
+                    "charge_behavior": ComponentFixedCharge.ChargeBehavior.FULL,
+                },
+            },
+            number_cpus: {
+                "tiers": [
+                    {
+                        "range_start": 0,
+                        "range_end": 16,
+                        "batch_rounding_type": PriceTier.BatchRoundingType.NO_ROUNDING,
+                        "type": PriceTier.PriceTierType.PER_UNIT,
+                        "cost_per_batch": 20,
+                        "metric_units_per_batch": 1,
+                    },
+                ],
+                "reset_interval_unit": PlanComponent.IntervalLengthType.MONTH,
+                "reset_interval_count": 1,
+                "prepaid_charge": {
+                    "units": 8,
+                    "charge_behavior": ComponentFixedCharge.ChargeBehavior.FULL,
+                },
+            },
+        },
+    )
     # ADDON:
     n_months = 4 if size == "small" else 12
     start_of_sim = now_utc() - relativedelta(months=n_months) - relativedelta(days=5)
@@ -1974,7 +2136,11 @@ def setup_database_demo(
         ("small", small_customers),
     ]:
         plan_dict = {
-            "big": [(0, basic_bp_monthly), (1 / 3, pay_as_you_go_bp_monthly)],
+            "big": [
+                (0, basic_bp_monthly),
+                (1 / 3, pay_as_you_go_bp_monthly),
+                (5 / 6, pro_plan_bp_monthly),
+            ],
             "medium": [
                 (0, free_bp),
                 (1 / 6, basic_bp_monthly),
@@ -2189,7 +2355,95 @@ def setup_database_demo(
                     )
                     cur_bp.replace_with = cur_replace_with
                     cur_bp.save()
+    analysis_results = {}
+    end_date = now_utc()
+    start_date = end_date - relativedelta(days=90)
 
+    # analysis summary
+    analysis_summary = []
+    for plan in [pro_plan_bp_monthly, pay_as_you_go_bp_monthly]:
+        plan_ser = LightweightPlanVersionSerializer(plan).data
+        kpis = []
+        for kpi, _ in ANALYSIS_KPI.choices:
+            single_kpi = {"kpi": kpi, "value": str(Decimal(15.43))}
+            kpis.append(single_kpi)
+        single_plan_analysis = {
+            "plan": plan_ser,
+            "kpis": kpis,
+        }
+        analysis_summary.append(single_plan_analysis)
+    analysis_results["analysis_summary"] = single_plan_analysis
+    # revenue per day graph
+    revenue_per_day = []
+    for date in dates_bwn_two_dts(start_date, end_date):
+        d = {
+            "date": str(date),
+        }
+        rev_per_plan = []
+        for plan in [pro_plan_bp_monthly, pay_as_you_go_bp_monthly]:
+            single_plan_rev = {
+                "plan": LightweightPlanVersionSerializer(plan).data,
+                "revenue": str(Decimal(15.43)),
+            }
+            rev_per_plan.append(single_plan_rev)
+        d["revenue_per_plan"] = rev_per_plan
+        revenue_per_day.append(d)
+    analysis_results["revenue_per_day_graph"] = revenue_per_day
+    # revenue by metric graph
+    revenue_by_metric = []
+    for plan in [pro_plan_bp_monthly, pay_as_you_go_bp_monthly]:
+        by_metric = []
+        for pc in plan.plan_components.all():
+            metric = pc.billable_metric
+            single_metric = {
+                "metric": LightweightMetricSerializer(metric),
+                "revenue": str(Decimal(15.43)),
+            }
+            by_metric.append(single_metric)
+        single_plan_metrics = {
+            "plan": LightweightPlanVersionSerializer(plan).data,
+            "metrics": by_metric,
+        }
+        revenue_by_metric.append(single_plan_metrics)
+    # top customers by plan
+    top_customers_by_plan = []
+    for plan in [pro_plan_bp_monthly, pay_as_you_go_bp_monthly]:
+        customers = Customer.objects.filter(
+            organization=organization,
+        ).order_by(
+            "?"
+        )[:5]
+        top_customers_by_total_revenue = []
+        for customer in customers:
+            single_customer = {
+                "customer": LightweightCustomerSerializer(customer).data,
+                "value": str(Decimal(15.43)),
+            }
+            top_customers_by_total_revenue.append(single_customer)
+        top_customers_by_average_revenue = []
+        for customer in customers:
+            single_customer = {
+                "customer": LightweightCustomerSerializer(customer).data,
+                "value": str(Decimal(15.43)),
+            }
+            top_customers_by_average_revenue.append(single_customer)
+        {
+            "plan": LightweightPlanVersionSerializer(plan).data,
+            "top_customers_by_average_revenue": top_customers_by_average_revenue,
+            "top_customers_by_total_revenue": top_customers_by_total_revenue,
+        }
+    analysis_results["top_customers_by_plan"] = top_customers_by_plan
+    print(analysis_results)
+    # create actual analysis
+    Analysis.objects.create(
+        organization=organization,
+        analysis_results=analysis_results,
+        analysis_name="test",
+        start_date=start_date,
+        end_date=end_date,
+        kpis=[kpi for kpi, _ in ANALYSIS_KPI.choices],
+        status=EXPERIMENT_STATUS.COMPLETED,
+    )
     return user
 
 
@@ -2319,3 +2573,6 @@ def create_pc_plus_tiers_new(plan_versions, pcs_dict):
                         organization=plan_version.organization,
                         batch_rounding_type=tier.get("batch_rounding_type"),
                     )
+
+
+# eof
