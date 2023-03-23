@@ -8,6 +8,8 @@ import uuid
 import numpy as np
 import pytz
 from dateutil.relativedelta import relativedelta
+from model_bakery import baker
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
@@ -51,7 +53,6 @@ from metering_billing.utils.enums import (
     METRIC_TYPE,
     PLAN_DURATION,
 )
-from model_bakery import baker
 
 logger = logging.getLogger("django.server")
 
@@ -1964,6 +1965,7 @@ def setup_database_demo(
             },
         },
     )
+    # ADDON:
     n_months = 4 if size == "small" else 12
     start_of_sim = now_utc() - relativedelta(months=n_months) - relativedelta(days=5)
     for cust_set_name, cust_set in [
