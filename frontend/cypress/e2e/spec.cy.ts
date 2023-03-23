@@ -18,7 +18,7 @@ function getEmail(length) {
 
 const Login = () => {
   // Intercept the login API request and alias it as 'loginRequest'
-  cy.intercept("POST", "/api/login").as("loginRequest");
+  cy.intercept("POST", "/app/login/").as("loginRequest");
 
   cy.visit("http://localhost:3000/login");
   cy.contains("Username or Email");
