@@ -32,6 +32,7 @@ export default function OptionInput({
 
   return (
     <Select
+      id="event_name_input"
       value={values}
       mode="tags"
       onChange={handleChange}

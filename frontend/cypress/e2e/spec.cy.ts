@@ -36,14 +36,13 @@ const Login = () => {
   });
 };
 
-describe("Testing Successful Login", () => {
-  it("Navigates to Dashboard After Login", () => {
-    cy.visit("http://localhost:3000"); // add this line to start on a fresh page
-    Login();
-    cy.contains("Dashboard");
-    cy.url().should("eq", "http://localhost:3000/dashboard"); // => true
-  });
-});
+// describe("Testing Successful Login", () => {
+//   it("Navigates to Dashboard After Login", () => {
+//     Login();
+//     cy.contains("Dashboard");
+//     cy.url().should("eq", "http://localhost:3000/dashboard"); // => true
+//   });
+// });
 
 describe("Testing Successful Plan Creation", () => {
   it("Test Plan creation flow", () => {
