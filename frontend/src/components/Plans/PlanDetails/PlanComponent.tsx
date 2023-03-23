@@ -20,7 +20,7 @@ import {
   DeleteOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { Component, PlanType, Tier } from "../../../types/plan-type";
 import { CurrencyType } from "../../../types/pricing-unit-type";
@@ -352,7 +352,7 @@ export function PlanInfo({ version, plan, activeKey }: PlanInfoProps) {
     (version_id: string) => Plan.archivePlanVersion(version_id),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries("plan_list");
+        queryClient.invalidateQueries(["plan_list"]);
         queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
         toast.success("Plan version archived successfully");
       },

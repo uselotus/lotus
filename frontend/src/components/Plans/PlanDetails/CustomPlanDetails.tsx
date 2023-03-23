@@ -6,7 +6,7 @@ import React, { FC } from "react";
 
 import "./SwitchVersions.css";
 import { Typography } from "antd";
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PlanType } from "../../../types/plan-type";
 import PlanComponents, { PlanInfo, PlanSummary } from "./PlanComponent";
 import PlanFeatures from "./PlanFeatures";
@@ -79,7 +79,7 @@ const CustomPlanDetails: FC<CustomPlanDetailsProps> = ({
       }),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries("plan_list");
+        queryClient.invalidateQueries(["plan_list"]);
         queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
       },
     }
@@ -91,7 +91,7 @@ const CustomPlanDetails: FC<CustomPlanDetailsProps> = ({
       }),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries("plan_list");
+        queryClient.invalidateQueries(["plan_list"]);
         queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
       },
     }

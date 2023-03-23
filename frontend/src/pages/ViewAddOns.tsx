@@ -2,7 +2,7 @@ import React, { FC } from "react";
 import { Button } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import { useQuery, UseQueryResult } from "react-query";
+import { useQuery, UseQueryResult } from '@tanstack/react-query';
 import { AddOn } from "../api/api";
 import DBSVG from "../components/base/db-svg";
 import { PageLayout } from "../components/base/PageLayout";

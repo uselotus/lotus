@@ -1,11 +1,11 @@
 import { Button, Card, Form, Input } from "antd";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Cookies from "universal-cookie";
 import { toast } from "react-toastify";
 import { Organizaton } from "../components/Registration/CreateOrganization";
-import { Authentication , instance } from "../api/api";
+import { Authentication, instance } from "../api/api";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 const cookies = new Cookies();
@@ -34,7 +34,7 @@ const DemoSignup: React.FC = () => {
   const [isDesktop, setIsDesktop] = useState(true);
 
   useEffect(() => {
-    const {userAgent} = navigator;
+    const { userAgent } = navigator;
 
     if (/iPad|iPhone|iPod|Android/.test(userAgent)) {
       setIsDesktop(false);
@@ -63,7 +63,7 @@ const DemoSignup: React.FC = () => {
         const { token, detail } = response;
         cookies.set("Token", token);
         instance.defaults.headers.common.Authorization = `Token ${token}`;
-        queryClient.invalidateQueries("session");
+        queryClient.invalidateQueries(["session"]);
       },
       onError: (error: any) => {
         toast.error(error.response.data.detail, {

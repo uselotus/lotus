@@ -3,7 +3,7 @@ import React, { FC, useState, useEffect } from "react";
 import type { ProColumns } from "@ant-design/pro-components";
 import { ProTable } from "@ant-design/pro-components";
 import { Button, Input, Tag } from "antd";
-import { useQuery, UseQueryResult, useQueryClient } from "react-query";
+import { useQuery, UseQueryResult, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from "react-router-dom";
 import {
   CustomerSummary,

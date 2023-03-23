@@ -6,7 +6,7 @@ import {
   UseQueryResult,
   useMutation,
   useQueryClient,
-} from "react-query";
+} from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import useToggleSlideOver from "../../stores/useToggleSlideOver";
 import useGlobalStore from "../../stores/useGlobalstore";
@@ -51,7 +51,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
       ),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries("organization");
+        queryClient.invalidateQueries(['organization']);
         setIsCreating(false);
         toast.success("Successfully created new environment");
       },

@@ -12,7 +12,7 @@ import {
 } from "antd";
 import dayjs from "dayjs";
 import React, { useState } from "react";
-import { useQuery, useMutation, QueryClient } from "react-query";
+import { useQuery, useMutation, QueryClient } from "@tanstack/react-query";
 import { MoreOutlined } from "@ant-design/icons";
 import { toast } from "react-toastify";
 import { Webhook, APIKey } from "../../../../api/api";
@@ -58,8 +58,10 @@ export function DeveloperTab() {
   const [isUsageAlertTriggered, setIsUsageAlertTriggered] =
     useState<boolean>(false);
   const [isInvoicePastDue, setIsInvoicePastDue] = useState<boolean>(false);
-  const [isSubscriptionCancelled, setIsSubscriptionCancelled] = useState<boolean>(false);
-  const [isSubscriptionRenewed, setIsSubscriptionRenewed] = useState<boolean>(false);
+  const [isSubscriptionCancelled, setIsSubscriptionCancelled] =
+    useState<boolean>(false);
+  const [isSubscriptionRenewed, setIsSubscriptionRenewed] =
+    useState<boolean>(false);
 
   const closeModal = () => {
     setVisible(false);
@@ -110,10 +112,10 @@ export function DeveloperTab() {
     isLoading: isLoadingWebhook,
     data: webhookData,
     refetch: refetchWebhook,
-  } = useQuery("webhook_urls", () => Webhook.getEndpoints());
+  } = useQuery(["webhook_urls"], () => Webhook.getEndpoints());
 
   const { data: apiKeyData, refetch: refetchAPIKey } = useQuery(
-    "api_keys",
+    ["api_keys"],
     () => APIKey.getKeys()
   );
 
@@ -122,7 +124,7 @@ export function DeveloperTab() {
       Webhook.createEndpoint(endpointPost),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries("webhook_urls");
+        queryClient.invalidateQueries(["webhook_urls"]);
         refetchWebhook();
         setWebhookUrl("");
         setWebhookName("");
@@ -148,7 +150,7 @@ export function DeveloperTab() {
     (apiKey: APIKeyCreate) => APIKey.createKey(apiKey),
     {
       onSuccess: (record: APIKeyCreateResponse) => {
-        queryClient.invalidateQueries("api_keys");
+        queryClient.invalidateQueries(["api_keys"]);
         refetchAPIKey();
         setAPIKeyName("");
         toast.success("API Key added successfully");
@@ -180,7 +182,7 @@ export function DeveloperTab() {
       !isInvoicePaid &&
       !isSubscriptionCreated &&
       !isUsageAlertTriggered &&
-      !isInvoicePastDue && 
+      !isInvoicePastDue &&
       !isSubscriptionCancelled &&
       !isSubscriptionRenewed
     ) {
@@ -243,7 +245,7 @@ export function DeveloperTab() {
       Webhook.deleteEndpoint(id)
         .then((data) => {
           toast.success("Webhook URL deleted successfully");
-          queryClient.invalidateQueries("webhook_urls");
+          queryClient.invalidateQueries(["webhook_urls"]);
           setWebhookSelected(undefined);
           refetchWebhook();
         })
@@ -258,7 +260,7 @@ export function DeveloperTab() {
       APIKey.deleteKey(id)
         .then((data) => {
           toast.success("API Key deleted successfully");
-          queryClient.invalidateQueries("api_keys");
+          queryClient.invalidateQueries(["api_keys"]);
           setApiKeySelected(undefined);
           refetchAPIKey();
         })
@@ -273,7 +275,7 @@ export function DeveloperTab() {
       APIKey.rollKey(id)
         .then((data) => {
           toast.success("API Key rolled successfully");
-          queryClient.invalidateQueries("api_keys");
+          queryClient.invalidateQueries(["api_keys"]);
           setApiKeySelected(undefined);
           refetchAPIKey();
           setVisibleAPIKey(false);
@@ -500,14 +502,14 @@ export function DeveloperTab() {
             >
               <p className="text-lg font-main">usage_alert.triggered</p>
             </Checkbox>
-            <Checkbox 
+            <Checkbox
               style={{ marginLeft: "0px" }}
               onChange={(e) => setIsSubscriptionCancelled(e.target.checked)}
               value={isSubscriptionCancelled}
             >
               <p className="text-lg font-main">subscription.cancelled</p>
             </Checkbox>
-            <Checkbox 
+            <Checkbox
               style={{ marginLeft: "0px" }}
               onChange={(e) => setIsSubscriptionRenewed(e.target.checked)}
               value={isSubscriptionRenewed}

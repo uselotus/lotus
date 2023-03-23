@@ -1061,7 +1061,7 @@ class IdempotenceCheck(models.Model):
         ]
 
     def __str__(self):
-        return +str(self.time_created)[:10] + "-" + str(self.idempotency_id)[:6]
+        return str(self.time_created)[:10] + "-" + str(self.idempotency_id)[:6]
 
 
 class EventManager(models.Manager):

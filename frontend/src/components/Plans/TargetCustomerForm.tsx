@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Form, Modal, Select } from "antd";
-import { UseQueryResult, useQuery } from "react-query";
+import { UseQueryResult, useQuery } from '@tanstack/react-query';
 import { Customer } from "../../api/api";
 import { CustomerPlus } from "../../types/customer-type";
 
