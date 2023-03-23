@@ -17,7 +17,7 @@ class Command(BaseCommand):
         #     org_type=Organization.OrganizationType.INTERNAL_DEMO,
         # )
         setup_database_demo(
-            organization_name="demo5",
+            organization_name="lotus-demo",
             username="lotus-demo",
             email="demo5@demo5.com",
             password="lotus-demo-password",
