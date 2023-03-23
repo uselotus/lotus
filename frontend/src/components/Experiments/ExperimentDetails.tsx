@@ -202,8 +202,7 @@ const ExperimentDetails: FC<Props> = ({ data, kpi }) => {
                         {item.customer.customer_name}
                       </div>
                       <div className=" text-black">
-                        {(parseFloat(item.value) * 100).toFixed(2)}
-                        {"% "}
+                        {parseFloat(item.value)}
                       </div>
                     </ListItem>
                   ))}
@@ -226,8 +225,7 @@ const ExperimentDetails: FC<Props> = ({ data, kpi }) => {
                         {item.customer.customer_name}
                       </div>{" "}
                       <div className=" text-black">
-                        {(parseFloat(item.value) * 100).toFixed(2)}
-                        {"% "}
+                        {parseFloat(item.value)}
                       </div>
                     </ListItem>
                   ))}
