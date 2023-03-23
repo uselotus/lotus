@@ -237,7 +237,7 @@ class AnalysisDetailSerializer(AnalysisSummarySerializer):
     def get_analysis_results(self, obj) -> AnalysisResultsSerializer():
         serializer = AnalysisResultsSerializer(data=obj.analysis_results)
         serializer.is_valid(raise_exception=True)
-        return serializer.validated_data
+        return obj.analysis_results
 
 
 # end

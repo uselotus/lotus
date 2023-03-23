@@ -8,12 +8,15 @@ from decimal import Decimal
 
 import numpy as np
 import pytz
+from dateutil.relativedelta import relativedelta
+from django.db.models import DecimalField, Sum
+from model_bakery import baker
+
 from api.serializers.model_serializers import (
     LightweightCustomerSerializer,
     LightweightMetricSerializer,
     LightweightPlanVersionSerializer,
 )
-from dateutil.relativedelta import relativedelta
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
@@ -50,10 +53,13 @@ from metering_billing.models import (
 )
 from metering_billing.tasks import run_backtest, run_generate_invoice
 from metering_billing.utils import (
+    convert_to_decimal,
     date_as_max_dt,
     date_as_min_dt,
     dates_bwn_two_dts,
+    make_all_decimals_strings,
     now_utc,
+    round_all_decimals_to_two_places,
 )
 from metering_billing.utils.enums import (
     ANALYSIS_KPI,
@@ -62,10 +68,10 @@ from metering_billing.utils.enums import (
     EXPERIMENT_STATUS,
     METRIC_AGGREGATION,
     METRIC_GRANULARITY,
+    METRIC_STATUS,
     METRIC_TYPE,
     PLAN_DURATION,
 )
-from model_bakery import baker
 
 logger = logging.getLogger("django.server")
 
@@ -2362,16 +2368,99 @@ def setup_database_demo(
     # analysis summary
     analysis_summary = []
     for plan in [pro_plan_bp_monthly, pay_as_you_go_bp_monthly]:
-        plan_ser = LightweightPlanVersionSerializer(plan).data["plan"]
+        plan_ser = LightweightPlanVersionSerializer(plan).data
         kpis = []
         for kpi, _ in ANALYSIS_KPI.choices:
-            single_kpi = {"kpi": kpi, "value": str(Decimal("15.43"))}
+            if kpi == ANALYSIS_KPI.TOTAL_REVENUE:
+                value = (
+                    InvoiceLineItem.objects.filter(
+                        associated_plan_version=pay_as_you_go_bp_monthly
+                    ).aggregate(
+                        total_revenue=Sum("amount", output_field=DecimalField())
+                    )[
+                        "total_revenue"
+                    ]
+                    or 0
+                )
+                if plan == pro_plan_bp_monthly:
+                    value = value * convert_to_decimal(random.gauss(0.8, 0.05))
+            elif kpi == ANALYSIS_KPI.NEW_REVENUE:
+                value = (
+                    InvoiceLineItem.objects.filter(
+                        associated_plan_version=pay_as_you_go_bp_monthly
+                    ).aggregate(
+                        total_revenue=Sum("amount", output_field=DecimalField())
+                    )[
+                        "total_revenue"
+                    ]
+                    or 0
+                )
+                if plan == pro_plan_bp_monthly:
+                    value = value * convert_to_decimal(random.gauss(0.8, 0.05))
+                value = value * Decimal("0.2")
+            elif kpi == ANALYSIS_KPI.AVERAGE_REVENUE:
+                value_tot = (
+                    InvoiceLineItem.objects.filter(
+                        associated_plan_version=pay_as_you_go_bp_monthly
+                    ).aggregate(
+                        total_revenue=Sum("amount", output_field=DecimalField())
+                    )[
+                        "total_revenue"
+                    ]
+                    or 0
+                )
+                if plan == pro_plan_bp_monthly:
+                    value_tot = value_tot * convert_to_decimal(random.gauss(0.8, 0.05))
+                value_count = SubscriptionRecord.objects.filter(
+                    billing_plan=pay_as_you_go_bp_monthly
+                ).count()
+                if plan == pro_plan_bp_monthly:
+                    value_count = value_count * convert_to_decimal(
+                        random.gauss(0.8, 0.05)
+                    )
+                value = Decimal(value_tot) / Decimal(value_count)
+            elif kpi == ANALYSIS_KPI.TOTAL_COST:
+                cost_metrics = Metric.objects.filter(
+                    organization=organization,
+                    is_cost_metric=True,
+                    status=METRIC_STATUS.ACTIVE,
+                )
+                metric_cost_dict = {}
+                for metric in cost_metrics:
+                    metric_cost_dict[metric.billable_metric_name] = Decimal(0)
+                    usage_ret = metric.get_daily_total_usage(
+                        start_date,
+                        end_date,
+                        customer=customer,
+                    ).get(customer, {})
+                    for _, usage in usage_ret.items():
+                        metric_cost_dict[metric.billable_metric_name] += Decimal(usage)
+                value = sum(metric_cost_dict.values())
+                if plan == pro_plan_bp_monthly:
+                    value = value * convert_to_decimal(random.gauss(1.2, 0.05))
+            elif kpi == ANALYSIS_KPI.PROFIT:
+                continue
+            else:
+                value = Decimal("3.16")
+                if plan == pro_plan_bp_monthly:
+                    value = value * convert_to_decimal(random.gauss(1.2, 0.05))
+            single_kpi = {"kpi": kpi, "value": value}
             kpis.append(single_kpi)
+        revenue_kpi = [x for x in kpis if x["kpi"] == ANALYSIS_KPI.TOTAL_REVENUE][0][
+            "value"
+        ]
+        cost_kpi = [x for x in kpis if x["kpi"] == ANALYSIS_KPI.TOTAL_COST][0]["value"]
+        profit_kpi = {
+            "kpi": ANALYSIS_KPI.PROFIT,
+            "value": revenue_kpi - cost_kpi,
+        }
+        kpis.append(profit_kpi)
         single_plan_analysis = {
             "plan": plan_ser,
             "kpis": kpis,
         }
         analysis_summary.append(single_plan_analysis)
+
     analysis_results["analysis_summary"] = analysis_summary
     # revenue per day graph
     revenue_per_day = []
@@ -2381,9 +2470,20 @@ def setup_database_demo(
         }
         rev_per_plan = []
         for plan in [pro_plan_bp_monthly, pay_as_you_go_bp_monthly]:
+            plan_repr = LightweightPlanVersionSerializer(plan).data
+            # create random gaussin with mean 1/90 and standard dev a tenth of that
+            kpi_dict = [
+                x
+                for x in analysis_summary
+                if x["plan"]["plan_id"] == plan_repr["plan_id"]
+            ][0]
+            revenue_kpi = [
+                x for x in kpi_dict["kpis"] if x["kpi"] == ANALYSIS_KPI.TOTAL_REVENUE
+            ][0]["value"]
+            value = revenue_kpi * Decimal(random.gauss(1 / 90, 1 / 500))
             single_plan_rev = {
-                "plan": LightweightPlanVersionSerializer(plan).data["plan"],
-                "revenue": str(Decimal("15.43")),
+                "plan": plan_repr,
+                "revenue": value,
             }
             rev_per_plan.append(single_plan_rev)
         d["revenue_per_plan"] = rev_per_plan
@@ -2392,16 +2492,27 @@ def setup_database_demo(
     # revenue by metric graph
     revenue_by_metric = []
     for plan in [pro_plan_bp_monthly, pay_as_you_go_bp_monthly]:
+        plan_repr = LightweightPlanVersionSerializer(plan).data
         by_metric = []
-        for pc in plan.plan_components.all():
+        kpi_dict = [
+            x for x in analysis_summary if x["plan"]["plan_id"] == plan_repr["plan_id"]
+        ][0]
+        revenue_kpi = [
+            x for x in kpi_dict["kpis"] if x["kpi"] == ANALYSIS_KPI.TOTAL_REVENUE
+        ][0]["value"]
+        pcs = plan.plan_components.all()
+        for pc in pcs:
             metric = pc.billable_metric
+            value = revenue_kpi * Decimal(
+                random.gauss(1 / len(pcs), 1 / (len(pcs) * 2))
+            )
             single_metric = {
                 "metric": LightweightMetricSerializer(metric).data,
-                "revenue": str(Decimal("15.43")),
+                "revenue": value,
             }
             by_metric.append(single_metric)
         single_plan_metrics = {
-            "plan": LightweightPlanVersionSerializer(plan).data["plan"],
+            "plan": plan_repr,
             "by_metric": by_metric,
         }
         revenue_by_metric.append(single_plan_metrics)
@@ -2416,26 +2527,58 @@ def setup_database_demo(
         )[:5]
         top_customers_by_total_revenue = []
         for customer in customers:
+            kpi_dict = [
+                x
+                for x in analysis_summary
+                if x["plan"]["plan_id"] == plan_repr["plan_id"]
+            ][0]
+            revenue_kpi = [
+                x for x in kpi_dict["kpis"] if x["kpi"] == ANALYSIS_KPI.TOTAL_REVENUE
+            ][0]["value"]
+            value = revenue_kpi * convert_to_decimal(
+                abs(Decimal(random.gauss(1 / 5, 1 / 10)))
+            )
             single_customer = {
                 "customer": LightweightCustomerSerializer(customer).data,
-                "value": str(Decimal("15.43")),
+                "value": value,
             }
             top_customers_by_total_revenue.append(single_customer)
+        top_customers_by_total_revenue = sorted(
+            top_customers_by_total_revenue, key=lambda x: x["value"], reverse=True
+        )
         top_customers_by_average_revenue = []
         for customer in customers:
+            kpi_dict = [
+                x
+                for x in analysis_summary
+                if x["plan"]["plan_id"] == plan_repr["plan_id"]
+            ][0]
+            revenue_kpi = [
+                x for x in kpi_dict["kpis"] if x["kpi"] == ANALYSIS_KPI.TOTAL_REVENUE
+            ][0]["value"]
+            value = (
+                revenue_kpi
+                * convert_to_decimal(abs(Decimal(random.gauss(1 / 5, 1 / 10))))
+                / convert_to_decimal(abs(random.gauss(3, 1)))
+            )
             single_customer = {
                 "customer": LightweightCustomerSerializer(customer).data,
-                "value": str(Decimal("15.43")),
+                "value": value,
             }
             top_customers_by_average_revenue.append(single_customer)
+        top_customers_by_average_revenue = sorted(
+            top_customers_by_average_revenue, key=lambda x: x["value"], reverse=True
+        )
         single_plan = {
-            "plan": LightweightPlanVersionSerializer(plan).data["plan"],
+            "plan": LightweightPlanVersionSerializer(plan).data,
             "top_customers_by_average_revenue": top_customers_by_average_revenue,
             "top_customers_by_revenue": top_customers_by_total_revenue,
         }
         top_customers_by_plan.append(single_plan)
     analysis_results["top_customers_by_plan"] = top_customers_by_plan
     # create actual analysis
+    analysis_results = round_all_decimals_to_two_places(analysis_results)
+    analysis_results = make_all_decimals_strings(analysis_results)
     Analysis.objects.create(
         organization=organization,
         analysis_results=analysis_results,
