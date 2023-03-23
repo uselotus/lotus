@@ -5,23 +5,19 @@
 @tailwind utilities;
 
 @font-face {
-  font-family: "Menlo Regular";
-  font-style: normal;
-  font-weight: normal;
-  src: local("Menlo"), url("../fonts/Menlo-Regular.woff") format("woff");
+  font-family: "Menlo";
+  src: url("./fonts/Menlo-Regular.woff") format("woff");
 }
 @font-face {
-  font-family: "Alliance No.2";
-  src: local url("../fonts/Alliance-No.2-Regular.otf") format("otf");
+  font-family: "Alliance2";
+  src: url("./fonts/Alliance-No.2-Regular.otf") format("opentype");
 }
 .Inter {
   font-family: "Inter", sans-serif;
 }
 @font-face {
-  font-family: "Satoshi Regular";
-  font-style: normal;
-  font-weight: normal;
-  src: local("Satoshi"), url("../fonts/Satoshi-Regular.woff") format("woff");
+  font-family: "Satoshi";
+  src: url("./fonts/Satoshi-Regular.woff") format("woff");
 }
 
 .font-menlo {
@@ -32,7 +28,7 @@
   font-family: Satoshi, serif;
 }
 .font-alliance {
-  font-family: "Alliance No.2", sans-serif;
+  font-family: "Alliance2", sans-serif;
 }
 
 svg {
@@ -41,7 +37,7 @@ svg {
 
 :root {
   --toastify-color-success: #cca43b;
-  font-family: "Alliance No.2", sans-serif !important;
+  font-family: "Alliance2", sans-serif !important;
 }
 
 h1 {
@@ -49,7 +45,7 @@ h1 {
   font-weight: 700;
   font-size: 32px;
   line-height: 100%;
-  font-family: "Alliance No.2", sans-serif;
+  font-family: "Alliance2", sans-serif;
   /* identical to box height, or 32px */
 
   /* Black */
@@ -61,7 +57,7 @@ h2 {
   font-size: 26px;
   line-height: 100%;
   color: #1d1d1f;
-  font-family: "Alliance No.2", sans-serif;
+  font-family: "Alliance2", sans-serif;
   font-weight: 700;
   font-style: normal;
 }
@@ -69,14 +65,14 @@ h2 {
 h3 {
   font-style: normal;
   font-weight: 500;
-  font-family: "Alliance No.2", sans-serif;
+  font-family: "Alliance2", sans-serif;
   font-size: 16px;
   line-height: 100%;
 }
 
 html,
 body {
-  font-family: "Alliance No.2", sans-serif;
+  font-family: "Alliance2", sans-serif;
   padding: 0;
   margin: 0;
   font-weight: 500;
@@ -314,9 +310,9 @@ th.ant-table-cell {
 
 @font-face {
   font-family: "Satoshi-Variable";
-  src: url("../fonts/Satoshi-Variable.woff2") format("woff2"),
-    url("../fonts/Satoshi-Variable.woff") format("woff"),
-    url("../fonts/Satoshi-Variable.ttf") format("truetype");
+  src: url("./fonts/Satoshi-Variable.woff2") format("woff2"),
+    url("./fonts/Satoshi-Variable.woff") format("woff"),
+    url("./fonts/Satoshi-Variable.ttf") format("truetype");
   font-weight: 300 900;
   font-display: swap;
   font-style: normal;
