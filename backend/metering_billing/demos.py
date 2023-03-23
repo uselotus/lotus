@@ -2362,7 +2362,7 @@ def setup_database_demo(
     # analysis summary
     analysis_summary = []
     for plan in [pro_plan_bp_monthly, pay_as_you_go_bp_monthly]:
-        plan_ser = LightweightPlanVersionSerializer(plan).data
+        plan_ser = LightweightPlanVersionSerializer(plan).data["plan"]
         kpis = []
         for kpi, _ in ANALYSIS_KPI.choices:
             single_kpi = {"kpi": kpi, "value": str(Decimal("15.43"))}
@@ -2382,7 +2382,7 @@ def setup_database_demo(
         rev_per_plan = []
         for plan in [pro_plan_bp_monthly, pay_as_you_go_bp_monthly]:
             single_plan_rev = {
-                "plan": LightweightPlanVersionSerializer(plan).data,
+                "plan": LightweightPlanVersionSerializer(plan).data["plan"],
                 "revenue": str(Decimal("15.43")),
             }
             rev_per_plan.append(single_plan_rev)
@@ -2401,7 +2401,7 @@ def setup_database_demo(
             }
             by_metric.append(single_metric)
         single_plan_metrics = {
-            "plan": LightweightPlanVersionSerializer(plan).data,
+            "plan": LightweightPlanVersionSerializer(plan).data["plan"],
             "by_metric": by_metric,
         }
         revenue_by_metric.append(single_plan_metrics)
@@ -2429,7 +2429,7 @@ def setup_database_demo(
             }
             top_customers_by_average_revenue.append(single_customer)
         single_plan = {
-            "plan": LightweightPlanVersionSerializer(plan).data,
+            "plan": LightweightPlanVersionSerializer(plan).data["plan"],
             "top_customers_by_average_revenue": top_customers_by_average_revenue,
             "top_customers_by_revenue": top_customers_by_total_revenue,
         }
