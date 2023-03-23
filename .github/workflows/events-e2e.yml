@@ -37,8 +37,19 @@ jobs:
 
       - name: start-all
         run: |
-          docker-compose -f docker-compose.prod.yaml up --build &
+          docker-compose -f docker-compose.prod.yaml up --build
 
+      - name: Download wait-for-it.sh
+        run: |
+          wget https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh
+          chmod +x wait-for-it.sh
+
+      - name: Wait for healthcheck endpoint
+        run: ./wait-for-it.sh localhost:8000/api/healthcheck/ -t 0 --strict --interval=5 --timeout=300
+      
+      - name: Wait for frontend
+        run: ./wait-for-it.sh localhost:3000 -t 0 --strict --interval=5 --timeout=300
+        
       - name: Install jq
         run: sudo apt-get install -y jq
 
