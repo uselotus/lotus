@@ -191,7 +191,7 @@ class DemoLoginView(LoginViewMixin, APIView):
         login(request, user)
         posthog.capture(
             POSTHOG_PERSON if POSTHOG_PERSON else username,
-            event="succesful login",
+            event="succesful demo login",
             properties={"organization": user.organization.organization_name},
         )
         token = AuthToken.objects.create(user)
@@ -227,6 +227,11 @@ class LogoutView(LogoutViewMixin):
             return JsonResponse(
                 {"detail": "You're not logged in."}, status=status.HTTP_400_BAD_REQUEST
             )
+        posthog.capture(
+            POSTHOG_PERSON if POSTHOG_PERSON else request.user.username,
+            event="logout",
+            properties={"organization": request.user.organization.organization_name},
+        )
         return super().post(request, format)
 
 
@@ -383,6 +388,11 @@ class RegisterView(LoginViewMixin, APIView):
                 Organization.objects.filter(team=team)
                 .order_by("-organization_type")
                 .first()
+            )
+            posthog.capture(
+                POSTHOG_PERSON if POSTHOG_PERSON else username,
+                event="registered with invite token",
+                properties={"organization": org.organization_name},
             )
         else:
             # Organization doesn't exist yet
