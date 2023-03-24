@@ -42,7 +42,7 @@ jobs:
 
       - name: start-all
         run: |
-          docker-compose -f docker-compose.prod.yaml up --build
+          docker-compose -f docker-compose.prod.yaml up --build &
 
       - name: Download wait-for-it.sh
         run: |
@@ -50,7 +50,7 @@ jobs:
           chmod +x wait-for-it.sh
 
       - name: Wait for healthcheck endpoint
-        run: ./wait-for-it.sh localhost:8000/api/healthcheck/ -t 0 --strict --interval=5 --timeout=300
+        run: ./wait-for-it.sh localhost:8000/api/healthcheck/ -t 0 --strict --interval=5 --timeout=600
 
       - name: Wait for frontend
         run: ./wait-for-it.sh localhost:3000 -t 0 --strict --interval=5 --timeout=300
