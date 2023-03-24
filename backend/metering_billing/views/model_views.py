@@ -527,13 +527,14 @@ class EventViewSet(
         serializer = EventSearchRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+
         customer_id = data.get("customer_id")
         idempotency_id = data.get("idempotency_id")
 
         queryset = self.get_queryset()
-        if customer_id:
+        if customer_id and len(customer_id) > 0:
             queryset = queryset.filter(cust_id__icontains=customer_id)
-        if idempotency_id:
+        if idempotency_id and len(idempotency_id) > 0:
             queryset = queryset.filter(idempotency_id__icontains=idempotency_id)
 
         # this snippet is from ListModelMixin

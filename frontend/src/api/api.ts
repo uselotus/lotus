@@ -556,7 +556,7 @@ export const Metrics = {
 interface SearchEventPreviewsParams {
   customer_id?: string;
   idempotency_id?: string;
-  c: string;
+  c?: string;
 }
 
 export const Events = {

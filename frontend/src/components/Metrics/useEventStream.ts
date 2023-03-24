@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import { useQuery, UseQueryResult, useQueryClient } from "react-query";
 
-import useDebounce from "./useDebounce";
+import useDebounce from "../../hooks/useDebounce";
 import { Events } from "../../api/api";
 import { EventPages, EventPreviewType } from "../../types/event-type";
 
@@ -9,6 +9,10 @@ type EventStream = EventPreviewType[];
 
 export interface UseEventStreamProps {
   stream: boolean;
+  query: {
+    customer_id?: string | undefined;
+    idempotency_id?: string | undefined;
+  };
   refreshRate?: number;
   pageSize?: number;
 }
@@ -26,8 +30,15 @@ function spliceEvents(events: EventStream, newEvents: EventStream) {
   });
 }
 
+function parseCursor(cursor: string) {
+  // Server returns an invalid cursor, this parses that cursor and returns a valid one
+  // Def is a bandaid and should be fixed server side
+  return cursor.split("&")[0];
+}
+
 export default function useEventStream({
   stream,
+  query,
   refreshRate = 5000,
   pageSize = 10,
 }: UseEventStreamProps) {
@@ -45,8 +56,33 @@ export default function useEventStream({
   // Queries for page scroll data
   const queryClient = useQueryClient();
 
+  useEffect(() => {
+    setEvents([]);
+    setEventIdx(0);
+    setPageCursor("");
+    setPageNext("");
+    setPagePrev("");
+    idempotencySet.current.clear();
+    streamCursor.current = "";
+  }, [JSON.stringify(query)]);
+
+  const queryFn = useCallback(
+    (c: string): Promise<EventPages> => {
+      if (query.customer_id?.length || query.idempotency_id?.length) {
+        return Events.searchEventPreviews({
+          ...query,
+          c,
+        });
+      } else {
+        return Events.getEventPreviews(c);
+      }
+    },
+    [JSON.stringify(query)]
+  );
+
+  // Polls for new event previews
   const { data: streamEventPages } = useQuery<EventPages>({
-    queryFn: () => Events.getEventPreviews(streamCursor.current),
+    queryFn: () => queryFn(streamCursor.current),
     refetchInterval: (data, query) => {
       if (!data || data.results.length === 0) {
         // no previews added
@@ -61,21 +97,23 @@ export default function useEventStream({
         }
       }
 
-      // There are more to start grabbing
+      // There are more to start grabbing, execute immediately
       streamCursor.current = data.next;
       return 0;
     },
     enabled: streaming,
   });
 
+  //
   const { data: eventPages } = useQuery<EventPages>({
-    queryKey: ["preview_events", pageCursor],
-    queryFn: () => Events.getEventPreviews(pageCursor),
+    queryKey: ["preview_events", pageCursor, query],
+    queryFn: () => queryFn(pageCursor),
   });
+
   useEffect(() => {
     queryClient.prefetchQuery({
-      queryKey: ["preview_events", pageNext],
-      queryFn: () => Events.getEventPreviews(pageNext),
+      queryKey: ["preview_events", pageNext, query],
+      queryFn: () => queryFn(pageNext),
     });
   }, [pageNext]);
 
@@ -95,15 +133,9 @@ export default function useEventStream({
       idempotencySet.current.add(newEvent.idempotency_id)
     );
     setEvents(spliceEvents(events, eventPages.results));
-    setPageNext(decodeURIComponent(eventPages.next));
-    setPagePrev(decodeURIComponent(eventPages.previous));
+    setPageNext(parseCursor(decodeURIComponent(eventPages.next)));
+    setPagePrev(parseCursor(decodeURIComponent(eventPages.previous)));
   }, [eventPages]);
-
-  useEffect(() => {
-    if (events.slice(eventIdx, eventIdx + pageSize).length < pageSize) {
-      setPageCursor(pageNext);
-    }
-  }, [events.slice(eventIdx, eventIdx + pageSize).length, pageNext]);
 
   // Callbacks
 
@@ -113,7 +145,7 @@ export default function useEventStream({
 
   const next = useCallback(() => {
     if (eventIdx >= events.length - pageSize) {
-      setPageCursor(pageNext);
+      setPageCursor(parseCursor(pageNext));
     }
     setEventIdx(eventIdx + pageSize);
   }, [pageNext, eventIdx]);
@@ -131,7 +163,7 @@ export default function useEventStream({
   return {
     pageIndex: Math.floor(eventIdx / pageSize) + 1,
     page,
-    streaming: streaming,
+    streaming,
     start,
     next,
     prev,

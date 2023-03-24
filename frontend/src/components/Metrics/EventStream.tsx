@@ -1,23 +1,17 @@
-import React, {
-  FormEvent,
-  startTransition,
-  useState,
-  ChangeEvent,
-  useEffect,
-} from "react";
-import { Button, Collapse, Divider } from "antd";
+import React, { useCallback, useState, ChangeEvent, useEffect } from "react";
+import { Button, Collapse } from "antd";
 import {
   RightOutlined,
   LeftOutlined,
   DoubleLeftOutlined,
 } from "@ant-design/icons";
-import dayjs from "dayjs";
+import useDebounce from "../../hooks/useDebounce";
 import { Events } from "../../api/api";
 
-import { EventPreviewType } from "../../types/event-type";
+import { EventPages, EventPreviewType } from "../../types/event-type";
 
 import useEventStream from "./useEventStream";
-import LoadingSpinner from "../LoadingSpinner";
+// import LoadingSpinner from "../LoadingSpinner";
 import CopyText from "../base/CopytoClipboard";
 
 const { Panel } = Collapse;
@@ -121,24 +115,29 @@ function EventInstance({ instance }: { instance: EventPreviewType }) {
   );
 }
 
-export default function EventStream() {
-  const { pageIndex, page, streaming, next, prev, start, setStreaming } =
-    useEventStream({
-      stream: true,
-    });
+type Category = "customer" | "idempotency";
 
+export default function EventStream() {
+  // Search input
+  const [category, setCategory] = useState<Category>("customer");
   const [search, setSearch] = useState("");
   const onSearchChange = (e: ChangeEvent<HTMLInputElement>) =>
     setSearch(e.target.value);
 
+  const searchDebounce = useDebounce(search, 500);
+
+  // Handles pages
+  const { pageIndex, page, streaming, next, prev, start, setStreaming } =
+    useEventStream({
+      stream: true,
+      query: {
+        customer_id: category === "customer" ? searchDebounce : "",
+        idempotency_id: category === "idempotency" ? searchDebounce : "",
+      },
+    });
   const streamBtnOnClick = () => setStreaming(!streaming);
 
-  useEffect(() => {
-    Events.searchEventPreviews({
-      customer_id: "cust_d5c6de2e4d6f45599782fbe8c8ca41a3",
-      c: "",
-    }).then((res) => console.log("searchEventPreviews", res));
-  }, []);
+  //cD0yMDIzLTAzLTI0KzEyJTNBNDglM0EwMS40Njg4NTIlMkIwMCUzQTAw&customer_id=cust_49e6e86ee38249bca8df1cfc64ff7913&idempotency_id=
 
   return (
     <>
@@ -150,13 +149,24 @@ export default function EventStream() {
           </span>
         </h1>
         <div className="flex flex-row gap-6">
-          <input
-            type="text"
-            className="w-192 p-2 pl-8 rounded-md border border-background bg-background focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent"
-            placeholder="Search..."
-            value={search}
-            onChange={onSearchChange}
-          />
+          <div className="flex flex-row divide-x-2 divide-neutral-400">
+            <input
+              type="text"
+              className="w-192 p-2 pl-8 z-10 rounded-l-md border border-background bg-background focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent"
+              placeholder="Search..."
+              value={search}
+              onChange={onSearchChange}
+            />
+            <div className="flex flex-col relative rounded-r-md items-center bg-background">
+              <select
+                onChange={(e) => setCategory(e.target.value as Category)}
+                className="h-full border-0 border-yellow-600 outline-1 rounded-r-md bg-background py-0 px-2 pr-7 text-gray-500 focus:ring-2 focus:ring-inset focus:ring-yellow-600 sm:text-sm focus:border-transparent target:ring-yellow-600 focus-visible:outline-yellow-600 visited:ring-yellow-600 accent-yellow-600"
+              >
+                <option value="customer">Customer ID</option>
+                <option value="idempotency">Idempotency ID</option>
+              </select>
+            </div>
+          </div>
           <Button
             type="primary"
             size="large"

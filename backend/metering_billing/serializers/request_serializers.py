@@ -141,5 +141,6 @@ class StripeMultiSubscriptionsSerializer(serializers.Serializer):
 
 
 class EventSearchRequestSerializer(serializers.Serializer):
-    customer_id = serializers.CharField(allow_blank=False, required=False)
-    idempotency_id = serializers.CharField(allow_blank=False, required=False)
+    customer_id = serializers.CharField(allow_blank=True, required=False)
+    idempotency_id = serializers.CharField(allow_blank=True, required=False)
+    c = serializers.CharField(allow_blank=True, required=False)
