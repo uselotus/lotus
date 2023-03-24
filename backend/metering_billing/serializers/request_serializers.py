@@ -138,3 +138,8 @@ class StripeMultiSubscriptionsSerializer(serializers.Serializer):
     stripe_subscription_ids = serializers.ListField(
         child=serializers.CharField(), required=True
     )
+
+
+class EventSearchRequestSerializer(serializers.Serializer):
+    customer_id = serializers.CharField(allow_blank=False, required=False)
+    idempotency_id = serializers.CharField(allow_blank=False, required=False)

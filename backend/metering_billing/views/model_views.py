@@ -1,10 +1,29 @@
 # import lotus_python
 import logging
 
-import api.views as api_views
 import posthog
 import sentry_sdk
 from actstream.models import Action
+from django.conf import settings
+from django.core.cache import cache
+from django.core.validators import MinValueValidator
+from django.db.models import Max
+from django.db.utils import IntegrityError
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiCallback,
+    OpenApiParameter,
+    extend_schema,
+    inline_serializer,
+)
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.pagination import CursorPagination
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+import api.views as api_views
 from api.serializers.nonmodel_serializers import (
     AddFeatureSerializer,
     AddFeatureToAddOnSerializer,
@@ -20,18 +39,6 @@ from api.serializers.webhook_serializers import (
     SubscriptionCreatedSerializer,
     SubscriptionRenewedSerializer,
     UsageAlertTriggeredSerializer,
-)
-from django.conf import settings
-from django.core.cache import cache
-from django.core.validators import MinValueValidator
-from django.db.models import Max
-from django.db.utils import IntegrityError
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import (
-    OpenApiCallback,
-    OpenApiParameter,
-    extend_schema,
-    inline_serializer,
 )
 from metering_billing.exceptions import (
     DuplicateMetric,
@@ -109,6 +116,7 @@ from metering_billing.serializers.model_serializers import (
 )
 from metering_billing.serializers.request_serializers import (
     CRMSyncRequestSerializer,
+    EventSearchRequestSerializer,
     MakeReplaceWithSerializer,
     OrganizationSettingFilterSerializer,
     PlansSetReplaceWithForVersionNumberSerializer,
@@ -134,12 +142,6 @@ from metering_billing.utils.enums import (
     PAYMENT_PROCESSORS,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
-from rest_framework.pagination import CursorPagination
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -460,7 +462,6 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
 class CursorSetPagination(CustomPagination):
     page_size = 10
-    page_size_query_param = "page_size"
     ordering = "-time_created"
     cursor_query_param = "c"
 
@@ -496,59 +497,52 @@ class EventViewSet(
         context.update({"organization": organization})
         return context
 
-    @action(detail=False, methods=["get"], url_path="search")
+    def get_serializer_class(self):
+        if self.action == "list":
+            return EventDetailSerializer
+        elif self.action == "search":
+            return EventDetailSerializer
+        return super().get_serializer_class()
+
+    @extend_schema(
+        parameters=[
+            EventSearchRequestSerializer,
+            OpenApiParameter(
+                name=CursorSetPagination.cursor_query_param,
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description=CursorSetPagination.cursor_query_description,
+            ),
+        ],
+        responses=EventDetailSerializer(many=True),
+    )
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="search",
+        pagination_class=CursorSetPagination,
+    )
     def search(self, request):
-        now = now_utc()
-        print(request)
-        organization = self.request.organization
-        idempotency_id = request.GET["idempotency_id"]
-        customer_id = request.GET["cust_id"]
+        # dont use self.get_queryset() since we use diff for request and response
+        serializer = EventSearchRequestSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        customer_id = data.get("customer_id")
+        idempotency_id = data.get("idempotency_id")
 
         queryset = self.get_queryset()
+        if customer_id:
+            queryset = queryset.filter(cust_id__icontains=customer_id)
+        if idempotency_id:
+            queryset = queryset.filter(idempotency_id__icontains=idempotency_id)
 
-        if len(idempotency_id) > 0 and len(customer_id) > 0:
-            res = self.pagination_class(
-                EventDetailSerializer(
-                    queryset.filter(
-                        organization=organization,
-                        time_created__lt=now,
-                        idempotency_id__contains=idempotency_id,
-                        cust_id__contains=customer_id,
-                    ),
-                    many=True,
-                ).data
-            )
-            return Response(res)
-        elif len(idempotency_id) > 0:
-            res = EventDetailSerializer(
-                queryset.filter(
-                    organization=organization,
-                    time_created__lt=now,
-                    idempotency_id__contains=idempotency_id,
-                ),
-                many=True,
-            ).data
-            return Response(res)
-        elif len(customer_id) > 0:
-            res = EventDetailSerializer(
-                queryset.filter(
-                    organization=organization,
-                    time_created__lt=now,
-                    cust_id__contains=customer_id,
-                ),
-                many=True,
-            ).data
-            return Response(res)
+        # this snippet is from ListModelMixin
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         else:
-            res = self.pagination_class(
-                EventDetailSerializer(
-                    super()
-                    .get_queryset()
-                    .filter(organization=organization, time_created__lt=now),
-                    many=True,
-                ).data
-            )
-            return Response(res)
+            raise ServerError("Pagination error")
 
 
 class UserViewSet(
