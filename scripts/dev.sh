@@ -28,7 +28,7 @@ fi
 # Check if --no-events flag was passed
 if [[ "$*" == *"--no-events"* ]]; then
   echo "Skipping event ingestion, event guidance and redpanda images/containers 🚀"
-  echo "NO_EVENTS=true" >> "$ENV_FILE"
+  export NO_EVENTS=true
 else
   DOCKER_IMAGES+=("event-ingestion:latest" "event-guidance:latest" "docker.redpanda.com/vectorized/redpanda:v22.2.2")
   SERVICES+=("event-ingestion" "event-guidance" "redpanda")
@@ -37,7 +37,7 @@ fi
 # Check if --no-beat flag was passed
 if [[ "$*" == *"--no-beat"* ]]; then
   echo "Skipping celery beat images/containers 🚀"
-  echo "NO_BEAT=true" >> "$ENV_FILE"
+  export NO_BEAT=true
 else
   DOCKER_IMAGES+=("lotus-celery-beat:latest")
   SERVICES+=("celery-beat")
@@ -46,7 +46,7 @@ fi
 # Check if --no-webhooks flag was passed
 if [[ "$*" == *"--no-webhooks"* ]]; then
   echo "Skipping svix images/containers 🚀"
-  echo "NO_WEBHOOKS=true" >> "$ENV_FILE"
+  export NO_WEBHOOKS=true
 else
   DOCKER_IMAGES+=("svix/svix-server:latest")
   SERVICES+=("svix-server")
