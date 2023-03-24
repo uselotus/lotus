@@ -31,6 +31,7 @@ jobs:
       POSTGRES_USER: lotus
       POSTGRES_PASSWORD: lotus
       POSTGRES_DB: lotus
+      KAFKA_URL: redpanda:29092
 
     steps:
       - uses: actions/checkout@v3
@@ -50,10 +51,10 @@ jobs:
 
       - name: Wait for healthcheck endpoint
         run: ./wait-for-it.sh localhost:8000/api/healthcheck/ -t 0 --strict --interval=5 --timeout=300
-      
+
       - name: Wait for frontend
         run: ./wait-for-it.sh localhost:3000 -t 0 --strict --interval=5 --timeout=300
-        
+
       - name: Install jq
         run: sudo apt-get install -y jq
 
