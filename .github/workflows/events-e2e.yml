@@ -36,18 +36,14 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: create env file
-        run: |
-          sh ./scripts/ci.sh
-
       - name: start-all
         run: |
-          docker-compose -f docker-compose.prod.yaml up --build
+          sh ./scripts/dev.sh --no-webhooks --no-beat &
 
       - name: Wait for API to be ready
         run: |
           for i in {1..120}; do
-            if curl -s -f http://localhost/api/healthcheck/; then
+            if curl -s -f http://localhost:8000/api/healthcheck/; then
               export STARTUP_SUCCEEDED=true
               break
             else
@@ -77,7 +73,7 @@ jobs:
 
       - name: track-events
         run: |
-          curl --location --request POST 'http://localhost/api/track/' \
+          curl --location --request POST 'http://localhost:8000/api/track/' \
           --header "X-API-KEY: ${{ secrets.LOTUS_API_KEY }}" \
           --header 'Content-Type: application/json' \
           --data-raw '{
@@ -99,7 +95,7 @@ jobs:
       - name: verify event
         run: |
           response=$(curl --silent --request POST \
-          --url http://localhost/api/verify_idems_received/ \
+          --url http://localhost:8000/api/verify_idems_received/ \
           --header "X-API-KEY: ${{ secrets.LOTUS_API_KEY }}" \
           --header 'Content-Type: application/json' \
           --data '{
