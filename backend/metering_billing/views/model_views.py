@@ -499,6 +499,7 @@ class EventViewSet(
     @action(detail=False, methods=["get"], url_path="search")
     def search(self, request):
         now = now_utc()
+
         print(request)
         organization = self.request.organization
         idempotency_id = request.GET["idempotency_id"]
