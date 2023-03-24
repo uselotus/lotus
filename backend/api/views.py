@@ -419,6 +419,11 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             .prefetch_related("billing_plan__plan_components")
             .prefetch_related("billing_plan__plan_components__billable_metric")
             .prefetch_related("billing_plan__plan_components__tiers")
+            .prefetch_related("billing_records")
+            .prefetch_related("billing_records__component")
+            .prefetch_related("billing_records__recurring_charge")
+            .prefetch_related("billing_records__component__billable_metric")
+            .prefetch_related("billing_records__component__tiers")
         )
         for subscription in subscriptions:
             earned_revenue = subscription.calculate_earned_revenue_per_day()
