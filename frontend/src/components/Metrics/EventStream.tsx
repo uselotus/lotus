@@ -134,10 +134,10 @@ export default function EventStream() {
   const streamBtnOnClick = () => setStreaming(!streaming);
 
   useEffect(() => {
-    Events.searchEventPreviews(
-      "cust_19c63d7f99cf46f3b29dd082a44c5f5d",
-      ""
-    ).then((res) => console.log(res));
+    Events.searchEventPreviews({
+      customer_id: "cust_d5c6de2e4d6f45599782fbe8c8ca41a3",
+      c: "",
+    }).then((res) => console.log("searchEventPreviews", res));
   }, []);
 
   return (
