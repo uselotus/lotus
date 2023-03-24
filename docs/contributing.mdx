@@ -47,6 +47,11 @@ environment, which allows for hot reloading of both frontend and backend code.
 Optionally:
 
 - Change the environment variables located in `env/.env.dev` to suit your needs. For more details, check out [this guide in our docs](https://docs.uselotus.io/docs/overview/self-hosting).
+- If the dev distirbution of Lotus is too heavy for your machine, you can use some flags to remove some optional lotus modules from the build:
+  - `--no-events` to remove the entire event tracking infrastructure, including Kafka/Redpanda, the event service module, and the event ingestion service
+  - `no-webhooks` to remove the webhook service module. This is useful if you don't need to send webhooks to external services.
+  - `--no-beat` to remove the celery-beat service module. This is useful if you don't need to run scheduled tasks.
+  - `--force-recreate` to force the docker containers to be recreated, even if they already exist. This is useful if you want to rebuild the containers with different flags.
 
 If you make any changes to the backend settings or the environment variables, you might need to restart the Docker container.
 
