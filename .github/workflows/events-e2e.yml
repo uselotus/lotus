@@ -32,7 +32,6 @@ jobs:
       POSTGRES_PASSWORD: lotus
       POSTGRES_DB: lotus
       KAFKA_URL: redpanda:29092
-      SVIX_JWT_SECRET: "${{ secrets.SVIX_JWT_SECRET }}"
 
     steps:
       - uses: actions/checkout@v3
