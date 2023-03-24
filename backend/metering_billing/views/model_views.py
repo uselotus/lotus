@@ -1,29 +1,10 @@
 # import lotus_python
 import logging
 
+import api.views as api_views
 import posthog
 import sentry_sdk
 from actstream.models import Action
-from django.conf import settings
-from django.core.cache import cache
-from django.core.validators import MinValueValidator
-from django.db.models import Func, Max
-from django.db.utils import IntegrityError
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import (
-    OpenApiCallback,
-    OpenApiParameter,
-    extend_schema,
-    inline_serializer,
-)
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
-from rest_framework.pagination import CursorPagination
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-
-import api.views as api_views
 from api.serializers.nonmodel_serializers import (
     AddFeatureSerializer,
     AddFeatureToAddOnSerializer,
@@ -39,6 +20,18 @@ from api.serializers.webhook_serializers import (
     SubscriptionCreatedSerializer,
     SubscriptionRenewedSerializer,
     UsageAlertTriggeredSerializer,
+)
+from django.conf import settings
+from django.core.cache import cache
+from django.core.validators import MinValueValidator
+from django.db.models import Func, Max
+from django.db.utils import IntegrityError
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiCallback,
+    OpenApiParameter,
+    extend_schema,
+    inline_serializer,
 )
 from metering_billing.exceptions import (
     DuplicateMetric,
@@ -145,6 +138,12 @@ from metering_billing.utils.enums import (
     PAYMENT_PROCESSORS,
     WEBHOOK_TRIGGER_EVENTS,
 )
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.pagination import CursorPagination
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -522,18 +521,24 @@ class EventViewSet(
             .distinct()
         )
         event_name_to_props = {}
-        for event_name in event_names:
-            props = (
-                Event.objects.filter(organization=org)
-                .annotate(props_keys=Func("properties", function="jsonb_object_keys"))
-                .filter(event_name=event_name)
-                .values_list("props_keys", flat=True)
-                .distinct()
-            )
-            event_name_to_props[event_name] = list(props)
-
+        props = (
+            Event.objects.filter(organization=org)
+            .annotate(props_keys=Func("properties", function="jsonb_object_keys"))
+            .filter(event_name__in=event_names)
+            .values("event_name", "props_keys")
+            .distinct()
+        )
+        for prop in props:
+            event_name = prop["event_name"]
+            if event_name not in event_name_to_props:
+                event_name_to_props[event_name] = set()
+            event_name_to_props[event_name].add(prop["props_keys"])
+        event_name_to_props = {k: list(v) for k, v in event_name_to_props.items()}
         return Response(
-            {"event_names": event_names, "event_name_to_props": event_name_to_props},
+            {
+                "event_names": list(event_names),
+                "event_name_to_props": event_name_to_props,
+            },
             status=status.HTTP_200_OK,
         )
 
