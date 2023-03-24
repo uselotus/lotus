@@ -13,6 +13,45 @@ from typing import Optional
 
 import posthog
 import pytz
+from dateutil import parser
+from dateutil.relativedelta import relativedelta
+from django.conf import settings
+from django.db.models import (
+    Count,
+    DecimalField,
+    F,
+    Max,
+    Min,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
+from django.db.utils import IntegrityError
+from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiParameter,
+    extend_schema,
+    inline_serializer,
+)
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import (
+    action,
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
     AddOnSubscriptionRecordSerializer,
@@ -52,33 +91,6 @@ from api.serializers.nonmodel_serializers import (
     GetInvoicePdfURLResponseSerializer,
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
-)
-from dateutil import parser
-from dateutil.relativedelta import relativedelta
-from django.conf import settings
-from django.db.models import (
-    Count,
-    DecimalField,
-    F,
-    Max,
-    Min,
-    OuterRef,
-    Prefetch,
-    Q,
-    Subquery,
-    Sum,
-    Value,
-)
-from django.db.models.functions import Coalesce
-from django.db.utils import IntegrityError
-from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import (
-    OpenApiExample,
-    OpenApiParameter,
-    extend_schema,
-    inline_serializer,
 )
 from metering_billing.auth.auth_utils import (
     PermissionPolicyMixin,
@@ -154,21 +166,16 @@ from metering_billing.webhooks import (
     subscription_cancelled_webhook,
     subscription_created_webhook,
 )
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import (
-    action,
-    api_view,
-    authentication_classes,
-    permission_classes,
-)
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 IDEMPOTENCY_ID_NAMESPACE = settings.IDEMPOTENCY_ID_NAMESPACE
+logger = logging.getLogger("django.server")
+USE_KAFKA = settings.USE_KAFKA
+if USE_KAFKA:
+    kafka_producer = Producer()
+else:
+    kafka_producer = None
 
 logger = logging.getLogger("django.server")
 
@@ -2140,10 +2147,6 @@ class ConfirmIdemsReceivedView(APIView):
         )
 
 
-logger = logging.getLogger("django.server")
-kafka_producer = Producer()
-
-
 def load_event(request: HttpRequest) -> Optional[dict]:
     """
     Loads an event from the request body.
@@ -2257,7 +2260,8 @@ def track_event(request):
                 "organization_id": organization_pk,
                 "event": transformed_event,
             }
-            kafka_producer.produce(customer_id, stream_events)
+            if kafka_producer:
+                kafka_producer.produce(customer_id, stream_events)
         except Exception as e:
             bad_events[idempotency_id] = str(e)
             continue

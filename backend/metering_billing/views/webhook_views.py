@@ -17,7 +17,11 @@ from metering_billing.utils.enums import PAYMENT_PROCESSORS
 STRIPE_WEBHOOK_SECRET = settings.STRIPE_WEBHOOK_SECRET
 STRIPE_TEST_SECRET_KEY = settings.STRIPE_TEST_SECRET_KEY
 STRIPE_LIVE_SECRET_KEY = settings.STRIPE_LIVE_SECRET_KEY
-kafka_producer = Producer()
+USE_KAFKA = settings.USE_KAFKA
+if USE_KAFKA:
+    kafka_producer = Producer()
+else:
+    kafka_producer = None
 
 
 def _invoice_paid_handler(event):
@@ -29,11 +33,12 @@ def _invoice_paid_handler(event):
     if matching_invoice:
         matching_invoice.payment_status = Invoice.PaymentStatus.PAID
         matching_invoice.save()
-        kafka_producer.produce_invoice_pay_in_full(
-            invoice=matching_invoice,
-            payment_date=now_utc(),
-            source=PAYMENT_PROCESSORS.STRIPE,
-        )
+        if kafka_producer:
+            kafka_producer.produce_invoice_pay_in_full(
+                invoice=matching_invoice,
+                payment_date=now_utc(),
+                source=PAYMENT_PROCESSORS.STRIPE,
+            )
 
 
 def _invoice_updated_handler(event):

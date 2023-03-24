@@ -73,7 +73,11 @@ from metering_billing.utils.enums import (
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
-kafka_producer = Producer()
+USE_KAFKA = settings.USE_KAFKA
+if USE_KAFKA:
+    kafka_producer = Producer()
+else:
+    kafka_producer = None
 
 
 class TagNameSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
@@ -1442,7 +1446,7 @@ class InvoiceUpdateSerializer(
             "payment_status", instance.payment_status
         )
         instance.save()
-        if instance.payment_status == Invoice.PaymentStatus.PAID:
+        if instance.payment_status == Invoice.PaymentStatus.PAID and kafka_producer:
             kafka_producer.produce_invoice_pay_in_full(
                 invoice=instance, payment_date=now_utc(), source="lotus_out_of_band"
             )
