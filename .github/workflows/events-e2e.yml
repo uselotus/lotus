@@ -32,7 +32,7 @@ jobs:
       POSTGRES_PASSWORD: lotus
       POSTGRES_DB: lotus
       KAFKA_URL: redpanda:29092
-      SVIX_JWT_SECRET: zv05xx27x64vx2661wxu7630yutuxyx1
+      SVIX_JWT_SECRET: dummysecret123456
 
     steps:
       - uses: actions/checkout@v3
@@ -51,10 +51,7 @@ jobs:
           chmod +x wait-for-it.sh
 
       - name: Wait for healthcheck endpoint
-        run: ./wait-for-it.sh localhost:8000/api/healthcheck/ -t 0 --strict --interval=5 --timeout=600
-
-      - name: Wait for frontend
-        run: ./wait-for-it.sh localhost:3000 -t 0 --strict --interval=5 --timeout=300
+        run: ./wait-for-it.sh localhost:8000/api/healthcheck/ --timeout=600
 
       - name: Install jq
         run: sudo apt-get install -y jq
