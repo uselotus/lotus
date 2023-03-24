@@ -32,7 +32,7 @@ jobs:
       POSTGRES_PASSWORD: lotus
       POSTGRES_DB: lotus
       KAFKA_URL: redpanda:29092
-      SVIX_JWT_SECRET: dummysecret123456
+      SVIX_JWT_SECRET: "${{ secrets.SVIX_JWT_SECRET }}"
 
     steps:
       - uses: actions/checkout@v3
@@ -43,7 +43,7 @@ jobs:
 
       - name: start-all
         run: |
-          docker-compose -f docker-compose.prod.yaml up --build
+          docker-compose -f docker-compose.prod.yaml up --build &
 
       - name: Wait for API to be ready
         run: |
