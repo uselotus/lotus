@@ -43,14 +43,25 @@ jobs:
 
       - name: start-all
         run: |
-          docker-compose -f docker-compose.prod.yaml up --build &
+          docker-compose -f docker-compose.prod.yaml up --build
 
       - name: Wait for API to be ready
         run: |
           for i in {1..120}; do
-            curl -s -f http://localhost/api/healthcheck/ && break
-            sleep 5
+            if curl -s -f http://localhost/api/healthcheck/; then
+              export STARTUP_SUCCEEDED=true
+              break
+            else
+              export STARTUP_SUCCEEDED=false
+            fi
+            sleep 5s
           done
+          if [[ "${STARTUP_SUCCEEDED}" == "true" ]]; then
+            echo "Startup succeeded"
+          else
+            echo "Startup failed"
+            exit 1
+          fi
 
       - name: Install jq
         run: sudo apt-get install -y jq
