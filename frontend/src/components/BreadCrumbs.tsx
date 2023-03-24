@@ -10,7 +10,7 @@ interface BreadCrumbItemProps {
 
 const BreadCrumbItem = ({ label, onClick, isActive }: BreadCrumbItemProps) => (
   // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-  <div
+  (<div
     className={clsx(["inline-flex items-center justify-center"])}
     onClick={onClick}
     style={{
@@ -18,7 +18,7 @@ const BreadCrumbItem = ({ label, onClick, isActive }: BreadCrumbItemProps) => (
     }}
   >
     {label}
-  </div>
+  </div>)
 );
 
 interface Props {

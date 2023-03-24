@@ -65,6 +65,8 @@ def subscription_test_common_setup(
             "org2": org2,
             "key2": key2,
         }
+        org.subscription_filter_keys = ["email"]
+        org.save()
         # set up the client with the appropriate api key spec
         if auth_method == "api_key":
             client = api_client_with_api_key_auth(key)
@@ -202,8 +204,6 @@ class TestCreateSubscription:
         num_subscription_records_before = len(
             get_subscription_records_in_org(setup_dict["org"])
         )
-
-        setup_dict["org"].update_subscription_filter_settings(["email"])
 
         setup_dict["payload"]["start_date"] = now_utc()
         setup_dict["payload"]["subscription_filters"] = [
@@ -671,6 +671,7 @@ class TestRegressions:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_refresh_rate_metric_doesnt_fail(self, subscription_test_common_setup):
+        from metering_billing.models import Organization
         from metering_billing.utils.enums import (
             METRIC_AGGREGATION,
             METRIC_GRANULARITY,
@@ -690,7 +691,11 @@ class TestRegressions:
             granularity=METRIC_GRANULARITY.DAY,
         )
         try:
-            setup_dict["org"].update_subscription_filter_settings(["email"])
+            setup_dict["org"].subscription_filter_keys = ["zed"]
+            setup_dict["org"].save()
+            assert Organization.objects.get(
+                pk=setup_dict["org"].pk
+            ).subscription_filter_keys == ["email", "zed"]
         except Exception as e:
             assert False, e
 

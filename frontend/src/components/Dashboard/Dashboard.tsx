@@ -4,7 +4,7 @@ import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import dayjsGenerateConfig from "rc-picker/lib/generate/dayjs";
 import generatePicker from "antd/es/date-picker/generatePicker";
-import { useQuery, UseQueryResult } from "react-query";
+import { useQuery, UseQueryResult } from "@tanstack/react-query";
 import advancedFormat from "dayjs/plugin/advancedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import localeData from "dayjs/plugin/localeData";
@@ -15,6 +15,7 @@ import { Events, GetRevenue, GetSubscriptions } from "../../api/api";
 import { RevenueType } from "../../types/revenue-type";
 import MetricBarGraph from "./MetricBarGraph";
 import { SubscriptionTotals } from "../../types/subscription-type";
+import { components, operations } from "../../gen-types";
 
 import { PageLayout } from "../base/PageLayout";
 import { CustomerByPlanPie } from "./CustomerByPlanPie";
@@ -38,16 +39,33 @@ const defaultDate = [dayjs().subtract(1, "months").add(1, "day"), dayjs()];
 const Dashboard: FC = () => {
   const [dateRange, setDateRange] = React.useState<any>(defaultDate);
 
-  const { data, isLoading }: UseQueryResult<RevenueType, RevenueType> =
-    useQuery<RevenueType, RevenueType>(["total_revenue", dateRange], () =>
-      GetRevenue.getMonthlyRevenue(
-        dateRange[0].format("YYYY-MM-DD"),
-        dateRange[1].format("YYYY-MM-DD"),
-        dateRange[0]
-          .subtract(dayjs.duration(dateRange[1].diff(dateRange[0])))
-          .format("YYYY-MM-DD"),
-        dateRange[1].subtract(1, "month").format("YYYY-MM-DD")
-      ).then((res) => res)
+  const {
+    data: recentPeriodData,
+    isLoading: recentPeriodIsLoading,
+  }: UseQueryResult<components["schemas"]["PeriodMetricRevenueResponse"]> =
+    useQuery<components["schemas"]["PeriodMetricRevenueResponse"]>(
+      ["revent_total_revenue", dateRange],
+      () =>
+        GetRevenue.getMonthlyRevenue(
+          dateRange[0].format("YYYY-MM-DD"),
+          dateRange[1].format("YYYY-MM-DD")
+        ).then((res) => res)
+    );
+
+  const {
+    data: previousPeriodData,
+    isLoading: previousPeriodIsLoading,
+  }: UseQueryResult<components["schemas"]["PeriodMetricRevenueResponse"]> =
+    useQuery<components["schemas"]["PeriodMetricRevenueResponse"]>(
+      ["previous_total_revenue", dateRange],
+      () =>
+        GetRevenue.getMonthlyRevenue(
+          dateRange[0]
+            .subtract(dayjs.duration(dateRange[1].diff(dateRange[0])))
+            .subtract(1, "day")
+            .format("YYYY-MM-DD"),
+          dateRange[0].subtract(1, "day").format("YYYY-MM-DD")
+        ).then((res) => res)
     );
 
   const { data: subscriptionData, isLoading: subscriptionLoading } =
@@ -105,9 +123,10 @@ const Dashboard: FC = () => {
           <div className="grid grid-cols-12 gap-18 justify-center align-baseline space-x-4">
             <div className="col-span-3">
               <NumberDisplay
-                metric_1={data?.earned_revenue_period_1}
-                metric_2={data?.earned_revenue_period_2}
-                isLoading={isLoading}
+                metric_1={recentPeriodData?.earned_revenue}
+                metric_2={previousPeriodData?.earned_revenue}
+                isLoadingMetric1={recentPeriodIsLoading}
+                isLoadingMetric2={previousPeriodIsLoading}
                 title="Earned Revenue"
                 currency="USD"
               />
@@ -116,7 +135,8 @@ const Dashboard: FC = () => {
               <NumberDisplay
                 metric_1={subscriptionData?.period_1_total_subscriptions}
                 metric_2={subscriptionData?.period_2_total_subscriptions}
-                isLoading={subscriptionLoading}
+                isLoadingMetric1={subscriptionLoading}
+                isLoadingMetric2={subscriptionLoading}
                 title="Total Subscriptions"
               />
             </div>
@@ -124,7 +144,8 @@ const Dashboard: FC = () => {
               <NumberDisplay
                 metric_1={eventData?.total_events_period_1}
                 metric_2={eventData?.total_events_period_2}
-                isLoading={false}
+                isLoadingMetric1={false}
+                isLoadingMetric2={false}
                 title="Events Tracked"
               />{" "}
             </div>
@@ -132,7 +153,8 @@ const Dashboard: FC = () => {
               <NumberDisplay
                 metric_1={subscriptionData?.period_1_new_subscriptions}
                 metric_2={subscriptionData?.period_2_new_subscriptions}
-                isLoading={subscriptionLoading}
+                isLoadingMetric1={subscriptionLoading}
+                isLoadingMetric2={subscriptionLoading}
                 title="New Subscriptions"
               />{" "}
             </div>
@@ -144,10 +166,7 @@ const Dashboard: FC = () => {
               <MetricBarGraph range={dateRange} />
             </div>
             <div className="col-span-4">
-              <CustomerByPlanPie
-                data={data?.daily_usage_revenue_period_1}
-                isLoading={isLoading}
-              />
+              <CustomerByPlanPie />
             </div>
           </div>
         </Col>

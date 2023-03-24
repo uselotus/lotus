@@ -36,10 +36,8 @@ class CustomerRevenueSummaryResponseSerializer(serializers.Serializer):
 
 
 class PeriodMetricRevenueResponseSerializer(serializers.Serializer):
-    total_revenue_period_1 = serializers.DecimalField(decimal_places=10, max_digits=20)
-    total_revenue_period_2 = serializers.DecimalField(decimal_places=10, max_digits=20)
-    earned_revenue_period_1 = serializers.DecimalField(decimal_places=10, max_digits=20)
-    earned_revenue_period_2 = serializers.DecimalField(decimal_places=10, max_digits=20)
+    total_revenue = serializers.DecimalField(decimal_places=10, max_digits=20)
+    earned_revenue = serializers.DecimalField(decimal_places=10, max_digits=20)
 
 
 class PeriodEventsResponseSerializer(serializers.Serializer):
@@ -68,4 +66,5 @@ class CostAnalysisSerializer(serializers.Serializer):
     per_day = serializers.ListField(child=SingleDayCostAnalysisSerializer())
     total_cost = serializers.DecimalField(decimal_places=10, max_digits=20)
     total_revenue = serializers.DecimalField(decimal_places=10, max_digits=20)
-    margin = serializers.DecimalField(decimal_places=10, max_digits=20)
+    profit_margin = serializers.DecimalField(decimal_places=10, max_digits=20)
+    markup = serializers.DecimalField(decimal_places=10, max_digits=20)

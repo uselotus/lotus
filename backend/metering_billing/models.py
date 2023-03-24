@@ -26,6 +26,15 @@ from django.db.models import Count, F, FloatField, Q, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
+
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     NotEditable,
@@ -47,11 +56,12 @@ from metering_billing.utils import (
 )
 from metering_billing.utils.enums import (
     ACCOUNTS_RECEIVABLE_TRANSACTION_TYPES,
-    BACKTEST_STATUS,
+    ANALYSIS_KPI,
     CATEGORICAL_FILTER_OPERATORS,
     CHARGEABLE_ITEM_TYPE,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     EVENT_TYPE,
+    EXPERIMENT_STATUS,
     FLAT_FEE_BEHAVIOR,
     INVOICE_CHARGE_TIMING_TYPE,
     METRIC_AGGREGATION,
@@ -73,14 +83,6 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -271,11 +273,19 @@ class Organization(models.Model):
     timezone = TimeZoneField(default="UTC", use_pytz=True)
     __original_timezone = None
 
+    # SUBSCRIPTION RELATED FIELDS
+    subscription_filter_keys = ArrayField(
+        models.TextField(),
+        default=list,
+        blank=True,
+        help_text="Allowed subscription filter keys",
+    )
+    __original_subscription_filter_keys = None
+
     # PROVISIONING FIELDS
     webhooks_provisioned = models.BooleanField(default=False)
     currencies_provisioned = models.IntegerField(default=0)
     crm_settings_provisioned = models.BooleanField(default=False)
-    subscription_filters_setting_provisioned = models.BooleanField(default=False)
 
     # HISTORY RELATED FIELDS
     history = HistoricalRecords()
@@ -283,6 +293,7 @@ class Organization(models.Model):
     def __init__(self, *args, **kwargs):
         super(Organization, self).__init__(*args, **kwargs)
         self.__original_timezone = self.timezone
+        self.__original_subscription_filter_keys = self.subscription_filter_keys
 
     class Meta:
         indexes = [
@@ -296,6 +307,8 @@ class Organization(models.Model):
         return self.organization_name
 
     def save(self, *args, **kwargs):
+        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+
         new = self._state.adding is True
         # self._state.adding represents whether creating new instance or updating
         if self.timezone != self.__original_timezone and not new:
@@ -310,8 +323,23 @@ class Organization(models.Model):
                 cache.delete_many(customer_cache_keys)
         if self.team is None:
             self.team = Team.objects.create(name=self.organization_name)
+        if self.subscription_filter_keys is None:
+            self.subscription_filter_keys = []
+        self.subscription_filter_keys = sorted(
+            list(
+                set(self.subscription_filter_keys).union(
+                    set(self.__original_subscription_filter_keys)
+                )
+            )
+        )
         super(Organization, self).save(*args, **kwargs)
+        if self.subscription_filter_keys != self.__original_subscription_filter_keys:
+            for metric in self.metrics.all():
+                METRIC_HANDLER_MAP[metric.metric_type].create_continuous_aggregate(
+                    metric, refresh=True
+                )
         self.__original_timezone = self.timezone
+        self.__original_subscription_filter_keys = self.subscription_filter_keys
         if new:
             self.provision_currencies()
         if not self.default_currency:
@@ -319,8 +347,6 @@ class Organization(models.Model):
                 organization=self, code="USD"
             )
             self.save()
-        if not self.subscription_filters_setting_provisioned:
-            self.provision_subscription_filter_settings()
         if not self.webhooks_provisioned:
             self.provision_webhooks()
 
@@ -343,16 +369,6 @@ class Organization(models.Model):
         else:
             return self.address
 
-    def provision_subscription_filter_settings(self):
-        if not self.subscription_filters_setting_provisioned:
-            OrganizationSetting.objects.get_or_create(
-                organization=self,
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS,
-                defaults={"setting_values": []},
-            )
-            self.subscription_filters_setting_provisioned = True
-            self.save()
-
     def provision_crm_settings(self):
         if not self.crm_settings_provisioned:
             OrganizationSetting.objects.get_or_create(
@@ -363,32 +379,6 @@ class Organization(models.Model):
             )
             self.crm_settings_provisioned = True
             self.save()
-
-    def update_subscription_filter_settings(self, filter_keys):
-        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
-
-        if not self.subscription_filters_setting_provisioned:
-            self.provision_subscription_filter_settings()
-        try:
-            setting = self.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-            )
-        except OrganizationSetting.DoesNotExist:
-            self.subscription_filters_setting_provisioned = False
-            self.save()
-            self.provision_subscription_filter_settings()
-            setting = self.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-            )
-        current_setting_values = set(setting.setting_values)
-        new_setting_values = set(filter_keys)
-        combined = sorted(list(current_setting_values.union(new_setting_values)))
-        setting.setting_values = combined
-        setting.save()
-        for metric in self.metrics.all():
-            METRIC_HANDLER_MAP[metric.metric_type].create_continuous_aggregate(
-                metric, refresh=True
-            )
 
     def provision_webhooks(self):
         if SVIX_CONNECTOR is not None and not self.webhooks_provisioned:
@@ -1072,7 +1062,7 @@ class IdempotenceCheck(models.Model):
         ]
 
     def __str__(self):
-        return +str(self.time_created)[:10] + "-" + str(self.idempotency_id)[:6]
+        return str(self.time_created)[:10] + "-" + str(self.idempotency_id)[:6]
 
 
 class EventManager(models.Manager):
@@ -2861,6 +2851,7 @@ class SubscriptionRecord(models.Model):
         is_new=True,
         quantity=1,
         component_fixed_charges_initial_units=None,
+        do_generate_invoice=True,
     ):
         from metering_billing.invoice import generate_invoice
 
@@ -2890,7 +2881,8 @@ class SubscriptionRecord(models.Model):
             sr._create_component_billing_records(component, **kwargs)
         for recurring_charge in sr.billing_plan.recurring_charges.all():
             sr._create_recurring_charge_billing_records(recurring_charge)
-        generate_invoice(sr)
+        if do_generate_invoice:
+            generate_invoice(sr)
         return sr
 
     @staticmethod
@@ -3502,13 +3494,13 @@ class BillingRecord(models.Model):
         dates = dates_bwn_two_dts(self.start_date, self.end_date)
         rev_per_day = dict.fromkeys(dates, Decimal(0))
         if self.recurring_charge:
-            for day in dates:
+            for day in rev_per_day:
                 if day == self.start_date.date():
-                    start_of_day = datetime.datetime.combine(
-                        day, datetime.time.min
+                    end_of_day = datetime.datetime.combine(
+                        day, datetime.time.max
                     ).replace(tzinfo=self.start_date.tzinfo)
                     duration_microseconds = convert_to_decimal(
-                        (self.start_date - start_of_day).total_seconds() * 10**6
+                        (end_of_day - self.start_date).total_seconds() * 10**6
                     )
                 elif day == self.end_date.date():
                     start_of_day = datetime.datetime.combine(
@@ -3522,7 +3514,7 @@ class BillingRecord(models.Model):
                 rev_per_day[day] = convert_to_decimal(
                     self.recurring_charge.amount
                     * self.subscription.quantity
-                    / self.subscription.unadjusted_duration_microseconds
+                    / self.unadjusted_duration_microseconds
                     * duration_microseconds
                 )
         else:  # components
@@ -3650,6 +3642,31 @@ class ComponentChargeRecord(models.Model):
         super().save(*args, **kwargs)
 
 
+class Analysis(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="historical_analyses"
+    )
+    analysis_name = models.TextField()
+    start_date = models.DateField()
+    end_date = models.DateField()
+    time_created = models.DateTimeField(default=now_utc)
+    analysis_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    kpis = ArrayField(models.TextField(choices=ANALYSIS_KPI.choices), default=list)
+    analysis_results = models.JSONField(default=dict, blank=True)
+    status = models.CharField(
+        choices=EXPERIMENT_STATUS.choices,
+        default=EXPERIMENT_STATUS.RUNNING,
+        max_length=40,
+    )
+
+    def save(self, *args, **kwargs):
+        self.kpis = sorted(list(set(self.kpis)))
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.analysis_name} - {self.start_date}"
+
+
 class Backtest(models.Model):
     """
     This model is used to store the results of a backtest.
@@ -3666,11 +3683,10 @@ class Backtest(models.Model):
     kpis = models.JSONField(default=list)
     backtest_results = models.JSONField(default=dict, blank=True)
     status = models.CharField(
-        choices=BACKTEST_STATUS.choices,
-        default=BACKTEST_STATUS.RUNNING,
+        choices=EXPERIMENT_STATUS.choices,
+        default=EXPERIMENT_STATUS.RUNNING,
         max_length=40,
     )
-    history = HistoricalRecords()
 
     def __str__(self):
         return f"{self.backtest_name} - {self.start_date}"
@@ -3696,7 +3712,6 @@ class BacktestSubstitution(models.Model):
     new_plan = models.ForeignKey(
         PlanVersion, on_delete=models.CASCADE, related_name="+"
     )
-    history = HistoricalRecords()
 
     def __str__(self):
         return f"{self.backtest}"
@@ -3721,7 +3736,6 @@ class OrganizationSetting(models.Model):
         null=True,
         max_length=64,
     )
-    history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
         super(OrganizationSetting, self).save(*args, **kwargs)

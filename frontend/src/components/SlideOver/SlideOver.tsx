@@ -6,7 +6,7 @@ import {
   UseQueryResult,
   useMutation,
   useQueryClient,
-} from "react-query";
+} from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import useToggleSlideOver from "../../stores/useToggleSlideOver";
 import useGlobalStore from "../../stores/useGlobalstore";
@@ -33,9 +33,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
   const queryClient = useQueryClient();
   const { data: pricingUnits }: UseQueryResult<CurrencyType[]> = useQuery<
     CurrencyType[]
-  >(["pricing_unit_list"], () =>
-    PricingUnits.list().then((res) => res)
-  );
+  >(["pricing_unit_list"], () => PricingUnits.list().then((res) => res));
   const createOrgMutation = useMutation(
     ({
       organization_name,
@@ -53,7 +51,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
       ),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries("organization");
+        queryClient.invalidateQueries(['organization']);
         setIsCreating(false);
         toast.success("Successfully created new environment");
       },
@@ -219,6 +217,9 @@ const SlideOver: React.FC<SlideOverProps> = () => {
                         type="primary"
                         size="large"
                         className="hover:!bg-primary-700"
+                        disabled={
+                          (import.meta as any).env.VITE_IS_DEMO === "true"
+                        }
                         key="create-org"
                         style={{
                           background: "#C3986B",
@@ -236,7 +237,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
                     <div
                       className="h-full border-2 border-dashed border-gray-200"
                       aria-hidden="true"
-                     />
+                    />
                   </div>
                   {/* end replace */}
                 </div>

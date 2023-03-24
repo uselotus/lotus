@@ -144,7 +144,9 @@ export const Customer = {
     customer_id: string
   ): Promise<components["schemas"]["CustomerDetail"]> =>
     requests.get(`app/customers/${customer_id}/`),
-  createCustomer: (post: CustomerCreateType): Promise<CustomerType> =>
+  createCustomer: (
+    post: components["schemas"]["CustomerCreateRequest"]
+  ): Promise<components["schemas"]["Customer"]> =>
     requests.post("app/customers/", post),
   getCustomerTotals: (): Promise<CustomerTotal[]> =>
     requests.get("app/customers/totals/"),
@@ -153,8 +155,8 @@ export const Customer = {
   updateCustomer: (
     customer_id: string,
     default_currency_code: string,
-    shipping_address: CustomerType["shipping_address"],
-    billing_address: CustomerType["billing_address"],
+    shipping_address: components["schemas"]["PatchedCustomerUpdateRequest"]["shipping_address"],
+    billing_address: components["schemas"]["PatchedCustomerUpdateRequest"]["billing_address"],
     tax_rate: number,
     timezone: string,
     customer_name?: string,
@@ -257,7 +259,7 @@ export const Plan = {
     version_currency_code?: string;
     version_custom_type?: "custom_only" | "public_only" | "all";
     version_status?: ("active" | "ended" | "not_started")[];
-  }): Promise<PlanType[] | components["schemas"]["PlanDetail"][]> =>
+  }): Promise<components["schemas"]["PlanDetail"][]> =>
     requests.get("app/plans/", { params }),
   getPlan: (
     plan_id: string,
@@ -361,6 +363,15 @@ export const Plan = {
     requests.post("app/usage_alerts/", post),
   deleteAlert: (post: { usage_alert_id: string }): Promise<AlertType> =>
     requests.delete(`app/usage_alerts/${post.usage_alert_id}/`),
+};
+
+export const Experiments = {
+  getExperiments: (): Promise<components["schemas"]["AnalysisSummary"][]> =>
+    requests.get("app/analysis/"),
+  getAnalysis: (
+    analysis_id: string
+  ): Promise<components["schemas"]["AnalysisDetail"]> =>
+    requests.get(`app/analysis/${analysis_id}/`),
 };
 
 export const Webhook = {
@@ -490,17 +501,13 @@ export const Organization = {
 
 export const GetRevenue = {
   getMonthlyRevenue: (
-    period_1_start_date: string,
-    period_1_end_date: string,
-    period_2_start_date: string,
-    period_2_end_date: string
-  ): Promise<RevenueType> =>
+    start_date: string,
+    end_date: string
+  ): Promise<components["schemas"]["PeriodMetricRevenueResponse"]> =>
     requests.get("app/period_metric_revenue/", {
       params: {
-        period_1_start_date,
-        period_1_end_date,
-        period_2_start_date,
-        period_2_end_date,
+        start_date,
+        end_date,
       },
     }),
 };
@@ -554,6 +561,9 @@ export const Metrics = {
 export const Events = {
   getEventPreviews: (c: string): Promise<EventPages> =>
     requests.get("app/events/", { params: { c } }),
+  // TODO Add the real type here
+  getEventProperties: (): Promise<components["schemas"]["EventProperties"]> =>
+    requests.get("app/events/properties/"),
   getEventCount: (
     period_1_start_date: string,
     period_1_end_date: string,
@@ -658,7 +668,7 @@ export const Credits = {
   getCreditsByCustomer: (params: {
     customer_id: string;
     format?: string;
-  }): Promise<CreditType[]> => {
+  }): Promise<components["schemas"]["CustomerBalanceAdjustment"][]> => {
     if (params.format) {
       return requests.get(
         `app/credits/?customer_id=${params.customer_id}?format=${params.format}`

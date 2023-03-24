@@ -1,14 +1,19 @@
+/* eslint-disable camelcase */
+/* eslint-disable prefer-template */
+/* eslint-disable no-nested-ternary */
 import { Button, Dropdown, Menu, Table, Tag, Tooltip } from "antd";
 import React, { FC, useEffect } from "react";
 import dayjs from "dayjs";
-import { useMutation, useQuery } from "react-query";
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import { MoreOutlined } from "@ant-design/icons";
 import axios from "axios";
+import { ProTable } from "@ant-design/pro-components";
+import type { ProColumns } from "@ant-design/pro-components";
 import { integrationsMap } from "../../types/payment-processor-type";
-
 import { Invoices } from "../../api/api";
 import { InvoiceType, MarkPaymentStatusAsPaid } from "../../types/invoice-type";
+import { components } from "../../gen-types";
 
 const downloadFile = async (s3link) => {
   if (!s3link) {
@@ -18,7 +23,9 @@ const downloadFile = async (s3link) => {
   window.open(s3link);
 };
 
-const getPdfUrl = async (invoice: InvoiceType) => {
+const getPdfUrl = async (
+  invoice: components["schemas"]["CustomerDetail"]["invoices"][0]
+) => {
   try {
     const response = await Invoices.getInvoiceUrl(invoice.invoice_id);
     const pdfUrl = response.url;
@@ -31,12 +38,13 @@ const getPdfUrl = async (invoice: InvoiceType) => {
 const lotusUrl = new URL("./lotusIcon.svg", import.meta.url).href;
 
 interface Props {
-  invoices: InvoiceType[] | undefined;
+  invoices: components["schemas"]["CustomerDetail"]["invoices"] | undefined;
   paymentMethod: string;
 }
 
 const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
-  const [selectedRecord, setSelectedRecord] = React.useState();
+  const [selectedRecord, setSelectedRecord] =
+    React.useState<components["schemas"]["CustomerDetail"]["invoices"][0]>();
   const changeStatus = useMutation(
     (post: MarkPaymentStatusAsPaid) => Invoices.changeStatus(post),
     {
@@ -83,10 +91,13 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
     }
   }, [selectedRecord]);
 
-  const columns = [
+  const columns: ProColumns<
+    components["schemas"]["CustomerDetail"]["invoices"][0]
+  >[] = [
     {
       title: "Connections",
       dataIndex: "connections",
+      width: 100,
       key: "connections",
       render: (_, record) => (
         <div className="flex gap-1">
@@ -162,15 +173,15 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
       title: "Amount",
       dataIndex: "cost_due",
       key: "cost_due",
-      render: (cost_due: string) => (
-        <span>${parseFloat(cost_due).toFixed(2)}</span>
+      render: (_, { cost_due }) => (
+        <span>${parseFloat(String(cost_due)).toFixed(2)}</span>
       ),
     },
     {
       title: "Issue Date",
       dataIndex: "issue_date",
       key: "issue_date",
-      render: (issue_date: string) => (
+      render: (_, { issue_date }) => (
         <span>{dayjs(issue_date).format("YYYY/MM/DD")}</span>
       ),
     },
@@ -178,7 +189,10 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
       title: "Status",
       dataIndex: "payment_status",
       key: "status",
-      render: (_, record) => (
+      render: (
+        _,
+        record: components["schemas"]["CustomerDetail"]["invoices"][0]
+      ) => (
         <div className="flex">
           {record.external_payment_obj_type ? (
             record.external_payment_obj_url ? (
@@ -196,7 +210,7 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
                   rel="noopener noreferrer"
                 >
                   <Tag
-                    color={"grey"}
+                    color="grey"
                     key={
                       record.external_payment_obj_status ||
                       record.payment_status
@@ -217,7 +231,7 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
                 }
               >
                 <Tag
-                  color={"grey"}
+                  color="grey"
                   key={
                     record.external_payment_obj_status || record.payment_status
                   }
@@ -235,37 +249,57 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
             </Tag>
           )}
 
-          <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="ml-auto"
+            aria-hidden
+            onClick={(e) => e.stopPropagation()}
+          >
             <Dropdown
               overlay={
                 <Menu>
-                  <Menu.Item key="1" onClick={() => getPdfUrl(record)}>
+                  <Menu.Item
+                    key="1"
+                    onClick={() => {
+                      if ((import.meta as any).env.VITE_IS_DEMO === "true") {
+                        toast.error("This feature is disabled in the demo", {
+                          position: toast.POSITION.TOP_CENTER,
+                        });
+                      } else {
+                        getPdfUrl(record);
+                      }
+                    }}
+                  >
                     <div className="archiveLabel">Download Invoice PDF</div>
                   </Menu.Item>
-                  {!record.external_payment_obj_type && (
-                    <Menu.Item
-                      key="2"
-                      onClick={() => {
-                        if (selectedRecord === record) {
-                          changeStatus.mutate({
-                            invoice_id: record.invoice_id,
-                            payment_status:
-                              record.payment_status === "unpaid"
-                                ? "paid"
-                                : "unpaid",
-                          });
-                        } else {
-                          setSelectedRecord(record);
-                        }
-                      }}
-                    >
-                      <div className="archiveLabel">
-                        {record.payment_status === "unpaid"
-                          ? "Mark As Paid"
-                          : "Mark As Unpaid"}
-                      </div>
-                    </Menu.Item>
-                  )}
+                  {!record.external_payment_obj_type &&
+                    record.payment_status === "unpaid" && (
+                      <Menu.Item
+                        key="2"
+                        onClick={() => {
+                          if (
+                            (import.meta as any).env.VITE_IS_DEMO === "true"
+                          ) {
+                            toast.error(
+                              "This feature is disabled in the demo",
+                              {
+                                position: toast.POSITION.TOP_CENTER,
+                              }
+                            );
+                          } else {
+                            if (selectedRecord === record) {
+                              changeStatus.mutate({
+                                invoice_id: record.invoice_id,
+                                payment_status: "paid",
+                              });
+                            } else {
+                              setSelectedRecord(record);
+                            }
+                          }
+                        }}
+                      >
+                        <div className="archiveLabel">Mark As Paid</div>
+                      </Menu.Item>
+                    )}
                   {!record.external_payment_obj_type &&
                     paymentMethod &&
                     record.payment_status === "unpaid" && (
@@ -306,16 +340,19 @@ const CustomerInvoiceView: FC<Props> = ({ invoices, paymentMethod }) => {
     <div>
       <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Invoices</h2>
       {invoices !== undefined ? (
-        <Table
+        <ProTable
           columns={columns}
           dataSource={invoices}
+          rowKey="invoice_id"
           pagination={{
             showTotal: (total, range) => (
               <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
             ),
             pageSize: 8,
           }}
-          showSorterTooltip={false}
+          options={false}
+          toolBarRender={false}
+          search={false}
         />
       ) : (
         <p>No invoices found</p>

@@ -1,5 +1,5 @@
 import React, { FC, useState } from "react";
-import { useQuery } from "react-query";
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from "react-router-dom";
 import { Divider, Typography, Row, Col, Modal, Input } from "antd";
 import Nango from "@nangohq/frontend";
@@ -56,11 +56,17 @@ const IntegrationsTab: FC = () => {
       .catch((err) => undefined)
   );
 
+  var nango;
+
   const org = useGlobalStore((state) => state.org);
-  var nango = new Nango({
-    publicKey: (import.meta as any).env.VITE_NANGO_PK,
-    debug: true,
-  }); // Nango Cloud
+  if ((import.meta as any).env.VITE_NANGO_PK === (undefined || "change_me")) {
+    nango = false;
+  } else {
+    nango = new Nango({
+      publicKey: (import.meta as any).env.VITE_NANGO_PK,
+      debug: false,
+    }); // Nango Cloud
+  }
 
   const { open } = useVesselLink({
     onSuccess: (publicToken) =>
@@ -88,58 +94,62 @@ const IntegrationsTab: FC = () => {
         window.location.href = item.redirect_url;
       }
     } else if (item.payment_provider_name === "braintree") {
-      const this_org = org.linked_organizations?.filter(
-        (org) => org.current
-      )[0];
-      var unique_config_key = "";
-      if (this_org?.organization_type.toLowerCase() === "production") {
-        toast.error("Braintree is not supported in production environment.");
-        return;
+      if (nango === false) {
+        toast.error("Nango Env Needed");
       } else {
-        unique_config_key = "braintree-sandbox";
-      }
-      nango
-        .auth(unique_config_key, item.connection_id)
-        .then((result) => {
-          toast.success(
-            `OAuth flow succeeded for provider "${result.providerConfigKey}"!`
-          );
-          const inner_data: BraintreeConnectionRequestType = {
-            nango_connected: true,
-          };
-          const request_data: PaymentProcessorConnectionRequestType = {
-            payment_processor: "braintree",
-            data: inner_data,
-          };
+        const this_org = org.linked_organizations?.filter(
+          (org) => org.current
+        )[0];
+        var unique_config_key = "";
+        if (this_org?.organization_type.toLowerCase() === "production") {
+          toast.error("Braintree is not supported in production environment.");
+          return;
+        } else {
+          unique_config_key = "braintree-sandbox";
+        }
+        nango
+          .auth(unique_config_key, item.connection_id)
+          .then((result) => {
+            toast.success(
+              `OAuth flow succeeded for provider "${result.providerConfigKey}"!`
+            );
+            const inner_data: BraintreeConnectionRequestType = {
+              nango_connected: true,
+            };
+            const request_data: PaymentProcessorConnectionRequestType = {
+              payment_processor: "braintree",
+              data: inner_data,
+            };
 
-          PaymentProcessorIntegration.connectPaymentProcessor(request_data)
-            .then((data: PaymentProcessorConnectionResponseType) => {
-              toast.success(data.details);
-            })
-            .catch((error) => {
-              toast.error(error.details);
-            });
-          refetch();
-        })
-        .catch((error) => {
-          const inner_data: BraintreeConnectionRequestType = {
-            nango_connected: true,
-          };
-          const request_data: PaymentProcessorConnectionRequestType = {
-            payment_processor: "braintree",
-            data: inner_data,
-          };
-          PaymentProcessorIntegration.connectPaymentProcessor(request_data)
-            .then((data: PaymentProcessorConnectionResponseType) => {
-              toast.success(data.details);
-              refetch();
-            })
-            .catch((inner_error) => {
-              toast.error(
-                `There was an error in the OAuth flow for integration: ${error.message}`
-              );
-            });
-        });
+            PaymentProcessorIntegration.connectPaymentProcessor(request_data)
+              .then((data: PaymentProcessorConnectionResponseType) => {
+                toast.success(data.details);
+              })
+              .catch((error) => {
+                toast.error(error.details);
+              });
+            refetch();
+          })
+          .catch((error) => {
+            const inner_data: BraintreeConnectionRequestType = {
+              nango_connected: true,
+            };
+            const request_data: PaymentProcessorConnectionRequestType = {
+              payment_processor: "braintree",
+              data: inner_data,
+            };
+            PaymentProcessorIntegration.connectPaymentProcessor(request_data)
+              .then((data: PaymentProcessorConnectionResponseType) => {
+                toast.success(data.details);
+                refetch();
+              })
+              .catch((inner_error) => {
+                toast.error(
+                  `There was an error in the OAuth flow for integration: ${error.message}`
+                );
+              });
+          });
+      }
     }
   };
 

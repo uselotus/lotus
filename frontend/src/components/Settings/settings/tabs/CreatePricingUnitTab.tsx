@@ -1,7 +1,7 @@
 import { Button, Card, Col, Form, Input, Row } from "antd";
 // @ts-ignore
 import React from "react";
-import { useMutation } from "react-query";
+import { useMutation } from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import { PricingUnits } from "../../../../api/api";
 import { CurrencyType } from "../../../../types/pricing-unit-type";

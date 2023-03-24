@@ -1,7 +1,7 @@
 // create react FC component called EditPlanLoader
 import React, { Fragment, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "react-query";
+import { useQuery } from '@tanstack/react-query';
 import { Button } from "antd";
 import { Plan } from "../api/api";
 import { PlanDetailType } from "../types/plan-type";

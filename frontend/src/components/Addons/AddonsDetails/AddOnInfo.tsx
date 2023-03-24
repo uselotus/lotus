@@ -1,7 +1,6 @@
 import React from "react";
 import { Typography } from "antd";
 import capitalize from "../../../helpers/capitalize";
-import { AddOnType } from "../../../types/addon-type";
 import createShortenedText from "../../../helpers/createShortenedText";
 import CopyText from "../../base/CopytoClipboard";
 import useMediaQuery from "../../../hooks/useWindowQuery";
@@ -49,15 +48,15 @@ function AddOnInfo({ addOnInfo }: AddOnInfoProps) {
               />
             </div>
           </div>
-          {/* <div className="flex items-center  text-card-text justify-between mb-1">
+          <div className="flex items-center  text-card-text justify-between mb-1">
             <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
               Price
             </div>
             <div className="flex gap-1 text-left">
               {" "}
-              <div className="text-gold Inter">{`${addOnInfo.versions[0].currency?.symbol}${addOnInfo.flat_rate}`}</div>
+              <div className="text-gold Inter">{`${addOnInfo.versions[0].recurring_charges[0].pricing_unit.symbol}${addOnInfo.versions[0].recurring_charges[0].amount}`}</div>
             </div>
-          </div> */}
+          </div>
         </div>
 
         <div className="w-[256px]">

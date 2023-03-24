@@ -6,7 +6,7 @@ import {
   useQueryClient,
   useQuery,
   UseQueryResult,
-} from "react-query";
+} from '@tanstack/react-query';
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
 import { useNavigate, useParams } from "react-router-dom";
@@ -47,22 +47,21 @@ function CustomerDetail() {
     dayjs().subtract(1, "month").format("YYYY-MM-DD")
   );
   const [endDate, setEndDate] = useState<string>(dayjs().format("YYYY-MM-DD"));
-  const { data: plans }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
-    ["plan_list"],
-    () =>
-      Plan.getPlans({
-        version_custom_type: "public_only",
-        version_status: "active",
-      }).then((res) => res)
-  );
+  const { data: plans }: UseQueryResult<components["schemas"]["PlanDetail"][]> =
+    useQuery<components["schemas"]["PlanDetail"][]>(["plan_list"], () =>
+      Plan.getPlans().then((res) => res)
+    );
 
   const { data: pricingUnits }: UseQueryResult<CurrencyType[]> = useQuery<
     CurrencyType[]
   >(["pricing_unit_list"], () => PricingUnits.list().then((res) => res));
-
-  const { data, refetch } = useQuery<components["schemas"]["CustomerDetail"]>(
-    ["customer_detail", customer_id],
-    () => Customer.getCustomerDetail(customer_id as string).then((res) => res)
+  const {
+    data,
+    refetch,
+  }: UseQueryResult<components["schemas"]["CustomerDetail"]> = useQuery<
+    components["schemas"]["CustomerDetail"]
+  >(["customer_detail", customer_id], () =>
+    Customer.getCustomerDetail(customer_id as string).then((res) => res)
   );
 
   const { data: cost_analysis } = useQuery<CustomerCostType>(
@@ -74,7 +73,8 @@ function CustomerDetail() {
         per_day: [],
         total_revenue: 0,
         total_cost: 0,
-        margin: 0,
+        profit_margin: 0,
+        markup: 0,
       },
     }
   );
@@ -223,6 +223,7 @@ function CustomerDetail() {
           type="primary"
           size="large"
           key="create-plan"
+          disabled={(import.meta as any).env.VITE_IS_DEMO === "true"}
           className="hover:!bg-primary-700"
           style={{ background: "#C3986B", borderColor: "#C3986B" }}
         >

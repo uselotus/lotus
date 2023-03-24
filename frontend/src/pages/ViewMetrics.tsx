@@ -5,7 +5,7 @@ import {
   UseQueryResult,
   useMutation,
   useQueryClient,
-} from "react-query";
+} from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import MetricTable from "../components/Metrics/MetricTable";
 import { Metrics } from "../api/api";

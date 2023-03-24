@@ -193,8 +193,36 @@ const SideBar: FC = () => {
     },
   ];
 
+  const bottomItems: ItemType[] =
+    (import.meta as any).env.VITE_IS_DEMO === "true"
+      ? [
+          {
+            key: "/quickstart",
+            icon: <CustomQuickStartMenuItem progressPercent={totalProgress} />,
+            onClick: () => navigate("/quickstart"),
+          },
+        ]
+      : [
+          {
+            key: "/quickstart",
+            icon: <CustomQuickStartMenuItem progressPercent={totalProgress} />,
+            onClick: () => navigate("/quickstart"),
+          },
+          {
+            type: "divider",
+          },
+          {
+            key: "/logout",
+            icon: <LogoutOutlined />,
+            label: "Logout",
+            onClick: handleLogoutClick,
+          },
+        ];
+
   const menuItems =
-    import.meta.env.VITE_IS_DEMO === "true" ? menuItemsBasic : menuItemsAdmin;
+    (import.meta as any).env.VITE_IS_DEMO === "true"
+      ? menuItemsBasic
+      : menuItemsAdmin;
 
   return (
     <div
@@ -222,27 +250,7 @@ const SideBar: FC = () => {
       </div>
 
       <div className="mb-5">
-        <Menu
-          style={{ background: "#fafafa" }}
-          items={[
-            {
-              key: "/quickstart",
-              icon: (
-                <CustomQuickStartMenuItem progressPercent={totalProgress} />
-              ),
-              onClick: () => navigate("/quickstart"),
-            },
-            {
-              type: "divider",
-            },
-            {
-              key: "/logout",
-              icon: <LogoutOutlined />,
-              label: "Logout",
-              onClick: handleLogoutClick,
-            },
-          ]}
-        />
+        <Menu style={{ background: "#fafafa" }} items={bottomItems} />
       </div>
     </div>
   );

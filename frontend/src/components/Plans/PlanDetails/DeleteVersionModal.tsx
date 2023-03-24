@@ -2,7 +2,7 @@
 /* eslint-disable camelcase */
 import React, { useState } from "react";
 import { Button, Modal } from "antd";
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plan } from "../../../api/api";
 
 interface DeleteVersionModalProps {
@@ -22,7 +22,7 @@ const DeleteVersionModal = ({
   const [checked, setChecked] = useState(false);
   const mutation = useMutation(() => Plan.deletePlanVersion(version_id), {
     onSuccess: () => {
-      queryClient.invalidateQueries("plan_list");
+      queryClient.invalidateQueries(['plan_list']);
       queryClient.invalidateQueries(["plan_subscriptions_get", version_id]);
       queryClient.invalidateQueries(["plan_detail", plan_id]);
     },

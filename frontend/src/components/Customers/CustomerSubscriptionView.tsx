@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 /* eslint-disable react/no-unstable-nested-components */
 /* eslint-disable no-case-declarations */
 /* eslint-disable no-shadow */
@@ -6,7 +7,14 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 /* eslint-disable camelcase */
 import moment from "moment";
-import React, { FC, useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  FC,
+  Fragment,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   Form,
   Button,
@@ -27,11 +35,11 @@ import {
   useQuery,
   useQueryClient,
   UseQueryResult,
-} from "react-query";
+} from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
-import { PlanType } from "../../types/plan-type";
+import { PlanDetailType, PlanType } from "../../types/plan-type";
 import {
   CreateSubscriptionType,
   TurnSubscriptionAutoRenewOffType,
@@ -107,6 +115,101 @@ const dropDownOptions = [
   "Cancel Now",
 ];
 
+const subDropdownOptions = ["Cancel Now", "Cancel Renewal"];
+
+function AddPlanModal({
+  showAddModal,
+  title,
+  planList,
+  versionList,
+  selectedPlan,
+  selectedVersion,
+  selectPlan,
+  selectVersion,
+  handleDateChange,
+  handleStartSubscription,
+  handleCancel,
+  subStartDate,
+}: {
+  showAddModal: boolean;
+  title: string;
+  planList: PlanOption[];
+  versionList: PlanOption[];
+  selectedPlan: string | undefined;
+  selectedVersion: string | undefined;
+  selectPlan: (value: string) => void;
+  subStartDate: string | undefined;
+  selectVersion: (value: string) => void;
+  handleDateChange: (dateString: string) => void;
+  handleStartSubscription: () => void;
+  handleCancel: () => void;
+}) {
+  return (
+    <Fragment>
+      {showAddModal ? (
+        <Modal
+          transitionName=""
+          maskTransitionName=""
+          className="font-alliance"
+          title={title}
+          visible={showAddModal}
+          cancelButtonProps={{ hidden: true }}
+          closeIcon={<div style={{ display: "none" }} className="hidden" />}
+          onCancel={handleCancel}
+          footer={[
+            <Button key="back" onClick={() => handleCancel()}>
+              Back
+            </Button>,
+            <Button
+              key="submit"
+              type="primary"
+              className="hover:!bg-primary-700"
+              disabled={(import.meta as any).env.VITE_IS_DEMO === "true"}
+              onClick={() => {
+                if (selectedPlan) {
+                  handleStartSubscription();
+                }
+              }}
+            >
+              Start Subscription
+            </Button>,
+          ]}
+        >
+          <div className="flex flex-col gap-6">
+            <Select
+              showSearch
+              placeholder="Select a plan"
+              onChange={(value: string) => {
+                selectPlan(value);
+              }}
+              options={planList}
+              value={selectedPlan}
+              optionLabelProp="label"
+            ></Select>
+            <Select
+              placeholder="Select a version"
+              onChange={(value: string) => {
+                selectVersion(value);
+              }}
+              options={versionList}
+              value={selectedVersion}
+              optionLabelProp="label"
+            ></Select>
+
+            <DatePicker
+              showTime
+              className="mt-0"
+              placeholder="Select start date"
+              onChange={(date, dateString) => handleDateChange(dateString)}
+              value={subStartDate ? moment(subStartDate) : undefined}
+            />
+          </div>
+        </Modal>
+      ) : null}
+    </Fragment>
+  );
+}
+
 const limit = 6;
 const SubscriptionView: FC<Props> = ({
   customer_id,
@@ -129,13 +232,11 @@ const SubscriptionView: FC<Props> = ({
   const [next, setNext] = useState<string>("");
   const [previous, setPrev] = useState<string>("");
   const [selectedSubPlan, setSelectedSubPlan] = useState<
-    | SubscriptionType
-    | components["schemas"]["StripeSubscriptionRecord"]
+    | components["schemas"]["CustomerDetail"]["subscriptions"][0]
+    | components["schemas"]["CustomerDetail"]["stripe_subscriptions"][0]
     | undefined
   >();
   const [selectedPlan, setSelectedPlan] = useState<string>();
-  const [paginatedSubscriptions, setPaginatedSubscriptions] =
-    useState<SubscriptionType[]>(subscriptions);
 
   const [form] = Form.useForm();
   const navigate = useNavigate();
@@ -145,6 +246,7 @@ const SubscriptionView: FC<Props> = ({
     useState<SubscriptionType["subscription_filters"] | undefined>();
   const [quantity, setQuantity] = useState(1);
   const [showModal, setShowModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [title, setTitle] = useState("");
   const [cascaderOptions, setCascaderOptions] = useState<CascaderOptions>();
@@ -153,16 +255,34 @@ const SubscriptionView: FC<Props> = ({
     flat_fee_behavior: "charge_full",
     invoicing_behavior: "invoice_now",
   });
-  const indexRef = useRef(0);
+  const indexRef = useRef<
+    "Switch Plan" | "Attach Add-On" | "Cancel Renewal" | "Cancel Now"
+  >();
   const windowWidth = useMediaQuery();
   const [idtoPlan, setIDtoPlan] = useState<{ [key: string]: PlanType }>({});
   const [planList, setPlanList] =
     useState<{ label: string; value: string }[]>();
 
+  const [versionList, setVersionList] =
+    useState<{ label: string; value: string }[]>();
+  const [selectedVersion, setSelectedVersion] = useState<string>();
   const queryClient = useQueryClient();
 
   const selectPlan = (plan_id: string) => {
+    setSelectedVersion(undefined);
     setSelectedPlan(plan_id);
+  };
+  const selectVersion = (version_id: string) => {
+    setSelectedVersion(version_id);
+  };
+
+  const handleCancelAddSubscription = () => {
+    setShowAddModal(false);
+    setTitle("");
+    setSelectedSubPlan(undefined);
+    setSelectedPlan(undefined);
+    setSelectedVersion(undefined);
+    setSubStartDate("");
   };
 
   const { data: addOns, isLoading }: UseQueryResult<AddOnType[]> = useQuery<
@@ -193,6 +313,11 @@ const SubscriptionView: FC<Props> = ({
       },
     }
   );
+
+  const selectNewPlan = (plan_id: string) => {
+    console.log(plan_id);
+    setSelectedPlan(plan_id);
+  };
 
   const cancelSubscription = (subscription_id: string) => {
     onCancel(cancelBody, subscription_id);
@@ -235,11 +360,51 @@ const SubscriptionView: FC<Props> = ({
   };
 
   useEffect(() => {
+    if (selectedPlan) {
+      const planObject = plans?.find((plan) => plan.plan_id == selectedPlan);
+      const relevantVersions = planObject.versions;
+      if (relevantVersions !== undefined) {
+        const versionMap = relevantVersions.reduce((acc, version) => {
+          acc[version.version_id] = version;
+          return acc;
+        }, {} as { [key: number]: PlanVersionType });
+        const newVersionList: { label: string; value: string }[] =
+          relevantVersions.reduce((acc, version) => {
+            if (version.target_customers.length === 0) {
+              var label = version.version;
+              if (version.localized_name) {
+                label = label + " - " + version.localized_name;
+              }
+              acc.push({
+                label: label,
+                value: version.version_id,
+              });
+            } else {
+              if (
+                version.target_customers.some(
+                  (customer) => customer.customer_id === customer_id
+                )
+              ) {
+                acc.push({
+                  label: version.plan_name,
+                  value: version.version_id,
+                });
+              }
+            }
+            return acc;
+          }, [] as { label: string; value: string }[]);
+
+        setVersionList(newVersionList);
+      }
+    }
+  }, [selectedPlan]);
+
+  useEffect(() => {
     if (plans !== undefined) {
       const planMap = plans.reduce((acc, plan) => {
         acc[plan.plan_id] = plan;
         return acc;
-      }, {} as { [key: number]: PlanType });
+      }, {} as { [key: number]: PlanDetailType });
       setIDtoPlan(planMap);
       const newplanList: { label: string; value: string }[] = plans.reduce(
         (acc, plan) => {
@@ -288,7 +453,8 @@ const SubscriptionView: FC<Props> = ({
       const start_date = subStartDate ? subStartDate : new Date().toISOString();
       const props: CreateSubscriptionType = {
         customer_id,
-        plan_id: plan.plan_id,
+        plan_id: selectedVersion === undefined ? plan.plan_id : null,
+        version_id: selectedVersion !== undefined ? selectedVersion : null,
         start_date: start_date,
         auto_renew: true,
         is_new: true,
@@ -298,6 +464,9 @@ const SubscriptionView: FC<Props> = ({
       onCreate(props);
     }
     form.resetFields();
+    setSelectedPlan(undefined);
+    setSelectedVersion(undefined);
+    setShowAddModal(false);
   };
   const submitAddOns = (subscription_id: string) => {
     const body = {
@@ -368,26 +537,6 @@ const SubscriptionView: FC<Props> = ({
           setOffset(subscriptions.length);
           setRightCursor("RIGHT-END");
         }
-        // if (Number(next) <= subscriptions.length) {
-        //   const newPage = currentPage + 1;
-        //   setCursor(next);
-        //   setCurrentPage(newPage);
-        //   setPaginatedSubscriptions(
-        //     subscriptions.slice(Number(previous), Number(next))
-        //   );
-        //   setNext(String(Number(next) + limit));
-        //   setPrev(String(Number(next)));
-        // } else {
-        //   const newPage = currentPage + 1;
-        //   setCursor(next);
-        //   setCurrentPage(newPage);
-        //   setPaginatedSubscriptions(
-        //     subscriptions.slice(Number(previous), subscriptions.length - 1)
-        //   );
-        //   setNext(String(subscriptions.length - 1));
-        //   setPrev(previous);
-        //   setRightCursor("RIGHT-END");
-        // }
         break;
       case "START":
         setCursor("");
@@ -400,13 +549,6 @@ const SubscriptionView: FC<Props> = ({
         } else {
           setRightCursor("");
         }
-        // setPaginatedSubscriptions(subscriptions.slice(0, limit));
-        // // const next = limit + limit;
-        // setNext(String(limit + limit));
-        // setPrev(String(Number(limit)));
-        // if (limit + limit > subscriptions.length) {
-        //   setRightCursor("RIGHT-END");
-        // }
         break;
       default:
         break;
@@ -433,38 +575,49 @@ const SubscriptionView: FC<Props> = ({
     return (
       <div className="flex flex-col items-center justify-center">
         <h2 className="mb-2 pb-4 pt-4 font-bold text-main">No Subscription</h2>
-        <p className="font-bold">Please attach a Plan</p>
         <div className=" h-3/6">
-          <Form
-            onFinish={handleAttachPlanSubmit}
-            form={form}
-            name="create_subscription"
+          <Button
+            type="primary"
+            className="hover:!bg-primary-700"
+            style={{
+              background: "#C3986B",
+              borderColor: "#C3986B",
+            }}
+            onClick={() => {
+              setTitle("Add New Plan");
+              setShowAddModal(true);
+            }}
           >
-            <Form.Item name="plan">
-              <Select
-                showSearch
-                placeholder="Select a plan"
-                onChange={selectPlan}
-                options={planList}
-                optionLabelProp="label"
-                value={selectedPlan}
-              />
-            </Form.Item>
-            <Form.Item>
-              <Button htmlType="submit">
-                {" "}
-                Attach Plan and Start Subscription
-              </Button>
-            </Form.Item>
-          </Form>
+            Start A Subscription
+          </Button>
         </div>
+        <AddPlanModal
+          title={title}
+          showAddModal={showAddModal}
+          handleStartSubscription={handleAttachPlanSubmit}
+          planList={planList}
+          versionList={versionList}
+          selectedPlan={selectedPlan}
+          selectPlan={selectPlan}
+          selectedVersion={selectedVersion}
+          selectVersion={selectVersion}
+          subStartDate={subStartDate}
+          handleDateChange={setSubStartDate}
+          handleCancel={handleCancelAddSubscription}
+        />
       </div>
     );
   }
 
-  function SubscriptionItem({ subPlan }) {
+  function SubscriptionItem({
+    subPlan,
+    fromUpcoming,
+  }: {
+    subPlan: components["schemas"]["CustomerDetail"]["subscriptions"][0];
+    fromUpcoming: boolean;
+  }) {
     return (
-      <div key={subPlan.billing_plan.plan_id + subPlan.subscription_filters}>
+      (<div key={subPlan.billing_plan.plan_id + subPlan.subscription_filters}>
         <CustomerCard
           className={`shadow-none ${
             windowWidth > 2500 ? `h-[290px]` : "h-[270px]"
@@ -474,7 +627,11 @@ const SubscriptionView: FC<Props> = ({
           <CustomerCard.Heading>
             <Typography.Title className="pt-4 flex font-alliance !text-[18px]">
               <div>
-                <div> {subPlan.billing_plan.plan_name}</div>
+                <div>
+                  {" "}
+                  {subPlan.billing_plan.plan_name} :{" v"}
+                  {subPlan.billing_plan.version}
+                </div>
                 {subPlan.subscription_filters ? (
                   subPlan.subscription_filters.length > 0 ? (
                     <p>
@@ -569,41 +726,96 @@ const SubscriptionView: FC<Props> = ({
                       <ChevronDown />
                     </button>
                   </DropdownComponent.Trigger>
-                  <DropdownComponent.Container className="!bg-[#fff4e9] ">
-                    {dropDownOptions.map((key, index) => (
-                      <DropdownComponent.MenuItem
-                        className="hover:text-black hover:bg-[#f8e8d7] whitespace-nowrap"
-                        // eslint-disable-next-line react/no-array-index-key
-                        key={index}
-                        onSelect={() => {
-                          setSelectedSubPlan(subPlan);
-                          switch (index) {
-                            case 0:
-                              setTitle("Switch Plan");
-
-                              setShowModal(true);
-                              indexRef.current = index;
-                              break;
-                            case 1:
-                              setTitle(
-                                `Attach Add-On to ${subPlan.billing_plan.plan_name}`
+                  {!fromUpcoming ? (
+                    <DropdownComponent.Container className="!bg-[#fff4e9] ">
+                      {dropDownOptions.map((key, index) => (
+                        <DropdownComponent.MenuItem
+                          className="hover:text-black hover:bg-[#f8e8d7] whitespace-nowrap"
+                          // eslint-disable-next-line react/no-array-index-key
+                          key={index}
+                          onSelect={() => {
+                            if (
+                              (import.meta as any).env.VITE_IS_DEMO === "true"
+                            ) {
+                              toast.error(
+                                "This feature does not work in the demo"
                               );
+                              return;
+                            }
+                            setSelectedSubPlan(subPlan);
+                            switch (index) {
+                              case 0:
+                                setTitle("Switch Plan");
 
-                              setShowModal(true);
-                              indexRef.current = index;
-                              break;
-                            default:
-                              setTitle("Are you sure?");
+                                setShowModal(true);
+                                indexRef.current = "Switch Plan";
+                                break;
+                              case 1:
+                                setTitle(
+                                  `Attach Add-On to ${subPlan.billing_plan.plan_name}`
+                                );
 
-                              setShowModal(true);
-                              indexRef.current = index;
-                          }
-                        }}
-                      >
-                        {key}
-                      </DropdownComponent.MenuItem>
-                    ))}
-                  </DropdownComponent.Container>
+                                setShowModal(true);
+                                indexRef.current = "Attach Add-On";
+                                break;
+
+                              case 2:
+                                setTitle("Are you sure?");
+
+                                setShowModal(true);
+                                indexRef.current = "Cancel Renewal";
+                                break;
+                              default:
+                                setTitle("Are you sure?");
+
+                                setShowModal(true);
+                                indexRef.current = "Cancel Now";
+                            }
+                          }}
+                        >
+                          {key}
+                        </DropdownComponent.MenuItem>
+                      ))}
+                    </DropdownComponent.Container>
+                  ) : (
+                    // from upcoming
+                    (<DropdownComponent.Container className="!bg-[#fff4e9] ">
+                      {subDropdownOptions.map((key, index) => (
+                        <DropdownComponent.MenuItem
+                          className="hover:text-black hover:bg-[#f8e8d7] whitespace-nowrap"
+                          // eslint-disable-next-line react/no-array-index-key
+                          key={index}
+                          onSelect={() => {
+                            if (
+                              (import.meta as any).env.VITE_IS_DEMO === "true"
+                            ) {
+                              toast.error(
+                                "This feature does not work in the demo"
+                              );
+                              return;
+                            }
+                            setSelectedSubPlan(subPlan);
+                            switch (index) {
+                              case 0:
+                                setTitle("Are you sure?");
+
+                                setShowModal(true);
+                                indexRef.current = "Cancel Now";
+                                break;
+                              default:
+                                setTitle("Are you sure?");
+
+                                setShowModal(true);
+                                indexRef.current = "Cancel Renewal";
+                                break;
+                            }
+                          }}
+                        >
+                          {key}
+                        </DropdownComponent.MenuItem>
+                      ))}
+                    </DropdownComponent.Container>)
+                  )}
                 </DropdownComponent>
                 <div className=" flex-row flex font-alliance  items-center border-inherit w-full">
                   {subPlan.addons.map((addon) => (
@@ -623,7 +835,6 @@ const SubscriptionView: FC<Props> = ({
             </CustomerCard.Container>
           </CustomerCard.Heading>
         </CustomerCard>
-
         {showModal ? (
           <Modal
             transitionName=""
@@ -639,7 +850,7 @@ const SubscriptionView: FC<Props> = ({
               setSelectedSubPlan(undefined);
             }}
             footer={
-              indexRef.current === 0
+              indexRef.current === "Switch Plan"
                 ? [
                     <Button key="back" onClick={() => setShowModal(false)}>
                       Cancel
@@ -664,7 +875,7 @@ const SubscriptionView: FC<Props> = ({
                       Switch
                     </Button>,
                   ]
-                : indexRef.current === 1
+                : indexRef.current === "Attach Add-On"
                 ? [
                     <Button key="back" onClick={() => setShowModal(false)}>
                       Cancel
@@ -680,13 +891,13 @@ const SubscriptionView: FC<Props> = ({
                       }}
                       disabled={addOnId.length < 1}
                       onClick={() => {
-                        submitAddOns(selectedSubPlan.subscription_id);
+                        submitAddOns(selectedSubPlan!.subscription_id);
                       }}
                     >
                       Add
                     </Button>,
                   ]
-                : indexRef.current === 2
+                : indexRef.current === "Cancel Renewal"
                 ? [
                     <Button key="back" onClick={() => setShowModal(false)}>
                       Back
@@ -702,7 +913,7 @@ const SubscriptionView: FC<Props> = ({
                       Cancel Renewal
                     </Button>,
                   ]
-                : indexRef.current === 3
+                : indexRef.current === "Cancel Now"
                 ? [
                     <Button key="back" onClick={() => setShowModal(false)}>
                       Back
@@ -733,50 +944,50 @@ const SubscriptionView: FC<Props> = ({
                       Cancel Plan
                     </Button>,
                   ]
-                : indexRef.current === 5
-                ? [
-                    <Button
-                      key="back"
-                      onClick={() => {
-                        setShowModal(false);
-                        setSubStartDate("");
-                      }}
-                    >
-                      Back
-                    </Button>,
-                    <Button
-                      key="submit"
-                      type="primary"
-                      className="hover:!bg-primary-700"
-                      onClick={() => {
-                        handleAttachPlanSubmit();
-                        setShowModal(false);
-                      }}
-                    >
-                      Start Subscription
-                    </Button>,
-                  ]
-                : indexRef.current === 6
-                ? [
-                    <Button key="back" onClick={() => setShowModal(false)}>
-                      Back
-                    </Button>,
-                    <Button
-                      key="submit"
-                      type="primary"
-                      className="!bg-rose-600 border !border-rose-600"
-                      onClick={() => {
-                        cancelAllSubscriptions();
-                      }}
-                    >
-                      Cancel All Subscriptions
-                    </Button>,
-                  ]
-                : null
+                : // : indexRef.current === 5
+                  // ? [
+                  //     <Button
+                  //       key="back"
+                  //       onClick={() => {
+                  //         setShowModal(false);
+                  //         setSubStartDate("");
+                  //       }}
+                  //     >
+                  //       Back
+                  //     </Button>,
+                  //     <Button
+                  //       key="submit"
+                  //       type="primary"
+                  //       className="hover:!bg-primary-700"
+                  //       onClick={() => {
+                  //         handleAttachPlanSubmit();
+                  //         setShowModal(false);
+                  //       }}
+                  //     >
+                  //       Start Subscription
+                  //     </Button>,
+                  //   ]
+                  // : indexRef.current === 6
+                  // ? [
+                  //     <Button key="back" onClick={() => setShowModal(false)}>
+                  //       Back
+                  //     </Button>,
+                  //     <Button
+                  //       key="submit"
+                  //       type="primary"
+                  //       className="!bg-rose-600 border !border-rose-600"
+                  //       onClick={() => {
+                  //         cancelAllSubscriptions();
+                  //       }}
+                  //     >
+                  //       Cancel All Subscriptions
+                  //     </Button>,
+                  //   ]
+                  null
             }
           >
             <div className="flex flex-col justify-center items-center gap-4">
-              {indexRef.current === 0 ? (
+              {indexRef.current === "Switch Plan" ? (
                 <SwitchMenu
                   plan_id={subPlan.billing_plan.plan_id}
                   subscription_filters={subPlan.subscription_filters}
@@ -787,29 +998,10 @@ const SubscriptionView: FC<Props> = ({
                   setCascaderOptions={(args) => setCascaderOptions(args)}
                   cascaderOptions={cascaderOptions}
                 />
-              ) : indexRef.current === 5 ? (
-                [
-                  <Select
-                    showSearch
-                    placeholder="Select a plan"
-                    onChange={selectPlan}
-                    options={planList}
-                    value={selectedPlan}
-                    optionLabelProp="label"
-                  ></Select>,
-                  <DatePicker
-                    showTime
-                    className="mt-0"
-                    placeholder="Select start date"
-                    onChange={(date, dateString) => setSubStartDate(dateString)}
-                    value={subStartDate ? moment(subStartDate) : undefined}
-                  />,
-                ]
-              ) : indexRef.current === 2 ||
-                indexRef.current === 6 ||
-                (indexRef.current === 3 &&
-                  selectedSubPlan?.stripe_subscription_id) ? null : indexRef.current ===
-                3 ? (
+              ) : indexRef.current ===
+                "Cancel Renewal" ? null : indexRef.current === "Cancel Now" &&
+                (selectedSubPlan?.stripe_subscription_id ||
+                  fromUpcoming) ? null : indexRef.current === "Cancel Now" ? (
                 <CancelMenu
                   recurringBehavior={cancelBody.flat_fee_behavior}
                   usageBehavior={cancelBody.usage_behavior}
@@ -893,7 +1085,7 @@ const SubscriptionView: FC<Props> = ({
             </div>
           </Modal>
         ) : null}
-      </div>
+      </div>)
     );
   }
 
@@ -1019,26 +1211,32 @@ const SubscriptionView: FC<Props> = ({
                     </button>
                   </DropdownComponent.Trigger>
                   <DropdownComponent.Container className="!bg-[#fff4e9] ">
-                    {dropDownOptions
-                      .filter(
-                        (option) =>
-                          option === "Cancel Renewal" || option === "Cancel Now"
-                      )
-                      .map((key, index) => (
-                        <DropdownComponent.MenuItem
-                          className="hover:text-black hover:bg-[#f8e8d7] whitespace-nowrap"
-                          // eslint-disable-next-line react/no-array-index-key
-                          key={index}
-                          onSelect={() => {
-                            setSelectedSubPlan(sub);
-                            setTitle("Are you sure?");
-                            setShowModal(true);
-                            indexRef.current = dropDownOptions.indexOf(key);
-                          }}
-                        >
-                          {key}
-                        </DropdownComponent.MenuItem>
-                      ))}
+                    {subDropdownOptions.map((key, index) => (
+                      <DropdownComponent.MenuItem
+                        className="hover:text-black hover:bg-[#f8e8d7] whitespace-nowrap"
+                        // eslint-disable-next-line react/no-array-index-key
+                        key={index}
+                        onSelect={() => {
+                          setSelectedSubPlan(sub);
+                          switch (index) {
+                            case 0:
+                              setTitle("Are you sure?");
+
+                              setShowModal(true);
+                              indexRef.current = "Cancel Now";
+                              break;
+                            default:
+                              setTitle("Are you sure?");
+
+                              setShowModal(true);
+                              indexRef.current = "Cancel Renewal";
+                              break;
+                          }
+                        }}
+                      >
+                        {key}
+                      </DropdownComponent.MenuItem>
+                    ))}
                   </DropdownComponent.Container>
                 </DropdownComponent>
                 <div className=" flex-row flex font-alliance  items-center border-inherit w-full">
@@ -1075,55 +1273,38 @@ const SubscriptionView: FC<Props> = ({
               setSelectedSubPlan(undefined);
             }}
             footer={
-              indexRef.current === 0
+              indexRef.current === "Cancel Now"
                 ? [
                     <Button key="back" onClick={() => setShowModal(false)}>
-                      Cancel
+                      Back
                     </Button>,
-                    <Button
-                      key="switch_plan"
-                      type="primary"
-                      className="hover:!bg-primary-700 "
-                      style={{
-                        background: "#C3986B",
-                        borderColor: "#C3986B",
-                      }}
-                      onClick={() => {
-                        onChange(
-                          cascaderOptions?.value as string,
-                          sub.subscription_id
-                        );
-                        setShowModal(false);
-                        setCascaderOptions(undefined);
-                      }}
-                    >
-                      Switch
-                    </Button>,
-                  ]
-                : indexRef.current === 1
-                ? [
-                    <Button key="back" onClick={() => setShowModal(false)}>
-                      Cancel
-                    </Button>,
-
                     <Button
                       key="submit"
                       type="primary"
-                      className="hover:!bg-primary-700"
-                      style={{
-                        background: "#C3986B",
-                        borderColor: "#C3986B",
-                      }}
-                      disabled={addOnId.length < 1}
+                      className="!bg-rose-600 border !border-rose-600"
                       onClick={() => {
-                        submitAddOns(selectedSubPlan!.subscription_id);
+                        if (selectedSubPlan?.stripe_subscription_id) {
+                          PaymentProcessor.cancelStripeSubscriptions({
+                            customer_id:
+                              selectedSubPlan?.customer.customer_id || "",
+                            stripe_subscription_ids: [
+                              selectedSubPlan.stripe_subscription_id,
+                            ],
+                          });
+                          setShowModal(false);
+                          queryClient.invalidateQueries([
+                            "customer_detail",
+                            customer_id,
+                          ]);
+                        } else {
+                          cancelSubscription(selectedSubPlan!.subscription_id);
+                        }
                       }}
                     >
-                      Add
+                      Cancel Plan
                     </Button>,
                   ]
-                : indexRef.current === 2
-                ? [
+                : [
                     <Button key="back" onClick={() => setShowModal(false)}>
                       Back
                     </Button>,
@@ -1155,71 +1336,6 @@ const SubscriptionView: FC<Props> = ({
                       Cancel Renewal
                     </Button>,
                   ]
-                : indexRef.current === 3
-                ? [
-                    <Button key="back" onClick={() => setShowModal(false)}>
-                      Back
-                    </Button>,
-                    <Button
-                      key="submit"
-                      type="primary"
-                      className="!bg-rose-600 border !border-rose-600"
-                      onClick={() => {
-                        if (selectedSubPlan?.stripe_subscription_id) {
-                          PaymentProcessor.cancelStripeSubscriptions({
-                            customer_id:
-                              selectedSubPlan?.customer.customer_id || "",
-                            stripe_subscription_ids: [
-                              selectedSubPlan.stripe_subscription_id,
-                            ],
-                          });
-                          setShowModal(false);
-                          queryClient.invalidateQueries([
-                            "customer_detail",
-                            customer_id,
-                          ]);
-                        } else {
-                          cancelSubscription(selectedSubPlan!.subscription_id);
-                        }
-                      }}
-                    >
-                      Cancel Plan
-                    </Button>,
-                  ]
-                : indexRef.current === 5
-                ? [
-                    <Button key="back" onClick={() => setShowModal(false)}>
-                      Back
-                    </Button>,
-                    <Button
-                      key="submit"
-                      type="primary"
-                      className="hover:!bg-primary-700"
-                      onClick={() => {
-                        handleAttachPlanSubmit();
-                        setShowModal(false);
-                      }}
-                    >
-                      Start Subscription
-                    </Button>,
-                  ]
-                : indexRef.current === 6
-                ? [
-                    <Button key="back" onClick={() => setShowModal(false)}>
-                      Back
-                    </Button>,
-                    <Button
-                      key="submit"
-                      type="primary"
-                      className="!bg-rose-600 border !border-rose-600"
-                      onClick={() => {
-                        cancelAllSubscriptions();
-                      }}
-                    >
-                      Cancel All Subscriptions
-                    </Button>,
-                  ]
-                : null
             }
           >
             <div className="flex flex-col justify-center items-center gap-4">
@@ -1234,29 +1350,10 @@ const SubscriptionView: FC<Props> = ({
                   setCascaderOptions={(args) => setCascaderOptions(args)}
                   cascaderOptions={cascaderOptions}
                 />
-              ) : indexRef.current === 5 ? (
-                [
-                  <Select
-                    showSearch
-                    placeholder="Select a plan"
-                    onChange={selectPlan}
-                    options={planList}
-                    value={selectedPlan}
-                    optionLabelProp="label"
-                  ></Select>,
-                  <DatePicker
-                    showTime
-                    className="mt-0"
-                    placeholder="Select start date"
-                    onChange={(date, dateString) => setSubStartDate(dateString)}
-                    value={subStartDate ? moment(subStartDate) : undefined}
-                  />,
-                ]
-              ) : indexRef.current === 2 ||
-                indexRef.current === 6 ||
-                (indexRef.current === 3 &&
-                  selectedSubPlan?.stripe_subscription_id) ? null : indexRef.current ===
-                3 ? (
+              ) : indexRef.current ===
+                "Cancel Renewal" ? null : indexRef.current === "Cancel Now" &&
+                selectedSubPlan?.stripe_subscription_id ? null : indexRef.current ===
+                "Cancel Now" ? (
                 <CancelMenu
                   recurringBehavior={cancelBody.flat_fee_behavior}
                   usageBehavior={cancelBody.usage_behavior}
@@ -1350,10 +1447,16 @@ const SubscriptionView: FC<Props> = ({
     stripeSubscriptions,
     startingPoint,
     offset,
+  }: {
+    searchQuery: string;
+    subscriptions: components["schemas"]["CustomerDetail"]["subscriptions"];
+    startingPoint: number;
+    offset: number;
   }) {
     const subscriptionList = searchQuery
       ? getFilteredSubscriptions().map((subPlan) => (
           <SubscriptionItem
+            fromUpcoming={false}
             key={subPlan.billing_plan.plan_id + subPlan.subscription_filters}
             subPlan={subPlan}
           />
@@ -1362,6 +1465,7 @@ const SubscriptionView: FC<Props> = ({
           .slice(startingPoint, offset)
           .map((subPlan) => (
             <SubscriptionItem
+              fromUpcoming={false}
               key={subPlan.billing_plan.plan_id + subPlan.subscription_filters}
               subPlan={subPlan}
             />
@@ -1390,8 +1494,6 @@ const SubscriptionView: FC<Props> = ({
       </div>
     );
   }
-
-  console.log(subscriptions, upcomingSubscriptions);
 
   return (
     <div className="mt-auto">
@@ -1424,10 +1526,8 @@ const SubscriptionView: FC<Props> = ({
             size="large"
             disabled={false}
             onClick={() => {
-              indexRef.current = 5;
               setTitle("Add New Plan");
-
-              setShowModal(true);
+              setShowAddModal(true);
             }}
           >
             Add New Plan
@@ -1480,12 +1580,30 @@ const SubscriptionView: FC<Props> = ({
           <div className="flex flex-col justify-center">
             <div className="grid gap-20 min-h-[564px]  grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
               {upcomingSubscriptions.map((sub) => (
-                <SubscriptionItem subPlan={sub} />
+                <SubscriptionItem
+                  key={sub.subscription_id}
+                  fromUpcoming
+                  subPlan={sub}
+                />
               ))}
             </div>
           </div>
         </>
       )}
+      <AddPlanModal
+        title={title}
+        showAddModal={showAddModal}
+        handleStartSubscription={handleAttachPlanSubmit}
+        planList={planList}
+        versionList={versionList}
+        selectedPlan={selectedPlan}
+        selectPlan={selectPlan}
+        selectedVersion={selectedVersion}
+        selectVersion={selectVersion}
+        subStartDate={subStartDate}
+        handleDateChange={setSubStartDate}
+        handleCancel={handleCancelAddSubscription}
+      />
 
       <DraftInvoice customer_id={customer_id} />
     </div>

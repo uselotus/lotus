@@ -6,7 +6,7 @@ import {
   useQuery,
   useQueryClient,
   UseQueryResult,
-} from "react-query";
+} from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import { compact, noop, sortBy } from "lodash";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
@@ -650,7 +650,11 @@ function EditPlan({ type, plan, versionIndex }: Props) {
                   </Button>
                   <Button
                     type="primary"
-                    disabled={!isCurrentStepValid}
+                    disabled={
+                      !isCurrentStepValid ||
+                      (currentStep === STEPS.length - 1 &&
+                        (import.meta as any).env.VITE_IS_DEMO === "true")
+                    }
                     style={{
                       background: "#C3986B",
                       color: "#FFFFFF",
