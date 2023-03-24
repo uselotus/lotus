@@ -1314,6 +1314,17 @@ class SubscriptionViewSet(
         # now we can actually create the subscription record
         response = SubscriptionRecordSerializer(subscription_record).data
         subscription_created_webhook(subscription_record, subscription_data=response)
+
+        posthog.capture(
+            POSTHOG_PERSON
+            if POSTHOG_PERSON
+            else (organization.organization_name + " (Unknown)"),
+            event="DEPRECATED_add_subscription",
+            properties={
+                "organization": organization.organization_name,
+                "subscription": response,
+            },
+        )
         return Response(
             response,
             status=status.HTTP_201_CREATED,
@@ -1352,6 +1363,17 @@ class SubscriptionViewSet(
         for subscription in qs:
             subscription_data = SubscriptionRecordSerializer(subscription).data
             subscription_cancelled_webhook(subscription, subscription_data)
+
+            posthog.capture(
+                POSTHOG_PERSON
+                if POSTHOG_PERSON
+                else (organization.organization_name + " (Unknown)"),
+                event="DEPRECATED_cancel_subscription",
+                properties={
+                    "organization": organization.organization_name,
+                    "subscription": subscription_data,
+                },
+            )
 
         return Response(ret, status=status.HTTP_200_OK)
 
@@ -1457,6 +1479,16 @@ class SubscriptionViewSet(
             pk__in=original_qs, organization=organization
         )
         ret = SubscriptionRecordSerializer(return_qs, many=True).data
+
+        posthog.capture(
+            POSTHOG_PERSON
+            if POSTHOG_PERSON
+            else (organization.organization_name + " (Unknown)"),
+            event="DEPRECATED_update_subscription",
+            properties={
+                "organization": organization.organization_name,
+            },
+        )
         return Response(ret, status=status.HTTP_200_OK)
 
         ## DISPATCH
