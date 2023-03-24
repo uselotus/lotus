@@ -2,6 +2,8 @@ import itertools
 import json
 from datetime import timedelta
 from decimal import Decimal
+from unittest.mock import patch
+import urllib.parse
 
 import pytest
 from django.db.models import Sum
@@ -29,6 +31,7 @@ from metering_billing.models import (
     SubscriptionRecord,
 )
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
+from metering_billing.tasks import check_past_due_invoices_inner
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     CHARGEABLE_ITEM_TYPE,
@@ -2252,3 +2255,115 @@ class TestPrepaidComponentCharges:
         )["base__sum"] == Decimal(
             5
         )  # 5 units above the 20 prepaid
+
+
+@pytest.mark.django_db(transaction=True)
+class TestInvoiceWebhooks:
+    def test_invoice_paid_webhook(
+        self,
+        subscription_test_common_setup,
+    ):
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=1, auth_method="session_auth"
+        )
+
+        prev_invoices_len = Invoice.objects.all().count()
+
+        params = {
+            "customer_id": setup_dict["customer"].customer_id,
+        }
+        payload = {
+            "flat_fee_behavior": FLAT_FEE_BEHAVIOR.CHARGE_FULL,
+            "bill_usage": True,
+        }
+        response = setup_dict["client"].post(
+            reverse("subscription-cancel") + "?" + urllib.parse.urlencode(params),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+
+        new_invoices_len = Invoice.objects.all().count()
+        assert response.status_code == status.HTTP_200_OK
+        assert new_invoices_len == prev_invoices_len + 1
+
+        payload = {
+            "payment_status": "paid",
+        }
+        invoice = Invoice.objects.last()
+        with patch("metering_billing.models.invoice_paid_webhook") as mock_webhook:
+            response = setup_dict["client"].patch(
+                reverse(
+                    "invoice-detail",
+                    kwargs={"invoice_id": invoice.invoice_id},
+                ),
+                data=json.dumps(payload, cls=DjangoJSONEncoder),
+                content_type="application/json",
+            )
+            mock_webhook.assert_called_once_with(invoice, invoice.organization)
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_invoice_past_due_webhook_org_setting_not_set(
+        self,
+        subscription_test_common_setup,
+    ):
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=1,
+            auth_method="session_auth",
+        )
+
+        prev_invoices_len = Invoice.objects.all().count()
+
+        params = {
+            "customer_id": setup_dict["customer"].customer_id,
+        }
+        payload = {
+            "flat_fee_behavior": FLAT_FEE_BEHAVIOR.CHARGE_FULL,
+            "bill_usage": True,
+        }
+        response = setup_dict["client"].post(
+            reverse("subscription-cancel") + "?" + urllib.parse.urlencode(params),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+
+        new_invoices_len = Invoice.objects.all().count()
+        assert response.status_code == status.HTTP_200_OK
+        assert new_invoices_len == prev_invoices_len + 1
+
+        with patch("metering_billing.tasks.invoice_past_due_webhook") as mock_webhook:
+            check_past_due_invoices_inner()
+            mock_webhook.assert_not_called()
+
+    def test_invoice_past_due_webhook_org_setting_set(
+        self,
+        subscription_test_common_setup,
+    ):
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=1,
+            auth_method="session_auth",
+            setup_grace_period_setting=True,
+        )
+
+        prev_invoices_len = Invoice.objects.all().count()
+
+        params = {
+            "customer_id": setup_dict["customer"].customer_id,
+        }
+        payload = {
+            "flat_fee_behavior": FLAT_FEE_BEHAVIOR.CHARGE_FULL,
+            "bill_usage": True,
+        }
+        response = setup_dict["client"].post(
+            reverse("subscription-cancel") + "?" + urllib.parse.urlencode(params),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+
+        new_invoices_len = Invoice.objects.all().count()
+        assert response.status_code == status.HTTP_200_OK
+        assert new_invoices_len == prev_invoices_len + 1
+        invoice = Invoice.objects.last()
+
+        with patch("metering_billing.tasks.invoice_past_due_webhook") as mock_webhook:
+            check_past_due_invoices_inner()
+            mock_webhook.assert_called_once_with(invoice, invoice.organization)
