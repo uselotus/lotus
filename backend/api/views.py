@@ -170,6 +170,12 @@ from metering_billing.webhooks import (
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 IDEMPOTENCY_ID_NAMESPACE = settings.IDEMPOTENCY_ID_NAMESPACE
+logger = logging.getLogger("django.server")
+USE_KAFKA = settings.USE_KAFKA
+if USE_KAFKA:
+    kafka_producer = Producer()
+else:
+    kafka_producer = None
 
 logger = logging.getLogger("django.server")
 
@@ -2146,10 +2152,6 @@ class ConfirmIdemsReceivedView(APIView):
         )
 
 
-logger = logging.getLogger("django.server")
-kafka_producer = Producer()
-
-
 def load_event(request: HttpRequest) -> Optional[dict]:
     """
     Loads an event from the request body.
@@ -2263,7 +2265,8 @@ def track_event(request):
                 "organization_id": organization_pk,
                 "event": transformed_event,
             }
-            kafka_producer.produce(customer_id, stream_events)
+            if kafka_producer:
+                kafka_producer.produce(customer_id, stream_events)
         except Exception as e:
             bad_events[idempotency_id] = str(e)
             continue
