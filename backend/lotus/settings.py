@@ -116,7 +116,7 @@ VESSEL_API_KEY = config("VESSEL_API_KEY", default=None)
 # Partial startup
 USE_WEBHOOKS = not config("NO_WEBHOOKS", default=False, cast=bool)
 USE_KAFKA = not config("NO_EVENTS", default=False, cast=bool)
-
+print("USE_KAFKA", USE_KAFKA)
 if SENTRY_DSN != "":
     if not DEBUG:
         trace_rate = 1.0
