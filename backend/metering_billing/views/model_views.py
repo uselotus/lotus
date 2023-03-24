@@ -496,6 +496,60 @@ class EventViewSet(
         context.update({"organization": organization})
         return context
 
+    @action(detail=False, methods=["get"], url_path="search")
+    def search(self, request):
+        now = now_utc()
+        print(request)
+        organization = self.request.organization
+        idempotency_id = request.GET["idempotency_id"]
+        customer_id = request.GET["cust_id"]
+
+        queryset = self.get_queryset()
+
+        if len(idempotency_id) > 0 and len(customer_id) > 0:
+            res = self.pagination_class(
+                EventDetailSerializer(
+                    queryset.filter(
+                        organization=organization,
+                        time_created__lt=now,
+                        idempotency_id__contains=idempotency_id,
+                        cust_id__contains=customer_id,
+                    ),
+                    many=True,
+                ).data
+            )
+            return Response(res)
+        elif len(idempotency_id) > 0:
+            res = EventDetailSerializer(
+                queryset.filter(
+                    organization=organization,
+                    time_created__lt=now,
+                    idempotency_id__contains=idempotency_id,
+                ),
+                many=True,
+            ).data
+            return Response(res)
+        elif len(customer_id) > 0:
+            res = EventDetailSerializer(
+                queryset.filter(
+                    organization=organization,
+                    time_created__lt=now,
+                    cust_id__contains=customer_id,
+                ),
+                many=True,
+            ).data
+            return Response(res)
+        else:
+            res = self.pagination_class(
+                EventDetailSerializer(
+                    super()
+                    .get_queryset()
+                    .filter(organization=organization, time_created__lt=now),
+                    many=True,
+                ).data
+            )
+            return Response(res)
+
 
 class UserViewSet(
     PermissionPolicyMixin,

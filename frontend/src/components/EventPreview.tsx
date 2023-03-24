@@ -1,4 +1,3 @@
-// @ts-ignore
 import React, { FC, useState, useEffect, Fragment } from "react";
 import { useQuery, UseQueryResult, useQueryClient } from "react-query";
 import { Button, Collapse, Divider } from "antd";

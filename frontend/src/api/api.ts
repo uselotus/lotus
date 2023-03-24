@@ -556,6 +556,14 @@ export const Metrics = {
 export const Events = {
   getEventPreviews: (c: string): Promise<EventPages> =>
     requests.get("app/events/", { params: { c } }),
+  searchEventPreviews: (
+    cust_id: string,
+    idempotency_id: string,
+    c: string = ""
+  ): Promise<EventPages> =>
+    requests.get("app/events/search/", {
+      params: { c, cust_id, idempotency_id },
+    }),
   getEventCount: (
     period_1_start_date: string,
     period_1_end_date: string,
