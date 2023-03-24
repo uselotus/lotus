@@ -51,7 +51,7 @@ jobs:
           chmod +x wait-for-it.sh
 
       - name: Wait for healthcheck endpoint
-        run: ./wait-for-it.sh localhost:8000/api/healthcheck/ --timeout=600
+        run: ./wait-for-it.sh http://localhost/api/healthcheck/ --timeout=600
 
       - name: Install jq
         run: sudo apt-get install -y jq
