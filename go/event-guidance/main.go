@@ -208,8 +208,8 @@ func main() {
 			count:           0,
 		}
 
-		lastOrgID := int64(0)
-		lastEventCount := 0
+		// make a map of organizationID (bigint) ro integers to keep track of the number of events we have processed for each organization
+		processedEvents := make(map[int64]int)
 
 		fetches.EachRecord(func(r *kgo.Record) {
 			log.Printf("Received record: %s\n", r.Value)
@@ -226,11 +226,6 @@ func main() {
 				panic(fmt.Errorf("event from OrganizationID %d is empty", streamEvents.OrganizationID))
 			}
 			event := streamEvents.Event
-
-			// if its the first event, set the lastOrgID
-			if lastOrgID == 0 {
-				lastOrgID = streamEvents.OrganizationID
-			}
 
 			// commit the record
 			if committed, err := batch.addRecord(event); err != nil {
@@ -256,21 +251,7 @@ func main() {
 				}
 
 				// send posthog event if orgID has changed or we've reached batchSize (and set batch.count to 0)
-				if event.OrganizationID != lastOrgID || batch.count == 0 {
-					numEvents := 0
-					if batch.count > 0 {
-						// this is in the case haven't reached batchSize yet
-						numEvents = batch.count - lastEventCount
-					} else {
-						numEvents = batchSize - lastEventCount
-					}
-					if phWorks {
-						posthogTrack(phClient, lastOrgID, numEvents)
-					}
-					// either update lastEventCount or if we committed reset to 0
-					lastEventCount = batch.count
-					lastOrgID = event.OrganizationID
-				}
+				processedEvents[event.OrganizationID]++
 			}
 
 		})
@@ -286,23 +267,25 @@ func main() {
 					log.Printf("commit records failed: %v", err)
 					panic(fmt.Errorf("commit records failed: %w", err))
 				}
-
-				// send posthog event
-				if phWorks {
-					posthogTrack(phClient, lastOrgID, batch.count-lastEventCount)
-				}
 			}
+		}
+
+		// send posthog event
+		if phWorks {
+			posthogTrack(phClient, processedEvents)
 		}
 
 	}
 }
 
-func posthogTrack(phClient posthog.Client, organizationID int64, numEvents int) {
+func posthogTrack(phClient posthog.Client, processedEvents map[int64]int) {
 	// send posthog event
-	phClient.Enqueue(posthog.Capture{
-		DistinctId: fmt.Sprintf("%d (API Key)", organizationID),
-		Event:      "track_event",
-		Properties: posthog.NewProperties().
-			Set("num_events", numEvents),
-	})
+	for organizationID, numEvents := range processedEvents {
+		phClient.Enqueue(posthog.Capture{
+			DistinctId: fmt.Sprintf("%d (API Key)", organizationID),
+			Event:      "track_event",
+			Properties: posthog.NewProperties().
+				Set("num_events", numEvents),
+		})
+	}
 }
