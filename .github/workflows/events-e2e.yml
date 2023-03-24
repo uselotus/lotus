@@ -38,7 +38,7 @@ jobs:
 
       - name: start-all
         run: |
-          sh ./scripts/dev.sh --no-webhooks --no-beat &
+          sh -c "./scripts/dev.sh --no-webhooks --no-beat"
 
       - name: Wait for API to be ready
         run: |
