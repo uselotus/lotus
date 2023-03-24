@@ -1467,7 +1467,7 @@ class PriceTier(models.Model):
         # for usage in usage_dict.values():
         usage = convert_to_decimal(usage)
         
-        if bulk_pricing_enabled and self.range_end is not None and self.range_end < usage:
+        if bulk_pricing_enabled and self.range_end is not None and self.range_end <= usage:
             return revenue
         
         usage_in_range = (
