@@ -38,10 +38,11 @@ jobs:
 
       - name: start-all
         run: |
-          sh -c "./scripts/dev.sh --no-webhooks --no-beat"
+          sh -c "./scripts/dev.sh --no-webhooks --no-beat &"
 
       - name: Wait for API to be ready
         run: |
+          sleep 480s
           for i in {1..200}; do
             if curl -s -f http://localhost:8000/api/healthcheck/; then
               export STARTUP_SUCCEEDED=true
