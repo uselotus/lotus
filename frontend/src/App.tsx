@@ -61,7 +61,11 @@ function App() {
           error?.response?.status === 401 &&
           !publicRoutes.includes(pathname)
         ) {
-          navigate("/");
+          navigate("/", {
+            state: {
+              redirectTo: pathname,
+            },
+          });
         }
         return error;
       });
