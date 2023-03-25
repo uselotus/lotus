@@ -810,4 +810,3 @@ if SVIX_CONNECTOR is not None:
             )
     except Exception:
         SVIX_CONNECTOR = None
-        SVIX_CONNECTOR = None
