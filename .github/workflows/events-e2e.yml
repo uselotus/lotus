@@ -74,35 +74,46 @@ jobs:
 
       - name: track-events
         run: |
-          curl --location --request POST 'http://localhost:7998/api/track/' \
-          --header "X-API-KEY: ${{ secrets.LOTUS_API_KEY }}" \
-          --header 'Content-Type: application/json' \
-          --data-raw '{
-            "batch":[
-              {
-                "customer_id": "rto",
-                "event_name":"boaaaby",
-                "idempotency_id": "16b6aa05-790c-42fc-bbdc-a41afa0f9d2e",
-                "properties":{
-                    "shard_id": "2",
-                    "shard_type": "professional",
-                    "change": 5
-                },
-                "time_created":"'$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")'"
-              }
-            ]
-          }'
+          response=$(curl -sw "\n%{http_code}" --location --request POST 'http://localhost:7998/api/track/' \
+            --header "X-API-KEY: ${{ secrets.LOTUS_API_KEY }}" \
+            --header 'Content-Type: application/json' \
+            --data-raw '{
+              "batch":[
+                {
+                  "customer_id": "rto",
+                  "event_name":"boaaaby",
+                  "idempotency_id": "16b6aa05-790c-42fc-bbdc-a41afa0f9d2e",
+                  "properties":{
+                      "shard_id": "2",
+                      "shard_type": "professional",
+                      "change": 5
+                  },
+                  "time_created":"'$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")'"
+                }
+              ]
+            }')
+
+          response_body=$(echo "$response" | head -n -1)
+          status_code=$(echo "$response" | tail -n 1)
+
+          echo "Response body: $response_body"
+          echo "Status code: $status_code"
 
       - name: verify event
         run: |
           sleep 10s
-          response=$(curl --silent --request POST \
-          --url http://localhost:8000/api/verify_idems_received/ \
-          --header "X-API-KEY: ${{ secrets.LOTUS_API_KEY }}" \
-          --header 'Content-Type: application/json' \
-          --data '{
+          response=$(curl -sw "\n%{http_code}" --location --request POST 'http://localhost:8000/api/verify_idems_received/' \
+            --header "X-API-KEY: ${{ secrets.LOTUS_API_KEY }}" \
+            --header 'Content-Type: application/json' \
+            --data '{
               "idempotency_ids": ["16b6aa05-790c-42fc-bbdc-a41afa0f9d2e"]
-          }')
+            }')
+
+          response_body=$(echo "$response" | head -n -1)
+          status_code=$(echo "$response" | tail -n 1)
+
+          echo "Response body: $response_body"
+          echo "Status code: $status_code"
 
           if ! echo "${response}" | jq -e '.ids_not_found | index("16b6aa05-790c-42fc-bbdc-a41afa0f9d2e")' &> /dev/null; then
               echo "Idempotency ID not found in response"
