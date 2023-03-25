@@ -6,9 +6,6 @@ from typing import Literal, Union
 from django.conf import settings
 from django.db.models import Max, Min, Sum
 from drf_spectacular.utils import extend_schema_serializer
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-
 from metering_billing.invoice import generate_balance_adjustment_invoice
 from metering_billing.kafka.producer import Producer
 from metering_billing.models import (
@@ -70,6 +67,8 @@ from metering_billing.utils.enums import (
     USAGE_BEHAVIOR,
     USAGE_BILLING_BEHAVIOR,
 )
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -1549,14 +1548,30 @@ class PlanSerializer(
             )
 
     def get_active_version(self, obj) -> int:
-        return (
-            obj.versions.active()
-            .filter(is_custom=False)
-            .values_list("version", flat=True)
-            .order_by("-version")
-            .first()
-            or 0
-        )
+        try:
+            now = now_utc()
+            return max(
+                [
+                    x.version
+                    for x in obj.versions_prefetched
+                    if not x.is_custom
+                    and x.active_from <= now
+                    and (x.active_to is None or x.active_to > now)
+                ],
+                default=0,
+            )
+        except AttributeError:
+            logger.error(
+                "PlanSerializer.get_active_version() called without prefetching 'versions_prefetched'"
+            )
+            return (
+                obj.versions.active()
+                .filter(is_custom=False)
+                .values_list("version", flat=True)
+                .order_by("-version")
+                .first()
+                or 0
+            )
 
     def get_active_subscriptions(self, obj) -> int:
         try:
