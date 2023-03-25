@@ -13,6 +13,45 @@ from typing import Optional
 
 import posthog
 import pytz
+from dateutil import parser
+from dateutil.relativedelta import relativedelta
+from django.conf import settings
+from django.db.models import (
+    Count,
+    DecimalField,
+    F,
+    Max,
+    Min,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
+from django.db.utils import IntegrityError
+from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiParameter,
+    extend_schema,
+    inline_serializer,
+)
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import (
+    action,
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
     AddOnSubscriptionRecordSerializer,
@@ -52,33 +91,6 @@ from api.serializers.nonmodel_serializers import (
     GetInvoicePdfURLResponseSerializer,
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
-)
-from dateutil import parser
-from dateutil.relativedelta import relativedelta
-from django.conf import settings
-from django.db.models import (
-    Count,
-    DecimalField,
-    F,
-    Max,
-    Min,
-    OuterRef,
-    Prefetch,
-    Q,
-    Subquery,
-    Sum,
-    Value,
-)
-from django.db.models.functions import Coalesce
-from django.db.utils import IntegrityError
-from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import (
-    OpenApiExample,
-    OpenApiParameter,
-    extend_schema,
-    inline_serializer,
 )
 from metering_billing.auth.auth_utils import (
     PermissionPolicyMixin,
@@ -154,17 +166,6 @@ from metering_billing.webhooks import (
     subscription_cancelled_webhook,
     subscription_created_webhook,
 )
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import (
-    action,
-    api_view,
-    authentication_classes,
-    permission_classes,
-)
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -2126,27 +2127,24 @@ class ConfirmIdemsReceivedView(APIView):
             idempotency_ids = {request.data.get("idempotency_ids")}
         else:
             idempotency_ids = list(set(request.data.get("idempotency_ids")))
-        logger.error("idempotency_ids: %s", idempotency_ids)
         number_days_lookback = request.data.get("number_days_lookback", 30)
         now_minus_lookback = now_utc() - relativedelta(days=number_days_lookback)
         num_batches_idems = len(idempotency_ids) // 1000 + 1
         ids_not_found = []
         for i in range(num_batches_idems):
             idem_batch = set(idempotency_ids[i * 1000 : (i + 1) * 1000])
-            logger.error("idem_batch pre: %s", idem_batch)
-            idem_batch = {uuid.uuid5(IDEMPOTENCY_ID_NAMESPACE, x) for x in idem_batch}
-            logger.error("idem_batch post: %s", idem_batch)
+            uuidv5_idem_batch = {
+                uuid.uuid5(IDEMPOTENCY_ID_NAMESPACE, x) for x in idem_batch
+            }
             events = Event.objects.filter(
                 organization=organization,
                 time_created__gte=now_minus_lookback,
-                uuidv5_idempotency_id__in=idem_batch,
+                uuidv5_idempotency_id__in=uuidv5_idem_batch,
             )
             if request.data.get("customer_id"):
                 events = events.filter(customer_id=request.data.get("customer_id"))
             events_set = set(events.values_list("idempotency_id", flat=True))
-            logger.error("events_set: %s", events_set)
             ids_not_found += list(idem_batch - events_set)
-            logger.error("ids_not_found: %s", ids_not_found)
         return Response(
             {
                 "status": "success",
