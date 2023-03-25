@@ -1,10 +1,29 @@
 # import lotus_python
 import logging
 
-import api.views as api_views
 import posthog
 import sentry_sdk
 from actstream.models import Action
+from django.conf import settings
+from django.core.cache import cache
+from django.core.validators import MinValueValidator
+from django.db.models import Func, Max
+from django.db.utils import IntegrityError
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiCallback,
+    OpenApiParameter,
+    extend_schema,
+    inline_serializer,
+)
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.pagination import CursorPagination
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+import api.views as api_views
 from api.serializers.nonmodel_serializers import (
     AddFeatureSerializer,
     AddFeatureToAddOnSerializer,
@@ -21,18 +40,6 @@ from api.serializers.webhook_serializers import (
     SubscriptionRenewedSerializer,
     UsageAlertTriggeredSerializer,
 )
-from django.conf import settings
-from django.core.cache import cache
-from django.core.validators import MinValueValidator
-from django.db.models import Func, Max
-from django.db.utils import IntegrityError
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import (
-    OpenApiCallback,
-    OpenApiParameter,
-    extend_schema,
-    inline_serializer,
-)
 from metering_billing.exceptions import (
     DuplicateMetric,
     DuplicateWebhookEndpoint,
@@ -48,7 +55,6 @@ from metering_billing.models import (
     Feature,
     Metric,
     Organization,
-    OrganizationSetting,
     Plan,
     PlanVersion,
     PricingUnit,
@@ -92,8 +98,6 @@ from metering_billing.serializers.model_serializers import (
     MetricUpdateSerializer,
     OrganizationCreateSerializer,
     OrganizationSerializer,
-    OrganizationSettingSerializer,
-    OrganizationSettingUpdateSerializer,
     OrganizationUpdateSerializer,
     PlanCreateSerializer,
     PlanDetailSerializer,
@@ -113,7 +117,6 @@ from metering_billing.serializers.model_serializers import (
 from metering_billing.serializers.request_serializers import (
     CRMSyncRequestSerializer,
     MakeReplaceWithSerializer,
-    OrganizationSettingFilterSerializer,
     PlansSetReplaceWithForVersionNumberSerializer,
     PlansSetTransitionToForVersionNumberSerializer,
     SetReplaceWithSerializer,
@@ -124,7 +127,6 @@ from metering_billing.serializers.serializer_utils import (
     AddOnVersionUUIDField,
     AnalysisUUIDField,
     MetricUUIDField,
-    OrganizationSettingUUIDField,
     OrganizationUUIDField,
     PlanUUIDField,
     PlanVersionUUIDField,
@@ -138,12 +140,6 @@ from metering_billing.utils.enums import (
     PAYMENT_PROCESSORS,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
-from rest_framework.pagination import CursorPagination
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -2067,64 +2063,6 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
         return super().destroy(request)
 
 
-class OrganizationSettingViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated & ValidOrganization]
-    http_method_names = ["get", "head", "patch"]
-    lookup_field = "setting_id"
-    queryset = OrganizationSetting.objects.all()
-
-    def get_object(self):
-        string_uuid = self.kwargs[self.lookup_field]
-        uuid = OrganizationSettingUUIDField().to_internal_value(string_uuid)
-        self.kwargs[self.lookup_field] = uuid
-        return super().get_object()
-
-    def get_serializer_class(self):
-        if self.action == "partial_update":
-            return OrganizationSettingUpdateSerializer
-        return OrganizationSettingSerializer
-
-    def get_queryset(self):
-        filter_kwargs = {"organization": self.request.organization}
-        serializer = OrganizationSettingFilterSerializer(
-            data=self.request.query_params,
-        )
-        serializer.is_valid(raise_exception=True)
-        setting_name = serializer.validated_data.get("setting_name", [])
-        if len(setting_name) > 0:
-            filter_kwargs["setting_name__in"] = setting_name
-        setting_group = serializer.validated_data.get("setting_group", None)
-        if setting_group:
-            filter_kwargs["setting_group"] = setting_group
-        return OrganizationSetting.objects.filter(**filter_kwargs)
-
-    @extend_schema(
-        parameters=[OrganizationSettingFilterSerializer],
-    )
-    def list(self, request, *args, **kwargs):
-        return super().list(request)
-
-    @extend_schema(responses=OrganizationSettingSerializer)
-    def update(self, request, *args, **kwargs):
-        organization_setting = self.get_object()
-        serializer = self.get_serializer(
-            organization_setting, data=request.data, partial=True
-        )
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        if getattr(organization_setting, "_prefetched_objects_cache", None):
-            # If 'prefetch_related' has been applied to a queryset, we need to
-            # forcibly invalidate the prefetch cache on the instance.
-            organization_setting._prefetched_objects_cache = {}
-
-        return Response(
-            OrganizationSettingSerializer(
-                organization_setting, context=self.get_serializer_context()
-            ).data,
-            status=status.HTTP_200_OK,
-        )
-
-
 class PricingUnitViewSet(
     mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet
 ):
@@ -2172,9 +2110,7 @@ class OrganizationViewSet(
 
     def get_queryset(self):
         organization = self.request.organization
-        return Organization.objects.filter(pk=organization.pk).prefetch_related(
-            "settings"
-        )
+        return Organization.objects.filter(pk=organization.pk)
 
     def get_serializer_class(self):
         if self.action == "partial_update":

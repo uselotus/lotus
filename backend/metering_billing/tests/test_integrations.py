@@ -52,11 +52,10 @@ def integration_test_common_setup(
         stripe_connector = PAYMENT_PROCESSOR_MAP[PAYMENT_PROCESSORS.STRIPE]
         stripe_connector.self_hosted = True
         setup_dict["stripe_connector"] = stripe_connector
-        stripe_connector.initialize_settings(org, generate_stripe_after_lotus=True)
+        org.gen_cust_in_stripe_after_lotus = True
+        org.gen_cust_in_braintree_after_lotus = True
+        org.save()
         braintree_connector = PAYMENT_PROCESSOR_MAP[PAYMENT_PROCESSORS.BRAINTREE]
-        braintree_connector.initialize_settings(
-            org, generate_braintree_after_lotus=True
-        )
         setup_dict["braintree_connector"] = braintree_connector
 
         return setup_dict

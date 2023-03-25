@@ -18,9 +18,8 @@ const Heading: React.FC<HeadingProps> = ({
   backButton,
   aboveTitle,
 }) => {
-  const { current_user, environment, organization_name } = useGlobalStore(
-    (state) => state.org
-  );
+  const org = useGlobalStore((state) => state.org);
+  const environmentType = useGlobalStore((state) => state.environmentType);
   const { pathname } = useLocation();
   const setOpen = useToggleSlideOver((state) => state.setOpen);
   const currentPath = pathname.split("/")[1];
@@ -63,17 +62,17 @@ const Heading: React.FC<HeadingProps> = ({
             <Badge
               onClick={setOpen}
               className={
-                environment !== "Production"
+                environmentType !== "Production"
                   ? "bg-blue-100 text-blue-800"
                   : "bg-emerald-100 text-emerald-800"
               }
             >
               <Badge.Dot
-                fill={environment !== "Production" ? "#60A5FA" : "#34D399"}
+                fill={environmentType !== "Production" ? "#60A5FA" : "#34D399"}
               />
               <Badge.Content>
                 <span className="flex gap-2 ml-2 justify-center items-center">
-                  <span className="text-sm">{organization_name}</span>
+                  <span className="text-sm">{org?.organization_name}</span>
                   <RightOutlined className="text-[10px]" />
                 </span>
               </Badge.Content>
@@ -89,7 +88,7 @@ const Heading: React.FC<HeadingProps> = ({
           >
             <Avatar className="w-16 h-16" />
             <span className="text-sm flex gap-2">
-              {current_user.username}{" "}
+              {org?.current_user.username}{" "}
               <svg
                 className="-mr-1 ml-2 h-10 w-10"
                 xmlns="http://www.w3.org/2000/svg"

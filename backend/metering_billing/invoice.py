@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q, Sum
 from django.db.models.query import QuerySet
+
 from metering_billing.kafka.producer import Producer
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.taxes import get_lotus_tax_rates, get_taxjar_tax_rates
@@ -20,8 +21,6 @@ from metering_billing.utils.enums import (
     CHARGEABLE_ITEM_TYPE,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     INVOICE_CHARGE_TIMING_TYPE,
-    ORGANIZATION_SETTING_GROUPS,
-    ORGANIZATION_SETTING_NAMES,
     TAX_PROVIDER,
 )
 from metering_billing.webhooks import invoice_created_webhook
@@ -777,18 +776,10 @@ def generate_external_payment_obj(invoice):
 
 
 def calculate_due_date(issue_date, organization):
-    from metering_billing.models import OrganizationSetting
-
     due_date = issue_date
-    grace_period_setting = OrganizationSetting.objects.filter(
-        organization=organization,
-        setting_name=ORGANIZATION_SETTING_NAMES.PAYMENT_GRACE_PERIOD,
-        setting_group=ORGANIZATION_SETTING_GROUPS.BILLING,
-    ).first()
-    if grace_period_setting:
-        due_date += relativedelta(
-            days=int(grace_period_setting.setting_values["value"])
-        )
+    grace_period = organization.payment_grace_period
+    if grace_period:
+        due_date += relativedelta(days=grace_period)
         return due_date
 
 
