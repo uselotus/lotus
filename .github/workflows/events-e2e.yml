@@ -64,7 +64,7 @@ jobs:
 
       - name: get-api-key
         run: |
-          OUTPUTS=$(docker-compose -f docker-compose.prod.yaml exec -T backend python manage.py postman_ci_outputs)
+          OUTPUTS=$(docker-compose -f docker-compose.dev.yaml exec -T backend python manage.py postman_ci_outputs)
           KEY=$(echo "$OUTPUTS" | grep "KEY=" | cut -d= -f2)
           ENV_JSON=$(jq -n \
             --arg key "$KEY" \
