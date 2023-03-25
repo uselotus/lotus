@@ -74,7 +74,7 @@ jobs:
 
       - name: track-events
         run: |
-          curl --location --request POST 'http://localhost:8000/api/track/' \
+          curl --location --request POST 'http://localhost:7998/api/track/' \
           --header "X-API-KEY: ${{ secrets.LOTUS_API_KEY }}" \
           --header 'Content-Type: application/json' \
           --data-raw '{
