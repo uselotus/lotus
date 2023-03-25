@@ -255,6 +255,8 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             return EmptySerializer
         elif self.action == "cost_analysis":
             return PeriodRequestSerializer
+        elif self.action == "draft_invoice":
+            return DraftInvoiceRequestSerializer
         if default:
             return default
         return CustomerSerializer
@@ -319,9 +321,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def draft_invoice(self, request, customer_id=None):
         customer = self.get_object()
         organization = request.organization
-        serializer = DraftInvoiceRequestSerializer(
-            data=request.query_params, context={"organization": organization}
-        )
+        serializer = self.get_serializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         sub_records = SubscriptionRecord.objects.active().filter(
             organization=organization, customer=customer
@@ -359,9 +359,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     )
     def cost_analysis(self, request, customer_id=None):
         organization = request.organization
-        serializer = self.get_serializer(
-            data=request.query_params,
-        )
+        serializer = self.get_serializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         customer = self.get_object()
         start_date, end_date = (
@@ -1229,6 +1227,7 @@ class SubscriptionViewSet(
         serializer = self.get_serializer(
             data=request.data,
             context={
+                **self.get_serializer_context(),
                 "attach_to_subscription_record": attach_to_sr,
                 "customer": attach_to_sr.customer,
             },
