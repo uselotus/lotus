@@ -2028,7 +2028,7 @@ class FeatureAccessView(APIView):
         subscription_records = subscription_records.prefetch_related(
             "billing_plan__features",
             "billing_plan__plan",
-            "addon_subscription_records"
+            "addon_subscription_records",
             "addon_subscription_records__billing_plan__features",
             "addon_subscription_records__billing_plan__plan",
         )
