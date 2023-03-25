@@ -978,7 +978,7 @@ class PlanComponentCreateSerializer(TimezoneFieldMixin, serializers.ModelSeriali
             "reset_interval_unit",
             "reset_interval_count",
             "prepaid_charge",
-            "bulk_pricing_enabled"
+            "bulk_pricing_enabled",
         )
         extra_kwargs = {
             "metric_id": {"required": True, "write_only": True},
@@ -1021,9 +1021,10 @@ class PlanComponentCreateSerializer(TimezoneFieldMixin, serializers.ModelSeriali
                 x["range_end"] for x in tiers_sorted[:-1]
             ), "All tiers must have an end, last one is the only one allowed to have open end"
             for i, tier in enumerate(tiers_sorted[:-1]):
-                assert tiers_sorted[i + 1]["range_start"] - tier[
-                    "range_end"
-                ] <= Decimal(1), "All tiers must be contiguous"
+                diff = tiers_sorted[i + 1]["range_start"] - tier["range_end"]
+                assert diff == Decimal(1) or diff == Decimal(
+                    0
+                ), "Tier ranges must be continuous or separated by 1"
         except AssertionError as e:
             raise serializers.ValidationError(str(e))
         data["invoicing_interval_unit"] = PlanComponent.convert_length_label_to_value(

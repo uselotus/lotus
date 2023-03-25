@@ -3,10 +3,11 @@ from datetime import timedelta
 from decimal import Decimal
 
 import pytest
-from metering_billing.models import Event, Metric, PlanComponent, PriceTier
-from metering_billing.utils import now_utc
 from model_bakery import baker
 from rest_framework.test import APIClient
+
+from metering_billing.models import Event, Metric, PlanComponent, PriceTier
+from metering_billing.utils import now_utc
 
 
 @pytest.fixture
@@ -80,7 +81,7 @@ def components_test_common_setup(
         plan = add_plan_to_product(product)
         plan_version = add_plan_version_to_plan(plan)
         for i, (fmu, cpb, mupb) in enumerate(
-            zip([50, 0.01, 1], [5, 0.05, 2], [100, 1, 1])
+            zip([50, 0, 1], [0.01, 0.05, 2], [1, 1, 1])
         ):
             pc = PlanComponent.objects.create(
                 plan_version=plan_version,
@@ -121,13 +122,10 @@ class TestBulkPricing:
         component = setup_dict["billing_plan"].plan_components.get(
             billable_metric=metric
         )
-        assert component.price_tiers.count() == 2
+        assert component.tiers.count() == 2
+        assert component.tiers.filter(type=PriceTier.PriceTierType.FREE).count() == 1
         assert (
-            component.price_tiers.filter(type=PriceTier.PriceTierType.FREE).count() == 1
-        )
-        assert (
-            component.price_tiers.filter(type=PriceTier.PriceTierType.PER_UNIT).count()
-            == 1
+            component.tiers.filter(type=PriceTier.PriceTierType.PER_UNIT).count() == 1
         )
 
         revenue_no_bulk = component.tier_rating_function(100)
@@ -135,7 +133,7 @@ class TestBulkPricing:
         assert revenue_no_bulk == Decimal("0.50")
 
         # now we convert the component to bulk pricing
-        component.bulk_pricing = True
+        component.bulk_pricing_enabled = True
         component.save()
         revenue_bulk = component.tier_rating_function(100)
         # everything charged at 1 cent per unit
@@ -147,16 +145,16 @@ class TestBulkPricing:
         component = setup_dict["billing_plan"].plan_components.get(
             billable_metric=metric
         )
-        assert component.price_tiers.count() == 2
+        assert component.tiers.count() == 2
+        assert component.tiers.filter(type=PriceTier.PriceTierType.FREE).count() == 1
         assert (
-            component.price_tiers.filter(type=PriceTier.PriceTierType.FREE).count() == 1
-        )
-        assert (
-            component.price_tiers.filter(type=PriceTier.PriceTierType.PER_UNIT).count()
-            == 1
+            component.tiers.filter(type=PriceTier.PriceTierType.PER_UNIT).count() == 1
         )
 
         # first, lets add 2 more tiers to the component so we can test this edge case
+        old_last_pt = component.tiers.order_by("range_start").last()
+        old_last_pt.range_end = 100
+        old_last_pt.save()
         PriceTier.objects.create(
             plan_component=component,
             type=PriceTier.PriceTierType.PER_UNIT,
@@ -180,7 +178,7 @@ class TestBulkPricing:
         assert revenue_no_bulk == Decimal("5.50")
 
         # now we convert the component to bulk pricing
-        component.bulk_pricing = True
+        component.bulk_pricing_enabled = True
         component.save()
         revenue_bulk = component.tier_rating_function(200)
         # everything charged at 10 cents per unit
