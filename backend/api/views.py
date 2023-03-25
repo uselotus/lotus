@@ -486,17 +486,20 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             except Exception:
                 username = None
             organization = self.request.organization or self.request.user.organization
-            posthog.capture(
-                POSTHOG_PERSON
-                if POSTHOG_PERSON
-                else (
-                    username
-                    if username
-                    else organization.organization_name + " (API Key)"
-                ),
-                event=f"{self.action}_customer",
-                properties={"organization": organization.organization_name},
-            )
+            try:
+                posthog.capture(
+                    POSTHOG_PERSON
+                    if POSTHOG_PERSON
+                    else (
+                        username
+                        if username
+                        else organization.organization_name + " (API Key)"
+                    ),
+                    event=f"{self.action}_customer",
+                    properties={"organization": organization.organization_name},
+                )
+            except Exception:
+                pass
         return response
 
 
@@ -684,17 +687,20 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             except Exception:
                 username = None
             organization = self.request.organization
-            posthog.capture(
-                POSTHOG_PERSON
-                if POSTHOG_PERSON
-                else (
-                    username
-                    if username
-                    else organization.organization_name + " (API Key)"
-                ),
-                event=f"{self.action}_plan",
-                properties={"organization": organization.organization_name},
-            )
+            try:
+                posthog.capture(
+                    POSTHOG_PERSON
+                    if POSTHOG_PERSON
+                    else (
+                        username
+                        if username
+                        else organization.organization_name + " (API Key)"
+                    ),
+                    event=f"{self.action}_plan",
+                    properties={"organization": organization.organization_name},
+                )
+            except Exception:
+                pass
         return response
 
     def get_serializer_context(self):
@@ -1327,16 +1333,19 @@ class SubscriptionViewSet(
         response = SubscriptionRecordSerializer(subscription_record).data
         subscription_created_webhook(subscription_record, subscription_data=response)
 
-        posthog.capture(
-            POSTHOG_PERSON
-            if POSTHOG_PERSON
-            else (organization.organization_name + " (Unknown)"),
-            event="DEPRECATED_add_subscription",
-            properties={
-                "organization": organization.organization_name,
-                "subscription": response,
-            },
-        )
+        try:
+            posthog.capture(
+                POSTHOG_PERSON
+                if POSTHOG_PERSON
+                else (organization.organization_name + " (Unknown)"),
+                event="DEPRECATED_add_subscription",
+                properties={
+                    "organization": organization.organization_name,
+                    "subscription": response,
+                },
+            )
+        except Exception:
+            pass
         return Response(
             response,
             status=status.HTTP_201_CREATED,
@@ -1376,16 +1385,19 @@ class SubscriptionViewSet(
             subscription_data = SubscriptionRecordSerializer(subscription).data
             subscription_cancelled_webhook(subscription, subscription_data)
 
-            posthog.capture(
-                POSTHOG_PERSON
-                if POSTHOG_PERSON
-                else (organization.organization_name + " (Unknown)"),
-                event="DEPRECATED_cancel_subscription",
-                properties={
-                    "organization": organization.organization_name,
-                    "subscription": subscription_data,
-                },
-            )
+            try:
+                posthog.capture(
+                    POSTHOG_PERSON
+                    if POSTHOG_PERSON
+                    else (organization.organization_name + " (Unknown)"),
+                    event="DEPRECATED_cancel_subscription",
+                    properties={
+                        "organization": organization.organization_name,
+                        "subscription": subscription_data,
+                    },
+                )
+            except Exception:
+                pass
 
         return Response(ret, status=status.HTTP_200_OK)
 
@@ -1492,15 +1504,18 @@ class SubscriptionViewSet(
         )
         ret = SubscriptionRecordSerializer(return_qs, many=True).data
 
-        posthog.capture(
-            POSTHOG_PERSON
-            if POSTHOG_PERSON
-            else (organization.organization_name + " (Unknown)"),
-            event="DEPRECATED_update_subscription",
-            properties={
-                "organization": organization.organization_name,
-            },
-        )
+        try:
+            posthog.capture(
+                POSTHOG_PERSON
+                if POSTHOG_PERSON
+                else (organization.organization_name + " (Unknown)"),
+                event="DEPRECATED_update_subscription",
+                properties={
+                    "organization": organization.organization_name,
+                },
+            )
+        except Exception:
+            pass
         return Response(ret, status=status.HTTP_200_OK)
 
         ## DISPATCH
@@ -1513,17 +1528,20 @@ class SubscriptionViewSet(
             except Exception:
                 username = None
             organization = self.request.organization
-            posthog.capture(
-                POSTHOG_PERSON
-                if POSTHOG_PERSON
-                else (
-                    username
-                    if username
-                    else organization.organization_name + " (API Key)"
-                ),
-                event=f"{self.action}_subscription",
-                properties={"organization": organization.organization_name},
-            )
+            try:
+                posthog.capture(
+                    POSTHOG_PERSON
+                    if POSTHOG_PERSON
+                    else (
+                        username
+                        if username
+                        else organization.organization_name + " (API Key)"
+                    ),
+                    event=f"{self.action}_subscription",
+                    properties={"organization": organization.organization_name},
+                )
+            except Exception:
+                pass
             # if username:
             #     if self.action == "plans":
             #         action.send(
@@ -1621,17 +1639,20 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             except Exception:
                 username = None
             organization = self.request.organization
-            posthog.capture(
-                POSTHOG_PERSON
-                if POSTHOG_PERSON
-                else (
-                    username
-                    if username
-                    else organization.organization_name + " (API Key)"
-                ),
-                event=f"{self.action}_invoice",
-                properties={"organization": organization.organization_name},
-            )
+            try:
+                posthog.capture(
+                    POSTHOG_PERSON
+                    if POSTHOG_PERSON
+                    else (
+                        username
+                        if username
+                        else organization.organization_name + " (API Key)"
+                    ),
+                    event=f"{self.action}_invoice",
+                    properties={"organization": organization.organization_name},
+                )
+            except Exception:
+                pass
         return response
 
     @extend_schema(
@@ -1851,17 +1872,20 @@ class CustomerBalanceAdjustmentViewSet(
             except Exception:
                 username = None
             organization = self.request.organization
-            posthog.capture(
-                POSTHOG_PERSON
-                if POSTHOG_PERSON
-                else (
-                    username
-                    if username
-                    else organization.organization_name + " (API Key)"
-                ),
-                event=f"{self.action}_balance_adjustment",
-                properties={"organization": organization.organization_name},
-            )
+            try:
+                posthog.capture(
+                    POSTHOG_PERSON
+                    if POSTHOG_PERSON
+                    else (
+                        username
+                        if username
+                        else organization.organization_name + " (API Key)"
+                    ),
+                    event=f"{self.action}_balance_adjustment",
+                    properties={"organization": organization.organization_name},
+                )
+            except Exception:
+                pass
             # if username:
             #     if self.action == "plans":
             #         action.send(
@@ -2457,13 +2481,16 @@ class GetCustomerFeatureAccessView(APIView):
             username = self.request.user.username
         except Exception:
             username = None
-        posthog.capture(
-            POSTHOG_PERSON
-            if POSTHOG_PERSON
-            else (username if username else result + " (Unknown)"),
-            event="DEPRECATED_get_feature_access",
-            properties={"organization": organization.organization_name},
-        )
+        try:
+            posthog.capture(
+                POSTHOG_PERSON
+                if POSTHOG_PERSON
+                else (username if username else result + " (Unknown)"),
+                event="DEPRECATED_get_feature_access",
+                properties={"organization": organization.organization_name},
+            )
+        except Exception:
+            pass
         customer = serializer.validated_data["customer"]
         feature_name = serializer.validated_data.get("feature_name")
         subscriptions = (
@@ -2538,15 +2565,21 @@ class GetCustomerEventAccessView(APIView):
             username = self.request.user.username
         except Exception:
             username = None
-        posthog.capture(
-            POSTHOG_PERSON
-            if POSTHOG_PERSON
-            else (
-                username if username else organization.organization_name + " (Unknown)"
-            ),
-            event="DEPRECATED_get_metric_access",
-            properties={"organization": organization.organization_name},
-        )
+        try:
+            posthog.capture(
+                POSTHOG_PERSON
+                if POSTHOG_PERSON
+                else (
+                    username
+                    if username
+                    else organization.organization_name + " (Unknown)"
+                ),
+                event="DEPRECATED_get_metric_access",
+                properties={"organization": organization.organization_name},
+            )
+        except Exception:
+            pass
+
         customer = serializer.validated_data["customer"]
         event_name = serializer.validated_data.get("event_name")
         access_metric = serializer.validated_data.get("metric")
