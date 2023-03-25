@@ -2460,9 +2460,7 @@ class GetCustomerFeatureAccessView(APIView):
         posthog.capture(
             POSTHOG_PERSON
             if POSTHOG_PERSON
-            else (
-                username if username else organization.organization_name + " (Unknown)"
-            ),
+            else (username if username else result.organization_name + " (Unknown)"),
             event="DEPRECATED_get_feature_access",
             properties={"organization": organization.organization_name},
         )
