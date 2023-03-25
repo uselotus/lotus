@@ -87,8 +87,6 @@ from api.serializers.nonmodel_serializers import (
     CustomerDeleteResponseSerializer,
     FeatureAccessRequestSerializer,
     FeatureAccessResponseSerializer,
-    GetInvoicePdfURLRequestSerializer,
-    GetInvoicePdfURLResponseSerializer,
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
 )
@@ -255,7 +253,8 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             return CustomerCreateSerializer
         elif self.action == "archive":
             return EmptySerializer
-
+        elif self.action == "cost_analysis":
+            return PeriodRequestSerializer
         if default:
             return default
         return CustomerSerializer
@@ -360,8 +359,8 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     )
     def cost_analysis(self, request, customer_id=None):
         organization = request.organization
-        serializer = PeriodRequestSerializer(
-            data=request.query_params, context={"organization": organization}
+        serializer = self.get_serializer(
+            data=request.query_params,
         )
         serializer.is_valid(raise_exception=True)
         customer = self.get_object()
@@ -1226,13 +1225,11 @@ class SubscriptionViewSet(
         url_name="attach_addon",
     )
     def attach_addon(self, request, *args, **kwargs):
-        organization = self.request.organization
         attach_to_sr = self.get_object()
         serializer = self.get_serializer(
             data=request.data,
             context={
                 "attach_to_subscription_record": attach_to_sr,
-                "organization": organization,
                 "customer": attach_to_sr.customer,
             },
         )
@@ -2113,25 +2110,6 @@ class Healthcheck(APIView):
             {},
             status=status.HTTP_200_OK,
         )
-
-
-class GetInvoicePdfURL(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
-
-    @extend_schema(
-        parameters=[GetInvoicePdfURLRequestSerializer],
-        responses=GetInvoicePdfURLResponseSerializer,
-        exclude=True,
-    )
-    def get(self, request, format=None):
-        organization = request.organization
-        serializer = GetInvoicePdfURLRequestSerializer(
-            data=request.query_params, context={"organization": organization}
-        )
-        serializer.is_valid(raise_exception=True)
-        invoice = serializer.validated_data["invoice"]
-        url = get_invoice_presigned_url(invoice).get("url")
-        return Response({"url": url}, status=status.HTTP_200_OK)
 
 
 class ConfirmIdemsReceivedView(APIView):
