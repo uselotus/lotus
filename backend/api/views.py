@@ -380,7 +380,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             }
         cost_metrics = Metric.objects.filter(
             organization=organization, is_cost_metric=True, status=METRIC_STATUS.ACTIVE
-        )
+        ).prefetch_related("numeric_filters", "categorical_filters")
         for metric in cost_metrics:
             usage_ret = metric.get_daily_total_usage(
                 start_date,

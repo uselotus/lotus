@@ -1,3 +1,5 @@
+from rest_framework import serializers
+
 from api.serializers.model_serializers import (
     FeatureSerializer,
     LightweightCustomerSerializer,
@@ -17,7 +19,6 @@ from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganizationPK,
     TimezoneFieldMixin,
 )
-from rest_framework import serializers
 
 
 class AccessMethodsSubscriptionRecordSerializer(
