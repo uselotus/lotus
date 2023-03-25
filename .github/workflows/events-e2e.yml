@@ -75,7 +75,7 @@ jobs:
       - name: track-events
         run: |
           response=$(curl -sw "\n%{http_code}" --location --request POST 'http://localhost:7998/api/track/' \
-            --header "X-API-KEY: ${{ secrets.LOTUS_API_KEY }}" \
+            --header "X-API-KEY: $LOTUS_API_KEY" \
             --header 'Content-Type: application/json' \
             --data-raw '{
               "batch":[
@@ -103,7 +103,7 @@ jobs:
         run: |
           sleep 10s
           response=$(curl -sw "\n%{http_code}" --location --request POST 'http://localhost:8000/api/verify_idems_received/' \
-            --header "X-API-KEY: ${{ secrets.LOTUS_API_KEY }}" \
+            --header "X-API-KEY: $LOTUS_API_KEY" \
             --header 'Content-Type: application/json' \
             --data '{
               "idempotency_ids": ["16b6aa05-790c-42fc-bbdc-a41afa0f9d2e"]
