@@ -37,7 +37,6 @@ from metering_billing.views.model_views import (
     FeatureViewSet,
     InvoiceViewSet,
     MetricViewSet,
-    OrganizationSettingViewSet,
     OrganizationViewSet,
     PlanVersionViewSet,
     PlanViewSet,
@@ -86,11 +85,6 @@ router.register(r"actions", ActionViewSet, basename="action")
 router.register(
     r"external_plan_links", ExternalPlanLinkViewSet, basename="external_plan_link"
 )
-router.register(
-    r"organization_settings",
-    OrganizationSettingViewSet,
-    basename="organization_setting",
-)
 router.register(r"organizations", OrganizationViewSet, basename="organization")
 router.register(r"pricing_units", PricingUnitViewSet, basename="pricing_unit")
 router.register(
@@ -125,7 +119,6 @@ urlpatterns = [
     path("api/", include((api_router.urls, "api"), namespace="api")),
     path("api/ping/", api_views.Ping.as_view(), name="ping"),
     path("api/healthcheck/", api_views.Healthcheck.as_view(), name="healthcheck"),
-    path("api/invoice_url/", api_views.GetInvoicePdfURL.as_view(), name="invoice_url"),
     path(
         "api/metric_access/",
         api_views.MetricAccessView.as_view(),

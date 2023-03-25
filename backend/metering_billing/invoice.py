@@ -21,8 +21,6 @@ from metering_billing.utils.enums import (
     CHARGEABLE_ITEM_TYPE,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     INVOICE_CHARGE_TIMING_TYPE,
-    ORGANIZATION_SETTING_GROUPS,
-    ORGANIZATION_SETTING_NAMES,
     TAX_PROVIDER,
 )
 from metering_billing.webhooks import invoice_created_webhook
@@ -32,12 +30,11 @@ logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 META = settings.META
 DEBUG = settings.DEBUG
-# LOTUS_HOST = settings.LOTUS_HOST
-# LOTUS_API_KEY = settings.LOTUS_API_KEY
-# if LOTUS_HOST and LOTUS_API_KEY:
-#     lotus_python.api_key = LOTUS_API_KEY
-#     lotus_python.host = LOTUS_HOST
-kafka_producer = Producer()
+USE_KAFKA = settings.USE_KAFKA
+if USE_KAFKA:
+    kafka_producer = Producer()
+else:
+    kafka_producer = None
 
 
 def generate_invoice(
@@ -159,7 +156,8 @@ def generate_invoice(
                 sentry_sdk.capture_exception(e)
 
             invoice_created_webhook(invoice, organization)
-            kafka_producer.produce_invoice(invoice)
+            if kafka_producer:
+                kafka_producer.produce_invoice(invoice)
         return_list.append(invoice)
     return return_list
 
@@ -740,7 +738,8 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
         except Exception as e:
             sentry_sdk.capture_exception(e)
         invoice_created_webhook(invoice, organization)
-        kafka_producer.produce_invoice(invoice)
+        if kafka_producer:
+            kafka_producer.produce_invoice(invoice)
 
     return invoice
 
@@ -777,18 +776,10 @@ def generate_external_payment_obj(invoice):
 
 
 def calculate_due_date(issue_date, organization):
-    from metering_billing.models import OrganizationSetting
-
     due_date = issue_date
-    grace_period_setting = OrganizationSetting.objects.filter(
-        organization=organization,
-        setting_name=ORGANIZATION_SETTING_NAMES.PAYMENT_GRACE_PERIOD,
-        setting_group=ORGANIZATION_SETTING_GROUPS.BILLING,
-    ).first()
-    if grace_period_setting:
-        due_date += relativedelta(
-            days=int(grace_period_setting.setting_values["value"])
-        )
+    grace_period = organization.payment_grace_period
+    if grace_period:
+        due_date += relativedelta(days=grace_period)
         return due_date
 
 

@@ -26,15 +26,6 @@ from django.db.models import Count, F, FloatField, Q, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
-from svix.internal.openapi_client.models.http_error import HttpError
-from svix.internal.openapi_client.models.http_validation_error import (
-    HTTPValidationError,
-)
-from timezone_field import TimeZoneField
-
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     NotEditable,
@@ -69,8 +60,6 @@ from metering_billing.utils.enums import (
     METRIC_STATUS,
     METRIC_TYPE,
     NUMERIC_FILTER_OPERATORS,
-    ORGANIZATION_SETTING_GROUPS,
-    ORGANIZATION_SETTING_NAMES,
     PAYMENT_PROCESSORS,
     PLAN_DURATION,
     PLAN_VERSION_STATUS,
@@ -83,6 +72,14 @@ from metering_billing.utils.enums import (
     WEBHOOK_TRIGGER_EVENTS,
 )
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
+from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
+from timezone_field import TimeZoneField
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -287,6 +284,12 @@ class Organization(models.Model):
     currencies_provisioned = models.IntegerField(default=0)
     crm_settings_provisioned = models.BooleanField(default=False)
 
+    # settings
+    gen_cust_in_stripe_after_lotus = models.BooleanField(default=False)
+    gen_cust_in_braintree_after_lotus = models.BooleanField(default=False)
+    payment_grace_period = models.IntegerField(null=True, default=None)
+    lotus_is_customer_source_for_salesforce = models.BooleanField(default=False)
+
     # HISTORY RELATED FIELDS
     history = HistoricalRecords()
 
@@ -368,17 +371,6 @@ class Organization(models.Model):
             ].get_organization_address(self)
         else:
             return self.address
-
-    def provision_crm_settings(self):
-        if not self.crm_settings_provisioned:
-            OrganizationSetting.objects.get_or_create(
-                organization=self,
-                setting_group=ORGANIZATION_SETTING_GROUPS.CRM,
-                setting_name=ORGANIZATION_SETTING_NAMES.CRM_CUSTOMER_SOURCE,
-                defaults={"setting_values": {}},
-            )
-            self.crm_settings_provisioned = True
-            self.save()
 
     def provision_webhooks(self):
         if SVIX_CONNECTOR is not None and not self.webhooks_provisioned:
@@ -2037,6 +2029,9 @@ class TeamInviteToken(models.Model):
     email = models.EmailField()
     token = models.SlugField(max_length=250, default=uuid.uuid4)
     expire_at = models.DateTimeField(default=now_plus_day, null=False, blank=False)
+
+    def __str__(self):
+        return str(self.email) + " - " + str(self.team)
 
 
 class RecurringCharge(models.Model):
@@ -3715,53 +3710,6 @@ class BacktestSubstitution(models.Model):
 
     def __str__(self):
         return f"{self.backtest}"
-
-
-class OrganizationSetting(models.Model):
-    """
-    This model is used to store settings for an organization.
-    """
-
-    organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="settings"
-    )
-    setting_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    setting_name = models.CharField(
-        choices=ORGANIZATION_SETTING_NAMES.choices, max_length=64
-    )
-    setting_values = models.JSONField(default=dict, blank=True)
-    setting_group = models.CharField(
-        choices=ORGANIZATION_SETTING_GROUPS.choices,
-        blank=True,
-        null=True,
-        max_length=64,
-    )
-
-    def save(self, *args, **kwargs):
-        super(OrganizationSetting, self).save(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.setting_name} - {self.setting_values}"
-
-    class Meta:
-        constraints = [
-            UniqueConstraint(
-                fields=[
-                    "organization",
-                    "setting_name",
-                    "setting_group",
-                ],
-                name="unique_with_group",
-            ),
-            UniqueConstraint(
-                fields=[
-                    "organization",
-                    "setting_name",
-                ],
-                condition=Q(setting_group=None),
-                name="unique_without_group",
-            ),
-        ]
 
 
 class PricingUnit(models.Model):

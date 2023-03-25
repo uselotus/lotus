@@ -469,7 +469,8 @@ export const Organization = {
     requests.post("app/organization/invite/", { email }),
   invite_link: (email: string): Promise<{ email: string }> =>
     requests.post("app/organization/invite_link/", { email }),
-  get: (): Promise<OrganizationType[]> => requests.get("app/organizations/"),
+  get: (): Promise<components["schemas"]["Organization"][]> =>
+    requests.get("app/organizations/"),
   createOrg: (
     organization_name: string,
     default_currency_code: string,
@@ -488,15 +489,9 @@ export const Organization = {
     requests.get("app/actions/", { params: { c: cursor } }),
   updateOrganization: (
     org_id: string,
-    input: UpdateOrganizationType
-  ): Promise<OrganizationType> =>
+    input: components["schemas"]["PatchedOrganizationUpdateRequest"]
+  ): Promise<components["schemas"]["Organization"]> =>
     requests.patch(`app/organizations/${org_id}/`, input),
-  updateOrganizationPaymentProvider: (
-    data: UpdateOrganizationPPType
-  ): Promise<OrganizationType> => {
-    const { org_id, ...payload } = data;
-    return requests.patch(`app/organizations/${org_id}/`, { ...payload });
-  },
 };
 
 export const GetRevenue = {
@@ -615,20 +610,6 @@ export const PaymentProcessor = {
   ): Promise<PaymentProcessorImportCustomerResponse> =>
     requests.post("app/import_subscriptions/", post),
 
-  // Get Stripe Setting
-  getPaymentProcessorSettings: (
-    data: PaymentProcessorSettingsParams
-  ): Promise<PaymentProcessorSetting[]> =>
-    requests.get("app/organization_settings/", { params: data }),
-
-  // Update Stripe Setting
-  updatePaymentProcessorSetting: (
-    data: UpdatePaymentProcessorSettingParams
-  ): Promise<PaymentProcessorSetting> =>
-    requests.patch(`app/organization_settings/${data.setting_id}/`, {
-      setting_values: data.setting_values,
-    }),
-
   cancelStripeSubscriptions: (
     data: StripeMultiSubscriptionsParams
   ): Promise<any> => requests.post(`app/stripe/cancel_subscriptions/`, data),
@@ -733,7 +714,4 @@ export const CRM = {
     requests.post(`app/organizations/${organization_id}/sync_crm/`, {
       crm_provider_names,
     }),
-
-  getCRMSettings: (data: CRMSettingsParams): Promise<CRMSetting[]> =>
-    requests.get("app/organization_settings/", { params: data }),
 };
