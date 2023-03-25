@@ -115,7 +115,7 @@ jobs:
           echo "Response body: $response_body"
           echo "Status code: $status_code"
 
-          if ! echo "${response}" | jq -e '.ids_not_found | index("16b6aa05-790c-42fc-bbdc-a41afa0f9d2e")' &> /dev/null; then
-              echo "Idempotency ID not found in response"
+          if echo "${response}" | jq -e '.ids_not_found | index("16b6aa05-790c-42fc-bbdc-a41afa0f9d2e")' &> /dev/null; then
+              echo "Idempotency ID was not found"
               exit 1
           fi
