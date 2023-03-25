@@ -1,3 +1,5 @@
+from rest_framework import serializers
+
 from metering_billing.models import (
     Customer,
     PlanVersion,
@@ -6,11 +8,6 @@ from metering_billing.models import (
 from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganization,
 )
-from metering_billing.utils.enums import (
-    ORGANIZATION_SETTING_GROUPS,
-    ORGANIZATION_SETTING_NAMES,
-)
-from rest_framework import serializers
 
 
 class SinglePeriodRequestSerializer(serializers.Serializer):
@@ -55,19 +52,6 @@ class PeriodMetricUsageRequestSerializer(PeriodRequestSerializer):
 
 class DraftInvoiceRequestSerializer(serializers.Serializer):
     include_next_period = serializers.BooleanField(default=True)
-
-
-class OrganizationSettingFilterSerializer(serializers.Serializer):
-    setting_name = serializers.MultipleChoiceField(
-        required=False,
-        help_text="Filters organization_settings by setting_name. Defaults to returning all settings.",
-        choices=ORGANIZATION_SETTING_NAMES.choices,
-    )
-    setting_group = serializers.ChoiceField(
-        required=False,
-        help_text="Filters organization_settings to a single setting_group. Defaults to returning all settings.",
-        choices=ORGANIZATION_SETTING_GROUPS.choices,
-    )
 
 
 class TargetCustomersSerializer(serializers.Serializer):

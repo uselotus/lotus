@@ -1,6 +1,6 @@
 import React, { FC, useState, useEffect, useMemo } from "react";
 import { PageLayout } from "../components/base/PageLayout";
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from "@tanstack/react-query";
 import useGlobalStore from "../stores/useGlobalstore";
 import quickStartCheck from "../helpers/quickStartCheck";
 import { toast } from "react-toastify";
@@ -240,9 +240,7 @@ const quickStartItem = ({
 const QuickstartPage: FC = () => {
   const [usersInOrg, setUsersInOrg] = useState(false);
   const [currentItem, setCurrentItem] = useState(0);
-  const { current_user, environment, organization_name } = useGlobalStore(
-    (state) => state.org
-  );
+  const org = useGlobalStore((state) => state.org);
   const setQuickStartProgress = useGlobalStore(
     (state) => state.setQuickStartProgress
   );
@@ -299,7 +297,7 @@ const QuickstartPage: FC = () => {
       <div>
         <div className="flex relative flex-col items-center text-lg mx-auto space-y-6 px-6 max-w-3xl lg:max-w-4xl xl:max-w-5xl py-6">
           <div className="text-4xl font-bold text-left w-full mt-12">
-            {organization_name}'s quick start guide
+            {org?.organization_name}'s quick start guide
           </div>
           <div className="text-lg text-left w-full pt-2 pb-4 mb-14">
             Click on the items below and follow the instructions.

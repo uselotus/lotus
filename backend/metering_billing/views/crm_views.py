@@ -14,13 +14,11 @@ from metering_billing.models import (
     Address,
     Customer,
     Invoice,
-    OrganizationSetting,
     UnifiedCRMCustomerIntegration,
     UnifiedCRMInvoiceIntegration,
     UnifiedCRMOrganizationIntegration,
 )
 from metering_billing.permissions import ValidOrganization
-from metering_billing.utils.enums import ORGANIZATION_SETTING_NAMES
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -67,16 +65,12 @@ class CRMUnifiedAPIView(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         serializer.is_valid(raise_exception=True)
         crm_provider_name = serializer.validated_data["crm_provider_name"]
         lotus_is_source = serializer.validated_data["lotus_is_source"]
-        if not organization.crm_settings_provisioned:
-            organization.provision_crm_settings()
-        org_setting = OrganizationSetting.objects.get(
-            organization=organization,
-            setting_name=ORGANIZATION_SETTING_NAMES.CRM_CUSTOMER_SOURCE,
-        )
-        setting_values = org_setting.setting_values
-        setting_values[crm_provider_name] = lotus_is_source
-        org_setting.setting_values = setting_values
-        org_setting.save()
+        if (
+            crm_provider_name
+            == UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE.label
+        ):
+            organization.lotus_is_customer_source_for_salesforce = lotus_is_source
+            organization.save()
         return Response({"success": True})
 
     @extend_schema(
@@ -272,12 +266,7 @@ def sync_invoices_with_salesforce(organization):
 
 
 def sync_customers_with_salesforce(organization):
-    org_setting = OrganizationSetting.objects.get(
-        organization=organization,
-        setting_name=ORGANIZATION_SETTING_NAMES.CRM_CUSTOMER_SOURCE,
-    )
-    setting_values = org_setting.setting_values
-    lotus_is_source = setting_values["salesforce"]
+    lotus_is_source = organization.lotus_is_customer_source_for_salesforce
     connection = organization.unified_crm_organization_links.get(
         crm_provider=UnifiedCRMOrganizationIntegration.CRMProvider.SALESFORCE
     )

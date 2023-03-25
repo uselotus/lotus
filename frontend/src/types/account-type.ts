@@ -30,15 +30,6 @@ export interface UserType {
   status: string;
 }
 
-export interface OrganizationSettingsType {
-  [key: string]: {
-    setting_values: object[];
-    setting_id: string;
-    setting_group: string;
-    setting_name: string;
-  };
-}
-
 export interface UpdateOrganizationPPType {
   org_id: string;
   payment_provider: PaymentProcessorType;
@@ -78,6 +69,8 @@ export interface UpdateOrganizationType {
   payment_grace_period?: number;
   subscription_filter_keys?: string[];
   tax_providers?: TaxProviderType[];
+  gen_cust_in_stripe_after_lotus?: boolean;
+  gen_cust_in_braintree_after_lotus?: boolean;
 }
 
 export interface ActionUserType extends UserType {

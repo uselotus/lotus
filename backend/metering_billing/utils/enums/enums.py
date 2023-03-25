@@ -268,10 +268,6 @@ class ORGANIZATION_SETTING_NAMES(models.TextChoices):
         "gen_cust_in_braintree_after_lotus",
         _("Generate in Braintree after Lotus"),
     )
-    SUBSCRIPTION_FILTER_KEYS = (
-        "subscription_filter_keys",
-        _("Subscription Filter Keys"),
-    )
     PAYMENT_GRACE_PERIOD = ("payment_grace_period", _("Payment Grace Period"))
     CRM_CUSTOMER_SOURCE = ("crm_customer_source", _("CRM Customer Source"))
 
