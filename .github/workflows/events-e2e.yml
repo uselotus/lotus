@@ -95,6 +95,7 @@ jobs:
 
       - name: verify event
         run: |
+          sleep 10s
           response=$(curl --silent --request POST \
           --url http://localhost:8000/api/verify_idems_received/ \
           --header "X-API-KEY: ${{ secrets.LOTUS_API_KEY }}" \
