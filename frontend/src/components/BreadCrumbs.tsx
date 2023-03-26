@@ -37,20 +37,22 @@ const BreadCrumbs = ({ items, activeItem, onItemClick }: Props) => (
       "p-4",
     ])}
   >
-    {items.map((item, index) => (
-      <>
-        <BreadCrumbItem
-          label={item}
-          onClick={() => onItemClick?.(index)}
-          isActive={index <= activeItem}
-        />
-        {index < items.length - 1 && (
-          <div className="px-4">
-            <RightOutlined className="text-xs" />
-          </div>
-        )}
-      </>
-    ))}
+    {React.Children.toArray(
+      items.map((item, index) => (
+        <>
+          <BreadCrumbItem
+            label={item}
+            onClick={() => onItemClick?.(index)}
+            isActive={index <= activeItem}
+          />
+          {index < items.length - 1 && (
+            <div className="px-4">
+              <RightOutlined className="text-xs" />
+            </div>
+          )}
+        </>
+      ))
+    )}
   </div>
 );
 
