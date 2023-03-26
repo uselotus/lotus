@@ -305,6 +305,10 @@ def add_plan_version_to_plan():
             charge_behavior=RecurringCharge.ChargeBehaviorType.PRORATE,
             amount=30,
             pricing_unit=plan_version.currency,
+            reset_interval_unit=RecurringCharge.IntervalLengthType.MONTH,
+            reset_interval_count=1,
+            invoicing_interval_unit=RecurringCharge.IntervalLengthType.MONTH,
+            invoicing_interval_count=1,
         )
         return plan_version
 
