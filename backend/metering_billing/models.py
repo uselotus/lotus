@@ -1453,7 +1453,7 @@ class PriceTier(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                check=Q(range_end__gt=F("range_start")) | Q(range_end__isnull=True),
+                check=Q(range_end__gte=F("range_start")) | Q(range_end__isnull=True),
                 name="price_tier_type_valid",
             ),
             models.UniqueConstraint(

@@ -6,6 +6,10 @@ from decimal import Decimal
 import pytest
 from dateutil.relativedelta import relativedelta
 from django.urls import reverse
+from model_bakery import baker
+from rest_framework import status
+from rest_framework.test import APIClient
+
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     CategoricalFilter,
@@ -28,9 +32,6 @@ from metering_billing.utils.enums import (
     NUMERIC_FILTER_OPERATORS,
     PLAN_DURATION,
 )
-from model_bakery import baker
-from rest_framework import status
-from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -364,7 +365,7 @@ class TestCalculateMetric:
                 return_value=now - relativedelta(days=1),
             ),
             mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
+                "metering_billing.tests.test_metrics.now_utc",
                 return_value=now - relativedelta(days=1),
             ),
         ):
@@ -451,7 +452,7 @@ class TestCalculateMetric:
                 return_value=now - relativedelta(days=46),
             ),
             mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
+                "metering_billing.tests.test_metrics.now_utc",
                 return_value=now - relativedelta(days=46),
             ),
         ):
@@ -536,7 +537,7 @@ class TestCalculateMetric:
         with (
             mock.patch("metering_billing.models.now_utc", return_value=time_created),
             mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
+                "metering_billing.tests.test_metrics.now_utc",
                 return_value=time_created,
             ),
         ):
@@ -647,7 +648,7 @@ class TestCalculateMetric:
                 return_value=now - relativedelta(days=31),
             ),
             mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
+                "metering_billing.tests.test_metrics.now_utc",
                 return_value=now - relativedelta(days=31),
             ),
         ):
@@ -727,7 +728,7 @@ class TestCalculateMetric:
         with (
             mock.patch("metering_billing.models.now_utc", return_value=time_created),
             mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
+                "metering_billing.tests.test_metrics.now_utc",
                 return_value=time_created,
             ),
         ):
@@ -825,7 +826,7 @@ class TestCalculateMetricProrationForGauge:
         with (
             mock.patch("metering_billing.models.now_utc", return_value=time_created),
             mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
+                "metering_billing.tests.test_metrics.now_utc",
                 return_value=time_created,
             ),
         ):
@@ -843,7 +844,9 @@ class TestCalculateMetricProrationForGauge:
         assert abs(usage_revenue_dict["revenue"] - calculated_amt) < Decimal(0.01)
 
         response = setup_dict["client"].get(
-            reverse("customer-cost_analysis", kwargs={"customer_id": customer.customer_id}),
+            reverse(
+                "customer-cost_analysis", kwargs={"customer_id": customer.customer_id}
+            ),
             {
                 "customer_id": customer.customer_id,
                 "start_date": subscription_record.start_date.date(),
@@ -934,7 +937,7 @@ class TestCalculateMetricProrationForGauge:
         with (
             mock.patch("metering_billing.models.now_utc", return_value=time_created),
             mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
+                "metering_billing.tests.test_metrics.now_utc",
                 return_value=time_created,
             ),
         ):
@@ -953,7 +956,9 @@ class TestCalculateMetricProrationForGauge:
 
         {}
         response = setup_dict["client"].get(
-            reverse("customer-cost_analysis", kwargs={"customer_id": customer.customer_id}),
+            reverse(
+                "customer-cost_analysis", kwargs={"customer_id": customer.customer_id}
+            ),
             {
                 "customer_id": customer.customer_id,
                 "start_date": subscription_record.start_date.date(),
@@ -1052,7 +1057,7 @@ class TestCalculateMetricProrationForGauge:
         with (
             mock.patch("metering_billing.models.now_utc", return_value=tc),
             mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
+                "metering_billing.tests.test_metrics.now_utc",
                 return_value=tc,
             ),
         ):
@@ -1070,7 +1075,9 @@ class TestCalculateMetricProrationForGauge:
 
         {}
         response = setup_dict["client"].get(
-            reverse("customer-cost_analysis", kwargs={"customer_id": customer.customer_id}),
+            reverse(
+                "customer-cost_analysis", kwargs={"customer_id": customer.customer_id}
+            ),
             {
                 "customer_id": customer.customer_id,
                 "start_date": subscription_record.start_date.date(),
@@ -1177,7 +1184,7 @@ class TestCalculateMetricWithFilters:
                 return_value=now - relativedelta(days=1),
             ),
             mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
+                "metering_billing.tests.test_metrics.now_utc",
                 return_value=now - relativedelta(days=1),
             ),
         ):
@@ -1270,7 +1277,7 @@ class TestCalculateMetricWithFilters:
         with (
             mock.patch("metering_billing.models.now_utc", return_value=time_created),
             mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
+                "metering_billing.tests.test_metrics.now_utc",
                 return_value=time_created,
             ),
         ):
@@ -1359,7 +1366,7 @@ class TestCalculateMetricWithFilters:
         with (
             mock.patch("metering_billing.models.now_utc", return_value=time_created),
             mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
+                "metering_billing.tests.test_metrics.now_utc",
                 return_value=time_created,
             ),
         ):
@@ -1589,7 +1596,7 @@ class TestCustomSQLMetrics:
                 return_value=now - relativedelta(days=1),
             ),
             mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
+                "metering_billing.tests.test_metrics.now_utc",
                 return_value=now - relativedelta(days=1),
             ),
         ):
@@ -1698,7 +1705,7 @@ class TestCustomSQLMetrics:
                 return_value=now - relativedelta(days=1),
             ),
             mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
+                "metering_billing.tests.test_metrics.now_utc",
                 return_value=now - relativedelta(days=1),
             ),
         ):
@@ -1807,7 +1814,7 @@ class TestCustomSQLMetrics:
                 return_value=now - relativedelta(days=1),
             ),
             mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
+                "metering_billing.tests.test_metrics.now_utc",
                 return_value=now - relativedelta(days=1),
             ),
         ):
@@ -1938,7 +1945,7 @@ class TestCustomSQLMetrics:
                 return_value=now - relativedelta(days=1),
             ),
             mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
+                "metering_billing.tests.test_metrics.now_utc",
                 return_value=now - relativedelta(days=1),
             ),
         ):
@@ -2145,7 +2152,7 @@ class TestCustomSQLMetrics:
                 return_value=now - relativedelta(days=1),
             ),
             mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
+                "metering_billing.tests.test_metrics.now_utc",
                 return_value=now - relativedelta(days=1),
             ),
         ):
@@ -2308,7 +2315,7 @@ class TestRegressions:
         with (
             mock.patch("metering_billing.models.now_utc", return_value=time_created),
             mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
+                "metering_billing.tests.test_metrics.now_utc",
                 return_value=time_created,
             ),
         ):
