@@ -1,7 +1,7 @@
 #!/bin/bash
 # check to see what plarform
 if [[ "$OSTYPE" == "win32" ]] || [[ "$OSTYPE" == "win64" ]]; then
-  # debian or Windows
+  # Windows
   FILE=env/.env.dev
   if [ -f "$FILE" ]; then
     echo "Reading dev environment variables 🚀"
@@ -16,7 +16,7 @@ if [[ "$OSTYPE" == "win32" ]] || [[ "$OSTYPE" == "win64" ]]; then
     docker-compose -f docker-compose.dev.yaml --env-file env/.env.dev up --build
   fi
 elif [[ "$OSTYPE" == "linux-gnu" ]]; then
-  # macOS OSX or Linux
+  # Linux
   FILE=env/.env.dev
   if [ -f "$FILE" ]; then
     echo "Reading dev environment variables 🚀"
@@ -31,7 +31,7 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
     docker compose -f docker-compose.dev.yaml --env-file env/.env.dev up --build
   fi
 else
-  # macOS OSX or Linux
+  # macOS OSX
   FILE=env/.env.dev
   if [ -f "$FILE" ]; then
     echo "Reading dev environment variables 🚀"
