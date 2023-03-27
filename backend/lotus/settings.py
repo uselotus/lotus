@@ -22,7 +22,6 @@ from urllib.parse import urlparse
 import dj_database_url
 import django_heroku
 import jwt
-import kafka_helper
 import posthog
 import sentry_sdk
 from decouple import config
@@ -114,6 +113,9 @@ EVENT_NAME_NAMESPACE = uuid.UUID("843D7005-63DE-4B72-B731-77E2866DCCFF")
 IDEMPOTENCY_ID_NAMESPACE = uuid.UUID("904C0FFB-7005-414E-9B7D-8E3C5DDE266D")
 # CRM Integration
 VESSEL_API_KEY = config("VESSEL_API_KEY", default=None)
+# Partial startup
+USE_WEBHOOKS = not config("NO_WEBHOOKS", default=False, cast=bool)
+USE_KAFKA = not config("NO_EVENTS", default=False, cast=bool)
 
 if SENTRY_DSN != "":
     if not DEBUG:
@@ -330,7 +332,7 @@ KAFKA_PAYMENT_TOPIC = KAFKA_PREFIX + config("PAYMENT_TOPIC", default="payment-te
 KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
 KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
 KAFKA_HOST = config("KAFKA_URL", default="127.0.0.1:9092")
-if KAFKA_HOST:
+if KAFKA_HOST and USE_KAFKA:
     if "," not in KAFKA_HOST:
         KAFKA_HOST = KAFKA_HOST
     else:
@@ -355,18 +357,10 @@ if KAFKA_HOST:
         "client_id": "events-client",
     }
 
-    KAFKA_CERTIFICATE = config("KAFKA_CLIENT_CERT", default=None)
-    KAFKA_KEY = config("KAFKA_CLIENT_CERT_KEY", default=None)
-    KAFKA_CA = config("KAFKA_TRUSTED_CERT", default=None)
     KAFKA_SASL_USERNAME = config("KAFKA_SASL_USERNAME", default=None)
     KAFKA_SASL_PASSWORD = config("KAFKA_SASL_PASSWORD", default=None)
 
-    if KAFKA_CERTIFICATE and KAFKA_KEY and KAFKA_CA:
-        ssl_context = kafka_helper.get_kafka_ssl_context()
-        for cfg in [producer_config, consumer_config, admin_client_config]:
-            cfg["security_protocol"] = "SSL"
-            cfg["ssl_context"] = ssl_context
-    elif KAFKA_SASL_USERNAME and KAFKA_SASL_PASSWORD:
+    if KAFKA_SASL_USERNAME and KAFKA_SASL_PASSWORD:
         for cfg in [producer_config, consumer_config, admin_client_config]:
             cfg["security_protocol"] = "SASL_SSL"
             cfg["sasl_mechanism"] = "SCRAM-SHA-256"
@@ -718,28 +712,33 @@ META = LOTUS_API_KEY and LOTUS_HOST
 django_heroku.settings(locals(), logging=False)
 
 # create svix events
-if SVIX_API_KEY != "":
-    svix = Svix(SVIX_API_KEY)
-elif SVIX_API_KEY == "" and SVIX_JWT_SECRET != "":
-    try:
-        dt = datetime.datetime.now(timezone.utc)
-        utc_time = dt.replace(tzinfo=timezone.utc)
-        utc_timestamp = utc_time.timestamp()
-        payload = {
-            "iat": utc_timestamp,
-            "exp": 2980500639,
-            "nbf": utc_timestamp,
-            "iss": "svix-server",
-            "sub": "org_23rb8YdGqMT0qIzpgGwdXfHirMu",
-        }
-        encoded = jwt.encode(payload, SVIX_JWT_SECRET, algorithm="HS256")
-        SVIX_API_KEY = encoded
-        hostname, _, ips = socket.gethostbyname_ex("svix-server")
-        svix = Svix(SVIX_API_KEY, SvixOptions(server_url=f"http://{ips[0]}:8071"))
-    except Exception:
+if USE_WEBHOOKS:
+    if SVIX_API_KEY != "":
+        svix = Svix(SVIX_API_KEY)
+    elif SVIX_API_KEY == "" and SVIX_JWT_SECRET != "":
+        try:
+            dt = datetime.datetime.now(timezone.utc)
+            utc_time = dt.replace(tzinfo=timezone.utc)
+            utc_timestamp = utc_time.timestamp()
+            payload = {
+                "iat": utc_timestamp,
+                "exp": 2980500639,
+                "nbf": utc_timestamp,
+                "iss": "svix-server",
+                "sub": "org_23rb8YdGqMT0qIzpgGwdXfHirMu",
+            }
+            encoded = jwt.encode(payload, SVIX_JWT_SECRET, algorithm="HS256")
+            SVIX_API_KEY = encoded
+            hostname, _, ips = socket.gethostbyname_ex("svix-server")
+            svix = Svix(SVIX_API_KEY, SvixOptions(server_url=f"http://{ips[0]}:8071"))
+        except Exception:
+            logger.error("Error creating svix connector")
+            svix = None
+    else:
         svix = None
 else:
     svix = None
+
 SVIX_CONNECTOR = svix
 if SVIX_CONNECTOR is not None:
     try:
@@ -810,5 +809,4 @@ if SVIX_CONNECTOR is not None:
                 )
             )
     except Exception:
-        SVIX_CONNECTOR = None
         SVIX_CONNECTOR = None

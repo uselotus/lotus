@@ -765,9 +765,10 @@ function CreateMetricForm(props: {
                                 ]}
                                 noStyle
                               >
-                                <Input
+                                <OptionInput
                                   placeholder="property name"
                                   style={{ width: "30%" }}
+                                  options={eventPropOptions}
                                 />
                               </Form.Item>
                               <Form.Item

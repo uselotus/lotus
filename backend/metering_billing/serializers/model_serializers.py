@@ -2,12 +2,15 @@ import logging
 import re
 from decimal import Decimal
 
-import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
 from dateutil import relativedelta
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import DecimalField, F, Q, Sum
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
+import api.serializers.model_serializers as api_serializers
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import (
@@ -22,7 +25,6 @@ from metering_billing.models import (
     InvoiceLineItemAdjustment,
     Metric,
     Organization,
-    OrganizationSetting,
     Plan,
     PlanComponent,
     PlanVersion,
@@ -41,7 +43,6 @@ from metering_billing.models import (
     WebhookTrigger,
 )
 from metering_billing.serializers.serializer_utils import (
-    OrganizationSettingUUIDField,
     OrganizationUUIDField,
     PlanUUIDField,
     PlanVersionUUIDField,
@@ -56,8 +57,6 @@ from metering_billing.utils.enums import (
     BATCH_ROUNDING_TYPE,
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
     METRIC_STATUS,
-    ORGANIZATION_SETTING_GROUPS,
-    ORGANIZATION_SETTING_NAMES,
     ORGANIZATION_STATUS,
     PAYMENT_PROCESSORS,
     PRICE_TIER_TYPE,
@@ -65,8 +64,6 @@ from metering_billing.utils.enums import (
     TAX_PROVIDER,
     WEBHOOK_TRIGGER_EVENTS,
 )
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
@@ -173,26 +170,6 @@ class LightweightUserSerializer(TimezoneFieldMixin, serializers.ModelSerializer)
         fields = ("username", "email")
 
 
-class OrganizationSettingSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
-    class Meta:
-        model = OrganizationSetting
-        fields = ("setting_id", "setting_name", "setting_values", "setting_group")
-        extra_kwargs = {
-            "setting_id": {"required": True},
-            "setting_name": {"required": True},
-            "setting_group": {"required": True},
-            "setting_values": {"required": True},
-        }
-
-    setting_id = OrganizationSettingUUIDField()
-    setting_name = serializers.ChoiceField(
-        choices=ORGANIZATION_SETTING_NAMES.choices, required=True
-    )
-    setting_group = serializers.ChoiceField(
-        choices=ORGANIZATION_SETTING_GROUPS.choices, required=False
-    )
-
-
 class OrganizationSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = Organization
@@ -215,6 +192,9 @@ class OrganizationSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
             "braintree_merchant_id",
             "tax_providers",
             "crm_integration_allowed",
+            "gen_cust_in_stripe_after_lotus",
+            "gen_cust_in_braintree_after_lotus",
+            "lotus_is_customer_source_for_salesforce",
         )
 
     organization_id = OrganizationUUIDField()
@@ -222,7 +202,6 @@ class OrganizationSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
     default_currency = PricingUnitDetailSerializer()
     available_currencies = serializers.SerializerMethodField()
     plan_tags = serializers.SerializerMethodField()
-    payment_grace_period = serializers.SerializerMethodField()
     linked_organizations = serializers.SerializerMethodField()
     current_user = serializers.SerializerMethodField()
     address = serializers.SerializerMethodField()
@@ -286,22 +265,6 @@ class OrganizationSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
         return LightweightOrganizationSerializer(
             linked, many=True, context={"organization": obj}
         ).data
-
-    def get_payment_grace_period(
-        self, obj
-    ) -> serializers.IntegerField(
-        min_value=0, max_value=365, required=False, allow_null=True
-    ):
-        grace_period_setting = OrganizationSetting.objects.filter(
-            organization=obj,
-            setting_name=ORGANIZATION_SETTING_NAMES.PAYMENT_GRACE_PERIOD,
-            setting_group=ORGANIZATION_SETTING_GROUPS.BILLING,
-        ).first()
-        if grace_period_setting:
-            val = grace_period_setting.setting_values.get("value")
-        else:
-            val = 0
-        return val
 
     def get_users(self, obj) -> OrganizationUserSerializer(many=True):
         users = User.objects.filter(team=obj.team)
@@ -408,7 +371,32 @@ class OrganizationUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializ
             "payment_provider_id",
             "nango_connected",
             "tax_providers",
+            "gen_cust_in_stripe_after_lotus",
+            "gen_cust_in_braintree_after_lotus",
+            "lotus_is_customer_source_for_salesforce",
         )
+        extra_kwargs = {
+            "default_currency_code": {"required": False, "write_only": True},
+            "address": {"required": False, "write_only": True},
+            "tax_rate": {"required": False, "write_only": True},
+            "payment_grace_period": {"required": False, "write_only": True},
+            "plan_tags": {"required": False, "write_only": True},
+            "subscription_filter_keys": {"required": False, "write_only": True},
+            "timezone": {"required": False, "write_only": True},
+            "payment_provider": {"required": False, "write_only": True},
+            "payment_provider_id": {"required": False, "write_only": True},
+            "nango_connected": {"required": False, "write_only": True},
+            "tax_providers": {"required": False, "write_only": True},
+            "gen_cust_in_stripe_after_lotus": {"required": False, "write_only": True},
+            "gen_cust_in_braintree_after_lotus": {
+                "required": False,
+                "write_only": True,
+            },
+            "lotus_is_customer_source_for_salesforce": {
+                "required": False,
+                "write_only": True,
+            },
+        }
 
     default_currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code", queryset=PricingUnit.objects.all(), source="default_currency"
@@ -496,25 +484,21 @@ class OrganizationUpdateSerializer(TimezoneFieldMixin, serializers.ModelSerializ
                         tag_hex=plan_tag["tag_hex"],
                         tag_color=plan_tag["tag_color"],
                     )
-
+        instance.gen_cust_in_stripe_after_lotus = validated_data.get(
+            "gen_cust_in_stripe_after_lotus", instance.gen_cust_in_stripe_after_lotus
+        )
+        instance.gen_cust_in_braintree_after_lotus = validated_data.get(
+            "gen_cust_in_braintree_after_lotus",
+            instance.gen_cust_in_braintree_after_lotus,
+        )
+        instance.lotus_is_customer_source_for_salesforce = validated_data.get(
+            "lotus_is_customer_source_for_salesforce",
+            instance.lotus_is_customer_source_for_salesforce,
+        )
         instance.tax_rate = validated_data.get("tax_rate", instance.tax_rate)
-        payment_grace_period = validated_data.get("payment_grace_period", None)
-        if payment_grace_period is not None:
-            grace_period_setting = OrganizationSetting.objects.filter(
-                organization=instance,
-                setting_name=ORGANIZATION_SETTING_NAMES.PAYMENT_GRACE_PERIOD,
-                setting_group=ORGANIZATION_SETTING_GROUPS.BILLING,
-            ).first()
-            if grace_period_setting:
-                grace_period_setting.setting_values = {"value": payment_grace_period}
-                grace_period_setting.save()
-            else:
-                OrganizationSetting.objects.create(
-                    organization=instance,
-                    setting_name=ORGANIZATION_SETTING_NAMES.PAYMENT_GRACE_PERIOD,
-                    setting_group=ORGANIZATION_SETTING_GROUPS.BILLING,
-                    setting_values={"value": payment_grace_period},
-                )
+        instance.payment_grace_period = validated_data.get(
+            "payment_grace_period", instance.payment_grace_period
+        )
         subscription_filter_keys = validated_data.get("subscription_filter_keys", None)
         if subscription_filter_keys is not None:
             prohibited_keys = [
@@ -994,6 +978,7 @@ class PlanComponentCreateSerializer(TimezoneFieldMixin, serializers.ModelSeriali
             "reset_interval_unit",
             "reset_interval_count",
             "prepaid_charge",
+            "bulk_pricing_enabled",
         )
         extra_kwargs = {
             "metric_id": {"required": True, "write_only": True},
@@ -1003,6 +988,7 @@ class PlanComponentCreateSerializer(TimezoneFieldMixin, serializers.ModelSeriali
             "reset_interval_unit": {"required": False},
             "reset_interval_count": {"required": False},
             "prepaid_charge": {"required": False},
+            "bulk_pricing_enabled": {"required": False, "default": False},
         }
 
     metric_id = SlugRelatedFieldWithOrganization(
@@ -1035,9 +1021,10 @@ class PlanComponentCreateSerializer(TimezoneFieldMixin, serializers.ModelSeriali
                 x["range_end"] for x in tiers_sorted[:-1]
             ), "All tiers must have an end, last one is the only one allowed to have open end"
             for i, tier in enumerate(tiers_sorted[:-1]):
-                assert tiers_sorted[i + 1]["range_start"] - tier[
-                    "range_end"
-                ] <= Decimal(1), "All tiers must be contiguous"
+                diff = tiers_sorted[i + 1]["range_start"] - tier["range_end"]
+                assert diff == Decimal(1) or diff == Decimal(
+                    0
+                ), "Tier ranges must be continuous or separated by 1"
         except AssertionError as e:
             raise serializers.ValidationError(str(e))
         data["invoicing_interval_unit"] = PlanComponent.convert_length_label_to_value(
@@ -1793,29 +1780,6 @@ class CustomerSummarySerializer(TimezoneFieldMixin, serializers.ModelSerializer)
     ) -> SubscriptionCustomerSummarySerializer(many=True, required=False):
         sub_obj = obj.active_subscription_records
         return SubscriptionCustomerSummarySerializer(sub_obj, many=True).data
-
-
-class OrganizationSettingUpdateSerializer(
-    TimezoneFieldMixin, serializers.ModelSerializer
-):
-    class Meta:
-        model = OrganizationSetting
-        fields = ("setting_values",)
-
-    def update(self, instance, validated_data):
-        setting_values = validated_data.get("setting_values")
-        if instance.setting_name in [
-            ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS,
-            ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_BRAINTREE_AFTER_LOTUS,
-        ]:
-            if not isinstance(setting_values, bool):
-                raise serializers.ValidationError("Setting values must be a boolean")
-            setting_values = {"value": setting_values}
-        else:
-            raise serializers.ValidationError("Setting name not supported for updating")
-        instance.setting_values = setting_values
-        instance.save()
-        return instance
 
 
 class InvoiceUpdateSerializer(api_serializers.InvoiceUpdateSerializer):

@@ -2,7 +2,7 @@ import React, { FC, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button, Switch } from "antd";
 import moment from "moment";
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { PageLayout } from "../../components/base/PageLayout";
 import { CRM } from "../../api/api";
@@ -24,31 +24,13 @@ const SalesforceIntegrationView: FC = () => {
     navigate(-1);
   };
 
-  const getCRMSettings = async (): Promise<CRMSetting[]> =>
-    CRM.getCRMSettings({ setting_group: "crm" });
-  const {
-    error,
-    data: crmSettings,
-    isLoading: crmSettingsLoading,
-    refetch: refetchCRMSettings,
-  } = useQuery<CRMSetting[]>(["crm_settings"], getCRMSettings);
-
   const [isChecked, setIsChecked] = useState<boolean>(false); // added state for toggle
 
   useEffect(() => {
-    const crmCustomerSourceSetting = crmSettings?.find(
-      (setting) => setting.setting_name === "crm_customer_source"
-    );
-    const crmCustomerSourceSettings =
-      crmCustomerSourceSetting?.setting_values as Record<
-        CRMProviderType,
-        boolean
-      >;
-    const isLotusSource = crmCustomerSourceSettings?.salesforce || false;
-
+    const isLotusSource = org?.lotus_is_customer_source_for_salesforce;
     const isSalesforceSource = !isLotusSource;
     setIsChecked(isSalesforceSource);
-  }, [crmSettings]);
+  }, [org]);
 
   const handleToggleChange = (checked: boolean) => {
     // add method to call backend
@@ -63,7 +45,6 @@ const SalesforceIntegrationView: FC = () => {
           }`
         );
         setIsChecked(checked);
-        refetchCRMSettings();
       })
       .catch((err) => {
         toast.error("Error setting customer information source of truth");
@@ -71,6 +52,7 @@ const SalesforceIntegrationView: FC = () => {
   };
 
   const handleSyncCRM = () => {
+    if (!org) return;
     CRM.syncCRM(org.organization_id, ["salesforce"])
       .then((response) => {
         if (response.success) {

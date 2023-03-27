@@ -269,6 +269,7 @@ function CreatePlan() {
               reset_interval_unit: components[i].reset_interval_unit,
               invoicing_interval_count: components[i].invoicing_interval_count,
               invoicing_interval_unit: components[i].invoicing_interval_unit,
+              bulk_pricing_enabled: components[i].bulk_pricing_enabled,
               prepaid_charge: components[i].prepaid_charge,
             };
 

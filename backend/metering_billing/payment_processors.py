@@ -14,6 +14,9 @@ import stripe
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import F, Prefetch, Q
+from rest_framework import serializers, status
+from rest_framework.response import Response
+
 from metering_billing.serializers.payment_processor_serializers import (
     PaymentProcesorPostResponseSerializer,
 )
@@ -22,13 +25,7 @@ from metering_billing.utils import (
     now_utc,
     parse_nested_response,
 )
-from metering_billing.utils.enums import (
-    ORGANIZATION_SETTING_GROUPS,
-    ORGANIZATION_SETTING_NAMES,
-    PAYMENT_PROCESSORS,
-)
-from rest_framework import serializers, status
-from rest_framework.response import Response
+from metering_billing.utils.enums import PAYMENT_PROCESSORS
 
 logger = logging.getLogger("django.server")
 
@@ -78,11 +75,6 @@ class PaymentProcesor(abc.ABC):
     @abc.abstractmethod
     def organization_connected(self, organization) -> bool:
         """This method will be called in order to gate calls to create_payment_object. If the organization is not connected, then won't generate a payment object for the organization."""
-        pass
-
-    @abc.abstractmethod
-    def initialize_settings(self, organization) -> None:
-        """This method will be called when a user clicks on the connect button for a payment processor. It should initialize the settings for the payment processor for the organization."""
         pass
 
     @abc.abstractmethod
@@ -232,21 +224,6 @@ class BraintreeConnector(PaymentProcesor):
         else:
             return id_in
 
-    def initialize_settings(self, organization, **kwargs):
-        from metering_billing.models import OrganizationSetting
-
-        generate_braintree_after_lotus_value = kwargs.get(
-            "generate_braintree_after_lotus", False
-        )
-        setting, created = OrganizationSetting.objects.get_or_create(
-            organization=organization,
-            setting_name=ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_BRAINTREE_AFTER_LOTUS,
-            setting_group=PAYMENT_PROCESSORS.BRAINTREE,
-        )
-        if created:
-            setting.setting_values = {"value": generate_braintree_after_lotus_value}
-            setting.save()
-
     def get_connection_id(self, organization) -> str:
         return organization.organization_id.hex
 
@@ -284,7 +261,6 @@ class BraintreeConnector(PaymentProcesor):
                             self.live_merchant_id
                         )
                         organization.braintree_integration.save()
-                    self.initialize_settings(organization)
                 return self.live_merchant_id
             else:
                 if (
@@ -304,7 +280,6 @@ class BraintreeConnector(PaymentProcesor):
                             self.test_merchant_id
                         )
                         organization.braintree_integration.save()
-                    self.initialize_settings(organization)
                 return self.test_merchant_id
         else:
             return stored_id
@@ -439,23 +414,16 @@ class BraintreeConnector(PaymentProcesor):
 
     # EXPORT METHODS
     def create_customer_flow(self, customer) -> None:
-        from metering_billing.models import (
-            BraintreeCustomerIntegration,
-            OrganizationSetting,
-        )
+        from metering_billing.models import BraintreeCustomerIntegration
 
         gateway = self._get_gateway(customer.organization)
-
-        setting, _ = OrganizationSetting.objects.get_or_create(
-            setting_name=ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_BRAINTREE_AFTER_LOTUS,
-            organization=customer.organization,
-            setting_group=ORGANIZATION_SETTING_GROUPS.BRAINTREE,
+        gen_cust_in_braintree_after_lotus = (
+            customer.organization.gen_cust_in_braintree_after_lotus
         )
-        setting_value = setting.setting_values.get("value", False)
-        if setting_value is True:
-            assert (
-                customer.braintree_integration is None
-            ), "Customer already has a Braintree ID"
+        if (
+            gen_cust_in_braintree_after_lotus is True
+            and customer.braintree_integration is None
+        ):
             customer_kwargs = {
                 "first_name": customer.customer_name,
                 "last_name": customer.customer_name,
@@ -475,12 +443,6 @@ class BraintreeConnector(PaymentProcesor):
                 )
                 customer.braintree_integration = braintree_integration
                 customer.save()
-        elif setting_value is False:
-            pass
-        else:
-            raise Exception(
-                "Invalid value for generate_customer_after_creating_in_lotus setting"
-            )
 
     def create_payment_object(self, invoice) -> Tuple[Optional[str], Optional[str]]:
         gateway = self._get_gateway(invoice.organization)
@@ -672,7 +634,6 @@ class BraintreeConnector(PaymentProcesor):
         )
         organization.braintree_integration = integration
         organization.save()
-        self.initialize_settings(organization)
 
         response = {
             "payment_processor": PAYMENT_PROCESSORS.BRAINTREE,
@@ -786,7 +747,6 @@ class StripeConnector(PaymentProcesor):
                         self.stripe_account_id
                     )
                     organization.stripe_integration.save()
-                self.initialize_settings(organization)
             return self.stripe_account_id
         else:
             return stored_id
@@ -1049,11 +1009,7 @@ class StripeConnector(PaymentProcesor):
         return lotus_invoices
 
     def create_customer_flow(self, customer) -> None:
-        from metering_billing.models import (
-            Organization,
-            OrganizationSetting,
-            StripeCustomerIntegration,
-        )
+        from metering_billing.models import Organization, StripeCustomerIntegration
 
         organization = customer.organization
         if organization.organization_type == Organization.OrganizationType.PRODUCTION:
@@ -1061,13 +1017,8 @@ class StripeConnector(PaymentProcesor):
         else:
             stripe.api_key = self.test_secret_key
 
-        setting, _ = OrganizationSetting.objects.get_or_create(
-            setting_name=ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS,
-            organization=organization,
-            setting_group=ORGANIZATION_SETTING_GROUPS.STRIPE,
-        )
-        setting_value = setting.setting_values.get("value", False)
-        if setting_value is True and customer.stripe_integration is None:
+        gen_cust_in_stripe_after_lotus = organization.gen_cust_in_stripe_after_lotus
+        if gen_cust_in_stripe_after_lotus and customer.stripe_integration is None:
             customer_kwargs = {
                 "name": customer.customer_name,
                 "email": customer.email,
@@ -1086,12 +1037,6 @@ class StripeConnector(PaymentProcesor):
             except Exception as e:
                 logger.error("Ran into exception:", e)
                 pass
-        elif setting_value is False:
-            pass
-        else:
-            raise Exception(
-                "Invalid value for generate_customer_after_creating_in_lotus setting"
-            )
 
     def create_payment_object(self, invoice) -> Tuple[Optional[str], Optional[str]]:
         from metering_billing.models import Organization
@@ -1191,7 +1136,6 @@ class StripeConnector(PaymentProcesor):
         )
         organization.stripe_integration = integration
         organization.save()
-        self.initialize_settings(organization)
 
         response = {
             "payment_processor": PAYMENT_PROCESSORS.STRIPE,
@@ -1456,21 +1400,6 @@ class StripeConnector(PaymentProcesor):
             stripe.Subscription.modify(
                 stripe_sub_id, cancel_at_period_end=True, **stripe_cust_kwargs
             )
-
-    def initialize_settings(self, organization, **kwargs):
-        from metering_billing.models import OrganizationSetting
-
-        generate_stripe_after_lotus_value = kwargs.get(
-            "generate_stripe_after_lotus", False
-        )
-        setting, created = OrganizationSetting.objects.get_or_create(
-            organization=organization,
-            setting_name=ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS,
-            setting_group=PAYMENT_PROCESSORS.STRIPE,
-        )
-        if created:
-            setting.setting_values = {"value": generate_stripe_after_lotus_value}
-            setting.save()
 
 
 PAYMENT_PROCESSOR_MAP = {}

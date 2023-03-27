@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from "@tanstack/react-query";
 import { ToastContainer } from "react-toastify";
 import { useNavigate, useLocation } from "react-router-dom";
 import posthog from "posthog-js";
@@ -10,12 +10,13 @@ import "react-toastify/dist/ReactToastify.css";
 import "@tremor/react/dist/esm/tremor.css";
 import LoadingSpinner from "./components/LoadingSpinner";
 import { PlanProvider } from "./context/PlanContext";
-import useGlobalStore, { IOrgStoreType } from "./stores/useGlobalstore";
+import useGlobalStore from "./stores/useGlobalstore";
 import quickStartCheck from "./helpers/quickStartCheck";
+import { components } from "./gen-types";
 
 // telemetry for cloud version only
-if (import.meta.env.VITE_API_URL === "https://api.uselotus.io/") {
-  posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
+if ((import.meta as any).env.VITE_API_URL === "https://api.uselotus.io/") {
+  posthog.init((import.meta as any).env.VITE_POSTHOG_KEY, {
     api_host: "https://app.posthog.com",
   });
 }
@@ -31,6 +32,9 @@ function App() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const setOrgInfoToStore = useGlobalStore((state) => state.setOrgInfo);
+  const setEnvironmentType = useGlobalStore(
+    (state) => state.setEnvironmentType
+  );
   const setQuickStartProgress = useGlobalStore(
     (state) => state.setQuickStartProgress
   );
@@ -39,21 +43,12 @@ function App() {
     () => Organization.get().then((res) => res[0]),
     {
       onSuccess: (data) => {
-        const storeOrgObject: IOrgStoreType = {
-          organization_id: data.organization_id,
-          organization_name: data.organization_name,
-          default_currency: data.default_currency
-            ? data.default_currency
-            : undefined,
-          environment: data.linked_organizations.filter((el) => el.current)[0]
-            .organization_type,
-          plan_tags: data.plan_tags,
-          current_user: data.current_user,
-          linked_organizations: data.linked_organizations,
-          crm_integration_allowed: data.crm_integration_allowed,
-        };
+        setEnvironmentType(
+          data.linked_organizations.filter((el) => el.current)[0]
+            .organization_type
+        );
 
-        setOrgInfoToStore(storeOrgObject);
+        setOrgInfoToStore(data);
       },
     }
   );
@@ -66,7 +61,11 @@ function App() {
           error?.response?.status === 401 &&
           !publicRoutes.includes(pathname)
         ) {
-          navigate("/");
+          navigate("/", {
+            state: {
+              redirectTo: pathname,
+            },
+          });
         }
         return error;
       });

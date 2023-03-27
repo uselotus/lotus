@@ -8,17 +8,18 @@ from botocore.exceptions import ClientError
 from django.conf import settings
 from django.forms.models import model_to_dict
 from django.utils.text import slugify
-from metering_billing.models import InvoiceLineItemAdjustment, Organization
-from metering_billing.s3_utils import get_bucket_name
-from metering_billing.serializers.serializer_utils import PlanUUIDField
-from metering_billing.utils import make_hashable
-from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
 from reportlab.lib.colors import Color, HexColor
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.rl_config import TTFSearchPath
+
+from metering_billing.models import InvoiceLineItemAdjustment, Organization
+from metering_billing.s3_utils import get_bucket_name
+from metering_billing.serializers.serializer_utils import PlanUUIDField
+from metering_billing.utils import make_hashable
+from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
 
 logger = logging.getLogger("django.server")
 
@@ -591,7 +592,7 @@ def generate_invoice_pdf(invoice):
     return buffer
 
 
-def upload_invoice_pdf_to_s3(invoice, team_id, bucket_name):
+def upload_invoice_pdf_to_s3(invoice, bucket_name):
     try:
         key = get_invoice_pdf_key(invoice)
         buffer = generate_invoice_pdf(invoice)
@@ -630,7 +631,7 @@ def get_invoice_presigned_url(invoice):
         return {"exists": False, "url": None}
 
     if not s3_file_exists(bucket_name=bucket_name, key=key):
-        upload_invoice_pdf_to_s3(invoice, team_id, bucket_name)
+        upload_invoice_pdf_to_s3(invoice, bucket_name)
 
     s3_client = boto3.client("s3")
 

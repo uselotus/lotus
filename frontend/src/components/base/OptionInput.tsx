@@ -8,35 +8,44 @@ interface Option {
 
 export interface OptionInputProps {
   options?: Option[];
-  name: string;
-  form: FormInstance;
+  name?: string;
+  form?: FormInstance;
+  placeholder?: string;
+  style?: React.CSSProperties;
 }
 
 export default function OptionInput({
   options = [],
   name,
   form,
+  placeholder,
+  style,
 }: OptionInputProps) {
   const [values, setValues] = useState<string[]>([]);
 
   const handleChange = (newValues: string[]) => {
     if (newValues.length === 0) {
       setValues([]);
-      form.setFieldValue(name, undefined);
+      if (form && name) {
+        form.setFieldValue(name, undefined);
+      }
     } else {
       const newValue = newValues[newValues.length - 1];
       setValues([newValue]);
-      form.setFieldValue(name, newValue);
+      if (form && name) {
+        form.setFieldValue(name, newValue);
+      }
     }
   };
 
   return (
     <Select
-      id="event_name_input"
+      placeholder={placeholder}
       value={values}
       mode="tags"
       onChange={handleChange}
       options={options}
+      style={style!}
     />
   );
 }

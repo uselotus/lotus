@@ -82,14 +82,18 @@ def generate_invoice_pdf_async(invoice_pk):
 
 @shared_task
 def calculate_invoice():
+    calculate_invoice_inner()
+
+
+def calculate_invoice_inner():
     # GENERAL PHILOSOPHY: this task is for periodic maintenance of ending susbcriptions. We only end and re-start subscriptions when they're scheduled to end, if for some other reason they end early then it is up to the other process to handle the invoice creationg and .
     # get ending subs
 
     from metering_billing.invoice import generate_invoice
     from metering_billing.models import BillingRecord, Invoice, SubscriptionRecord
 
-    now_minus_30 = now_utc() + relativedelta(
-        minutes=-30
+    now_minus_30 = now_utc() - relativedelta(
+        minutes=30
     )  # grace period of 30 minutes for sending events
     sub_records_to_bill = SubscriptionRecord.objects.filter(
         Q(end_date__lt=now_minus_30)
