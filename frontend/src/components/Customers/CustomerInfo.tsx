@@ -5,7 +5,7 @@
 /* eslint-disable camelcase */
 import React, { FC, useEffect } from "react";
 import { Column } from "@ant-design/plots";
-import { useQueryClient, useMutation } from "react-query";
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 
 import { Select, Form, Typography, Tooltip } from "antd";
 import dayjs from "dayjs";
@@ -663,12 +663,26 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                   </div>
                   <div
                     className={`Inter ${
-                      cost_data.margin * 100 > 0
+                      cost_data.profit_margin * 100 > 0
                         ? "text-emerald-800"
                         : "text-rose-700"
                     }`}
                   >
-                    {((cost_data.margin as number) * 100).toFixed(2)}%
+                    {((cost_data.profit_margin as number) * 100).toFixed(2)}%
+                  </div>
+                </CustomerCard.Item>
+                <CustomerCard.Item>
+                  <div className="text-card-text font-normal font-alliance whitespace-nowrap leading-4">
+                    Markup
+                  </div>
+                  <div
+                    className={`Inter ${
+                      cost_data.markup * 100 > 0
+                        ? "text-emerald-800"
+                        : "text-rose-700"
+                    }`}
+                  >
+                    {((cost_data.markup as number) * 100).toFixed(2)}%
                   </div>
                 </CustomerCard.Item>
 

@@ -27,6 +27,7 @@ from metering_billing.views.model_views import (
     ActionViewSet,
     AddOnVersionViewSet,
     AddOnViewSet,
+    AnalysisViewSet,
     APITokenViewSet,
     BacktestViewSet,
     CustomerBalanceAdjustmentViewSet,
@@ -36,7 +37,6 @@ from metering_billing.views.model_views import (
     FeatureViewSet,
     InvoiceViewSet,
     MetricViewSet,
-    OrganizationSettingViewSet,
     OrganizationViewSet,
     PlanVersionViewSet,
     PlanViewSet,
@@ -77,18 +77,13 @@ router.register(r"invoices", InvoiceViewSet, basename="invoice")
 router.register(r"features", FeatureViewSet, basename="feature")
 router.register(r"webhooks", WebhookViewSet, basename="webhook")
 router.register(r"backtests", BacktestViewSet, basename="backtest")
-# router.register(r"products", ProductViewSet, basename="product")
+router.register(r"analysis", AnalysisViewSet, basename="analysis")
 router.register(r"plans", PlanViewSet, basename="plan")
 router.register(r"plan_versions", PlanVersionViewSet, basename="plan_version")
 router.register(r"events", EventViewSet, basename="event")
 router.register(r"actions", ActionViewSet, basename="action")
 router.register(
     r"external_plan_links", ExternalPlanLinkViewSet, basename="external_plan_link"
-)
-router.register(
-    r"organization_settings",
-    OrganizationSettingViewSet,
-    basename="organization_setting",
 )
 router.register(r"organizations", OrganizationViewSet, basename="organization")
 router.register(r"pricing_units", PricingUnitViewSet, basename="pricing_unit")
@@ -124,8 +119,6 @@ urlpatterns = [
     path("api/", include((api_router.urls, "api"), namespace="api")),
     path("api/ping/", api_views.Ping.as_view(), name="ping"),
     path("api/healthcheck/", api_views.Healthcheck.as_view(), name="healthcheck"),
-    path("api/track/", api_views.track_event, name="track_event"),
-    path("api/invoice_url/", api_views.GetInvoicePdfURL.as_view(), name="invoice_url"),
     path(
         "api/metric_access/",
         api_views.MetricAccessView.as_view(),

@@ -20,21 +20,20 @@ import (
 	"github.com/uselotus/lotus/go/pkg/types"
 )
 
-const batchSize = 1000
+const batchSize = 2
 
 type StreamEvents struct {
-	Events         *[]types.VerifiedEvent `json:"events"`
-	OrganizationID int64                  `json:"organization_id"`
-	Event          *types.VerifiedEvent   `json:"event"`
+	OrganizationID int64                `json:"organization_id"`
+	Event          *types.VerifiedEvent `json:"event"`
 }
 
-type batch struct {
+type insertBatch struct {
 	tx              *sql.Tx
 	insertStatement *sql.Stmt
 	count           int
 }
 
-func (b *batch) addRecord(event *types.VerifiedEvent) (bool, error) {
+func (b *insertBatch) addRecord(event *types.VerifiedEvent) (bool, error) {
 	propertiesJSON, errJSON := json.Marshal(event.Properties)
 	if errJSON != nil {
 		log.Printf("Error encoding properties to JSON: %s\n", errJSON)
@@ -136,6 +135,7 @@ func main() {
 
 		dbURL = fmt.Sprintf("postgres://%s:%s@%s:5432/%s?sslmode=disable", pgUser, pgPassword, host, pgDB)
 	}
+	log.Printf("Connecting to database: %s", dbURL)
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Printf("Error opening database url: %s", dbURL)
@@ -202,59 +202,56 @@ func main() {
 			panic(err)
 		}
 
-		batch := &batch{
+		batch := &insertBatch{
 			tx:              tx,
 			insertStatement: insertStatement,
+			count:           0,
 		}
+
+		// make a map of organizationID (bigint) ro integers to keep track of the number of events we have processed for each organization
+		processedEvents := make(map[int64]int)
 
 		fetches.EachRecord(func(r *kgo.Record) {
 			log.Printf("Received record: %s\n", r.Value)
+			//extract event from kafka message
 			var streamEvents StreamEvents
 			err := json.Unmarshal(r.Value, &streamEvents)
-
 			if err != nil {
 				log.Printf("Error unmarshalling event: %s\n", err)
-				// since we check in the previous statement that the event has the correct format, an error unmarshalling should be a fatal error
-				return
+				// since we check in the previous step in the pipeline that the event has the correct format, an error unmarshalling should be a fatal error
+				panic(err)
 			}
-
 			if streamEvents.Event == nil {
-				if streamEvents.Events != nil {
-					if len(*streamEvents.Events) > 0 {
-						streamEvents.Event = &(*streamEvents.Events)[0]
-					} else {
-						log.Println("Error: event is nil and events is empty")
-						panic(fmt.Errorf("event is nil and events is empty"))
-					}
-				} else {
-					log.Println("Error: both event and events fields are missing from stream_events")
-					panic(fmt.Errorf("both event and events fields are missing from stream_events"))
-				}
+				log.Printf("event from OrganizationID %d is empty", streamEvents.OrganizationID)
+				panic(fmt.Errorf("event from OrganizationID %d is empty", streamEvents.OrganizationID))
 			}
-
 			event := streamEvents.Event
 
+			// commit the record
 			if committed, err := batch.addRecord(event); err != nil {
 				//only thing that can go wrong in batch is either bugs in the code or a serious database failure/network partition of some kind. Because the usual referential integrity issues are already dealt with (on conflict do nothing), all that's left is bad stuff.
 				log.Printf("Error inserting event: %s\n", err)
 				panic(err)
 			} else {
-				if phWorks {
-					phClient.Enqueue(posthog.Capture{
-						DistinctId: fmt.Sprintf("%d (API Key)", event.OrganizationID),
-						Event:      "track_event",
-						Properties: posthog.NewProperties().
-							Set("customer", event.CustID),
-					})
-				}
-
 				if committed {
+					// commit offsets
 					if err := cl.CommitUncommittedOffsets(context.Background()); err != nil {
 						// this is a fatal error
 						log.Printf("commit records failed: %v", err)
 						panic(fmt.Errorf("commit records failed: %w", err))
 					}
+
+					// start a new transaction and reset the batch
+					tx, err := db.Begin()
+					if err != nil {
+						log.Printf("Error starting transaction: %s\n", err)
+						panic(err)
+					}
+					batch.tx = tx
 				}
+
+				// send posthog event if orgID has changed or we've reached batchSize (and set batch.count to 0)
+				processedEvents[event.OrganizationID]++
 			}
 
 		})
@@ -264,19 +261,31 @@ func main() {
 				// again, this should be a fatal error
 				log.Printf("Error inserting events into database: %s\n", err)
 				panic(err)
-			}
-			if err := cl.CommitUncommittedOffsets(context.Background()); err != nil {
-				// this is a fatal error
-				log.Printf("commit records failed: %v", err)
-				panic(fmt.Errorf("commit records failed: %w", err))
-			}
-		} else {
-			if err := tx.Rollback(); err != nil {
-				// again, this should be a fatal error
-				log.Printf("Error rolling back transaction: %s\n", err)
-				panic(err)
+			} else {
+				if err := cl.CommitUncommittedOffsets(context.Background()); err != nil {
+					// this is a fatal error
+					log.Printf("commit records failed: %v", err)
+					panic(fmt.Errorf("commit records failed: %w", err))
+				}
 			}
 		}
 
+		// send posthog event
+		if phWorks {
+			posthogTrack(phClient, processedEvents)
+		}
+
+	}
+}
+
+func posthogTrack(phClient posthog.Client, processedEvents map[int64]int) {
+	// send posthog event
+	for organizationID, numEvents := range processedEvents {
+		phClient.Enqueue(posthog.Capture{
+			DistinctId: fmt.Sprintf("%d (API Key)", organizationID),
+			Event:      "track_event",
+			Properties: posthog.NewProperties().
+				Set("num_events", numEvents),
+		})
 	}
 }

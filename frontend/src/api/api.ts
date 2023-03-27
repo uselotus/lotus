@@ -365,6 +365,15 @@ export const Plan = {
     requests.delete(`app/usage_alerts/${post.usage_alert_id}/`),
 };
 
+export const Experiments = {
+  getExperiments: (): Promise<components["schemas"]["AnalysisSummary"][]> =>
+    requests.get("app/analysis/"),
+  getAnalysis: (
+    analysis_id: string
+  ): Promise<components["schemas"]["AnalysisDetail"]> =>
+    requests.get(`app/analysis/${analysis_id}/`),
+};
+
 export const Webhook = {
   getEndpoints: (): Promise<WebhookEndpoint[]> => requests.get("app/webhooks/"),
   createEndpoint: (post: WebhookEndpointCreate): Promise<WebhookEndpoint> =>
@@ -460,7 +469,8 @@ export const Organization = {
     requests.post("app/organization/invite/", { email }),
   invite_link: (email: string): Promise<{ email: string }> =>
     requests.post("app/organization/invite_link/", { email }),
-  get: (): Promise<OrganizationType[]> => requests.get("app/organizations/"),
+  get: (): Promise<components["schemas"]["Organization"][]> =>
+    requests.get("app/organizations/"),
   createOrg: (
     organization_name: string,
     default_currency_code: string,
@@ -479,30 +489,20 @@ export const Organization = {
     requests.get("app/actions/", { params: { c: cursor } }),
   updateOrganization: (
     org_id: string,
-    input: UpdateOrganizationType
-  ): Promise<OrganizationType> =>
+    input: components["schemas"]["PatchedOrganizationUpdateRequest"]
+  ): Promise<components["schemas"]["Organization"]> =>
     requests.patch(`app/organizations/${org_id}/`, input),
-  updateOrganizationPaymentProvider: (
-    data: UpdateOrganizationPPType
-  ): Promise<OrganizationType> => {
-    const { org_id, ...payload } = data;
-    return requests.patch(`app/organizations/${org_id}/`, { ...payload });
-  },
 };
 
 export const GetRevenue = {
   getMonthlyRevenue: (
-    period_1_start_date: string,
-    period_1_end_date: string,
-    period_2_start_date: string,
-    period_2_end_date: string
-  ): Promise<RevenueType> =>
+    start_date: string,
+    end_date: string
+  ): Promise<components["schemas"]["PeriodMetricRevenueResponse"]> =>
     requests.get("app/period_metric_revenue/", {
       params: {
-        period_1_start_date,
-        period_1_end_date,
-        period_2_start_date,
-        period_2_end_date,
+        start_date,
+        end_date,
       },
     }),
 };
@@ -553,23 +553,12 @@ export const Metrics = {
     requests.patch(`app/metrics/${id}/`, { status: "archived" }),
 };
 
-interface SearchEventPreviewsParams {
-  customer_id?: string;
-  idempotency_id?: string;
-  c?: string;
-}
-
 export const Events = {
   getEventPreviews: (c: string): Promise<EventPages> =>
     requests.get("app/events/", { params: { c } }),
-  searchEventPreviews: ({
-    customer_id,
-    idempotency_id,
-    c = "",
-  }: SearchEventPreviewsParams): Promise<EventPages> =>
-    requests.get("app/events/search/", {
-      params: { c, customer_id, idempotency_id },
-    }),
+  // TODO Add the real type here
+  getEventProperties: (): Promise<components["schemas"]["EventProperties"]> =>
+    requests.get("app/events/properties/"),
   getEventCount: (
     period_1_start_date: string,
     period_1_end_date: string,
@@ -620,20 +609,6 @@ export const PaymentProcessor = {
     post: TransferSub
   ): Promise<PaymentProcessorImportCustomerResponse> =>
     requests.post("app/import_subscriptions/", post),
-
-  // Get Stripe Setting
-  getPaymentProcessorSettings: (
-    data: PaymentProcessorSettingsParams
-  ): Promise<PaymentProcessorSetting[]> =>
-    requests.get("app/organization_settings/", { params: data }),
-
-  // Update Stripe Setting
-  updatePaymentProcessorSetting: (
-    data: UpdatePaymentProcessorSettingParams
-  ): Promise<PaymentProcessorSetting> =>
-    requests.patch(`app/organization_settings/${data.setting_id}/`, {
-      setting_values: data.setting_values,
-    }),
 
   cancelStripeSubscriptions: (
     data: StripeMultiSubscriptionsParams
@@ -739,7 +714,4 @@ export const CRM = {
     requests.post(`app/organizations/${organization_id}/sync_crm/`, {
       crm_provider_names,
     }),
-
-  getCRMSettings: (data: CRMSettingsParams): Promise<CRMSetting[]> =>
-    requests.get("app/organization_settings/", { params: data }),
 };

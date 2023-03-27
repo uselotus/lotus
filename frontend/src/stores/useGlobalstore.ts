@@ -1,15 +1,17 @@
 import create from "zustand";
-import { OrganizationType } from "../types/account-type";
-import { PlanType } from "../types/plan-type";
-import { CurrencyType } from "../types/pricing-unit-type";
+import { components } from "../gen-types";
 
 type GlobalStoreState = {
   username: string;
-  org: IOrgStoreType;
+  org?: components["schemas"]["Organization"];
+  environmentType?: "Production" | "Development" | "Demo" | "Internal Demo";
   quickStartProgress: IQuickStartStoreType;
   setUsername: (username: string) => void;
-  setOrgInfo: (org: IOrgStoreType) => void;
+  setOrgInfo: (org: components["schemas"]["Organization"]) => void;
   setQuickStartProgress: (quickStartProgress: IQuickStartStoreType) => void;
+  setEnvironmentType: (
+    environmentType: "Production" | "Development" | "Demo" | "Internal Demo"
+  ) => void;
 };
 
 interface IQuickStartStoreType {
@@ -19,29 +21,10 @@ interface IQuickStartStoreType {
   hasCreatedPlan: boolean;
   hasPaymentConnected: boolean;
 }
-interface IOrgStoreType {
-  organization_id: string;
-  organization_name: string;
-  default_currency?: CurrencyType;
-  environment?: string;
-  plan_tags: PlanType["tags"];
-  current_user: { username: string };
-  linked_organizations?: OrganizationType["linked_organizations"];
-  crm_integration_allowed: boolean;
-}
 
 const useGlobalStore = create<GlobalStoreState>((set) => ({
   username: "",
-  org: {
-    organization_id: "",
-    organization_name: "N/A",
-    default_currency: undefined,
-    environment: undefined,
-    current_user: { username: "" },
-    plan_tags: [],
-    linked_organizations: undefined,
-    crm_integration_allowed: false,
-  },
+  org: undefined,
   quickStartProgress: {
     hasAPIKey: false,
     hasCreatedMetric: false,
@@ -49,10 +32,14 @@ const useGlobalStore = create<GlobalStoreState>((set) => ({
     hasPaymentConnected: false,
     hasTrackedEvent: false,
   },
+  environmentType: undefined,
   setUsername: (username: string) => set({ username }),
-  setOrgInfo: (org: IOrgStoreType) => set({ org }),
+  setOrgInfo: (org: components["schemas"]["Organization"]) => set({ org }),
   setQuickStartProgress: (quickStartProgress: IQuickStartStoreType) =>
     set({ quickStartProgress }),
+  setEnvironmentType: (
+    environmentType: "Production" | "Development" | "Demo" | "Internal Demo"
+  ) => set({ environmentType }),
 }));
 export default useGlobalStore;
-export { IOrgStoreType, IQuickStartStoreType, GlobalStoreState };
+export { IQuickStartStoreType, GlobalStoreState };

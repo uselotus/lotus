@@ -245,6 +245,12 @@ class BacktestUUIDField(UUIDPrefixField):
         super().__init__("btest_", *args, **kwargs)
 
 
+@extend_schema_field(serializers.RegexField(regex=r"analysis_[0-9a-f]{32}"))
+class AnalysisUUIDField(UUIDPrefixField):
+    def __init__(self, *args, **kwargs):
+        super().__init__("analysis_", *args, **kwargs)
+
+
 @extend_schema_field(serializers.RegexField(regex=r"baladj_[0-9a-f]{32}"))
 class BalanceAdjustmentUUIDField(UUIDPrefixField):
     def __init__(self, *args, **kwargs):
@@ -255,12 +261,6 @@ class BalanceAdjustmentUUIDField(UUIDPrefixField):
 class MetricUUIDField(UUIDPrefixField):
     def __init__(self, *args, **kwargs):
         super().__init__("metric_", *args, **kwargs)
-
-
-@extend_schema_field(serializers.RegexField(regex=r"orgset_[0-9a-f]{32}"))
-class OrganizationSettingUUIDField(UUIDPrefixField):
-    def __init__(self, *args, **kwargs):
-        super().__init__("orgset_", *args, **kwargs)
 
 
 @extend_schema_field(serializers.RegexField(regex=r"plan_[0-9a-f]{32}"))

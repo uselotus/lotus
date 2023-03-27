@@ -52,9 +52,6 @@ func main() {
 
 	opts := []kgo.Opt{
 		kgo.SeedBrokers(seeds...),
-		kgo.ConsumerGroup("default"),
-		kgo.ConsumeTopics(config.Conf.KafkaTopic),
-		kgo.DisableAutoCommit(),
 	}
 
 	saslUsername := config.Conf.KafkaSASLUsername

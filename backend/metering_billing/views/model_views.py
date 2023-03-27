@@ -1,29 +1,10 @@
 # import lotus_python
 import logging
 
+import api.views as api_views
 import posthog
 import sentry_sdk
 from actstream.models import Action
-from django.conf import settings
-from django.core.cache import cache
-from django.core.validators import MinValueValidator
-from django.db.models import Max
-from django.db.utils import IntegrityError
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import (
-    OpenApiCallback,
-    OpenApiParameter,
-    extend_schema,
-    inline_serializer,
-)
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
-from rest_framework.pagination import CursorPagination
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-
-import api.views as api_views
 from api.serializers.nonmodel_serializers import (
     AddFeatureSerializer,
     AddFeatureToAddOnSerializer,
@@ -40,6 +21,18 @@ from api.serializers.webhook_serializers import (
     SubscriptionRenewedSerializer,
     UsageAlertTriggeredSerializer,
 )
+from django.conf import settings
+from django.core.cache import cache
+from django.core.validators import MinValueValidator
+from django.db.models import Func, Max
+from django.db.utils import IntegrityError
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiCallback,
+    OpenApiParameter,
+    extend_schema,
+    inline_serializer,
+)
 from metering_billing.exceptions import (
     DuplicateMetric,
     DuplicateWebhookEndpoint,
@@ -47,6 +40,7 @@ from metering_billing.exceptions import (
     ServerError,
 )
 from metering_billing.models import (
+    Analysis,
     APIToken,
     Backtest,
     Event,
@@ -54,7 +48,6 @@ from metering_billing.models import (
     Feature,
     Metric,
     Organization,
-    OrganizationSetting,
     Plan,
     PlanVersion,
     PricingUnit,
@@ -67,7 +60,9 @@ from metering_billing.models import (
 )
 from metering_billing.payment_processors import PAYMENT_PROCESSOR_MAP
 from metering_billing.permissions import ValidOrganization
-from metering_billing.serializers.backtest_serializers import (
+from metering_billing.serializers.experiment_serializers import (
+    AnalysisDetailSerializer,
+    AnalysisSummarySerializer,
     BacktestCreateSerializer,
     BacktestDetailSerializer,
     BacktestSummarySerializer,
@@ -96,8 +91,6 @@ from metering_billing.serializers.model_serializers import (
     MetricUpdateSerializer,
     OrganizationCreateSerializer,
     OrganizationSerializer,
-    OrganizationSettingSerializer,
-    OrganizationSettingUpdateSerializer,
     OrganizationUpdateSerializer,
     PlanCreateSerializer,
     PlanDetailSerializer,
@@ -116,9 +109,7 @@ from metering_billing.serializers.model_serializers import (
 )
 from metering_billing.serializers.request_serializers import (
     CRMSyncRequestSerializer,
-    EventSearchRequestSerializer,
     MakeReplaceWithSerializer,
-    OrganizationSettingFilterSerializer,
     PlansSetReplaceWithForVersionNumberSerializer,
     PlansSetTransitionToForVersionNumberSerializer,
     SetReplaceWithSerializer,
@@ -127,8 +118,8 @@ from metering_billing.serializers.request_serializers import (
 from metering_billing.serializers.serializer_utils import (
     AddOnUUIDField,
     AddOnVersionUUIDField,
+    AnalysisUUIDField,
     MetricUUIDField,
-    OrganizationSettingUUIDField,
     OrganizationUUIDField,
     PlanUUIDField,
     PlanVersionUUIDField,
@@ -142,6 +133,12 @@ from metering_billing.utils.enums import (
     PAYMENT_PROCESSORS,
     WEBHOOK_TRIGGER_EVENTS,
 )
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.pagination import CursorPagination
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -462,6 +459,7 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
 class CursorSetPagination(CustomPagination):
     page_size = 10
+    page_size_query_param = "page_size"
     ordering = "-time_created"
     cursor_query_param = "c"
 
@@ -497,53 +495,47 @@ class EventViewSet(
         context.update({"organization": organization})
         return context
 
-    def get_serializer_class(self):
-        if self.action == "list":
-            return EventDetailSerializer
-        elif self.action == "search":
-            return EventDetailSerializer
-        return super().get_serializer_class()
-
     @extend_schema(
-        parameters=[
-            EventSearchRequestSerializer,
-            OpenApiParameter(
-                name=CursorSetPagination.cursor_query_param,
-                type=str,
-                location=OpenApiParameter.QUERY,
-                description=CursorSetPagination.cursor_query_description,
-            ),
-        ],
-        responses=EventDetailSerializer(many=True),
+        request=None,
+        responses=inline_serializer(
+            name="EventProperties",
+            fields={
+                "event_names": serializers.ListField(child=serializers.CharField()),
+                "event_name_to_props": serializers.DictField(
+                    child=serializers.ListField(child=serializers.CharField())
+                ),
+            },
+        ),
     )
-    @action(
-        detail=False,
-        methods=["get"],
-        url_path="search",
-        pagination_class=CursorSetPagination,
-    )
-    def search(self, request):
-        # dont use self.get_queryset() since we use diff for request and response
-        serializer = EventSearchRequestSerializer(data=request.query_params)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-
-        customer_id = data.get("customer_id")
-        idempotency_id = data.get("idempotency_id")
-
-        queryset = self.get_queryset()
-        if customer_id and len(customer_id) > 0:
-            queryset = queryset.filter(cust_id__icontains=customer_id)
-        if idempotency_id and len(idempotency_id) > 0:
-            queryset = queryset.filter(idempotency_id__icontains=idempotency_id)
-
-        # this snippet is from ListModelMixin
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        else:
-            raise ServerError("Pagination error")
+    @action(detail=False, methods=["get"], url_path="properties")
+    def event_properties(self, request):
+        org = request.organization
+        event_names = list(
+            Event.objects.filter(organization=org)
+            .values_list("event_name", flat=True)
+            .distinct()
+        )
+        event_name_to_props = {}
+        props = (
+            Event.objects.filter(organization=org)
+            .annotate(props_keys=Func("properties", function="jsonb_object_keys"))
+            .filter(event_name__in=event_names)
+            .values("event_name", "props_keys")
+            .distinct()
+        )
+        for prop in props:
+            event_name = prop["event_name"]
+            if event_name not in event_name_to_props:
+                event_name_to_props[event_name] = set()
+            event_name_to_props[event_name].add(prop["props_keys"])
+        event_name_to_props = {k: list(v) for k, v in event_name_to_props.items()}
+        return Response(
+            {
+                "event_names": list(event_names),
+                "event_name_to_props": event_name_to_props,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class UserViewSet(
@@ -639,9 +631,10 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         organization = self.request.organization
-        return Metric.objects.filter(
-            organization=organization, status=METRIC_STATUS.ACTIVE
-        )
+        qs = super().get_queryset()
+        qs = qs.filter(organization=organization, status=METRIC_STATUS.ACTIVE)
+        qs = qs.prefetch_related("numeric_filters", "categorical_filters")
+        return qs
 
     def get_serializer_class(self):
         if self.action == "partial_update":
@@ -790,6 +783,17 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             return PlanVersionUpdateSerializer
         elif self.action == "create":
             return PlanVersionCreateSerializer
+        elif (
+            self.action == "add_target_customer"
+            or self.action == "remove_target_customer"
+        ):
+            return TargetCustomersSerializer
+        elif self.action == "set_replacement":
+            return SetReplaceWithSerializer
+        elif self.action == "make_replacement":
+            return MakeReplaceWithSerializer
+        elif self.action == "add_feature":
+            return AddFeatureSerializer
         return PlanVersionDetailSerializer
 
     def get_queryset(self):
@@ -889,9 +893,8 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     )
     def add_target_customer(self, request, *args, **kwargs):
         plan_version = self.get_object()
-        organization = self.request.organization
-        serializer = TargetCustomersSerializer(
-            data=request.data, context={"organization": organization}
+        serializer = self.get_serializer(
+            data=request.data,
         )
         serializer.is_valid(raise_exception=True)
         customers = serializer.validated_data["customers"]
@@ -943,9 +946,8 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     )
     def remove_target_customer(self, request, *args, **kwargs):
         plan_version = self.get_object()
-        organization = self.request.organization
-        serializer = TargetCustomersSerializer(
-            data=request.data, context={"organization": organization}
+        serializer = self.get_serializer(
+            data=request.data,
         )
         serializer.is_valid(raise_exception=True)
         customers = serializer.validated_data["customers"]
@@ -1060,10 +1062,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     )
     def set_replacement(self, request, *args, **kwargs):
         plan_version = self.get_object()
-        organization = self.request.organization
-        serializer = SetReplaceWithSerializer(
-            data=request.data, context={"organization": organization}
-        )
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         replacement = serializer.validated_data["replace_with"]
         if replacement == plan_version:
@@ -1109,9 +1108,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def make_replacement(self, request, *args, **kwargs):
         plan_version = self.get_object()
         organization = self.request.organization
-        serializer = MakeReplaceWithSerializer(
-            data=request.data, context={"organization": organization}
-        )
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         versions_to_replace = serializer.validated_data["versions_to_replace"]
         for to_replace_v in versions_to_replace:
@@ -1157,10 +1154,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     )
     def add_feature(self, request, *args, **kwargs):
         plan_version = self.get_object()
-        organization = self.request.organization
-        serializer = AddFeatureSerializer(
-            data=request.data, context={"organization": organization}
-        )
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         feature = serializer.validated_data["feature"]
         plan_version.features.add(feature)
@@ -1229,6 +1223,17 @@ class PlanViewSet(api_views.PlanViewSet):
             return PlanUpdateSerializer
         elif self.action == "create":
             return PlanCreateSerializer
+        elif (
+            self.action == "add_feature"
+            or self.action == "add_feature_to_version_number"
+        ):
+            return AddFeatureToPlanSerializer
+        elif self.action == "change_version_number_active_dates":
+            return ChangeActiveDatesSerializer
+        elif self.action == "set_replacement_for_version_number":
+            return PlansSetReplaceWithForVersionNumberSerializer
+        elif self.action == "set_transition_for_version_number":
+            return PlansSetTransitionToForVersionNumberSerializer
         return PlanDetailSerializer
 
     @extend_schema(responses=PlanDetailSerializer)
@@ -1450,9 +1455,7 @@ class PlanViewSet(api_views.PlanViewSet):
     )
     def add_feature(self, request, *args, **kwargs):
         plan = self.get_object()
-        serializer = AddFeatureToPlanSerializer(
-            data=request.data, context={"organization": request.organization}
-        )
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         feature = serializer.validated_data["feature"]
         if serializer.validated_data["all_versions"] is True:
@@ -1501,8 +1504,8 @@ class PlanViewSet(api_views.PlanViewSet):
     )
     def add_feature_to_version_number(self, request, *args, **kwargs):
         plan = self.get_object()
-        serializer = AddFeatureToPlanSerializer(
-            data=request.data, context={"organization": request.organization}
+        serializer = self.get_serializer(
+            data=request.data,
         )
         serializer.is_valid(raise_exception=True)
         feature = serializer.validated_data["feature"]
@@ -1562,9 +1565,7 @@ class PlanViewSet(api_views.PlanViewSet):
     )
     def change_version_number_active_dates(self, request, *args, **kwargs):
         plan = self.get_object()
-        serializer = ChangeActiveDatesSerializer(
-            data=request.data, context={"organization": request.organization}
-        )
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         if serializer.validated_data["all_versions"] is True:
             plan_versions = plan.versions.get_queryset()
@@ -1614,9 +1615,8 @@ class PlanViewSet(api_views.PlanViewSet):
     )
     def set_replacement_for_version_number(self, request, *args, **kwargs):
         plan = self.get_object()
-        organization = self.request.organization
-        serializer = PlansSetReplaceWithForVersionNumberSerializer(
-            data=request.data, context={"organization": organization}
+        serializer = self.get_serializer(
+            data=request.data,
         )
         serializer.is_valid(raise_exception=True)
         # extract versions to replace
@@ -1690,9 +1690,8 @@ class PlanViewSet(api_views.PlanViewSet):
     )
     def set_transition_for_version_number(self, request, *args, **kwargs):
         plan = self.get_object()
-        organization = self.request.organization
-        serializer = PlansSetTransitionToForVersionNumberSerializer(
-            data=request.data, context={"organization": organization}
+        serializer = self.get_serializer(
+            data=request.data,
         )
         serializer.is_valid(raise_exception=True)
         # extract versions to replace
@@ -1868,6 +1867,70 @@ class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return context
 
 
+class AnalysisViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
+    lookup_field = "analysis_id"
+    http_method_names = [
+        "get",
+        "post",
+        "head",
+    ]
+    permission_classes_per_method = {
+        "create": [IsAuthenticated & ValidOrganization],
+        "destroy": [IsAuthenticated & ValidOrganization],
+    }
+    queryset = Analysis.objects.all()
+
+    def get_object(self):
+        string_uuid = self.kwargs[self.lookup_field]
+        uuid = AnalysisUUIDField().to_internal_value(string_uuid)
+        self.kwargs[self.lookup_field] = uuid
+        return super().get_object()
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return AnalysisSummarySerializer
+        elif self.action == "retrieve":
+            return AnalysisDetailSerializer
+        else:
+            return BacktestCreateSerializer
+
+    def get_queryset(self):
+        organization = self.request.organization
+        return Analysis.objects.filter(organization=organization)
+
+    def perform_create(self, serializer):
+        analysis_obj = serializer.save(organization=self.request.organization)
+        an_id = analysis_obj.backtest_id
+        run_backtest.delay(an_id)
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            try:
+                username = self.request.user.username
+            except Exception:
+                username = None
+            organization = self.request.organization
+            posthog.capture(
+                POSTHOG_PERSON
+                if POSTHOG_PERSON
+                else (
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
+                ),
+                event=f"{self.action}_analysis",
+                properties={"organization": organization.organization_name},
+            )
+        return response
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        organization = self.request.organization
+        context.update({"organization": organization})
+        return context
+
+
 class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     lookup_field = "product_id"
@@ -2006,64 +2069,6 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
         return super().destroy(request)
 
 
-class OrganizationSettingViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated & ValidOrganization]
-    http_method_names = ["get", "head", "patch"]
-    lookup_field = "setting_id"
-    queryset = OrganizationSetting.objects.all()
-
-    def get_object(self):
-        string_uuid = self.kwargs[self.lookup_field]
-        uuid = OrganizationSettingUUIDField().to_internal_value(string_uuid)
-        self.kwargs[self.lookup_field] = uuid
-        return super().get_object()
-
-    def get_serializer_class(self):
-        if self.action == "partial_update":
-            return OrganizationSettingUpdateSerializer
-        return OrganizationSettingSerializer
-
-    def get_queryset(self):
-        filter_kwargs = {"organization": self.request.organization}
-        serializer = OrganizationSettingFilterSerializer(
-            data=self.request.query_params,
-        )
-        serializer.is_valid(raise_exception=True)
-        setting_name = serializer.validated_data.get("setting_name", [])
-        if len(setting_name) > 0:
-            filter_kwargs["setting_name__in"] = setting_name
-        setting_group = serializer.validated_data.get("setting_group", None)
-        if setting_group:
-            filter_kwargs["setting_group"] = setting_group
-        return OrganizationSetting.objects.filter(**filter_kwargs)
-
-    @extend_schema(
-        parameters=[OrganizationSettingFilterSerializer],
-    )
-    def list(self, request, *args, **kwargs):
-        return super().list(request)
-
-    @extend_schema(responses=OrganizationSettingSerializer)
-    def update(self, request, *args, **kwargs):
-        organization_setting = self.get_object()
-        serializer = self.get_serializer(
-            organization_setting, data=request.data, partial=True
-        )
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        if getattr(organization_setting, "_prefetched_objects_cache", None):
-            # If 'prefetch_related' has been applied to a queryset, we need to
-            # forcibly invalidate the prefetch cache on the instance.
-            organization_setting._prefetched_objects_cache = {}
-
-        return Response(
-            OrganizationSettingSerializer(
-                organization_setting, context=self.get_serializer_context()
-            ).data,
-            status=status.HTTP_200_OK,
-        )
-
-
 class PricingUnitViewSet(
     mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet
 ):
@@ -2111,9 +2116,7 @@ class OrganizationViewSet(
 
     def get_queryset(self):
         organization = self.request.organization
-        return Organization.objects.filter(pk=organization.pk).prefetch_related(
-            "settings"
-        )
+        return Organization.objects.filter(pk=organization.pk)
 
     def get_serializer_class(self):
         if self.action == "partial_update":
@@ -2507,11 +2510,5 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
     def get_serializer_context(self):
         context = super().get_serializer_context()
         organization = self.request.organization
-        context.update({"organization": organization})
-        return context
-        context = super().get_serializer_context()
-        organization = self.request.organization
-        context.update({"organization": organization})
-        return context
         context.update({"organization": organization})
         return context

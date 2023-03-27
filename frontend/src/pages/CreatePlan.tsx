@@ -5,7 +5,7 @@ import { Button, Col, Form, Modal, Row } from "antd";
 // @ts-ignore
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import clsx from "clsx";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
@@ -269,6 +269,7 @@ function CreatePlan() {
               reset_interval_unit: components[i].reset_interval_unit,
               invoicing_interval_count: components[i].invoicing_interval_count,
               invoicing_interval_unit: components[i].invoicing_interval_unit,
+              bulk_pricing_enabled: components[i].bulk_pricing_enabled,
               prepaid_charge: components[i].prepaid_charge,
             };
 

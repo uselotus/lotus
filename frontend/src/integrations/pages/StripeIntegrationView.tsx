@@ -2,10 +2,10 @@
 import React, { FC, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "antd";
-import { useMutation, useQuery } from "react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { PageLayout } from "../../components/base/PageLayout";
-import { PaymentProcessor } from "../../api/api";
+import { Organization, PaymentProcessor } from "../../api/api";
 import {
   PaymentProcessorSetting,
   Source,
@@ -13,38 +13,25 @@ import {
   TransferSub,
   UpdatePaymentProcessorSettingParams,
 } from "../../types/payment-processor-type";
+import useGlobalStore from "../../stores/useGlobalstore";
+import { components } from "../../gen-types";
 
 const TOAST_POSITION = toast.POSITION.TOP_CENTER;
 
 // create FC component called StripeIntegration
 const StripeIntegrationView: FC = () => {
   // create variable called {id} and set it to type string
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+
   const [isSettingValue, setIsSettingValue] = useState(false);
-  const [currentPaymentProcessorSetting, setCurrentPaymentProcessorSetting] =
-    useState<PaymentProcessorSetting>();
-
-  const getPaymentProcessorSettings = async (): Promise<
-    PaymentProcessorSetting[]
-  > =>
-    PaymentProcessor.getPaymentProcessorSettings({ setting_group: "stripe" });
-
-  const { error, data, isLoading } = useQuery<PaymentProcessorSetting[]>(
-    ["stripe_settings"],
-    getPaymentProcessorSettings
-  );
-
+  const [genCustomerInStripeSetting, setGenCustomerInStripeSetting] =
+    useState<boolean>();
+  const org = useGlobalStore((state) => state.org);
+  const setOrgInfoToStore = useGlobalStore((state) => state.setOrgInfo);
   useEffect(() => {
-    if (!isLoading && !error && data) {
-      setCurrentPaymentProcessorSetting(
-        data.filter(
-          (item) =>
-            item.setting_name === "generate_customer_after_creating_in_lotus"
-        )[0]
-      );
-    }
-  }, [isLoading, error, data]);
+    setGenCustomerInStripeSetting(org?.gen_cust_in_stripe_after_lotus);
+  }, []);
+
+  const navigate = useNavigate();
 
   const importCustomersMutation = useMutation(
     (post: Source) => PaymentProcessor.importCustomers(post),
@@ -97,15 +84,22 @@ const StripeIntegrationView: FC = () => {
     }
   );
 
-  const updatePaymentProcessorSettings = useMutation(
-    (post: UpdatePaymentProcessorSettingParams) =>
-      PaymentProcessor.updatePaymentProcessorSetting(post),
+  const updateGenCustomerInStripeSetting = useMutation(
+    (genCustomerInStripeSettingValue: boolean) => {
+      if (org?.organization_id) {
+        return Organization.updateOrganization(org.organization_id, {
+          gen_cust_in_stripe_after_lotus: genCustomerInStripeSettingValue,
+        });
+      }
+      throw new Error("Organization ID is undefined");
+    },
     {
-      onSuccess: (data: PaymentProcessorSetting) => {
-        setCurrentPaymentProcessorSetting(data);
+      onSuccess: (data: components["schemas"]["Organization"]) => {
+        setOrgInfoToStore(data);
+        setGenCustomerInStripeSetting(data.gen_cust_in_stripe_after_lotus);
         setIsSettingValue(false);
         const state =
-          data.setting_values.value === true ? "Enabled" : "Disabled";
+          data.gen_cust_in_stripe_after_lotus === true ? "Enabled" : "Disabled";
         toast.success(`${state} Create Lotus Customers In Stripe`, {
           position: TOAST_POSITION,
         });
@@ -190,16 +184,10 @@ const StripeIntegrationView: FC = () => {
               aria-describedby="comments-description"
               name="comments"
               type="checkbox"
-              disabled={isSettingValue || !currentPaymentProcessorSetting}
-              checked={
-                currentPaymentProcessorSetting?.setting_values.value === true
-              }
+              disabled={isSettingValue}
+              checked={genCustomerInStripeSetting === true}
               onChange={(value) => {
-                currentPaymentProcessorSetting &&
-                  updatePaymentProcessorSettings.mutate({
-                    setting_values: value.target.checked,
-                    setting_id: currentPaymentProcessorSetting.setting_id,
-                  });
+                updateGenCustomerInStripeSetting.mutate(value.target.checked);
                 setIsSettingValue(true);
               }}
               className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"

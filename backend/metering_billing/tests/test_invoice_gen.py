@@ -1,9 +1,11 @@
 import itertools
 import json
+import unittest.mock as mock
 from datetime import timedelta
 from decimal import Decimal
 
 import pytest
+from dateutil.relativedelta import relativedelta
 from django.urls import reverse
 from metering_billing.models import (
     BillingRecord,
@@ -16,6 +18,7 @@ from metering_billing.models import (
     SubscriptionRecord,
 )
 from metering_billing.serializers.serializer_utils import DjangoJSONEncoder
+from metering_billing.tasks import calculate_invoice_inner
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PRICE_ADJUSTMENT_TYPE
 from model_bakery import baker
@@ -24,7 +27,7 @@ from rest_framework.test import APIClient
 
 
 @pytest.fixture
-def draft_invoice_test_common_setup(
+def invoice_test_common_setup(
     generate_org_and_api_key,
     add_users_to_org,
     api_client_with_api_key_auth,
@@ -34,7 +37,11 @@ def draft_invoice_test_common_setup(
     add_plan_version_to_plan,
     add_subscription_record_to_org,
 ):
-    def do_draft_invoice_test_common_setup(*, auth_method):
+    def do_invoice_test_common_setup(
+        *,
+        auth_method,
+        make_plan_yearly=False,
+    ):
         setup_dict = {}
         # set up organizations and api keys
         org, key = generate_org_and_api_key()
@@ -92,6 +99,9 @@ def draft_invoice_test_common_setup(
         setup_dict["metrics"] = metric_set
         product = add_product_to_org(org)
         plan = add_plan_to_product(product)
+        if make_plan_yearly:
+            plan.plan_duration = "yearly"
+            plan.save()
         plan_version = add_plan_version_to_plan(plan)
         for i, (fmu, cpb, mupb) in enumerate(
             zip([50, 0, 1], [5, 0.05, 2], [100, 1, 1])
@@ -124,13 +134,13 @@ def draft_invoice_test_common_setup(
 
         return setup_dict
 
-    return do_draft_invoice_test_common_setup
+    return do_invoice_test_common_setup
 
 
 @pytest.mark.django_db(transaction=True)
 class TestGenerateInvoice:
-    def test_generate_invoice(self, draft_invoice_test_common_setup):
-        setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
+    def test_generate_invoice(self, invoice_test_common_setup):
+        setup_dict = invoice_test_common_setup(auth_method="api_key")
 
         prev_invoices_len = Invoice.objects.filter(
             payment_status=Invoice.PaymentStatus.DRAFT
@@ -148,12 +158,10 @@ class TestGenerateInvoice:
 
         assert new_invoices_len == prev_invoices_len  # don't generate from drafts
 
-    def test_generate_invoice_with_price_adjustments(
-        self, draft_invoice_test_common_setup
-    ):
+    def test_generate_invoice_with_price_adjustments(self, invoice_test_common_setup):
         # deleting inv objects because it marks it as already paid and we get 0s everywhere
 
-        setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
+        setup_dict = invoice_test_common_setup(auth_method="api_key")
         Invoice.objects.all().delete()
         br = BillingRecord.objects.filter(recurring_charge__isnull=False).first()
         br.next_invoicing_date = br.invoicing_dates[0]
@@ -228,8 +236,8 @@ class TestGenerateInvoice:
         after_cost = response.data["invoices"][0]["amount"]
         assert Decimal("20") == after_cost
 
-    def test_generate_invoice_with_taxes(self, draft_invoice_test_common_setup):
-        setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
+    def test_generate_invoice_with_taxes(self, invoice_test_common_setup):
+        setup_dict = invoice_test_common_setup(auth_method="api_key")
 
         payload = {
             "include_next_period": False,
@@ -270,8 +278,8 @@ class TestGenerateInvoice:
         after_cost = response.data["invoices"][0]["amount"]
         assert (before_cost * Decimal("1.2") - after_cost) < Decimal("0.01")
 
-    def test_generate_invoice_pdf(self, draft_invoice_test_common_setup):
-        setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
+    def test_generate_invoice_pdf(self, invoice_test_common_setup):
+        setup_dict = invoice_test_common_setup(auth_method="api_key")
         SubscriptionRecord.objects.all().delete()
         Event.objects.all().delete()
         payload = {
@@ -308,3 +316,54 @@ class TestGenerateInvoice:
 
         result_invoice = Invoice.objects.order_by("-invoice_number").first()
         assert result_invoice.invoice_pdf != ""
+
+
+@pytest.mark.django_db(transaction=True)
+class TestInvoiceTask:
+    def test_call_invoice_on_subscription_end(self, invoice_test_common_setup):
+        setup_dict = invoice_test_common_setup(auth_method="api_key")
+        mock_date = setup_dict["subscription_record"].end_date + relativedelta(
+            minutes=30, seconds=1
+        )
+        invoices_before = len(Invoice.objects.all())
+        with (
+            mock.patch(
+                "metering_billing.tasks.now_utc",
+                return_value=mock_date,
+            ),
+            mock.patch(
+                "metering_billing.invoice.now_utc",
+                return_value=mock_date,
+            ),
+        ):
+            calculate_invoice_inner()
+        invoices_after = len(Invoice.objects.all())
+        assert invoices_after == invoices_before + 1
+
+    def test_call_invoice_on_intermediate_billing_record(
+        self, invoice_test_common_setup
+    ):
+        setup_dict = invoice_test_common_setup(
+            auth_method="api_key", make_plan_yearly=True
+        )
+        sr_start_plus_month = (
+            setup_dict["subscription_record"].start_date
+            + relativedelta(months=1)
+            + relativedelta(minutes=30, seconds=1)
+        )
+        assert sr_start_plus_month < setup_dict["subscription_record"].end_date
+        mock_date = sr_start_plus_month + relativedelta(minutes=30)
+        invoices_before = len(Invoice.objects.all())
+        with (
+            mock.patch(
+                "metering_billing.tasks.now_utc",
+                return_value=mock_date,
+            ),
+            mock.patch(
+                "metering_billing.invoice.now_utc",
+                return_value=mock_date,
+            ),
+        ):
+            calculate_invoice_inner()
+        invoices_after = len(Invoice.objects.all())
+        assert invoices_after == invoices_before + 1

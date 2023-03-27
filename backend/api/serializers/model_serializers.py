@@ -72,7 +72,11 @@ from rest_framework.exceptions import ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 logger = logging.getLogger("django.server")
-kafka_producer = Producer()
+USE_KAFKA = settings.USE_KAFKA
+if USE_KAFKA:
+    kafka_producer = Producer()
+else:
+    kafka_producer = None
 
 
 class TagNameSerializer(TimezoneFieldMixin, serializers.ModelSerializer):
@@ -1441,7 +1445,7 @@ class InvoiceUpdateSerializer(
             "payment_status", instance.payment_status
         )
         instance.save()
-        if instance.payment_status == Invoice.PaymentStatus.PAID:
+        if instance.payment_status == Invoice.PaymentStatus.PAID and kafka_producer:
             kafka_producer.produce_invoice_pay_in_full(
                 invoice=instance, payment_date=now_utc(), source="lotus_out_of_band"
             )
@@ -1544,14 +1548,30 @@ class PlanSerializer(
             )
 
     def get_active_version(self, obj) -> int:
-        return (
-            obj.versions.active()
-            .filter(is_custom=False)
-            .values_list("version", flat=True)
-            .order_by("-version")
-            .first()
-            or 0
-        )
+        try:
+            now = now_utc()
+            return max(
+                [
+                    x.version
+                    for x in obj.versions_prefetched
+                    if not x.is_custom
+                    and x.active_from <= now
+                    and (x.active_to is None or x.active_to > now)
+                ],
+                default=0,
+            )
+        except AttributeError:
+            logger.error(
+                "PlanSerializer.get_active_version() called without prefetching 'versions_prefetched'"
+            )
+            return (
+                obj.versions.active()
+                .filter(is_custom=False)
+                .values_list("version", flat=True)
+                .order_by("-version")
+                .first()
+                or 0
+            )
 
     def get_active_subscriptions(self, obj) -> int:
         try:
@@ -1758,6 +1778,7 @@ class SubscriptionRecordCreateSerializer(
         source="billing_plan",
         queryset=PlanVersion.plan_versions.all(),
         write_only=True,
+        allow_null=True,
         help_text="The Lotus version_id, found in the billing plan object. For maximum specificity, you can use this to control exactly what plan version becomes part of the subscription.",
         required=False,
     )
@@ -1767,6 +1788,7 @@ class SubscriptionRecordCreateSerializer(
         queryset=Plan.objects.all(),
         write_only=True,
         required=False,
+        allow_null=True,
         help_text="The Lotus plan_id, found in the billing plan object. We will make a best-effort attempt to find the correct plan version (matching preferred currencies, prioritizing custom plans), but if more than one plan version or no plan version matches these criteria this will return an error.",
     )
     component_fixed_charges_initial_units = ComponentsFixedChargeInitialValueSerializer(

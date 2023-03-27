@@ -13,6 +13,45 @@ from typing import Optional
 
 import posthog
 import pytz
+from dateutil import parser
+from dateutil.relativedelta import relativedelta
+from django.conf import settings
+from django.db.models import (
+    Count,
+    DecimalField,
+    F,
+    Max,
+    Min,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
+from django.db.utils import IntegrityError
+from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiParameter,
+    extend_schema,
+    inline_serializer,
+)
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import (
+    action,
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from api.serializers.model_serializers import (
     AddOnSubscriptionRecordCreateSerializer,
     AddOnSubscriptionRecordSerializer,
@@ -48,37 +87,8 @@ from api.serializers.nonmodel_serializers import (
     CustomerDeleteResponseSerializer,
     FeatureAccessRequestSerializer,
     FeatureAccessResponseSerializer,
-    GetInvoicePdfURLRequestSerializer,
-    GetInvoicePdfURLResponseSerializer,
     MetricAccessRequestSerializer,
     MetricAccessResponseSerializer,
-)
-from dateutil import parser
-from dateutil.relativedelta import relativedelta
-from django.conf import settings
-from django.db.models import (
-    Count,
-    DecimalField,
-    F,
-    Max,
-    Min,
-    OuterRef,
-    Prefetch,
-    Q,
-    Subquery,
-    Sum,
-    Value,
-)
-from django.db.models.functions import Coalesce
-from django.db.utils import IntegrityError
-from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import (
-    OpenApiExample,
-    OpenApiParameter,
-    extend_schema,
-    inline_serializer,
 )
 from metering_billing.auth.auth_utils import (
     PermissionPolicyMixin,
@@ -154,21 +164,16 @@ from metering_billing.webhooks import (
     subscription_cancelled_webhook,
     subscription_created_webhook,
 )
-from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.decorators import (
-    action,
-    api_view,
-    authentication_classes,
-    permission_classes,
-)
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 IDEMPOTENCY_ID_NAMESPACE = settings.IDEMPOTENCY_ID_NAMESPACE
+logger = logging.getLogger("django.server")
+USE_KAFKA = settings.USE_KAFKA
+if USE_KAFKA:
+    kafka_producer = Producer()
+else:
+    kafka_producer = None
 
 logger = logging.getLogger("django.server")
 
@@ -248,7 +253,10 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             return CustomerCreateSerializer
         elif self.action == "archive":
             return EmptySerializer
-
+        elif self.action == "cost_analysis":
+            return PeriodRequestSerializer
+        elif self.action == "draft_invoice":
+            return DraftInvoiceRequestSerializer
         if default:
             return default
         return CustomerSerializer
@@ -313,9 +321,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def draft_invoice(self, request, customer_id=None):
         customer = self.get_object()
         organization = request.organization
-        serializer = DraftInvoiceRequestSerializer(
-            data=request.query_params, context={"organization": organization}
-        )
+        serializer = self.get_serializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         sub_records = SubscriptionRecord.objects.active().filter(
             organization=organization, customer=customer
@@ -353,9 +359,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     )
     def cost_analysis(self, request, customer_id=None):
         organization = request.organization
-        serializer = PeriodRequestSerializer(
-            data=request.query_params, context={"organization": organization}
-        )
+        serializer = self.get_serializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         customer = self.get_object()
         start_date, end_date = (
@@ -374,7 +378,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             }
         cost_metrics = Metric.objects.filter(
             organization=organization, is_cost_metric=True, status=METRIC_STATUS.ACTIVE
-        )
+        ).prefetch_related("numeric_filters", "categorical_filters")
         for metric in cost_metrics:
             usage_ret = metric.get_daily_total_usage(
                 start_date,
@@ -412,6 +416,11 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             .prefetch_related("billing_plan__plan_components")
             .prefetch_related("billing_plan__plan_components__billable_metric")
             .prefetch_related("billing_plan__plan_components__tiers")
+            .prefetch_related("billing_records")
+            .prefetch_related("billing_records__component")
+            .prefetch_related("billing_records__recurring_charge")
+            .prefetch_related("billing_records__component__billable_metric")
+            .prefetch_related("billing_records__component__tiers")
         )
         for subscription in subscriptions:
             earned_revenue = subscription.calculate_earned_revenue_per_day()
@@ -432,10 +441,16 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return_dict["total_cost"] = total_cost
         return_dict["total_revenue"] = total_revenue
         if total_revenue == 0:
-            return_dict["margin"] = 0
+            return_dict["profit_margin"] = 0
         else:
-            return_dict["margin"] = convert_to_decimal(
+            return_dict["profit_margin"] = convert_to_decimal(
                 (total_revenue - total_cost) / total_revenue
+            )
+        if total_cost == 0:
+            return_dict["markup"] = 0
+        else:
+            return_dict["markup"] = convert_to_decimal(
+                (total_revenue - total_cost) / total_cost
             )
         serializer = CostAnalysisSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
@@ -468,17 +483,20 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             except Exception:
                 username = None
             organization = self.request.organization or self.request.user.organization
-            posthog.capture(
-                POSTHOG_PERSON
-                if POSTHOG_PERSON
-                else (
-                    username
-                    if username
-                    else organization.organization_name + " (API Key)"
-                ),
-                event=f"{self.action}_customer",
-                properties={"organization": organization.organization_name},
-            )
+            try:
+                posthog.capture(
+                    POSTHOG_PERSON
+                    if POSTHOG_PERSON
+                    else (
+                        username
+                        if username
+                        else organization.organization_name + " (API Key)"
+                    ),
+                    event=f"{self.action}_customer",
+                    properties={"organization": organization.organization_name},
+                )
+            except Exception:
+                pass
         return response
 
 
@@ -572,27 +590,12 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         # we need to construct the prefetch objects so that we are prefetching the more
         # deeply nested objectsd as part of the call:
         # https://forum.djangoproject.com/t/drf-and-nested-serialisers-optimisation-with-prefect-related/4272
-        active_subscriptions_subquery = SubscriptionRecord.objects.filter(
-            billing_plan=OuterRef("pk"),
-            start_date__lte=now,
-            end_date__gte=now,
-        ).annotate(active_subscriptions=Count("*"))
         qs = qs.prefetch_related(
             Prefetch(
                 "versions",
                 queryset=PlanVersion.plan_versions.filter(
                     *versions_filters,
                     organization=organization,
-                )
-                .annotate(
-                    active_subscriptions=Coalesce(
-                        Subquery(
-                            active_subscriptions_subquery.values(
-                                "active_subscriptions"
-                            )[:1]
-                        ),
-                        Value(0),
-                    )
                 )
                 .select_related("price_adjustment", "created_by", "currency")
                 .prefetch_related("usage_alerts", "features", "target_customers")
@@ -630,6 +633,22 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                         to_attr="recurring_charges_prefetched",
                     ),
                 )
+                .annotate(
+                    active_subscriptions=Coalesce(
+                        Subquery(
+                            SubscriptionRecord.objects.filter(
+                                organization=organization,
+                                billing_plan=OuterRef("pk"),
+                                start_date__lte=now,
+                                end_date__gte=now,
+                            )
+                            .values("billing_plan")
+                            .annotate(active_subscriptions=Count("id"))
+                            .values("active_subscriptions")[:1]
+                        ),
+                        Value(0),
+                    )
+                )
                 .order_by("created_on"),
                 to_attr="versions_prefetched",
             ),
@@ -666,17 +685,20 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             except Exception:
                 username = None
             organization = self.request.organization
-            posthog.capture(
-                POSTHOG_PERSON
-                if POSTHOG_PERSON
-                else (
-                    username
-                    if username
-                    else organization.organization_name + " (API Key)"
-                ),
-                event=f"{self.action}_plan",
-                properties={"organization": organization.organization_name},
-            )
+            try:
+                posthog.capture(
+                    POSTHOG_PERSON
+                    if POSTHOG_PERSON
+                    else (
+                        username
+                        if username
+                        else organization.organization_name + " (API Key)"
+                    ),
+                    event=f"{self.action}_plan",
+                    properties={"organization": organization.organization_name},
+                )
+            except Exception:
+                pass
         return response
 
     def get_serializer_context(self):
@@ -1202,13 +1224,12 @@ class SubscriptionViewSet(
         url_name="attach_addon",
     )
     def attach_addon(self, request, *args, **kwargs):
-        organization = self.request.organization
         attach_to_sr = self.get_object()
         serializer = self.get_serializer(
             data=request.data,
             context={
+                **self.get_serializer_context(),
                 "attach_to_subscription_record": attach_to_sr,
-                "organization": organization,
                 "customer": attach_to_sr.customer,
             },
         )
@@ -1308,6 +1329,20 @@ class SubscriptionViewSet(
         # now we can actually create the subscription record
         response = SubscriptionRecordSerializer(subscription_record).data
         subscription_created_webhook(subscription_record, subscription_data=response)
+
+        try:
+            posthog.capture(
+                POSTHOG_PERSON
+                if POSTHOG_PERSON
+                else (organization.organization_name + " (Unknown)"),
+                event="DEPRECATED_add_subscription",
+                properties={
+                    "organization": organization.organization_name,
+                    "subscription": response,
+                },
+            )
+        except Exception:
+            pass
         return Response(
             response,
             status=status.HTTP_201_CREATED,
@@ -1346,6 +1381,20 @@ class SubscriptionViewSet(
         for subscription in qs:
             subscription_data = SubscriptionRecordSerializer(subscription).data
             subscription_cancelled_webhook(subscription, subscription_data)
+
+            try:
+                posthog.capture(
+                    POSTHOG_PERSON
+                    if POSTHOG_PERSON
+                    else (organization.organization_name + " (Unknown)"),
+                    event="DEPRECATED_cancel_subscription",
+                    properties={
+                        "organization": organization.organization_name,
+                        "subscription": subscription_data,
+                    },
+                )
+            except Exception:
+                pass
 
         return Response(ret, status=status.HTTP_200_OK)
 
@@ -1451,6 +1500,19 @@ class SubscriptionViewSet(
             pk__in=original_qs, organization=organization
         )
         ret = SubscriptionRecordSerializer(return_qs, many=True).data
+
+        try:
+            posthog.capture(
+                POSTHOG_PERSON
+                if POSTHOG_PERSON
+                else (organization.organization_name + " (Unknown)"),
+                event="DEPRECATED_update_subscription",
+                properties={
+                    "organization": organization.organization_name,
+                },
+            )
+        except Exception:
+            pass
         return Response(ret, status=status.HTTP_200_OK)
 
         ## DISPATCH
@@ -1463,17 +1525,20 @@ class SubscriptionViewSet(
             except Exception:
                 username = None
             organization = self.request.organization
-            posthog.capture(
-                POSTHOG_PERSON
-                if POSTHOG_PERSON
-                else (
-                    username
-                    if username
-                    else organization.organization_name + " (API Key)"
-                ),
-                event=f"{self.action}_subscription",
-                properties={"organization": organization.organization_name},
-            )
+            try:
+                posthog.capture(
+                    POSTHOG_PERSON
+                    if POSTHOG_PERSON
+                    else (
+                        username
+                        if username
+                        else organization.organization_name + " (API Key)"
+                    ),
+                    event=f"{self.action}_subscription",
+                    properties={"organization": organization.organization_name},
+                )
+            except Exception:
+                pass
             # if username:
             #     if self.action == "plans":
             #         action.send(
@@ -1539,7 +1604,8 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     @extend_schema(request=InvoiceUpdateSerializer, responses=InvoicePaymentSerializer)
     def partial_update(self, request, *args, **kwargs):
-        super().partial_update(request, *args, **kwargs)
+        kwargs["partial"] = True
+        return self.update(request, *args, **kwargs)
 
     def update(self, request, *args, **kwargs):
         invoice = self.get_object()
@@ -1570,17 +1636,20 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             except Exception:
                 username = None
             organization = self.request.organization
-            posthog.capture(
-                POSTHOG_PERSON
-                if POSTHOG_PERSON
-                else (
-                    username
-                    if username
-                    else organization.organization_name + " (API Key)"
-                ),
-                event=f"{self.action}_invoice",
-                properties={"organization": organization.organization_name},
-            )
+            try:
+                posthog.capture(
+                    POSTHOG_PERSON
+                    if POSTHOG_PERSON
+                    else (
+                        username
+                        if username
+                        else organization.organization_name + " (API Key)"
+                    ),
+                    event=f"{self.action}_invoice",
+                    properties={"organization": organization.organization_name},
+                )
+            except Exception:
+                pass
         return response
 
     @extend_schema(
@@ -1800,17 +1869,20 @@ class CustomerBalanceAdjustmentViewSet(
             except Exception:
                 username = None
             organization = self.request.organization
-            posthog.capture(
-                POSTHOG_PERSON
-                if POSTHOG_PERSON
-                else (
-                    username
-                    if username
-                    else organization.organization_name + " (API Key)"
-                ),
-                event=f"{self.action}_balance_adjustment",
-                properties={"organization": organization.organization_name},
-            )
+            try:
+                posthog.capture(
+                    POSTHOG_PERSON
+                    if POSTHOG_PERSON
+                    else (
+                        username
+                        if username
+                        else organization.organization_name + " (API Key)"
+                    ),
+                    event=f"{self.action}_balance_adjustment",
+                    properties={"organization": organization.organization_name},
+                )
+            except Exception:
+                pass
             # if username:
             #     if self.action == "plans":
             #         action.send(
@@ -1956,6 +2028,9 @@ class FeatureAccessView(APIView):
         subscription_records = subscription_records.prefetch_related(
             "billing_plan__features",
             "billing_plan__plan",
+            "addon_subscription_records",
+            "addon_subscription_records__billing_plan__features",
+            "addon_subscription_records__billing_plan__plan",
         )
         return_dict = {
             "customer": customer,
@@ -2040,25 +2115,6 @@ class Healthcheck(APIView):
         )
 
 
-class GetInvoicePdfURL(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
-
-    @extend_schema(
-        parameters=[GetInvoicePdfURLRequestSerializer],
-        responses=GetInvoicePdfURLResponseSerializer,
-        exclude=True,
-    )
-    def get(self, request, format=None):
-        organization = request.organization
-        serializer = GetInvoicePdfURLRequestSerializer(
-            data=request.query_params, context={"organization": organization}
-        )
-        serializer.is_valid(raise_exception=True)
-        invoice = serializer.validated_data["invoice"]
-        url = get_invoice_presigned_url(invoice).get("url")
-        return Response({"url": url}, status=status.HTTP_200_OK)
-
-
 class ConfirmIdemsReceivedView(APIView):
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
@@ -2114,11 +2170,13 @@ class ConfirmIdemsReceivedView(APIView):
         ids_not_found = []
         for i in range(num_batches_idems):
             idem_batch = set(idempotency_ids[i * 1000 : (i + 1) * 1000])
-            idem_batch = {uuid.uuid5(IDEMPOTENCY_ID_NAMESPACE, x) for x in idem_batch}
+            uuidv5_idem_batch = {
+                uuid.uuid5(IDEMPOTENCY_ID_NAMESPACE, x) for x in idem_batch
+            }
             events = Event.objects.filter(
                 organization=organization,
                 time_created__gte=now_minus_lookback,
-                uuidv5_idempotency_id__in=idem_batch,
+                uuidv5_idempotency_id__in=uuidv5_idem_batch,
             )
             if request.data.get("customer_id"):
                 events = events.filter(customer_id=request.data.get("customer_id"))
@@ -2131,10 +2189,6 @@ class ConfirmIdemsReceivedView(APIView):
             },
             status=status.HTTP_200_OK,
         )
-
-
-logger = logging.getLogger("django.server")
-kafka_producer = Producer()
 
 
 def load_event(request: HttpRequest) -> Optional[dict]:
@@ -2250,7 +2304,8 @@ def track_event(request):
                 "organization_id": organization_pk,
                 "event": transformed_event,
             }
-            kafka_producer.produce(customer_id, stream_events)
+            if kafka_producer:
+                kafka_producer.produce(customer_id, stream_events)
         except Exception as e:
             bad_events[idempotency_id] = str(e)
             continue
@@ -2409,15 +2464,16 @@ class GetCustomerFeatureAccessView(APIView):
             username = self.request.user.username
         except Exception:
             username = None
-        posthog.capture(
-            POSTHOG_PERSON
-            if POSTHOG_PERSON
-            else (
-                username if username else organization.organization_name + " (Unknown)"
-            ),
-            event="DEPRECATED_get_feature_access",
-            properties={"organization": organization.organization_name},
-        )
+        try:
+            posthog.capture(
+                POSTHOG_PERSON
+                if POSTHOG_PERSON
+                else (username if username else result + " (Unknown)"),
+                event="DEPRECATED_get_feature_access",
+                properties={"organization": organization.organization_name},
+            )
+        except Exception:
+            pass
         customer = serializer.validated_data["customer"]
         feature_name = serializer.validated_data.get("feature_name")
         subscriptions = (
@@ -2492,15 +2548,21 @@ class GetCustomerEventAccessView(APIView):
             username = self.request.user.username
         except Exception:
             username = None
-        posthog.capture(
-            POSTHOG_PERSON
-            if POSTHOG_PERSON
-            else (
-                username if username else organization.organization_name + " (Unknown)"
-            ),
-            event="DEPRECATED_get_metric_access",
-            properties={"organization": organization.organization_name},
-        )
+        try:
+            posthog.capture(
+                POSTHOG_PERSON
+                if POSTHOG_PERSON
+                else (
+                    username
+                    if username
+                    else organization.organization_name + " (Unknown)"
+                ),
+                event="DEPRECATED_get_metric_access",
+                properties={"organization": organization.organization_name},
+            )
+        except Exception:
+            pass
+
         customer = serializer.validated_data["customer"]
         event_name = serializer.validated_data.get("event_name")
         access_metric = serializer.validated_data.get("metric")

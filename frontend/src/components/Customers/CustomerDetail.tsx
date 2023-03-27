@@ -6,7 +6,7 @@ import {
   useQueryClient,
   useQuery,
   UseQueryResult,
-} from "react-query";
+} from '@tanstack/react-query';
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
 import { useNavigate, useParams } from "react-router-dom";
@@ -49,10 +49,7 @@ function CustomerDetail() {
   const [endDate, setEndDate] = useState<string>(dayjs().format("YYYY-MM-DD"));
   const { data: plans }: UseQueryResult<components["schemas"]["PlanDetail"][]> =
     useQuery<components["schemas"]["PlanDetail"][]>(["plan_list"], () =>
-      Plan.getPlans({
-        version_custom_type: "public_only",
-        version_status: ["active"] as ("active" | "not_started" | "ended")[],
-      }).then((res) => res)
+      Plan.getPlans().then((res) => res)
     );
 
   const { data: pricingUnits }: UseQueryResult<CurrencyType[]> = useQuery<
@@ -76,7 +73,8 @@ function CustomerDetail() {
         per_day: [],
         total_revenue: 0,
         total_cost: 0,
-        margin: 0,
+        profit_margin: 0,
+        markup: 0,
       },
     }
   );

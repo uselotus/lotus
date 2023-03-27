@@ -1,9 +1,9 @@
 import React, { FC, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Authentication, instance } from "../api/api";
 import { Card, Input, Button, Form } from "antd";
 import "./Login.css";
-import { useQueryClient, useMutation } from "react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import Cookies from "universal-cookie";
 import posthog from "posthog-js";
@@ -24,13 +24,21 @@ interface LoginForm extends HTMLFormControlsCollection {
 interface FormElements extends HTMLFormElement {
   readonly elements: LoginForm;
 }
+interface LocationState {
+  redirectTo?: string;
+}
+interface LoginProps {
+  username?: string;
+  password?: string;
+}
 
-const Login: FC = () => {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+const Login: FC<LoginProps> = (props) => {
+  const [username, setUsername] = useState(props.username || "");
+  const [password, setPassword] = useState(props.password || "");
   const [error, setError] = useState("");
   const setUsernameToStore = useGlobalStore((state) => state.setUsername);
   const queryClient = useQueryClient();
+  const location = useLocation();
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
@@ -43,8 +51,8 @@ const Login: FC = () => {
     setUsername(event.target.value);
   };
 
-  const redirectDashboard = () => {
-    navigate("/dashboard");
+  const redirectAfterLogin = () => {
+    navigate((location.state as LocationState).redirectTo!);
   };
 
   const isDemo = (import.meta as any).env.VITE_IS_DEMO === "true";
@@ -73,8 +81,8 @@ const Login: FC = () => {
 
         cookies.set("Token", token);
         instance.defaults.headers.common.Authorization = `Token ${token}`;
-        queryClient.refetchQueries("session");
-        redirectDashboard();
+        queryClient.refetchQueries(["session"]);
+        redirectAfterLogin();
       },
       onError: (error: QueryErrors) => {
         // setError(error.message);

@@ -145,7 +145,16 @@ class BACKTEST_KPI(models.TextChoices):
     TOTAL_REVENUE = ("total_revenue", _("Total Revenue"))
 
 
-class BACKTEST_STATUS(models.TextChoices):
+class ANALYSIS_KPI(models.TextChoices):
+    TOTAL_REVENUE = ("total_revenue", _("Total Revenue"))
+    AVERAGE_REVENUE = ("average_revenue", _("Average Revenue"))
+    NEW_REVENUE = ("new_revenue", _("New Revenue"))
+    TOTAL_COST = ("total_cost", _("Total Cost"))
+    PROFIT = ("profit", _("Profit"))
+    CHURN = ("churn", _("Churn"))
+
+
+class EXPERIMENT_STATUS(models.TextChoices):
     RUNNING = ("running", _("Running"))
     COMPLETED = ("completed", _("Completed"))
     FAILED = ("failed", _("Failed"))
@@ -258,10 +267,6 @@ class ORGANIZATION_SETTING_NAMES(models.TextChoices):
     GENERATE_CUSTOMER_IN_BRAINTREE_AFTER_LOTUS = (
         "gen_cust_in_braintree_after_lotus",
         _("Generate in Braintree after Lotus"),
-    )
-    SUBSCRIPTION_FILTER_KEYS = (
-        "subscription_filter_keys",
-        _("Subscription Filter Keys"),
     )
     PAYMENT_GRACE_PERIOD = ("payment_grace_period", _("Payment Grace Period"))
     CRM_CUSTOMER_SOURCE = ("crm_customer_source", _("CRM Customer Source"))

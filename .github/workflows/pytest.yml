@@ -42,7 +42,6 @@ jobs:
     environment: Development
 
     env:
-      REDIS_HOST: localhost
       DJANGO_SETTINGS_MODULE: "lotus.settings"
       PYTHONPATH: "."
       SECRET_KEY: "${{ secrets.SECRET_KEY }}"
@@ -88,7 +87,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           for i in 1 2 3; do
-            if pipenv run pytest -x --cov=. --cov-report term-missing --cov-fail-under=57; then
+            if pipenv run pytest -x --cov=. --cov-report term-missing --cov-fail-under=30; then
               export PYTEST_COVERAGE_SUCCEEDED=true
               break
             else

@@ -7,6 +7,7 @@ import boto3
 from botocore.exceptions import ClientError
 from django.conf import settings
 from django.forms.models import model_to_dict
+from django.utils.text import slugify
 from reportlab.lib.colors import Color, HexColor
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfbase import pdfmetrics
@@ -14,7 +15,8 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.rl_config import TTFSearchPath
 
-from metering_billing.models import InvoiceLineItemAdjustment
+from metering_billing.models import InvoiceLineItemAdjustment, Organization
+from metering_billing.s3_utils import get_bucket_name
 from metering_billing.serializers.serializer_utils import PlanUUIDField
 from metering_billing.utils import make_hashable
 from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
@@ -557,15 +559,6 @@ def get_invoice_pdf_key(invoice):
     return key
 
 
-def get_invoice_pdf_bucket_name(debug, team_id):
-    bucket_name = "lotus-invoice-pdfs-2f7d6d16"
-    if debug:
-        bucket_name = "dev-" + bucket_name
-    else:
-        bucket_name = "lotus-" + team_id
-    return bucket_name
-
-
 def s3_file_exists(bucket_name, key):
     try:
         s3.Object(bucket_name, key).load()
@@ -599,7 +592,7 @@ def generate_invoice_pdf(invoice):
     return buffer
 
 
-def upload_invoice_pdf_to_s3(invoice, team_id, bucket_name):
+def upload_invoice_pdf_to_s3(invoice, bucket_name):
     try:
         key = get_invoice_pdf_key(invoice)
         buffer = generate_invoice_pdf(invoice)
@@ -622,14 +615,23 @@ def upload_invoice_pdf_to_s3(invoice, team_id, bucket_name):
 
 
 def get_invoice_presigned_url(invoice):
-    debug = settings.DEBUG
-    team_id = invoice.organization.team.team_id.hex
-
-    bucket_name = get_invoice_pdf_bucket_name(debug, team_id)
+    bucket_name, prod = get_bucket_name(invoice.organization)
     key = get_invoice_pdf_key(invoice)
+    if not prod:
+        team_id = invoice.organization.team.team_id.hex
+        team = invoice.organization.team
+        team_id = team.team_id.hex + "-" + slugify(team.name)
+        key = f"{team_id}/{key}"
+
+    if (
+        invoice.organization.organization_type
+        == Organization.OrganizationType.EXTERNAL_DEMO
+        or settings.DEBUG
+    ):
+        return {"exists": False, "url": None}
 
     if not s3_file_exists(bucket_name=bucket_name, key=key):
-        upload_invoice_pdf_to_s3(invoice, team_id, bucket_name)
+        upload_invoice_pdf_to_s3(invoice, bucket_name)
 
     s3_client = boto3.client("s3")
 

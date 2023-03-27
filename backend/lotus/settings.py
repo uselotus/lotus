@@ -22,7 +22,6 @@ from urllib.parse import urlparse
 import dj_database_url
 import django_heroku
 import jwt
-import kafka_helper
 import posthog
 import sentry_sdk
 from decouple import config
@@ -114,6 +113,9 @@ EVENT_NAME_NAMESPACE = uuid.UUID("843D7005-63DE-4B72-B731-77E2866DCCFF")
 IDEMPOTENCY_ID_NAMESPACE = uuid.UUID("904C0FFB-7005-414E-9B7D-8E3C5DDE266D")
 # CRM Integration
 VESSEL_API_KEY = config("VESSEL_API_KEY", default=None)
+# Partial startup
+USE_WEBHOOKS = not config("NO_WEBHOOKS", default=False, cast=bool)
+USE_KAFKA = not config("NO_EVENTS", default=False, cast=bool)
 
 if SENTRY_DSN != "":
     if not DEBUG:
@@ -325,14 +327,12 @@ def key_deserializer(key):
 # Kafka/Redpanda Settings
 KAFKA_PREFIX = config("KAFKA_PREFIX", default="")
 KAFKA_EVENTS_TOPIC = KAFKA_PREFIX + config("EVENTS_TOPIC", default="test-topic")
-if type(KAFKA_EVENTS_TOPIC) is bytes:
-    KAFKA_EVENTS_TOPIC = KAFKA_EVENTS_TOPIC.decode("utf-8")
 KAFKA_INVOICE_TOPIC = KAFKA_PREFIX + config("INVOICE_TOPIC", default="invoice-test")
 KAFKA_PAYMENT_TOPIC = KAFKA_PREFIX + config("PAYMENT_TOPIC", default="payment-test")
 KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
 KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
 KAFKA_HOST = config("KAFKA_URL", default="127.0.0.1:9092")
-if KAFKA_HOST:
+if KAFKA_HOST and USE_KAFKA:
     if "," not in KAFKA_HOST:
         KAFKA_HOST = KAFKA_HOST
     else:
@@ -357,18 +357,10 @@ if KAFKA_HOST:
         "client_id": "events-client",
     }
 
-    KAFKA_CERTIFICATE = config("KAFKA_CLIENT_CERT", default=None)
-    KAFKA_KEY = config("KAFKA_CLIENT_CERT_KEY", default=None)
-    KAFKA_CA = config("KAFKA_TRUSTED_CERT", default=None)
     KAFKA_SASL_USERNAME = config("KAFKA_SASL_USERNAME", default=None)
     KAFKA_SASL_PASSWORD = config("KAFKA_SASL_PASSWORD", default=None)
 
-    if KAFKA_CERTIFICATE and KAFKA_KEY and KAFKA_CA:
-        ssl_context = kafka_helper.get_kafka_ssl_context()
-        for cfg in [producer_config, consumer_config, admin_client_config]:
-            cfg["security_protocol"] = "SSL"
-            cfg["ssl_context"] = ssl_context
-    elif KAFKA_SASL_USERNAME and KAFKA_SASL_PASSWORD:
+    if KAFKA_SASL_USERNAME and KAFKA_SASL_PASSWORD:
         for cfg in [producer_config, consumer_config, admin_client_config]:
             cfg["security_protocol"] = "SASL_SSL"
             cfg["sasl_mechanism"] = "SCRAM-SHA-256"
@@ -380,7 +372,7 @@ if KAFKA_HOST:
     ADMIN_CLIENT = KafkaAdminClient(**admin_client_config)
 
     existing_topics = ADMIN_CLIENT.list_topics()
-    if KAFKA_EVENTS_TOPIC not in existing_topics and SELF_HOSTED:
+    if KAFKA_EVENTS_TOPIC not in existing_topics and DOCKERIZED:
         try:
             ADMIN_CLIENT.create_topics(
                 new_topics=[
@@ -393,12 +385,25 @@ if KAFKA_HOST:
             )
         except TopicAlreadyExistsError:
             pass
-    if KAFKA_INVOICE_TOPIC not in existing_topics and SELF_HOSTED:
+    if KAFKA_INVOICE_TOPIC not in existing_topics and DOCKERIZED:
         try:
             ADMIN_CLIENT.create_topics(
                 new_topics=[
                     NewTopic(
                         name=KAFKA_INVOICE_TOPIC,
+                        num_partitions=KAFKA_NUM_PARTITIONS,
+                        replication_factor=KAFKA_REPLICATION_FACTOR,
+                    )
+                ]
+            )
+        except TopicAlreadyExistsError:
+            pass
+    if KAFKA_PAYMENT_TOPIC not in existing_topics and DOCKERIZED:
+        try:
+            ADMIN_CLIENT.create_topics(
+                new_topics=[
+                    NewTopic(
+                        name=KAFKA_PAYMENT_TOPIC,
                         num_partitions=KAFKA_NUM_PARTITIONS,
                         replication_factor=KAFKA_REPLICATION_FACTOR,
                     )
@@ -433,7 +438,7 @@ CELERY_TIMEZONE = "UTC"
 if REDIS_URL is not None:
     CACHES = {
         "default": {
-            "BACKEND": "cache_fallback.FallbackCache",
+            "BACKEND": "lotus.cache_utils.FallbackCache",
         },
         "main_cache": {
             "BACKEND": "django_redis.cache.RedisCache",
@@ -450,11 +455,17 @@ if REDIS_URL is not None:
 else:
     CACHES = {
         "default": {
+            "BACKEND": "lotus.cache_utils.FallbackCache",
+        },
+        "main_cache": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "wild-alpaca",
+        },
+        "fallback_cache": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
             "LOCATION": "unique-snowflake",
-        }
+        },
     }
-
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
@@ -525,8 +536,6 @@ VITE_APP_DIR = BASE_DIR / "src"
 ### AWS S3 ###
 AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID", default="")
 AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY", default="")
-AWS_S3_INVOICE_BUCKET = config("AWS_S3_INVOICE_BUCKET", default="")
-AWS_STORAGE_BUCKET_NAME = AWS_S3_INVOICE_BUCKET
 
 
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
@@ -617,7 +626,7 @@ SPECTACULAR_SETTINGS = {
     "ENUM_NAME_OVERRIDES": {
         "numeric_filter_operators": "metering_billing.utils.enums.NUMERIC_FILTER_OPERATORS.choices",
         "categorical_filter_operators": "metering_billing.utils.enums.CATEGORICAL_FILTER_OPERATORS.choices",
-        "BacktestStatusEnum": "metering_billing.utils.enums.BACKTEST_STATUS.choices",
+        "BacktestStatusEnum": "metering_billing.utils.enums.EXPERIMENT_STATUS.choices",
         "BacktestKPIEnum": "metering_billing.utils.enums.BACKTEST_KPI.choices",
         "PaymentProcesorsEnum": "metering_billing.utils.enums.PAYMENT_PROCESSORS.choices",
         "MetricAggregationEnum": "metering_billing.utils.enums.METRIC_AGGREGATION.choices",
@@ -703,28 +712,33 @@ META = LOTUS_API_KEY and LOTUS_HOST
 django_heroku.settings(locals(), logging=False)
 
 # create svix events
-if SVIX_API_KEY != "":
-    svix = Svix(SVIX_API_KEY)
-elif SVIX_API_KEY == "" and SVIX_JWT_SECRET != "":
-    try:
-        dt = datetime.datetime.now(timezone.utc)
-        utc_time = dt.replace(tzinfo=timezone.utc)
-        utc_timestamp = utc_time.timestamp()
-        payload = {
-            "iat": utc_timestamp,
-            "exp": 2980500639,
-            "nbf": utc_timestamp,
-            "iss": "svix-server",
-            "sub": "org_23rb8YdGqMT0qIzpgGwdXfHirMu",
-        }
-        encoded = jwt.encode(payload, SVIX_JWT_SECRET, algorithm="HS256")
-        SVIX_API_KEY = encoded
-        hostname, _, ips = socket.gethostbyname_ex("svix-server")
-        svix = Svix(SVIX_API_KEY, SvixOptions(server_url=f"http://{ips[0]}:8071"))
-    except Exception:
+if USE_WEBHOOKS:
+    if SVIX_API_KEY != "":
+        svix = Svix(SVIX_API_KEY)
+    elif SVIX_API_KEY == "" and SVIX_JWT_SECRET != "":
+        try:
+            dt = datetime.datetime.now(timezone.utc)
+            utc_time = dt.replace(tzinfo=timezone.utc)
+            utc_timestamp = utc_time.timestamp()
+            payload = {
+                "iat": utc_timestamp,
+                "exp": 2980500639,
+                "nbf": utc_timestamp,
+                "iss": "svix-server",
+                "sub": "org_23rb8YdGqMT0qIzpgGwdXfHirMu",
+            }
+            encoded = jwt.encode(payload, SVIX_JWT_SECRET, algorithm="HS256")
+            SVIX_API_KEY = encoded
+            hostname, _, ips = socket.gethostbyname_ex("svix-server")
+            svix = Svix(SVIX_API_KEY, SvixOptions(server_url=f"http://{ips[0]}:8071"))
+        except Exception:
+            logger.error("Error creating svix connector")
+            svix = None
+    else:
         svix = None
 else:
     svix = None
+
 SVIX_CONNECTOR = svix
 if SVIX_CONNECTOR is not None:
     try:

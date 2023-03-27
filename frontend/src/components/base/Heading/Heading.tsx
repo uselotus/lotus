@@ -5,6 +5,7 @@ import Avatar from "../Avatar/Avatar";
 import Badge from "../Badges/Badges";
 import useGlobalStore from "../../../stores/useGlobalstore";
 import useToggleSlideOver from "../../../stores/useToggleSlideOver";
+import { Button } from "antd";
 
 interface HeadingProps {
   hasBackButton?: boolean;
@@ -17,9 +18,8 @@ const Heading: React.FC<HeadingProps> = ({
   backButton,
   aboveTitle,
 }) => {
-  const { current_user, environment, organization_name } = useGlobalStore(
-    (state) => state.org
-  );
+  const org = useGlobalStore((state) => state.org);
+  const environmentType = useGlobalStore((state) => state.environmentType);
   const { pathname } = useLocation();
   const setOpen = useToggleSlideOver((state) => state.setOpen);
   const currentPath = pathname.split("/")[1];
@@ -42,29 +42,43 @@ const Heading: React.FC<HeadingProps> = ({
             placeholder="Search..."
           />
         </div> */}
-        <h1 className="text-xl">{headingText}</h1>
+        <h1 className="text-xl ml-6">{headingText}</h1>
 
         <div className="flex items-center ml-[58%]">
+          {(import.meta as any).env.VITE_IS_DEMO === "true" && (
+            <Button
+              type="primary"
+              size="small"
+              className="hover:!bg-primary-700 mr-8"
+              style={{ background: "#C3986B", borderColor: "#C3986B" }}
+              onClick={() => {
+                window.location.href = "https://github.com/uselotus/lotus";
+              }}
+            >
+              Star Us On Github
+            </Button>
+          )}
           <div className="mr-10">
             <Badge
               onClick={setOpen}
               className={
-                environment !== "Production"
+                environmentType !== "Production"
                   ? "bg-blue-100 text-blue-800"
                   : "bg-emerald-100 text-emerald-800"
               }
             >
               <Badge.Dot
-                fill={environment !== "Production" ? "#60A5FA" : "#34D399"}
+                fill={environmentType !== "Production" ? "#60A5FA" : "#34D399"}
               />
               <Badge.Content>
                 <span className="flex gap-2 ml-2 justify-center items-center">
-                  <span className="text-sm">{organization_name}</span>
+                  <span className="text-sm">{org?.organization_name}</span>
                   <RightOutlined className="text-[10px]" />
                 </span>
               </Badge.Content>
             </Badge>
           </div>
+
           <div
             aria-hidden
             onClick={setOpen}
@@ -74,7 +88,7 @@ const Heading: React.FC<HeadingProps> = ({
           >
             <Avatar className="w-16 h-16" />
             <span className="text-sm flex gap-2">
-              {current_user.username}{" "}
+              {org?.current_user.username}{" "}
               <svg
                 className="-mr-1 ml-2 h-10 w-10"
                 xmlns="http://www.w3.org/2000/svg"

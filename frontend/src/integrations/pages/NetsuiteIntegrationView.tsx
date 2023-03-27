@@ -2,7 +2,7 @@ import React, { FC, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button, DatePicker } from "antd";
 import moment from "moment";
-import { useMutation, useQuery } from "react-query";
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import { PageLayout } from "../../components/base/PageLayout";
 import { Netsuite } from "../../api/api";
