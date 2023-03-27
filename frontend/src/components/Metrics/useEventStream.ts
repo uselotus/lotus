@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useRef } from "react";
-import { useQuery, UseQueryResult, useQueryClient } from "react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import useDebounce from "../../hooks/useDebounce";
 import { Events } from "../../api/api";

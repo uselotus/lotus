@@ -4,11 +4,6 @@
  */
 
 
-/** Type helpers */
-type Without<T, U> = { [P in Exclude<keyof T, keyof U>]?: never };
-type XOR<T, U> = (T | U) extends object ? (Without<T, U> & U) | (Without<U, T> & T) : T | U;
-type OneOf<T extends any[]> = T extends [infer Only] ? Only : T extends [infer A, infer B, ...infer Rest] ? OneOf<[XOR<A, B>, ...Rest]> : never;
-
 export interface paths {
   "/app/actions/": {
     /** @description API endpoint that allows events to be viewed. */
@@ -407,6 +402,8 @@ export interface paths {
   };
 }
 
+export type webhooks = Record<string, never>;
+
 export interface components {
   schemas: {
     APIToken: {
@@ -418,7 +415,7 @@ export interface components {
        * Format: date-time 
        * @description Once API key expires, clients cannot use it anymore.
        */
-      expiry_date?: string;
+      expiry_date?: string | null;
       /** Format: date-time */
       created: string;
     };
@@ -434,7 +431,7 @@ export interface components {
        * Format: date-time 
        * @description Once API key expires, clients cannot use it anymore.
        */
-      expiry_date?: string;
+      expiry_date?: string | null;
     };
     APITokenRollResponse: {
       api_key: components["schemas"]["APIToken"];
@@ -462,7 +459,7 @@ export interface components {
       action_object: string;
       target: string;
       public?: boolean;
-      description?: string;
+      description?: string | null;
       /** Format: date-time */
       timestamp?: string;
     };
@@ -549,7 +546,7 @@ export interface components {
       /** @description Whether the subscription automatically renews. Defaults to true. */
       auto_renew: boolean;
       metadata: {
-        [key: string]: Record<string, never> | undefined;
+        [key: string]: unknown | undefined;
       };
     };
     AddOnSubscriptionRecordCreateRequest: {
@@ -565,7 +562,7 @@ export interface components {
       quantity?: number;
       /** @description A JSON object containing additional information about the add-on subscription. This will be returned in the response when you retrieve the add-on subscription. */
       metadata?: {
-        [key: string]: Record<string, never> | undefined;
+        [key: string]: unknown | undefined;
       };
     };
     AddOnUpdate: {
@@ -573,7 +570,7 @@ export interface components {
       /** Format: date-time */
       active_from?: string;
       /** Format: date-time */
-      active_to?: string;
+      active_to?: string | null;
     };
     AddOnVersion: {
       recurring_charges: (components["schemas"]["RecurringCharge"])[];
@@ -611,8 +608,8 @@ export interface components {
     AddOnVersionCreateRequest: {
       /** Format: uuid */
       addon_id: string;
-      recurring_charges?: (components["schemas"]["RecurringChargeCreateRequest"])[];
-      components?: (components["schemas"]["PlanComponentCreateRequest"])[];
+      recurring_charges?: (components["schemas"]["RecurringChargeCreateRequest"])[] | null;
+      components?: (components["schemas"]["PlanComponentCreateRequest"])[] | null;
       features?: (string)[];
       currency_code: string;
       /**
@@ -664,9 +661,9 @@ export interface components {
     AddOnVersionUpdate: {
       addon_version_name?: string;
       /** Format: date-time */
-      active_from?: string;
+      active_from?: string | null;
       /** Format: date-time */
-      active_to?: string;
+      active_to?: string | null;
     };
     AddPlanTags: {
       tags?: (components["schemas"]["Tag"])[];
@@ -941,11 +938,11 @@ export interface components {
       /** @description Address line 1 (e.g., street, PO Box, or company name) */
       line1: string;
       /** @description Address line 2 (e.g., apartment, suite, unit, or building) */
-      line2?: string;
+      line2?: string | null;
       /** @description ZIP or postal code */
       postal_code: string;
       /** @description State, county, province, or region */
-      state?: string;
+      state?: string | null;
     };
     AddressRequest: {
       /** @description City, district, suburb, town, or village */
@@ -1208,11 +1205,11 @@ export interface components {
       /** @description Address line 1 (e.g., street, PO Box, or company name) */
       line1: string;
       /** @description Address line 2 (e.g., apartment, suite, unit, or building) */
-      line2?: string;
+      line2?: string | null;
       /** @description ZIP or postal code */
       postal_code: string;
       /** @description State, county, province, or region */
-      state?: string;
+      state?: string | null;
     };
     AllSubstitutionResults: {
       substitution_results?: (components["schemas"]["SingleSubstitution"])[];
@@ -1221,7 +1218,7 @@ export interface components {
       /** Format: double */
       new_plans_revenue?: number;
       /** Format: double */
-      pct_revenue_change?: number;
+      pct_revenue_change?: number | null;
     };
     AnalysisDetail: {
       /** Format: date */
@@ -1293,7 +1290,7 @@ export interface components {
       /** Format: date */
       start_date: string;
       kpis?: {
-        [key: string]: Record<string, never> | undefined;
+        [key: string]: unknown | undefined;
       };
       /** Format: date */
       end_date: string;
@@ -1328,7 +1325,7 @@ export interface components {
       /** Format: date-time */
       time_created?: string;
       kpis?: {
-        [key: string]: Record<string, never> | undefined;
+        [key: string]: unknown | undefined;
       };
       /**
        * @description * `running` - Running
@@ -1388,12 +1385,12 @@ export interface components {
        * Format: date-time 
        * @description The date and time that the feature should be active from. If you want to make this inactive, you can pass null here.
        */
-      active_from?: string;
+      active_from?: string | null;
       /**
        * Format: date-time 
        * @description The date and time that the feature should be active until. If you want to make this active indefinitely, you can pass null here.
        */
-      active_to?: string;
+      active_to?: string | null;
     };
     ChangePrepaidUnitsRequest: {
       /**
@@ -1416,7 +1413,7 @@ export interface components {
        * Format: double 
        * @description The number of units to charge for. If left null, then it will be required at subscription create time.
        */
-      units: number;
+      units: number | null;
       /**
        * @description * `prorate` - prorate
        * * `full` - full 
@@ -1429,7 +1426,7 @@ export interface components {
        * Format: double 
        * @description The number of units to charge for. If left null, then it will be required at subscription create time.
        */
-      units: number;
+      units: number | null;
       /**
        * @description * `prorate` - prorate
        * * `full` - full 
@@ -1453,12 +1450,12 @@ export interface components {
        * Format: double 
        * @description If you specified a free tier of usage for this metric, this is the amount of usage that is free. Will be null if you did not specify a free tier for this metric.
        */
-      metric_free_limit: number;
+      metric_free_limit: number | null;
       /**
        * Format: double 
        * @description The total limit of the metric. Will be null if you did not specify a limit for this metric.
        */
-      metric_total_limit: number;
+      metric_total_limit: number | null;
     };
     ComponentsFixedChargeInitialValueRequest: {
       /**
@@ -1512,16 +1509,16 @@ export interface components {
       credit_id: string;
       /** Format: double */
       amount: number;
-      description?: string;
+      description?: string | null;
       /** Format: date-time */
       applied_at: string;
     };
     Customer: {
       customer_id: string;
       /** Format: email */
-      email: string;
+      email: string | null;
       /** @description The display name of the customer */
-      customer_name: string;
+      customer_name: string | null;
       invoices: readonly (components["schemas"]["LightweightInvoice"])[];
       /** Format: double */
       total_amount_due: number;
@@ -1535,7 +1532,7 @@ export interface components {
        * @enum {string|null}
        */
       payment_provider: "stripe" | "braintree" | "" | null;
-      payment_provider_id: string;
+      payment_provider_id: string | null;
       has_payment_method: boolean;
       /** @deprecated */
       address?: components["schemas"]["Address"] | null;
@@ -1545,7 +1542,7 @@ export interface components {
        * Format: double 
        * @description Tax rate as percentage. For example, 10.5 for 10.5%
        */
-      tax_rate: number;
+      tax_rate: number | null;
       /**
        * @description * `Africa/Abidjan` - Africa/Abidjan
        * * `Africa/Accra` - Africa/Accra
@@ -1995,11 +1992,11 @@ export interface components {
       /** Format: double */
       amount_remaining: number;
       currency: components["schemas"]["PricingUnit"];
-      description: string;
+      description: string | null;
       /** Format: date-time */
       effective_at: string;
       /** Format: date-time */
-      expires_at: string;
+      expires_at: string | null;
       /**
        * @description * `active` - Active
        * * `inactive` - Inactive 
@@ -2013,23 +2010,23 @@ export interface components {
     };
     CustomerBalanceAdjustmentCreateRequest: {
       /** @description The id provided when creating the customer, we suggest matching with your internal customer id in your backend */
-      customer_id: string;
+      customer_id: string | null;
       /** Format: double */
       amount: number;
       currency_code: string;
-      description?: string;
+      description?: string | null;
       /** Format: date-time */
       effective_at?: string;
       /** Format: date-time */
-      expires_at?: string;
+      expires_at?: string | null;
       /** Format: double */
       amount_paid?: number;
       amount_paid_currency_code?: string;
     };
     CustomerBalanceAdjustmentUpdateRequest: {
-      description?: string;
+      description?: string | null;
       /** Format: date-time */
-      expires_at?: string;
+      expires_at?: string | null;
     };
     CustomerBraintreeIntegration: {
       braintree_id: string;
@@ -2037,9 +2034,9 @@ export interface components {
     };
     CustomerCreateRequest: {
       /** @description The display name of the customer */
-      customer_name?: string;
+      customer_name?: string | null;
       /** @description The id provided when creating the customer, we suggest matching with your internal customer id in your backend */
-      customer_id: string;
+      customer_id: string | null;
       /**
        * Format: email 
        * @description The primary email address of the customer, must be the same as the email address used to create the customer in the payment provider
@@ -2054,10 +2051,10 @@ export interface components {
        */
       payment_provider?: "stripe" | "braintree";
       /** @description The customer's ID in the specified payment provider. Please note that payment_provider and payment_provider_id are mutually necessary. */
-      payment_provider_id?: string;
+      payment_provider_id?: string | null;
       /** @description Extra metadata for the customer */
       properties?: ({
-        [key: string]: Record<string, never> | undefined;
+        [key: string]: unknown | undefined;
       }) | null;
       /** @description The currency code this customer will be invoiced in. Codes are 3 letters, e.g. 'USD'. */
       default_currency_code?: string;
@@ -2069,7 +2066,7 @@ export interface components {
        * Format: double 
        * @description Tax rate as percentage. For example, 10.5 for 10.5%
        */
-      tax_rate?: number;
+      tax_rate?: number | null;
     };
     CustomerCreatedRequest: {
       payload: components["schemas"]["CustomerRequest"];
@@ -2079,7 +2076,7 @@ export interface components {
       /** Format: date-time */
       deleted: string;
       /** Format: email */
-      email: string;
+      email: string | null;
       num_subscriptions_deleted: number;
       num_addons_deleted: number;
     };
@@ -2527,14 +2524,14 @@ export interface components {
       default_currency: components["schemas"]["PricingUnit"];
       shipping_address: components["schemas"]["Address"] | null;
       /** Format: uri */
-      crm_provider_url: string;
+      crm_provider_url: string | null;
       invoices: readonly (components["schemas"]["LightweightInvoiceDetail"])[];
       /** Format: email */
-      email: string;
-      payment_provider_id: string;
+      email: string | null;
+      payment_provider_id: string | null;
       has_payment_method: boolean;
       upcoming_subscriptions: readonly (components["schemas"]["SubscriptionRecord"])[];
-      crm_provider_id: string;
+      crm_provider_id: string | null;
       billing_address: components["schemas"]["Address"] | null;
       /** Format: double */
       total_amount_due: number;
@@ -2553,9 +2550,9 @@ export interface components {
        */
       payment_provider: "stripe" | "braintree" | "" | null;
       /** Format: uri */
-      payment_provider_url: string;
+      payment_provider_url: string | null;
       /** @description The display name of the customer */
-      customer_name: string;
+      customer_name: string | null;
       subscriptions: readonly (components["schemas"]["SubscriptionRecord"])[];
       /** @description A list of tax providers that are enabled for this customer. The list is ordered, meaning we will succesively try to calculate taxes using each provider until we find one that works. */
       tax_providers: readonly ("taxjar" | "lotus" | "netsuite")[];
@@ -2564,7 +2561,7 @@ export interface components {
        * Format: double 
        * @description Tax rate as percentage. For example, 10.5 for 10.5%
        */
-      tax_rate: number;
+      tax_rate: number | null;
     };
     CustomerIntegrations: {
       stripe?: components["schemas"]["CustomerStripeIntegration"] | null;
@@ -2573,7 +2570,7 @@ export interface components {
     CustomerRequest: {
       customer_id: string;
       /** Format: email */
-      email: string;
+      email: string | null;
       default_currency: components["schemas"]["PricingUnitRequest"];
       /**
        * @description * `stripe` - Stripe
@@ -3026,9 +3023,9 @@ export interface components {
     };
     CustomerSummary: {
       /** @description The display name of the customer */
-      customer_name?: string;
+      customer_name?: string | null;
       /** @description The id provided when creating the customer, we suggest matching with your internal customer id in your backend */
-      customer_id?: string;
+      customer_id?: string | null;
       subscriptions: readonly (components["schemas"]["SubscriptionCustomerSummary"])[];
     };
     CustomerUpdate: {
@@ -3039,7 +3036,7 @@ export interface components {
        * Format: double 
        * @description Tax rate as percentage. For example, 10.5 for 10.5%
        */
-      tax_rate?: number;
+      tax_rate?: number | null;
       /**
        * @description * `Africa/Abidjan` - Africa/Abidjan
        * * `Africa/Accra` - Africa/Accra
@@ -3482,7 +3479,7 @@ export interface components {
     };
     CustomerWithRevenue: {
       /** @description The id provided when creating the customer, we suggest matching with your internal customer id in your backend */
-      customer_id?: string;
+      customer_id?: string | null;
       /** Format: double */
       total_amount_due: number;
     };
@@ -3546,7 +3543,7 @@ export interface components {
       event_name: string;
       /** @description Extra metadata on the event that can be filtered and queried on in the metrics. All key value pairs should have string keys and values can be either strings or numbers. Place subscription filters in this object to specify which subscription the event should be tracked under */
       properties?: {
-        [key: string]: Record<string, never> | undefined;
+        [key: string]: unknown | undefined;
       };
       /**
        * Format: date-time 
@@ -3587,7 +3584,7 @@ export interface components {
     Feature: {
       feature_id: string;
       feature_name: string;
-      feature_description: string;
+      feature_description: string | null;
     };
     FeatureAccessPerSubscription: {
       subscription: components["schemas"]["AccessMethodsSubscriptionRecord"];
@@ -3602,12 +3599,12 @@ export interface components {
     };
     FeatureCreateRequest: {
       feature_name: string;
-      feature_description?: string;
+      feature_description?: string | null;
     };
     FeatureDetail: {
       feature_id: string;
       feature_name: string;
-      feature_description: string;
+      feature_description: string | null;
     };
     GetEventAccess: {
       /** @description The plan_id of the plan we are checking that has access to this feature. */
@@ -3702,7 +3699,7 @@ export interface components {
       email: string;
     };
     InitialAddOnVersionCreateRequest: {
-      recurring_charges?: (components["schemas"]["RecurringChargeCreateRequest"])[];
+      recurring_charges?: (components["schemas"]["RecurringChargeCreateRequest"])[] | null;
       /**
        * @description * `one_time` - one_time
        * * `recurring` - recurring 
@@ -3717,7 +3714,7 @@ export interface components {
        */
       invoice_when: "invoice_on_attach" | "invoice_on_subscription_end";
       features?: (string)[];
-      components?: (components["schemas"]["PlanComponentCreateRequest"])[];
+      components?: (components["schemas"]["PlanComponentCreateRequest"])[] | null;
     };
     InitialExternalPlanLink: {
       /**
@@ -3740,11 +3737,11 @@ export interface components {
     InitialPlanVersionCreateRequest: {
       version: number;
       price_adjustment?: components["schemas"]["PriceAdjustmentRequest"];
-      month_anchor?: number;
+      month_anchor?: number | null;
       recurring_charges?: (components["schemas"]["RecurringChargeCreateRequest"])[];
       currency_code: string;
-      localized_name?: string;
-      day_anchor?: number;
+      localized_name?: string | null;
+      day_anchor?: number | null;
       /** @default false */
       make_active?: boolean;
       features?: (string)[];
@@ -3756,7 +3753,7 @@ export interface components {
        */
       make_active_type?: "replace_on_renewal" | "grandfather";
       components?: (components["schemas"]["PlanComponentCreateRequest"])[];
-      target_customer_ids?: (string)[];
+      target_customer_ids?: (string | null)[];
     };
     InviteLinkResponse: {
       /** Format: email */
@@ -3793,25 +3790,25 @@ export interface components {
        * @enum {unknown}
        */
       payment_status: "draft" | "voided" | "paid" | "unpaid";
-      external_payment_obj_id: string;
+      external_payment_obj_id: string | null;
       /**
        * @description * `stripe` - Stripe
        * * `braintree` - Braintree 
        * @enum {string|null}
        */
       external_payment_obj_type: "stripe" | "braintree" | "" | null;
-      external_payment_obj_status?: string;
+      external_payment_obj_status?: string | null;
       line_items: (components["schemas"]["InvoiceLineItem"])[];
       customer: components["schemas"]["LightweightCustomerSerializerForInvoice"];
       /** Format: date-time */
-      due_date: string;
+      due_date: string | null;
       /** Format: date */
       start_date: string;
       /** Format: date */
       end_date: string;
       seller: components["schemas"]["Seller"];
       /** Format: uri */
-      invoice_pdf: string;
+      invoice_pdf: string | null;
     };
     InvoiceCreatedRequest: {
       payload: components["schemas"]["InvoiceRequest"];
@@ -3837,24 +3834,24 @@ export interface components {
        */
       cost_due: number;
       /** Format: uri */
-      crm_provider_url: string;
+      crm_provider_url: string | null;
       /** Format: date */
       start_date: string;
       /** Format: date */
       end_date: string;
-      crm_provider_id: string;
+      crm_provider_id: string | null;
       customer: components["schemas"]["LightweightCustomerSerializerForInvoice"];
       /** Format: uri */
-      external_payment_obj_url: string;
+      external_payment_obj_url: string | null;
       /** Format: uri */
-      invoice_pdf: string;
+      invoice_pdf: string | null;
       /**
        * @description * `stripe` - Stripe
        * * `braintree` - Braintree 
        * @enum {string|null}
        */
       external_payment_obj_type: "stripe" | "braintree" | "" | null;
-      external_payment_obj_id: string;
+      external_payment_obj_id: string | null;
       invoice_number: string;
       /**
        * @description * `salesforce` - salesforce 
@@ -3862,10 +3859,10 @@ export interface components {
        */
       crm_provider: "salesforce";
       /** Format: date-time */
-      due_date: string;
+      due_date: string | null;
       /** Format: date-time */
       issue_date: string;
-      external_payment_obj_status?: string;
+      external_payment_obj_status?: string | null;
     };
     InvoiceDetailRequest: {
       invoice_id: string;
@@ -3883,7 +3880,7 @@ export interface components {
        * @enum {string|null}
        */
       external_payment_obj_type: "stripe" | "braintree" | "" | null;
-      external_payment_obj_status?: string;
+      external_payment_obj_status?: string | null;
     };
     InvoiceLineItem: {
       name: string;
@@ -3892,7 +3889,7 @@ export interface components {
       /** Format: date-time */
       end_date: string;
       /** Format: double */
-      quantity: number;
+      quantity: number | null;
       /**
        * @description * `in_arrears` - In Arrears
        * * `intermediate` - Intermediate
@@ -3902,10 +3899,10 @@ export interface components {
        */
       billing_type: "in_arrears" | "intermediate" | "in_advance" | "one_time" | "" | null;
       metadata: ({
-        [key: string]: Record<string, never> | undefined;
+        [key: string]: unknown | undefined;
       }) | null;
       plan: components["schemas"]["LightweightPlanVersion"] | null;
-      subscription_filters: readonly (components["schemas"]["SubscriptionFilter"])[];
+      subscription_filters: readonly (components["schemas"]["SubscriptionFilter"])[] | null;
       /**
        * Format: double 
        * @description Base price of the line item. This is the price before any adjustments are applied.
@@ -3941,7 +3938,7 @@ export interface components {
       /** Format: date-time */
       end_date: string;
       /** Format: double */
-      quantity: number;
+      quantity: number | null;
       /**
        * @description * `in_arrears` - In Arrears
        * * `intermediate` - Intermediate
@@ -3951,7 +3948,7 @@ export interface components {
        */
       billing_type: "in_arrears" | "intermediate" | "in_advance" | "one_time" | "" | null;
       metadata: ({
-        [key: string]: Record<string, never> | undefined;
+        [key: string]: unknown | undefined;
       }) | null;
       /**
        * Format: double 
@@ -4006,7 +4003,7 @@ export interface components {
        * @enum {string|null}
        */
       external_payment_obj_type: "stripe" | "braintree" | "" | null;
-      external_payment_obj_status?: string;
+      external_payment_obj_status?: string | null;
       line_items: (components["schemas"]["InvoiceLineItemRequest"])[];
       seller: components["schemas"]["SellerRequest"];
     };
@@ -4051,25 +4048,25 @@ export interface components {
     };
     LightweightCustomer: {
       /** @description The display name of the customer */
-      customer_name: string;
+      customer_name: string | null;
       /**
        * Format: email 
        * @description The primary email address of the customer, must be the same as the email address used to create the customer in the payment provider
        */
-      email: string;
+      email: string | null;
       /** @description The id provided when creating the customer, we suggest matching with your internal customer id in your backend */
-      customer_id: string;
+      customer_id: string | null;
     };
     LightweightCustomerSerializerForInvoice: {
       /** @description The display name of the customer */
-      customer_name: string;
+      customer_name: string | null;
       /**
        * Format: email 
        * @description The primary email address of the customer, must be the same as the email address used to create the customer in the payment provider
        */
-      email: string;
+      email: string | null;
       /** @description The id provided when creating the customer, we suggest matching with your internal customer id in your backend */
-      customer_id: string;
+      customer_id: string | null;
       address?: components["schemas"]["Address"] | null;
     };
     LightweightInvoice: {
@@ -4096,20 +4093,20 @@ export interface components {
       /** Format: date */
       end_date: string;
       /** Format: uri */
-      invoice_pdf: string;
+      invoice_pdf: string | null;
       /**
        * @description * `stripe` - Stripe
        * * `braintree` - Braintree 
        * @enum {string|null}
        */
       external_payment_obj_type: "stripe" | "braintree" | "" | null;
-      external_payment_obj_id: string;
+      external_payment_obj_id: string | null;
       invoice_number: string;
       /** Format: date-time */
-      due_date: string;
+      due_date: string | null;
       /** Format: date-time */
       issue_date: string;
-      external_payment_obj_status?: string;
+      external_payment_obj_status?: string | null;
     };
     LightweightInvoiceDetail: {
       invoice_id: string;
@@ -4131,23 +4128,23 @@ export interface components {
       /** Format: double */
       amount: number;
       /** Format: uri */
-      crm_provider_url: string;
+      crm_provider_url: string | null;
       /** Format: date */
       start_date: string;
       /** Format: date */
       end_date: string;
-      crm_provider_id: string;
+      crm_provider_id: string | null;
       /** Format: uri */
-      external_payment_obj_url: string;
+      external_payment_obj_url: string | null;
       /** Format: uri */
-      invoice_pdf: string;
+      invoice_pdf: string | null;
       /**
        * @description * `stripe` - Stripe
        * * `braintree` - Braintree 
        * @enum {string|null}
        */
       external_payment_obj_type: "stripe" | "braintree" | "" | null;
-      external_payment_obj_id: string;
+      external_payment_obj_id: string | null;
       invoice_number: string;
       /**
        * @description * `salesforce` - salesforce 
@@ -4155,10 +4152,10 @@ export interface components {
        */
       crm_provider: "salesforce";
       /** Format: date-time */
-      due_date: string;
+      due_date: string | null;
       /** Format: date-time */
       issue_date: string;
-      external_payment_obj_status?: string;
+      external_payment_obj_status?: string | null;
     };
     LightweightMetric: {
       metric_id: string;
@@ -4198,7 +4195,7 @@ export interface components {
       plan_detail: components["schemas"]["LightweightPlanVersion"];
       subscription_id: string;
       metadata: {
-        [key: string]: Record<string, never> | undefined;
+        [key: string]: unknown | undefined;
       };
       subscription_filters: readonly (components["schemas"]["SubscriptionFilter"])[];
       addons: (components["schemas"]["LightweightAddOnSubscriptionRecord"])[];
@@ -4222,7 +4219,7 @@ export interface components {
     LightweightSubscriptionRecordRequest: {
       subscription_id: string;
       metadata: {
-        [key: string]: Record<string, never> | undefined;
+        [key: string]: unknown | undefined;
       };
       addons: (components["schemas"]["LightweightAddOnSubscriptionRecordRequest"])[];
       /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
@@ -4289,7 +4286,7 @@ export interface components {
       /** @description Name of the event that this metric is tracking. */
       event_name: string;
       /** @description The name of the property of the event that should be used for this metric. Doesn't apply if the metric is of type 'counter' with an aggregation of count. */
-      property_name: string;
+      property_name: string | null;
       aggregation_type: string;
       /**
        * @description The granularity of the metric. Only applies to metrics of type 'gauge' or 'rate'.
@@ -4329,7 +4326,7 @@ export interface components {
       /** @description Whether or not this metric is a cost metric (used to track costs to your business). */
       is_cost_metric: boolean;
       /** @description A custom SQL query that can be used to define the metric. Please refer to our documentation for more information. */
-      custom_sql: string;
+      custom_sql: string | null;
       /**
        * @description The proration of the metric. Only applies to metrics of type 'gauge'.
        * 
@@ -4356,12 +4353,12 @@ export interface components {
        * Format: double 
        * @description If you specified a free tier of usage for this metric, this is the amount of usage that is free. Will be 0 if you didn't specify a free limit for this metric or this subscription doesn't have access to this metric, and null if the free tier is unlimited.
        */
-      metric_free_limit: number;
+      metric_free_limit: number | null;
       /**
        * Format: double 
        * @description The total limit of the metric. Will be 0 if this subscription doesn't have access to this metric, and null if there is no limit to this metric.
        */
-      metric_total_limit: number;
+      metric_total_limit: number | null;
     };
     MetricAccessResponse: {
       customer: components["schemas"]["LightweightCustomer"];
@@ -4374,7 +4371,7 @@ export interface components {
       /** @description Name of the event that this metric is tracking. */
       event_name?: string;
       /** @description The name of the property of the event that should be used for this metric. Doesn't apply if the metric is of type 'counter' with an aggregation of count. */
-      property_name?: string;
+      property_name?: string | null;
       /**
        * @description The type of aggregation that should be used for this metric. Please refer to our documentation for an explanation of the different types.
        * 
@@ -4445,7 +4442,7 @@ export interface components {
        */
       proration?: "seconds" | "minutes" | "hours" | "days" | "months" | "quarters" | "years" | "total" | "" | null;
       properties?: ({
-        [key: string]: Record<string, never> | undefined;
+        [key: string]: unknown | undefined;
       }) | null;
       /**
        * @description Whether or not this metric is a cost metric (used to track costs to your business). 
@@ -4453,7 +4450,7 @@ export interface components {
        */
       is_cost_metric?: boolean;
       /** @description A custom SQL query that can be used to define the metric. Please refer to our documentation for more information. */
-      custom_sql?: string;
+      custom_sql?: string | null;
       categorical_filters?: (components["schemas"]["CategoricalFilterDetailRequest"])[];
       numeric_filters?: (components["schemas"]["NumericFilterDetailRequest"])[];
     };
@@ -4503,7 +4500,7 @@ export interface components {
        */
       granularity: "seconds" | "minutes" | "hours" | "days" | "months" | "quarters" | "years" | "total" | "" | null;
       /** @description The name of the property of the event that should be used for this metric. Doesn't apply if the metric is of type 'counter' with an aggregation of count. */
-      property_name: string;
+      property_name: string | null;
       /**
        * @description Used only for metrics of type 'gauge'. Please refer to our documentation for an explanation of the different types.
        * 
@@ -4514,7 +4511,7 @@ export interface components {
       event_type: "delta" | "total" | "" | null;
       metric_id: string;
       /** @description A custom SQL query that can be used to define the metric. Please refer to our documentation for more information. */
-      custom_sql: string;
+      custom_sql: string | null;
       categorical_filters: (components["schemas"]["CategoricalFilter"])[];
       /**
        * @description The type of aggregation that should be used for this metric. Please refer to our documentation for an explanation of the different types.
@@ -4554,7 +4551,7 @@ export interface components {
       new_plan_revenue: number;
     };
     MetricUpdate: {
-      billable_metric_name?: string;
+      billable_metric_name?: string | null;
       /**
        * @description * `active` - Active
        * * `archived` - Archived 
@@ -4618,7 +4615,7 @@ export interface components {
        * Format: double 
        * @description Tax rate as percentage. For example, 10.5 for 10.5%
        */
-      tax_rate?: number;
+      tax_rate?: number | null;
       payment_grace_period: string;
       linked_organizations: readonly (components["schemas"]["LightweightOrganization"])[];
       current_user: components["schemas"]["LightweightUser"];
@@ -5064,8 +5061,8 @@ export interface components {
        * @enum {string}
        */
       timezone: "Africa/Abidjan" | "Africa/Accra" | "Africa/Addis_Ababa" | "Africa/Algiers" | "Africa/Asmara" | "Africa/Bamako" | "Africa/Bangui" | "Africa/Banjul" | "Africa/Bissau" | "Africa/Blantyre" | "Africa/Brazzaville" | "Africa/Bujumbura" | "Africa/Cairo" | "Africa/Casablanca" | "Africa/Ceuta" | "Africa/Conakry" | "Africa/Dakar" | "Africa/Dar_es_Salaam" | "Africa/Djibouti" | "Africa/Douala" | "Africa/El_Aaiun" | "Africa/Freetown" | "Africa/Gaborone" | "Africa/Harare" | "Africa/Johannesburg" | "Africa/Juba" | "Africa/Kampala" | "Africa/Khartoum" | "Africa/Kigali" | "Africa/Kinshasa" | "Africa/Lagos" | "Africa/Libreville" | "Africa/Lome" | "Africa/Luanda" | "Africa/Lubumbashi" | "Africa/Lusaka" | "Africa/Malabo" | "Africa/Maputo" | "Africa/Maseru" | "Africa/Mbabane" | "Africa/Mogadishu" | "Africa/Monrovia" | "Africa/Nairobi" | "Africa/Ndjamena" | "Africa/Niamey" | "Africa/Nouakchott" | "Africa/Ouagadougou" | "Africa/Porto-Novo" | "Africa/Sao_Tome" | "Africa/Tripoli" | "Africa/Tunis" | "Africa/Windhoek" | "America/Adak" | "America/Anchorage" | "America/Anguilla" | "America/Antigua" | "America/Araguaina" | "America/Argentina/Buenos_Aires" | "America/Argentina/Catamarca" | "America/Argentina/Cordoba" | "America/Argentina/Jujuy" | "America/Argentina/La_Rioja" | "America/Argentina/Mendoza" | "America/Argentina/Rio_Gallegos" | "America/Argentina/Salta" | "America/Argentina/San_Juan" | "America/Argentina/San_Luis" | "America/Argentina/Tucuman" | "America/Argentina/Ushuaia" | "America/Aruba" | "America/Asuncion" | "America/Atikokan" | "America/Bahia" | "America/Bahia_Banderas" | "America/Barbados" | "America/Belem" | "America/Belize" | "America/Blanc-Sablon" | "America/Boa_Vista" | "America/Bogota" | "America/Boise" | "America/Cambridge_Bay" | "America/Campo_Grande" | "America/Cancun" | "America/Caracas" | "America/Cayenne" | "America/Cayman" | "America/Chicago" | "America/Chihuahua" | "America/Ciudad_Juarez" | "America/Costa_Rica" | "America/Creston" | "America/Cuiaba" | "America/Curacao" | "America/Danmarkshavn" | "America/Dawson" | "America/Dawson_Creek" | "America/Denver" | "America/Detroit" | "America/Dominica" | "America/Edmonton" | "America/Eirunepe" | "America/El_Salvador" | "America/Fort_Nelson" | "America/Fortaleza" | "America/Glace_Bay" | "America/Goose_Bay" | "America/Grand_Turk" | "America/Grenada" | "America/Guadeloupe" | "America/Guatemala" | "America/Guayaquil" | "America/Guyana" | "America/Halifax" | "America/Havana" | "America/Hermosillo" | "America/Indiana/Indianapolis" | "America/Indiana/Knox" | "America/Indiana/Marengo" | "America/Indiana/Petersburg" | "America/Indiana/Tell_City" | "America/Indiana/Vevay" | "America/Indiana/Vincennes" | "America/Indiana/Winamac" | "America/Inuvik" | "America/Iqaluit" | "America/Jamaica" | "America/Juneau" | "America/Kentucky/Louisville" | "America/Kentucky/Monticello" | "America/Kralendijk" | "America/La_Paz" | "America/Lima" | "America/Los_Angeles" | "America/Lower_Princes" | "America/Maceio" | "America/Managua" | "America/Manaus" | "America/Marigot" | "America/Martinique" | "America/Matamoros" | "America/Mazatlan" | "America/Menominee" | "America/Merida" | "America/Metlakatla" | "America/Mexico_City" | "America/Miquelon" | "America/Moncton" | "America/Monterrey" | "America/Montevideo" | "America/Montserrat" | "America/Nassau" | "America/New_York" | "America/Nome" | "America/Noronha" | "America/North_Dakota/Beulah" | "America/North_Dakota/Center" | "America/North_Dakota/New_Salem" | "America/Nuuk" | "America/Ojinaga" | "America/Panama" | "America/Paramaribo" | "America/Phoenix" | "America/Port-au-Prince" | "America/Port_of_Spain" | "America/Porto_Velho" | "America/Puerto_Rico" | "America/Punta_Arenas" | "America/Rankin_Inlet" | "America/Recife" | "America/Regina" | "America/Resolute" | "America/Rio_Branco" | "America/Santarem" | "America/Santiago" | "America/Santo_Domingo" | "America/Sao_Paulo" | "America/Scoresbysund" | "America/Sitka" | "America/St_Barthelemy" | "America/St_Johns" | "America/St_Kitts" | "America/St_Lucia" | "America/St_Thomas" | "America/St_Vincent" | "America/Swift_Current" | "America/Tegucigalpa" | "America/Thule" | "America/Tijuana" | "America/Toronto" | "America/Tortola" | "America/Vancouver" | "America/Whitehorse" | "America/Winnipeg" | "America/Yakutat" | "America/Yellowknife" | "Antarctica/Casey" | "Antarctica/Davis" | "Antarctica/DumontDUrville" | "Antarctica/Macquarie" | "Antarctica/Mawson" | "Antarctica/McMurdo" | "Antarctica/Palmer" | "Antarctica/Rothera" | "Antarctica/Syowa" | "Antarctica/Troll" | "Antarctica/Vostok" | "Arctic/Longyearbyen" | "Asia/Aden" | "Asia/Almaty" | "Asia/Amman" | "Asia/Anadyr" | "Asia/Aqtau" | "Asia/Aqtobe" | "Asia/Ashgabat" | "Asia/Atyrau" | "Asia/Baghdad" | "Asia/Bahrain" | "Asia/Baku" | "Asia/Bangkok" | "Asia/Barnaul" | "Asia/Beirut" | "Asia/Bishkek" | "Asia/Brunei" | "Asia/Chita" | "Asia/Choibalsan" | "Asia/Colombo" | "Asia/Damascus" | "Asia/Dhaka" | "Asia/Dili" | "Asia/Dubai" | "Asia/Dushanbe" | "Asia/Famagusta" | "Asia/Gaza" | "Asia/Hebron" | "Asia/Ho_Chi_Minh" | "Asia/Hong_Kong" | "Asia/Hovd" | "Asia/Irkutsk" | "Asia/Jakarta" | "Asia/Jayapura" | "Asia/Jerusalem" | "Asia/Kabul" | "Asia/Kamchatka" | "Asia/Karachi" | "Asia/Kathmandu" | "Asia/Khandyga" | "Asia/Kolkata" | "Asia/Krasnoyarsk" | "Asia/Kuala_Lumpur" | "Asia/Kuching" | "Asia/Kuwait" | "Asia/Macau" | "Asia/Magadan" | "Asia/Makassar" | "Asia/Manila" | "Asia/Muscat" | "Asia/Nicosia" | "Asia/Novokuznetsk" | "Asia/Novosibirsk" | "Asia/Omsk" | "Asia/Oral" | "Asia/Phnom_Penh" | "Asia/Pontianak" | "Asia/Pyongyang" | "Asia/Qatar" | "Asia/Qostanay" | "Asia/Qyzylorda" | "Asia/Riyadh" | "Asia/Sakhalin" | "Asia/Samarkand" | "Asia/Seoul" | "Asia/Shanghai" | "Asia/Singapore" | "Asia/Srednekolymsk" | "Asia/Taipei" | "Asia/Tashkent" | "Asia/Tbilisi" | "Asia/Tehran" | "Asia/Thimphu" | "Asia/Tokyo" | "Asia/Tomsk" | "Asia/Ulaanbaatar" | "Asia/Urumqi" | "Asia/Ust-Nera" | "Asia/Vientiane" | "Asia/Vladivostok" | "Asia/Yakutsk" | "Asia/Yangon" | "Asia/Yekaterinburg" | "Asia/Yerevan" | "Atlantic/Azores" | "Atlantic/Bermuda" | "Atlantic/Canary" | "Atlantic/Cape_Verde" | "Atlantic/Faroe" | "Atlantic/Madeira" | "Atlantic/Reykjavik" | "Atlantic/South_Georgia" | "Atlantic/St_Helena" | "Atlantic/Stanley" | "Australia/Adelaide" | "Australia/Brisbane" | "Australia/Broken_Hill" | "Australia/Darwin" | "Australia/Eucla" | "Australia/Hobart" | "Australia/Lindeman" | "Australia/Lord_Howe" | "Australia/Melbourne" | "Australia/Perth" | "Australia/Sydney" | "Canada/Atlantic" | "Canada/Central" | "Canada/Eastern" | "Canada/Mountain" | "Canada/Newfoundland" | "Canada/Pacific" | "Europe/Amsterdam" | "Europe/Andorra" | "Europe/Astrakhan" | "Europe/Athens" | "Europe/Belgrade" | "Europe/Berlin" | "Europe/Bratislava" | "Europe/Brussels" | "Europe/Bucharest" | "Europe/Budapest" | "Europe/Busingen" | "Europe/Chisinau" | "Europe/Copenhagen" | "Europe/Dublin" | "Europe/Gibraltar" | "Europe/Guernsey" | "Europe/Helsinki" | "Europe/Isle_of_Man" | "Europe/Istanbul" | "Europe/Jersey" | "Europe/Kaliningrad" | "Europe/Kirov" | "Europe/Kyiv" | "Europe/Lisbon" | "Europe/Ljubljana" | "Europe/London" | "Europe/Luxembourg" | "Europe/Madrid" | "Europe/Malta" | "Europe/Mariehamn" | "Europe/Minsk" | "Europe/Monaco" | "Europe/Moscow" | "Europe/Oslo" | "Europe/Paris" | "Europe/Podgorica" | "Europe/Prague" | "Europe/Riga" | "Europe/Rome" | "Europe/Samara" | "Europe/San_Marino" | "Europe/Sarajevo" | "Europe/Saratov" | "Europe/Simferopol" | "Europe/Skopje" | "Europe/Sofia" | "Europe/Stockholm" | "Europe/Tallinn" | "Europe/Tirane" | "Europe/Ulyanovsk" | "Europe/Vaduz" | "Europe/Vatican" | "Europe/Vienna" | "Europe/Vilnius" | "Europe/Volgograd" | "Europe/Warsaw" | "Europe/Zagreb" | "Europe/Zurich" | "GMT" | "Indian/Antananarivo" | "Indian/Chagos" | "Indian/Christmas" | "Indian/Cocos" | "Indian/Comoro" | "Indian/Kerguelen" | "Indian/Mahe" | "Indian/Maldives" | "Indian/Mauritius" | "Indian/Mayotte" | "Indian/Reunion" | "Pacific/Apia" | "Pacific/Auckland" | "Pacific/Bougainville" | "Pacific/Chatham" | "Pacific/Chuuk" | "Pacific/Easter" | "Pacific/Efate" | "Pacific/Fakaofo" | "Pacific/Fiji" | "Pacific/Funafuti" | "Pacific/Galapagos" | "Pacific/Gambier" | "Pacific/Guadalcanal" | "Pacific/Guam" | "Pacific/Honolulu" | "Pacific/Kanton" | "Pacific/Kiritimati" | "Pacific/Kosrae" | "Pacific/Kwajalein" | "Pacific/Majuro" | "Pacific/Marquesas" | "Pacific/Midway" | "Pacific/Nauru" | "Pacific/Niue" | "Pacific/Norfolk" | "Pacific/Noumea" | "Pacific/Pago_Pago" | "Pacific/Palau" | "Pacific/Pitcairn" | "Pacific/Pohnpei" | "Pacific/Port_Moresby" | "Pacific/Rarotonga" | "Pacific/Saipan" | "Pacific/Tahiti" | "Pacific/Tarawa" | "Pacific/Tongatapu" | "Pacific/Wake" | "Pacific/Wallis" | "US/Alaska" | "US/Arizona" | "US/Central" | "US/Eastern" | "US/Hawaii" | "US/Mountain" | "US/Pacific" | "UTC";
-      stripe_account_id: string;
-      braintree_merchant_id: string;
+      stripe_account_id: string | null;
+      braintree_merchant_id: string | null;
       tax_providers: readonly ("taxjar" | "lotus" | "netsuite")[];
       crm_integration_allowed: boolean;
       gen_cust_in_stripe_after_lotus?: boolean;
@@ -5098,13 +5095,13 @@ export interface components {
       status?: "Active" | "Invited";
     };
     PaginatedActionList: {
-      next?: string;
-      previous?: string;
+      next?: string | null;
+      previous?: string | null;
       results?: (components["schemas"]["Action"])[];
     };
     PaginatedEventDetailList: {
-      next?: string;
-      previous?: string;
+      next?: string | null;
+      previous?: string | null;
       results?: (components["schemas"]["EventDetail"])[];
     };
     PatchedAddOnUpdateRequest: {
@@ -5112,14 +5109,14 @@ export interface components {
       /** Format: date-time */
       active_from?: string;
       /** Format: date-time */
-      active_to?: string;
+      active_to?: string | null;
     };
     PatchedAddOnVersionUpdateRequest: {
       addon_version_name?: string;
       /** Format: date-time */
-      active_from?: string;
+      active_from?: string | null;
       /** Format: date-time */
-      active_to?: string;
+      active_to?: string | null;
     };
     PatchedCustomerUpdateRequest: {
       default_currency_code?: string;
@@ -5129,7 +5126,7 @@ export interface components {
        * Format: double 
        * @description Tax rate as percentage. For example, 10.5 for 10.5%
        */
-      tax_rate?: number;
+      tax_rate?: number | null;
       /**
        * @description * `Africa/Abidjan` - Africa/Abidjan
        * * `Africa/Accra` - Africa/Accra
@@ -5579,7 +5576,7 @@ export interface components {
       payment_status?: "paid" | "unpaid";
     };
     PatchedMetricUpdateRequest: {
-      billable_metric_name?: string;
+      billable_metric_name?: string | null;
       /**
        * @description * `active` - Active
        * * `archived` - Archived 
@@ -5594,8 +5591,8 @@ export interface components {
        * Format: double 
        * @description Tax rate as percentage. For example, 10.5 for 10.5%
        */
-      tax_rate?: number;
-      payment_grace_period?: number;
+      tax_rate?: number | null;
+      payment_grace_period?: number | null;
       plan_tags?: (components["schemas"]["TagRequest"])[];
       subscription_filter_keys?: (string)[];
       /**
@@ -6046,7 +6043,7 @@ export interface components {
       payment_provider?: "stripe" | "braintree";
       payment_provider_id?: string;
       nango_connected?: boolean;
-      tax_providers?: ("taxjar" | "lotus" | "netsuite")[];
+      tax_providers?: (("taxjar" | "lotus" | "netsuite")[]) | null;
       gen_cust_in_stripe_after_lotus?: boolean;
       gen_cust_in_braintree_after_lotus?: boolean;
       lotus_is_customer_source_for_salesforce?: boolean;
@@ -6055,19 +6052,19 @@ export interface components {
       /** @description Name of the plan */
       plan_name?: string;
       /** @description Description of the plan */
-      plan_description?: string;
-      taxjar_code?: string;
+      plan_description?: string | null;
+      taxjar_code?: string | null;
       /** Format: date-time */
       active_from?: string;
       /** Format: date-time */
-      active_to?: string;
+      active_to?: string | null;
     };
     PatchedPlanVersionUpdateRequest: {
-      localized_name?: string;
+      localized_name?: string | null;
       /** Format: date-time */
-      active_from?: string;
+      active_from?: string | null;
       /** Format: date-time */
-      active_to?: string;
+      active_to?: string | null;
     };
     PaymentProcesorPostDataRequest: {
       /**
@@ -6077,7 +6074,7 @@ export interface components {
        */
       payment_processor: "stripe" | "braintree";
       data: {
-        [key: string]: Record<string, never> | undefined;
+        [key: string]: unknown | undefined;
       };
     };
     PaymentProcesorPostRequestRequest: {
@@ -6132,7 +6129,7 @@ export interface components {
        */
       plan_duration: "monthly" | "quarterly" | "yearly" | "" | null;
       /** @description Description of the plan */
-      plan_description: string;
+      plan_description: string | null;
       /** @description The external links that this plan has. */
       external_links: (components["schemas"]["InitialExternalPlanLink"])[];
       /** @description The number of versions that this plan has. */
@@ -6178,7 +6175,7 @@ export interface components {
        * @enum {string|null}
        */
       invoicing_interval_unit: "day" | "week" | "month" | "year" | "" | null;
-      invoicing_interval_count: number;
+      invoicing_interval_count: number | null;
       /**
        * @description * `day` - day
        * * `week` - week
@@ -6187,7 +6184,7 @@ export interface components {
        * @enum {string|null}
        */
       reset_interval_unit: "day" | "week" | "month" | "year" | "" | null;
-      reset_interval_count: number;
+      reset_interval_count: number | null;
       prepaid_charge: components["schemas"]["ComponentCharge"] | null;
     };
     PlanComponentCreateRequest: {
@@ -6202,7 +6199,7 @@ export interface components {
        * @enum {string|null}
        */
       invoicing_interval_unit?: "day" | "week" | "month" | "year" | "" | null;
-      invoicing_interval_count?: number;
+      invoicing_interval_count?: number | null;
       /**
        * @description * `day` - day
        * * `week` - week
@@ -6211,14 +6208,14 @@ export interface components {
        * @enum {string|null}
        */
       reset_interval_unit?: "day" | "week" | "month" | "year" | "" | null;
-      reset_interval_count?: number;
+      reset_interval_count?: number | null;
       prepaid_charge?: components["schemas"]["ComponentChargeCreateRequest"] | null;
     };
     PlanCreateRequest: {
       /** @description Name of the plan */
       plan_name: string;
       /** @description Description of the plan */
-      plan_description?: string;
+      plan_description?: string | null;
       /**
        * @description Duration of the plan
        * 
@@ -6252,13 +6249,13 @@ export interface components {
       plan_id: string;
       /** @description The tags that this plan has. */
       tags: readonly (components["schemas"]["Tag"])[];
-      taxjar_code?: string;
+      taxjar_code?: string | null;
       /** @description The number of versions that this plan has. */
       num_versions: number;
       /** @description Name of the plan */
       plan_name: string;
       /** @description Description of the plan */
-      plan_description: string;
+      plan_description: string | null;
     };
     PlanNameAndID: {
       /** @description Name of the plan */
@@ -6275,12 +6272,12 @@ export interface components {
       /** @description Name of the plan */
       plan_name?: string;
       /** @description Description of the plan */
-      plan_description?: string;
-      taxjar_code?: string;
+      plan_description?: string | null;
+      taxjar_code?: string | null;
       /** Format: date-time */
       active_from?: string;
       /** Format: date-time */
-      active_to?: string;
+      active_to?: string | null;
     };
     PlanVersion: {
       recurring_charges: readonly (components["schemas"]["RecurringCharge"])[];
@@ -6301,15 +6298,15 @@ export interface components {
       plan_name: string;
       currency: components["schemas"]["PricingUnit"];
       /** Format: date-time */
-      active_from: string;
+      active_from: string | null;
       /** Format: date-time */
-      active_to: string;
-      localized_name: string;
+      active_to: string | null;
+      localized_name: string | null;
       target_customers: (components["schemas"]["LightweightCustomer"])[];
       /** Format: date-time */
       created_on: string;
       /** @deprecated */
-      usage_billing_frequency: string;
+      usage_billing_frequency: string | null;
       /**
        * @deprecated 
        * @description * `in_advance` - in_advance
@@ -6323,7 +6320,7 @@ export interface components {
        */
       flat_rate: number;
       /** @deprecated */
-      description: string;
+      description: string | null;
     };
     PlanVersionCreateRequest: {
       /** Format: uuid */
@@ -6332,12 +6329,12 @@ export interface components {
       components?: (components["schemas"]["PlanComponentCreateRequest"])[];
       features?: (string)[];
       price_adjustment?: components["schemas"]["PriceAdjustmentRequest"];
-      day_anchor?: number;
-      month_anchor?: number;
+      day_anchor?: number | null;
+      month_anchor?: number | null;
       currency_code: string;
       version: number;
-      target_customer_ids?: (string)[];
-      localized_name?: string;
+      target_customer_ids?: (string | null)[];
+      localized_name?: string | null;
       /** @default false */
       make_active?: boolean;
       /**
@@ -6361,7 +6358,7 @@ export interface components {
        * @enum {string}
        */
       status: "active" | "retiring" | "grandfathered" | "deleted" | "inactive" | "not_started";
-      localized_name: string;
+      localized_name: string | null;
       plan_id: string;
       currency: components["schemas"]["PricingUnit"];
       /** Format: date-time */
@@ -6374,9 +6371,9 @@ export interface components {
       recurring_charges: readonly (components["schemas"]["RecurringCharge"])[];
       version_id: string;
       /** Format: date-time */
-      active_to: string;
+      active_to: string | null;
       /** Format: date-time */
-      active_from: string;
+      active_from: string | null;
       alerts: readonly (components["schemas"]["UsageAlert"])[];
       target_customers: (components["schemas"]["LightweightCustomer"])[];
       plan_name: string;
@@ -6406,11 +6403,11 @@ export interface components {
       message: string;
     };
     PlanVersionUpdate: {
-      localized_name?: string;
+      localized_name?: string | null;
       /** Format: date-time */
-      active_from?: string;
+      active_from?: string | null;
       /** Format: date-time */
-      active_to?: string;
+      active_to?: string | null;
     };
     PlansByNumCustomers: {
       results: (components["schemas"]["SinglePlanNumCustomers"])[];
@@ -6430,7 +6427,7 @@ export interface components {
     };
     PriceAdjustment: {
       price_adjustment_name: string;
-      price_adjustment_description: string;
+      price_adjustment_description: string | null;
       /**
        * @description * `percentage` - Percentage
        * * `fixed` - Fixed
@@ -6444,7 +6441,7 @@ export interface components {
     PriceAdjustmentRequest: {
       /** @default */
       price_adjustment_name?: string;
-      price_adjustment_description?: string;
+      price_adjustment_description?: string | null;
       /**
        * @description * `percentage` - Percentage
        * * `fixed` - Fixed
@@ -6466,11 +6463,11 @@ export interface components {
       /** Format: double */
       range_start: number;
       /** Format: double */
-      range_end: number;
+      range_end: number | null;
       /** Format: double */
-      cost_per_batch: number;
+      cost_per_batch: number | null;
       /** Format: double */
-      metric_units_per_batch: number;
+      metric_units_per_batch: number | null;
       /**
        * @description * `round_up` - round_up
        * * `round_down` - round_down
@@ -6491,11 +6488,11 @@ export interface components {
       /** Format: double */
       range_start: number;
       /** Format: double */
-      range_end?: number;
+      range_end?: number | null;
       /** Format: double */
-      cost_per_batch?: number;
+      cost_per_batch?: number | null;
       /** Format: double */
-      metric_units_per_batch?: number;
+      metric_units_per_batch?: number | null;
       /**
        * @description * `round_up` - Round Up
        * * `round_down` - Round Down
@@ -6551,7 +6548,7 @@ export interface components {
        * @enum {string|null}
        */
       invoicing_interval_unit: "day" | "week" | "month" | "year" | "" | null;
-      invoicing_interval_count: number;
+      invoicing_interval_count: number | null;
       /**
        * @description * `day` - day
        * * `week` - week
@@ -6560,7 +6557,7 @@ export interface components {
        * @enum {string|null}
        */
       reset_interval_unit: "day" | "week" | "month" | "year" | "" | null;
-      reset_interval_count: number;
+      reset_interval_count: number | null;
     };
     RecurringChargeCreateRequest: {
       name: string;
@@ -6588,7 +6585,7 @@ export interface components {
        * @enum {string|null}
        */
       invoicing_interval_unit?: "day" | "week" | "month" | "year" | "" | null;
-      invoicing_interval_count?: number;
+      invoicing_interval_count?: number | null;
       /**
        * @description * `day` - day
        * * `week` - week
@@ -6597,7 +6594,7 @@ export interface components {
        * @enum {string|null}
        */
       reset_interval_unit?: "day" | "week" | "month" | "year" | "" | null;
-      reset_interval_count?: number;
+      reset_interval_count?: number | null;
     };
     RegistrationDetailRequest: {
       organization_name: string;
@@ -6663,15 +6660,15 @@ export interface components {
     Seller: {
       name: string;
       address?: components["schemas"]["Address"] | null;
-      phone?: string;
+      phone?: string | null;
       /** Format: email */
-      email?: string;
+      email?: string | null;
     };
     SellerRequest: {
       name: string;
-      phone?: string;
+      phone?: string | null;
       /** Format: email */
-      email?: string;
+      email?: string | null;
     };
     SessionSuccess: {
       isAuthenticated: boolean;
@@ -6704,10 +6701,10 @@ export interface components {
       connected: boolean;
       self_hosted: boolean;
       working: boolean;
-      connection_id: string;
-      account_id: string;
+      connection_id: string | null;
+      account_id: string | null;
       /** Format: uri */
-      native_org_url: string;
+      native_org_url: string | null;
     };
     SingleCustomerValue: {
       customer: components["schemas"]["LightweightCustomer"];
@@ -6746,9 +6743,9 @@ export interface components {
       /** Format: uri */
       redirect_url: string;
       self_hosted: boolean;
-      connection_id: string;
+      connection_id: string | null;
       working: boolean;
-      account_id: string;
+      account_id: string | null;
     };
     SinglePlanAnalysis: {
       plan: components["schemas"]["LightweightPlanVersion"];
@@ -6765,7 +6762,7 @@ export interface components {
       original_plan: components["schemas"]["PlanRepresentation"];
       new_plan: components["schemas"]["PlanRepresentation"];
       /** Format: double */
-      pct_revenue_change: number;
+      pct_revenue_change: number | null;
       results: components["schemas"]["SingleSubstitutionResults"];
     };
     SingleSubstitutionResults: {
@@ -6799,18 +6796,18 @@ export interface components {
     };
     StripeMultiSubscriptionsRequest: {
       /** @description The id provided when creating the customer, we suggest matching with your internal customer id in your backend */
-      customer_id: string;
+      customer_id: string | null;
       stripe_subscription_ids: (string)[];
     };
     StripeSubscriptionRecord: {
       fully_billed: boolean;
       subscription_id: string;
       metadata?: {
-        [key: string]: Record<string, never> | undefined;
+        [key: string]: unknown | undefined;
       };
       subscription_filters: (components["schemas"]["SubscriptionFilter"])[];
       addons: (components["schemas"]["LightweightAddOnSubscriptionRecord"])[];
-      stripe_subscription_id: string;
+      stripe_subscription_id: string | null;
       /** @description Whether this subscription came from a renewal or from a first-time. Defaults to true on creation. */
       is_new?: boolean;
       customer: components["schemas"]["LightweightCustomer"];
@@ -6893,7 +6890,7 @@ export interface components {
       fully_billed: boolean;
       addons: (components["schemas"]["LightweightAddOnSubscriptionRecord"])[];
       metadata: {
-        [key: string]: Record<string, never> | undefined;
+        [key: string]: unknown | undefined;
       };
     };
     SubscriptionRecordCancelRequest: {
@@ -6942,17 +6939,17 @@ export interface components {
       /** @description Add filter key, value pairs that define which events will be applied to this plan subscription. */
       subscription_filters?: (components["schemas"]["SubscriptionFilterRequest"])[];
       /** @description The id provided when creating the customer */
-      customer_id: string;
+      customer_id: string | null;
       /**
        * Format: uuid 
        * @description The Lotus plan_id, found in the billing plan object. We will make a best-effort attempt to find the correct plan version (matching preferred currencies, prioritizing custom plans), but if more than one plan version or no plan version matches these criteria this will return an error.
        */
-      plan_id?: string;
+      plan_id?: string | null;
       /** @description The initial units for the plan components' prepaid fixed charges. This is only required if the plan has plan components where you did not specify the initial units. */
       component_fixed_charges_initial_units?: (components["schemas"]["ComponentsFixedChargeInitialValueRequest"])[];
       /** @description A JSON object containing additional information about the subscription. */
       metadata?: {
-        [key: string]: Record<string, never> | undefined;
+        [key: string]: unknown | undefined;
       };
     };
     SubscriptionRecordCreateSerializerOldRequest: {
@@ -6972,7 +6969,7 @@ export interface components {
       /** @description Add filter key, value pairs that define which events will be applied to this plan subscription. */
       subscription_filters?: (components["schemas"]["SubscriptionFilterRequest"])[];
       /** @description The id provided when creating the customer */
-      customer_id: string;
+      customer_id: string | null;
       /**
        * Format: uuid 
        * @description The Lotus plan_id, found in the billing plan object. This field has been deprecated in favor of version_id for the sake of being explicit. If used, a best effort will be made to find the correct plan version (matching preferred currencies, prioritizing custom plans), but if more than one plan versions matches this criteria this will return an error.
@@ -6999,7 +6996,7 @@ export interface components {
       billing_plan: components["schemas"]["LightweightPlanVersionRequest"];
       addons: (components["schemas"]["LightweightAddOnSubscriptionRecordRequest"])[];
       metadata: {
-        [key: string]: Record<string, never> | undefined;
+        [key: string]: unknown | undefined;
       };
     };
     SubscriptionRecordSwitchPlanRequest: {
@@ -7039,7 +7036,7 @@ export interface components {
       end_date?: string;
       /** @description Update the metadata for the subscription. */
       metadata?: {
-        [key: string]: Record<string, never> | undefined;
+        [key: string]: unknown | undefined;
       };
     };
     SubscriptionRecordUpdateSerializerOldRequest: {
@@ -7091,7 +7088,7 @@ export interface components {
       tag_color: string;
     };
     TargetCustomersRequest: {
-      customer_ids: (string)[];
+      customer_ids: (string | null)[];
     };
     TimezonesResponse: {
       timezones: (string)[];
@@ -7203,13 +7200,13 @@ export interface components {
     };
     WebhookEndpoint: {
       webhook_endpoint_id: string;
-      name?: string;
+      name?: string | null;
       webhook_url: string;
       webhook_secret: string;
       triggers: readonly (components["schemas"]["WebhookTrigger"])[];
     };
     WebhookEndpointRequest: {
-      name?: string;
+      name?: string | null;
       webhook_url: string;
       triggers_in: ("customer.created" | "invoice.created" | "invoice.paid" | "invoice.past_due" | "subscription.created" | "usage_alert.triggered" | "subscription.cancelled" | "subscription.renewed")[];
     };
@@ -7253,13 +7250,13 @@ export type external = Record<string, never>;
 
 export interface operations {
 
+  /** @description API endpoint that allows events to be viewed. */
   app_actions_list: {
-    /** @description API endpoint that allows events to be viewed. */
-    parameters?: {
+    parameters: {
+      query: {
         /** @description The pagination cursor value. */
-        /** @description Number of results to return per page. */
-      query?: {
         c?: string;
+        /** @description Number of results to return per page. */
         page_size?: number;
       };
     };
@@ -7456,8 +7453,8 @@ export interface operations {
       };
     };
   };
+  /** @description API endpoint that allows API Tokens to be viewed or edited. */
   app_api_tokens_list: {
-    /** @description API endpoint that allows API Tokens to be viewed or edited. */
     responses: {
       200: {
         content: {
@@ -7466,8 +7463,8 @@ export interface operations {
       };
     };
   };
+  /** @description API endpoint that allows API Tokens to be viewed or edited. */
   app_api_tokens_create: {
-    /** @description API endpoint that allows API Tokens to be viewed or edited. */
     requestBody?: {
       content: {
         "application/json": components["schemas"]["APITokenRequest"];
@@ -7483,8 +7480,8 @@ export interface operations {
       };
     };
   };
+  /** @description API endpoint that allows API Tokens to be viewed or edited. */
   app_api_tokens_destroy: {
-    /** @description API endpoint that allows API Tokens to be viewed or edited. */
     parameters: {
       path: {
         prefix: string;
@@ -7495,8 +7492,8 @@ export interface operations {
       204: never;
     };
   };
+  /** @description API endpoint that allows API Tokens to be viewed or edited. */
   app_api_tokens_roll_create: {
-    /** @description API endpoint that allows API Tokens to be viewed or edited. */
     parameters: {
       path: {
         prefix: string;
@@ -7551,24 +7548,24 @@ export interface operations {
   };
   app_credits_list: {
     parameters: {
-        /** @description Filter to adjustments in a specific currency */
-        /** @description The id provided when creating the customer, we suggest matching with your internal customer id in your backend */
-        /** @description Filter to adjustments that are effective after this date */
-        /** @description Filter to adjustments that are effective before this date */
-        /** @description Filter to adjustments that expire after this date */
-        /** @description Filter to adjustments that expire before this date */
-        /** @description Filter to adjustments that were issued after this date */
-        /** @description Filter to adjustments that were issued before this date */
-        /** @description Filter to a specific set of adjustment statuses. Defaults to both active and inactive. */
       query: {
+        /** @description Filter to adjustments in a specific currency */
         currency_code?: string;
-        customer_id: string;
+        /** @description The id provided when creating the customer, we suggest matching with your internal customer id in your backend */
+        customer_id: string | null;
+        /** @description Filter to adjustments that are effective after this date */
         effective_after?: string;
+        /** @description Filter to adjustments that are effective before this date */
         effective_before?: string;
+        /** @description Filter to adjustments that expire after this date */
         expires_after?: string;
+        /** @description Filter to adjustments that expire before this date */
         expires_before?: string;
+        /** @description Filter to adjustments that were issued after this date */
         issued_after?: string;
+        /** @description Filter to adjustments that were issued before this date */
         issued_before?: string;
+        /** @description Filter to a specific set of adjustment statuses. Defaults to both active and inactive. */
         status?: ("active" | "inactive")[];
       };
     };
@@ -7598,8 +7595,8 @@ export interface operations {
   };
   app_credits_retrieve: {
     parameters: {
-        /** @description The ID of the credit to retrieve or update. */
       path: {
+        /** @description The ID of the credit to retrieve or update. */
         credit_id: string;
       };
     };
@@ -7613,8 +7610,8 @@ export interface operations {
   };
   app_credits_update_create: {
     parameters: {
-        /** @description The ID of the credit to retrieve or update. */
       path: {
+        /** @description The ID of the credit to retrieve or update. */
         credit_id: string;
       };
     };
@@ -7635,8 +7632,8 @@ export interface operations {
   };
   app_credits_void_create: {
     parameters: {
-        /** @description The ID of the credit to retrieve or update. */
       path: {
+        /** @description The ID of the credit to retrieve or update. */
         credit_id: string;
       };
     };
@@ -7792,7 +7789,7 @@ export interface operations {
   };
   app_customers_draft_invoice_retrieve: {
     parameters: {
-      query?: {
+      query: {
         include_next_period?: boolean;
       };
       path: {
@@ -7804,8 +7801,8 @@ export interface operations {
       200: never;
     };
   };
+  /** @description Get the current settings for the organization. */
   app_customers_summary_retrieve: {
-    /** @description Get the current settings for the organization. */
     responses: {
       200: {
         content: {
@@ -7814,8 +7811,8 @@ export interface operations {
       };
     };
   };
+  /** @description Get the current settings for the organization. */
   app_customers_totals_retrieve: {
-    /** @description Get the current settings for the organization. */
     responses: {
       200: {
         content: {
@@ -7866,13 +7863,13 @@ export interface operations {
       };
     };
   };
+  /** @description API endpoint that allows events to be viewed. */
   app_events_list: {
-    /** @description API endpoint that allows events to be viewed. */
-    parameters?: {
+    parameters: {
+      query: {
         /** @description The pagination cursor value. */
-        /** @description Number of results to return per page. */
-      query?: {
         c?: string;
+        /** @description Number of results to return per page. */
         page_size?: number;
       };
     };
@@ -7884,8 +7881,8 @@ export interface operations {
       };
     };
   };
+  /** @description API endpoint that allows events to be viewed. */
   app_events_properties_retrieve: {
-    /** @description API endpoint that allows events to be viewed. */
     responses: {
       200: {
         content: {
@@ -7912,11 +7909,11 @@ export interface operations {
   };
   app_external_plan_links_destroy: {
     parameters: {
+      query: {
         /**
          * @description * `stripe` - Stripe
          * * `braintree` - Braintree
          */
-      query: {
         source: "stripe" | "braintree";
       };
       path: {
@@ -8017,11 +8014,11 @@ export interface operations {
     };
   };
   app_invoices_list: {
-    parameters?: {
+    parameters: {
+      query: {
         /** @description A filter for invoices for a specific customer */
+        customer_id?: string | null;
         /** @description A filter for invoices with a specific payment status */
-      query?: {
-        customer_id?: string;
         payment_status?: ("unpaid" | "paid")[];
       };
     };
@@ -8086,8 +8083,8 @@ export interface operations {
   };
   app_invoices_pdf_url_retrieve: {
     parameters: {
-        /** @description Either an invoice ID (in the format `invoice_<uuid>`) or an invoice number (in the format `YYMMDD-000001`) */
       path: {
+        /** @description Either an invoice ID (in the format `invoice_<uuid>`) or an invoice number (in the format `YYMMDD-000001`) */
         invoice_id: string;
       };
     };
@@ -8350,8 +8347,8 @@ export interface operations {
       };
     };
   };
+  /** @description Returns the revenue for an organization in a given time period. */
   app_period_events_retrieve: {
-    /** @description Returns the revenue for an organization in a given time period. */
     parameters: {
       query: {
         period_1_end_date: string;
@@ -8368,8 +8365,8 @@ export interface operations {
       };
     };
   };
+  /** @description Returns the revenue for an organization in a given time period. */
   app_period_metric_revenue_retrieve: {
-    /** @description Returns the revenue for an organization in a given time period. */
     parameters: {
       query: {
         end_date: string;
@@ -8384,8 +8381,8 @@ export interface operations {
       };
     };
   };
+  /** @description Return current usage for a customer during a given billing period. */
   app_period_metric_usage_retrieve: {
-    /** @description Return current usage for a customer during a given billing period. */
     parameters: {
       query: {
         end_date: string;
@@ -8632,9 +8629,10 @@ export interface operations {
       };
     };
   };
+  /** @description ViewSet for viewing and editing Plans. */
   app_plans_list: {
-    /** @description ViewSet for viewing and editing Plans. */
-    parameters?: {
+    parameters: {
+      query: {
         /**
          * @description Filter to plans that have this duration.
          * 
@@ -8642,10 +8640,15 @@ export interface operations {
          * * `quarterly` - Quarterly
          * * `yearly` - Yearly
          */
+        duration?: "monthly" | "quarterly" | "yearly";
         /** @description Filter to plans that do not have any of the tags in this list. */
+        exclude_tags?: (string)[];
         /** @description Filter to plans that have any of the tags in this list. */
+        include_tags?: (string)[];
         /** @description Filter to plans that have all of the tags in this list. */
+        include_tags_all?: (string)[];
         /** @description Filter to versions that have the currency specified by this currency code. */
+        version_currency_code?: string;
         /**
          * @description Filter to versions that have this custom type. If you choose custom_only, you will only see versions that have target customers. If you choose public_only, you will only see versions that do not have target customers.
          * 
@@ -8653,14 +8656,8 @@ export interface operations {
          * * `public_only` - Public Only
          * * `all` - All
          */
-        /** @description Filter to versions that have this status. Ended means it has an active_to date in the past. Not started means it has an active_from date in the future or null. */
-      query?: {
-        duration?: "monthly" | "quarterly" | "yearly";
-        exclude_tags?: (string)[];
-        include_tags?: (string)[];
-        include_tags_all?: (string)[];
-        version_currency_code?: string;
         version_custom_type?: "custom_only" | "public_only" | "all";
+        /** @description Filter to versions that have this status. Ended means it has an active_to date in the past. Not started means it has an active_from date in the future or null. */
         version_status?: ("active" | "ended" | "not_started")[];
       };
     };
@@ -8672,8 +8669,8 @@ export interface operations {
       };
     };
   };
+  /** @description ViewSet for viewing and editing Plans. */
   app_plans_create: {
-    /** @description ViewSet for viewing and editing Plans. */
     requestBody: {
       content: {
         "application/json": components["schemas"]["PlanCreateRequest"];
@@ -8689,10 +8686,12 @@ export interface operations {
       };
     };
   };
+  /** @description ViewSet for viewing and editing Plans. */
   app_plans_retrieve: {
-    /** @description ViewSet for viewing and editing Plans. */
     parameters: {
+      query: {
         /** @description Filter to versions that have the currency specified by this currency code. */
+        version_currency_code?: string;
         /**
          * @description Filter to versions that have this custom type. If you choose custom_only, you will only see versions that have target customers. If you choose public_only, you will only see versions that do not have target customers.
          * 
@@ -8700,10 +8699,8 @@ export interface operations {
          * * `public_only` - Public Only
          * * `all` - All
          */
-        /** @description Filter to versions that have this status. Ended means it has an active_to date in the past. Not started means it has an active_from date in the future or null. */
-      query?: {
-        version_currency_code?: string;
         version_custom_type?: "custom_only" | "public_only" | "all";
+        /** @description Filter to versions that have this status. Ended means it has an active_to date in the past. Not started means it has an active_from date in the future or null. */
         version_status?: ("active" | "ended" | "not_started")[];
       };
       path: {
@@ -8718,8 +8715,8 @@ export interface operations {
       };
     };
   };
+  /** @description ViewSet for viewing and editing Plans. */
   app_plans_partial_update: {
-    /** @description ViewSet for viewing and editing Plans. */
     parameters: {
       path: {
         plan_id: string;
@@ -8740,8 +8737,8 @@ export interface operations {
       };
     };
   };
+  /** @description ViewSet for viewing and editing Plans. */
   app_plans_delete_create: {
-    /** @description ViewSet for viewing and editing Plans. */
     parameters: {
       path: {
         plan_id: string;
@@ -8755,8 +8752,8 @@ export interface operations {
       };
     };
   };
+  /** @description ViewSet for viewing and editing Plans. */
   app_plans_features_add_create: {
-    /** @description ViewSet for viewing and editing Plans. */
     parameters: {
       path: {
         plan_id: string;
@@ -8777,8 +8774,8 @@ export interface operations {
       };
     };
   };
+  /** @description ViewSet for viewing and editing Plans. */
   app_plans_tags_add_create: {
-    /** @description ViewSet for viewing and editing Plans. */
     parameters: {
       path: {
         plan_id: string;
@@ -8799,8 +8796,8 @@ export interface operations {
       };
     };
   };
+  /** @description ViewSet for viewing and editing Plans. */
   app_plans_tags_remove_create: {
-    /** @description ViewSet for viewing and editing Plans. */
     parameters: {
       path: {
         plan_id: string;
@@ -8821,8 +8818,8 @@ export interface operations {
       };
     };
   };
+  /** @description ViewSet for viewing and editing Plans. */
   app_plans_tags_set_create: {
-    /** @description ViewSet for viewing and editing Plans. */
     parameters: {
       path: {
         plan_id: string;
@@ -8843,13 +8840,13 @@ export interface operations {
       };
     };
   };
+  /** @description ViewSet for viewing and editing Plans. */
   app_plans_versions_active_dates_update_create: {
-    /** @description ViewSet for viewing and editing Plans. */
     parameters: {
-        /** @description The ID of the plan whose versions we're changing the active dates. */
-        /** @description The version number to update. */
       path: {
+        /** @description The ID of the plan whose versions we're changing the active dates. */
         plan_id: string;
+        /** @description The version number to update. */
         version_number: number;
       };
     };
@@ -8868,13 +8865,13 @@ export interface operations {
       };
     };
   };
+  /** @description ViewSet for viewing and editing Plans. */
   app_plans_versions_features_add_create: {
-    /** @description ViewSet for viewing and editing Plans. */
     parameters: {
-        /** @description The ID of the plan whose versions we're adding a feature to. */
-        /** @description The version number to update. */
       path: {
+        /** @description The ID of the plan whose versions we're adding a feature to. */
         plan_id: string;
+        /** @description The version number to update. */
         version_number: number;
       };
     };
@@ -8893,8 +8890,8 @@ export interface operations {
       };
     };
   };
+  /** @description ViewSet for viewing and editing Plans. */
   app_plans_versions_replacement_set_create: {
-    /** @description ViewSet for viewing and editing Plans. */
     parameters: {
       path: {
         plan_id: string;
@@ -8916,8 +8913,8 @@ export interface operations {
       };
     };
   };
+  /** @description ViewSet for viewing and editing Plans. */
   app_plans_versions_transition_set_create: {
-    /** @description ViewSet for viewing and editing Plans. */
     parameters: {
       path: {
         plan_id: string;
@@ -8939,8 +8936,8 @@ export interface operations {
       };
     };
   };
+  /** @description ViewSet for viewing and editing Plans. */
   app_plans_versions_next_retrieve: {
-    /** @description ViewSet for viewing and editing Plans. */
     parameters: {
       path: {
         plan_id: string;
@@ -9062,18 +9059,18 @@ export interface operations {
   };
   app_subscriptions_list: {
     parameters: {
-        /** @description Filter to a specific customer. */
-        /** @description Filter to a specific plan. */
-        /** @description If specified, will only return subscriptions with a start date before this date. */
-        /** @description If specified, will only return subscriptions with an end date after this date. */
-        /** @description Filter to a specific set of subscription statuses. Defaults to active. */
-        /** @description Filter to a specific set of subscription filters. If your billing model only allows for one subscription per customer, you very likely do not need this field. Must be formatted as a JSON-encoded + stringified list of dictionaries, where each dictionary has a key of 'property_name' and a key of 'value'. */
       query: {
-        customer_id: string;
+        /** @description Filter to a specific customer. */
+        customer_id: string | null;
+        /** @description Filter to a specific plan. */
         plan_id?: string;
+        /** @description If specified, will only return subscriptions with a start date before this date. */
         range_end?: string;
+        /** @description If specified, will only return subscriptions with an end date after this date. */
         range_start?: string;
+        /** @description Filter to a specific set of subscription statuses. Defaults to active. */
         status?: ("active" | "ended" | "not_started")[];
+        /** @description Filter to a specific set of subscription filters. If your billing model only allows for one subscription per customer, you very likely do not need this field. Must be formatted as a JSON-encoded + stringified list of dictionaries, where each dictionary has a key of 'property_name' and a key of 'value'. */
         subscription_filters?: (components["schemas"]["SubscriptionFilterRequest"])[];
       };
     };
@@ -9117,10 +9114,10 @@ export interface operations {
   };
   app_subscriptions_addons_cancel_create: {
     parameters: {
-        /** @description The ID of the addon within the subscription update. */
-        /** @description The ID of the subscription to update. */
       path: {
+        /** @description The ID of the addon within the subscription update. */
         addon_id: string;
+        /** @description The ID of the subscription to update. */
         subscription_id: string;
       };
     };
@@ -9141,8 +9138,8 @@ export interface operations {
   };
   app_subscriptions_addons_attach_create: {
     parameters: {
-        /** @description The ID of the subscription to add an addon to. */
       path: {
+        /** @description The ID of the subscription to add an addon to. */
         subscription_id: string;
       };
     };
@@ -9163,8 +9160,8 @@ export interface operations {
   };
   app_subscriptions_cancel_create_2: {
     parameters: {
-        /** @description The ID of the subscription to cancel. */
       path: {
+        /** @description The ID of the subscription to cancel. */
         subscription_id: string;
       };
     };
@@ -9185,10 +9182,10 @@ export interface operations {
   };
   app_subscriptions_components_change_prepaid_units_create: {
     parameters: {
-        /** @description The ID of the metric to alter the prepaid usage for. */
-        /** @description The ID of the subscription which will have its plans switched. */
       path: {
+        /** @description The ID of the metric to alter the prepaid usage for. */
         metric_id: string;
+        /** @description The ID of the subscription which will have its plans switched. */
         subscription_id: string;
       };
     };
@@ -9209,8 +9206,8 @@ export interface operations {
   };
   app_subscriptions_switch_plan_create: {
     parameters: {
-        /** @description The ID of the subscription which will have its plans switched. */
       path: {
+        /** @description The ID of the subscription which will have its plans switched. */
         subscription_id: string;
       };
     };
@@ -9231,8 +9228,8 @@ export interface operations {
   };
   app_subscriptions_update_create_2: {
     parameters: {
-        /** @description The ID of the subscription to update. */
       path: {
+        /** @description The ID of the subscription to update. */
         subscription_id: string;
       };
     };
@@ -9251,8 +9248,8 @@ export interface operations {
       };
     };
   };
+  /** @deprecated */
   app_subscriptions_add_create: {
-    /** @deprecated */
     requestBody: {
       content: {
         "application/json": components["schemas"]["SubscriptionRecordCreateSerializerOldRequest"];
@@ -9268,15 +9265,15 @@ export interface operations {
       };
     };
   };
+  /** @deprecated */
   app_subscriptions_cancel_create: {
-    /** @deprecated */
     parameters: {
-        /** @description Filter to a specific customer. */
-        /** @description Filter to a specific plan. If not specified, all plans will be included in the cancellation request. */
-        /** @description Filter to a specific set of subscription filters. If your billing model only allows for one subscription per customer, you very likely do not need this field. Must be formatted as a JSON-encoded + stringified list of dictionaries, where each dictionary has a key of 'property_name' and a key of 'value'. */
       query: {
-        customer_id: string;
+        /** @description Filter to a specific customer. */
+        customer_id: string | null;
+        /** @description Filter to a specific plan. If not specified, all plans will be included in the cancellation request. */
         plan_id?: string;
+        /** @description Filter to a specific set of subscription filters. If your billing model only allows for one subscription per customer, you very likely do not need this field. Must be formatted as a JSON-encoded + stringified list of dictionaries, where each dictionary has a key of 'property_name' and a key of 'value'. */
         subscription_filters?: (components["schemas"]["SubscriptionFilterRequest"])[];
       };
     };
@@ -9297,12 +9294,12 @@ export interface operations {
   };
   app_subscriptions_update_create: {
     parameters: {
-        /** @description Filter to a specific customer. */
-        /** @description Filter to a specific plan. */
-        /** @description Filter to a specific set of subscription filters. If your billing model only allows for one subscription per customer, you very likely do not need this field. Must be formatted as a JSON-encoded + stringified list of dictionaries, where each dictionary has a key of 'property_name' and a key of 'value'. */
       query: {
-        customer_id: string;
+        /** @description Filter to a specific customer. */
+        customer_id: string | null;
+        /** @description Filter to a specific plan. */
         plan_id: string;
+        /** @description Filter to a specific set of subscription filters. If your billing model only allows for one subscription per customer, you very likely do not need this field. Must be formatted as a JSON-encoded + stringified list of dictionaries, where each dictionary has a key of 'property_name' and a key of 'value'. */
         subscription_filters?: (components["schemas"]["SubscriptionFilterRequest"])[];
       };
     };
@@ -9321,8 +9318,8 @@ export interface operations {
       };
     };
   };
+  /** @description Get the current settings for the organization. */
   app_switch_organization_create: {
-    /** @description Get the current settings for the organization. */
     requestBody: {
       content: {
         "application/json": components["schemas"]["ChangeUserOrganizationRequestRequest"];
@@ -9335,8 +9332,8 @@ export interface operations {
       200: never;
     };
   };
+  /** @description Pagination-enabled endpoint for retrieving an organization's event stream. */
   app_timezones_retrieve: {
-    /** @description Pagination-enabled endpoint for retrieving an organization's event stream. */
     responses: {
       200: {
         content: {
@@ -9366,8 +9363,8 @@ export interface operations {
       };
     };
   };
+  /** @description ViewSet for viewing and editing UsageAlerts. */
   app_usage_alerts_list: {
-    /** @description ViewSet for viewing and editing UsageAlerts. */
     responses: {
       200: {
         content: {
@@ -9376,8 +9373,8 @@ export interface operations {
       };
     };
   };
+  /** @description ViewSet for viewing and editing UsageAlerts. */
   app_usage_alerts_create: {
-    /** @description ViewSet for viewing and editing UsageAlerts. */
     requestBody: {
       content: {
         "application/json": components["schemas"]["UsageAlertCreateRequest"];
@@ -9393,8 +9390,8 @@ export interface operations {
       };
     };
   };
+  /** @description ViewSet for viewing and editing UsageAlerts. */
   app_usage_alerts_retrieve: {
-    /** @description ViewSet for viewing and editing UsageAlerts. */
     parameters: {
       path: {
         usage_alert_id: string;
@@ -9408,8 +9405,8 @@ export interface operations {
       };
     };
   };
+  /** @description ViewSet for viewing and editing UsageAlerts. */
   app_usage_alerts_destroy: {
-    /** @description ViewSet for viewing and editing UsageAlerts. */
     parameters: {
       path: {
         usage_alert_id: string;
@@ -9420,8 +9417,8 @@ export interface operations {
       204: never;
     };
   };
+  /** @description Verifies the token and resets the password. */
   app_user_password_reset_create: {
-    /** @description Verifies the token and resets the password. */
     requestBody: {
       content: {
         "application/json": components["schemas"]["ResetPasswordRequestRequest"];
@@ -9478,8 +9475,8 @@ export interface operations {
       };
     };
   };
+  /** @description API endpoint that allows alerts to be viewed or edited. */
   app_webhooks_list: {
-    /** @description API endpoint that allows alerts to be viewed or edited. */
     responses: {
       200: {
         content: {
@@ -9488,8 +9485,8 @@ export interface operations {
       };
     };
   };
+  /** @description API endpoint that allows alerts to be viewed or edited. */
   app_webhooks_create: {
-    /** @description API endpoint that allows alerts to be viewed or edited. */
     requestBody: {
       content: {
         "application/json": components["schemas"]["WebhookEndpointRequest"];
@@ -9505,8 +9502,8 @@ export interface operations {
       };
     };
   };
+  /** @description API endpoint that allows alerts to be viewed or edited. */
   app_webhooks_retrieve: {
-    /** @description API endpoint that allows alerts to be viewed or edited. */
     parameters: {
       path: {
         webhook_endpoint_id: string;
@@ -9520,8 +9517,8 @@ export interface operations {
       };
     };
   };
+  /** @description API endpoint that allows alerts to be viewed or edited. */
   app_webhooks_destroy: {
-    /** @description API endpoint that allows alerts to be viewed or edited. */
     parameters: {
       path: {
         webhook_endpoint_id: string;
