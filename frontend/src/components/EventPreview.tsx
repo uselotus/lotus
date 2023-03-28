@@ -1,4 +1,3 @@
-// @ts-ignore
 import React, { FC, useState, useEffect, Fragment } from "react";
 import {
   useQuery,

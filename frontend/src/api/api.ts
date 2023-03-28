@@ -553,10 +553,23 @@ export const Metrics = {
     requests.patch(`app/metrics/${id}/`, { status: "archived" }),
 };
 
+interface SearchEventPreviewsParams {
+  customer_id?: string;
+  idempotency_id?: string;
+  c?: string;
+}
+
 export const Events = {
   getEventPreviews: (c: string): Promise<EventPages> =>
     requests.get("app/events/", { params: { c } }),
-  // TODO Add the real type here
+  searchEventPreviews: ({
+    customer_id,
+    idempotency_id,
+    c = "",
+  }: SearchEventPreviewsParams): Promise<EventPages> =>
+    requests.get("app/events/search/", {
+      params: { c, customer_id, idempotency_id },
+    }),
   getEventProperties: (): Promise<components["schemas"]["EventProperties"]> =>
     requests.get("app/events/properties/"),
   getEventCount: (
