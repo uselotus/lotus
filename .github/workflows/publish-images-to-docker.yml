@@ -8,8 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-
-  REGISTRY: docker.io
+  REGISTRY: ghcr.io
   BACKEND_IMAGE_NAME: lotusbackend
   FRONTEND_IMAGE_NAME: lotusfrontend
   GUIDANCE_IMAGE_NAME: lotusguidance
@@ -25,11 +24,12 @@ jobs:
     - name: checkout repo 
       uses: actions/checkout@v3
 
-    - name: Log in to Docker Hub
-        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+    - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Extract Docker metadata
         id: meta
@@ -52,101 +52,100 @@ jobs:
           # env_file:
           #   - ./env/.env.prod.example
 
-  build-push-lotus-frontend-docker: 
-    if: github.event.pull_request.merged == true
-    name: Build and push Lotus backend docker image to registry
-    runs-on: ubuntu-latest 
-    steps: 
-    - name: checkout repo 
-      uses: actions/checkout@v3
+  # build-push-lotus-frontend-docker: 
+  #   if: github.event.pull_request.merged == true
+  #   name: Build and push Lotus backend docker image to registry
+  #   runs-on: ubuntu-latest 
+  #   steps: 
+  #   - name: checkout repo 
+  #     uses: actions/checkout@v3
 
-    - name: Log in to Docker Hub
-        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+  #   - name: Log in to Docker Hub
+  #       uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+  #       with:
+  #         username: ${{ secrets.DOCKER_USERNAME }}
+  #         password: ${{ secrets.DOCKER_PASSWORD }}
     
-    - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}
+  #   - name: Extract Docker metadata
+  #       id: meta
+  #       uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+  #       with:
+  #         images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}
 
-    - name: Build and push Docker image
-        id: build-and-push
-        uses: docker/build-push-action@v2
-        with:
-          context: ./frontend
-          dockerfile: Dockerfile
-          # SHOULD BE ABLE TO BUILD WITHOUT REFERENCE TO ENV FILE 
-          # UNCOMMENT IF REFERENCE IS NEEDED
-          # env_file:
-          #   - ./env/.env.prod.example
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+  #   - name: Build and push Docker image
+  #       id: build-and-push
+  #       uses: docker/build-push-action@v2
+  #       with:
+  #         context: ./frontend
+  #         dockerfile: Dockerfile
+  #         # SHOULD BE ABLE TO BUILD WITHOUT REFERENCE TO ENV FILE 
+  #         # UNCOMMENT IF REFERENCE IS NEEDED
+  #         # env_file:
+  #         #   - ./env/.env.prod.example
+  #         push: true
+  #         tags: ${{ steps.meta.outputs.tags }}
+  #         labels: ${{ steps.meta.outputs.labels }}
 
-  build-push-lotus-ingestion-docker:  
-    if: github.event.pull_request.merged == true
-    name: Build and push Lotus backend docker image to registry
-    runs-on: ubuntu-latest 
-    steps: 
-    - name: checkout repo 
-      uses: actions/checkout@v3
+  # build-push-lotus-ingestion-docker:  
+  #   if: github.event.pull_request.merged == true
+  #   name: Build and push Lotus backend docker image to registry
+  #   runs-on: ubuntu-latest 
+  #   steps: 
+  #   - name: checkout repo 
+  #     uses: actions/checkout@v3
 
-    - name: Log in to Docker Hub
-        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+  #   - name: Log in to Docker Hub
+  #       uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+  #       with:
+  #         username: ${{ secrets.DOCKER_USERNAME }}
+  #         password: ${{ secrets.DOCKER_PASSWORD }}
     
-    - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.INGESTION_IMAGE_NAME }}
+  #   - name: Extract Docker metadata
+  #       id: meta
+  #       uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+  #       with:
+  #         images: ${{ env.REGISTRY }}/${{ env.INGESTION_IMAGE_NAME }}
 
-    - name: Build and push Docker image
-        id: build-and-push
-        uses: docker/build-push-action@v2
-        with:
-          context: ./go/event-ingestion
-          dockerfile: Dockerfile
-          # SHOULD BE ABLE TO BUILD WITHOUT REFERENCE TO ENV FILE 
-          # UNCOMMENT IF REFERENCE IS NEEDED
-          # env_file:
-          #   - ./env/.env.prod.example
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+  #   - name: Build and push Docker image
+  #       id: build-and-push
+  #       uses: docker/build-push-action@v2
+  #       with:
+  #         context: ./go/event-ingestion
+  #         dockerfile: Dockerfile
+  #         # SHOULD BE ABLE TO BUILD WITHOUT REFERENCE TO ENV FILE 
+  #         # UNCOMMENT IF REFERENCE IS NEEDED
+  #         # env_file:
+  #         #   - ./env/.env.prod.example
+  #         push: true
+  #         tags: ${{ steps.meta.outputs.tags }}
+  #         labels: ${{ steps.meta.outputs.labels }}
   
+  # build-push-lotus-guidance-docker: 
+  #   if: github.event.pull_request.merged == true
+  #   name: Build and push Lotus backend docker image to registry
+  #   runs-on: ubuntu-latest 
+  #   steps: 
+  #   - name: checkout repo 
+  #     uses: actions/checkout@v3
 
-  build-push-lotus-guidance-docker: 
-    if: github.event.pull_request.merged == true
-    name: Build and push Lotus backend docker image to registry
-    runs-on: ubuntu-latest 
-    steps: 
-    - name: checkout repo 
-      uses: actions/checkout@v3
-
-    - name: Log in to Docker Hub
-        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+  #   - name: Log in to Docker Hub
+  #       uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+  #       with:
+  #         username: ${{ secrets.DOCKER_USERNAME }}
+  #         password: ${{ secrets.DOCKER_PASSWORD }}
     
-    - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.GUIDANCE_IMAGE_NAME }}
+  #   - name: Extract Docker metadata
+  #       id: meta
+  #       uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+  #       with:
+  #         images: ${{ env.REGISTRY }}/${{ env.GUIDANCE_IMAGE_NAME }}
 
-    - name: Build and push Docker image
-        id: build-and-push
-        uses: docker/build-push-action@v2
-        with:
-          context: ./go/event-guidance
-          dockerfile: Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+  #   - name: Build and push Docker image
+  #       id: build-and-push
+  #       uses: docker/build-push-action@v2
+  #       with:
+  #         context: ./go/event-guidance
+  #         dockerfile: Dockerfile
+  #         push: true
+  #         tags: ${{ steps.meta.outputs.tags }}
+  #         labels: ${{ steps.meta.outputs.labels }}
