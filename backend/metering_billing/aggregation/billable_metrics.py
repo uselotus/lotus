@@ -12,6 +12,7 @@ from django.apps import apps
 from django.conf import settings
 from django.db import connection
 from jinja2 import Template
+
 from metering_billing.exceptions import MetricValidationFailed
 from metering_billing.utils import (
     convert_to_date,
@@ -138,9 +139,7 @@ class MetricHandler(abc.ABC):
         """
         from metering_billing.models import Customer, Organization
 
-        organization = Organization.objects.prefetch_related("settings").get(
-            id=metric.organization.id
-        )
+        organization = Organization.objects.get(id=metric.organization.id)
         all_results = {}
         injection_dict = {
             "query_type": metric.usage_aggregation_type,
@@ -247,9 +246,7 @@ class CounterHandler(MetricHandler):
             COUNTER_CAGG_TOTAL,
         )
 
-        organization = Organization.objects.prefetch_related("settings").get(
-            id=metric.organization.id
-        )
+        organization = Organization.objects.get(id=metric.organization.id)
         # prepare dictionary for injection
         injection_dict = CounterHandler._prepare_injection_dict(
             metric, billing_record, organization
@@ -346,9 +343,7 @@ class CounterHandler(MetricHandler):
         )
         from metering_billing.models import Organization
 
-        organization = Organization.objects.prefetch_related("settings").get(
-            id=metric.organization.id
-        )
+        organization = Organization.objects.get(id=metric.organization.id)
         if metric.usage_aggregation_type != METRIC_AGGREGATION.UNIQUE:
             all_results = CounterHandler._get_total_usage_per_day_not_unique(
                 metric, billing_record, organization
@@ -422,9 +417,7 @@ class CounterHandler(MetricHandler):
 
         from .counter_query_templates import COUNTER_UNIQUE_PER_DAY
 
-        organization = Organization.objects.prefetch_related("settings").get(
-            id=metric.organization.id
-        )
+        organization = Organization.objects.get(id=metric.organization.id)
         all_results = {}
         if metric.usage_aggregation_type != METRIC_AGGREGATION.UNIQUE:
             usg_per_day_results = CounterHandler._get_total_usage_per_day_not_unique(
@@ -558,9 +551,7 @@ class CounterHandler(MetricHandler):
         from .common_query_templates import CAGG_COMPRESSION, CAGG_DROP, CAGG_REFRESH
         from .counter_query_templates import COUNTER_CAGG_QUERY
 
-        organization = Organization.objects.prefetch_related("settings").get(
-            id=metric.organization.id
-        )
+        organization = Organization.objects.get(id=metric.organization.id)
         groupby = organization.subscription_filter_keys
         sql_injection_data = {
             "query_type": metric.usage_aggregation_type,
@@ -661,9 +652,7 @@ class CustomHandler(MetricHandler):
     ) -> Decimal:
         from metering_billing.models import Organization
 
-        organization = Organization.objects.prefetch_related("settings").get(
-            id=metric.organization.id
-        )
+        organization = Organization.objects.get(id=metric.organization.id)
         injection_dict = {
             "filter_properties": {},
             "uuidv5_customer_id": billing_record.customer.uuidv5_customer_id,
@@ -970,9 +959,7 @@ class GaugeHandler(MetricHandler):
             GAUGE_TOTAL_CUMULATIVE_SUM,
         )
 
-        organization = Organization.objects.prefetch_related("settings").get(
-            id=metric.organization.id
-        )
+        organization = Organization.objects.get(id=metric.organization.id)
         groupby = organization.subscription_filter_keys
         sql_injection_data = {
             "property_name": metric.property_name,
@@ -1047,9 +1034,7 @@ class GaugeHandler(MetricHandler):
             GAUGE_TOTAL_GET_TOTAL_USAGE_WITH_PRORATION,
         )
 
-        organization = Organization.objects.prefetch_related("settings").get(
-            id=metric.organization.id
-        )
+        organization = Organization.objects.get(id=metric.organization.id)
         groupby = organization.subscription_filter_keys
         metric_granularity = metric.granularity
         if metric_granularity == METRIC_GRANULARITY.TOTAL:
@@ -1124,9 +1109,7 @@ class GaugeHandler(MetricHandler):
             GAUGE_TOTAL_GET_CURRENT_USAGE,
         )
 
-        organization = Organization.objects.prefetch_related("settings").get(
-            id=metric.organization.id
-        )
+        organization = Organization.objects.get(id=metric.organization.id)
         groupby = organization.subscription_filter_keys
         metric_granularity = metric.granularity
         if metric_granularity == METRIC_GRANULARITY.TOTAL:
@@ -1197,9 +1180,7 @@ class GaugeHandler(MetricHandler):
             GAUGE_TOTAL_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY,
         )
 
-        organization = Organization.objects.prefetch_related("settings").get(
-            id=metric.organization.id
-        )
+        organization = Organization.objects.get(id=metric.organization.id)
         groupby = organization.subscription_filter_keys
         metric_granularity = metric.granularity
         if metric_granularity == METRIC_GRANULARITY.TOTAL:
@@ -1377,9 +1358,7 @@ class RateHandler(MetricHandler):
         from .common_query_templates import CAGG_COMPRESSION, CAGG_DROP, CAGG_REFRESH
         from .rate_query_templates import RATE_CAGG_QUERY
 
-        organization = Organization.objects.prefetch_related("settings").get(
-            id=metric.organization.id
-        )
+        organization = Organization.objects.get(id=metric.organization.id)
         groupby = organization.subscription_filter_keys
         sql_injection_data = {
             "query_type": metric.usage_aggregation_type,
@@ -1422,9 +1401,7 @@ class RateHandler(MetricHandler):
 
         from .common_query_templates import CAGG_DROP
 
-        organization = Organization.objects.prefetch_related("settings").get(
-            id=metric.organization.id
-        )
+        organization = Organization.objects.get(id=metric.organization.id)
         sql_injection_data = {
             "cagg_name": (
                 ("org_" + organization.organization_id.hex)[:22]
@@ -1444,9 +1421,7 @@ class RateHandler(MetricHandler):
         from metering_billing.aggregation.rate_query_templates import RATE_CAGG_TOTAL
         from metering_billing.models import Organization
 
-        organization = Organization.objects.prefetch_related("settings").get(
-            id=metric.organization.id
-        )
+        organization = Organization.objects.get(id=metric.organization.id)
         start = billing_record.start_date
         end = billing_record.end_date
         injection_dict = {
@@ -1494,9 +1469,7 @@ class RateHandler(MetricHandler):
         )
         from metering_billing.models import Organization
 
-        organization = Organization.objects.prefetch_related("settings").get(
-            id=metric.organization.id
-        )
+        organization = Organization.objects.get(id=metric.organization.id)
         start = billing_record.start_date
         end = billing_record.end_date
         injection_dict = {

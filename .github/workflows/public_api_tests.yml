@@ -42,7 +42,6 @@ jobs:
     environment: Development
 
     env:
-      REDIS_HOST: localhost
       DJANGO_SETTINGS_MODULE: "lotus.settings"
       PYTHONPATH: "."
       SECRET_KEY: ${{ secrets.SECRET_KEY }}

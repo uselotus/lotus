@@ -1,5 +1,3 @@
-from rest_framework import serializers
-
 from api.serializers.model_serializers import (
     FeatureSerializer,
     LightweightCustomerSerializer,
@@ -10,7 +8,6 @@ from api.serializers.model_serializers import (
 from metering_billing.models import (
     Customer,
     Feature,
-    Invoice,
     Metric,
     PlanVersion,
     SubscriptionRecord,
@@ -20,37 +17,7 @@ from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganizationPK,
     TimezoneFieldMixin,
 )
-
-
-class GetInvoicePdfURLRequestSerializer(serializers.Serializer):
-    invoice_id = SlugRelatedFieldWithOrganization(
-        slug_field="invoice_id",
-        queryset=Invoice.objects.all(),
-        help_text="The invoice_id of the invoice you want to get the PDF URL for.",
-        required=False,
-    )
-    invoice_number = SlugRelatedFieldWithOrganization(
-        slug_field="invoice_number",
-        queryset=Invoice.objects.all(),
-        help_text="The invoice_number of the invoice you want to get the PDF URL for.",
-        required=False,
-    )
-
-    def validate(self, data):
-        if "invoice_id" not in data and "invoice_number" not in data:
-            raise serializers.ValidationError(
-                "You must provide either an invoice_id or an invoice_number."
-            )
-        if (
-            data.get("invoice_id") is not None
-            and data.get("invoice_number") is not None
-        ):
-            if data["invoice_id"] != data["invoice_number"]:
-                raise serializers.ValidationError(
-                    "The invoice_id and invoice_number do not match."
-                )
-        data["invoice"] = data.get("invoice_id") or data.get("invoice_number")
-        return data
+from rest_framework import serializers
 
 
 class AccessMethodsSubscriptionRecordSerializer(
@@ -176,10 +143,6 @@ class CustomerDeleteResponseSerializer(serializers.Serializer):
     email = serializers.EmailField(allow_blank=True, allow_null=True)
     num_subscriptions_deleted = serializers.IntegerField()
     num_addons_deleted = serializers.IntegerField()
-
-
-class GetInvoicePdfURLResponseSerializer(serializers.Serializer):
-    url = serializers.URLField()
 
 
 class VersionSelectorSerializer(serializers.Serializer):

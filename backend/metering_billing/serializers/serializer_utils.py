@@ -263,12 +263,6 @@ class MetricUUIDField(UUIDPrefixField):
         super().__init__("metric_", *args, **kwargs)
 
 
-@extend_schema_field(serializers.RegexField(regex=r"orgset_[0-9a-f]{32}"))
-class OrganizationSettingUUIDField(UUIDPrefixField):
-    def __init__(self, *args, **kwargs):
-        super().__init__("orgset_", *args, **kwargs)
-
-
 @extend_schema_field(serializers.RegexField(regex=r"plan_[0-9a-f]{32}"))
 class PlanUUIDField(UUIDPrefixField):
     def __init__(self, *args, **kwargs):

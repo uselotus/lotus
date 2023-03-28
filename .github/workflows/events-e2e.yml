@@ -1,0 +1,121 @@
+name: E2E Events
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-events:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+
+    environment: Development
+
+    env:
+      DJANGO_SETTINGS_MODULE: "lotus.settings"
+      PYTHONPATH: "."
+      SECRET_KEY: "${{ secrets.SECRET_KEY }}"
+      STRIPE_LIVE_SECRET_KEY: "${{ secrets.STRIPE_LIVE_SECRET_KEY }}"
+      STRIPE_TEST_SECRET_KEY: "${{ secrets.STRIPE_TEST_SECRET_KEY }}"
+      DEBUG: False
+      PYTHONDONTWRITEBYTECODE: 1
+      SELF_HOSTED: "${{ secrets.SELF_HOSTED }}"
+      DOCKERIZED: True
+      POSTGRES_USER: lotus
+      POSTGRES_PASSWORD: lotus
+      POSTGRES_DB: lotus
+      KAFKA_URL: redpanda:29092
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: start-all
+        run: |
+          sh -c "./scripts/dev.sh --no-webhooks --no-beat &"
+
+      - name: Wait for API to be ready
+        run: |
+          sleep 480s
+          for i in {1..200}; do
+            if curl -s -f http://localhost:8000/api/healthcheck/; then
+              export STARTUP_SUCCEEDED=true
+              break
+            else
+              export STARTUP_SUCCEEDED=false
+            fi
+            sleep 5s
+          done
+          if [[ "${STARTUP_SUCCEEDED}" == "true" ]]; then
+            echo "Startup succeeded"
+          else
+            echo "Startup failed"
+            exit 1
+          fi
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: get-api-key
+        run: |
+          OUTPUTS=$(docker-compose -f docker-compose.dev.yaml exec -T backend python manage.py postman_ci_outputs)
+          KEY=$(echo "$OUTPUTS" | grep "KEY=" | cut -d= -f2)
+          ENV_JSON=$(jq -n \
+            --arg key "$KEY" \
+          '{KEY: $key}')
+          echo "$ENV_JSON" > environment.json
+          echo "LOTUS_API_KEY=$KEY" >> $GITHUB_ENV
+
+      - name: track-events
+        run: |
+          response=$(curl -sw "\n%{http_code}" --location --request POST 'http://localhost:7998/api/track/' \
+            --header "X-API-KEY: $LOTUS_API_KEY" \
+            --header 'Content-Type: application/json' \
+            --data-raw '{
+              "batch":[
+                {
+                  "customer_id": "rto",
+                  "event_name":"boaaaby",
+                  "idempotency_id": "16b6aa05-790c-42fc-bbdc-a41afa0f9d2e",
+                  "properties":{
+                      "shard_id": "2",
+                      "shard_type": "professional",
+                      "change": 5
+                  },
+                  "time_created":"'$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")'"
+                }
+              ]
+            }')
+
+          response_body=$(echo "$response" | head -n -1)
+          status_code=$(echo "$response" | tail -n 1)
+
+          echo "Response body: $response_body"
+          echo "Status code: $status_code"
+
+      - name: verify event
+        run: |
+          sleep 10s
+          response=$(curl -sw "\n%{http_code}" --location --request POST 'http://localhost:8000/api/verify_idems_received/' \
+            --header "X-API-KEY: $LOTUS_API_KEY" \
+            --header 'Content-Type: application/json' \
+            --data '{
+              "idempotency_ids": ["16b6aa05-790c-42fc-bbdc-a41afa0f9d2e"]
+            }')
+
+          response_body=$(echo "$response" | head -n -1)
+          status_code=$(echo "$response" | tail -n 1)
+
+          echo "Response body: $response_body"
+          echo "Status code: $status_code"
+
+          if echo "${response}" | jq -e '.ids_not_found | index("16b6aa05-790c-42fc-bbdc-a41afa0f9d2e")' &> /dev/null; then
+              echo "Idempotency ID was not found"
+              exit 1
+          fi

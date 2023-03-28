@@ -69,8 +69,6 @@ from metering_billing.utils.enums import (
     METRIC_STATUS,
     METRIC_TYPE,
     NUMERIC_FILTER_OPERATORS,
-    ORGANIZATION_SETTING_GROUPS,
-    ORGANIZATION_SETTING_NAMES,
     PAYMENT_PROCESSORS,
     PLAN_DURATION,
     PLAN_VERSION_STATUS,
@@ -287,6 +285,12 @@ class Organization(models.Model):
     currencies_provisioned = models.IntegerField(default=0)
     crm_settings_provisioned = models.BooleanField(default=False)
 
+    # settings
+    gen_cust_in_stripe_after_lotus = models.BooleanField(default=False)
+    gen_cust_in_braintree_after_lotus = models.BooleanField(default=False)
+    payment_grace_period = models.IntegerField(null=True, default=None)
+    lotus_is_customer_source_for_salesforce = models.BooleanField(default=False)
+
     # HISTORY RELATED FIELDS
     history = HistoricalRecords()
 
@@ -368,17 +372,6 @@ class Organization(models.Model):
             ].get_organization_address(self)
         else:
             return self.address
-
-    def provision_crm_settings(self):
-        if not self.crm_settings_provisioned:
-            OrganizationSetting.objects.get_or_create(
-                organization=self,
-                setting_group=ORGANIZATION_SETTING_GROUPS.CRM,
-                setting_name=ORGANIZATION_SETTING_NAMES.CRM_CUSTOMER_SOURCE,
-                defaults={"setting_values": {}},
-            )
-            self.crm_settings_provisioned = True
-            self.save()
 
     def provision_webhooks(self):
         if SVIX_CONNECTOR is not None and not self.webhooks_provisioned:
@@ -1457,7 +1450,48 @@ class PriceTier(models.Model):
         null=True,
     )
 
-    def calculate_revenue(self, usage: float, prev_tier_end=False):
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=Q(range_end__gte=F("range_start")) | Q(range_end__isnull=True),
+                name="price_tier_type_valid",
+            ),
+            models.UniqueConstraint(
+                fields=["organization", "plan_component", "range_start"],
+                name="unique_price_tier",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        new = self._state.adding is True
+        ranges = [
+            (tier["range_start"], tier["range_end"])
+            for tier in self.plan_component.tiers.order_by("range_start").values(
+                "range_start", "range_end"
+            )
+        ]
+        if new:
+            ranges = sorted(
+                ranges + [(self.range_start, self.range_end)], key=lambda x: x[0]
+            )
+        for i, (start, end) in enumerate(ranges):
+            if i == 0:
+                if start != 0:
+                    raise ValidationError("First tier must start at 0")
+            else:
+                diff = start - ranges[i - 1][1]
+                if diff != Decimal(0) and diff != Decimal(1):
+                    raise ValidationError(
+                        "Tier ranges must be continuous or separated by 1"
+                    )
+            if i != len(ranges) - 1:
+                if end is None:
+                    raise ValidationError("Only last tier can be open ended")
+        super().save(*args, **kwargs)
+
+    def calculate_revenue(
+        self, usage: float, prev_tier_end=False, bulk_pricing_enabled=False
+    ):
         # if division_factor is None:
         #     division_factor = len(usage_dict)
         revenue = 0
@@ -1466,21 +1500,37 @@ class PriceTier(models.Model):
         )
         # for usage in usage_dict.values():
         usage = convert_to_decimal(usage)
-        usage_in_range = (
-            self.range_start <= usage
-            if discontinuous_range
-            else self.range_start < usage or self.range_start == 0
-        )
+
+        if (
+            bulk_pricing_enabled
+            and self.range_end is not None
+            and self.range_end <= usage
+        ):
+            return revenue
+
+        if bulk_pricing_enabled:
+            usage_in_range = self.range_start <= usage
+        else:
+            usage_in_range = (
+                self.range_start <= usage
+                if discontinuous_range
+                else self.range_start < usage or self.range_start == 0
+            )
         if usage_in_range:
             if self.type == PriceTier.PriceTierType.FLAT:
                 revenue += self.cost_per_batch
-            elif self.type == PriceTier.PriceTierType.PER_UNIT:
-                if self.range_end is not None:
+                return revenue
+
+            if self.type == PriceTier.PriceTierType.PER_UNIT:
+                if bulk_pricing_enabled:
+                    billable_units = usage
+                elif self.range_end is not None:
                     billable_units = min(
                         usage - self.range_start, self.range_end - self.range_start
                     )
                 else:
                     billable_units = usage - self.range_start
+
                 if discontinuous_range:
                     billable_units += 1
                 billable_batches = billable_units / self.metric_units_per_batch
@@ -1582,6 +1632,7 @@ class PlanComponent(models.Model):
         related_name="component",
         null=True,
     )
+    bulk_pricing_enabled = models.BooleanField(default=False)
 
     def __str__(self):
         return str(self.billable_metric)
@@ -1728,10 +1779,14 @@ class PlanComponent(models.Model):
                 # this is for determining whether this is a continuous or discontinuous range
                 prev_tier_end = tiers[i - 1].range_end
                 tier_revenue = tier.calculate_revenue(
-                    usage_qty, prev_tier_end=prev_tier_end
+                    usage_qty,
+                    prev_tier_end=prev_tier_end,
+                    bulk_pricing_enabled=self.bulk_pricing_enabled,
                 )
             else:
-                tier_revenue = tier.calculate_revenue(usage_qty)
+                tier_revenue = tier.calculate_revenue(
+                    usage_qty, bulk_pricing_enabled=self.bulk_pricing_enabled
+                )
             revenue += tier_revenue
         revenue = convert_to_decimal(revenue)
         return revenue
@@ -2028,6 +2083,9 @@ class TeamInviteToken(models.Model):
     email = models.EmailField()
     token = models.SlugField(max_length=250, default=uuid.uuid4)
     expire_at = models.DateTimeField(default=now_plus_day, null=False, blank=False)
+
+    def __str__(self):
+        return str(self.email) + " - " + str(self.team)
 
 
 class RecurringCharge(models.Model):
@@ -3706,53 +3764,6 @@ class BacktestSubstitution(models.Model):
 
     def __str__(self):
         return f"{self.backtest}"
-
-
-class OrganizationSetting(models.Model):
-    """
-    This model is used to store settings for an organization.
-    """
-
-    organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="settings"
-    )
-    setting_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    setting_name = models.CharField(
-        choices=ORGANIZATION_SETTING_NAMES.choices, max_length=64
-    )
-    setting_values = models.JSONField(default=dict, blank=True)
-    setting_group = models.CharField(
-        choices=ORGANIZATION_SETTING_GROUPS.choices,
-        blank=True,
-        null=True,
-        max_length=64,
-    )
-
-    def save(self, *args, **kwargs):
-        super(OrganizationSetting, self).save(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.setting_name} - {self.setting_values}"
-
-    class Meta:
-        constraints = [
-            UniqueConstraint(
-                fields=[
-                    "organization",
-                    "setting_name",
-                    "setting_group",
-                ],
-                name="unique_with_group",
-            ),
-            UniqueConstraint(
-                fields=[
-                    "organization",
-                    "setting_name",
-                ],
-                condition=Q(setting_group=None),
-                name="unique_without_group",
-            ),
-        ]
 
 
 class PricingUnit(models.Model):
