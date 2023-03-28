@@ -3,7 +3,6 @@ import json
 from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import patch
-import urllib.parse
 
 import pytest
 from django.db.models import Sum
@@ -2268,16 +2267,18 @@ class TestInvoiceWebhooks:
         )
 
         prev_invoices_len = Invoice.objects.all().count()
-
-        params = {
-            "customer_id": setup_dict["customer"].customer_id,
-        }
+        sub = SubscriptionRecord.objects.all()[0]
         payload = {
             "flat_fee_behavior": FLAT_FEE_BEHAVIOR.CHARGE_FULL,
             "bill_usage": True,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-cancel") + "?" + urllib.parse.urlencode(params),
+            reverse(
+                "subscription-cancel",
+                kwargs={
+                    "subscription_id": sub.subscription_record_id,
+                },
+            ),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -2312,16 +2313,18 @@ class TestInvoiceWebhooks:
         )
 
         prev_invoices_len = Invoice.objects.all().count()
-
-        params = {
-            "customer_id": setup_dict["customer"].customer_id,
-        }
+        sub = SubscriptionRecord.objects.all()[0]
         payload = {
             "flat_fee_behavior": FLAT_FEE_BEHAVIOR.CHARGE_FULL,
             "bill_usage": True,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-cancel") + "?" + urllib.parse.urlencode(params),
+            reverse(
+                "subscription-cancel",
+                kwargs={
+                    "subscription_id": sub.subscription_record_id,
+                },
+            ),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -2345,16 +2348,18 @@ class TestInvoiceWebhooks:
         )
 
         prev_invoices_len = Invoice.objects.all().count()
-
-        params = {
-            "customer_id": setup_dict["customer"].customer_id,
-        }
+        sub = SubscriptionRecord.objects.all()[0]
         payload = {
             "flat_fee_behavior": FLAT_FEE_BEHAVIOR.CHARGE_FULL,
             "bill_usage": True,
         }
         response = setup_dict["client"].post(
-            reverse("subscription-cancel") + "?" + urllib.parse.urlencode(params),
+            reverse(
+                "subscription-cancel",
+                kwargs={
+                    "subscription_id": sub.subscription_record_id,
+                },
+            ),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
