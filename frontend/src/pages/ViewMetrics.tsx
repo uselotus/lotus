@@ -21,6 +21,7 @@ import EventPreview from "../components/EventPreview";
 import "./ViewMetrics.css";
 import { PageLayout } from "../components/base/PageLayout";
 import { PlusOutlined } from "@ant-design/icons";
+import EventStream from "../components/Metrics/EventStream";
 
 const defaultMetricState: CreateMetricType = {
   event_name: "",
@@ -107,7 +108,7 @@ const ViewMetrics: FC = () => {
         </Button>,
       ]}
     >
-      <div className="flex flex-col space-y-4 bg-background">
+      <div className="flex flex-col space-y-4 ">
         {isLoading || data === undefined ? (
           <div className="flex align-center justify-center min-h-[100px] bg-white">
             <LoadingSpinner />{" "}
@@ -116,9 +117,8 @@ const ViewMetrics: FC = () => {
           <MetricTable metricArray={data} />
         )}
         {isError && <div className=" text-danger">Something went wrong</div>}
-        <Card className="flex flex-row justify-center h-full">
-          <EventPreview />
-        </Card>
+        <EventStream />
+        {/* <EventPreview /> */}
         <CreateMetricForm
           state={metricState}
           visible={visible}
