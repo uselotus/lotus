@@ -61,13 +61,8 @@ Lotus provides a flexible and modular control panel on top of your existing quot
 
 There are a few ways to use Lotus. After you set it up, head over to the [Docs](https://docs.uselotus.io/docs/overview/why-lotus) to learn how to use Lotus!
 
-### :cloud: Cloud Version
-
 Test out Lotus with a demo account [here](https://demo.uselotus.io/register).
 
-The cloud version is best for convenience and fast deployment. This version also gets access to features faster than the self-hosted version.
-
-Sign up for a hosted account [here](https://dsl2wm77apy.typeform.com/to/pehx2YSQ?typeform-source=www.uselotus.io) or email us at founders@uselotus.io for more details.
 
 ### :bust_in_silhouette: Self-Hosted Version
 
