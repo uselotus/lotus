@@ -56,14 +56,13 @@ const IntegrationsTab: FC = () => {
       .catch((err) => undefined)
   );
 
-  var nango;
-
   const org = useGlobalStore((state) => state.org);
-  if ((import.meta as any).env.VITE_NANGO_PK === (undefined || "change_me")) {
-    nango = false;
-  } else {
+
+  let nango = false;
+  const nangoPK = (import.meta as any).env.VITE_NANGO_PK;
+  if (nangoPK && nangoPK !== "change_me") {
     nango = new Nango({
-      publicKey: (import.meta as any).env.VITE_NANGO_PK,
+      publicKey: nangoPK,
       debug: false,
     }); // Nango Cloud
   }
