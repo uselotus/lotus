@@ -3,6 +3,7 @@
 # ---------------------------------------
 FROM node:18.11.0-alpine AS development
 WORKDIR /frontend
+ENV NODE_OPTIONS=--max_old_space_size=2048
 COPY package*.json yarn.lock tsconfig.json \
     vite.config.ts tsconfig.node.json postcss.config.cjs\
     tailwind.config.cjs ./
