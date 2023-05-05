@@ -37,7 +37,6 @@
 <h3 align="center">
   <a href="https://docs.uselotus.io/"><b>Documentation</b></a> &bull;
   <a href="https://join.slack.com/t/lotus-community/shared_invite/zt-1fufuktbp-ignnw768aZgdFNlcvAOSrw"><b>Slack Community</b></a> &bull;
-  <a href="https://form.typeform.com/to/pehx2YSQ?typeform-source=docs.uselotus.io"><b>Book A Demo</b></a>
 </h3>
 
 <br/>
@@ -60,8 +59,6 @@ Lotus provides a flexible and modular control panel on top of your existing quot
 ## Getting Started
 
 There are a few ways to use Lotus. After you set it up, head over to the [Docs](https://docs.uselotus.io/docs/overview/why-lotus) to learn how to use Lotus!
-
-Test out Lotus with a demo account [here](https://demo.uselotus.io/register).
 
 
 ### :bust_in_silhouette: Self-Hosted Version
