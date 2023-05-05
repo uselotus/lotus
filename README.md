@@ -36,7 +36,7 @@
 
 <h3 align="center">
   <a href="https://docs.uselotus.io/"><b>Documentation</b></a> &bull;
-  <a href="https://join.slack.com/t/lotus-community/shared_invite/zt-1fufuktbp-ignnw768aZgdFNlcvAOSrw"><b>Slack Community</b></a>;
+  <a href="https://join.slack.com/t/lotus-community/shared_invite/zt-1fufuktbp-ignnw768aZgdFNlcvAOSrw"><b>Slack Community</b></a>
 </h3>
 
 <br/>
