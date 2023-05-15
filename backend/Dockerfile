@@ -3,14 +3,13 @@
 # ---------------------------------------
 FROM python:3.9 AS build
 ENV PYTHONUNBUFFERED 1
-#make lotus user
 WORKDIR /lotus
 # pip install optimization
 RUN apt-get update && apt-get install -y netcat
-COPY Pipfile Pipfile.lock ./
-RUN pip install -U --no-cache-dir --disable-pip-version-check pipenv
-RUN pipenv install --system --deploy --ignore-pipfile --dev
-# copy python files,
+COPY pyproject.toml poetry.lock ./
+RUN pip install --no-cache-dir --disable-pip-version-check poetry
+RUN poetry config virtualenvs.create false \
+  && poetry install --no-interaction --no-ansi
 COPY ./lotus/ ./lotus/
 COPY ./metering_billing/ ./metering_billing/
 COPY ./api/ ./api/
@@ -22,7 +21,6 @@ FROM build AS development
 COPY ./pytest.ini ./.coveragerc ./
 COPY ./scripts/start_backend.dev.sh ./scripts/start_backend.dev.sh
 RUN chmod +x ./scripts/start_backend.dev.sh
-
 # ---------------------------------------
 # Production
 # ---------------------------------------

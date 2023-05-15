@@ -6,10 +6,10 @@
   },
   "[python]": {
     "editor.formatOnSave": true,
-    "editor.defaultFormatter": "ms-python.python"
+    "editor.defaultFormatter": "ms-python.black-formatter"
   },
   "isort.args": ["--profile", "black", "--filter-files"],
-  "python.formatting.provider": "black",
+  "python.formatting.provider": "none",
   "python.testing.pytestArgs": ["${workspaceFolder}/metering_billing"],
   "python.unitTest.unittestEnabled": false,
   "python.unitTest.nosetestsEnabled": false,

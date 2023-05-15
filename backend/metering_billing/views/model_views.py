@@ -109,12 +109,12 @@ from metering_billing.serializers.model_serializers import (
 )
 from metering_billing.serializers.request_serializers import (
     CRMSyncRequestSerializer,
+    EventSearchRequestSerializer,
     MakeReplaceWithSerializer,
     PlansSetReplaceWithForVersionNumberSerializer,
     PlansSetTransitionToForVersionNumberSerializer,
     SetReplaceWithSerializer,
     TargetCustomersSerializer,
-    EventSearchRequestSerializer,
 )
 from metering_billing.serializers.serializer_utils import (
     AddOnUUIDField,
@@ -2553,4 +2553,5 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         organization = self.request.organization
         context.update({"organization": organization})
+        return context
         return context

@@ -63,40 +63,40 @@ jobs:
         with:
           python-version: "3.9"
 
-      - name: Install pipenv
+      - name: Install poetry
         run: |
-          cd ./backend && python -m pip install --upgrade pipenv wheel && pipenv update
+          cd ./backend && python -m pip install --upgrade poetry wheel
 
-      - id: cache-pipenv
+      - id: cache-poetry
         uses: actions/cache@v1
         with:
-          path: ~/.local/share/virtualenvs
-          key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
 
       - name: Install backend dependencies
-        if: steps.cache-pipenv.outputs.cache-hit != 'true'
+        if: steps.cache-poetry.outputs.cache-hit != 'true'
         run: |
-          cd ./backend && pipenv install --deploy --dev
+          cd ./backend && poetry install
 
       - name: Migrate
         run: |
-          cd ./backend && pipenv run python manage.py migrate --noinput
+          cd ./backend && poetry run python manage.py migrate --noinput
 
       - name: Demo up
         run: |
-          cd ./backend && pipenv run python manage.py demo_up
+          cd ./backend && poetry run python manage.py demo_up
 
       - name: Init Admin
         run: |
-          cd ./backend && pipenv run python manage.py initadmin
+          cd ./backend && poetry run python manage.py initadmin
 
       - name: Run Django server
         run: |
-          cd ./backend && pipenv run python manage.py runserver 0.0.0.0:8000 &
+          cd ./backend && poetry run python manage.py runserver 0.0.0.0:8000 &
 
       - name: Cypress run
         uses: cypress-io/github-action@v5
         with:
           working-directory: ./frontend
           start: yarn run dev --port 3000 --host 127.0.0.1
-          wait-on: "http://localhost:8000/api/healthcheck/, http://localhost:3000"
+          wait-on: "http://localhost:8000/api/healthcheck/, http://localhost:
