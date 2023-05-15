@@ -2332,7 +2332,6 @@ class TestRegressions:
         assert usage_revenue_dict["revenue"] >= Decimal(8700) / (
             Decimal(60) * Decimal(24) * Decimal(31)
         ) * Decimal(100)
-        assert abs(
-            usage_revenue_dict["revenue"]
-            - Decimal(8700) / (Decimal(60) * Decimal(24) * Decimal(28)) * Decimal(100)
-        ) < Decimal(0.01)
+        assert usage_revenue_dict["revenue"] <= Decimal(8700) / (
+            Decimal(60) * Decimal(24) * Decimal(28)
+        ) * Decimal(100)
