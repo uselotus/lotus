@@ -88,7 +88,7 @@ CUSTOMER_ID_NAMESPACE = settings.CUSTOMER_ID_NAMESPACE
 
 
 class Team(models.Model):
-    name = models.CharField(max_length=100, blank=False, null=False)
+    name = models.TextField(blank=False, null=False)
     team_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     crm_integration_allowed = models.BooleanField(default=False)
     # accounting_integration_allowed = models.BooleanField(default=False)
@@ -210,7 +210,7 @@ class Organization(models.Model):
         Team, on_delete=models.CASCADE, null=True, related_name="organizations"
     )
     organization_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    organization_name = models.CharField(max_length=100, blank=False, null=False)
+    organization_name = models.TextField(blank=False, null=False)
     created = models.DateField(default=now_utc)
     organization_type = models.PositiveSmallIntegerField(
         choices=OrganizationType.choices, default=OrganizationType.DEVELOPMENT
@@ -412,8 +412,8 @@ class WebhookEndpoint(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="webhook_endpoints"
     )
-    name = models.CharField(max_length=100, blank=True, null=True)
-    webhook_url = models.CharField(max_length=100)
+    name = models.TextField(blank=True, null=True)
+    webhook_url = models.TextField()
     webhook_secret = models.UUIDField(default=uuid.uuid4, editable=False)
 
     objects = WebhookEndpointManager()
@@ -602,8 +602,7 @@ class Customer(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="customers"
     )
-    customer_name = models.CharField(
-        max_length=100,
+    customer_name = models.TextField(
         blank=True,
         help_text="The display name of the customer",
         null=True,
@@ -1154,8 +1153,8 @@ class Metric(models.Model):
         on_delete=models.CASCADE,
         related_name="metrics",
     )
-    event_name = models.CharField(
-        max_length=50, help_text="Name of the event that this metric is tracking."
+    event_name = models.TextField(
+        help_text="Name of the event that this metric is tracking."
     )
     metric_type = models.CharField(
         max_length=20,
@@ -1164,7 +1163,7 @@ class Metric(models.Model):
         help_text="The type of metric that this is. Please refer to our documentation for an explanation of the different types.",
     )
     properties = models.JSONField(default=dict, blank=True, null=True)
-    billable_metric_name = models.CharField(max_length=50, blank=True, null=True)
+    billable_metric_name = models.TextField(blank=True, null=True)
     metric_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     event_type = models.CharField(
         max_length=20,
@@ -1187,8 +1186,7 @@ class Metric(models.Model):
         blank=True,
         null=True,
     )
-    property_name = models.CharField(
-        max_length=50,
+    property_name = models.TextField(
         blank=True,
         null=True,
         help_text="The name of the property of the event that should be used for this metric. Doesn't apply if the metric is of type 'counter' with an aggregation of count.",
@@ -3720,7 +3718,7 @@ class Backtest(models.Model):
     This model is used to store the results of a backtest.
     """
 
-    backtest_name = models.CharField(max_length=100)
+    backtest_name = models.TextField()
     start_date = models.DateField()
     end_date = models.DateField()
     organization = models.ForeignKey(
@@ -3778,7 +3776,7 @@ class PricingUnit(models.Model):
         related_name="pricing_units",
     )
     code = models.CharField(max_length=10)
-    name = models.CharField(max_length=100)
+    name = models.TextField()
     symbol = models.CharField(max_length=10)
     custom = models.BooleanField(default=False)
 
@@ -3855,7 +3853,7 @@ class Tag(models.Model):
         Organization, on_delete=models.CASCADE, related_name="tags"
     )
     tag_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    tag_name = models.CharField(max_length=50)
+    tag_name = models.TextField()
     tag_group = models.CharField(choices=TAG_GROUP.choices, max_length=15)
     tag_hex = models.CharField(max_length=7, null=True)
     tag_color = models.CharField(max_length=20, null=True)
