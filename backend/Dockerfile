@@ -1,7 +1,7 @@
 # ---------------------------------------
 # Build
 # ---------------------------------------
-FROM python:3.9 AS build
+FROM python:3.9-bullseye AS build
 ENV PYTHONUNBUFFERED 1
 WORKDIR /lotus
 # pip install optimization
