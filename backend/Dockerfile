@@ -5,7 +5,7 @@ FROM python:3.9 AS build
 ENV PYTHONUNBUFFERED 1
 WORKDIR /lotus
 # pip install optimization
-RUN apt-get update && apt-get install -y netcat
+RUN apt-get update && apt-get install -y netcat-openbsd
 COPY pyproject.toml poetry.lock ./
 RUN pip install --no-cache-dir --disable-pip-version-check poetry
 RUN poetry config virtualenvs.create false \
