@@ -58,12 +58,8 @@ Lotus provides a flexible and modular control panel on top of your existing quot
 
 ## Getting Started
 
-There are a few ways to use Lotus. After you set it up, head over to the [Docs](https://docs.uselotus.io/docs/overview/why-lotus) to learn how to use Lotus!
 
-
-### :bust_in_silhouette: Self-Hosted Version
-
-Best if you want to keep your data local or want full control and extensibility.
+### :bust_in_silhouette: Self-Hosted Version (currently the only version)
 
 #### :computer: Local Instance
 
@@ -86,8 +82,6 @@ Best if you want to keep your data local or want full control and extensibility.
 Optionally:
 
 - Change the environment variables located in `env/.env.prod` to suit your needs. For more details, check out [this guide in our docs](https://docs.uselotus.io/docs/overview/self-hosting).
-
-Easy deployment options for AWS, GCP, and Azure are on the roadmap. If you have any questions, feel free to reach out to us.
 
 <p align="right">(<a href="#lotus-pricing--packaging-infrastructure-for-any-business-model">back to top</a>)</p>
 
@@ -131,7 +125,6 @@ Tech Stack:
 
 - **Seamless Integrations with your Monetization Stack** - Never feel locked into a single system thanks to a variety of integrations to help you get the most out of your existing stack. Additionally, a simple yet expressive API helps you integrate with any system you want.
 
-- **Cloud or Self-Hosted** - Apart from a managed cloud offering, Lotus provides a self-hosted version so you can keep your data local and have full control over your pricing.
 
 <p align="right">(<a href="#lotus-pricing--packaging-infrastructure-for-any-business-model">back to top</a>)</p>
 
@@ -147,8 +140,6 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ## Get in Touch
 Message Us on Slack: <a href="https://join.slack.com/t/lotus-community/shared_invite/zt-1ghi61p9j-ADYbp3tEL~N16AxQr2mlzA"><img src="https://img.shields.io/badge/slack-lotus-E01E5A.svg?logo=slack&labelColor=2EB67D" alt="Join Lotus on Slack"></a>
-
-Or visit www.uselotus.io
 
 <a href="https://github.com/uselotus/lotus/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=uselotus/lotus" />
