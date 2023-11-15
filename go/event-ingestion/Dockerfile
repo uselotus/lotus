@@ -1,5 +1,5 @@
 # Create a builder stage
-FROM golang:alpine as builder
+FROM golang:1.20-alpine as builder
 
 RUN apk update
 RUN apk add --no-cache git ca-certificates \
