@@ -1,0 +1,152 @@
+services:
+  db:
+    image: timescale/timescaledb:latest-pg14
+    restart: on-failure
+    expose:
+      - 5432
+    volumes:
+      - ./pgdata_prod:/var/lib/postgresql/data
+    env_file:
+      - ./env/.env.prod
+
+  svix-server:
+    image: svix/svix-server:v0.74
+    environment:
+      WAIT_FOR: "true"
+      SVIX_REDIS_DSN: redis://redis
+      SVIX_DB_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db
+    env_file:
+      - ./env/.env.prod
+    ports:
+      - "8071:8071"
+    depends_on:
+    - db
+    - redis
+    links:
+    - db
+    - redis
+    restart: on-failure
+
+  redpanda:
+    image: docker.redpanda.com/vectorized/redpanda:v22.2.2
+    command:
+      - redpanda start
+      - --smp 1
+      - --overprovisioned
+      - --node-id 0
+      - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+      - --pandaproxy-addr 0.0.0.0:8082
+      - --advertise-pandaproxy-addr localhost:8082
+    expose:
+      - 8081
+      - 8082
+      - 9092
+      - 9644
+      - 29092
+
+  backend: &backend
+    env_file:
+      - ./env/.env.prod
+    image: lotus-backend:latest
+    # build:
+    #   context: ./backend
+    #   dockerfile: Dockerfile
+    #   target: production
+    expose:
+      - 8000
+    volumes:
+      - django_static_volume:/lotus/staticfiles
+    command: sh -c "./scripts/start_backend.prod.sh"
+    depends_on:
+      - db
+      - redis
+      - redpanda
+    restart: on-failure
+
+  event-guidance:
+    env_file:
+      - ./env/.env.prod
+    image: lotus-event-guidance:latest
+    # build:
+    #   context: ./go/event-guidance
+    #   dockerfile: Dockerfile
+    expose:
+      - 7999
+    depends_on:
+      - db
+      - redis
+      - redpanda
+    restart: "on-failure:15"
+
+  event-ingestion:
+    env_file:
+      - ./env/.env.prod
+    image: lotus-event-ingestion:latest
+    # build:
+    #   context: ./go/event-ingestion
+    #   dockerfile: Dockerfile
+    expose:
+      - 7998
+    depends_on:
+      - db
+      - redis
+      - redpanda
+      - backend
+    restart: "on-failure:15"
+
+  frontend:
+    restart: always
+    image: lotus-frontend:latest
+    # build:
+    #   context: ./frontend
+    #   dockerfile: Dockerfile
+    #   target: production
+    env_file:
+      - ./env/.env.prod
+    stdin_open: true
+    ports:
+      - 80:80
+    volumes:
+      - django_static_volume:/app/backend/server/django_staticfiles
+    depends_on:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server
+    env_file:
+      - ./env/.env.prod
+
+  celery:
+    env_file:
+      - ./env/.env.prod
+    image: lotus-celery:latest
+    # build:
+    #   context: ./backend
+    #   dockerfile: Dockerfile
+    #   target: production
+    command: bash -c "while ! nc -q 1 db 5432 </dev/null; do sleep 5; done; celery -A lotus worker -l info;"
+    depends_on:
+      - redis
+      - backend
+    restart: on-failure
+
+  celery-beat:
+    env_file:
+      - ./env/.env.prod
+    restart: on-failure
+    image: lotus-celery-beat:latest
+    # build:
+    #   context: ./backend
+    #   dockerfile: Dockerfile
+    #   target: production
+    command: bash -c "while ! nc -q 1 db 5432 </dev/null; do sleep 5; done; celery -A lotus beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler;"
+    depends_on:
+      - celery
+      - backend
+      - redis
+
+volumes:
+  pgdata_prod:
+  django_static_volume:
