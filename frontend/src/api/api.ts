@@ -151,7 +151,7 @@ export const Customer = {
   getCustomerTotals: (): Promise<CustomerTotal[]> =>
     requests.get("app/customers/totals/"),
   deleteCustomer: (customer_id: string): Promise<CustomerType> =>
-    requests.post(`app/${customer_id}/delete/`, {}),
+    requests.post(`app/customers/${customer_id}/delete/`, {}),
   updateCustomer: (
     customer_id: string,
     default_currency_code: string,
