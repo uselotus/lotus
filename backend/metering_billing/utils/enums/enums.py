@@ -243,8 +243,11 @@ SUPPORTED_CURRENCIES = [
     ("Nigerian Naira", "NGN", "₦"),
     ("Russian Ruble", "RUB", "₽"),
     ("Kazakhstani Tenge", "KZT", "₸"),
+    ("Tanzanian Shilling", "TZS", "TSh"),
+    ("Kenyan Shilling", "KES", "KSh"),
+    ("Ugandan Shilling", "UGX", "UGX"),
 ]
-SUPPORTED_CURRENCIES_VERSION = 3
+SUPPORTED_CURRENCIES_VERSION = 4
 
 
 class ACCOUNTS_RECEIVABLE_TRANSACTION_TYPES(models.IntegerChoices):
