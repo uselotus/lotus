@@ -246,8 +246,9 @@ SUPPORTED_CURRENCIES = [
     ("Tanzanian Shilling", "TZS", "TSh"),
     ("Kenyan Shilling", "KES", "KSh"),
     ("Ugandan Shilling", "UGX", "UGX"),
+    ("Indian Rupee", "INR", "₹"),
 ]
-SUPPORTED_CURRENCIES_VERSION = 4
+SUPPORTED_CURRENCIES_VERSION = 5
 
 
 class ACCOUNTS_RECEIVABLE_TRANSACTION_TYPES(models.IntegerChoices):
