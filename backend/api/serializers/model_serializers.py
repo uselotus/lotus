@@ -876,7 +876,7 @@ class CustomerCreateSerializer(
 
     def create(self, validated_data):
         pp_id = validated_data.pop("payment_provider_id", None)
-        payment_provider = validated_data.pop("payment_provider", None)
+        payment_provider = validated_data.get("payment_provider", None)
         if payment_provider:
             payment_provider_valid = PAYMENT_PROCESSOR_MAP[
                 payment_provider
