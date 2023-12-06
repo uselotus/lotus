@@ -247,6 +247,7 @@ SUPPORTED_CURRENCIES = [
     ("Kenyan Shilling", "KES", "KSh"),
     ("Ugandan Shilling", "UGX", "UGX"),
     ("Indian Rupee", "INR", "₹"),
+    ("Philippine Peso", "PHP", "₱"),
 ]
 SUPPORTED_CURRENCIES_VERSION = 5
 
