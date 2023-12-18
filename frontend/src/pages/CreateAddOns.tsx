@@ -356,7 +356,7 @@ function CreateAddOns() {
                 />
               </Form.Item>
               <Form.Item name="description">
-                <label className="mb-4">Description </label>
+                <label className="mb-4 required">Description </label>
                 <Input
                   className="w-full"
                   type="textarea"
