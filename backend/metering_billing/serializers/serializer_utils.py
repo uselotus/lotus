@@ -163,9 +163,9 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             return BalanceAdjustmentUUIDField().to_representation(obj.adjustment_id)
         elif isinstance(obj, Metric):
             return MetricUUIDField().to_representation(obj.metric_id)
-        elif isinstance(obj, Plan) and obj.addon_spec is None:
+        elif isinstance(obj, Plan) and obj.is_addon is False:
             return PlanUUIDField().to_representation(obj.plan_id)
-        elif isinstance(obj, Plan) and obj.addon_spec is not None:
+        elif isinstance(obj, Plan) and obj.is_addon is True:
             return AddOnUUIDField().to_representation(obj.plan_id)
         elif isinstance(obj, PlanVersion):
             return PlanVersionUUIDField().to_representation(obj.version_id)
