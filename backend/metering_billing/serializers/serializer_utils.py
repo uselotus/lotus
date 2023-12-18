@@ -176,13 +176,13 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
         elif isinstance(obj, Invoice):
             return InvoiceUUIDField().to_representation(obj.invoice_id)
         elif isinstance(obj, SubscriptionRecord):
-            if obj.plan_version.addon_spec is None:
+            if obj.billing_plan.addon_spec is None:
                 return SubscriptionUUIDField().to_representation(
-                    obj.susbcription_record_id
+                    obj.subscription_record_id
                 )
             else:
                 return AddOnSubscriptionUUIDField().to_representation(
-                    obj.susbcription_record_id
+                    obj.subscription_record_id
                 )
         return repr
 
