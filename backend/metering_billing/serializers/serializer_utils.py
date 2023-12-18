@@ -163,9 +163,9 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
             return BalanceAdjustmentUUIDField().to_representation(obj.adjustment_id)
         elif isinstance(obj, Metric):
             return MetricUUIDField().to_representation(obj.metric_id)
-        elif isinstance(obj, Plan) and obj.addon_spec is None:
+        elif isinstance(obj, Plan) and obj.is_addon is False:
             return PlanUUIDField().to_representation(obj.plan_id)
-        elif isinstance(obj, Plan) and obj.addon_spec is not None:
+        elif isinstance(obj, Plan) and obj.is_addon is True:
             return AddOnUUIDField().to_representation(obj.plan_id)
         elif isinstance(obj, PlanVersion):
             return PlanVersionUUIDField().to_representation(obj.version_id)
@@ -176,13 +176,13 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
         elif isinstance(obj, Invoice):
             return InvoiceUUIDField().to_representation(obj.invoice_id)
         elif isinstance(obj, SubscriptionRecord):
-            if obj.plan_version.addon_spec is None:
+            if obj.billing_plan.addon_spec is None:
                 return SubscriptionUUIDField().to_representation(
-                    obj.susbcription_record_id
+                    obj.subscription_record_id
                 )
             else:
                 return AddOnSubscriptionUUIDField().to_representation(
-                    obj.susbcription_record_id
+                    obj.subscription_record_id
                 )
         return repr
 
