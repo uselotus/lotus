@@ -36,7 +36,6 @@
 
 <h3 align="center">
   <a href="https://docs.uselotus.io/"><b>Documentation</b></a> &bull;
-  <a href="https://join.slack.com/t/lotus-community/shared_invite/zt-1fufuktbp-ignnw768aZgdFNlcvAOSrw"><b>Slack Community</b></a>
 </h3>
 
 <br/>
@@ -136,10 +135,6 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 <p align="right">(<a href="#lotus-pricing--packaging-infrastructure-for-any-business-model">back to top</a>)</p>
 
-<!-- CONTACT -->
-
-## Get in Touch
-Message Us on Slack: <a href="https://join.slack.com/t/lotus-community/shared_invite/zt-1ghi61p9j-ADYbp3tEL~N16AxQr2mlzA"><img src="https://img.shields.io/badge/slack-lotus-E01E5A.svg?logo=slack&labelColor=2EB67D" alt="Join Lotus on Slack"></a>
 
 <a href="https://github.com/uselotus/lotus/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=uselotus/lotus" />
