@@ -888,17 +888,17 @@ class CustomerCreateSerializer(
         shipping_address = validated_data.pop("shipping_address", None)
         customer = Customer.objects.create(**validated_data)
         if address:
-            address = Address.objects.get_or_create(
+            address, _ = Address.objects.get_or_create(
                 **address, organization=self.context["organization"]
             )
             customer.billing_address = address
         if billing_address:
-            billing_address = Address.objects.get_or_create(
+            billing_address, _ = Address.objects.get_or_create(
                 **billing_address, organization=self.context["organization"]
             )
             customer.billing_address = billing_address
         if shipping_address:
-            shipping_address = Address.objects.get_or_create(
+            shipping_address, _ = Address.objects.get_or_create(
                 **shipping_address, organization=self.context["organization"]
             )
             customer.shipping_address = shipping_address
