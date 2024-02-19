@@ -34,7 +34,7 @@
     "babel-plugin-import": "1.13.5",
     "clsx": "^1.2.1",
     "cypress": "^12.5.1",
-    "dayjs": "1.11.5",
+    "dayjs": "1.11.10",
     "depcheck": "^1.4.3",
     "eslint": "^8.32.0",
     "eslint-config-prettier": "^8.6.0",
