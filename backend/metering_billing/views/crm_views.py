@@ -362,7 +362,7 @@ def sync_customers_with_salesforce(organization):
                     fuzzy_country = None
 
                 try:
-                    billing_address = Address.objects.get_or_create(
+                    billing_address, _ = Address.objects.get_or_create(
                         line1=billing_address["street"],
                         city=billing_address["city"],
                         state=billing_address["state"],
@@ -372,7 +372,7 @@ def sync_customers_with_salesforce(organization):
                 except Exception:
                     try:
                         normalized = normalize_address_record(billing_address["street"])
-                        billing_address = Address.objects.get_or_create(
+                        billing_address, _ = Address.objects.get_or_create(
                             line1=normalized["address_line_1"],
                             line2=normalized["address_line_2"],
                             city=normalized["city"],
@@ -391,7 +391,7 @@ def sync_customers_with_salesforce(organization):
                     fuzzy_country = None
 
                 try:
-                    shipping_address = Address.objects.get_or_create(
+                    shipping_address, _ = Address.objects.get_or_create(
                         line1=shipping_address["street"],
                         city=shipping_address["city"],
                         state=shipping_address["state"],
@@ -403,7 +403,7 @@ def sync_customers_with_salesforce(organization):
                         normalized = normalize_address_record(
                             shipping_address["street"]
                         )
-                        shipping_address = Address.objects.get_or_create(
+                        shipping_address, _ = Address.objects.get_or_create(
                             line1=normalized["address_line_1"],
                             line2=normalized["address_line_2"],
                             city=normalized["city"],
