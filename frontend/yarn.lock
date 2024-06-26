@@ -6416,10 +6416,10 @@ react-sortable-hoc@^2.0.0:
     invariant "^2.2.4"
     prop-types "^15.5.7"
 
-react-spinners@0.13.4:
-  version "0.13.4"
-  resolved "https://registry.yarnpkg.com/react-spinners/-/react-spinners-0.13.4.tgz#20f7435e5cb3a2bde23110efa8b7dfbe485373e9"
-  integrity sha512-V6IURjYOwomhdngMfuVxBp4utCF6v21sjQ6r4K2JoKl8fwXZp1UeHMBLf+2SU+cts8hAVj9rHOJ8kdT5UqqaJw==
+react-spinners@0.14.1:
+  version "0.14.1"
+  resolved "https://registry.yarnpkg.com/react-spinners/-/react-spinners-0.14.1.tgz#de7d7d6b3e6d4f29d9620c65495b502c7dd90812"
+  integrity sha512-2Izq+qgQ08HTofCVEdcAQCXFEYfqTDdfeDQJeo/HHQiQJD4imOicNLhkfN2eh1NYEWVOX4D9ok2lhuDB0z3Aag==
 
 react-syntax-highlighter@^15.5.0:
   version "15.5.0"
