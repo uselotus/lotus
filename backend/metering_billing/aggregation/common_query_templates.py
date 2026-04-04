@@ -1,5 +1,5 @@
 CAGG_REFRESH = """
-SELECT add_continuous_aggregate_policy('{{ cagg_name }}',
+SELECT add_continuous_aggregate_policy('{{ cagg_name | replace("'", "''") }}',
     start_offset => INTERVAL '32 days',
     end_offset => INTERVAL '1 day',
     schedule_interval => INTERVAL '30 minutes',
@@ -7,13 +7,13 @@ SELECT add_continuous_aggregate_policy('{{ cagg_name }}',
 """
 
 CAGG_DROP = """
-DROP MATERIALIZED VIEW IF EXISTS {{ cagg_name }};
+DROP MATERIALIZED VIEW IF EXISTS "{{ cagg_name | replace('"', '""') }}";
 """
 
 CAGG_COMPRESSION = """
-ALTER MATERIALIZED VIEW {{ cagg_name }} set (timescaledb.compress = true);
+ALTER MATERIALIZED VIEW "{{ cagg_name | replace('"', '""') }}" set (timescaledb.compress = true);
 SELECT add_compression_policy(
-    '{{ cagg_name }}',
+    '{{ cagg_name | replace("'", "''") }}',
     compress_after=>'33 days'::interval,
     if_not_exists=>true
 );
