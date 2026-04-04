@@ -12,10 +12,10 @@ WITH events AS
         "metering_billing_usageevent"."organization_id" = {{ organization_id }}
         AND "metering_billing_usageevent"."uuidv5_customer_id" = '{{ uuidv5_customer_id }}'
         {%- for property_name, property_values in filter_properties.items() %}
-            AND {{ property_name }}
+            AND "metering_billing_usageevent"."properties"->>'{{ property_name | replace("'", "''") }}'
                 IN (
                     {%- for pval in property_values %}
-                    '{{ pval }}'
+                    '{{ pval | replace("'", "''") }}'
                     {%- if not loop.last %},{% endif %}
                     {%- endfor %}
                 )
