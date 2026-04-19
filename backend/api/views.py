@@ -772,7 +772,7 @@ class SubscriptionViewSet(
                 "Unexpected state. Could not find subscription_id in request."
             )
         try:
-            obj = self.queryset.get(subscription_record_id=subscription_uuid)
+            obj = self.get_queryset().get(subscription_record_id=subscription_uuid)
         except SubscriptionRecord.DoesNotExist:
             raise NotFoundException(
                 f"Subscription with subscription_id {subscription_id} not found"
