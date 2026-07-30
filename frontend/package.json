@@ -15,7 +15,7 @@
     "cypress:run": "cypress run"
   },
   "dependencies": {
-    "@ant-design/plots": "1.2.1",
+    "@ant-design/plots": "1.2.6",
     "@ant-design/pro-components": "1.1.16",
     "@dnd-kit/core": "^6.0.7",
     "@dnd-kit/sortable": "^7.0.2",

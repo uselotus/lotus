@@ -33,12 +33,13 @@
     classnames "^2.2.6"
     rc-util "^5.9.4"
 
-"@ant-design/plots@1.2.1":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@ant-design/plots/-/plots-1.2.1.tgz#2b5f2e234cf50669ae673c0d5f59344b5fd7caf3"
-  integrity sha512-wbcmhHRkVi7IFyqzVNUozcJtIpgWHOFHbny5T+DLQoE2lzh+A1nTOfhlPJXc6aq56uIg6w+4iN/umsJKUmcLPw==
+"@ant-design/plots@1.2.6":
+  version "1.2.6"
+  resolved "https://registry.yarnpkg.com/@ant-design/plots/-/plots-1.2.6.tgz#35e541484069249989f92b7d9cdc835ea87191c5"
+  integrity sha512-fFzB9DxRSPQa47S3WypRk4Rh+P8vBUuY/DT+IXgUrlKJtvVZUFnuYfjypX3Q/Pie2PEbI6gmskzXLxVF+3Ztvw==
   dependencies:
     "@antv/g2plot" "^2.2.11"
+    "@antv/util" "^2.0.9"
     react-content-loader "^5.0.4"
 
 "@ant-design/pro-card@1.20.17":
