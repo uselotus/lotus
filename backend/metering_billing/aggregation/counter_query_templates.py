@@ -1,7 +1,7 @@
 # this will be our basic materialized view where we keep track of stuff per day
 # THIS IS A MATERIALIZED VIEW
 COUNTER_CAGG_QUERY = """
-CREATE MATERIALIZED VIEW IF NOT EXISTS {{ cagg_name }}
+CREATE MATERIALIZED VIEW IF NOT EXISTS "{{ cagg_name | replace('"', '""') }}"
 WITH ( timescaledb.continuous ) AS
 SELECT
     "metering_billing_usageevent"."uuidv5_customer_id" AS uuidv5_customer_id
@@ -87,7 +87,7 @@ SELECT
     {%- endif %} AS usage_qty
     , bucket
 FROM
-    {{ cagg_name }}
+    "{{ cagg_name | replace('"', '""') }}"
 WHERE
     uuidv5_customer_id = '{{ uuidv5_customer_id }}'
     AND bucket >= '{{ start_date }}'::timestamptz
@@ -216,7 +216,7 @@ WITH per_customer AS (
         , time_bucket_gapfill('1 day', bucket) AS time_bucket
         , SUM(usage_qty) AS usage_qty_per_day
     FROM
-        {{ cagg_name }}
+        "{{ cagg_name | replace('"', '""') }}"
     WHERE
         bucket <= NOW()
         {% if uuidv5_customer_id is not none %}
