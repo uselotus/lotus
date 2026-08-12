@@ -2,7 +2,7 @@
 
 ### FIRST ALL DELTA QUERIES
 GAUGE_DELTA_CUMULATIVE_SUM = """
-CREATE MATERIALIZED VIEW IF NOT EXISTS {{ cagg_name }}
+CREATE MATERIALIZED VIEW IF NOT EXISTS "{{ cagg_name | replace('"', '""') }}"
 WITH (timescaledb.continuous) AS
 SELECT
     "metering_billing_usageevent"."uuidv5_customer_id" AS uuidv5_customer_id
@@ -67,7 +67,7 @@ WITH cumsum_cagg_daily AS (
         {%- endfor %}
         , SUM(day_net_state_change) AS prev_days_usage_qty
     FROM
-        {{ cumsum_cagg }}
+        "{{ cumsum_cagg | replace('"', '""') }}"
     WHERE
         uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {%- for property_name, property_values in filter_properties.items() %}
@@ -307,7 +307,7 @@ WITH cumsum_cagg_daily AS (
         {%- endfor %}
         , SUM(day_net_state_change) AS prev_days_usage_qty
     FROM
-        {{ cumsum_cagg }}
+        "{{ cumsum_cagg | replace('"', '""') }}"
     WHERE
         uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {%- for property_name, property_values in filter_properties.items() %}
@@ -531,11 +531,11 @@ FROM
 
 
 GAUGE_DELTA_DROP_OLD = """
-DROP MATERIALIZED VIEW IF EXISTS {{ cagg_name }};
-DROP TRIGGER IF EXISTS tg_{{ cagg_name }}_insert ON "metering_billing_usageevent";
-DROP TRIGGER IF EXISTS tg_{{ cagg_name }}_update ON "metering_billing_usageevent";
-DROP TRIGGER IF EXISTS tg_{{ cagg_name }}_delete ON "metering_billing_usageevent";
-DROP FUNCTION IF EXISTS tg_refresh_{{ cagg_name }};
+DROP MATERIALIZED VIEW IF EXISTS "{{ cagg_name | replace('"', '""') }}";
+DROP TRIGGER IF EXISTS "tg_{{ cagg_name | replace('"', '""') }}_insert" ON "metering_billing_usageevent";
+DROP TRIGGER IF EXISTS "tg_{{ cagg_name | replace('"', '""') }}_update" ON "metering_billing_usageevent";
+DROP TRIGGER IF EXISTS "tg_{{ cagg_name | replace('"', '""') }}_delete" ON "metering_billing_usageevent";
+DROP FUNCTION IF EXISTS "tg_refresh_{{ cagg_name | replace('"', '""') }}";
 """
 
 GAUGE_DELTA_GET_CURRENT_USAGE = """
@@ -547,7 +547,7 @@ WITH cumsum_cagg_daily AS (
         {%- endfor %}
         , SUM(day_net_state_change) AS prev_days_usage_qty
     FROM
-        {{ cumsum_cagg }}
+        "{{ cumsum_cagg | replace('"', '""') }}"
     WHERE
         uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {%- for property_name, property_values in filter_properties.items() %}
@@ -637,7 +637,7 @@ WITH prev_value AS (
         {%- endfor %}
         , SUM(day_net_state_change) AS prev_usage_qty
     FROM
-        {{ cagg_name }}
+        "{{ cagg_name | replace('"', '""') }}"
     WHERE
         time_bucket <= CURRENT_DATE
         {% if uuidv5_customer_id is not none %}
@@ -796,7 +796,7 @@ GROUP BY
 
 ### THEN ALL TOTAL QUERIES
 GAUGE_TOTAL_CUMULATIVE_SUM = """
-CREATE MATERIALIZED VIEW IF NOT EXISTS {{ cagg_name }}
+CREATE MATERIALIZED VIEW IF NOT EXISTS "{{ cagg_name | replace('"', '""') }}"
 WITH (timescaledb.continuous) AS
 SELECT
     "metering_billing_usageevent"."uuidv5_customer_id" AS uuidv5_customer_id
@@ -856,7 +856,7 @@ SELECT
     {%- endfor %}
     , last(cumulative_usage_qty, time_bucket) AS usage_qty
 FROM
-    {{ cumsum_cagg }}
+    "{{ cumsum_cagg | replace('"', '""') }}"
 WHERE
     uuidv5_customer_id = '{{ uuidv5_customer_id }}'
     {%- for property_name, property_values in filter_properties.items() %}
@@ -885,7 +885,7 @@ WITH prev_state AS (
         {%- endfor %}
         , last(cumulative_usage_qty, time_bucket) AS prev_usage_qty
     FROM
-        {{ cumsum_cagg }}
+        "{{ cumsum_cagg | replace('"', '""') }}"
     WHERE
         uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {%- for property_name, property_values in filter_properties.items() %}
@@ -936,7 +936,7 @@ proration_level_query AS (
         ) AS usage_qty
         {%- endif %}
     FROM
-        {{ cumsum_cagg }}
+        "{{ cumsum_cagg | replace('"', '""') }}"
     WHERE
         uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {%- for property_name, property_values in filter_properties.items() %}
@@ -1018,7 +1018,7 @@ WITH prev_state AS (
         {%- endfor %}
         , last(cumulative_usage_qty, time_bucket) AS prev_usage_qty
     FROM
-        {{ cumsum_cagg }}
+        "{{ cumsum_cagg | replace('"', '""') }}"
     WHERE
         uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {%- for property_name, property_values in filter_properties.items() %}
@@ -1069,7 +1069,7 @@ proration_level_query AS (
         ) AS usage_qty
         {%- endif %}
     FROM
-        {{ cumsum_cagg }}
+        "{{ cumsum_cagg | replace('"', '""') }}"
     WHERE
         uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         {%- for property_name, property_values in filter_properties.items() %}
@@ -1143,7 +1143,7 @@ WITH prev_value AS (
         {%- endfor %}
         , last(cumulative_usage_qty, time_bucket) AS prev_usage_qty
     FROM
-        {{ cagg_name }}
+        "{{ cagg_name | replace('"', '""') }}"
     WHERE
         time_bucket <= CURRENT_DATE
         {% if uuidv5_customer_id is not none %}
@@ -1172,10 +1172,10 @@ WITH prev_value AS (
                         prev_usage_qty 
                     from 
                         prev_value 
-                    where 
-                        uuidv5_customer_id = {{ cagg_name }}.uuidv5_customer_id
+                    where
+                        uuidv5_customer_id = "{{ cagg_name | replace('"', '""') }}".uuidv5_customer_id
                         {%- for group_by_field in group_by %}
-                        AND {{ group_by_field }} = {{ cagg_name }}.{{ group_by_field }}
+                        AND {{ group_by_field }} = "{{ cagg_name | replace('"', '""') }}".{{ group_by_field }}
                         {%- endfor %}
                     limit 1
                     ),
@@ -1184,7 +1184,7 @@ WITH prev_value AS (
             )
         ) AS usage_qty
     FROM
-        {{ cagg_name }}
+        "{{ cagg_name | replace('"', '""') }}"
     WHERE
         time_bucket <= NOW()
         AND time_bucket >= '{{ start_date }}'::timestamptz

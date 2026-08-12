@@ -79,7 +79,7 @@ GROUP BY
 """
 
 RATE_CAGG_QUERY = """
-CREATE MATERIALIZED VIEW IF NOT EXISTS {{ cagg_name }}
+CREATE MATERIALIZED VIEW IF NOT EXISTS "{{ cagg_name | replace('"', '""') }}"
 WITH (timescaledb.continuous) AS
 SELECT
     "metering_billing_usageevent"."uuidv5_customer_id" AS uuidv5_customer_id,
@@ -178,7 +178,7 @@ WITH rate_per_bucket AS (
             RANGE BETWEEN INTERVAL '{{ lookback_qty }} {{ lookback_units }}' PRECEDING AND CURRENT ROW
             ) AS usage_qty
     FROM
-        {{ cagg_name }}
+        "{{ cagg_name | replace('"', '""') }}"
     WHERE
         uuidv5_customer_id = '{{ uuidv5_customer_id }}'
         AND bucket >= '{{ start_date }}'::timestamptz - INTERVAL '{{ lookback_qty }} {{ lookback_units }}'
@@ -257,7 +257,7 @@ WITH rate_per_bucket AS (
             RANGE BETWEEN INTERVAL '{{ lookback_qty }} {{ lookback_units }}' PRECEDING AND CURRENT ROW
             ) AS usage_qty
     FROM
-        {{ cagg_name }}
+        "{{ cagg_name | replace('"', '""') }}"
     WHERE
         bucket >= '{{ start_date }}'::timestamptz - INTERVAL '{{ lookback_qty }} {{ lookback_units }}'
         AND bucket <= '{{ end_date }}'::timestamptz
