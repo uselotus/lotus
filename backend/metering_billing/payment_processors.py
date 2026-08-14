@@ -1240,7 +1240,7 @@ class StripeConnector(PaymentProcesor):
                     validated_data["start_date"] = now_utc()
                     sub = stripe.Subscription.delete(
                         subscription.id,
-                        prorate=True,
+                        proration_behavior='create_prorations',
                         invoice_now=True,
                         **stripe_cust_kwargs,
                     )
@@ -1377,7 +1377,7 @@ class StripeConnector(PaymentProcesor):
 
         for stripe_sub_id in stripe_subscription_ids:
             stripe.Subscription.delete(
-                stripe_sub_id, prorate=True, invoice_now=True, **stripe_cust_kwargs
+                stripe_sub_id, proration_behavior='create_prorations', invoice_now=True, **stripe_cust_kwargs
             )
 
     def turn_off_subscriptions_auto_renew(
